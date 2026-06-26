@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Direct2dCad.db\Direct2dCad.db.csproj" />
+    <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
   </ItemGroup>
 
 </Project>

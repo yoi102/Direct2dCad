@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Direct2dCad.db\Direct2dCad.Db.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
   </ItemGroup>
 
 </Project>

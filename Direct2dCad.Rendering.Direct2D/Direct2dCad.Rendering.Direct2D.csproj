@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Vortice.Direct2D1" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D9" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Common\Direct2dCad.Common.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering\Direct2dCad.Rendering.csproj" />
+  </ItemGroup>
+
+</Project>

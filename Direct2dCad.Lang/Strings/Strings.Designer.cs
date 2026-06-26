@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Direct2dCad.Lang {
+namespace Direct2dCad.Lang.Strings {
     using System;
     
     
@@ -19,7 +19,7 @@ namespace Direct2dCad.Lang {
     // 类通过类似于 ResGen 或 Visual Studio 的工具自动生成的。
     // 若要添加或移除成员，请编辑 .ResX 文件，然后重新运行 ResGen
     // (以 /str 作为命令选项)，或重新生成 VS 项目。
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "18.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Strings {
@@ -39,7 +39,7 @@ namespace Direct2dCad.Lang {
         public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Resources.Strings.Strings", typeof(Strings).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Direct2dCad.Lang.Strings.Strings", typeof(Strings).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -79,11 +79,11 @@ namespace Direct2dCad.Lang {
         }
         
         /// <summary>
-        ///   查找类似 ClipboardViewer 的本地化字符串。
+        ///   查找类似 Circle 的本地化字符串。
         /// </summary>
-        public static string ClipboardViewer {
+        public static string Circle {
             get {
-                return ResourceManager.GetString("ClipboardViewer", resourceCulture);
+                return ResourceManager.GetString("Circle", resourceCulture);
             }
         }
         
@@ -115,6 +115,24 @@ namespace Direct2dCad.Lang {
         }
         
         /// <summary>
+        ///   查找类似 Cross 的本地化字符串。
+        /// </summary>
+        public static string Cross {
+            get {
+                return ResourceManager.GetString("Cross", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Dots 的本地化字符串。
+        /// </summary>
+        public static string Dots {
+            get {
+                return ResourceManager.GetString("Dots", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 English 的本地化字符串。
         /// </summary>
         public static string English {
@@ -142,6 +160,33 @@ namespace Direct2dCad.Lang {
         }
         
         /// <summary>
+        ///   查找类似 Line 的本地化字符串。
+        /// </summary>
+        public static string Line {
+            get {
+                return ResourceManager.GetString("Line", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Lines 的本地化字符串。
+        /// </summary>
+        public static string Lines {
+            get {
+                return ResourceManager.GetString("Lines", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 None 的本地化字符串。
+        /// </summary>
+        public static string None {
+            get {
+                return ResourceManager.GetString("None", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Ok 的本地化字符串。
         /// </summary>
         public static string Ok {
@@ -151,11 +196,29 @@ namespace Direct2dCad.Lang {
         }
         
         /// <summary>
+        ///   查找类似 Pan 的本地化字符串。
+        /// </summary>
+        public static string Pan {
+            get {
+                return ResourceManager.GetString("Pan", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Save Image As... 的本地化字符串。
         /// </summary>
         public static string SaveAs {
             get {
                 return ResourceManager.GetString("SaveAs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Select 的本地化字符串。
+        /// </summary>
+        public static string Select {
+            get {
+                return ResourceManager.GetString("Select", resourceCulture);
             }
         }
         
@@ -183,6 +246,15 @@ namespace Direct2dCad.Lang {
         public static string Source {
             get {
                 return ResourceManager.GetString("Source", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Text 的本地化字符串。
+        /// </summary>
+        public static string Text {
+            get {
+                return ResourceManager.GetString("Text", resourceCulture);
             }
         }
         

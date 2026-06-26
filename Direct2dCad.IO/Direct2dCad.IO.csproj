@@ -7,14 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Payload\V1\" />
-    <Folder Include="V1\" />
-    <Folder Include="V2\" />
+    <PackageReference Include="MessagePack" Version="3.1.7" />
+    <PackageReference Include="Riok.Mapperly" Version="5.0.0-next.8" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="3.1.7" />
-    <PackageReference Include="Riok.Mapperly" Version="5.0.0-next.8" />
+    <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
   </ItemGroup>
 
 </Project>

@@ -20,6 +20,8 @@ public sealed class CadDocumentSettings
     public CadUnit Unit { get; private set; }
     public int LengthPrecision { get; private set; }
     public int AnglePrecision { get; private set; }
+    public LayerDrawingPriority LayerDrawingPriority { get; private set; } = new();
+    public LayerDrawingPriority LaterDrawingPriority => LayerDrawingPriority;
 
     public static CadDocumentSettings Default()
     {
@@ -42,5 +44,13 @@ public sealed class CadDocumentSettings
             throw new ArgumentOutOfRangeException(nameof(precision));
 
         LengthPrecision = precision;
+    }
+
+    public void SetAnglePrecision(int precision)
+    {
+        if (precision < 0 || precision > 12)
+            throw new ArgumentOutOfRangeException(nameof(precision));
+
+        AnglePrecision = precision;
     }
 }

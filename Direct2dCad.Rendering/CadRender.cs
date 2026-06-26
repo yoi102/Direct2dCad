@@ -1,16 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
+using Direct2dCad.Db.Cad;
 
 namespace Direct2dCad.Rendering;
 
-public class CadRender
+public abstract class CadRender : ICadRenderer
 {
-
-
-
-
-
-
-
+    public abstract void Render(CadDocument document, CadViewport viewport, CadRenderOptions? options = null);
 }

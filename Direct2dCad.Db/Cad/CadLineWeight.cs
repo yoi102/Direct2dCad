@@ -14,6 +14,8 @@ public readonly record struct CadLineWeight
 
         if (Value < 0 && Value != -1)
             throw new ArgumentOutOfRangeException(nameof(Value), "Line weight must be non-negative or -1 for ByLayer.");
+
+        this.Value = Value;
     }
 
     public override string ToString() => IsByLayer ? "ByLayer" : Value.ToString("0.###");

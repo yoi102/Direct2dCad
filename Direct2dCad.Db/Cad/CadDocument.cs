@@ -526,6 +526,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         StyleId? textStyleId = null,
         string name = "")
     {
+        ValidateGraphicStyle(graphicStyleId, allowNull: true);
         ValidateTextStyle(textStyleId, allowNull: true);
 
         var entity = new CadText(
@@ -539,6 +540,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
             textStyleId,
             name);
 
+        entity.SetGraphicStyleInternal(graphicStyleId);
         AddEntityCore(entity);
         return entity;
     }

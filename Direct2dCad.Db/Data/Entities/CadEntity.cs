@@ -1,3 +1,4 @@
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Db.Data.Entities;
@@ -16,6 +17,8 @@ public abstract class CadEntity : IEquatable<CadEntity>
     public bool IsLocked { get; private set; }
     public bool IsErased { get; private set; }
     public bool IsVisible { get; private set; } = true;
+    public CadLineWeight? LineWeight { get; private set; }
+    public int ZIndex { get; private set; }
 
     public abstract CadRectD Bounds { get; }
 
@@ -32,6 +35,10 @@ public abstract class CadEntity : IEquatable<CadEntity>
     public void SetLocked(bool locked) => IsLocked = locked;
 
     public void SetVisible(bool visible) => IsVisible = visible;
+
+    public void SetLineWeight(CadLineWeight? lineWeight) => LineWeight = lineWeight;
+
+    public void SetZIndex(int zIndex) => ZIndex = zIndex;
 
     public void Erase() => IsErased = true;
 

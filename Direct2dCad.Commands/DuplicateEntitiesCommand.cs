@@ -1,0 +1,125 @@
+using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
+
+namespace Direct2dCad.Commands;
+
+public sealed class DuplicateEntitiesCommand : ICadCommand
+{
+    private readonly EntityId[] _sourceEntityIds;
+    private readonly CadVectorD _delta;
+    private readonly List<EntityId> _createdEntityIds = [];
+
+    public string Name => "Duplicate Entities";
+    public IReadOnlyList<EntityId> CreatedEntityIds => _createdEntityIds;
+
+    public DuplicateEntitiesCommand(IEnumerable<EntityId> sourceEntityIds, CadVectorD delta)
+    {
+        _sourceEntityIds = sourceEntityIds?.Distinct().ToArray() ?? throw new ArgumentNullException(nameof(sourceEntityIds));
+        _delta = delta;
+
+        if (_sourceEntityIds.Length == 0)
+            throw new ArgumentException("At least one entity is required.", nameof(sourceEntityIds));
+    }
+
+    public CadDocumentChangeSet Execute(CadDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        if (_createdEntityIds.Count > 0)
+        {
+            var restoredIds = new List<EntityId>();
+            foreach (var entityId in _createdEntityIds)
+            {
+                if (!document.TryGetEntity(entityId, out var entity) || entity is null)
+                    continue;
+
+                entity.Restore();
+                restoredIds.Add(entity.Id);
+            }
+
+            return restoredIds.Count == 0
+                ? CadDocumentChangeSet.Empty
+                : CadDocumentChangeSet.ForEntities(
+                    restoredIds,
+                    CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility);
+        }
+
+        foreach (var sourceEntityId in _sourceEntityIds)
+        {
+            if (!document.TryGetEntity(sourceEntityId, out var source) || source is null || source.IsErased)
+                continue;
+
+            if (TryDuplicate(document, source, _delta, out var created) && created is not null)
+                _createdEntityIds.Add(created.Id);
+        }
+
+        return _createdEntityIds.Count == 0
+            ? CadDocumentChangeSet.Empty
+            : CadDocumentChangeSet.ForEntities(
+                _createdEntityIds,
+                CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance);
+    }
+
+    public CadDocumentChangeSet Undo(CadDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        var erasedIds = new List<EntityId>();
+        foreach (var entityId in _createdEntityIds)
+        {
+            if (!document.TryGetEntity(entityId, out var entity) || entity is null)
+                continue;
+
+            entity.Erase();
+            erasedIds.Add(entity.Id);
+        }
+
+        return erasedIds.Count == 0
+            ? CadDocumentChangeSet.Empty
+            : CadDocumentChangeSet.ForEntities(erasedIds, CadEntityChangeKind.Deleted | CadEntityChangeKind.Visibility);
+    }
+
+    private static bool TryDuplicate(
+        CadDocument document,
+        CadEntity source,
+        CadVectorD delta,
+        out CadEntity? created)
+    {
+        created = source switch
+        {
+            CadLine line => document.AddLine(
+                line.Start + delta,
+                line.End + delta,
+                line.LayerId,
+                line.GraphicStyleId,
+                line.Name),
+            CadCircle circle => document.AddCircle(
+                circle.Center + delta,
+                circle.Radius,
+                circle.LayerId,
+                circle.GraphicStyleId,
+                circle.FillStyleId,
+                circle.Name),
+            CadText text => document.AddText(
+                text.Text,
+                text.Position + delta,
+                text.Height,
+                text.RotationRadians,
+                text.LayerId,
+                text.GraphicStyleId,
+                text.TextStyleId,
+                text.Name),
+            _ => null
+        };
+
+        if (created is null)
+            return false;
+
+        created.SetLineWeight(source.LineWeight);
+        created.SetVisible(source.IsVisible);
+        created.SetZIndex(source.ZIndex);
+        return true;
+    }
+}

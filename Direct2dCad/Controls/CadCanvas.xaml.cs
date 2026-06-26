@@ -1,62 +1,232 @@
 using System.Windows;
-using Direct2dCad.Rendering.Direct2D;
+using System.Windows.Input;
+using Direct2dCad.Db.Geometry;
+using Direct2dCad.ViewModels;
 
 namespace Direct2dCad.wpf.Controls;
 
-/// <summary>
-/// CadCanvas.xaml 的交互逻辑
-/// </summary>
-public partial class CadCanvas
+public partial class CadCanvas : IDisposable
 {
     public CadCanvas()
     {
         InitializeComponent();
 
+        Focusable = true;
+        Stretch = System.Windows.Media.Stretch.Fill;
+
         Loaded += CadCanvas_Loaded;
         SizeChanged += CadCanvas_SizeChanged;
-        Unloaded += CadCanvas_Unloaded;
         MouseDown += CadCanvas_MouseDown;
+        MouseMove += CadCanvas_MouseMove;
+        MouseUp += CadCanvas_MouseUp;
+        MouseWheel += CadCanvas_MouseWheel;
+        KeyDown += CadCanvas_KeyDown;
     }
 
-    private void CadCanvas_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e) => throw new NotImplementedException();
-
-    private void CadCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
+    public CadDocumentViewModel? DocumentViewModel
     {
-        d3d11ImageSource.SetSize((int)ActualWidth, (int)ActualHeight);
-        Direct2DCadRender?.SetSize((int)ActualWidth, (int)ActualHeight);
+        get => (CadDocumentViewModel?)GetValue(DocumentViewModelProperty);
+        set => SetValue(DocumentViewModelProperty, value);
+    }
+
+    public static readonly DependencyProperty DocumentViewModelProperty =
+        DependencyProperty.Register(
+            nameof(DocumentViewModel),
+            typeof(CadDocumentViewModel),
+            typeof(CadCanvas),
+            new PropertyMetadata(null, OnDocumentViewModelChanged));
+
+    public void RefreshView()
+    {
+        DocumentViewModel?.RequestRender();
+    }
+
+    private static void OnDocumentViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not CadCanvas canvas)
+            return;
+
+        if (e.OldValue is CadDocumentViewModel oldViewModel)
+        {
+            oldViewModel.PropertyChanged -= canvas.OnDocumentViewModelPropertyChanged;
+            oldViewModel.DetachRenderResources();
+        }
+
+        if (e.NewValue is CadDocumentViewModel newViewModel)
+        {
+            newViewModel.PropertyChanged += canvas.OnDocumentViewModelPropertyChanged;
+            newViewModel.Direct2DImageRenderHost.AttachImageSource(canvas.d3d11ImageSource);
+            newViewModel.AttachRenderResources();
+            canvas.UpdateViewportSize();
+            canvas.UpdateRenderSize();
+            canvas.UpdateCursor(newViewModel.CadCanvasToolMode == CadCanvasToolMode.Pan
+                ? CadCanvasCursorKind.Hand
+                : CadCanvasCursorKind.Cross);
+            newViewModel.RequestRender();
+        }
+    }
+
+    private void OnDocumentViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (DocumentViewModel is null)
+            return;
+
+        if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
+        {
+            UpdateCursor(DocumentViewModel.CadCanvasToolMode == CadCanvasToolMode.Pan
+                ? CadCanvasCursorKind.Hand
+                : CadCanvasCursorKind.Cross);
+        }
     }
 
     private void CadCanvas_Loaded(object sender, RoutedEventArgs e)
     {
-        InvalidateArrange();
-        d3d11ImageSource.SetSize((int)ActualWidth, (int)ActualHeight);
-        Direct2DCadRender?.SetSize((int)ActualWidth, (int)ActualHeight);
+        Focus();
+        UpdateViewportSize();
+        UpdateRenderSize();
+        DocumentViewModel?.RequestRender();
     }
 
-    private void CadCanvas_Unloaded(object sender, RoutedEventArgs e)
+    private void CadCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        d3d11ImageSource.Dispose();
+        UpdateViewportSize();
+        UpdateRenderSize();
+        DocumentViewModel?.RequestRender();
     }
 
-    public Direct2DCadRender Direct2DCadRender
+    private void CadCanvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        get { return (Direct2DCadRender)GetValue(Direct2DCadRenderProperty); }
-        set { SetValue(Direct2DCadRenderProperty, value); }
-    }
+        Focus();
 
-    // Using a DependencyProperty as the backing store for Direct2DCadRender.  This enables animation, styling, binding, etc...
-    public static readonly DependencyProperty Direct2DCadRenderProperty =
-        DependencyProperty.Register(nameof(Direct2DCadRender), typeof(Direct2DCadRender), typeof(CadCanvas), new PropertyMetadata(null, OnDirect2DCadRenderChanged));
-
-    private static void OnDirect2DCadRenderChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is not CadCanvas cadCanvas)
+        if (DocumentViewModel is null)
             return;
 
-        if (e.NewValue is Direct2DCadRender newRender)
+        var result = DocumentViewModel.PointerDown(
+            ToCadPoint(e.GetPosition(this)),
+            ToPointerButton(e.ChangedButton),
+            forcePan: false);
+
+        ApplyInteractionResult(result, e);
+    }
+
+    private void CadCanvas_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (DocumentViewModel is null)
+            return;
+
+        var result = DocumentViewModel.PointerMove(ToCadPoint(e.GetPosition(this)));
+        ApplyInteractionResult(result, e);
+    }
+
+    private void CadCanvas_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (DocumentViewModel is null)
+            return;
+
+        var result = DocumentViewModel.PointerUp(
+            ToCadPoint(e.GetPosition(this)),
+            ToPointerButton(e.ChangedButton));
+
+        ApplyInteractionResult(result, e);
+    }
+
+    private void CadCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (DocumentViewModel is null)
+            return;
+
+        var result = DocumentViewModel.MouseWheel(ToCadPoint(e.GetPosition(this)), e.Delta);
+        ApplyInteractionResult(result, e);
+    }
+
+    private void CadCanvas_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (DocumentViewModel is null)
+            return;
+
+        if (e.Key == Key.Escape)
         {
-            newRender.AttachImageSource(cadCanvas.d3d11ImageSource);
-            newRender.SetSize((int)cadCanvas.ActualWidth, (int)cadCanvas.ActualHeight);
+            ApplyInteractionResult(DocumentViewModel.Escape(), e);
+            return;
         }
+
+        if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
+            return;
+
+        switch (e.Key)
+        {
+            case Key.Z:
+                DocumentViewModel.Undo();
+                e.Handled = true;
+                break;
+
+            case Key.Y:
+                DocumentViewModel.Redo();
+                e.Handled = true;
+                break;
+
+            case Key.C:
+                DocumentViewModel.CopySelection();
+                e.Handled = true;
+                break;
+
+            case Key.V:
+                ApplyInteractionResult(DocumentViewModel.BeginPastePreview(), e);
+                break;
+        }
+    }
+
+    private void UpdateViewportSize()
+    {
+        DocumentViewModel?.SetViewportSize(ActualWidth, ActualHeight);
+    }
+
+    private void UpdateRenderSize()
+    {
+        var width = Math.Max(1, (int)Math.Ceiling(ActualWidth));
+        var height = Math.Max(1, (int)Math.Ceiling(ActualHeight));
+        d3d11ImageSource.SetSize(width, height);
+        DocumentViewModel?.SetRenderSize(width, height);
+    }
+
+    private void ApplyInteractionResult(CadCanvasInteractionResult result, RoutedEventArgs e)
+    {
+        if (result.CaptureMouse)
+            CaptureMouse();
+
+        if (result.ReleaseMouseCapture && IsMouseCaptured)
+            ReleaseMouseCapture();
+
+        if (result.Cursor is { } cursor)
+            UpdateCursor(cursor);
+
+        if (result.Handled)
+            e.Handled = true;
+    }
+
+    private void UpdateCursor(CadCanvasCursorKind cursor)
+    {
+        Cursor = cursor == CadCanvasCursorKind.Hand ? Cursors.Hand : Cursors.Cross;
+    }
+
+    private static CadCanvasPointerButton ToPointerButton(MouseButton button)
+    {
+        return button switch
+        {
+            MouseButton.Left => CadCanvasPointerButton.Left,
+            MouseButton.Middle => CadCanvasPointerButton.Middle,
+            MouseButton.Right => CadCanvasPointerButton.Right,
+            _ => CadCanvasPointerButton.None
+        };
+    }
+
+    private static CadPointD ToCadPoint(Point point)
+    {
+        return new CadPointD(point.X, point.Y);
+    }
+
+    public void Dispose()
+    {
+        d3d11ImageSource.Dispose();
     }
 }

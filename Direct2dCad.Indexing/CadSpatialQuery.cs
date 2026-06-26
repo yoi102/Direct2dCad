@@ -1,5 +1,5 @@
+using Direct2dCad.Db.Geometry;
+
 namespace Direct2dCad.Indexing;
 
-internal class CadSpatialQuery
-{
-}
+public readonly record struct CadSpatialQuery(CadRectD Area);

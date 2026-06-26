@@ -1,29 +1,27 @@
 <Solution>
   <Folder Name="/clients/">
+    <Project Path="Direct2dCad.Client.Common/Direct2dCad.Client.Common.csproj" Id="d3f18ae1-15bb-4994-bc9f-5d45016cd932" />
+    <Project Path="Direct2dCad.IDialogService/Direct2dCad.IDialogService.csproj" Id="1862336d-36e9-4c08-b571-d7b674b269be" />
+    <Project Path="Direct2dCad.Lang/Direct2dCad.Lang.csproj" Id="2c6d1214-aa4a-4bb0-9c67-cf2fe44a4a76" />
     <Project Path="Direct2dCad.ViewModels/Direct2dCad.ViewModels.csproj" Id="c520de91-89cf-43ce-a51d-cf32f96f6b17" />
   </Folder>
   <Folder Name="/clients/avalonia/" />
-  <Folder Name="/clients/winui/">
-    <Project Path="Direct2dCad.winui/Direct2dCad.winui.csproj" Id="7964b976-0af6-42b8-ad61-4ec532279d25">
-      <Platform Project="x64" />
-      <Deploy />
-    </Project>
-  </Folder>
   <Folder Name="/clients/wpf/">
     <Project Path="Direct2dCad.Control/Direct2dCad.wpf.Control.csproj" />
+    <Project Path="Direct2dCad.wpf.DialogService/Direct2dCad.wpf.DialogService.csproj" Id="17aaf227-fc24-4152-85df-0a3b31ec4f11" />
     <Project Path="Direct2dCad/Direct2dCad.wpf.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
   </Folder>
   <Project Path="Direct2dCad.Commands/Direct2dCad.Commands.csproj" Id="135b8a89-715a-4c51-90bb-d7c5e3247ae0" />
+  <Project Path="Direct2dCad.ChangeTracking/Direct2dCad.ChangeTracking.csproj" Id="c04ae8fe-b095-4864-8d25-a3835c21a28a" />
   <Project Path="Direct2dCad.Common/Direct2dCad.Common.csproj" Id="cf78460a-3057-46fe-a170-ddd19ba93a35" />
-  <Project Path="Direct2dCad.db/Direct2dCad.db.csproj" Id="b37bcda0-51d5-4cfb-a3ef-0e1799b2fa7f" />
-  <Project Path="Direct2dCad.Drawings/Direct2dCad.Rendering.Direct2D.csproj" />
+  <Project Path="Direct2dCad.Db/Direct2dCad.Db.csproj" Id="b37bcda0-51d5-4cfb-a3ef-0e1799b2fa7f" />
+  <Project Path="Direct2dCad.Rendering.Direct2D/Direct2dCad.Rendering.Direct2D.csproj" />
   <Project Path="Direct2dCad.Editor/Direct2dCad.Editor.csproj" Id="12d4350b-06b5-44be-9c28-df18cb074f94" />
   <Project Path="Direct2dCad.HitTesting/Direct2dCad.HitTesting.csproj" Id="09190792-15d8-45d0-b4ad-59f86670bc44" />
   <Project Path="Direct2dCad.Indexing/Direct2dCad.Indexing.csproj" Id="0f7665da-d78f-4509-8ac5-0586c4bba8e5" />
   <Project Path="Direct2dCad.IO/Direct2dCad.IO.csproj" Id="7dbc4bdc-984d-40e1-8d91-1608e5d4063b" />
-  <Project Path="Direct2dCad.Lang/Direct2dCad.Lang.csproj" Id="2c6d1214-aa4a-4bb0-9c67-cf2fe44a4a76" />
   <Project Path="Direct2dCad.Rendering/Direct2dCad.Rendering.csproj" Id="bee77e57-2e2a-4630-ab5f-2992297e8d65" />
 </Solution>

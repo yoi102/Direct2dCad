@@ -1,0 +1,798 @@
+using System.Numerics;
+using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Cad.Settings;
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Transient;
+using Vortice;
+using Vortice.Direct2D1;
+using Vortice.DirectWrite;
+using Vortice.Mathematics;
+
+namespace Direct2dCad.Rendering.Direct2D;
+
+public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager, IDisposable
+{
+    private readonly Direct2DResourceCache _resourceCache = new();
+    private bool _disposed;
+
+    public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(changes);
+        ThrowIfDisposed();
+        _resourceCache.ApplyChanges(document, changes);
+    }
+
+    public void ResetDeviceResources(
+        ID2D1Factory? factory,
+        IDWriteFactory? writeFactory,
+        ID2D1DeviceContext? deviceContext,
+        CadDocument? document = null)
+    {
+        ThrowIfDisposed();
+        _resourceCache.ResetDeviceResources(factory, writeFactory, deviceContext, document);
+    }
+
+    public void RebuildResources(CadDocument document)
+    {
+        RebuildAll(document);
+    }
+
+    public void RebuildAll(CadDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ThrowIfDisposed();
+        _resourceCache.RebuildAll(document);
+    }
+
+    public void RebuildEntity(CadDocument document, EntityId entityId)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ThrowIfDisposed();
+        _resourceCache.RebuildEntityResources(document, entityId);
+    }
+
+    public void RemoveEntity(EntityId entityId)
+    {
+        ThrowIfDisposed();
+        _resourceCache.RemoveEntity(entityId);
+    }
+
+    public override void Render(CadDocument document, CadViewport viewport, CadRenderOptions? options = null)
+    {
+        Render(document, viewport, null, options);
+    }
+
+    public void Render(
+        CadDocument document,
+        CadViewport viewport,
+        CadTransientScene? transientScene,
+        CadRenderOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(viewport);
+        ThrowIfDisposed();
+
+        var deviceContext = _resourceCache.DeviceContext;
+        if (deviceContext is null)
+            return;
+
+        options ??= new CadRenderOptions();
+
+        var previousTransform = deviceContext.Transform;
+        deviceContext.Transform = CreateViewportTransform(viewport);
+
+        try
+        {
+            if (options.DrawGrid)
+                DrawGrid(deviceContext, document, viewport);
+
+            if (options.DrawOrigin)
+                DrawOrigin(deviceContext, document, viewport);
+
+            foreach (var entity in EnumerateDrawableEntities(document))
+            {
+                if (!_resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
+                    continue;
+
+                DrawEntity(deviceContext, entity, resources, viewport, options);
+            }
+
+            DrawTransients(deviceContext, document, viewport, transientScene);
+        }
+        finally
+        {
+            deviceContext.Transform = previousTransform;
+        }
+    }
+
+    private void DrawGrid(
+        ID2D1DeviceContext deviceContext,
+        CadDocument document,
+        CadViewport viewport)
+    {
+        var grid = document.ViewSettings.Grid;
+        if (grid.Type == CadGridType.None)
+            return;
+
+        var bounds = viewport.VisibleWorldBounds;
+        if (bounds.IsEmpty)
+            return;
+
+        var spacingX = ResolveGridSpacing(
+            grid.SpacingX,
+            grid.Subdivision,
+            grid.MinimumScreenSpacing,
+            grid.MinimumWorldSpacing,
+            viewport.Zoom);
+        var spacingY = ResolveGridSpacing(
+            grid.SpacingY,
+            grid.Subdivision,
+            grid.MinimumScreenSpacing,
+            grid.MinimumWorldSpacing,
+            viewport.Zoom);
+        if (spacingX <= 0 || spacingY <= 0)
+            return;
+
+        var majorX = spacingX * Math.Max(1, grid.Subdivision);
+        var majorY = spacingY * Math.Max(1, grid.Subdivision);
+        var gridOrigin = document.ViewSettings.Origin.Position;
+        var palette = CreateGridPalette(grid);
+        var minorStroke = (float)(palette.MinorStrokeWidth / Math.Max(viewport.Zoom, double.Epsilon));
+        var majorStroke = (float)(palette.MajorStrokeWidth / Math.Max(viewport.Zoom, double.Epsilon));
+
+        using var minorBrush = CreateTransientBrush(deviceContext, palette.MinorColor);
+        using var majorBrush = CreateTransientBrush(deviceContext, palette.MajorColor);
+
+        switch (grid.Type)
+        {
+            case CadGridType.Dots:
+                DrawGridDots(deviceContext, bounds, gridOrigin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, minorStroke, majorStroke);
+                break;
+
+            case CadGridType.Cross:
+                DrawGridCrosses(deviceContext, bounds, gridOrigin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, minorStroke, majorStroke);
+                break;
+
+            default:
+                DrawGridLines(deviceContext, bounds, gridOrigin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, minorStroke, majorStroke);
+                break;
+        }
+    }
+
+    private void DrawOrigin(
+        ID2D1DeviceContext deviceContext,
+        CadDocument document,
+        CadViewport viewport)
+    {
+        var origin = document.ViewSettings.Origin;
+        if (origin.DisplayType == CadOriginDisplayType.None)
+            return;
+
+        var bounds = viewport.VisibleWorldBounds;
+        if (bounds.IsEmpty)
+            return;
+
+        var style = new CadTransientStyle(
+            origin.Color,
+            GuardScreenStroke(origin.StrokeWidth, 0.62),
+            ToTransientLinePattern(origin.LinePattern));
+
+        if (origin.DisplayType is CadOriginDisplayType.Axes or CadOriginDisplayType.AxesAndMarker)
+            DrawOriginAxes(deviceContext, viewport, bounds, origin.Position, style);
+
+        if (origin.DisplayType is CadOriginDisplayType.Marker or CadOriginDisplayType.AxesAndMarker)
+            DrawOriginMarker(deviceContext, viewport, origin, style);
+    }
+
+    private static void DrawGridLines(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        CadPointD origin,
+        double spacingX,
+        double spacingY,
+        double majorX,
+        double majorY,
+        ID2D1Brush minorBrush,
+        ID2D1Brush majorBrush,
+        float minorStroke,
+        float majorStroke)
+    {
+        foreach (var x in EnumerateGridCoordinates(bounds.MinX, bounds.MaxX, spacingX, origin.X))
+        {
+            var isMajor = IsNearGridLine(x, origin.X, majorX);
+            var brush = isMajor ? majorBrush : minorBrush;
+            var stroke = isMajor ? majorStroke : minorStroke;
+            deviceContext.DrawLine(
+                new Vector2((float)x, (float)bounds.MinY),
+                new Vector2((float)x, (float)bounds.MaxY),
+                brush,
+                stroke);
+        }
+
+        foreach (var y in EnumerateGridCoordinates(bounds.MinY, bounds.MaxY, spacingY, origin.Y))
+        {
+            var isMajor = IsNearGridLine(y, origin.Y, majorY);
+            var brush = isMajor ? majorBrush : minorBrush;
+            var stroke = isMajor ? majorStroke : minorStroke;
+            deviceContext.DrawLine(
+                new Vector2((float)bounds.MinX, (float)y),
+                new Vector2((float)bounds.MaxX, (float)y),
+                brush,
+                stroke);
+        }
+    }
+
+    private static void DrawGridDots(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        CadPointD origin,
+        double spacingX,
+        double spacingY,
+        double majorX,
+        double majorY,
+        ID2D1Brush minorBrush,
+        ID2D1Brush majorBrush,
+        float minorStroke,
+        float majorStroke)
+    {
+        foreach (var x in EnumerateGridCoordinates(bounds.MinX, bounds.MaxX, spacingX, origin.X))
+        {
+            foreach (var y in EnumerateGridCoordinates(bounds.MinY, bounds.MaxY, spacingY, origin.Y))
+            {
+                var isMajor = IsNearGridLine(x, origin.X, majorX) && IsNearGridLine(y, origin.Y, majorY);
+                var size = isMajor ? majorStroke * 1.7f : minorStroke * 1.25f;
+                var brush = isMajor ? majorBrush : minorBrush;
+                deviceContext.FillRectangle(
+                    new RawRectF(
+                        (float)x - size,
+                        (float)y - size,
+                        (float)x + size,
+                        (float)y + size),
+                    brush);
+            }
+        }
+    }
+
+    private static void DrawGridCrosses(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        CadPointD origin,
+        double spacingX,
+        double spacingY,
+        double majorX,
+        double majorY,
+        ID2D1Brush minorBrush,
+        ID2D1Brush majorBrush,
+        float minorStroke,
+        float majorStroke)
+    {
+        var armX = spacingX * 0.12;
+        var armY = spacingY * 0.12;
+
+        foreach (var x in EnumerateGridCoordinates(bounds.MinX, bounds.MaxX, spacingX, origin.X))
+        {
+            foreach (var y in EnumerateGridCoordinates(bounds.MinY, bounds.MaxY, spacingY, origin.Y))
+            {
+                var isMajor = IsNearGridLine(x, origin.X, majorX) && IsNearGridLine(y, origin.Y, majorY);
+                var brush = isMajor ? majorBrush : minorBrush;
+                var stroke = isMajor ? majorStroke : minorStroke;
+                deviceContext.DrawLine(
+                    new Vector2((float)(x - armX), (float)y),
+                    new Vector2((float)(x + armX), (float)y),
+                    brush,
+                    stroke);
+                deviceContext.DrawLine(
+                    new Vector2((float)x, (float)(y - armY)),
+                    new Vector2((float)x, (float)(y + armY)),
+                    brush,
+                    stroke);
+            }
+        }
+    }
+
+    private void DrawOriginAxes(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadRectD bounds,
+        CadPointD originPosition,
+        CadTransientStyle style)
+    {
+        if (bounds.MinX <= originPosition.X && bounds.MaxX >= originPosition.X)
+        {
+            DrawTransientLine(
+                deviceContext,
+                viewport,
+                new CadPointD(originPosition.X, bounds.MinY),
+                new CadPointD(originPosition.X, bounds.MaxY),
+                style);
+        }
+
+        if (bounds.MinY <= originPosition.Y && bounds.MaxY >= originPosition.Y)
+        {
+            DrawTransientLine(
+                deviceContext,
+                viewport,
+                new CadPointD(bounds.MinX, originPosition.Y),
+                new CadPointD(bounds.MaxX, originPosition.Y),
+                style);
+        }
+    }
+
+    private void DrawOriginMarker(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadOriginSettings origin,
+        CadTransientStyle style)
+    {
+        var halfSize = GuardScreenStroke(origin.Size, 18.0) * 0.5 / Math.Max(viewport.Zoom, double.Epsilon);
+        var center = origin.Position;
+
+        switch (origin.MarkerType)
+        {
+            case CadOriginMarkerType.X:
+                DrawTransientLine(
+                    deviceContext,
+                    viewport,
+                    new CadPointD(center.X - halfSize, center.Y - halfSize),
+                    new CadPointD(center.X + halfSize, center.Y + halfSize),
+                    style);
+                DrawTransientLine(
+                    deviceContext,
+                    viewport,
+                    new CadPointD(center.X - halfSize, center.Y + halfSize),
+                    new CadPointD(center.X + halfSize, center.Y - halfSize),
+                    style);
+                break;
+
+            case CadOriginMarkerType.Circle:
+                DrawTransientCircle(deviceContext, viewport, center, halfSize, style);
+                break;
+
+            case CadOriginMarkerType.Square:
+                DrawTransientRectangle(
+                    deviceContext,
+                    viewport,
+                    CadRectD.FromLTRB(
+                        center.X - halfSize,
+                        center.Y - halfSize,
+                        center.X + halfSize,
+                        center.Y + halfSize),
+                    style);
+                break;
+
+            default:
+                DrawTransientLine(
+                    deviceContext,
+                    viewport,
+                    new CadPointD(center.X - halfSize, center.Y),
+                    new CadPointD(center.X + halfSize, center.Y),
+                    style);
+                DrawTransientLine(
+                    deviceContext,
+                    viewport,
+                    new CadPointD(center.X, center.Y - halfSize),
+                    new CadPointD(center.X, center.Y + halfSize),
+                    style);
+                break;
+        }
+    }
+
+    private static double ResolveGridSpacing(
+        double configuredMajorSpacing,
+        int subdivision,
+        double minimumScreenSpacing,
+        double minimumWorldSpacing,
+        double zoom)
+    {
+        if (configuredMajorSpacing <= 0 || double.IsNaN(configuredMajorSpacing) || double.IsInfinity(configuredMajorSpacing))
+            configuredMajorSpacing = 10.0;
+
+        var factor = Math.Max(2, subdivision);
+        var minWorld = minimumWorldSpacing > 0 && !double.IsNaN(minimumWorldSpacing) && !double.IsInfinity(minimumWorldSpacing)
+            ? minimumWorldSpacing
+            : 1.0;
+        var spacing = Math.Max(configuredMajorSpacing / factor, minWorld);
+        var minPixels = minimumScreenSpacing > 0 ? minimumScreenSpacing : 28.0;
+
+        while (spacing * zoom < minPixels)
+            spacing *= factor;
+
+        while (spacing * zoom > minPixels * factor)
+        {
+            var next = spacing / factor;
+            if (next < minWorld)
+            {
+                spacing = minWorld;
+                break;
+            }
+
+            spacing = next;
+        }
+
+        return Math.Max(spacing, minWorld);
+    }
+
+    private static IEnumerable<double> EnumerateGridCoordinates(double min, double max, double spacing, double origin)
+    {
+        if (spacing <= 0 || double.IsNaN(spacing) || double.IsInfinity(spacing))
+            yield break;
+
+        const int maxLines = 900;
+        var start = origin + Math.Floor((min - origin) / spacing) * spacing;
+        var end = origin + Math.Ceiling((max - origin) / spacing) * spacing;
+        var count = 0;
+
+        for (var value = start; value <= end && count < maxLines; value += spacing, count++)
+            yield return Math.Abs(value - origin) < spacing * 1e-9 ? origin : value;
+    }
+
+    private static bool IsNearGridLine(double value, double origin, double spacing)
+    {
+        if (spacing <= 0)
+            return false;
+
+        var quotient = (value - origin) / spacing;
+        return Math.Abs(quotient - Math.Round(quotient)) < 1e-6;
+    }
+
+    private static GridPalette CreateGridPalette(CadGridSettings grid)
+    {
+        return new GridPalette(
+            grid.MinorLineColor,
+            grid.MajorLineColor,
+            GuardScreenStroke(grid.MinorLineWidth, 0.22),
+            GuardScreenStroke(grid.MajorLineWidth, 0.36));
+    }
+
+    private static CadTransientLinePattern ToTransientLinePattern(CadOriginLinePattern pattern)
+    {
+        return pattern switch
+        {
+            CadOriginLinePattern.Dash => CadTransientLinePattern.Dash,
+            CadOriginLinePattern.Dot => CadTransientLinePattern.Dot,
+            CadOriginLinePattern.DashDot => CadTransientLinePattern.DashDot,
+            _ => CadTransientLinePattern.Solid
+        };
+    }
+
+    private static double GuardScreenStroke(double value, double fallback)
+    {
+        return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value)
+            ? value
+            : fallback;
+    }
+
+    private void DrawTransients(
+        ID2D1DeviceContext deviceContext,
+        CadDocument document,
+        CadViewport viewport,
+        CadTransientScene? scene)
+    {
+        if (scene is null || scene.IsEmpty)
+            return;
+
+        foreach (var item in scene.Items)
+        {
+            switch (item)
+            {
+                case CadTransientLine line:
+                    DrawTransientLine(deviceContext, viewport, line.Start, line.End, line.Style);
+                    break;
+
+                case CadTransientCircle circle when circle.Radius > 0:
+                    DrawTransientCircle(deviceContext, viewport, circle.Center, circle.Radius, circle.Style);
+                    break;
+
+                case CadTransientRectangle rectangle when !rectangle.Bounds.IsEmpty:
+                    DrawTransientRectangle(deviceContext, viewport, rectangle.Bounds, rectangle.Style);
+                    break;
+
+                case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0:
+                    DrawTransientText(deviceContext, viewport, text.Text, text.Position, text.Height, text.Style);
+                    break;
+
+                case CadTransientEntityReference reference:
+                    DrawTransientEntityReference(deviceContext, document, viewport, reference);
+                    break;
+            }
+        }
+    }
+
+    private void DrawTransientEntityReference(
+        ID2D1DeviceContext deviceContext,
+        CadDocument document,
+        CadViewport viewport,
+        CadTransientEntityReference reference)
+    {
+        if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
+            return;
+
+        switch (entity)
+        {
+            case CadLine line:
+                DrawTransientLine(
+                    deviceContext,
+                    viewport,
+                    line.Start + reference.Offset,
+                    line.End + reference.Offset,
+                    reference.Style);
+                break;
+
+            case CadCircle circle:
+                DrawTransientCircle(
+                    deviceContext,
+                    viewport,
+                    circle.Center + reference.Offset,
+                    circle.Radius,
+                    reference.Style);
+                break;
+
+            case CadText text:
+                DrawTransientText(
+                    deviceContext,
+                    viewport,
+                    text.Text,
+                    text.Position + reference.Offset,
+                    text.Height,
+                    reference.Style);
+                DrawTransientRectangle(
+                    deviceContext,
+                    viewport,
+                    text.Bounds.Translate(reference.Offset),
+                    reference.Style with { FillColor = null });
+                break;
+
+            default:
+                DrawTransientRectangle(
+                    deviceContext,
+                    viewport,
+                    entity.Bounds.Translate(reference.Offset),
+                    reference.Style);
+                break;
+        }
+    }
+
+    private void DrawTransientLine(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadPointD start,
+        CadPointD end,
+        CadTransientStyle style)
+    {
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        deviceContext.DrawLine(
+            ToVector2(start),
+            ToVector2(end),
+            brush,
+            ResolveTransientStrokeWidth(style, viewport),
+            strokeStyle);
+    }
+
+    private void DrawTransientCircle(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadPointD center,
+        double radius,
+        CadTransientStyle style)
+    {
+        var ellipse = new Ellipse(ToVector2(center), (float)radius, (float)radius);
+
+        if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
+        {
+            using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
+            deviceContext.FillEllipse(ellipse, fillBrush);
+        }
+
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        deviceContext.DrawEllipse(
+            ellipse,
+            brush,
+            ResolveTransientStrokeWidth(style, viewport),
+            strokeStyle);
+    }
+
+    private void DrawTransientRectangle(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadRectD bounds,
+        CadTransientStyle style)
+    {
+        var rect = new RawRectF(
+            (float)bounds.MinX,
+            (float)bounds.MinY,
+            (float)bounds.MaxX,
+            (float)bounds.MaxY);
+
+        if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
+        {
+            using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
+            deviceContext.FillRectangle(rect, fillBrush);
+        }
+
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        deviceContext.DrawRectangle(
+            rect,
+            brush,
+            ResolveTransientStrokeWidth(style, viewport),
+            strokeStyle);
+    }
+
+    private void DrawTransientText(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        string text,
+        CadPointD position,
+        double height,
+        CadTransientStyle style)
+    {
+        if (_resourceCache.WriteFactory is null)
+            return;
+
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var format = _resourceCache.WriteFactory.CreateTextFormat(
+            "Meiryo",
+            null,
+            FontWeight.Normal,
+            FontStyle.Normal,
+            FontStretch.Normal,
+            (float)height,
+            "ja-JP");
+
+        var width = Math.Max(text.Length, 1) * height * 0.6;
+        deviceContext.DrawText(
+            text,
+            format,
+            new Rect(
+                (float)position.X,
+                (float)position.Y,
+                (float)(position.X + width),
+                (float)(position.Y + height)),
+            brush);
+    }
+
+    private ID2D1StrokeStyle? CreateTransientStrokeStyle(CadTransientStyle style)
+    {
+        if (style.LinePattern == CadTransientLinePattern.Solid || _resourceCache.Factory is null)
+            return null;
+
+        var dashStyle = style.LinePattern switch
+        {
+            CadTransientLinePattern.Dot => DashStyle.Dot,
+            CadTransientLinePattern.DashDot => DashStyle.DashDot,
+            _ => DashStyle.Dash
+        };
+
+        return _resourceCache.Factory.CreateStrokeStyle(new StrokeStyleProperties
+        {
+            StartCap = CapStyle.Flat,
+            EndCap = CapStyle.Flat,
+            DashCap = CapStyle.Flat,
+            LineJoin = LineJoin.Miter,
+            DashStyle = dashStyle
+        });
+    }
+
+    private static ID2D1SolidColorBrush CreateTransientBrush(ID2D1DeviceContext deviceContext, CadColor color)
+    {
+        return deviceContext.CreateSolidColorBrush(ToColor4(color));
+    }
+
+    private static float ResolveTransientStrokeWidth(CadTransientStyle style, CadViewport viewport)
+    {
+        var width = Math.Max(style.StrokeWidth, 0.1);
+        return style.KeepStrokeWidthScreenConstant
+            ? (float)(width / Math.Max(viewport.Zoom, double.Epsilon))
+            : (float)width;
+    }
+
+    private static IEnumerable<CadEntity> EnumerateDrawableEntities(CadDocument document)
+    {
+        return document.Entities.Values
+            .Select((entity, index) => new { Entity = entity, Index = index })
+            .Where(x =>
+                !x.Entity.IsErased &&
+                x.Entity.IsVisible &&
+                document.TryGetLayer(x.Entity.LayerId, out var layer) &&
+                layer is not null &&
+                layer.IsVisible &&
+                !layer.IsFrozen)
+            .OrderBy(x => document.DocumentSettings.LayerDrawingPriority.GetPriority(x.Entity.LayerId))
+            .ThenBy(x => x.Entity.ZIndex)
+            .ThenBy(x => x.Entity.Id.Value)
+            .Select(x => x.Entity);
+    }
+
+    private static void DrawEntity(
+        ID2D1DeviceContext deviceContext,
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        if (resources.Geometry is not null && resources.FillBrush is not null)
+            deviceContext.FillGeometry(resources.Geometry, resources.FillBrush);
+
+        if (resources.Geometry is not null && resources.StrokeBrush is not null)
+        {
+            var strokeWidth = ResolveStrokeWidth(resources.StrokeWidth, viewport, options);
+            deviceContext.DrawGeometry(resources.Geometry, resources.StrokeBrush, strokeWidth);
+        }
+
+        if (entity is CadText text &&
+            resources.TextFormat is not null &&
+            resources.StrokeBrush is not null)
+        {
+            var bounds = text.Bounds;
+            deviceContext.DrawText(
+                text.Text,
+                resources.TextFormat,
+                new Rect(
+                    (float)bounds.MinX,
+                    (float)bounds.MinY,
+                    (float)bounds.MaxX,
+                    (float)bounds.MaxY),
+                resources.StrokeBrush);
+        }
+    }
+
+    private static System.Numerics.Matrix3x2 CreateViewportTransform(CadViewport viewport)
+    {
+        return System.Numerics.Matrix3x2.CreateScale((float)viewport.Zoom) *
+               System.Numerics.Matrix3x2.CreateTranslation(
+                   (float)viewport.Offset.X,
+                   (float)viewport.Offset.Y);
+    }
+
+    private static float ResolveStrokeWidth(
+        float modelStrokeWidth,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        var strokeWidth = options.KeepStrokeWidthScreenConstant
+            ? modelStrokeWidth / Math.Max((float)viewport.Zoom, float.Epsilon)
+            : modelStrokeWidth;
+
+        return Math.Max(strokeWidth, (float)options.MinimumScreenStrokeWidth / Math.Max((float)viewport.Zoom, float.Epsilon));
+    }
+
+    private static Vector2 ToVector2(CadPointD point)
+    {
+        return new Vector2((float)point.X, (float)point.Y);
+    }
+
+    private static Color4 ToColor4(CadColor color)
+    {
+        return new Color4(
+            color.R / 255.0f,
+            color.G / 255.0f,
+            color.B / 255.0f,
+            color.A / 255.0f);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _resourceCache.Dispose();
+        _disposed = true;
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(Direct2DSceneRender));
+    }
+
+    private readonly record struct GridPalette(
+        CadColor MinorColor,
+        CadColor MajorColor,
+        double MinorStrokeWidth,
+        double MajorStrokeWidth);
+}

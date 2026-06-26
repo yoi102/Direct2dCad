@@ -8,6 +8,7 @@ public sealed class CadText : CadEntity
     public CadPointD Position { get; private set; }
     public double Height { get; private set; }
     public double RotationRadians { get; private set; }
+    public StyleId? GraphicStyleId { get; private set; }
     public StyleId? TextStyleId { get; private set; }
 
     public override CadRectD Bounds => CadRectD.FromLTRB(
@@ -42,6 +43,8 @@ public sealed class CadText : CadEntity
     public void SetHeight(double height) => Height = GuardPositive(height, nameof(height));
 
     public void SetRotation(double rotationRadians) => RotationRadians = rotationRadians;
+
+    public void SetGraphicStyleInternal(StyleId? styleId) => GraphicStyleId = styleId;
 
     internal void SetTextStyleInternal(StyleId? textStyleId) => TextStyleId = textStyleId;
 

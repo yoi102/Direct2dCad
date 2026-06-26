@@ -125,6 +125,10 @@
     <value>Chinese</value>
     <comment>Chinese</comment>
   </data>
+  <data name="Circle" xml:space="preserve">
+    <value>Circle</value>
+    <comment>Circle</comment>
+  </data>
   <data name="Confirm" xml:space="preserve">
     <value>Confirm</value>
     <comment>Confirm</comment>
@@ -136,6 +140,14 @@
   <data name="ConfirmExitTitle" xml:space="preserve">
     <value>Exit Confirmation</value>
     <comment>Exit Confirmation</comment>
+  </data>
+  <data name="Cross" xml:space="preserve">
+    <value>Cross</value>
+    <comment>Cross</comment>
+  </data>
+  <data name="Dots" xml:space="preserve">
+    <value>Dots</value>
+    <comment>Dots</comment>
   </data>
   <data name="English" xml:space="preserve">
     <value>English</value>
@@ -149,13 +161,33 @@
     <value>Japanese</value>
     <comment>Japanese</comment>
   </data>
+  <data name="Line" xml:space="preserve">
+    <value>Line</value>
+    <comment>Line</comment>
+  </data>
+  <data name="Lines" xml:space="preserve">
+    <value>Lines</value>
+    <comment>Lines</comment>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>None</value>
+    <comment>None</comment>
+  </data>
   <data name="Ok" xml:space="preserve">
     <value>Ok</value>
     <comment>Ok</comment>
   </data>
+  <data name="Pan" xml:space="preserve">
+    <value>Pan</value>
+    <comment>Pan</comment>
+  </data>
   <data name="SaveAs" xml:space="preserve">
     <value>Save Image As...</value>
     <comment>Save Image As...</comment>
+  </data>
+  <data name="Select" xml:space="preserve">
+    <value>Select</value>
+    <comment>Select</comment>
   </data>
   <data name="ShowImageInNewWindow" xml:space="preserve">
     <value>Show Image in New Window</value>
@@ -168,6 +200,10 @@
   <data name="Source" xml:space="preserve">
     <value>Source</value>
     <comment>Source</comment>
+  </data>
+  <data name="Text" xml:space="preserve">
+    <value>Text</value>
+    <comment>Text</comment>
   </data>
   <data name="UnhandledException" xml:space="preserve">
     <value>Unhandled Exception</value>

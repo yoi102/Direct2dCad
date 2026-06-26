@@ -1,12 +1,183 @@
-﻿<Window x:Class="Direct2dCad.wpf.MainWindow"
+<Window x:Class="Direct2dCad.wpf.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Direct2dCad.wpf"
+        xmlns:controls="clr-namespace:Direct2dCad.wpf.Controls"
+        xmlns:views="clr-namespace:Direct2dCad.wpf.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:ex="clr-namespace:Direct2dCad.wpf.Extensions"
+        xmlns:viewmodels="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
+        d:DataContext="{d:DesignInstance Type=viewmodels:MainViewModel}"
+        Title="Direct2dCad"
+        Height="720"
+        Width="1120">
+    <DockPanel>
+        <ToolBar DockPanel.Dock="Top">
+            <Button Content="Open"
+                    Command="{Binding OpenFileCommand}" />
+            <Button Content="Save"
+                    Command="{Binding SaveFileCommand}" />
+            <Button Content="Save As"
+                    Command="{Binding SaveAsFileCommand}" />
 
-    </Grid>
+            <Separator />
+            <Button Content="Select"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Select" />
+            <Button Content="Pan"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Pan" />
+            <Separator />
+            <Button Content="Line"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Line" />
+            <Button Content="Circle"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Circle" />
+            <Button Content="Text"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Text" />
+            <Button Content="Set Origin"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="SetOrigin" />
+            <TextBox Width="120"
+                     Text="{Binding TextInput}" />
+            <Separator />
+            <TextBlock Text="Grid"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="78"
+                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadGridType}}}"
+                      SelectedItem="{Binding ViewModelCadGridType}" />
+            <TextBlock Text="Snap Marker"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="92"
+                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadSnapMarkerType}}}"
+                      SelectedItem="{Binding ViewModelCadSnapMarkerType}" />
+            <Separator />
+
+        </ToolBar>
+        <ToolBar DockPanel.Dock="Top">
+            <TextBlock Text="Origin"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="112"
+                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadOriginDisplayType}}}"
+                      SelectedItem="{Binding ViewModelCadOriginDisplayType}" />
+            <TextBlock Text="X"
+                       VerticalAlignment="Center" />
+            <TextBox Width="64"
+                     Text="{Binding ViewModelCadOriginX, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
+            <TextBlock Text="Y"
+                       VerticalAlignment="Center" />
+            <TextBox Width="64"
+                     Text="{Binding ViewModelCadOriginY, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
+            <TextBlock Text="Origin Marker"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="82"
+                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadOriginMarkerType}}}"
+                      SelectedItem="{Binding ViewModelCadOriginMarkerType}" />
+            <TextBlock Text="Origin Line"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="82"
+                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadOriginLinePattern}}}"
+                      SelectedItem="{Binding ViewModelCadOriginLinePattern}" />
+            <TextBlock Text="Size"
+                       VerticalAlignment="Center" />
+            <TextBox Width="48"
+                     Text="{Binding ViewModelCadOriginSize, UpdateSourceTrigger=LostFocus, StringFormat=F1}" />
+            <TextBlock Text="Stroke"
+                       VerticalAlignment="Center" />
+            <TextBox Width="48"
+                     Text="{Binding ViewModelCadOriginStrokeWidth, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
+            <TextBlock Text="Color"
+                       VerticalAlignment="Center" />
+            <Border Width="18"
+                    Height="18"
+                    BorderBrush="#66000000"
+                    BorderThickness="1"
+                    Background="{Binding ViewModelCadOriginColorText}" />
+            <TextBox Width="86"
+                     Text="{Binding ViewModelCadOriginColorText, UpdateSourceTrigger=LostFocus}" />
+            <Separator />
+            <Button Content="Undo"
+                    Command="{Binding UndoCommand}" />
+            <Button Content="Redo"
+                    Command="{Binding RedoCommand}" />
+        </ToolBar>
+
+
+        <StatusBar DockPanel.Dock="Bottom">
+            <TextBlock Text="{Binding CadDocumentViewModel.CadCanvasToolMode}" />
+        </StatusBar>
+        <Grid>
+            <Grid.Resources>
+                <Style x:Key="OverlayIconButtonStyle"
+                       TargetType="Button">
+                    <Setter Property="Width"
+                            Value="36" />
+                    <Setter Property="Height"
+                            Value="36" />
+                    <Setter Property="Padding"
+                            Value="7" />
+                    <Setter Property="Background"
+                            Value="#66000000" />
+                    <Setter Property="BorderBrush"
+                            Value="#66FFFFFF" />
+                    <Setter Property="BorderThickness"
+                            Value="1" />
+                    <Setter Property="Opacity"
+                            Value="0.82" />
+                    <Setter Property="Cursor"
+                            Value="Hand" />
+                    <Setter Property="Focusable"
+                            Value="False" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        CornerRadius="4">
+                                    <ContentPresenter Margin="{TemplateBinding Padding}"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver"
+                                 Value="True">
+                            <Setter Property="Opacity"
+                                    Value="1" />
+                            <Setter Property="Background"
+                                    Value="#99000000" />
+                        </Trigger>
+                        <Trigger Property="IsPressed"
+                                 Value="True">
+                            <Setter Property="Background"
+                                    Value="#CC000000" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+
+            </Grid.Resources>
+
+            <views:CadDocumentView x:Name="cadDocumentView"
+                                   DataContext="{Binding CadDocumentViewModel}" />
+            <Button HorizontalAlignment="Left"
+                    VerticalAlignment="Top"
+                    Margin="12"
+                    ToolTip="Fit"
+                    Command="{Binding FitToWindowCommand}"
+                    Style="{StaticResource OverlayIconButtonStyle}">
+                <Viewbox Stretch="Uniform">
+                    <Path Width="24"
+                          Height="24"
+                          Fill="White"
+                          Data="M10,20 L10,14 L14,14 L14,20 L19,20 L19,12 L22,12 L12,3 L2,12 L5,12 L5,20 Z" />
+                </Viewbox>
+            </Button>
+        </Grid>
+    </DockPanel>
 </Window>

@@ -1,6 +1,11 @@
-﻿namespace Direct2dCad.Editor;
+namespace Direct2dCad.Editor;
 
-public class CadSession
+public sealed class CadSession
 {
+    public CadEditor Editor { get; }
 
+    public CadSession(CadEditor editor)
+    {
+        Editor = editor ?? throw new ArgumentNullException(nameof(editor));
+    }
 }
