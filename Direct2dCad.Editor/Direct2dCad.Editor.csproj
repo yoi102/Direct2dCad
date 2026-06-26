@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MessagePipe" Version="1.8.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Commands\Direct2dCad.Commands.csproj" />
+    <ProjectReference Include="..\Direct2dCad.db\Direct2dCad.db.csproj" />
+    <ProjectReference Include="..\Direct2dCad.HitTesting\Direct2dCad.HitTesting.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Indexing\Direct2dCad.Indexing.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering\Direct2dCad.Rendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Selection\" />
+  </ItemGroup>
+
+</Project>

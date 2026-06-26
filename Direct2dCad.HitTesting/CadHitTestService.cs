@@ -1,0 +1,184 @@
+using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
+
+namespace Direct2dCad.HitTesting;
+
+/// <summary>
+/// CAD HitTest / Bounds 解析服务。
+/// </summary>
+public sealed class CadHitTestService
+{
+    private readonly CadDocument _cadDocument;
+
+    public CadHitTestService(CadDocument cadDocument)
+    {
+        _cadDocument = cadDocument
+            ?? throw new ArgumentNullException(nameof(cadDocument));
+    }
+
+    #region HitTest
+
+    public bool HitTestEntityEdge(
+        EntityId entityId,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        if (!_cadDocument.TryGetEntity(entityId, out var entity) || entity is null)
+        {
+            result = default;
+            return false;
+        }
+
+        return CadEntityHitTester.HitTestEdge(
+            _cadDocument,
+            entity,
+            point,
+            tolerance,
+            out result);
+    }
+
+    public bool HitTestEntityFill(
+        EntityId entityId,
+        CadPointD point,
+        out CadHitTestResult result)
+    {
+        if (!_cadDocument.TryGetEntity(entityId, out var entity) || entity is null)
+        {
+            result = default;
+            return false;
+        }
+
+        return CadEntityHitTester.HitTestFill(
+            _cadDocument,
+            entity,
+            point,
+            out result);
+    }
+
+    #endregion HitTest
+
+    #region Resolved Bounds
+
+    /// <summary>
+    /// 获取实体的真实 Bounds。
+    ///
+    /// 普通实体直接返回 entity.Bounds。
+    /// BlockReference 会递归解析其 DefinitionBlockId 内部实体，
+    /// 再应用 Position / Rotation / Scale / BasePoint 变换。
+    /// </summary>
+    public CadRectD GetResolvedEntityBounds(EntityId entityId)
+    {
+        var entity = _cadDocument.GetEntity(entityId);
+        return GetResolvedEntityBounds(entity);
+    }
+
+    public CadRectD GetResolvedEntityBounds(CadEntity entity)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        return GetResolvedEntityBounds(
+            entity,
+            new HashSet<BlockId>());
+    }
+
+    private CadRectD GetResolvedEntityBounds(
+        CadEntity entity,
+        HashSet<BlockId> visitedBlocks)
+    {
+        if (entity.IsErased)
+            return CadRectD.Empty;
+
+        if (entity is not CadBlockReference blockReference)
+            return entity.Bounds;
+
+        if (!visitedBlocks.Add(blockReference.DefinitionBlockId))
+            return CadRectD.Empty;
+
+        try
+        {
+            var definition = _cadDocument.GetBlock(blockReference.DefinitionBlockId);
+
+            var bounds = CadRectD.Empty;
+
+            foreach (var child in _cadDocument.GetEntitiesInBlock(blockReference.DefinitionBlockId))
+            {
+                bounds = bounds.Union(
+                    GetResolvedEntityBounds(child, visitedBlocks));
+            }
+
+            if (bounds.IsEmpty)
+            {
+                return CadRectD.FromLTRB(
+                    blockReference.Position.X,
+                    blockReference.Position.Y,
+                    blockReference.Position.X,
+                    blockReference.Position.Y);
+            }
+
+            return TransformBlockLocalBoundsToWorld(
+                bounds,
+                blockReference,
+                definition.BasePoint);
+        }
+        finally
+        {
+            visitedBlocks.Remove(blockReference.DefinitionBlockId);
+        }
+    }
+
+    private static CadRectD TransformBlockLocalBoundsToWorld(
+        CadRectD localBounds,
+        CadBlockReference blockReference,
+        CadPointD blockBasePoint)
+    {
+        var p1 = TransformBlockLocalPointToWorld(
+            new CadPointD(localBounds.MinX, localBounds.MinY),
+            blockReference,
+            blockBasePoint);
+
+        var p2 = TransformBlockLocalPointToWorld(
+            new CadPointD(localBounds.MaxX, localBounds.MinY),
+            blockReference,
+            blockBasePoint);
+
+        var p3 = TransformBlockLocalPointToWorld(
+            new CadPointD(localBounds.MaxX, localBounds.MaxY),
+            blockReference,
+            blockBasePoint);
+
+        var p4 = TransformBlockLocalPointToWorld(
+            new CadPointD(localBounds.MinX, localBounds.MaxY),
+            blockReference,
+            blockBasePoint);
+
+        return CadRectD.Empty
+            .ExpandToInclude(p1)
+            .ExpandToInclude(p2)
+            .ExpandToInclude(p3)
+            .ExpandToInclude(p4);
+    }
+
+    private static CadPointD TransformBlockLocalPointToWorld(
+        CadPointD localPoint,
+        CadBlockReference blockReference,
+        CadPointD blockBasePoint)
+    {
+        var x = (localPoint.X - blockBasePoint.X) * blockReference.ScaleX;
+        var y = (localPoint.Y - blockBasePoint.Y) * blockReference.ScaleY;
+
+        var cos = Math.Cos(blockReference.RotationRadians);
+        var sin = Math.Sin(blockReference.RotationRadians);
+
+        var rotatedX = x * cos - y * sin;
+        var rotatedY = x * sin + y * cos;
+
+        return new CadPointD(
+            rotatedX + blockReference.Position.X,
+            rotatedY + blockReference.Position.Y);
+    }
+
+    #endregion Resolved Bounds
+}

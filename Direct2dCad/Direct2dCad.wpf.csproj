@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="MessagePipe" Version="1.8.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.5.26302.115" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Common\Direct2dCad.Common.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Drawings\Direct2dCad.Rendering.Direct2D.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
+    <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Views\" />
+  </ItemGroup>
+
+</Project>

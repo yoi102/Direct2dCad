@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Direct2dCad.winui (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "Direct2dCad.winui (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
