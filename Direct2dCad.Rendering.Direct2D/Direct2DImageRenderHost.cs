@@ -15,6 +15,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
     private CadViewport? _viewport;
     private CadTransientScene? _transientScene;
     private CadHandleScene? _handleScene;
+    private CadRenderOptions _renderOptions = new();
     private bool _disposed;
 
     public ICadGeometryResourceManager GeometryResourceManager => _renderer;
@@ -55,6 +56,13 @@ public sealed class Direct2DImageRenderHost : IDisposable
         Render();
     }
 
+    public void SetRenderOptions(CadRenderOptions? renderOptions)
+    {
+        ThrowIfDisposed();
+
+        _renderOptions = renderOptions ?? new CadRenderOptions();
+    }
+
     public void SetSize(int width, int height)
     {
         ThrowIfDisposed();
@@ -84,7 +92,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
                 : ToColor4(_document.ViewSettings.BackgroundColor));
 
             if (_document is not null && _viewport is not null)
-                _renderer.Render(_document, _viewport, _transientScene, _handleScene);
+                _renderer.Render(_document, _viewport, _transientScene, _handleScene, _renderOptions);
         });
     }
 

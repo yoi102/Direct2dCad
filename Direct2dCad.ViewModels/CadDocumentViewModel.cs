@@ -7,6 +7,7 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
@@ -286,6 +287,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public void RequestRender()
     {
         UpdateOverlayScenes();
+        Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions());
         Direct2DImageRenderHost.Render();
     }
 
@@ -404,6 +406,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (render)
         {
             UpdateHandleScene();
+            Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions());
             Direct2DImageRenderHost.Render();
         }
     }
@@ -412,6 +415,17 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         UpdateTransientScene();
         UpdateHandleScene();
+    }
+
+    private CadRenderOptions CreateRenderOptions()
+    {
+        if (_activeGripDrag is null)
+            return new CadRenderOptions();
+
+        return new CadRenderOptions
+        {
+            HiddenEntityIds = new HashSet<EntityId> { _activeGripDrag.Handle.EntityId }
+        };
     }
 
     private void UpdateTransientScene()

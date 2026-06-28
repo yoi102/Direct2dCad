@@ -94,7 +94,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             if (options.DrawOrigin)
                 DrawOrigin(deviceContext, document, viewport);
 
-            foreach (var entity in EnumerateDrawableEntities(document))
+            foreach (var entity in EnumerateDrawableEntities(document, options))
             {
                 if (!_resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
                     continue;
@@ -886,13 +886,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             : (float)width;
     }
 
-    private static IEnumerable<CadEntity> EnumerateDrawableEntities(CadDocument document)
+    private static IEnumerable<CadEntity> EnumerateDrawableEntities(
+        CadDocument document,
+        CadRenderOptions options)
     {
         return document.Entities.Values
             .Select((entity, index) => new { Entity = entity, Index = index })
             .Where(x =>
                 !x.Entity.IsErased &&
                 x.Entity.IsVisible &&
+                !options.HiddenEntityIds.Contains(x.Entity.Id) &&
                 document.TryGetLayer(x.Entity.LayerId, out var layer) &&
                 layer is not null &&
                 layer.IsVisible &&
