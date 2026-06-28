@@ -17,6 +17,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 {
     private readonly CadTransientScene _transientScene = new();
     private readonly CadHandleScene _handleScene = new();
+    private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
+    private readonly CadHandleHitTester _handleHitTester = new();
     private CadPointD? _pendingWorldPoint;
     private CadPointD? _currentMousePoint;
     private CadPointD? _lastPanPoint;
@@ -438,105 +440,17 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var items = new List<CadHandleItem>();
-        AddSelectionHandles(items);
+        var items = _handleSceneBuilder.BuildSelectionHandles(
+            CadEditor.Document,
+            CadEditor.Selection.EntityIds);
         _handleScene.Replace(items);
-    }
-
-    private void AddSelectionHandles(List<CadHandleItem> items)
-    {
-        foreach (var entityId in CadEditor.Selection.EntityIds)
-        {
-            if (!CadEditor.Document.TryGetEntity(entityId, out var entity) ||
-                entity is null ||
-                entity.IsErased ||
-                !entity.IsVisible ||
-                !CadEditor.Document.TryGetLayer(entity.LayerId, out var layer) ||
-                layer is null ||
-                !layer.IsVisible ||
-                layer.IsFrozen)
-            {
-                continue;
-            }
-
-            items.Add(new CadSelectionEntityReference(
-                entityId,
-                CadVectorD.Zero,
-                CadHandleStyle.SelectionOutline));
-
-            if (!entity.IsLocked)
-                AddEntityGripHandles(items, entity);
-        }
-    }
-
-    private static void AddEntityGripHandles(List<CadHandleItem> items, CadEntity entity)
-    {
-        switch (entity)
-        {
-            case CadLine line:
-                AddGrip(items, entity.Id, line.Start, CadHandleType.Vertex);
-                AddGrip(items, entity.Id, line.End, CadHandleType.Vertex);
-                AddGrip(items, entity.Id, Midpoint(line.Start, line.End), CadHandleType.Center);
-                break;
-
-            case CadCircle circle:
-                AddGrip(items, entity.Id, circle.Center, CadHandleType.Center);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X + circle.Radius, circle.Center.Y), CadHandleType.Radius);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y + circle.Radius), CadHandleType.Radius);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X - circle.Radius, circle.Center.Y), CadHandleType.Radius);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y - circle.Radius), CadHandleType.Radius);
-                break;
-
-            case CadText:
-                AddBoundsGripHandles(items, entity.Id, entity.Bounds);
-                break;
-
-            default:
-                if (CanMoveWithGrip(entity) && !entity.Bounds.IsEmpty)
-                    AddGrip(items, entity.Id, entity.Bounds.Center, CadHandleType.Center);
-                break;
-        }
-    }
-
-    private static void AddBoundsGripHandles(List<CadHandleItem> items, EntityId entityId, CadRectD bounds)
-    {
-        if (bounds.IsEmpty)
-            return;
-
-        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MinY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MinY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MaxY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MaxY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, bounds.Center, CadHandleType.Center);
-    }
-
-    private static void AddGrip(List<CadHandleItem> items, EntityId entityId, CadPointD position, CadHandleType type)
-    {
-        items.Add(new CadGripHandle(entityId, position, type, CreateGripStyle(type)));
-    }
-
-    private static CadHandleStyle CreateGripStyle(CadHandleType type)
-    {
-        return type switch
-        {
-            CadHandleType.Center => CadHandleStyle.Grip with { Shape = CadHandleShape.Circle },
-            CadHandleType.Radius => CadHandleStyle.Grip with { Shape = CadHandleShape.Diamond },
-            _ => CadHandleStyle.Grip
-        };
-    }
-
-    private static CadPointD Midpoint(CadPointD start, CadPointD end)
-    {
-        return new CadPointD(
-            (start.X + end.X) * 0.5,
-            (start.Y + end.Y) * 0.5);
     }
 
     private bool TryBeginGripDrag(CadPointD screen)
     {
         UpdateHandleScene();
 
-        if (!TryHitGrip(screen, out var grip))
+        if (!_handleHitTester.TryHitGrip(_handleScene, CadEditor.Viewport.WorldToScreen, screen, out var grip))
             return false;
 
         _activeGripDrag = new GripDragState(
@@ -546,28 +460,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _isPastePreviewActive = false;
         RequestRender();
         return true;
-    }
-
-    private bool TryHitGrip(CadPointD screen, out CadGripHandle grip)
-    {
-        grip = default!;
-        var closestDistanceSquared = double.PositiveInfinity;
-
-        foreach (var item in _handleScene.Items.OfType<CadGripHandle>())
-        {
-            var screenPosition = CadEditor.Viewport.WorldToScreen(item.Position);
-            var distanceSquared = screenPosition.DistanceSquaredTo(screen);
-            var hitRadius = Math.Max(item.Style.Size * 0.5 + 4.0, 7.0);
-            var hitRadiusSquared = hitRadius * hitRadius;
-
-            if (distanceSquared > hitRadiusSquared || distanceSquared >= closestDistanceSquared)
-                continue;
-
-            closestDistanceSquared = distanceSquared;
-            grip = item;
-        }
-
-        return closestDistanceSquared < double.PositiveInfinity;
     }
 
     private void AddGripDragPreview(List<CadTransientItem> items)
@@ -706,7 +598,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 break;
 
             default:
-                if (drag.Handle.Type == CadHandleType.Center && CanMoveWithGrip(entity))
+                if (drag.Handle.Type == CadHandleType.Center && CadHandleSceneBuilder.SupportsCenterGrip(entity))
                     CadEditor.MoveEntities([entity.Id], drag.Delta);
                 break;
         }
@@ -815,11 +707,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private static bool IsLineStartGrip(CadLine line, CadPointD gripPosition)
     {
         return line.Start.DistanceSquaredTo(gripPosition) <= line.End.DistanceSquaredTo(gripPosition);
-    }
-
-    private static bool CanMoveWithGrip(CadEntity entity)
-    {
-        return entity is CadLine or CadCircle or CadArc or CadPolyline or CadText or CadBlockReference;
     }
 
     private void AddPastePreview(List<CadTransientItem> items, CadPointD mouseWorld)
