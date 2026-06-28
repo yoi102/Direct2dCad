@@ -424,7 +424,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         return new CadRenderOptions
         {
-            HiddenEntityIds = new HashSet<EntityId> { _activeGripDrag.Handle.EntityId }
+            HiddenEntityIds = ResolveGripDragEntityIds(_activeGripDrag).ToHashSet()
         };
     }
 
@@ -487,6 +487,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
 
         var style = CreateGripPreviewStyle();
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            AddMoveGripPreview(items, drag, style);
+            return;
+        }
+
         switch (entity)
         {
             case CadLine line:
@@ -500,12 +506,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             case CadText text:
                 AddTextGripPreview(items, text, drag, style);
                 break;
-
-            default:
-                if (drag.Handle.Type == CadHandleType.Center)
-                    items.Add(new CadTransientEntityReference(entity.Id, drag.Delta, style));
-                break;
         }
+    }
+
+    private void AddMoveGripPreview(
+        List<CadTransientItem> items,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        foreach (var entityId in ResolveGripDragEntityIds(drag))
+            items.Add(new CadTransientEntityReference(entityId, drag.Delta, style));
     }
 
     private static void AddLineGripPreview(
@@ -514,12 +524,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         GripDragState drag,
         CadTransientStyle style)
     {
-        if (drag.Handle.Type == CadHandleType.Center)
-        {
-            items.Add(new CadTransientLine(line.Start + drag.Delta, line.End + drag.Delta, style));
-            return;
-        }
-
         var moveStart = IsLineStartGrip(line, drag.Handle.Position);
         items.Add(new CadTransientLine(
             moveStart ? drag.DraggedGripPosition : line.Start,
@@ -533,12 +537,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         GripDragState drag,
         CadTransientStyle style)
     {
-        if (drag.Handle.Type == CadHandleType.Center)
-        {
-            items.Add(new CadTransientCircle(circle.Center + drag.Delta, circle.Radius, style));
-            return;
-        }
-
         var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
         if (radius <= double.Epsilon)
             return;
@@ -597,6 +595,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            CommitMoveGripDrag(drag);
+            RequestRender();
+            return;
+        }
+
         switch (entity)
         {
             case CadLine line:
@@ -610,24 +615,20 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             case CadText text:
                 CommitTextGripDrag(text, drag);
                 break;
-
-            default:
-                if (drag.Handle.Type == CadHandleType.Center && CadHandleSceneBuilder.SupportsCenterGrip(entity))
-                    CadEditor.MoveEntities([entity.Id], drag.Delta);
-                break;
         }
 
         RequestRender();
     }
 
+    private void CommitMoveGripDrag(GripDragState drag)
+    {
+        var entityIds = ResolveGripDragEntityIds(drag).ToArray();
+        if (entityIds.Length > 0)
+            CadEditor.MoveEntities(entityIds, drag.Delta);
+    }
+
     private void CommitLineGripDrag(CadLine line, GripDragState drag)
     {
-        if (drag.Handle.Type == CadHandleType.Center)
-        {
-            CadEditor.MoveEntities([line.Id], drag.Delta);
-            return;
-        }
-
         var moveStart = IsLineStartGrip(line, drag.Handle.Position);
         CadEditor.SetLineGeometry(
             line.Id,
@@ -637,12 +638,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private void CommitCircleGripDrag(CadCircle circle, GripDragState drag)
     {
-        if (drag.Handle.Type == CadHandleType.Center)
-        {
-            CadEditor.SetCircleGeometry(circle.Id, circle.Center + drag.Delta, circle.Radius);
-            return;
-        }
-
         var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
         if (radius > double.Epsilon)
             CadEditor.SetCircleGeometry(circle.Id, circle.Center, radius);
@@ -650,12 +645,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private void CommitTextGripDrag(CadText text, GripDragState drag)
     {
-        if (drag.Handle.Type == CadHandleType.Center)
-        {
-            CadEditor.MoveEntities([text.Id], drag.Delta);
-            return;
-        }
-
         var grid = CadEditor.Document.ViewSettings.Grid;
         if (TryCreateTextGripGeometry(
             text,
@@ -679,12 +668,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         position = text.Position;
         height = text.Height;
-
-        if (drag.Handle.Type == CadHandleType.Center)
-        {
-            position = text.Position + drag.Delta;
-            return true;
-        }
 
         if (drag.Handle.Type != CadHandleType.BoundsCorner || text.Bounds.IsEmpty)
             return false;
@@ -716,6 +699,34 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             LinePattern = CadTransientLinePattern.Dash,
             FillColor = CadColor.FromArgb(22, 255, 214, 92)
         };
+    }
+
+    private IEnumerable<EntityId> ResolveGripDragEntityIds(GripDragState drag)
+    {
+        if (drag.Handle.Type != CadHandleType.Center)
+            return [drag.Handle.EntityId];
+
+        var selectedEntityIds = CadEditor.Selection.EntityIds;
+        if (!selectedEntityIds.Contains(drag.Handle.EntityId))
+            return [drag.Handle.EntityId];
+
+        var movableSelectedEntityIds = selectedEntityIds
+            .Where(IsMovableByCenterGrip)
+            .Distinct()
+            .ToArray();
+
+        return movableSelectedEntityIds.Length > 0
+            ? movableSelectedEntityIds
+            : [drag.Handle.EntityId];
+    }
+
+    private bool IsMovableByCenterGrip(EntityId entityId)
+    {
+        return CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+               entity is not null &&
+               !entity.IsErased &&
+               !entity.IsLocked &&
+               CadHandleSceneBuilder.SupportsCenterGrip(entity);
     }
 
     private static bool IsLineStartGrip(CadLine line, CadPointD gripPosition)
