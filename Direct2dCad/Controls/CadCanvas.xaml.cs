@@ -59,9 +59,7 @@ public partial class CadCanvas : IDisposable
             newViewModel.AttachRenderResources();
             canvas.UpdateViewportSize();
             canvas.UpdateRenderSize();
-            canvas.UpdateCursor(newViewModel.CadCanvasToolMode == CadCanvasToolMode.Pan
-                ? CadCanvasCursorKind.Hand
-                : CadCanvasCursorKind.Cross);
+            canvas.UpdateCursor(CadCanvasCursorKind.Cross);
             newViewModel.RequestRender();
         }
     }
@@ -73,9 +71,7 @@ public partial class CadCanvas : IDisposable
 
         if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
         {
-            UpdateCursor(DocumentViewModel.CadCanvasToolMode == CadCanvasToolMode.Pan
-                ? CadCanvasCursorKind.Hand
-                : CadCanvasCursorKind.Cross);
+            UpdateCursor(CadCanvasCursorKind.Cross);
         }
     }
 

@@ -4,6 +4,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.Direct2D1;
@@ -62,13 +63,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     public override void Render(CadDocument document, CadViewport viewport, CadRenderOptions? options = null)
     {
-        Render(document, viewport, null, options);
+        Render(document, viewport, null, null, options);
     }
 
     public void Render(
         CadDocument document,
         CadViewport viewport,
         CadTransientScene? transientScene,
+        CadHandleScene? handleScene = null,
         CadRenderOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -101,6 +103,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             }
 
             DrawTransients(deviceContext, document, viewport, transientScene);
+            DrawHandles(deviceContext, document, viewport, handleScene);
         }
         finally
         {
@@ -501,6 +504,195 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
     }
 
+    private void DrawHandles(
+        ID2D1DeviceContext deviceContext,
+        CadDocument document,
+        CadViewport viewport,
+        CadHandleScene? scene)
+    {
+        if (scene is null || scene.IsEmpty)
+            return;
+
+        foreach (var item in scene.Items)
+        {
+            switch (item)
+            {
+                case CadSelectionEntityReference reference:
+                    DrawSelectionEntityReference(deviceContext, document, viewport, reference);
+                    break;
+
+                case CadGripHandle grip:
+                    DrawGripHandle(deviceContext, viewport, grip);
+                    break;
+            }
+        }
+    }
+
+    private void DrawSelectionEntityReference(
+        ID2D1DeviceContext deviceContext,
+        CadDocument document,
+        CadViewport viewport,
+        CadSelectionEntityReference reference)
+    {
+        var style = ToTransientStyle(reference.Style, includeFill: false);
+        if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
+            return;
+
+        switch (entity)
+        {
+            case CadLine line:
+                DrawTransientLine(
+                    deviceContext,
+                    viewport,
+                    line.Start + reference.Offset,
+                    line.End + reference.Offset,
+                    style);
+                break;
+
+            case CadCircle circle:
+                DrawTransientCircle(
+                    deviceContext,
+                    viewport,
+                    circle.Center + reference.Offset,
+                    circle.Radius,
+                    style);
+                break;
+
+            default:
+                DrawTransientRectangle(
+                    deviceContext,
+                    viewport,
+                    entity.Bounds.Translate(reference.Offset),
+                    style);
+                break;
+        }
+    }
+
+    private void DrawGripHandle(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadGripHandle grip)
+    {
+        var halfSize = ResolveHandleHalfSize(grip.Style, viewport);
+        if (halfSize <= 0)
+            return;
+
+        var bounds = CadRectD.FromLTRB(
+            grip.Position.X - halfSize,
+            grip.Position.Y - halfSize,
+            grip.Position.X + halfSize,
+            grip.Position.Y + halfSize);
+
+        switch (grip.Style.Shape)
+        {
+            case CadHandleShape.Circle:
+                DrawHandleCircle(deviceContext, bounds, grip.Style, viewport);
+                break;
+
+            case CadHandleShape.Diamond:
+                DrawHandleDiamond(deviceContext, bounds, grip.Style, viewport);
+                break;
+
+            default:
+                DrawHandleRectangle(deviceContext, bounds, grip.Style, viewport);
+                break;
+        }
+    }
+
+    private void DrawHandleRectangle(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        CadHandleStyle style,
+        CadViewport viewport)
+    {
+        DrawTransientRectangle(
+            deviceContext,
+            viewport,
+            bounds,
+            ToTransientStyle(style, includeFill: true));
+    }
+
+    private void DrawHandleCircle(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        CadHandleStyle style,
+        CadViewport viewport)
+    {
+        DrawTransientCircle(
+            deviceContext,
+            viewport,
+            bounds.Center,
+            bounds.Width * 0.5,
+            ToTransientStyle(style, includeFill: true));
+    }
+
+    private void DrawHandleDiamond(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        CadHandleStyle style,
+        CadViewport viewport)
+    {
+        var points = new[]
+        {
+            new Vector2((float)bounds.Center.X, (float)bounds.MinY),
+            new Vector2((float)bounds.MaxX, (float)bounds.Center.Y),
+            new Vector2((float)bounds.Center.X, (float)bounds.MaxY),
+            new Vector2((float)bounds.MinX, (float)bounds.Center.Y)
+        };
+
+        if (!style.FillColor.IsTransparent && _resourceCache.Factory is not null)
+        {
+            using var geometry = CreatePolygonGeometry(points);
+            using var fillBrush = CreateTransientBrush(deviceContext, style.FillColor);
+            deviceContext.FillGeometry(geometry, fillBrush);
+        }
+
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        var strokeWidth = ResolveHandleStrokeWidth(style, viewport);
+        for (var i = 0; i < points.Length; i++)
+            deviceContext.DrawLine(points[i], points[(i + 1) % points.Length], brush, strokeWidth);
+    }
+
+    private ID2D1PathGeometry CreatePolygonGeometry(IReadOnlyList<Vector2> points)
+    {
+        var geometry = _resourceCache.Factory!.CreatePathGeometry();
+        using var sink = geometry.Open();
+        sink.BeginFigure(points[0], FigureBegin.Filled);
+
+        for (var i = 1; i < points.Count; i++)
+            sink.AddLine(points[i]);
+
+        sink.EndFigure(FigureEnd.Closed);
+        sink.Close();
+        return geometry;
+    }
+
+    private static CadTransientStyle ToTransientStyle(CadHandleStyle style, bool includeFill)
+    {
+        return new CadTransientStyle(
+            style.StrokeColor,
+            style.StrokeWidth,
+            CadTransientLinePattern.Solid,
+            includeFill ? style.FillColor : null,
+            style.KeepSizeScreenConstant);
+    }
+
+    private static double ResolveHandleHalfSize(CadHandleStyle style, CadViewport viewport)
+    {
+        var size = Math.Max(style.Size, 0.0);
+        return style.KeepSizeScreenConstant
+            ? size * 0.5 / Math.Max(viewport.Zoom, double.Epsilon)
+            : size * 0.5;
+    }
+
+    private static float ResolveHandleStrokeWidth(CadHandleStyle style, CadViewport viewport)
+    {
+        var width = Math.Max(style.StrokeWidth, 0.1);
+        return style.KeepSizeScreenConstant
+            ? (float)(width / Math.Max(viewport.Zoom, double.Epsilon))
+            : (float)width;
+    }
+
     private void DrawTransientEntityReference(
         ID2D1DeviceContext deviceContext,
         CadDocument document,
@@ -641,18 +833,21 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             FontWeight.Normal,
             FontStyle.Normal,
             FontStretch.Normal,
-            (float)height,
+            (float)(height * CadText.FontSizeScale),
             "ja-JP");
+        format.TextAlignment = TextAlignment.Leading;
+        format.ParagraphAlignment = ParagraphAlignment.Near;
+        format.WordWrapping = WordWrapping.NoWrap;
 
-        var width = Math.Max(text.Length, 1) * height * 0.6;
-        deviceContext.DrawText(
+        DrawTextClipped(
+            deviceContext,
             text,
             format,
-            new Rect(
-                (float)position.X,
-                (float)position.Y,
-                (float)(position.X + width),
-                (float)(position.Y + height)),
+            CadRectD.FromLTRB(
+                position.X,
+                position.Y,
+                position.X + CadText.EstimateTextWidth(text, height),
+                position.Y + height),
             brush);
     }
 
@@ -728,16 +923,48 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             resources.TextFormat is not null &&
             resources.StrokeBrush is not null)
         {
-            var bounds = text.Bounds;
-            deviceContext.DrawText(
+            DrawTextClipped(
+                deviceContext,
                 text.Text,
                 resources.TextFormat,
-                new Rect(
+                text.Bounds,
+                resources.StrokeBrush);
+        }
+    }
+
+    private static void DrawTextClipped(
+        ID2D1DeviceContext deviceContext,
+        string text,
+        IDWriteTextFormat format,
+        CadRectD bounds,
+        ID2D1Brush brush)
+    {
+        if (bounds.IsEmpty)
+            return;
+
+        var clip = new RawRectF(
+            (float)bounds.MinX,
+            (float)bounds.MinY,
+            (float)bounds.MaxX,
+            (float)bounds.MaxY);
+        deviceContext.PushAxisAlignedClip(clip, AntialiasMode.PerPrimitive);
+
+        try
+        {
+            deviceContext.DrawText(
+                text,
+                format,
+                Rect.FromLTRB(
                     (float)bounds.MinX,
                     (float)bounds.MinY,
                     (float)bounds.MaxX,
                     (float)bounds.MaxY),
-                resources.StrokeBrush);
+                brush,
+                DrawTextOptions.Clip);
+        }
+        finally
+        {
+            deviceContext.PopAxisAlignedClip();
         }
     }
 

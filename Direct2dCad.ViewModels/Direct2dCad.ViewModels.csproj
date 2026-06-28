@@ -15,10 +15,12 @@
     <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
     <ProjectReference Include="..\Direct2dCad.Client.Common\Direct2dCad.Client.Common.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
-    <ProjectReference Include="..\Direct2dCad.IDialogService\Direct2dCad.IDialogService.csproj" />
+    <ProjectReference Include="..\Direct2dCad.ViewServices.Abstractions\Direct2dCad.ViewServices.Abstractions.csproj" />
     <ProjectReference Include="..\Direct2dCad.IO\Direct2dCad.IO.csproj" />
     <ProjectReference Include="..\Direct2dCad.Lang\Direct2dCad.Lang.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Direct2D\Direct2dCad.Rendering.Direct2D.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering.Handles\Direct2dCad.Rendering.Handles.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering.Transient\Direct2dCad.Rendering.Transient.csproj" />
   </ItemGroup>
 
 </Project>

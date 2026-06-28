@@ -1,7 +1,7 @@
 using System.Windows;
-using Direct2dCad.IDialogService;
+using Direct2dCad.ViewServices.Abstractions;
 
-namespace Direct2dCad.wpf.DialogService;
+namespace Direct2dCad.wpf.ViewServices;
 
 internal class MessageBoxService : IMessageBoxService
 {

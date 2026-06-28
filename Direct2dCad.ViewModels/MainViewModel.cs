@@ -4,8 +4,8 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
-using Direct2dCad.IDialogService;
 using Direct2dCad.IO;
+using Direct2dCad.ViewServices.Abstractions;
 
 namespace Direct2dCad.ViewModels;
 

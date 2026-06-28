@@ -1,5 +1,6 @@
 using Direct2dCad.Common;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Vortice.Mathematics;
 
@@ -13,6 +14,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
     private CadDocument? _document;
     private CadViewport? _viewport;
     private CadTransientScene? _transientScene;
+    private CadHandleScene? _handleScene;
     private bool _disposed;
 
     public ICadGeometryResourceManager GeometryResourceManager => _renderer;
@@ -45,6 +47,14 @@ public sealed class Direct2DImageRenderHost : IDisposable
         Render();
     }
 
+    public void SetHandleScene(CadHandleScene? handleScene)
+    {
+        ThrowIfDisposed();
+
+        _handleScene = handleScene;
+        Render();
+    }
+
     public void SetSize(int width, int height)
     {
         ThrowIfDisposed();
@@ -74,7 +84,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
                 : ToColor4(_document.ViewSettings.BackgroundColor));
 
             if (_document is not null && _viewport is not null)
-                _renderer.Render(_document, _viewport, _transientScene);
+                _renderer.Render(_document, _viewport, _transientScene, _handleScene);
         });
     }
 
@@ -110,6 +120,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
         _document = null;
         _viewport = null;
         _transientScene = null;
+        _handleScene = null;
         _disposed = true;
     }
 

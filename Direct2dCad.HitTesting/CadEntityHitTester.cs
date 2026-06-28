@@ -56,7 +56,7 @@ public static class CadEntityHitTester
             document,
             entity,
             point,
-            new HashSet<BlockId>(),
+            [],
             out result);
     }
 
@@ -86,9 +86,6 @@ public static class CadEntityHitTester
 
             case CadPolyline polyline:
                 return HitPolylineEdge(polyline, point, tolerance, out result);
-
-            case CadText text:
-                return HitRectEdge(text.Id, text.Bounds, point, tolerance, out result);
 
             case CadBlockReference blockReference:
                 return HitBlockReferenceEdge(
@@ -124,6 +121,9 @@ public static class CadEntityHitTester
             case CadPolyline polyline:
                 return HitPolylineFill(polyline, point, out result);
 
+            case CadText text:
+                return HitTextFill(text, point, out result);
+
             case CadBlockReference blockReference:
                 return HitBlockReferenceFill(
                     document,
@@ -152,7 +152,7 @@ public static class CadEntityHitTester
 
         result = new CadHitTestResult(
             CadHitTestKind.Edge,
-            new[] { line.Id },
+            [line.Id],
             point,
             distance);
 
@@ -176,7 +176,7 @@ public static class CadEntityHitTester
 
         result = new CadHitTestResult(
             CadHitTestKind.Edge,
-            new[] { circle.Id },
+            [circle.Id],
             point,
             distance);
 
@@ -203,7 +203,26 @@ public static class CadEntityHitTester
 
         result = new CadHitTestResult(
             CadHitTestKind.Fill,
-            new[] { circle.Id },
+            [circle.Id],
+            point);
+
+        return true;
+    }
+
+    private static bool HitTextFill(
+        CadText text,
+        CadPointD point,
+        out CadHitTestResult result)
+    {
+        if (!text.Bounds.Contains(point))
+        {
+            result = default;
+            return false;
+        }
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Fill,
+            [text.Id],
             point);
 
         return true;
@@ -233,7 +252,7 @@ public static class CadEntityHitTester
 
         result = new CadHitTestResult(
             CadHitTestKind.Edge,
-            new[] { arc.Id },
+            [arc.Id],
             point,
             radialDistance);
 
@@ -273,7 +292,7 @@ public static class CadEntityHitTester
 
         result = new CadHitTestResult(
             CadHitTestKind.Edge,
-            new[] { polyline.Id },
+            [polyline.Id],
             point,
             bestDistance);
 
@@ -295,7 +314,7 @@ public static class CadEntityHitTester
 
         result = new CadHitTestResult(
             CadHitTestKind.Fill,
-            new[] { polyline.Id },
+            [polyline.Id],
             point);
 
         return true;

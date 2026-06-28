@@ -162,7 +162,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 ? Factory!.CreateEllipseGeometry(new Ellipse(ToVector2(arc.Center), (float)arc.Radius, (float)arc.Radius))
                 : CreateArcPathGeometry(arc),
             CadPolyline polyline => CreatePolylineGeometry(polyline.Points, polyline.Closed),
-            CadText text => CreateRectangleGeometry(text.Bounds),
+            CadText => null,
             CadBlockReference blockReference => CreateRectangleGeometry(blockReference.Bounds),
             _ => null
         };
@@ -231,7 +231,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             return null;
 
         var fontFamily = "Meiryo";
-        var fontSize = (float)text.Height;
+        var fontSize = (float)(text.Height * CadText.FontSizeScale);
         var fontWeight = FontWeight.Normal;
         var fontStyle = FontStyle.Normal;
 
@@ -240,7 +240,6 @@ internal sealed class Direct2DResourceCache : IDisposable
             style is CadTextStyle textStyle)
         {
             fontFamily = textStyle.FontFamily;
-            fontSize = (float)textStyle.TextHeight;
             fontWeight = textStyle.IsBold ? FontWeight.Bold : FontWeight.Normal;
             fontStyle = textStyle.IsItalic ? FontStyle.Italic : FontStyle.Normal;
         }
@@ -256,6 +255,7 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         format.TextAlignment = TextAlignment.Leading;
         format.ParagraphAlignment = ParagraphAlignment.Near;
+        format.WordWrapping = WordWrapping.NoWrap;
         return format;
     }
 

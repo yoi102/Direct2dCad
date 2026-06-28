@@ -10,14 +10,13 @@ public enum CadCanvasToolMode
 {
     [LocalizedDescription("Select", typeof(Strings))]
     Select,
-    [LocalizedDescription("Pan", typeof(Strings))]
-    Pan,
     [LocalizedDescription("Line", typeof(Strings))]
     Line,
     [LocalizedDescription("Circle", typeof(Strings))]
     Circle,
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
+    [LocalizedDescription("SetOrigin", typeof(Strings))]
     SetOrigin
 }
 

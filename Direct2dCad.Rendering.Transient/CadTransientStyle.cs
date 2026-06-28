@@ -26,10 +26,6 @@ public readonly record struct CadTransientStyle(
         CadTransientLinePattern.Dash,
         CadColor.FromArgb(36, 92, 220, 128));
 
-    public static CadTransientStyle SelectionHighlight { get; } = new(
-        CadColor.FromArgb(240, 255, 214, 92),
-        2.0);
-
     public static CadTransientStyle PastePreview { get; } = new(
         CadColor.FromArgb(210, 116, 239, 164),
         1.25,

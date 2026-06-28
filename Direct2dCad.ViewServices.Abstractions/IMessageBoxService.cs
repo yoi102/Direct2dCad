@@ -1,4 +1,4 @@
-namespace Direct2dCad.IDialogService;
+namespace Direct2dCad.ViewServices.Abstractions;
 
 public interface IMessageBoxService
 {

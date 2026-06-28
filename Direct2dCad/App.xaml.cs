@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
-using Direct2dCad.wpf.DialogService;
+using Direct2dCad.wpf.ViewServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Direct2dCad;
@@ -18,7 +18,7 @@ public partial class App : System.Windows.Application
         var services = new ServiceCollection()
             .AddDirect2dCadEditor()
             .AddViewModels()
-            .AddDialogService();
+            .AddViewServices();
 
         services.AddMessagePipe();
 

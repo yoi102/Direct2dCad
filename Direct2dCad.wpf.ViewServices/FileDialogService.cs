@@ -1,7 +1,7 @@
-using Direct2dCad.IDialogService;
+using Direct2dCad.ViewServices.Abstractions;
 using Microsoft.Win32;
 
-namespace Direct2dCad.wpf.DialogService;
+namespace Direct2dCad.wpf.ViewServices;
 
 internal class FileDialogService : IFileDialogService
 {

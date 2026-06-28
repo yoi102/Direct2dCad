@@ -8,6 +8,7 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Rendering.Direct2D;
+using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels;
@@ -15,10 +16,12 @@ namespace Direct2dCad.ViewModels;
 public partial class CadDocumentViewModel : ObservableObject, IDisposable
 {
     private readonly CadTransientScene _transientScene = new();
+    private readonly CadHandleScene _handleScene = new();
     private CadPointD? _pendingWorldPoint;
     private CadPointD? _currentMousePoint;
     private CadPointD? _lastPanPoint;
     private CadPointD? _selectionDragStart;
+    private GripDragState? _activeGripDrag;
     private ClipboardSnapshot? _clipboard;
     private bool _isPastePreviewActive;
     private bool _isRenderAttached;
@@ -51,6 +54,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         CadEditor = editor ?? throw new ArgumentNullException(nameof(editor));
         CadEditor.Viewport.SetSize(_viewportWidth, _viewportHeight);
         ClearInteractionState(clearClipboard: true, render: false);
+        _handleScene.Clear();
 
         if (wasAttached)
             AttachRenderResources();
@@ -67,6 +71,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         Direct2DImageRenderHost.SetScene(CadEditor.Document, CadEditor.Viewport);
         Direct2DImageRenderHost.SetTransientScene(_transientScene);
+        Direct2DImageRenderHost.SetHandleScene(_handleScene);
         CadEditor.DocumentChanged += OnDocumentChanged;
         CadEditor.RegisterGeometryResourceManager(Direct2DImageRenderHost.GeometryResourceManager);
         _isRenderAttached = true;
@@ -101,7 +106,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
-            Cursor: CadCanvasToolMode == CadCanvasToolMode.Pan ? CadCanvasCursorKind.Hand : CadCanvasCursorKind.Cross);
+            Cursor: CadCanvasCursorKind.Cross);
     }
 
     public CadCanvasInteractionResult PointerDown(
@@ -111,7 +116,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         _currentMousePoint = screen;
 
-        if (forcePan || button is CadCanvasPointerButton.Middle or CadCanvasPointerButton.Right || CadCanvasToolMode == CadCanvasToolMode.Pan)
+        if (forcePan || button is CadCanvasPointerButton.Middle or CadCanvasPointerButton.Right)
         {
             BeginPan(screen);
             return new CadCanvasInteractionResult(true, CaptureMouse: true, Cursor: CadCanvasCursorKind.Hand);
@@ -128,6 +133,9 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         if (CadCanvasToolMode == CadCanvasToolMode.Select)
         {
+            if (TryBeginGripDrag(screen))
+                return new CadCanvasInteractionResult(true, CaptureMouse: true, Cursor: CadCanvasCursorKind.Hand);
+
             _selectionDragStart = screen;
             RequestRender();
             return new CadCanvasInteractionResult(true, CaptureMouse: true);
@@ -148,6 +156,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             CadEditor.Execute(new PanViewportCommand(delta));
         }
 
+        if (_activeGripDrag is not null)
+        {
+            _activeGripDrag.CurrentPointerWorld = ScreenToWorld(screen, snapToGrid: true);
+            RequestRender();
+            return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Hand);
+        }
+
         RequestRender();
         return CadCanvasInteractionResult.HandledOnly;
     }
@@ -162,7 +177,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return new CadCanvasInteractionResult(
                 true,
                 ReleaseMouseCapture: true,
-                Cursor: CadCanvasToolMode == CadCanvasToolMode.Pan ? CadCanvasCursorKind.Hand : CadCanvasCursorKind.Cross);
+                Cursor: CadCanvasCursorKind.Cross);
+        }
+
+        if (button == CadCanvasPointerButton.Left && _activeGripDrag is not null)
+        {
+            CommitGripDrag(screen);
+            return new CadCanvasInteractionResult(
+                true,
+                ReleaseMouseCapture: true,
+                Cursor: CadCanvasCursorKind.Cross);
         }
 
         if (CadCanvasToolMode == CadCanvasToolMode.Select &&
@@ -188,10 +212,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         ClearInteractionState(clearClipboard: false);
         EndPan();
+        _activeGripDrag = null;
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
-            Cursor: CadCanvasToolMode == CadCanvasToolMode.Pan ? CadCanvasCursorKind.Hand : CadCanvasCursorKind.Cross);
+            Cursor: CadCanvasCursorKind.Cross);
     }
 
     public void Undo()
@@ -258,7 +283,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     public void RequestRender()
     {
-        UpdateTransientScene();
+        UpdateOverlayScenes();
         Direct2DImageRenderHost.Render();
     }
 
@@ -306,10 +331,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 break;
 
             case CadCanvasToolMode.Text:
+                var drawingText = ResolveDrawingText();
                 CadEditor.AddText(
-                    string.IsNullOrWhiteSpace(DrawingText) ? "Text" : DrawingText,
+                    drawingText,
                     world,
-                    Math.Max(8.0 / CadEditor.Viewport.Zoom, 1.0));
+                    ResolveTextBoxHeight(drawingText));
                 RequestRender();
                 break;
 
@@ -365,6 +391,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         _pendingWorldPoint = null;
         _selectionDragStart = null;
+        _activeGripDrag = null;
         _isPastePreviewActive = false;
 
         if (clearClipboard)
@@ -373,13 +400,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _transientScene.Clear();
 
         if (render)
+        {
+            UpdateHandleScene();
             Direct2DImageRenderHost.Render();
+        }
+    }
+
+    private void UpdateOverlayScenes()
+    {
+        UpdateTransientScene();
+        UpdateHandleScene();
     }
 
     private void UpdateTransientScene()
     {
         var items = new List<CadTransientItem>();
-        AddSelectionHighlights(items);
 
         if (_currentMousePoint is { } mousePoint)
         {
@@ -387,6 +422,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             var snappedMouseWorld = SnapWorld(rawMouseWorld);
             AddPastePreview(items, snappedMouseWorld);
             AddSelectionWindowPreview(items, mousePoint);
+            AddGripDragPreview(items);
             AddDrawingPreview(items, snappedMouseWorld);
             AddSnapMarker(items, rawMouseWorld, snappedMouseWorld);
         }
@@ -394,15 +430,396 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _transientScene.Replace(items);
     }
 
-    private void AddSelectionHighlights(List<CadTransientItem> items)
+    private void UpdateHandleScene()
+    {
+        if (_activeGripDrag is not null)
+        {
+            _handleScene.Clear();
+            return;
+        }
+
+        var items = new List<CadHandleItem>();
+        AddSelectionHandles(items);
+        _handleScene.Replace(items);
+    }
+
+    private void AddSelectionHandles(List<CadHandleItem> items)
     {
         foreach (var entityId in CadEditor.Selection.EntityIds)
         {
-            items.Add(new CadTransientEntityReference(
+            if (!CadEditor.Document.TryGetEntity(entityId, out var entity) ||
+                entity is null ||
+                entity.IsErased ||
+                !entity.IsVisible ||
+                !CadEditor.Document.TryGetLayer(entity.LayerId, out var layer) ||
+                layer is null ||
+                !layer.IsVisible ||
+                layer.IsFrozen)
+            {
+                continue;
+            }
+
+            items.Add(new CadSelectionEntityReference(
                 entityId,
                 CadVectorD.Zero,
-                CadTransientStyle.SelectionHighlight));
+                CadHandleStyle.SelectionOutline));
+
+            if (!entity.IsLocked)
+                AddEntityGripHandles(items, entity);
         }
+    }
+
+    private static void AddEntityGripHandles(List<CadHandleItem> items, CadEntity entity)
+    {
+        switch (entity)
+        {
+            case CadLine line:
+                AddGrip(items, entity.Id, line.Start, CadHandleType.Vertex);
+                AddGrip(items, entity.Id, line.End, CadHandleType.Vertex);
+                AddGrip(items, entity.Id, Midpoint(line.Start, line.End), CadHandleType.Center);
+                break;
+
+            case CadCircle circle:
+                AddGrip(items, entity.Id, circle.Center, CadHandleType.Center);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X + circle.Radius, circle.Center.Y), CadHandleType.Radius);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y + circle.Radius), CadHandleType.Radius);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X - circle.Radius, circle.Center.Y), CadHandleType.Radius);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y - circle.Radius), CadHandleType.Radius);
+                break;
+
+            case CadText:
+                AddBoundsGripHandles(items, entity.Id, entity.Bounds);
+                break;
+
+            default:
+                if (CanMoveWithGrip(entity) && !entity.Bounds.IsEmpty)
+                    AddGrip(items, entity.Id, entity.Bounds.Center, CadHandleType.Center);
+                break;
+        }
+    }
+
+    private static void AddBoundsGripHandles(List<CadHandleItem> items, EntityId entityId, CadRectD bounds)
+    {
+        if (bounds.IsEmpty)
+            return;
+
+        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MinY), CadHandleType.BoundsCorner);
+        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MinY), CadHandleType.BoundsCorner);
+        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MaxY), CadHandleType.BoundsCorner);
+        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MaxY), CadHandleType.BoundsCorner);
+        AddGrip(items, entityId, bounds.Center, CadHandleType.Center);
+    }
+
+    private static void AddGrip(List<CadHandleItem> items, EntityId entityId, CadPointD position, CadHandleType type)
+    {
+        items.Add(new CadGripHandle(entityId, position, type, CreateGripStyle(type)));
+    }
+
+    private static CadHandleStyle CreateGripStyle(CadHandleType type)
+    {
+        return type switch
+        {
+            CadHandleType.Center => CadHandleStyle.Grip with { Shape = CadHandleShape.Circle },
+            CadHandleType.Radius => CadHandleStyle.Grip with { Shape = CadHandleShape.Diamond },
+            _ => CadHandleStyle.Grip
+        };
+    }
+
+    private static CadPointD Midpoint(CadPointD start, CadPointD end)
+    {
+        return new CadPointD(
+            (start.X + end.X) * 0.5,
+            (start.Y + end.Y) * 0.5);
+    }
+
+    private bool TryBeginGripDrag(CadPointD screen)
+    {
+        UpdateHandleScene();
+
+        if (!TryHitGrip(screen, out var grip))
+            return false;
+
+        _activeGripDrag = new GripDragState(
+            grip,
+            ScreenToWorld(screen, snapToGrid: true));
+        _selectionDragStart = null;
+        _isPastePreviewActive = false;
+        RequestRender();
+        return true;
+    }
+
+    private bool TryHitGrip(CadPointD screen, out CadGripHandle grip)
+    {
+        grip = default!;
+        var closestDistanceSquared = double.PositiveInfinity;
+
+        foreach (var item in _handleScene.Items.OfType<CadGripHandle>())
+        {
+            var screenPosition = CadEditor.Viewport.WorldToScreen(item.Position);
+            var distanceSquared = screenPosition.DistanceSquaredTo(screen);
+            var hitRadius = Math.Max(item.Style.Size * 0.5 + 4.0, 7.0);
+            var hitRadiusSquared = hitRadius * hitRadius;
+
+            if (distanceSquared > hitRadiusSquared || distanceSquared >= closestDistanceSquared)
+                continue;
+
+            closestDistanceSquared = distanceSquared;
+            grip = item;
+        }
+
+        return closestDistanceSquared < double.PositiveInfinity;
+    }
+
+    private void AddGripDragPreview(List<CadTransientItem> items)
+    {
+        if (_activeGripDrag is not { } drag ||
+            !CadEditor.Document.TryGetEntity(drag.Handle.EntityId, out var entity) ||
+            entity is null ||
+            entity.IsErased)
+        {
+            return;
+        }
+
+        var style = CreateGripPreviewStyle();
+        switch (entity)
+        {
+            case CadLine line:
+                AddLineGripPreview(items, line, drag, style);
+                break;
+
+            case CadCircle circle:
+                AddCircleGripPreview(items, circle, drag, style);
+                break;
+
+            case CadText text:
+                AddTextGripPreview(items, text, drag, style);
+                break;
+
+            default:
+                if (drag.Handle.Type == CadHandleType.Center)
+                    items.Add(new CadTransientEntityReference(entity.Id, drag.Delta, style));
+                break;
+        }
+    }
+
+    private static void AddLineGripPreview(
+        List<CadTransientItem> items,
+        CadLine line,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            items.Add(new CadTransientLine(line.Start + drag.Delta, line.End + drag.Delta, style));
+            return;
+        }
+
+        var moveStart = IsLineStartGrip(line, drag.Handle.Position);
+        items.Add(new CadTransientLine(
+            moveStart ? drag.DraggedGripPosition : line.Start,
+            moveStart ? line.End : drag.DraggedGripPosition,
+            style));
+    }
+
+    private static void AddCircleGripPreview(
+        List<CadTransientItem> items,
+        CadCircle circle,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            items.Add(new CadTransientCircle(circle.Center + drag.Delta, circle.Radius, style));
+            return;
+        }
+
+        var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
+        if (radius <= double.Epsilon)
+            return;
+
+        items.Add(new CadTransientCircle(circle.Center, radius, style));
+        items.Add(new CadTransientLine(circle.Center, drag.DraggedGripPosition, style));
+    }
+
+    private void AddTextGripPreview(
+        List<CadTransientItem> items,
+        CadText text,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        var grid = CadEditor.Document.ViewSettings.Grid;
+        if (!TryCreateTextGripGeometry(
+            text,
+            drag,
+            grid.GetSnapSpacingX(),
+            grid.GetSnapSpacingY(),
+            out var position,
+            out var height))
+        {
+            return;
+        }
+
+        items.Add(new CadTransientText(text.Text, position, height, style));
+        items.Add(new CadTransientRectangle(
+            CadRectD.FromLTRB(
+                position.X,
+                position.Y,
+                position.X + CadText.EstimateTextWidth(text.Text, height),
+                position.Y + height),
+            style with { FillColor = null }));
+    }
+
+    private void CommitGripDrag(CadPointD screen)
+    {
+        if (_activeGripDrag is not { } drag)
+            return;
+
+        _activeGripDrag = null;
+        drag.CurrentPointerWorld = ScreenToWorld(screen, snapToGrid: true);
+
+        if (drag.Delta.Length <= 1e-9)
+        {
+            RequestRender();
+            return;
+        }
+
+        if (!CadEditor.Document.TryGetEntity(drag.Handle.EntityId, out var entity) ||
+            entity is null ||
+            entity.IsErased)
+        {
+            RequestRender();
+            return;
+        }
+
+        switch (entity)
+        {
+            case CadLine line:
+                CommitLineGripDrag(line, drag);
+                break;
+
+            case CadCircle circle:
+                CommitCircleGripDrag(circle, drag);
+                break;
+
+            case CadText text:
+                CommitTextGripDrag(text, drag);
+                break;
+
+            default:
+                if (drag.Handle.Type == CadHandleType.Center && CanMoveWithGrip(entity))
+                    CadEditor.MoveEntities([entity.Id], drag.Delta);
+                break;
+        }
+
+        RequestRender();
+    }
+
+    private void CommitLineGripDrag(CadLine line, GripDragState drag)
+    {
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            CadEditor.MoveEntities([line.Id], drag.Delta);
+            return;
+        }
+
+        var moveStart = IsLineStartGrip(line, drag.Handle.Position);
+        CadEditor.SetLineGeometry(
+            line.Id,
+            moveStart ? drag.DraggedGripPosition : line.Start,
+            moveStart ? line.End : drag.DraggedGripPosition);
+    }
+
+    private void CommitCircleGripDrag(CadCircle circle, GripDragState drag)
+    {
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            CadEditor.SetCircleGeometry(circle.Id, circle.Center + drag.Delta, circle.Radius);
+            return;
+        }
+
+        var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
+        if (radius > double.Epsilon)
+            CadEditor.SetCircleGeometry(circle.Id, circle.Center, radius);
+    }
+
+    private void CommitTextGripDrag(CadText text, GripDragState drag)
+    {
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            CadEditor.MoveEntities([text.Id], drag.Delta);
+            return;
+        }
+
+        var grid = CadEditor.Document.ViewSettings.Grid;
+        if (TryCreateTextGripGeometry(
+            text,
+            drag,
+            grid.GetSnapSpacingX(),
+            grid.GetSnapSpacingY(),
+            out var position,
+            out var height))
+        {
+            CadEditor.SetTextGeometry(text.Id, position, height, text.RotationRadians);
+        }
+    }
+
+    private static bool TryCreateTextGripGeometry(
+        CadText text,
+        GripDragState drag,
+        double snapSpacingX,
+        double snapSpacingY,
+        out CadPointD position,
+        out double height)
+    {
+        position = text.Position;
+        height = text.Height;
+
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            position = text.Position + drag.Delta;
+            return true;
+        }
+
+        if (drag.Handle.Type != CadHandleType.BoundsCorner || text.Bounds.IsEmpty)
+            return false;
+
+        var bounds = text.Bounds;
+        var target = drag.DraggedGripPosition;
+        var dragLeft = Math.Abs(drag.Handle.Position.X - bounds.MinX) <= Math.Abs(drag.Handle.Position.X - bounds.MaxX);
+        var dragBottom = Math.Abs(drag.Handle.Position.Y - bounds.MinY) <= Math.Abs(drag.Handle.Position.Y - bounds.MaxY);
+        var oppositeX = dragLeft ? bounds.MaxX : bounds.MinX;
+        var oppositeY = dragBottom ? bounds.MaxY : bounds.MinY;
+        var widthFactor = CadText.EstimateTextWidth(text.Text, 1.0);
+        var desiredHeight = Math.Abs(target.Y - oppositeY);
+        var desiredWidth = Math.Abs(target.X - oppositeX);
+
+        height = SnapTextHeightUp(text.Text, Math.Max(desiredHeight, desiredWidth / widthFactor), snapSpacingX, snapSpacingY);
+        var width = height * widthFactor;
+        position = new CadPointD(
+            dragLeft ? oppositeX - width : oppositeX,
+            dragBottom ? oppositeY - height : oppositeY);
+        return true;
+    }
+
+    private static CadTransientStyle CreateGripPreviewStyle()
+    {
+        return CadTransientStyle.Construction with
+        {
+            StrokeColor = CadColor.FromArgb(245, 255, 214, 92),
+            StrokeWidth = 1.4,
+            LinePattern = CadTransientLinePattern.Dash,
+            FillColor = CadColor.FromArgb(22, 255, 214, 92)
+        };
+    }
+
+    private static bool IsLineStartGrip(CadLine line, CadPointD gripPosition)
+    {
+        return line.Start.DistanceSquaredTo(gripPosition) <= line.End.DistanceSquaredTo(gripPosition);
+    }
+
+    private static bool CanMoveWithGrip(CadEntity entity)
+    {
+        return entity is CadLine or CadCircle or CadArc or CadPolyline or CadText or CadBlockReference;
     }
 
     private void AddPastePreview(List<CadTransientItem> items, CadPointD mouseWorld)
@@ -449,10 +866,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 break;
 
             case CadCanvasToolMode.Text:
+                var drawingText = ResolveDrawingText();
                 items.Add(new CadTransientText(
-                    string.IsNullOrWhiteSpace(DrawingText) ? "Text" : DrawingText,
+                    drawingText,
                     mouseWorld,
-                    Math.Max(8.0 / CadEditor.Viewport.Zoom, 1.0),
+                    ResolveTextBoxHeight(drawingText),
                     CadTransientStyle.Construction));
                 break;
 
@@ -590,6 +1008,57 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             origin.Y + Math.Round((world.Y - origin.Y) / spacingY) * spacingY);
     }
 
+    private string ResolveDrawingText()
+    {
+        return string.IsNullOrWhiteSpace(DrawingText) ? "Text" : DrawingText;
+    }
+
+    private double ResolveTextBoxHeight(string text)
+    {
+        var grid = CadEditor.Document.ViewSettings.Grid;
+        var spacingY = grid.GetSnapSpacingY();
+        return IsFinitePositive(spacingY)
+            ? SnapTextHeightUp(text, spacingY, grid.GetSnapSpacingX(), spacingY) * 5
+            : Math.Max(8.0 / Math.Max(CadEditor.Viewport.Zoom, double.Epsilon) * 5, 1.0);
+    }
+
+    private static double SnapTextHeightUp(
+        string text,
+        double desiredHeight,
+        double snapSpacingX,
+        double snapSpacingY)
+    {
+        var heightStep = IsFinitePositive(snapSpacingY)
+            ? snapSpacingY
+            : IsFinitePositive(snapSpacingX)
+                ? snapSpacingX
+                : 1.0;
+        var startStep = Math.Max(1, (int)Math.Ceiling(Math.Max(desiredHeight, heightStep) / heightStep));
+
+        for (var offset = 0; offset < 128; offset++)
+        {
+            var height = heightStep * (startStep + offset);
+            if (IsDimensionAligned(CadText.EstimateTextWidth(text, height), snapSpacingX))
+                return height;
+        }
+
+        return heightStep * startStep;
+    }
+
+    private static bool IsDimensionAligned(double value, double step)
+    {
+        if (!IsFinitePositive(step))
+            return true;
+
+        var units = value / step;
+        return Math.Abs(units - Math.Round(units)) <= 1e-6;
+    }
+
+    private static bool IsFinitePositive(double value)
+    {
+        return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
     private CadRectD ToWorldRect(CadPointD startScreen, CadPointD endScreen)
     {
         var p1 = ScreenToWorld(startScreen);
@@ -629,6 +1098,22 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(CadDocumentViewModel));
+    }
+
+    private sealed class GripDragState
+    {
+        public GripDragState(CadGripHandle handle, CadPointD pointerWorld)
+        {
+            Handle = handle;
+            StartPointerWorld = pointerWorld;
+            CurrentPointerWorld = pointerWorld;
+        }
+
+        public CadGripHandle Handle { get; }
+        public CadPointD StartPointerWorld { get; }
+        public CadPointD CurrentPointerWorld { get; set; }
+        public CadVectorD Delta => CurrentPointerWorld - StartPointerWorld;
+        public CadPointD DraggedGripPosition => Handle.Position + Delta;
     }
 
     private sealed record ClipboardSnapshot(
