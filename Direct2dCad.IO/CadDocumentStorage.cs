@@ -66,6 +66,7 @@ public sealed class CadDocumentStorage
         var lines = ReadSection<CadLinesSection>(filePath, CadSectionKind.Lines);
         var circles = ReadSection<CadCirclesSection>(filePath, CadSectionKind.Circles);
         var arcs = ReadSection<CadArcsSection>(filePath, CadSectionKind.Arcs);
+        var rectangles = ReadOptionalSection(filePath, CadSectionKind.Rectangles, new CadRectanglesSection());
         var texts = ReadSection<CadTextsSection>(filePath, CadSectionKind.Texts);
 
         return CadDocumentMapper.FromSections(
@@ -76,6 +77,7 @@ public sealed class CadDocumentStorage
             lines,
             circles,
             arcs,
+            rectangles,
             texts);
     }
 
@@ -148,8 +150,31 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(document)),
             Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(document)),
             Serialize(CadSectionKind.Arcs, CadDocumentMapper.ToArcsSection(document)),
+            Serialize(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(document)),
             Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(document))
         ];
+    }
+
+    private static TSection ReadOptionalSection<TSection>(
+        string filePath,
+        CadSectionKind kind,
+        TSection fallback)
+    {
+        using var stream = File.OpenRead(filePath);
+        using var reader = new BinaryReader(stream);
+        var entries = ReadSectionTable(reader);
+        var entry = entries.FirstOrDefault(x => x.Kind == kind);
+
+        if (entry.Kind != kind)
+            return fallback;
+
+        stream.Position = entry.PayloadOffset;
+        var payload = reader.ReadBytes(entry.PayloadLength);
+        return CadSectionMigrationRegistry.ReadCurrent<TSection>(
+            entry.Kind,
+            entry.Version,
+            payload,
+            GetMessagePackOptions(entry.Compression));
     }
 
     private static SerializedSection Serialize<TPayload>(CadSectionKind kind, TPayload payload)
@@ -175,4 +200,3 @@ public sealed class CadDocumentStorage
         CadCompressionKind Compression,
         byte[] Payload);
 }
-

@@ -334,6 +334,24 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 RequestRender();
                 break;
 
+            case CadCanvasToolMode.Rectangle:
+                if (_pendingWorldPoint is null)
+                    _pendingWorldPoint = world;
+                else
+                {
+                    var bounds = CadRectD.FromLTRB(
+                        _pendingWorldPoint.Value.X,
+                        _pendingWorldPoint.Value.Y,
+                        world.X,
+                        world.Y);
+                    if (IsValidRectangleBounds(bounds))
+                        CadEditor.AddRectangle(bounds);
+
+                    _pendingWorldPoint = null;
+                }
+                RequestRender();
+                break;
+
             case CadCanvasToolMode.Text:
                 var drawingText = ResolveDrawingText();
                 CadEditor.AddText(
@@ -503,6 +521,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddCircleGripPreview(items, circle, drag, style);
                 break;
 
+            case CadRectangle rectangle:
+                AddRectangleGripPreview(items, rectangle, drag, style);
+                break;
+
             case CadText text:
                 AddTextGripPreview(items, text, drag, style);
                 break;
@@ -543,6 +565,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         items.Add(new CadTransientCircle(circle.Center, radius, style));
         items.Add(new CadTransientLine(circle.Center, drag.DraggedGripPosition, style));
+    }
+
+    private static void AddRectangleGripPreview(
+        List<CadTransientItem> items,
+        CadRectangle rectangle,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (TryCreateRectangleGripGeometry(rectangle, drag, out var bounds))
+            items.Add(new CadTransientRectangle(bounds, style));
     }
 
     private void AddTextGripPreview(
@@ -612,6 +644,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CommitCircleGripDrag(circle, drag);
                 break;
 
+            case CadRectangle rectangle:
+                CommitRectangleGripDrag(rectangle, drag);
+                break;
+
             case CadText text:
                 CommitTextGripDrag(text, drag);
                 break;
@@ -641,6 +677,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
         if (radius > double.Epsilon)
             CadEditor.SetCircleGeometry(circle.Id, circle.Center, radius);
+    }
+
+    private void CommitRectangleGripDrag(CadRectangle rectangle, GripDragState drag)
+    {
+        if (TryCreateRectangleGripGeometry(rectangle, drag, out var bounds))
+            CadEditor.SetRectangleGeometry(rectangle.Id, bounds);
     }
 
     private void CommitTextGripDrag(CadText text, GripDragState drag)
@@ -688,6 +730,27 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             dragLeft ? oppositeX - width : oppositeX,
             dragBottom ? oppositeY - height : oppositeY);
         return true;
+    }
+
+    private static bool TryCreateRectangleGripGeometry(
+        CadRectangle rectangle,
+        GripDragState drag,
+        out CadRectD bounds)
+    {
+        bounds = rectangle.Bounds;
+
+        if (drag.Handle.Type != CadHandleType.BoundsCorner || rectangle.Bounds.IsEmpty)
+            return false;
+
+        var oldBounds = rectangle.Bounds;
+        var target = drag.DraggedGripPosition;
+        var dragLeft = Math.Abs(drag.Handle.Position.X - oldBounds.MinX) <= Math.Abs(drag.Handle.Position.X - oldBounds.MaxX);
+        var dragBottom = Math.Abs(drag.Handle.Position.Y - oldBounds.MinY) <= Math.Abs(drag.Handle.Position.Y - oldBounds.MaxY);
+        var oppositeX = dragLeft ? oldBounds.MaxX : oldBounds.MinX;
+        var oppositeY = dragBottom ? oldBounds.MaxY : oldBounds.MinY;
+
+        bounds = CadRectD.FromLTRB(oppositeX, oppositeY, target.X, target.Y);
+        return IsValidRectangleBounds(bounds);
     }
 
     private static CadTransientStyle CreateGripPreviewStyle()
@@ -775,6 +838,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     items.Add(new CadTransientCircle(center, radius, CadTransientStyle.Construction));
                     items.Add(new CadTransientLine(center, mouseWorld, CadTransientStyle.Construction));
                 }
+                break;
+
+            case CadCanvasToolMode.Rectangle when _pendingWorldPoint is { } firstCorner:
+                var bounds = CadRectD.FromLTRB(firstCorner.X, firstCorner.Y, mouseWorld.X, mouseWorld.Y);
+                if (IsValidRectangleBounds(bounds))
+                    items.Add(new CadTransientRectangle(bounds, CadTransientStyle.Construction));
                 break;
 
             case CadCanvasToolMode.Text:
@@ -971,6 +1040,17 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
+    private static bool IsValidRectangleBounds(CadRectD bounds)
+    {
+        return !bounds.IsEmpty &&
+               bounds.Width > 0 &&
+               bounds.Height > 0 &&
+               !double.IsNaN(bounds.Width) &&
+               !double.IsNaN(bounds.Height) &&
+               !double.IsInfinity(bounds.Width) &&
+               !double.IsInfinity(bounds.Height);
+    }
+
     private CadRectD ToWorldRect(CadPointD startScreen, CadPointD endScreen)
     {
         var p1 = ScreenToWorld(startScreen);
@@ -993,7 +1073,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private static bool CanDuplicate(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadText;
+        return entity is CadLine or CadCircle or CadRectangle or CadText;
     }
 
     public void Dispose()

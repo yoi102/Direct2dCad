@@ -9,6 +9,6 @@ public enum CadSectionKind : ushort
     Lines = 100,
     Circles = 101,
     Arcs = 102,
+    Rectangles = 103,
     Texts = 104
 }
-

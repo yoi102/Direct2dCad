@@ -84,6 +84,9 @@ public static class CadEntityHitTester
             case CadCircle circle:
                 return HitCircleEdge(circle, point, tolerance, out result);
 
+            case CadRectangle rectangle:
+                return HitRectEdge(rectangle.Id, rectangle.Bounds, point, tolerance, out result);
+
             case CadPolyline polyline:
                 return HitPolylineEdge(polyline, point, tolerance, out result);
 
@@ -117,6 +120,9 @@ public static class CadEntityHitTester
         {
             case CadCircle circle:
                 return HitCircleFill(circle, point, out result);
+
+            case CadRectangle rectangle:
+                return HitRectangleFill(rectangle, point, out result);
 
             case CadPolyline polyline:
                 return HitPolylineFill(polyline, point, out result);
@@ -204,6 +210,25 @@ public static class CadEntityHitTester
         result = new CadHitTestResult(
             CadHitTestKind.Fill,
             [circle.Id],
+            point);
+
+        return true;
+    }
+
+    private static bool HitRectangleFill(
+        CadRectangle rectangle,
+        CadPointD point,
+        out CadHitTestResult result)
+    {
+        if (rectangle.FillStyleId is null || !rectangle.Bounds.Contains(point))
+        {
+            result = default;
+            return false;
+        }
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Fill,
+            [rectangle.Id],
             point);
 
         return true;

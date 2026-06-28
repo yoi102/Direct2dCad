@@ -43,7 +43,7 @@ public sealed class CadHandleSceneBuilder
 
     public static bool SupportsCenterGrip(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadArc or CadPolyline or CadText or CadBlockReference;
+        return entity is CadLine or CadCircle or CadRectangle or CadArc or CadPolyline or CadText or CadBlockReference;
     }
 
     private static bool TryGetSelectableEntity(
@@ -85,6 +85,10 @@ public sealed class CadHandleSceneBuilder
                 AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y + circle.Radius), CadHandleType.Radius);
                 AddGrip(items, entity.Id, new CadPointD(circle.Center.X - circle.Radius, circle.Center.Y), CadHandleType.Radius);
                 AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y - circle.Radius), CadHandleType.Radius);
+                break;
+
+            case CadRectangle:
+                AddBoundsGripHandles(items, entity.Id, entity.Bounds);
                 break;
 
             case CadText:

@@ -144,6 +144,9 @@
   <data name="Ok" xml:space="preserve">
     <value>Ok</value>
   </data>
+  <data name="Rectangle" xml:space="preserve">
+    <value>矩形</value>
+  </data>
   <data name="SaveAs" xml:space="preserve">
     <value>名前を付けて保存...</value>
   </data>

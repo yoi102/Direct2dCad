@@ -15,6 +15,9 @@ internal static class CadEntityTransform
             case CadCircle circle:
                 circle.SetCenter(circle.Center + delta);
                 break;
+            case CadRectangle rectangle:
+                rectangle.SetBounds(rectangle.Bounds.Translate(delta));
+                break;
             case CadArc arc:
                 arc.SetCenter(arc.Center + delta);
                 break;

@@ -545,6 +545,26 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return entity;
     }
 
+    public CadRectangle AddRectangle(
+        CadRectD bounds,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null,
+        string name = "")
+    {
+        var entity = new CadRectangle(
+            _ids.NewEntityId(),
+            layerId ?? LayerId.Default,
+            BlockId.ModelSpace,
+            bounds,
+            name);
+
+        entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetFillStyleInternal(fillStyleId);
+        AddEntityCore(entity);
+        return entity;
+    }
+
     public CadBlockReference AddBlockReference(
         BlockId definitionBlockId,
         CadPointD position,

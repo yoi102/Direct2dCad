@@ -20,10 +20,8 @@ internal static class CadSectionMigrationRegistry
             Section<CadDocumentSection>(CadSectionKind.Document, currentVersion: 1)
                 .ReadsVersion<CadDocumentSection>(1),
 
-            Section<CadSettingsSection>(CadSectionKind.Settings, currentVersion: 2)
-                .ReadsVersion<CadSettingsSection>(1)
-                .ReadsVersion<CadSettingsSection>(2)
-                .Migrates<CadSettingsSection, CadSettingsSection>(1, old => old),
+            Section<CadSettingsSection>(CadSectionKind.Settings, currentVersion: 1)
+                .ReadsVersion<CadSettingsSection>(1),
 
             Section<CadLayerSection>(CadSectionKind.Layers, currentVersion: 1)
                 .ReadsVersion<CadLayerSection>(1),
@@ -39,6 +37,9 @@ internal static class CadSectionMigrationRegistry
 
             Section<CadArcsSection>(CadSectionKind.Arcs, currentVersion: 1)
                 .ReadsVersion<CadArcsSection>(1),
+
+            Section<CadRectanglesSection>(CadSectionKind.Rectangles, currentVersion: 1)
+                .ReadsVersion<CadRectanglesSection>(1),
 
             Section<CadTextsSection>(CadSectionKind.Texts, currentVersion: 1)
                 .ReadsVersion<CadTextsSection>(1)

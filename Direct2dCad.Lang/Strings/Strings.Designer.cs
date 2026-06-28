@@ -176,6 +176,15 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Lines", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   查找类似 Rectangle 的本地化字符串。
+        /// </summary>
+        public static string Rectangle {
+            get {
+                return ResourceManager.GetString("Rectangle", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 None 的本地化字符串。

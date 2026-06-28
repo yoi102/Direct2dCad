@@ -102,6 +102,12 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 circle.GraphicStyleId,
                 circle.FillStyleId,
                 circle.Name),
+            CadRectangle rectangle => document.AddRectangle(
+                rectangle.Bounds.Translate(delta),
+                rectangle.LayerId,
+                rectangle.GraphicStyleId,
+                rectangle.FillStyleId,
+                rectangle.Name),
             CadText text => document.AddText(
                 text.Text,
                 text.Position + delta,

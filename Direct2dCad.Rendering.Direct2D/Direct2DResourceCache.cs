@@ -158,6 +158,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadLine line => CreateLineGeometry(line.Start, line.End),
             CadCircle circle => Factory!.CreateEllipseGeometry(
                 new Ellipse(ToVector2(circle.Center), (float)circle.Radius, (float)circle.Radius)),
+            CadRectangle rectangle => CreateRectangleGeometry(rectangle.Bounds),
             CadArc arc => arc.IsFullCircle
                 ? Factory!.CreateEllipseGeometry(new Ellipse(ToVector2(arc.Center), (float)arc.Radius, (float)arc.Radius))
                 : CreateArcPathGeometry(arc),
@@ -279,6 +280,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         {
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
+            CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadText text => text.GraphicStyleId,
@@ -309,6 +311,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         var fillStyleId = entity switch
         {
             CadCircle circle => circle.FillStyleId,
+            CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline { Closed: true } polyline => polyline.FillStyleId,
             _ => null
         };

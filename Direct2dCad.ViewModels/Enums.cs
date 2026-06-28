@@ -14,6 +14,8 @@ public enum CadCanvasToolMode
     Line,
     [LocalizedDescription("Circle", typeof(Strings))]
     Circle,
+    [LocalizedDescription("Rectangle", typeof(Strings))]
+    Rectangle,
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
     [LocalizedDescription("SetOrigin", typeof(Strings))]

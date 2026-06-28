@@ -147,6 +147,24 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadRectanglesSection ToRectanglesSection(CadDocument document)
+    {
+        return new CadRectanglesSection
+        {
+            Rectangles = document.Entities.Values
+                .OfType<CadRectangle>()
+                .Select(x => new CadRectangleData
+                {
+                    Entity = ToEntityData(x),
+                    Min = ToData(new CadPointD(x.Bounds.MinX, x.Bounds.MinY)),
+                    Max = ToData(new CadPointD(x.Bounds.MaxX, x.Bounds.MaxY)),
+                    GraphicStyleId = x.GraphicStyleId?.Value,
+                    FillStyleId = x.FillStyleId?.Value
+                })
+                .ToList()
+        };
+    }
+
     internal static CadTextsSection ToTextsSection(CadDocument document)
     {
         return new CadTextsSection
@@ -175,6 +193,7 @@ internal static class CadDocumentMapper
         CadLinesSection lines,
         CadCirclesSection circles,
         CadArcsSection arcs,
+        CadRectanglesSection rectangles,
         CadTextsSection texts)
     {
         var document = new CadDocument(
@@ -185,7 +204,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
-        ApplyEntities(document, lines, circles, arcs, texts);
+        ApplyEntities(document, lines, circles, arcs, rectangles, texts);
 
         return document;
     }
@@ -317,6 +336,7 @@ internal static class CadDocumentMapper
         CadLinesSection lines,
         CadCirclesSection circles,
         CadArcsSection arcs,
+        CadRectanglesSection rectangles,
         CadTextsSection texts)
     {
         foreach (var lineData in lines.Lines)
@@ -362,6 +382,24 @@ internal static class CadDocumentMapper
             arc.SetGraphicStyleInternal(ToStyleId(arcData.GraphicStyleId));
             ApplyEntityState(arc, arcData.Entity);
             document.AddEntityCore(arc);
+        }
+
+        foreach (var rectangleData in rectangles.Rectangles)
+        {
+            var rectangle = new CadRectangle(
+                new EntityId(rectangleData.Entity.Id),
+                new LayerId(rectangleData.Entity.LayerId),
+                new BlockId(rectangleData.Entity.OwnerBlockId),
+                CadRectD.FromLTRB(
+                    rectangleData.Min.X,
+                    rectangleData.Min.Y,
+                    rectangleData.Max.X,
+                    rectangleData.Max.Y),
+                rectangleData.Entity.Name);
+            rectangle.SetGraphicStyleInternal(ToStyleId(rectangleData.GraphicStyleId));
+            rectangle.SetFillStyleInternal(ToStyleId(rectangleData.FillStyleId));
+            ApplyEntityState(rectangle, rectangleData.Entity);
+            document.AddEntityCore(rectangle);
         }
 
         foreach (var textData in texts.Texts)

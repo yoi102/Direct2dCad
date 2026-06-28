@@ -59,6 +59,7 @@ public sealed class SetEntityColorCommand : ICadCommand
         {
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
+            CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadText text => text.GraphicStyleId,
@@ -76,6 +77,9 @@ public sealed class SetEntityColorCommand : ICadCommand
                 break;
             case CadCircle circle:
                 circle.SetGraphicStyleInternal(styleId);
+                break;
+            case CadRectangle rectangle:
+                rectangle.SetGraphicStyleInternal(styleId);
                 break;
             case CadArc arc:
                 arc.SetGraphicStyleInternal(styleId);

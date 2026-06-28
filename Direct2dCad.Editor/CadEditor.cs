@@ -136,6 +136,18 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddRectangle(
+        CadRectD bounds,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null,
+        string name = "")
+    {
+        var command = new AddRectangleCommand(bounds, layerId, graphicStyleId, fillStyleId, name);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddText(
         string text,
         CadPointD position,
@@ -190,6 +202,11 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetCircleGeometry(EntityId entityId, CadPointD center, double radius)
     {
         return DocumentCommands.Execute(new SetCircleGeometryCommand(entityId, center, radius));
+    }
+
+    public CadDocumentChangeSet SetRectangleGeometry(EntityId entityId, CadRectD bounds)
+    {
+        return DocumentCommands.Execute(new SetRectangleGeometryCommand(entityId, bounds));
     }
 
     public CadDocumentChangeSet SetTextContent(EntityId entityId, string text)
