@@ -493,8 +493,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     DrawTransientRectangle(deviceContext, viewport, rectangle.Bounds, rectangle.Style);
                     break;
 
-                case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0:
-                    DrawTransientText(deviceContext, viewport, text.Text, text.Position, text.Height, text.Style);
+                case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0 && !text.Bounds.IsEmpty:
+                    DrawTransientText(deviceContext, viewport, text.Text, text.Height, text.Bounds, text.Style);
                     break;
 
                 case CadTransientEntityReference reference:
@@ -723,17 +723,18 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 break;
 
             case CadText text:
+                var bounds = text.Bounds.Translate(reference.Offset);
                 DrawTransientText(
                     deviceContext,
                     viewport,
                     text.Text,
-                    text.Position + reference.Offset,
                     text.Height,
+                    bounds,
                     reference.Style);
                 DrawTransientRectangle(
                     deviceContext,
                     viewport,
-                    text.Bounds.Translate(reference.Offset),
+                    bounds,
                     reference.Style with { FillColor = null });
                 break;
 
@@ -819,11 +820,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         CadViewport viewport,
         string text,
-        CadPointD position,
         double height,
+        CadRectD bounds,
         CadTransientStyle style)
     {
-        if (_resourceCache.WriteFactory is null)
+        if (_resourceCache.WriteFactory is null || bounds.IsEmpty)
             return;
 
         using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
@@ -843,11 +844,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             deviceContext,
             text,
             format,
-            CadRectD.FromLTRB(
-                position.X,
-                position.Y,
-                position.X + CadText.EstimateTextWidth(text, height),
-                position.Y + height),
+            bounds,
             brush);
     }
 

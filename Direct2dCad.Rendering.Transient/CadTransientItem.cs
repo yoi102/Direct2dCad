@@ -26,6 +26,7 @@ public sealed record CadTransientText(
     string Text,
     CadPointD Position,
     double Height,
+    CadRectD Bounds,
     CadTransientStyle Style)
     : CadTransientItem(Style);
 

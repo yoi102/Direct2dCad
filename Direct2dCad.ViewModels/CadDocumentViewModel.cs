@@ -595,14 +595,9 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return;
         }
 
-        items.Add(new CadTransientText(text.Text, position, height, style));
-        items.Add(new CadTransientRectangle(
-            CadRectD.FromLTRB(
-                position.X,
-                position.Y,
-                position.X + CadText.EstimateTextWidth(text.Text, height),
-                position.Y + height),
-            style with { FillColor = null }));
+        var bounds = CreateTextBounds(text.Text, position, height);
+        items.Add(new CadTransientText(text.Text, position, height, bounds, style));
+        items.Add(new CadTransientRectangle(bounds, style with { FillColor = null }));
     }
 
     private void CommitGripDrag(CadPointD screen)
@@ -720,7 +715,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var dragBottom = Math.Abs(drag.Handle.Position.Y - bounds.MinY) <= Math.Abs(drag.Handle.Position.Y - bounds.MaxY);
         var oppositeX = dragLeft ? bounds.MaxX : bounds.MinX;
         var oppositeY = dragBottom ? bounds.MaxY : bounds.MinY;
-        var widthFactor = CadText.EstimateTextWidth(text.Text, 1.0);
+        var widthFactor = GetCachedTextWidthFactor(text);
         var desiredHeight = Math.Abs(target.Y - oppositeY);
         var desiredWidth = Math.Abs(target.X - oppositeX);
 
@@ -848,10 +843,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
             case CadCanvasToolMode.Text:
                 var drawingText = ResolveDrawingText();
+                var drawingHeight = ResolveTextBoxHeight(drawingText);
                 items.Add(new CadTransientText(
                     drawingText,
                     mouseWorld,
-                    ResolveTextBoxHeight(drawingText),
+                    drawingHeight,
+                    CreateTextBounds(drawingText, mouseWorld, drawingHeight),
                     CadTransientStyle.Construction));
                 break;
 
@@ -1038,6 +1035,22 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private static bool IsFinitePositive(double value)
     {
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private static CadRectD CreateTextBounds(string text, CadPointD position, double height)
+    {
+        return CadRectD.FromLTRB(
+            position.X,
+            position.Y,
+            position.X + CadText.EstimateTextWidth(text, height),
+            position.Y + height);
+    }
+
+    private static double GetCachedTextWidthFactor(CadText text)
+    {
+        return IsFinitePositive(text.Height) && IsFinitePositive(text.EstimatedWidth)
+            ? text.EstimatedWidth / text.Height
+            : CadText.EstimateTextWidth(text.Text, 1.0);
     }
 
     private static bool IsValidRectangleBounds(CadRectD bounds)
