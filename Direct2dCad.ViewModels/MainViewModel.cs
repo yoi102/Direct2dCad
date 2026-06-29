@@ -20,12 +20,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private bool _isSyncingViewSettings;
     private bool _isSyncingUserSettings;
 
-    public MainViewModel(
+    public MainViewModel(ICultureSettingService cultureSettingService, IThemeSettingService themeSettingService,
         IFileDialogService fileDialogService,
         IMessageBoxService messageBoxService,
         IUserSettingsService userSettingsService,
         CadDocumentViewModel cadDocumentViewModel)
     {
+        _cultureSettingService = cultureSettingService;
+        _themeSettingService = themeSettingService;
         _fileDialogService = fileDialogService;
         _messageBoxService = messageBoxService;
         _userSettingsService = userSettingsService;
@@ -327,6 +329,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         CadDocumentViewModel.SetToolMode(mode);
     }
+
     [RelayCommand]
     public void FitToWindow()
     {
@@ -501,4 +504,43 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         ApplyDocumentViewSettingsToToolbar();
     }
+
+    #region TitleBar
+
+    private readonly ICultureSettingService _cultureSettingService;
+
+    private readonly IThemeSettingService _themeSettingService;
+
+    [ObservableProperty]
+    public partial bool Topmost { get; set; }
+
+    [ObservableProperty]
+    public partial int CurrentCultureLCID { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsDarkTheme { get; set; }
+
+    partial void OnIsDarkThemeChanged(bool value)
+    {
+        _themeSettingService.ApplyThemeLightDark(value);
+    }
+
+
+
+    [RelayCommand]
+    private void ChangeCulture(string lcidString)
+    {
+        if (!int.TryParse(lcidString, out var lcid))
+            return;
+        CurrentCultureLCID = lcid;
+        _cultureSettingService.ChangeCulture(lcid);
+    }
+
+    [RelayCommand]
+    private void ChangeTopmost()
+    {
+        Topmost = !Topmost;
+    }
+
+    #endregion TitleBar
 }

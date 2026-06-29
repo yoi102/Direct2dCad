@@ -1,10 +1,11 @@
+using System.Diagnostics;
 using System.Windows;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.ViewModels;
 
 namespace Direct2dCad.wpf;
 
-public partial class MainWindow : Window
+public partial class MainWindow 
 {
     private MainViewModel _viewModel;
 
@@ -21,5 +22,10 @@ public partial class MainWindow : Window
     {
         _viewModel.Dispose();
         cadDocumentView.Dispose();
+    }
+
+    private void IconClicked(object sender, RoutedEventArgs e)
+    {
+        Process.Start(new ProcessStartInfo("https://github.com/yoi102/Direct2dCad") { UseShellExecute = true });
     }
 }

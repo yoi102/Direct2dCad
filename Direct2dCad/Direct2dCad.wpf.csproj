@@ -6,16 +6,25 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Direct2dCad.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Direct2dCad.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antelcat.I18N.WPF" Version="2.0.0-preview-1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="MahApps.Metro" Version="3.0.0-rc0529" />
+    <PackageReference Include="MaterialDesignThemes.MahApps" Version="5.3.3-ci1401" />
     <PackageReference Include="MessagePipe" Version="1.8.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.5.26302.115" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.Common\Direct2dCad.Common.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Control\Direct2dCad.wpf.Control.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
     <ProjectReference Include="..\Direct2dCad.wpf.ViewServices\Direct2dCad.wpf.ViewServices.csproj" />
