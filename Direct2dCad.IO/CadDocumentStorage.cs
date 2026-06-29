@@ -65,6 +65,7 @@ public sealed class CadDocumentStorage
         var styles = ReadSection<CadStylesSection>(filePath, CadSectionKind.Styles);
         var lines = ReadSection<CadLinesSection>(filePath, CadSectionKind.Lines);
         var circles = ReadSection<CadCirclesSection>(filePath, CadSectionKind.Circles);
+        var ellipses = ReadOptionalSection(filePath, CadSectionKind.Ellipses, new CadEllipsesSection());
         var arcs = ReadSection<CadArcsSection>(filePath, CadSectionKind.Arcs);
         var rectangles = ReadOptionalSection(filePath, CadSectionKind.Rectangles, new CadRectanglesSection());
         var polylines = ReadOptionalSection(filePath, CadSectionKind.Polylines, new CadPolylinesSection());
@@ -78,6 +79,7 @@ public sealed class CadDocumentStorage
             styles,
             lines,
             circles,
+            ellipses,
             arcs,
             rectangles,
             polylines,
@@ -153,6 +155,7 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Styles, CadDocumentMapper.ToStylesSection(document)),
             Serialize(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(document)),
             Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(document)),
+            Serialize(CadSectionKind.Ellipses, CadDocumentMapper.ToEllipsesSection(document)),
             Serialize(CadSectionKind.Arcs, CadDocumentMapper.ToArcsSection(document)),
             Serialize(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(document)),
             Serialize(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(document)),

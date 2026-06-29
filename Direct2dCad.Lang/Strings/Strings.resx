@@ -133,6 +133,10 @@
     <value>Circle</value>
     <comment>Circle</comment>
   </data>
+  <data name="Ellipse" xml:space="preserve">
+    <value>Ellipse</value>
+    <comment>Ellipse</comment>
+  </data>
   <data name="Rectangle" xml:space="preserve">
     <value>Rectangle</value>
     <comment>Rectangle</comment>

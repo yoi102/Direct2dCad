@@ -97,6 +97,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Ellipse 的本地化字符串。
+        /// </summary>
+        public static string Ellipse {
+            get {
+                return ResourceManager.GetString("Ellipse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Confirm 的本地化字符串。
         /// </summary>
         public static string Confirm {

@@ -35,6 +35,9 @@ internal static class CadSectionMigrationRegistry
             Section<CadCirclesSection>(CadSectionKind.Circles, currentVersion: 1)
                 .ReadsVersion<CadCirclesSection>(1),
 
+            Section<CadEllipsesSection>(CadSectionKind.Ellipses, currentVersion: 1)
+                .ReadsVersion<CadEllipsesSection>(1),
+
             Section<CadArcsSection>(CadSectionKind.Arcs, currentVersion: 1)
                 .ReadsVersion<CadArcsSection>(1),
 

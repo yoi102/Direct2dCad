@@ -53,6 +53,7 @@ public sealed class BoxSelectCommand : SelectionCommandBase
             CadPolyline polyline => PolylineIntersectsArea(polyline, area),
             CadSpline spline => SplineIntersectsArea(spline, area),
             CadCircle circle => CircleIntersectsArea(circle.Center, circle.Radius, area),
+            CadEllipse ellipse => EllipseIntersectsArea(ellipse, area),
             CadArc arc => ArcIntersectsArea(arc, area),
             _ => area.Intersects(entity.Bounds)
         };
@@ -126,6 +127,22 @@ public sealed class BoxSelectCommand : SelectionCommandBase
                maxDistanceSquared >= radiusSquared - 1e-9;
     }
 
+    private static bool EllipseIntersectsArea(CadEllipse ellipse, CadRectD area)
+    {
+        if (!ellipse.Bounds.Intersects(area))
+            return false;
+
+        if (area.Contains(new CadPointD(ellipse.Center.X + ellipse.RadiusX, ellipse.Center.Y)) ||
+            area.Contains(new CadPointD(ellipse.Center.X, ellipse.Center.Y + ellipse.RadiusY)) ||
+            area.Contains(new CadPointD(ellipse.Center.X - ellipse.RadiusX, ellipse.Center.Y)) ||
+            area.Contains(new CadPointD(ellipse.Center.X, ellipse.Center.Y - ellipse.RadiusY)))
+        {
+            return true;
+        }
+
+        return EnumerateEllipseRectIntersectionPoints(ellipse, area).Any();
+    }
+
     private static bool SegmentIntersectsArea(CadPointD start, CadPointD end, CadRectD area)
     {
         if (area.Contains(start) || area.Contains(end))
@@ -170,6 +187,41 @@ public sealed class BoxSelectCommand : SelectionCommandBase
             var dx = Math.Sqrt(Math.Max(0, remainder));
             var x1 = center.X - dx;
             var x2 = center.X + dx;
+            if (x1 >= area.MinX && x1 <= area.MaxX)
+                yield return new CadPointD(x1, y);
+            if (dx > 0 && x2 >= area.MinX && x2 <= area.MaxX)
+                yield return new CadPointD(x2, y);
+        }
+    }
+
+    private static IEnumerable<CadPointD> EnumerateEllipseRectIntersectionPoints(CadEllipse ellipse, CadRectD area)
+    {
+        foreach (var x in new[] { area.MinX, area.MaxX })
+        {
+            var normalizedX = (x - ellipse.Center.X) / ellipse.RadiusX;
+            var remainder = 1.0 - normalizedX * normalizedX;
+            if (remainder < 0)
+                continue;
+
+            var dy = ellipse.RadiusY * Math.Sqrt(Math.Max(0, remainder));
+            var y1 = ellipse.Center.Y - dy;
+            var y2 = ellipse.Center.Y + dy;
+            if (y1 >= area.MinY && y1 <= area.MaxY)
+                yield return new CadPointD(x, y1);
+            if (dy > 0 && y2 >= area.MinY && y2 <= area.MaxY)
+                yield return new CadPointD(x, y2);
+        }
+
+        foreach (var y in new[] { area.MinY, area.MaxY })
+        {
+            var normalizedY = (y - ellipse.Center.Y) / ellipse.RadiusY;
+            var remainder = 1.0 - normalizedY * normalizedY;
+            if (remainder < 0)
+                continue;
+
+            var dx = ellipse.RadiusX * Math.Sqrt(Math.Max(0, remainder));
+            var x1 = ellipse.Center.X - dx;
+            var x2 = ellipse.Center.X + dx;
             if (x1 >= area.MinX && x1 <= area.MaxX)
                 yield return new CadPointD(x1, y);
             if (dx > 0 && x2 >= area.MinX && x2 <= area.MaxX)

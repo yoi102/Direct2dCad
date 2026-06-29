@@ -117,6 +117,9 @@
             <Button Content="Circle"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Circle" />
+            <Button Content="Ellipse"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Ellipse" />
             <Button Content="Arc"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Arc" />

@@ -84,6 +84,9 @@ public static class CadEntityHitTester
             case CadCircle circle:
                 return HitCircleEdge(circle, point, tolerance, out result);
 
+            case CadEllipse ellipse:
+                return HitEllipseEdge(ellipse, point, tolerance, out result);
+
             case CadRectangle rectangle:
                 return HitRectEdge(rectangle.Id, rectangle.Bounds, point, tolerance, out result);
 
@@ -123,6 +126,9 @@ public static class CadEntityHitTester
         {
             case CadCircle circle:
                 return HitCircleFill(circle, point, out result);
+
+            case CadEllipse ellipse:
+                return HitEllipseFill(ellipse, point, out result);
 
             case CadRectangle rectangle:
                 return HitRectangleFill(rectangle, point, out result);
@@ -213,6 +219,60 @@ public static class CadEntityHitTester
         result = new CadHitTestResult(
             CadHitTestKind.Fill,
             [circle.Id],
+            point);
+
+        return true;
+    }
+
+    private static bool HitEllipseEdge(
+        CadEllipse ellipse,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        var dx = point.X - ellipse.Center.X;
+        var dy = point.Y - ellipse.Center.Y;
+        var angle = Math.Atan2(dy / ellipse.RadiusY, dx / ellipse.RadiusX);
+        var edgePoint = new CadPointD(
+            ellipse.Center.X + Math.Cos(angle) * ellipse.RadiusX,
+            ellipse.Center.Y + Math.Sin(angle) * ellipse.RadiusY);
+        var distance = point.DistanceTo(edgePoint);
+
+        if (distance > tolerance)
+        {
+            result = default;
+            return false;
+        }
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Edge,
+            [ellipse.Id],
+            point,
+            distance);
+
+        return true;
+    }
+
+    private static bool HitEllipseFill(
+        CadEllipse ellipse,
+        CadPointD point,
+        out CadHitTestResult result)
+    {
+        if (ellipse.FillStyleId is null)
+        {
+            result = default;
+            return false;
+        }
+
+        if (!IsPointInsideEllipse(point, ellipse.Center, ellipse.RadiusX, ellipse.RadiusY))
+        {
+            result = default;
+            return false;
+        }
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Fill,
+            [ellipse.Id],
             point);
 
         return true;
@@ -555,6 +615,13 @@ public static class CadEntityHitTester
             start.Y + t * dy);
 
         return point.DistanceTo(projection);
+    }
+
+    private static bool IsPointInsideEllipse(CadPointD point, CadPointD center, double radiusX, double radiusY)
+    {
+        var normalizedX = (point.X - center.X) / radiusX;
+        var normalizedY = (point.Y - center.Y) / radiusY;
+        return normalizedX * normalizedX + normalizedY * normalizedY <= 1.0 + Epsilon;
     }
 
     private static bool PointInPolygon(CadPointD point, IReadOnlyList<CadPointD> polygon)

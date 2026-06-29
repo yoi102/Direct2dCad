@@ -128,6 +128,25 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadEllipsesSection ToEllipsesSection(CadDocument document)
+    {
+        return new CadEllipsesSection
+        {
+            Ellipses = document.Entities.Values
+                .OfType<CadEllipse>()
+                .Select(x => new CadEllipseData
+                {
+                    Entity = ToEntityData(x),
+                    Center = ToData(x.Center),
+                    RadiusX = x.RadiusX,
+                    RadiusY = x.RadiusY,
+                    GraphicStyleId = x.GraphicStyleId?.Value,
+                    FillStyleId = x.FillStyleId?.Value
+                })
+                .ToList()
+        };
+    }
+
     internal static CadArcsSection ToArcsSection(CadDocument document)
     {
         return new CadArcsSection
@@ -227,6 +246,7 @@ internal static class CadDocumentMapper
         CadStylesSection styles,
         CadLinesSection lines,
         CadCirclesSection circles,
+        CadEllipsesSection ellipses,
         CadArcsSection arcs,
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
@@ -241,7 +261,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
-        ApplyEntities(document, lines, circles, arcs, rectangles, polylines, splines, texts);
+        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts);
 
         return document;
     }
@@ -372,6 +392,7 @@ internal static class CadDocumentMapper
         CadDocument document,
         CadLinesSection lines,
         CadCirclesSection circles,
+        CadEllipsesSection ellipses,
         CadArcsSection arcs,
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
@@ -405,6 +426,22 @@ internal static class CadDocumentMapper
             circle.SetFillStyleInternal(ToStyleId(circleData.FillStyleId));
             ApplyEntityState(circle, circleData.Entity);
             document.AddEntityCore(circle);
+        }
+
+        foreach (var ellipseData in ellipses.Ellipses)
+        {
+            var ellipse = new CadEllipse(
+                new EntityId(ellipseData.Entity.Id),
+                new LayerId(ellipseData.Entity.LayerId),
+                new BlockId(ellipseData.Entity.OwnerBlockId),
+                FromData(ellipseData.Center),
+                ellipseData.RadiusX,
+                ellipseData.RadiusY,
+                ellipseData.Entity.Name);
+            ellipse.SetGraphicStyleInternal(ToStyleId(ellipseData.GraphicStyleId));
+            ellipse.SetFillStyleInternal(ToStyleId(ellipseData.FillStyleId));
+            ApplyEntityState(ellipse, ellipseData.Entity);
+            document.AddEntityCore(ellipse);
         }
 
         foreach (var arcData in arcs.Arcs)

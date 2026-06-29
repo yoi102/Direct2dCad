@@ -535,6 +535,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     DrawTransientCircle(deviceContext, viewport, circle.Center, circle.Radius, circle.Style);
                     break;
 
+                case CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0:
+                    DrawTransientEllipse(
+                        deviceContext,
+                        viewport,
+                        ellipse.Center,
+                        ellipse.RadiusX,
+                        ellipse.RadiusY,
+                        ellipse.Style);
+                    break;
+
                 case CadTransientArc arc when arc.Radius > 0 && Math.Abs(arc.SweepAngleRadians) > double.Epsilon:
                     DrawTransientArc(
                         deviceContext,
@@ -630,6 +640,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     viewport,
                     circle.Center + reference.Offset,
                     circle.Radius,
+                    style);
+                break;
+
+            case CadEllipse ellipse:
+                DrawTransientEllipse(
+                    deviceContext,
+                    viewport,
+                    ellipse.Center + reference.Offset,
+                    ellipse.RadiusX,
+                    ellipse.RadiusY,
                     style);
                 break;
 
@@ -823,6 +843,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     viewport,
                     circle.Center + reference.Offset,
                     circle.Radius,
+                    reference.Style);
+                break;
+
+            case CadEllipse ellipse:
+                DrawTransientEllipse(
+                    deviceContext,
+                    viewport,
+                    ellipse.Center + reference.Offset,
+                    ellipse.RadiusX,
+                    ellipse.RadiusY,
                     reference.Style);
                 break;
 
@@ -1093,7 +1123,18 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         double radius,
         CadTransientStyle style)
     {
-        var ellipse = new Ellipse(ToVector2(center), (float)radius, (float)radius);
+        DrawTransientEllipse(deviceContext, viewport, center, radius, radius, style);
+    }
+
+    private void DrawTransientEllipse(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        CadTransientStyle style)
+    {
+        var ellipse = new Ellipse(ToVector2(center), (float)radiusX, (float)radiusY);
 
         if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
         {

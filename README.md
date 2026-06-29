@@ -704,9 +704,7 @@ Views/CadDocumentView.xaml.cs
 
 #### 项目引用
 
-```text
-Direct2dCad.Db
-```
+无项目引用。
 
 #### 主要职责
 
@@ -979,6 +977,5 @@ Direct2dCad.Rendering
 | `Direct2dCad.IO` | `MessagePack`, `Riok.Mapperly` |
 | `Direct2dCad.Rendering.Direct2D` | `Vortice.Direct2D1`, `Vortice.Direct3D11`, `Vortice.Direct3D9` |
 | `Direct2dCad.ViewModels` | `CommunityToolkit.Mvvm`, `Microsoft.Extensions.DependencyInjection.Abstractions` |
-| `Direct2dCad.wpf` | `CommunityToolkit.Mvvm`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection` |
+| `Direct2dCad.wpf` | `CommunityToolkit.Mvvm`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection` , `Antelcat.I18N.WPF`, `MaterialDesignThemes.MahApps`, `MahApps.Metro`|
 | `Direct2dCad.Lang` | `Antelcat.I18N.SourceGenerators` |
-| `Direct2dCad.winui` | `Microsoft.WindowsAppSDK`, `Microsoft.Windows.SDK.BuildTools` |

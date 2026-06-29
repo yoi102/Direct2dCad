@@ -142,6 +142,20 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddEllipse(
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null,
+        string name = "")
+    {
+        var command = new AddEllipseCommand(center, radiusX, radiusY, layerId, graphicStyleId, fillStyleId, name);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddArc(
         CadPointD center,
         double radius,
@@ -253,6 +267,11 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetCircleGeometry(EntityId entityId, CadPointD center, double radius)
     {
         return DocumentCommands.Execute(new SetCircleGeometryCommand(entityId, center, radius));
+    }
+
+    public CadDocumentChangeSet SetEllipseGeometry(EntityId entityId, CadPointD center, double radiusX, double radiusY)
+    {
+        return DocumentCommands.Execute(new SetEllipseGeometryCommand(entityId, center, radiusX, radiusY));
     }
 
     public CadDocumentChangeSet SetArcGeometry(

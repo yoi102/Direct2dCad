@@ -102,6 +102,14 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 circle.GraphicStyleId,
                 circle.FillStyleId,
                 circle.Name),
+            CadEllipse ellipse => document.AddEllipse(
+                ellipse.Center + delta,
+                ellipse.RadiusX,
+                ellipse.RadiusY,
+                ellipse.LayerId,
+                ellipse.GraphicStyleId,
+                ellipse.FillStyleId,
+                ellipse.Name),
             CadRectangle rectangle => document.AddRectangle(
                 rectangle.Bounds.Translate(delta),
                 rectangle.LayerId,

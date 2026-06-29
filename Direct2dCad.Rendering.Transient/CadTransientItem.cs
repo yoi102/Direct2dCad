@@ -17,6 +17,13 @@ public sealed record CadTransientCircle(
     CadTransientStyle Style)
     : CadTransientItem(Style);
 
+public sealed record CadTransientEllipse(
+    CadPointD Center,
+    double RadiusX,
+    double RadiusY,
+    CadTransientStyle Style)
+    : CadTransientItem(Style);
+
 public sealed record CadTransientArc(
     CadPointD Center,
     double Radius,

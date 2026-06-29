@@ -391,6 +391,24 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 RequestRender();
                 break;
 
+            case CadCanvasToolMode.Ellipse:
+                if (_pendingWorldPoint is null)
+                    _pendingWorldPoint = world;
+                else
+                {
+                    var bounds = CadRectD.FromLTRB(
+                        _pendingWorldPoint.Value.X,
+                        _pendingWorldPoint.Value.Y,
+                        world.X,
+                        world.Y);
+                    if (TryCreateEllipseGeometry(bounds, out var center, out var radiusX, out var radiusY))
+                        CadEditor.AddEllipse(center, radiusX, radiusY);
+
+                    _pendingWorldPoint = null;
+                }
+                RequestRender();
+                break;
+
             case CadCanvasToolMode.Arc:
                 if (_pendingWorldPoint is null)
                 {
@@ -626,6 +644,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddCircleGripPreview(items, circle, drag, style);
                 break;
 
+            case CadEllipse ellipse:
+                AddEllipseGripPreview(items, ellipse, drag, style);
+                break;
+
             case CadArc arc:
                 AddArcGripPreview(items, arc, drag, style);
                 break;
@@ -682,6 +704,19 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         items.Add(new CadTransientCircle(circle.Center, radius, style));
         items.Add(new CadTransientLine(circle.Center, drag.DraggedGripPosition, style));
+    }
+
+    private static void AddEllipseGripPreview(
+        List<CadTransientItem> items,
+        CadEllipse ellipse,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (!TryCreateEllipseGripGeometry(ellipse, drag, out var center, out var radiusX, out var radiusY))
+            return;
+
+        items.Add(new CadTransientEllipse(center, radiusX, radiusY, style));
+        items.Add(new CadTransientLine(center, drag.DraggedGripPosition, style));
     }
 
     private static void AddArcGripPreview(
@@ -790,6 +825,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CommitCircleGripDrag(circle, drag);
                 break;
 
+            case CadEllipse ellipse:
+                CommitEllipseGripDrag(ellipse, drag);
+                break;
+
             case CadArc arc:
                 CommitArcGripDrag(arc, drag);
                 break;
@@ -835,6 +874,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
         if (radius > double.Epsilon)
             CadEditor.SetCircleGeometry(circle.Id, circle.Center, radius);
+    }
+
+    private void CommitEllipseGripDrag(CadEllipse ellipse, GripDragState drag)
+    {
+        if (TryCreateEllipseGripGeometry(ellipse, drag, out var center, out var radiusX, out var radiusY))
+            CadEditor.SetEllipseGeometry(ellipse.Id, center, radiusX, radiusY);
     }
 
     private void CommitArcGripDrag(CadArc arc, GripDragState drag)
@@ -932,6 +977,32 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         bounds = CadRectD.FromLTRB(oppositeX, oppositeY, target.X, target.Y);
         return IsValidRectangleBounds(bounds);
+    }
+
+    private static bool TryCreateEllipseGripGeometry(
+        CadEllipse ellipse,
+        GripDragState drag,
+        out CadPointD center,
+        out double radiusX,
+        out double radiusY)
+    {
+        center = ellipse.Center;
+        radiusX = ellipse.RadiusX;
+        radiusY = ellipse.RadiusY;
+
+        if (drag.Handle.Type != CadHandleType.Radius)
+            return false;
+
+        var isHorizontalRadiusGrip =
+            Math.Abs(drag.Handle.Position.X - ellipse.Center.X) >=
+            Math.Abs(drag.Handle.Position.Y - ellipse.Center.Y);
+
+        if (isHorizontalRadiusGrip)
+            radiusX = Math.Abs(drag.DraggedGripPosition.X - ellipse.Center.X);
+        else
+            radiusY = Math.Abs(drag.DraggedGripPosition.Y - ellipse.Center.Y);
+
+        return IsValidEllipseGeometry(radiusX, radiusY);
     }
 
     private static bool TryCreatePolylineGripGeometry(
@@ -1171,6 +1242,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     items.Add(new CadTransientCircle(center, radius, CadTransientStyle.Construction));
                     items.Add(new CadTransientLine(center, mouseWorld, CadTransientStyle.Construction));
                 }
+                break;
+
+            case CadCanvasToolMode.Ellipse when _pendingWorldPoint is { } firstCorner:
+                var ellipseBounds = CadRectD.FromLTRB(firstCorner.X, firstCorner.Y, mouseWorld.X, mouseWorld.Y);
+                if (TryCreateEllipseGeometry(ellipseBounds, out var ellipseCenter, out var radiusX, out var radiusY))
+                    items.Add(new CadTransientEllipse(ellipseCenter, radiusX, radiusY, CadTransientStyle.Construction));
                 break;
 
             case CadCanvasToolMode.Arc when _pendingWorldPoint is { } arcCenter && _pendingArcStartPoint is null:
@@ -1582,6 +1659,28 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                Math.Abs(sweepAngleRadians) <= TwoPi;
     }
 
+    private static bool TryCreateEllipseGeometry(
+        CadRectD bounds,
+        out CadPointD center,
+        out double radiusX,
+        out double radiusY)
+    {
+        center = bounds.Center;
+        radiusX = bounds.Width * 0.5;
+        radiusY = bounds.Height * 0.5;
+        return IsValidEllipseGeometry(radiusX, radiusY);
+    }
+
+    private static bool IsValidEllipseGeometry(double radiusX, double radiusY)
+    {
+        return radiusX > double.Epsilon &&
+               radiusY > double.Epsilon &&
+               !double.IsNaN(radiusX) &&
+               !double.IsNaN(radiusY) &&
+               !double.IsInfinity(radiusX) &&
+               !double.IsInfinity(radiusY);
+    }
+
     private static double AngleFrom(CadPointD center, CadPointD point)
     {
         return Math.Atan2(point.Y - center.Y, point.X - center.X);
@@ -1641,7 +1740,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private static bool CanDuplicate(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadArc or CadRectangle or CadPolyline or CadSpline or CadText;
+        return entity is CadLine or CadCircle or CadEllipse or CadArc or CadRectangle or CadPolyline or CadSpline or CadText;
     }
 
     public void Dispose()

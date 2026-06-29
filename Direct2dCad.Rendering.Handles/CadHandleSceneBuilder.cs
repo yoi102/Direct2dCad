@@ -43,7 +43,7 @@ public sealed class CadHandleSceneBuilder
 
     public static bool SupportsCenterGrip(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadBlockReference;
+        return entity is CadLine or CadCircle or CadEllipse or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadBlockReference;
     }
 
     private static bool TryGetSelectableEntity(
@@ -88,6 +88,14 @@ public sealed class CadHandleSceneBuilder
                 AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y + circle.Radius), CadHandleType.Radius, gripStyle);
                 AddGrip(items, entity.Id, new CadPointD(circle.Center.X - circle.Radius, circle.Center.Y), CadHandleType.Radius, gripStyle);
                 AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y - circle.Radius), CadHandleType.Radius, gripStyle);
+                break;
+
+            case CadEllipse ellipse:
+                AddGrip(items, entity.Id, ellipse.Center, CadHandleType.Center, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X + ellipse.RadiusX, ellipse.Center.Y), CadHandleType.Radius, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X, ellipse.Center.Y + ellipse.RadiusY), CadHandleType.Radius, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X - ellipse.RadiusX, ellipse.Center.Y), CadHandleType.Radius, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X, ellipse.Center.Y - ellipse.RadiusY), CadHandleType.Radius, gripStyle);
                 break;
 
             case CadArc arc:

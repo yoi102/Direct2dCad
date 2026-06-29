@@ -54,6 +54,7 @@ public sealed class SetEntityGraphicStyleCommand : ICadCommand
         {
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
+            CadEllipse ellipse => ellipse.GraphicStyleId,
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
@@ -73,6 +74,9 @@ public sealed class SetEntityGraphicStyleCommand : ICadCommand
                 break;
             case CadCircle circle:
                 circle.SetGraphicStyleInternal(styleId);
+                break;
+            case CadEllipse ellipse:
+                ellipse.SetGraphicStyleInternal(styleId);
                 break;
             case CadRectangle rectangle:
                 rectangle.SetGraphicStyleInternal(styleId);

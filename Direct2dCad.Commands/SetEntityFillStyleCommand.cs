@@ -53,6 +53,7 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
         return entity switch
         {
             CadCircle circle => circle.FillStyleId,
+            CadEllipse ellipse => ellipse.FillStyleId,
             CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline polyline => polyline.FillStyleId,
             _ => throw new NotSupportedException($"Entity type has no fill style: {entity.GetType().Name}")
@@ -65,6 +66,9 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
         {
             case CadCircle circle:
                 circle.SetFillStyleInternal(styleId);
+                break;
+            case CadEllipse ellipse:
+                ellipse.SetFillStyleInternal(styleId);
                 break;
             case CadRectangle rectangle:
                 rectangle.SetFillStyleInternal(styleId);

@@ -126,6 +126,9 @@
   <data name="Chinese" xml:space="preserve">
     <value>中文</value>
   </data>
+  <data name="Ellipse" xml:space="preserve">
+    <value>椭圆</value>
+  </data>
   <data name="Confirm" xml:space="preserve">
     <value>确认</value>
   </data>
