@@ -40,18 +40,25 @@ public sealed class CadGridSettings
 
     public double GetSnapSpacingX()
     {
-        return SnapSpacingX > 0 ? SnapSpacingX : GuardSpacing(SpacingX);
+        return SnapSpacingX > 0 ? GuardSpacing(SnapSpacingX) : GuardMinimumWorldSpacing(MinimumWorldSpacing);
     }
 
     public double GetSnapSpacingY()
     {
-        return SnapSpacingY > 0 ? SnapSpacingY : GuardSpacing(SpacingY);
+        return SnapSpacingY > 0 ? GuardSpacing(SnapSpacingY) : GuardMinimumWorldSpacing(MinimumWorldSpacing);
     }
 
     private static double GuardSpacing(double spacing)
     {
         return spacing <= 0 || double.IsNaN(spacing) || double.IsInfinity(spacing)
             ? 10.0
+            : spacing;
+    }
+
+    private static double GuardMinimumWorldSpacing(double spacing)
+    {
+        return spacing <= 0 || double.IsNaN(spacing) || double.IsInfinity(spacing)
+            ? 1.0
             : spacing;
     }
 }

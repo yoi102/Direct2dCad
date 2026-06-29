@@ -124,23 +124,27 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (bounds.IsEmpty)
             return;
 
+        var snapSpacingX = grid.GetSnapSpacingX();
+        var snapSpacingY = grid.GetSnapSpacingY();
         var spacingX = ResolveGridSpacing(
             grid.SpacingX,
             grid.Subdivision,
             grid.MinimumScreenSpacing,
             grid.MinimumWorldSpacing,
+            snapSpacingX,
             viewport.Zoom);
         var spacingY = ResolveGridSpacing(
             grid.SpacingY,
             grid.Subdivision,
             grid.MinimumScreenSpacing,
             grid.MinimumWorldSpacing,
+            snapSpacingY,
             viewport.Zoom);
         if (spacingX <= 0 || spacingY <= 0)
             return;
 
-        var majorX = spacingX * Math.Max(1, grid.Subdivision);
-        var majorY = spacingY * Math.Max(1, grid.Subdivision);
+        var majorX = ResolveMajorGridSpacing(grid.SpacingX, spacingX, grid.Subdivision);
+        var majorY = ResolveMajorGridSpacing(grid.SpacingY, spacingY, grid.Subdivision);
         var gridOrigin = document.ViewSettings.Origin.Position;
         var palette = CreateGridPalette(grid);
         var minorStroke = (float)(palette.MinorStrokeWidth / Math.Max(viewport.Zoom, double.Epsilon));
@@ -388,16 +392,21 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         int subdivision,
         double minimumScreenSpacing,
         double minimumWorldSpacing,
+        double snapSpacing,
         double zoom)
     {
         if (configuredMajorSpacing <= 0 || double.IsNaN(configuredMajorSpacing) || double.IsInfinity(configuredMajorSpacing))
             configuredMajorSpacing = 10.0;
 
         var factor = Math.Max(2, subdivision);
+        var snap = snapSpacing > 0 && !double.IsNaN(snapSpacing) && !double.IsInfinity(snapSpacing)
+            ? snapSpacing
+            : 1.0;
         var minWorld = minimumWorldSpacing > 0 && !double.IsNaN(minimumWorldSpacing) && !double.IsInfinity(minimumWorldSpacing)
             ? minimumWorldSpacing
             : 1.0;
-        var spacing = Math.Max(configuredMajorSpacing / factor, minWorld);
+        var minSpacing = CeilToMultiple(Math.Max(minWorld, snap), snap);
+        var spacing = CeilToMultiple(Math.Max(configuredMajorSpacing / factor, minSpacing), snap);
         var minPixels = minimumScreenSpacing > 0 ? minimumScreenSpacing : 28.0;
 
         while (spacing * zoom < minPixels)
@@ -405,17 +414,42 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
         while (spacing * zoom > minPixels * factor)
         {
-            var next = spacing / factor;
-            if (next < minWorld)
+            var next = CeilToMultiple(spacing / factor, snap);
+            if (next < minSpacing || Math.Abs(next - spacing) < snap * 1e-9)
             {
-                spacing = minWorld;
+                spacing = minSpacing;
                 break;
             }
 
             spacing = next;
         }
 
-        return Math.Max(spacing, minWorld);
+        return Math.Max(spacing, minSpacing);
+    }
+
+    private static double ResolveMajorGridSpacing(
+        double configuredMajorSpacing,
+        double displaySpacing,
+        int subdivision)
+    {
+        var factor = Math.Max(2, subdivision);
+        if (displaySpacing <= 0 || double.IsNaN(displaySpacing) || double.IsInfinity(displaySpacing))
+            return 1.0;
+
+        if (configuredMajorSpacing <= 0 || double.IsNaN(configuredMajorSpacing) || double.IsInfinity(configuredMajorSpacing))
+            return displaySpacing * factor;
+
+        return configuredMajorSpacing > displaySpacing
+            ? CeilToMultiple(configuredMajorSpacing, displaySpacing)
+            : displaySpacing * factor;
+    }
+
+    private static double CeilToMultiple(double value, double unit)
+    {
+        if (unit <= 0 || double.IsNaN(unit) || double.IsInfinity(unit))
+            return value;
+
+        return Math.Ceiling((value / unit) - 1e-9) * unit;
     }
 
     private static IEnumerable<double> EnumerateGridCoordinates(double min, double max, double spacing, double origin)
