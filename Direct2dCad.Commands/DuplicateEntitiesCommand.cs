@@ -116,6 +116,13 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 arc.LayerId,
                 arc.GraphicStyleId,
                 arc.Name),
+            CadPolyline polyline => document.AddPolyline(
+                polyline.Points.Select(x => x + delta),
+                polyline.Closed,
+                polyline.LayerId,
+                polyline.GraphicStyleId,
+                polyline.FillStyleId,
+                polyline.Name),
             CadText text => document.AddText(
                 text.Text,
                 text.Position + delta,

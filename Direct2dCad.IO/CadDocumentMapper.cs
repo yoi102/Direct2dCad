@@ -165,6 +165,24 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadPolylinesSection ToPolylinesSection(CadDocument document)
+    {
+        return new CadPolylinesSection
+        {
+            Polylines = document.Entities.Values
+                .OfType<CadPolyline>()
+                .Select(x => new CadPolylineData
+                {
+                    Entity = ToEntityData(x),
+                    Points = x.Points.Select(ToData).ToList(),
+                    Closed = x.Closed,
+                    GraphicStyleId = x.GraphicStyleId?.Value,
+                    FillStyleId = x.FillStyleId?.Value
+                })
+                .ToList()
+        };
+    }
+
     internal static CadTextsSection ToTextsSection(CadDocument document)
     {
         return new CadTextsSection
@@ -194,6 +212,7 @@ internal static class CadDocumentMapper
         CadCirclesSection circles,
         CadArcsSection arcs,
         CadRectanglesSection rectangles,
+        CadPolylinesSection polylines,
         CadTextsSection texts)
     {
         var document = new CadDocument(
@@ -204,7 +223,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
-        ApplyEntities(document, lines, circles, arcs, rectangles, texts);
+        ApplyEntities(document, lines, circles, arcs, rectangles, polylines, texts);
 
         return document;
     }
@@ -337,6 +356,7 @@ internal static class CadDocumentMapper
         CadCirclesSection circles,
         CadArcsSection arcs,
         CadRectanglesSection rectangles,
+        CadPolylinesSection polylines,
         CadTextsSection texts)
     {
         foreach (var lineData in lines.Lines)
@@ -400,6 +420,21 @@ internal static class CadDocumentMapper
             rectangle.SetFillStyleInternal(ToStyleId(rectangleData.FillStyleId));
             ApplyEntityState(rectangle, rectangleData.Entity);
             document.AddEntityCore(rectangle);
+        }
+
+        foreach (var polylineData in polylines.Polylines)
+        {
+            var polyline = new CadPolyline(
+                new EntityId(polylineData.Entity.Id),
+                new LayerId(polylineData.Entity.LayerId),
+                new BlockId(polylineData.Entity.OwnerBlockId),
+                polylineData.Points.Select(FromData),
+                polylineData.Closed,
+                polylineData.Entity.Name);
+            polyline.SetGraphicStyleInternal(ToStyleId(polylineData.GraphicStyleId));
+            polyline.SetFillStyleInternal(ToStyleId(polylineData.FillStyleId));
+            ApplyEntityState(polyline, polylineData.Entity);
+            document.AddEntityCore(polyline);
         }
 
         foreach (var textData in texts.Texts)

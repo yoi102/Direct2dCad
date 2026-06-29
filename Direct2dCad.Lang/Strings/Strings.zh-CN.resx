@@ -147,6 +147,9 @@
   <data name="Ok" xml:space="preserve">
     <value>Ok</value>
   </data>
+  <data name="Polygon" xml:space="preserve">
+    <value>多边形</value>
+  </data>
   <data name="Rectangle" xml:space="preserve">
     <value>矩形</value>
   </data>

@@ -223,6 +223,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Polygon 的本地化字符串。
+        /// </summary>
+        public static string Polygon {
+            get {
+                return ResourceManager.GetString("Polygon", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Save Image As... 的本地化字符串。
         /// </summary>
         public static string SaveAs {

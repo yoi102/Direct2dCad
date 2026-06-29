@@ -67,6 +67,7 @@ public sealed class CadDocumentStorage
         var circles = ReadSection<CadCirclesSection>(filePath, CadSectionKind.Circles);
         var arcs = ReadSection<CadArcsSection>(filePath, CadSectionKind.Arcs);
         var rectangles = ReadOptionalSection(filePath, CadSectionKind.Rectangles, new CadRectanglesSection());
+        var polylines = ReadOptionalSection(filePath, CadSectionKind.Polylines, new CadPolylinesSection());
         var texts = ReadSection<CadTextsSection>(filePath, CadSectionKind.Texts);
 
         return CadDocumentMapper.FromSections(
@@ -78,6 +79,7 @@ public sealed class CadDocumentStorage
             circles,
             arcs,
             rectangles,
+            polylines,
             texts);
     }
 
@@ -151,6 +153,7 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(document)),
             Serialize(CadSectionKind.Arcs, CadDocumentMapper.ToArcsSection(document)),
             Serialize(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(document)),
+            Serialize(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(document)),
             Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(document))
         ];
     }

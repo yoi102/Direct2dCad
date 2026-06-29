@@ -189,6 +189,10 @@
     <value>Pan</value>
     <comment>Pan</comment>
   </data>
+  <data name="Polygon" xml:space="preserve">
+    <value>Polygon</value>
+    <comment>Polygon</comment>
+  </data>
   <data name="SaveAs" xml:space="preserve">
     <value>Save Image As...</value>
     <comment>Save Image As...</comment>

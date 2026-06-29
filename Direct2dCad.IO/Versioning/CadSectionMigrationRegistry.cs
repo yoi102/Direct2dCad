@@ -41,6 +41,9 @@ internal static class CadSectionMigrationRegistry
             Section<CadRectanglesSection>(CadSectionKind.Rectangles, currentVersion: 1)
                 .ReadsVersion<CadRectanglesSection>(1),
 
+            Section<CadPolylinesSection>(CadSectionKind.Polylines, currentVersion: 1)
+                .ReadsVersion<CadPolylinesSection>(1),
+
             Section<CadTextsSection>(CadSectionKind.Texts, currentVersion: 1)
                 .ReadsVersion<CadTextsSection>(1)
         }

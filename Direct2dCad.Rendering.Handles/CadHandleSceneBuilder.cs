@@ -98,6 +98,10 @@ public sealed class CadHandleSceneBuilder
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds);
                 break;
 
+            case CadPolyline polyline:
+                AddPolylineGripHandles(items, polyline);
+                break;
+
             case CadText:
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds);
                 break;
@@ -107,6 +111,15 @@ public sealed class CadHandleSceneBuilder
                     AddGrip(items, entity.Id, entity.Bounds.Center, CadHandleType.Center);
                 break;
         }
+    }
+
+    private static void AddPolylineGripHandles(List<CadHandleItem> items, CadPolyline polyline)
+    {
+        foreach (var point in polyline.Points)
+            AddGrip(items, polyline.Id, point, CadHandleType.Vertex);
+
+        if (!polyline.Bounds.IsEmpty)
+            AddGrip(items, polyline.Id, polyline.Bounds.Center, CadHandleType.Center);
     }
 
     private static void AddBoundsGripHandles(List<CadHandleItem> items, EntityId entityId, CadRectD bounds)

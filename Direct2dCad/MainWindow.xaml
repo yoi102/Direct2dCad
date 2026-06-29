@@ -38,6 +38,9 @@
             <Button Content="Rectangle"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Rectangle" />
+            <Button Content="Polygon"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Polygon" />
             <Button Content="Text"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Text" />

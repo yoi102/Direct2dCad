@@ -21,6 +21,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private readonly CadHandleScene _handleScene = new();
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
     private readonly CadHandleHitTester _handleHitTester = new();
+    private readonly List<CadPointD> _pendingPolygonPoints = [];
     private CadPointD? _pendingWorldPoint;
     private CadPointD? _pendingArcStartPoint;
     private CadPointD? _currentMousePoint;
@@ -281,6 +282,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         _isPastePreviewActive = true;
         _pendingWorldPoint = null;
+        _pendingPolygonPoints.Clear();
         _selectionDragStart = null;
         RequestRender();
         return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
@@ -387,6 +389,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 RequestRender();
                 break;
 
+            case CadCanvasToolMode.Polygon:
+                AddPolygonVertexOrComplete(world);
+                RequestRender();
+                break;
+
             case CadCanvasToolMode.Text:
                 var drawingText = ResolveDrawingText();
                 CadEditor.AddText(
@@ -448,6 +455,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         _pendingWorldPoint = null;
         _pendingArcStartPoint = null;
+        _pendingPolygonPoints.Clear();
         _selectionDragStart = null;
         _activeGripDrag = null;
         _isPastePreviewActive = false;
@@ -565,6 +573,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddRectangleGripPreview(items, rectangle, drag, style);
                 break;
 
+            case CadPolyline polyline:
+                AddPolylineGripPreview(items, polyline, drag, style);
+                break;
+
             case CadText text:
                 AddTextGripPreview(items, text, drag, style);
                 break;
@@ -629,6 +641,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         if (TryCreateRectangleGripGeometry(rectangle, drag, out var bounds))
             items.Add(new CadTransientRectangle(bounds, style));
+    }
+
+    private static void AddPolylineGripPreview(
+        List<CadTransientItem> items,
+        CadPolyline polyline,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (TryCreatePolylineGripGeometry(polyline, drag, out var points, out var closed))
+            items.Add(new CadTransientPolyline(points, closed, style));
     }
 
     private void AddTextGripPreview(
@@ -701,6 +723,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CommitRectangleGripDrag(rectangle, drag);
                 break;
 
+            case CadPolyline polyline:
+                CommitPolylineGripDrag(polyline, drag);
+                break;
+
             case CadText text:
                 CommitTextGripDrag(text, drag);
                 break;
@@ -742,6 +768,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         if (TryCreateRectangleGripGeometry(rectangle, drag, out var bounds))
             CadEditor.SetRectangleGeometry(rectangle.Id, bounds);
+    }
+
+    private void CommitPolylineGripDrag(CadPolyline polyline, GripDragState drag)
+    {
+        if (TryCreatePolylineGripGeometry(polyline, drag, out var points, out var closed))
+            CadEditor.SetPolylineGeometry(polyline.Id, points, closed);
     }
 
     private void CommitTextGripDrag(CadText text, GripDragState drag)
@@ -810,6 +842,44 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         bounds = CadRectD.FromLTRB(oppositeX, oppositeY, target.X, target.Y);
         return IsValidRectangleBounds(bounds);
+    }
+
+    private static bool TryCreatePolylineGripGeometry(
+        CadPolyline polyline,
+        GripDragState drag,
+        out CadPointD[] points,
+        out bool closed)
+    {
+        points = polyline.Points.ToArray();
+        closed = polyline.Closed;
+
+        if (drag.Handle.Type != CadHandleType.Vertex || points.Length < 2)
+            return false;
+
+        var vertexIndex = FindNearestPointIndex(points, drag.Handle.Position);
+        if (vertexIndex < 0)
+            return false;
+
+        points[vertexIndex] = drag.DraggedGripPosition;
+        return !closed || points.Length >= 3;
+    }
+
+    private static int FindNearestPointIndex(IReadOnlyList<CadPointD> points, CadPointD target)
+    {
+        var index = -1;
+        var bestDistance = double.PositiveInfinity;
+
+        for (var i = 0; i < points.Count; i++)
+        {
+            var distance = points[i].DistanceSquaredTo(target);
+            if (distance >= bestDistance)
+                continue;
+
+            index = i;
+            bestDistance = distance;
+        }
+
+        return index;
     }
 
     private static bool TryCreateArcGripGeometry(
@@ -981,6 +1051,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     items.Add(new CadTransientRectangle(bounds, CadTransientStyle.Construction));
                 break;
 
+            case CadCanvasToolMode.Polygon:
+                AddPolygonDrawingPreview(items, mouseWorld);
+                break;
+
             case CadCanvasToolMode.Text:
                 var drawingText = ResolveDrawingText();
                 var drawingHeight = ResolveTextBoxHeight(drawingText);
@@ -996,6 +1070,64 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddOriginPositionPreview(items, mouseWorld);
                 break;
         }
+    }
+
+    private void AddPolygonVertexOrComplete(CadPointD world)
+    {
+        if (_pendingPolygonPoints.Count >= 3 && IsPolygonClosePoint(world))
+        {
+            CadEditor.AddPolygon(_pendingPolygonPoints);
+            _pendingPolygonPoints.Clear();
+            return;
+        }
+
+        if (_pendingPolygonPoints.Count == 0 ||
+            !_pendingPolygonPoints[^1].NearEquals(world))
+        {
+            _pendingPolygonPoints.Add(world);
+        }
+    }
+
+    private void AddPolygonDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
+    {
+        if (_pendingPolygonPoints.Count == 0)
+            return;
+
+        if (_pendingPolygonPoints.Count >= 3 && IsPolygonClosePoint(mouseWorld))
+        {
+            items.Add(new CadTransientPolyline(
+                _pendingPolygonPoints.ToArray(),
+                Closed: true,
+                CadTransientStyle.Construction));
+            return;
+        }
+
+        var previewPoints = _pendingPolygonPoints
+            .Append(mouseWorld)
+            .ToArray();
+
+        if (previewPoints.Length >= 2)
+            items.Add(new CadTransientPolyline(previewPoints, Closed: false, CadTransientStyle.Construction));
+
+        if (_pendingPolygonPoints.Count >= 2)
+            items.Add(new CadTransientLine(mouseWorld, _pendingPolygonPoints[0], CadTransientStyle.Construction));
+    }
+
+    private bool IsPolygonClosePoint(CadPointD world)
+    {
+        return _pendingPolygonPoints.Count >= 3 &&
+               _pendingPolygonPoints[0].DistanceTo(world) <= ResolvePolygonCloseTolerance();
+    }
+
+    private double ResolvePolygonCloseTolerance()
+    {
+        var screenTolerance = 8.0 / Math.Max(CadEditor.Viewport.Zoom, double.Epsilon);
+        var grid = CadEditor.Document.ViewSettings.Grid;
+        var snapSpacing = Math.Min(grid.GetSnapSpacingX(), grid.GetSnapSpacingY());
+
+        return IsFinitePositive(snapSpacing)
+            ? Math.Max(1e-9, Math.Min(screenTolerance, snapSpacing * 0.49))
+            : screenTolerance;
     }
 
     private void AddOriginPositionPreview(List<CadTransientItem> items, CadPointD position)
@@ -1273,7 +1405,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private static bool CanDuplicate(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadArc or CadRectangle or CadText;
+        return entity is CadLine or CadCircle or CadArc or CadRectangle or CadPolyline or CadText;
     }
 
     public void Dispose()

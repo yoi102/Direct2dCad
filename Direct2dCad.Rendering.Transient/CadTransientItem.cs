@@ -25,6 +25,12 @@ public sealed record CadTransientArc(
     CadTransientStyle Style)
     : CadTransientItem(Style);
 
+public sealed record CadTransientPolyline(
+    IReadOnlyList<CadPointD> Points,
+    bool Closed,
+    CadTransientStyle Style)
+    : CadTransientItem(Style);
+
 public sealed record CadTransientRectangle(
     CadRectD Bounds,
     CadTransientStyle Style)

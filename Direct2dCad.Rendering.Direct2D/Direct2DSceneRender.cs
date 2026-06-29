@@ -536,6 +536,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                         arc.Style);
                     break;
 
+                case CadTransientPolyline polyline when polyline.Points.Count >= 2:
+                    DrawTransientPolyline(
+                        deviceContext,
+                        viewport,
+                        polyline.Points,
+                        polyline.Closed,
+                        polyline.Style);
+                    break;
+
                 case CadTransientRectangle rectangle when !rectangle.Bounds.IsEmpty:
                     DrawTransientRectangle(deviceContext, viewport, rectangle.Bounds, rectangle.Style);
                     break;
@@ -613,6 +622,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     arc.Radius,
                     arc.StartAngleRadians,
                     arc.SweepAngleRadians,
+                    style);
+                break;
+
+            case CadPolyline polyline:
+                DrawTransientPolyline(
+                    deviceContext,
+                    viewport,
+                    polyline.Points.Select(x => x + reference.Offset).ToArray(),
+                    polyline.Closed,
                     style);
                 break;
 
@@ -791,6 +809,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     reference.Style);
                 break;
 
+            case CadPolyline polyline:
+                DrawTransientPolyline(
+                    deviceContext,
+                    viewport,
+                    polyline.Points.Select(x => x + reference.Offset).ToArray(),
+                    polyline.Closed,
+                    reference.Style);
+                break;
+
             case CadText text:
                 var bounds = text.Bounds.Translate(reference.Offset);
                 DrawTransientText(
@@ -832,6 +859,59 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             brush,
             ResolveTransientStrokeWidth(style, viewport),
             strokeStyle);
+    }
+
+    private void DrawTransientPolyline(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        IReadOnlyList<CadPointD> points,
+        bool closed,
+        CadTransientStyle style)
+    {
+        if (points.Count < 2)
+            return;
+
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        var strokeWidth = ResolveTransientStrokeWidth(style, viewport);
+
+        if (_resourceCache.Factory is null)
+        {
+            for (var i = 1; i < points.Count; i++)
+                deviceContext.DrawLine(ToVector2(points[i - 1]), ToVector2(points[i]), brush, strokeWidth, strokeStyle);
+
+            if (closed && points.Count > 2)
+                deviceContext.DrawLine(ToVector2(points[^1]), ToVector2(points[0]), brush, strokeWidth, strokeStyle);
+
+            return;
+        }
+
+        using var geometry = CreateTransientPolylineGeometry(points, closed);
+        if (closed &&
+            style.FillColor is { } fillColor &&
+            !fillColor.IsTransparent)
+        {
+            using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
+            deviceContext.FillGeometry(geometry, fillBrush);
+        }
+
+        deviceContext.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
+    }
+
+    private ID2D1PathGeometry CreateTransientPolylineGeometry(
+        IReadOnlyList<CadPointD> points,
+        bool closed)
+    {
+        var geometry = _resourceCache.Factory!.CreatePathGeometry();
+        using var sink = geometry.Open();
+        sink.BeginFigure(ToVector2(points[0]), closed ? FigureBegin.Filled : FigureBegin.Hollow);
+
+        for (var i = 1; i < points.Count; i++)
+            sink.AddLine(ToVector2(points[i]));
+
+        sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
+        sink.Close();
+        return geometry;
     }
 
     private void DrawTransientArc(

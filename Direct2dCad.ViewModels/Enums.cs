@@ -18,6 +18,8 @@ public enum CadCanvasToolMode
     Arc,
     [LocalizedDescription("Rectangle", typeof(Strings))]
     Rectangle,
+    [LocalizedDescription("Polygon", typeof(Strings))]
+    Polygon,
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
     [LocalizedDescription("SetOrigin", typeof(Strings))]
