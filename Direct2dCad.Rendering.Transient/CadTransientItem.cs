@@ -31,6 +31,12 @@ public sealed record CadTransientPolyline(
     CadTransientStyle Style)
     : CadTransientItem(Style);
 
+public sealed record CadTransientSpline(
+    IReadOnlyList<CadPointD> FitPoints,
+    bool Closed,
+    CadTransientStyle Style)
+    : CadTransientItem(Style);
+
 public sealed record CadTransientRectangle(
     CadRectD Bounds,
     CadTransientStyle Style)

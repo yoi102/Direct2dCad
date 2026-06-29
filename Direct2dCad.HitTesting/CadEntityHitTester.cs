@@ -90,6 +90,9 @@ public static class CadEntityHitTester
             case CadPolyline polyline:
                 return HitPolylineEdge(polyline, point, tolerance, out result);
 
+            case CadSpline spline:
+                return HitSplineEdge(spline, point, tolerance, out result);
+
             case CadBlockReference blockReference:
                 return HitBlockReferenceEdge(
                     document,
@@ -341,6 +344,38 @@ public static class CadEntityHitTester
             CadHitTestKind.Fill,
             [polyline.Id],
             point);
+
+        return true;
+    }
+
+    private static bool HitSplineEdge(
+        CadSpline spline,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        result = default;
+
+        var flattened = spline.EnumerateFlattenedPoints(24).ToArray();
+        if (flattened.Length < 2)
+            return false;
+
+        var bestDistance = double.PositiveInfinity;
+        for (var i = 1; i < flattened.Length; i++)
+        {
+            var distance = DistancePointToSegment(point, flattened[i - 1], flattened[i]);
+            if (distance < bestDistance)
+                bestDistance = distance;
+        }
+
+        if (bestDistance > tolerance)
+            return false;
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Edge,
+            [spline.Id],
+            point,
+            bestDistance);
 
         return true;
     }

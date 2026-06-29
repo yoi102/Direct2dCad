@@ -146,6 +146,12 @@ public partial class CadCanvas : IDisposable
             return;
         }
 
+        if (e.Key == Key.Enter)
+        {
+            ApplyInteractionResult(DocumentViewModel.CompleteCurrentDrawing(), e);
+            return;
+        }
+
         if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
             return;
 

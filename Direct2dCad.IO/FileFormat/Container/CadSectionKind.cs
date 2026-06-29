@@ -11,5 +11,6 @@ public enum CadSectionKind : ushort
     Arcs = 102,
     Rectangles = 103,
     Texts = 104,
-    Polylines = 105
+    Polylines = 105,
+    Splines = 106
 }

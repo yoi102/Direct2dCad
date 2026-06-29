@@ -123,6 +123,12 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 polyline.GraphicStyleId,
                 polyline.FillStyleId,
                 polyline.Name),
+            CadSpline spline => document.AddSpline(
+                spline.FitPoints.Select(x => x + delta),
+                spline.Closed,
+                spline.LayerId,
+                spline.GraphicStyleId,
+                spline.Name),
             CadText text => document.AddText(
                 text.Text,
                 text.Position + delta,

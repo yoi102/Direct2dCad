@@ -22,6 +22,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
     private readonly CadHandleHitTester _handleHitTester = new();
     private readonly List<CadPointD> _pendingPolygonPoints = [];
+    private readonly List<CadPointD> _pendingSplinePoints = [];
     private CadPointD? _pendingWorldPoint;
     private CadPointD? _pendingArcStartPoint;
     private CadPointD? _currentMousePoint;
@@ -283,9 +284,30 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _isPastePreviewActive = true;
         _pendingWorldPoint = null;
         _pendingPolygonPoints.Clear();
+        _pendingSplinePoints.Clear();
         _selectionDragStart = null;
         RequestRender();
         return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
+    }
+
+    public CadCanvasInteractionResult CompleteCurrentDrawing()
+    {
+        switch (CadCanvasToolMode)
+        {
+            case CadCanvasToolMode.Polygon when _pendingPolygonPoints.Count >= 3:
+                CadEditor.AddPolygon(_pendingPolygonPoints);
+                _pendingPolygonPoints.Clear();
+                RequestRender();
+                return CadCanvasInteractionResult.HandledOnly;
+
+            case CadCanvasToolMode.Spline when _pendingSplinePoints.Count >= 2:
+                CompleteSpline();
+                RequestRender();
+                return CadCanvasInteractionResult.HandledOnly;
+
+            default:
+                return CadCanvasInteractionResult.NotHandled;
+        }
     }
 
     public void RequestRender()
@@ -394,6 +416,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 RequestRender();
                 break;
 
+            case CadCanvasToolMode.Spline:
+                AddSplineFitPointOrComplete(world);
+                RequestRender();
+                break;
+
             case CadCanvasToolMode.Text:
                 var drawingText = ResolveDrawingText();
                 CadEditor.AddText(
@@ -456,6 +483,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _pendingWorldPoint = null;
         _pendingArcStartPoint = null;
         _pendingPolygonPoints.Clear();
+        _pendingSplinePoints.Clear();
         _selectionDragStart = null;
         _activeGripDrag = null;
         _isPastePreviewActive = false;
@@ -577,6 +605,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddPolylineGripPreview(items, polyline, drag, style);
                 break;
 
+            case CadSpline spline:
+                AddSplineGripPreview(items, spline, drag, style);
+                break;
+
             case CadText text:
                 AddTextGripPreview(items, text, drag, style);
                 break;
@@ -653,6 +685,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             items.Add(new CadTransientPolyline(points, closed, style));
     }
 
+    private static void AddSplineGripPreview(
+        List<CadTransientItem> items,
+        CadSpline spline,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (TryCreateSplineGripGeometry(spline, drag, out var fitPoints, out var closed))
+            items.Add(new CadTransientSpline(fitPoints, closed, style));
+    }
+
     private void AddTextGripPreview(
         List<CadTransientItem> items,
         CadText text,
@@ -727,6 +769,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CommitPolylineGripDrag(polyline, drag);
                 break;
 
+            case CadSpline spline:
+                CommitSplineGripDrag(spline, drag);
+                break;
+
             case CadText text:
                 CommitTextGripDrag(text, drag);
                 break;
@@ -774,6 +820,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         if (TryCreatePolylineGripGeometry(polyline, drag, out var points, out var closed))
             CadEditor.SetPolylineGeometry(polyline.Id, points, closed);
+    }
+
+    private void CommitSplineGripDrag(CadSpline spline, GripDragState drag)
+    {
+        if (TryCreateSplineGripGeometry(spline, drag, out var fitPoints, out var closed))
+            CadEditor.SetSplineGeometry(spline.Id, fitPoints, closed);
     }
 
     private void CommitTextGripDrag(CadText text, GripDragState drag)
@@ -862,6 +914,26 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         points[vertexIndex] = drag.DraggedGripPosition;
         return !closed || points.Length >= 3;
+    }
+
+    private static bool TryCreateSplineGripGeometry(
+        CadSpline spline,
+        GripDragState drag,
+        out CadPointD[] fitPoints,
+        out bool closed)
+    {
+        fitPoints = spline.FitPoints.ToArray();
+        closed = spline.Closed;
+
+        if (drag.Handle.Type != CadHandleType.Vertex || fitPoints.Length < 2)
+            return false;
+
+        var fitPointIndex = FindNearestPointIndex(fitPoints, drag.Handle.Position);
+        if (fitPointIndex < 0)
+            return false;
+
+        fitPoints[fitPointIndex] = drag.DraggedGripPosition;
+        return !closed || fitPoints.Length >= 3;
     }
 
     private static int FindNearestPointIndex(IReadOnlyList<CadPointD> points, CadPointD target)
@@ -1055,6 +1127,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddPolygonDrawingPreview(items, mouseWorld);
                 break;
 
+            case CadCanvasToolMode.Spline:
+                AddSplineDrawingPreview(items, mouseWorld);
+                break;
+
             case CadCanvasToolMode.Text:
                 var drawingText = ResolveDrawingText();
                 var drawingHeight = ResolveTextBoxHeight(drawingText);
@@ -1070,6 +1146,60 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddOriginPositionPreview(items, mouseWorld);
                 break;
         }
+    }
+
+    private void AddSplineFitPointOrComplete(CadPointD world)
+    {
+        if (_pendingSplinePoints.Count >= 2 && IsSplineFinishPoint(world))
+        {
+            CompleteSpline();
+            return;
+        }
+
+        if (_pendingSplinePoints.Count == 0 ||
+            !_pendingSplinePoints[^1].NearEquals(world))
+        {
+            _pendingSplinePoints.Add(world);
+        }
+    }
+
+    private void CompleteSpline()
+    {
+        if (_pendingSplinePoints.Count < 2)
+            return;
+
+        CadEditor.AddSpline(_pendingSplinePoints);
+        _pendingSplinePoints.Clear();
+    }
+
+    private void AddSplineDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
+    {
+        if (_pendingSplinePoints.Count == 0)
+            return;
+
+        var previewPoints = _pendingSplinePoints
+            .Append(mouseWorld)
+            .ToArray();
+
+        if (previewPoints.Length >= 2)
+            items.Add(new CadTransientSpline(previewPoints, Closed: false, CadTransientStyle.Construction));
+    }
+
+    private bool IsSplineFinishPoint(CadPointD world)
+    {
+        return _pendingSplinePoints.Count >= 2 &&
+               _pendingSplinePoints[^1].DistanceTo(world) <= ResolveSplineFinishTolerance();
+    }
+
+    private double ResolveSplineFinishTolerance()
+    {
+        var screenTolerance = 8.0 / Math.Max(CadEditor.Viewport.Zoom, double.Epsilon);
+        var grid = CadEditor.Document.ViewSettings.Grid;
+        var snapSpacing = Math.Min(grid.GetSnapSpacingX(), grid.GetSnapSpacingY());
+
+        return IsFinitePositive(snapSpacing)
+            ? Math.Max(1e-9, Math.Min(screenTolerance, snapSpacing * 0.49))
+            : screenTolerance;
     }
 
     private void AddPolygonVertexOrComplete(CadPointD world)
@@ -1405,7 +1535,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private static bool CanDuplicate(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadArc or CadRectangle or CadPolyline or CadText;
+        return entity is CadLine or CadCircle or CadArc or CadRectangle or CadPolyline or CadSpline or CadText;
     }
 
     public void Dispose()

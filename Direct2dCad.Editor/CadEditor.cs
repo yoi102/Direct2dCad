@@ -181,6 +181,18 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddSpline(
+        IEnumerable<CadPointD> fitPoints,
+        bool closed = false,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        string name = "")
+    {
+        var command = new AddSplineCommand(fitPoints, closed, layerId, graphicStyleId, name);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddText(
         string text,
         CadPointD position,
@@ -260,6 +272,11 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetPolylineGeometry(EntityId entityId, IEnumerable<CadPointD> points, bool closed)
     {
         return DocumentCommands.Execute(new SetPolylineGeometryCommand(entityId, points, closed));
+    }
+
+    public CadDocumentChangeSet SetSplineGeometry(EntityId entityId, IEnumerable<CadPointD> fitPoints, bool closed)
+    {
+        return DocumentCommands.Execute(new SetSplineGeometryCommand(entityId, fitPoints, closed));
     }
 
     public CadDocumentChangeSet SetTextContent(EntityId entityId, string text)

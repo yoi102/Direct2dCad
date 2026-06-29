@@ -162,6 +162,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 ? Factory!.CreateEllipseGeometry(new Ellipse(ToVector2(arc.Center), (float)arc.Radius, (float)arc.Radius))
                 : CreateArcPathGeometry(arc),
             CadPolyline polyline => CreatePolylineGeometry(polyline.Points, polyline.Closed),
+            CadSpline spline => CreateSplineGeometry(spline.FitPoints, spline.Closed),
             CadText => null,
             CadBlockReference blockReference => CreateRectangleGeometry(blockReference.Bounds),
             _ => null
@@ -187,6 +188,29 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         for (var i = 1; i < points.Count; i++)
             sink.AddLine(ToVector2(points[i]));
+
+        sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
+        sink.Close();
+        return geometry;
+    }
+
+    private ID2D1PathGeometry CreateSplineGeometry(IReadOnlyList<CadPointD> fitPoints, bool closed)
+    {
+        var geometry = Factory!.CreatePathGeometry();
+        var segments = CadSpline.CreateBezierSegments(fitPoints, closed);
+        if (segments.Count == 0)
+            return geometry;
+
+        using var sink = geometry.Open();
+        sink.BeginFigure(ToVector2(segments[0].Start), FigureBegin.Hollow);
+
+        foreach (var segment in segments)
+        {
+            sink.AddBezier(new BezierSegment(
+                ToVector2(segment.Control1),
+                ToVector2(segment.Control2),
+                ToVector2(segment.End)));
+        }
 
         sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
         sink.Close();
@@ -297,6 +321,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
+            CadSpline spline => spline.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
             _ => null

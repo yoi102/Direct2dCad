@@ -43,7 +43,7 @@ public sealed class CadHandleSceneBuilder
 
     public static bool SupportsCenterGrip(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadRectangle or CadArc or CadPolyline or CadText or CadBlockReference;
+        return entity is CadLine or CadCircle or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadBlockReference;
     }
 
     private static bool TryGetSelectableEntity(
@@ -102,6 +102,10 @@ public sealed class CadHandleSceneBuilder
                 AddPolylineGripHandles(items, polyline);
                 break;
 
+            case CadSpline spline:
+                AddSplineGripHandles(items, spline);
+                break;
+
             case CadText:
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds);
                 break;
@@ -120,6 +124,15 @@ public sealed class CadHandleSceneBuilder
 
         if (!polyline.Bounds.IsEmpty)
             AddGrip(items, polyline.Id, polyline.Bounds.Center, CadHandleType.Center);
+    }
+
+    private static void AddSplineGripHandles(List<CadHandleItem> items, CadSpline spline)
+    {
+        foreach (var point in spline.FitPoints)
+            AddGrip(items, spline.Id, point, CadHandleType.Vertex);
+
+        if (!spline.Bounds.IsEmpty)
+            AddGrip(items, spline.Id, spline.Bounds.Center, CadHandleType.Center);
     }
 
     private static void AddBoundsGripHandles(List<CadHandleItem> items, EntityId entityId, CadRectD bounds)

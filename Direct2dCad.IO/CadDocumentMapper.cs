@@ -183,6 +183,23 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadSplinesSection ToSplinesSection(CadDocument document)
+    {
+        return new CadSplinesSection
+        {
+            Splines = document.Entities.Values
+                .OfType<CadSpline>()
+                .Select(x => new CadSplineData
+                {
+                    Entity = ToEntityData(x),
+                    FitPoints = x.FitPoints.Select(ToData).ToList(),
+                    Closed = x.Closed,
+                    GraphicStyleId = x.GraphicStyleId?.Value
+                })
+                .ToList()
+        };
+    }
+
     internal static CadTextsSection ToTextsSection(CadDocument document)
     {
         return new CadTextsSection
@@ -213,6 +230,7 @@ internal static class CadDocumentMapper
         CadArcsSection arcs,
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
+        CadSplinesSection splines,
         CadTextsSection texts)
     {
         var document = new CadDocument(
@@ -223,7 +241,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
-        ApplyEntities(document, lines, circles, arcs, rectangles, polylines, texts);
+        ApplyEntities(document, lines, circles, arcs, rectangles, polylines, splines, texts);
 
         return document;
     }
@@ -357,6 +375,7 @@ internal static class CadDocumentMapper
         CadArcsSection arcs,
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
+        CadSplinesSection splines,
         CadTextsSection texts)
     {
         foreach (var lineData in lines.Lines)
@@ -435,6 +454,20 @@ internal static class CadDocumentMapper
             polyline.SetFillStyleInternal(ToStyleId(polylineData.FillStyleId));
             ApplyEntityState(polyline, polylineData.Entity);
             document.AddEntityCore(polyline);
+        }
+
+        foreach (var splineData in splines.Splines)
+        {
+            var spline = new CadSpline(
+                new EntityId(splineData.Entity.Id),
+                new LayerId(splineData.Entity.LayerId),
+                new BlockId(splineData.Entity.OwnerBlockId),
+                splineData.FitPoints.Select(FromData),
+                splineData.Closed,
+                splineData.Entity.Name);
+            spline.SetGraphicStyleInternal(ToStyleId(splineData.GraphicStyleId));
+            ApplyEntityState(spline, splineData.Entity);
+            document.AddEntityCore(spline);
         }
 
         foreach (var textData in texts.Texts)

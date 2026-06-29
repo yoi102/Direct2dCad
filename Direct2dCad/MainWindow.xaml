@@ -41,6 +41,9 @@
             <Button Content="Polygon"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Polygon" />
+            <Button Content="Spline"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Spline" />
             <Button Content="Text"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Text" />

@@ -277,6 +277,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Spline 的本地化字符串。
+        /// </summary>
+        public static string Spline {
+            get {
+                return ResourceManager.GetString("Spline", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Text 的本地化字符串。
         /// </summary>
         public static string Text {

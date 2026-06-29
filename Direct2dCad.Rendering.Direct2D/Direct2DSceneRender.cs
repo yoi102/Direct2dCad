@@ -545,6 +545,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                         polyline.Style);
                     break;
 
+                case CadTransientSpline spline when spline.FitPoints.Count >= 2:
+                    DrawTransientSpline(
+                        deviceContext,
+                        viewport,
+                        spline.FitPoints,
+                        spline.Closed,
+                        spline.Style);
+                    break;
+
                 case CadTransientRectangle rectangle when !rectangle.Bounds.IsEmpty:
                     DrawTransientRectangle(deviceContext, viewport, rectangle.Bounds, rectangle.Style);
                     break;
@@ -631,6 +640,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     viewport,
                     polyline.Points.Select(x => x + reference.Offset).ToArray(),
                     polyline.Closed,
+                    style);
+                break;
+
+            case CadSpline spline:
+                DrawTransientSpline(
+                    deviceContext,
+                    viewport,
+                    spline.FitPoints.Select(x => x + reference.Offset).ToArray(),
+                    spline.Closed,
                     style);
                 break;
 
@@ -818,6 +836,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     reference.Style);
                 break;
 
+            case CadSpline spline:
+                DrawTransientSpline(
+                    deviceContext,
+                    viewport,
+                    spline.FitPoints.Select(x => x + reference.Offset).ToArray(),
+                    spline.Closed,
+                    reference.Style);
+                break;
+
             case CadText text:
                 var bounds = text.Bounds.Translate(reference.Offset);
                 DrawTransientText(
@@ -908,6 +935,51 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
         for (var i = 1; i < points.Count; i++)
             sink.AddLine(ToVector2(points[i]));
+
+        sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
+        sink.Close();
+        return geometry;
+    }
+
+    private void DrawTransientSpline(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        IReadOnlyList<CadPointD> fitPoints,
+        bool closed,
+        CadTransientStyle style)
+    {
+        if (_resourceCache.Factory is null || fitPoints.Count < 2)
+            return;
+
+        using var geometry = CreateTransientSplineGeometry(fitPoints, closed);
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        deviceContext.DrawGeometry(
+            geometry,
+            brush,
+            ResolveTransientStrokeWidth(style, viewport),
+            strokeStyle);
+    }
+
+    private ID2D1PathGeometry CreateTransientSplineGeometry(
+        IReadOnlyList<CadPointD> fitPoints,
+        bool closed)
+    {
+        var geometry = _resourceCache.Factory!.CreatePathGeometry();
+        var segments = CadSpline.CreateBezierSegments(fitPoints, closed);
+        if (segments.Count == 0)
+            return geometry;
+
+        using var sink = geometry.Open();
+        sink.BeginFigure(ToVector2(segments[0].Start), FigureBegin.Hollow);
+
+        foreach (var segment in segments)
+        {
+            sink.AddBezier(new BezierSegment(
+                ToVector2(segment.Control1),
+                ToVector2(segment.Control2),
+                ToVector2(segment.End)));
+        }
 
         sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
         sink.Close();

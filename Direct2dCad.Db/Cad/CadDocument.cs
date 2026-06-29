@@ -516,6 +516,26 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return entity;
     }
 
+    public CadSpline AddSpline(
+        IEnumerable<CadPointD> fitPoints,
+        bool closed = false,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        string name = "")
+    {
+        var entity = new CadSpline(
+            _ids.NewEntityId(),
+            layerId ?? LayerId.Default,
+             BlockId.ModelSpace,
+            fitPoints,
+            closed,
+            name);
+
+        entity.SetGraphicStyleInternal(graphicStyleId);
+        AddEntityCore(entity);
+        return entity;
+    }
+
     public CadText AddText(
         string text,
         CadPointD position,

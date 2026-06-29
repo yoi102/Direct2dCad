@@ -24,6 +24,9 @@ internal static class CadEntityTransform
             case CadPolyline polyline:
                 polyline.ReplacePoints(polyline.Points.Select(x => x + delta));
                 break;
+            case CadSpline spline:
+                spline.ReplaceFitPoints(spline.FitPoints.Select(x => x + delta));
+                break;
             case CadText text:
                 text.SetPosition(text.Position + delta);
                 break;

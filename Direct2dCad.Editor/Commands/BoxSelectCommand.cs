@@ -51,6 +51,7 @@ public sealed class BoxSelectCommand : SelectionCommandBase
         {
             CadLine line => SegmentIntersectsArea(line.Start, line.End, area),
             CadPolyline polyline => PolylineIntersectsArea(polyline, area),
+            CadSpline spline => SplineIntersectsArea(spline, area),
             CadCircle circle => CircleIntersectsArea(circle.Center, circle.Radius, area),
             CadArc arc => ArcIntersectsArea(arc, area),
             _ => area.Intersects(entity.Bounds)
@@ -71,6 +72,21 @@ public sealed class BoxSelectCommand : SelectionCommandBase
 
         return polyline.Closed &&
                SegmentIntersectsArea(points[^1], points[0], area);
+    }
+
+    private static bool SplineIntersectsArea(CadSpline spline, CadRectD area)
+    {
+        var points = spline.EnumerateFlattenedPoints(24).ToArray();
+        if (points.Length < 2)
+            return false;
+
+        for (var i = 1; i < points.Length; i++)
+        {
+            if (SegmentIntersectsArea(points[i - 1], points[i], area))
+                return true;
+        }
+
+        return false;
     }
 
     private static bool ArcIntersectsArea(CadArc arc, CadRectD area)

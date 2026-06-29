@@ -165,6 +165,9 @@
   <data name="Source" xml:space="preserve">
     <value>ソース</value>
   </data>
+  <data name="Spline" xml:space="preserve">
+    <value>スプライン</value>
+  </data>
   <data name="UnhandledException" xml:space="preserve">
     <value>未処理の例外</value>
   </data>

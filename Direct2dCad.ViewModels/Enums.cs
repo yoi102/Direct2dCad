@@ -20,6 +20,8 @@ public enum CadCanvasToolMode
     Rectangle,
     [LocalizedDescription("Polygon", typeof(Strings))]
     Polygon,
+    [LocalizedDescription("Spline", typeof(Strings))]
+    Spline,
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
     [LocalizedDescription("SetOrigin", typeof(Strings))]

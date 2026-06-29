@@ -213,6 +213,10 @@
     <value>Source</value>
     <comment>Source</comment>
   </data>
+  <data name="Spline" xml:space="preserve">
+    <value>Spline</value>
+    <comment>Spline</comment>
+  </data>
   <data name="Text" xml:space="preserve">
     <value>Text</value>
     <comment>Text</comment>
