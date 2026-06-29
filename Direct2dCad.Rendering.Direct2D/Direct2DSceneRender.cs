@@ -15,6 +15,8 @@ namespace Direct2dCad.Rendering.Direct2D;
 
 public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager, IDisposable
 {
+    private const double TwoPi = Math.PI * 2.0;
+    private const double FullCircleTolerance = 1e-9;
     private readonly Direct2DResourceCache _resourceCache = new();
     private bool _disposed;
 
@@ -523,6 +525,17 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     DrawTransientCircle(deviceContext, viewport, circle.Center, circle.Radius, circle.Style);
                     break;
 
+                case CadTransientArc arc when arc.Radius > 0 && Math.Abs(arc.SweepAngleRadians) > double.Epsilon:
+                    DrawTransientArc(
+                        deviceContext,
+                        viewport,
+                        arc.Center,
+                        arc.Radius,
+                        arc.StartAngleRadians,
+                        arc.SweepAngleRadians,
+                        arc.Style);
+                    break;
+
                 case CadTransientRectangle rectangle when !rectangle.Bounds.IsEmpty:
                     DrawTransientRectangle(deviceContext, viewport, rectangle.Bounds, rectangle.Style);
                     break;
@@ -589,6 +602,17 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     viewport,
                     circle.Center + reference.Offset,
                     circle.Radius,
+                    style);
+                break;
+
+            case CadArc arc:
+                DrawTransientArc(
+                    deviceContext,
+                    viewport,
+                    arc.Center + reference.Offset,
+                    arc.Radius,
+                    arc.StartAngleRadians,
+                    arc.SweepAngleRadians,
                     style);
                 break;
 
@@ -756,6 +780,17 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     reference.Style);
                 break;
 
+            case CadArc arc:
+                DrawTransientArc(
+                    deviceContext,
+                    viewport,
+                    arc.Center + reference.Offset,
+                    arc.Radius,
+                    arc.StartAngleRadians,
+                    arc.SweepAngleRadians,
+                    reference.Style);
+                break;
+
             case CadText text:
                 var bounds = text.Bounds.Translate(reference.Offset);
                 DrawTransientText(
@@ -797,6 +832,95 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             brush,
             ResolveTransientStrokeWidth(style, viewport),
             strokeStyle);
+    }
+
+    private void DrawTransientArc(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadPointD center,
+        double radius,
+        double startAngleRadians,
+        double sweepAngleRadians,
+        CadTransientStyle style)
+    {
+        if (_resourceCache.Factory is null ||
+            radius <= 0 ||
+            Math.Abs(sweepAngleRadians) <= double.Epsilon)
+        {
+            return;
+        }
+
+        using var geometry = CreateTransientArcGeometry(center, radius, startAngleRadians, sweepAngleRadians);
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        deviceContext.DrawGeometry(
+            geometry,
+            brush,
+            ResolveTransientStrokeWidth(style, viewport),
+            strokeStyle);
+    }
+
+    private ID2D1PathGeometry CreateTransientArcGeometry(
+        CadPointD center,
+        double radius,
+        double startAngleRadians,
+        double sweepAngleRadians)
+    {
+        var geometry = _resourceCache.Factory!.CreatePathGeometry();
+        using var sink = geometry.Open();
+        var startPoint = GetArcPoint(center, radius, startAngleRadians);
+        sink.BeginFigure(ToVector2(startPoint), FigureBegin.Hollow);
+
+        if (IsFullCircleSweep(sweepAngleRadians))
+        {
+            var halfSweep = sweepAngleRadians >= 0 ? Math.PI : -Math.PI;
+            var midPoint = GetArcPoint(center, radius, startAngleRadians + halfSweep);
+            sink.AddArc(CreateArcSegment(midPoint, radius, halfSweep));
+            sink.AddArc(CreateArcSegment(startPoint, radius, halfSweep));
+        }
+        else
+        {
+            var endPoint = GetArcPoint(center, radius, startAngleRadians + sweepAngleRadians);
+            sink.AddArc(CreateArcSegment(endPoint, radius, sweepAngleRadians));
+        }
+
+        sink.EndFigure(FigureEnd.Open);
+        sink.Close();
+        return geometry;
+    }
+
+    private static ArcSegment CreateArcSegment(
+        CadPointD endPoint,
+        double radius,
+        double sweepAngleRadians)
+    {
+        return new ArcSegment(
+            ToVector2(endPoint),
+            new Size((float)radius, (float)radius),
+            rotationAngle: 0,
+            ToD2DSweepDirection(sweepAngleRadians),
+            Math.Abs(sweepAngleRadians) > Math.PI ? ArcSize.Large : ArcSize.Small);
+    }
+
+    private static SweepDirection ToD2DSweepDirection(double sweepAngleRadians)
+    {
+        // The current viewport keeps Y increasing downward, so this maps to the
+        // same visual direction as CadArc.GetPointAtAngle's Y + sin(angle).
+        return sweepAngleRadians >= 0
+            ? SweepDirection.Clockwise
+            : SweepDirection.CounterClockwise;
+    }
+
+    private static bool IsFullCircleSweep(double sweepAngleRadians)
+    {
+        return Math.Abs(Math.Abs(sweepAngleRadians) - TwoPi) <= FullCircleTolerance;
+    }
+
+    private static CadPointD GetArcPoint(CadPointD center, double radius, double angleRadians)
+    {
+        return new CadPointD(
+            center.X + Math.Cos(angleRadians) * radius,
+            center.Y + Math.Sin(angleRadians) * radius);
     }
 
     private void DrawTransientCircle(

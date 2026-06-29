@@ -87,6 +87,13 @@ public sealed class CadHandleSceneBuilder
                 AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y - circle.Radius), CadHandleType.Radius);
                 break;
 
+            case CadArc arc:
+                AddGrip(items, entity.Id, arc.Center, CadHandleType.Center);
+                AddGrip(items, entity.Id, arc.StartPoint, CadHandleType.Vertex);
+                AddGrip(items, entity.Id, arc.EndPoint, CadHandleType.Vertex);
+                AddGrip(items, entity.Id, arc.GetPointAtAngle(arc.StartAngleRadians + arc.SweepAngleRadians * 0.5), CadHandleType.Radius);
+                break;
+
             case CadRectangle:
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds);
                 break;

@@ -136,6 +136,27 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddArc(
+        CadPointD center,
+        double radius,
+        double startAngleRadians,
+        double sweepAngleRadians,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        string name = "")
+    {
+        var command = new AddArcCommand(
+            center,
+            radius,
+            startAngleRadians,
+            sweepAngleRadians,
+            layerId,
+            graphicStyleId,
+            name);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddRectangle(
         CadRectD bounds,
         LayerId? layerId = null,
@@ -202,6 +223,21 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetCircleGeometry(EntityId entityId, CadPointD center, double radius)
     {
         return DocumentCommands.Execute(new SetCircleGeometryCommand(entityId, center, radius));
+    }
+
+    public CadDocumentChangeSet SetArcGeometry(
+        EntityId entityId,
+        CadPointD center,
+        double radius,
+        double startAngleRadians,
+        double sweepAngleRadians)
+    {
+        return DocumentCommands.Execute(new SetArcGeometryCommand(
+            entityId,
+            center,
+            radius,
+            startAngleRadians,
+            sweepAngleRadians));
     }
 
     public CadDocumentChangeSet SetRectangleGeometry(EntityId entityId, CadRectD bounds)

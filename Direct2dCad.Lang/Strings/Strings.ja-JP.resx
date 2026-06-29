@@ -120,6 +120,9 @@
   <data name="Cancel" xml:space="preserve">
     <value>キャンセル</value>
   </data>
+  <data name="Arc" xml:space="preserve">
+    <value>円弧</value>
+  </data>
   <data name="Chinese" xml:space="preserve">
     <value>中国語</value>
   </data>

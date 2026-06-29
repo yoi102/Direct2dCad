@@ -17,6 +17,14 @@ public sealed record CadTransientCircle(
     CadTransientStyle Style)
     : CadTransientItem(Style);
 
+public sealed record CadTransientArc(
+    CadPointD Center,
+    double Radius,
+    double StartAngleRadians,
+    double SweepAngleRadians,
+    CadTransientStyle Style)
+    : CadTransientItem(Style);
+
 public sealed record CadTransientRectangle(
     CadRectD Bounds,
     CadTransientStyle Style)

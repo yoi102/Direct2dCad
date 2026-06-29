@@ -68,6 +68,15 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Cancel", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   查找类似 Arc 的本地化字符串。
+        /// </summary>
+        public static string Arc {
+            get {
+                return ResourceManager.GetString("Arc", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 Chinese 的本地化字符串。

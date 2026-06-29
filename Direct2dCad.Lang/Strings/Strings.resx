@@ -121,6 +121,10 @@
     <value>Cancel</value>
     <comment>Cancel</comment>
   </data>
+  <data name="Arc" xml:space="preserve">
+    <value>Arc</value>
+    <comment>Arc</comment>
+  </data>
   <data name="Chinese" xml:space="preserve">
     <value>Chinese</value>
     <comment>Chinese</comment>

@@ -108,6 +108,14 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 rectangle.GraphicStyleId,
                 rectangle.FillStyleId,
                 rectangle.Name),
+            CadArc arc => document.AddArc(
+                arc.Center + delta,
+                arc.Radius,
+                arc.StartAngleRadians,
+                arc.SweepAngleRadians,
+                arc.LayerId,
+                arc.GraphicStyleId,
+                arc.Name),
             CadText text => document.AddText(
                 text.Text,
                 text.Position + delta,

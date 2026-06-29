@@ -14,7 +14,6 @@ namespace Direct2dCad.Rendering.Direct2D;
 
 internal sealed class Direct2DResourceCache : IDisposable
 {
-    private const double ArcSegmentMaxAngle = Math.PI / 18.0;
     private readonly Dictionary<EntityId, EntityResourceBucket> _entityResources = [];
     private bool _disposed;
 
@@ -199,17 +198,32 @@ internal sealed class Direct2DResourceCache : IDisposable
         var geometry = Factory!.CreatePathGeometry();
         using var sink = geometry.Open();
         sink.BeginFigure(ToVector2(arc.StartPoint), FigureBegin.Hollow);
-
-        var segmentCount = Math.Max(1, (int)Math.Ceiling(Math.Abs(arc.SweepAngleRadians) / ArcSegmentMaxAngle));
-        for (var i = 1; i <= segmentCount; i++)
-        {
-            var angle = arc.StartAngleRadians + arc.SweepAngleRadians * i / segmentCount;
-            sink.AddLine(ToVector2(arc.GetPointAtAngle(angle)));
-        }
-
+        sink.AddArc(CreateArcSegment(arc.EndPoint, arc.Radius, arc.SweepAngleRadians));
         sink.EndFigure(FigureEnd.Open);
         sink.Close();
         return geometry;
+    }
+
+    private static ArcSegment CreateArcSegment(
+        CadPointD endPoint,
+        double radius,
+        double sweepAngleRadians)
+    {
+        return new ArcSegment(
+            ToVector2(endPoint),
+            new Size((float)radius, (float)radius),
+            rotationAngle: 0,
+            ToD2DSweepDirection(sweepAngleRadians),
+            Math.Abs(sweepAngleRadians) > Math.PI ? ArcSize.Large : ArcSize.Small);
+    }
+
+    private static SweepDirection ToD2DSweepDirection(double sweepAngleRadians)
+    {
+        // The current viewport keeps Y increasing downward, so this maps to the
+        // same visual direction as CadArc.GetPointAtAngle's Y + sin(angle).
+        return sweepAngleRadians >= 0
+            ? SweepDirection.Clockwise
+            : SweepDirection.CounterClockwise;
     }
 
     private ID2D1RectangleGeometry CreateRectangleGeometry(CadRectD bounds)

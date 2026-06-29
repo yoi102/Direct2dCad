@@ -16,11 +16,13 @@ namespace Direct2dCad.ViewModels;
 
 public partial class CadDocumentViewModel : ObservableObject, IDisposable
 {
+    private const double TwoPi = Math.PI * 2.0;
     private readonly CadTransientScene _transientScene = new();
     private readonly CadHandleScene _handleScene = new();
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
     private readonly CadHandleHitTester _handleHitTester = new();
     private CadPointD? _pendingWorldPoint;
+    private CadPointD? _pendingArcStartPoint;
     private CadPointD? _currentMousePoint;
     private CadPointD? _lastPanPoint;
     private CadPointD? _selectionDragStart;
@@ -334,6 +336,39 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 RequestRender();
                 break;
 
+            case CadCanvasToolMode.Arc:
+                if (_pendingWorldPoint is null)
+                {
+                    _pendingWorldPoint = world;
+                }
+                else if (_pendingArcStartPoint is null)
+                {
+                    if (_pendingWorldPoint.Value.DistanceTo(world) > double.Epsilon)
+                        _pendingArcStartPoint = world;
+                }
+                else
+                {
+                    if (TryCreateArcGeometry(
+                        _pendingWorldPoint.Value,
+                        _pendingArcStartPoint.Value,
+                        world,
+                        out var radius,
+                        out var startAngleRadians,
+                        out var sweepAngleRadians))
+                    {
+                        CadEditor.AddArc(
+                            _pendingWorldPoint.Value,
+                            radius,
+                            startAngleRadians,
+                            sweepAngleRadians);
+                    }
+
+                    _pendingWorldPoint = null;
+                    _pendingArcStartPoint = null;
+                }
+                RequestRender();
+                break;
+
             case CadCanvasToolMode.Rectangle:
                 if (_pendingWorldPoint is null)
                     _pendingWorldPoint = world;
@@ -412,6 +447,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private void ClearInteractionState(bool clearClipboard, bool render = true)
     {
         _pendingWorldPoint = null;
+        _pendingArcStartPoint = null;
         _selectionDragStart = null;
         _activeGripDrag = null;
         _isPastePreviewActive = false;
@@ -521,6 +557,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddCircleGripPreview(items, circle, drag, style);
                 break;
 
+            case CadArc arc:
+                AddArcGripPreview(items, arc, drag, style);
+                break;
+
             case CadRectangle rectangle:
                 AddRectangleGripPreview(items, rectangle, drag, style);
                 break;
@@ -565,6 +605,20 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         items.Add(new CadTransientCircle(circle.Center, radius, style));
         items.Add(new CadTransientLine(circle.Center, drag.DraggedGripPosition, style));
+    }
+
+    private static void AddArcGripPreview(
+        List<CadTransientItem> items,
+        CadArc arc,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (!TryCreateArcGripGeometry(arc, drag, out var center, out var radius, out var startAngle, out var sweepAngle))
+            return;
+
+        items.Add(new CadTransientArc(center, radius, startAngle, sweepAngle, style));
+        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle), style));
+        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle + sweepAngle), style));
     }
 
     private static void AddRectangleGripPreview(
@@ -639,6 +693,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CommitCircleGripDrag(circle, drag);
                 break;
 
+            case CadArc arc:
+                CommitArcGripDrag(arc, drag);
+                break;
+
             case CadRectangle rectangle:
                 CommitRectangleGripDrag(rectangle, drag);
                 break;
@@ -672,6 +730,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
         if (radius > double.Epsilon)
             CadEditor.SetCircleGeometry(circle.Id, circle.Center, radius);
+    }
+
+    private void CommitArcGripDrag(CadArc arc, GripDragState drag)
+    {
+        if (TryCreateArcGripGeometry(arc, drag, out var center, out var radius, out var startAngle, out var sweepAngle))
+            CadEditor.SetArcGeometry(arc.Id, center, radius, startAngle, sweepAngle);
     }
 
     private void CommitRectangleGripDrag(CadRectangle rectangle, GripDragState drag)
@@ -748,6 +812,53 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return IsValidRectangleBounds(bounds);
     }
 
+    private static bool TryCreateArcGripGeometry(
+        CadArc arc,
+        GripDragState drag,
+        out CadPointD center,
+        out double radius,
+        out double startAngleRadians,
+        out double sweepAngleRadians)
+    {
+        center = arc.Center;
+        radius = arc.Radius;
+        startAngleRadians = arc.StartAngleRadians;
+        sweepAngleRadians = arc.SweepAngleRadians;
+
+        if (drag.Handle.Type == CadHandleType.Radius)
+        {
+            radius = center.DistanceTo(drag.DraggedGripPosition);
+            return radius > double.Epsilon;
+        }
+
+        if (drag.Handle.Type != CadHandleType.Vertex)
+            return false;
+
+        var targetRadius = center.DistanceTo(drag.DraggedGripPosition);
+        if (targetRadius <= double.Epsilon)
+            return false;
+
+        radius = targetRadius;
+        var targetAngle = AngleFrom(center, drag.DraggedGripPosition);
+        if (IsArcStartGrip(arc, drag.Handle.Position))
+        {
+            startAngleRadians = targetAngle;
+            sweepAngleRadians = ResolveSweepAngle(
+                startAngleRadians,
+                arc.EndAngleRadians,
+                arc.SweepAngleRadians >= 0);
+        }
+        else
+        {
+            sweepAngleRadians = ResolveSweepAngle(
+                startAngleRadians,
+                targetAngle,
+                arc.SweepAngleRadians >= 0);
+        }
+
+        return IsValidArcGeometry(radius, sweepAngleRadians);
+    }
+
     private static CadTransientStyle CreateGripPreviewStyle()
     {
         return CadTransientStyle.Construction with
@@ -792,6 +903,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return line.Start.DistanceSquaredTo(gripPosition) <= line.End.DistanceSquaredTo(gripPosition);
     }
 
+    private static bool IsArcStartGrip(CadArc arc, CadPointD gripPosition)
+    {
+        return arc.StartPoint.DistanceSquaredTo(gripPosition) <= arc.EndPoint.DistanceSquaredTo(gripPosition);
+    }
+
     private void AddPastePreview(List<CadTransientItem> items, CadPointD mouseWorld)
     {
         if (!_isPastePreviewActive || _clipboard is null)
@@ -832,6 +948,30 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 {
                     items.Add(new CadTransientCircle(center, radius, CadTransientStyle.Construction));
                     items.Add(new CadTransientLine(center, mouseWorld, CadTransientStyle.Construction));
+                }
+                break;
+
+            case CadCanvasToolMode.Arc when _pendingWorldPoint is { } arcCenter && _pendingArcStartPoint is null:
+                var previewRadius = arcCenter.DistanceTo(mouseWorld);
+                if (previewRadius > double.Epsilon)
+                {
+                    items.Add(new CadTransientCircle(arcCenter, previewRadius, CadTransientStyle.Construction));
+                    items.Add(new CadTransientLine(arcCenter, mouseWorld, CadTransientStyle.Construction));
+                }
+                break;
+
+            case CadCanvasToolMode.Arc when _pendingWorldPoint is { } arcCenter && _pendingArcStartPoint is { } arcStart:
+                if (TryCreateArcGeometry(
+                    arcCenter,
+                    arcStart,
+                    mouseWorld,
+                    out var arcRadius,
+                    out var arcStartAngle,
+                    out var arcSweepAngle))
+                {
+                    items.Add(new CadTransientArc(arcCenter, arcRadius, arcStartAngle, arcSweepAngle, CadTransientStyle.Construction));
+                    items.Add(new CadTransientLine(arcCenter, arcStart, CadTransientStyle.Construction));
+                    items.Add(new CadTransientLine(arcCenter, GetArcPoint(arcCenter, arcRadius, arcStartAngle + arcSweepAngle), CadTransientStyle.Construction));
                 }
                 break;
 
@@ -1053,6 +1193,53 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             : CadText.EstimateTextWidth(text.Text, 1.0);
     }
 
+    private static bool TryCreateArcGeometry(
+        CadPointD center,
+        CadPointD start,
+        CadPointD end,
+        out double radius,
+        out double startAngleRadians,
+        out double sweepAngleRadians)
+    {
+        radius = center.DistanceTo(start);
+        startAngleRadians = AngleFrom(center, start);
+        sweepAngleRadians = ResolveSweepAngle(startAngleRadians, AngleFrom(center, end), counterClockwise: true);
+        return center.DistanceTo(end) > double.Epsilon &&
+               IsValidArcGeometry(radius, sweepAngleRadians);
+    }
+
+    private static bool IsValidArcGeometry(double radius, double sweepAngleRadians)
+    {
+        return radius > double.Epsilon &&
+               Math.Abs(sweepAngleRadians) > 1e-9 &&
+               Math.Abs(sweepAngleRadians) <= TwoPi;
+    }
+
+    private static double AngleFrom(CadPointD center, CadPointD point)
+    {
+        return Math.Atan2(point.Y - center.Y, point.X - center.X);
+    }
+
+    private static double ResolveSweepAngle(double startAngleRadians, double endAngleRadians, bool counterClockwise)
+    {
+        return counterClockwise
+            ? NormalizePositive(endAngleRadians - startAngleRadians)
+            : -NormalizePositive(startAngleRadians - endAngleRadians);
+    }
+
+    private static double NormalizePositive(double angleRadians)
+    {
+        var result = angleRadians % TwoPi;
+        return result < 0 ? result + TwoPi : result;
+    }
+
+    private static CadPointD GetArcPoint(CadPointD center, double radius, double angleRadians)
+    {
+        return new CadPointD(
+            center.X + Math.Cos(angleRadians) * radius,
+            center.Y + Math.Sin(angleRadians) * radius);
+    }
+
     private static bool IsValidRectangleBounds(CadRectD bounds)
     {
         return !bounds.IsEmpty &&
@@ -1086,7 +1273,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private static bool CanDuplicate(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadRectangle or CadText;
+        return entity is CadLine or CadCircle or CadArc or CadRectangle or CadText;
     }
 
     public void Dispose()

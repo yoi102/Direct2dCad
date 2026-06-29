@@ -32,6 +32,9 @@
             <Button Content="Circle"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Circle" />
+            <Button Content="Arc"
+                    Command="{Binding SetCadCanvasToolModeCommand}"
+                    CommandParameter="Arc" />
             <Button Content="Rectangle"
                     Command="{Binding SetCadCanvasToolModeCommand}"
                     CommandParameter="Rectangle" />
