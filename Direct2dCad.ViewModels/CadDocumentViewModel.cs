@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
@@ -52,6 +53,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public event EventHandler? ViewSettingsChanged;
 
     public bool IsPanning { get; private set; }
+    public CadUserSettings UserSettings { get; private set; } = CadUserSettings.CreateDefault();
 
     internal void ReplaceEditor(CadEditor editor)
     {
@@ -105,6 +107,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public void SetRenderSize(int width, int height)
     {
         Direct2DImageRenderHost.SetSize(Math.Max(1, width), Math.Max(1, height));
+    }
+
+    public void ApplyUserSettings(CadUserSettings? settings)
+    {
+        UserSettings = settings ?? CadUserSettings.CreateDefault();
+        UserSettings.Normalize();
+        RequestRender();
     }
 
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
@@ -531,12 +540,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadRenderOptions CreateRenderOptions()
     {
-        if (_activeGripDrag is null)
-            return new CadRenderOptions();
-
         return new CadRenderOptions
         {
-            HiddenEntityIds = ResolveGripDragEntityIds(_activeGripDrag).ToHashSet()
+            IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
+            HiddenEntityIds = _activeGripDrag is null
+                ? new HashSet<EntityId>()
+                : ResolveGripDragEntityIds(_activeGripDrag).ToHashSet()
         };
     }
 
@@ -568,7 +578,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         var items = _handleSceneBuilder.BuildSelectionHandles(
             CadEditor.Document,
-            CadEditor.Selection.EntityIds);
+            CadEditor.Selection.EntityIds,
+            CreateHandleSceneBuildOptions());
         _handleScene.Replace(items);
     }
 
@@ -1028,14 +1039,14 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return IsValidArcGeometry(radius, sweepAngleRadians);
     }
 
-    private static CadTransientStyle CreateGripPreviewStyle()
+    private CadTransientStyle CreateGripPreviewStyle()
     {
         return CadTransientStyle.Construction with
         {
-            StrokeColor = CadColor.FromArgb(245, 255, 214, 92),
-            StrokeWidth = 1.4,
+            StrokeColor = UserSettings.Interaction.GripPreviewStrokeColor,
+            StrokeWidth = UserSettings.Interaction.GripPreviewStrokeWidth,
             LinePattern = CadTransientLinePattern.Dash,
-            FillColor = CadColor.FromArgb(22, 255, 214, 92)
+            FillColor = UserSettings.Interaction.GripPreviewFillColor
         };
     }
 
@@ -1099,8 +1110,50 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         items.Add(new CadTransientRectangle(
             ToWorldRect(_selectionDragStart.Value, mousePoint),
             IsSelectionWindow(_selectionDragStart.Value, mousePoint)
-                ? CadTransientStyle.SelectionWindow
-                : CadTransientStyle.SelectionCrossing));
+                ? CreateSelectionWindowStyle()
+                : CreateSelectionCrossingStyle()));
+    }
+
+    private CadHandleSceneBuildOptions CreateHandleSceneBuildOptions()
+    {
+        var interaction = UserSettings.Interaction;
+        return CadHandleSceneBuildOptions.Default with
+        {
+            SelectionOutlineStyle = CadHandleStyle.SelectionOutline with
+            {
+                StrokeColor = interaction.SelectedEntityStrokeColor,
+                StrokeWidth = interaction.SelectedEntityStrokeWidth
+            },
+            GripStyle = CadHandleStyle.Grip with
+            {
+                StrokeColor = interaction.GripStrokeColor,
+                FillColor = interaction.GripFillColor,
+                Size = interaction.GripSize,
+                StrokeWidth = interaction.GripStrokeWidth
+            }
+        };
+    }
+
+    private CadTransientStyle CreateSelectionWindowStyle()
+    {
+        var interaction = UserSettings.Interaction;
+        return CadTransientStyle.SelectionWindow with
+        {
+            StrokeColor = interaction.SelectionWindowStrokeColor,
+            FillColor = interaction.SelectionWindowFillColor,
+            StrokeWidth = interaction.SelectionWindowStrokeWidth
+        };
+    }
+
+    private CadTransientStyle CreateSelectionCrossingStyle()
+    {
+        var interaction = UserSettings.Interaction;
+        return CadTransientStyle.SelectionCrossing with
+        {
+            StrokeColor = interaction.SelectionCrossingStrokeColor,
+            FillColor = interaction.SelectionCrossingFillColor,
+            StrokeWidth = interaction.SelectionCrossingStrokeWidth
+        };
     }
 
     private void AddDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)

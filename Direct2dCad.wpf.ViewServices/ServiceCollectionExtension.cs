@@ -9,6 +9,7 @@ public static class ServiceCollectionExtension
     {
         services.AddTransient<IFileDialogService, FileDialogService>();
         services.AddTransient<IMessageBoxService, MessageBoxService>();
+        services.AddSingleton<IUserSettingsService, UserSettingsService>();
         return services;
     }
 

@@ -28,13 +28,13 @@ public sealed class CadHandleSceneBuilder
                 items.Add(new CadSelectionEntityReference(
                     entity.Id,
                     CadVectorD.Zero,
-                    CadHandleStyle.SelectionOutline));
+                    options.SelectionOutlineStyle));
             }
 
             if (options.IncludeGripHandles &&
                 (!entity.IsLocked || options.IncludeLockedEntityGripHandles))
             {
-                AddEntityGripHandles(items, entity);
+                AddEntityGripHandles(items, entity, options.GripStyle);
             }
         }
 
@@ -69,96 +69,114 @@ public sealed class CadHandleSceneBuilder
         return true;
     }
 
-    private static void AddEntityGripHandles(List<CadHandleItem> items, CadEntity entity)
+    private static void AddEntityGripHandles(
+        List<CadHandleItem> items,
+        CadEntity entity,
+        CadHandleStyle gripStyle)
     {
         switch (entity)
         {
             case CadLine line:
-                AddGrip(items, entity.Id, line.Start, CadHandleType.Vertex);
-                AddGrip(items, entity.Id, line.End, CadHandleType.Vertex);
-                AddGrip(items, entity.Id, Midpoint(line.Start, line.End), CadHandleType.Center);
+                AddGrip(items, entity.Id, line.Start, CadHandleType.Vertex, gripStyle);
+                AddGrip(items, entity.Id, line.End, CadHandleType.Vertex, gripStyle);
+                AddGrip(items, entity.Id, Midpoint(line.Start, line.End), CadHandleType.Center, gripStyle);
                 break;
 
             case CadCircle circle:
-                AddGrip(items, entity.Id, circle.Center, CadHandleType.Center);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X + circle.Radius, circle.Center.Y), CadHandleType.Radius);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y + circle.Radius), CadHandleType.Radius);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X - circle.Radius, circle.Center.Y), CadHandleType.Radius);
-                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y - circle.Radius), CadHandleType.Radius);
+                AddGrip(items, entity.Id, circle.Center, CadHandleType.Center, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X + circle.Radius, circle.Center.Y), CadHandleType.Radius, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y + circle.Radius), CadHandleType.Radius, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X - circle.Radius, circle.Center.Y), CadHandleType.Radius, gripStyle);
+                AddGrip(items, entity.Id, new CadPointD(circle.Center.X, circle.Center.Y - circle.Radius), CadHandleType.Radius, gripStyle);
                 break;
 
             case CadArc arc:
-                AddGrip(items, entity.Id, arc.Center, CadHandleType.Center);
-                AddGrip(items, entity.Id, arc.StartPoint, CadHandleType.Vertex);
-                AddGrip(items, entity.Id, arc.EndPoint, CadHandleType.Vertex);
-                AddGrip(items, entity.Id, arc.GetPointAtAngle(arc.StartAngleRadians + arc.SweepAngleRadians * 0.5), CadHandleType.Radius);
+                AddGrip(items, entity.Id, arc.Center, CadHandleType.Center, gripStyle);
+                AddGrip(items, entity.Id, arc.StartPoint, CadHandleType.Vertex, gripStyle);
+                AddGrip(items, entity.Id, arc.EndPoint, CadHandleType.Vertex, gripStyle);
+                AddGrip(items, entity.Id, arc.GetPointAtAngle(arc.StartAngleRadians + arc.SweepAngleRadians * 0.5), CadHandleType.Radius, gripStyle);
                 break;
 
             case CadRectangle:
-                AddBoundsGripHandles(items, entity.Id, entity.Bounds);
+                AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;
 
             case CadPolyline polyline:
-                AddPolylineGripHandles(items, polyline);
+                AddPolylineGripHandles(items, polyline, gripStyle);
                 break;
 
             case CadSpline spline:
-                AddSplineGripHandles(items, spline);
+                AddSplineGripHandles(items, spline, gripStyle);
                 break;
 
             case CadText:
-                AddBoundsGripHandles(items, entity.Id, entity.Bounds);
+                AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;
 
             default:
                 if (SupportsCenterGrip(entity) && !entity.Bounds.IsEmpty)
-                    AddGrip(items, entity.Id, entity.Bounds.Center, CadHandleType.Center);
+                    AddGrip(items, entity.Id, entity.Bounds.Center, CadHandleType.Center, gripStyle);
                 break;
         }
     }
 
-    private static void AddPolylineGripHandles(List<CadHandleItem> items, CadPolyline polyline)
+    private static void AddPolylineGripHandles(
+        List<CadHandleItem> items,
+        CadPolyline polyline,
+        CadHandleStyle gripStyle)
     {
         foreach (var point in polyline.Points)
-            AddGrip(items, polyline.Id, point, CadHandleType.Vertex);
+            AddGrip(items, polyline.Id, point, CadHandleType.Vertex, gripStyle);
 
         if (!polyline.Bounds.IsEmpty)
-            AddGrip(items, polyline.Id, polyline.Bounds.Center, CadHandleType.Center);
+            AddGrip(items, polyline.Id, polyline.Bounds.Center, CadHandleType.Center, gripStyle);
     }
 
-    private static void AddSplineGripHandles(List<CadHandleItem> items, CadSpline spline)
+    private static void AddSplineGripHandles(
+        List<CadHandleItem> items,
+        CadSpline spline,
+        CadHandleStyle gripStyle)
     {
         foreach (var point in spline.FitPoints)
-            AddGrip(items, spline.Id, point, CadHandleType.Vertex);
+            AddGrip(items, spline.Id, point, CadHandleType.Vertex, gripStyle);
 
         if (!spline.Bounds.IsEmpty)
-            AddGrip(items, spline.Id, spline.Bounds.Center, CadHandleType.Center);
+            AddGrip(items, spline.Id, spline.Bounds.Center, CadHandleType.Center, gripStyle);
     }
 
-    private static void AddBoundsGripHandles(List<CadHandleItem> items, EntityId entityId, CadRectD bounds)
+    private static void AddBoundsGripHandles(
+        List<CadHandleItem> items,
+        EntityId entityId,
+        CadRectD bounds,
+        CadHandleStyle gripStyle)
     {
         if (bounds.IsEmpty)
             return;
 
-        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MinY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MinY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MaxY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MaxY), CadHandleType.BoundsCorner);
-        AddGrip(items, entityId, bounds.Center, CadHandleType.Center);
+        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MinY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MinY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MaxY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MaxY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, bounds.Center, CadHandleType.Center, gripStyle);
     }
 
-    private static void AddGrip(List<CadHandleItem> items, EntityId entityId, CadPointD position, CadHandleType type)
+    private static void AddGrip(
+        List<CadHandleItem> items,
+        EntityId entityId,
+        CadPointD position,
+        CadHandleType type,
+        CadHandleStyle gripStyle)
     {
-        items.Add(new CadGripHandle(entityId, position, type, CreateGripStyle(type)));
+        items.Add(new CadGripHandle(entityId, position, type, CreateGripStyle(type, gripStyle)));
     }
 
-    private static CadHandleStyle CreateGripStyle(CadHandleType type)
+    private static CadHandleStyle CreateGripStyle(CadHandleType type, CadHandleStyle gripStyle)
     {
         return type switch
         {
-            CadHandleType.Center => CadHandleStyle.Grip with { Shape = CadHandleShape.Circle },
-            CadHandleType.Radius => CadHandleStyle.Grip with { Shape = CadHandleShape.Diamond },
-            _ => CadHandleStyle.Grip
+            CadHandleType.Center => gripStyle with { Shape = CadHandleShape.Circle },
+            CadHandleType.Radius => gripStyle with { Shape = CadHandleShape.Diamond },
+            _ => gripStyle
         };
     }
 

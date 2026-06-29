@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Client.Common\Direct2dCad.Client.Common.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewServices.Abstractions\Direct2dCad.ViewServices.Abstractions.csproj" />
   </ItemGroup>
 

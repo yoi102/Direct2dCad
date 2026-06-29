@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
@@ -14,15 +15,26 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly CadDocumentStorage _storage = new();
     private readonly IFileDialogService _fileDialogService;
     private readonly IMessageBoxService _messageBoxService;
+    private readonly IUserSettingsService _userSettingsService;
+    private readonly CadUserSettings _userSettings;
     private bool _isSyncingViewSettings;
+    private bool _isSyncingUserSettings;
 
-    public MainViewModel(IFileDialogService fileDialogService, IMessageBoxService messageBoxService, CadDocumentViewModel cadDocumentViewModel)
+    public MainViewModel(
+        IFileDialogService fileDialogService,
+        IMessageBoxService messageBoxService,
+        IUserSettingsService userSettingsService,
+        CadDocumentViewModel cadDocumentViewModel)
     {
         _fileDialogService = fileDialogService;
         _messageBoxService = messageBoxService;
+        _userSettingsService = userSettingsService;
+        _userSettings = _userSettingsService.Load();
         CadDocumentViewModel = cadDocumentViewModel;
+        CadDocumentViewModel.ApplyUserSettings(_userSettings);
         CadDocumentViewModel.ViewSettingsChanged += OnCadDocumentViewSettingsChanged;
         ApplyDocumentViewSettingsToToolbar();
+        ApplyUserSettingsToToolbar();
         CadDocumentViewModel.DrawingText = TextInput;
     }
 
@@ -63,6 +75,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial double ViewModelCadOriginY { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsAntialiasingEnabled { get; set; } = true;
+
+    [ObservableProperty]
+    public partial bool IsTextAntialiasingEnabled { get; set; } = true;
+
+    [ObservableProperty]
+    public partial string SelectedEntityColorText { get; set; } = "#F0FFD65C";
+
+    [ObservableProperty]
+    public partial string SelectionWindowStrokeColorText { get; set; } = "#E640C4FF";
+
+    [ObservableProperty]
+    public partial string SelectionWindowFillColorText { get; set; } = "#2040C4FF";
+
+    [ObservableProperty]
+    public partial string SelectionCrossingStrokeColorText { get; set; } = "#E65CDC80";
+
+    [ObservableProperty]
+    public partial string SelectionCrossingFillColorText { get; set; } = "#245CDC80";
 
     partial void OnTextInputChanged(string value)
     {
@@ -156,6 +189,62 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ApplyOriginPositionFromToolbar();
     }
 
+    partial void OnIsAntialiasingEnabledChanged(bool value)
+    {
+        if (_isSyncingUserSettings)
+            return;
+
+        ApplyUserSettingsFromToolbar();
+    }
+
+    partial void OnIsTextAntialiasingEnabledChanged(bool value)
+    {
+        if (_isSyncingUserSettings)
+            return;
+
+        ApplyUserSettingsFromToolbar();
+    }
+
+    partial void OnSelectedEntityColorTextChanged(string value)
+    {
+        if (_isSyncingUserSettings)
+            return;
+
+        ApplyUserSettingsFromToolbar();
+    }
+
+    partial void OnSelectionWindowStrokeColorTextChanged(string value)
+    {
+        if (_isSyncingUserSettings)
+            return;
+
+        ApplyUserSettingsFromToolbar();
+    }
+
+    partial void OnSelectionWindowFillColorTextChanged(string value)
+    {
+        if (_isSyncingUserSettings)
+            return;
+
+        ApplyUserSettingsFromToolbar();
+    }
+
+    partial void OnSelectionCrossingStrokeColorTextChanged(string value)
+    {
+        if (_isSyncingUserSettings)
+            return;
+
+        ApplyUserSettingsFromToolbar();
+    }
+
+    partial void OnSelectionCrossingFillColorTextChanged(string value)
+    {
+        if (_isSyncingUserSettings)
+            return;
+
+        ApplyUserSettingsFromToolbar();
+    }
+
     [RelayCommand]
     private void OpenFile()
     {
@@ -243,6 +332,62 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         CadDocumentViewModel.FitToWindow();
     }
+
+    private void ApplyUserSettingsToToolbar()
+    {
+        _isSyncingUserSettings = true;
+        try
+        {
+            IsAntialiasingEnabled = _userSettings.Rendering.IsAntialiasingEnabled;
+            IsTextAntialiasingEnabled = _userSettings.Rendering.IsTextAntialiasingEnabled;
+            SelectedEntityColorText = FormatColor(_userSettings.Interaction.SelectedEntityStrokeColor);
+            SelectionWindowStrokeColorText = FormatColor(_userSettings.Interaction.SelectionWindowStrokeColor);
+            SelectionWindowFillColorText = FormatColor(_userSettings.Interaction.SelectionWindowFillColor);
+            SelectionCrossingStrokeColorText = FormatColor(_userSettings.Interaction.SelectionCrossingStrokeColor);
+            SelectionCrossingFillColorText = FormatColor(_userSettings.Interaction.SelectionCrossingFillColor);
+        }
+        finally
+        {
+            _isSyncingUserSettings = false;
+        }
+    }
+
+    private void ApplyUserSettingsFromToolbar()
+    {
+        if (!TryParseColor(SelectedEntityColorText, out var selectedEntityColor) ||
+            !TryParseColor(SelectionWindowStrokeColorText, out var selectionWindowStrokeColor) ||
+            !TryParseColor(SelectionWindowFillColorText, out var selectionWindowFillColor) ||
+            !TryParseColor(SelectionCrossingStrokeColorText, out var selectionCrossingStrokeColor) ||
+            !TryParseColor(SelectionCrossingFillColorText, out var selectionCrossingFillColor))
+        {
+            return;
+        }
+
+        _userSettings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
+        _userSettings.Rendering.IsTextAntialiasingEnabled = IsTextAntialiasingEnabled;
+        _userSettings.Interaction.SelectedEntityStrokeColor = selectedEntityColor;
+        _userSettings.Interaction.SelectionWindowStrokeColor = selectionWindowStrokeColor;
+        _userSettings.Interaction.SelectionWindowFillColor = selectionWindowFillColor;
+        _userSettings.Interaction.SelectionCrossingStrokeColor = selectionCrossingStrokeColor;
+        _userSettings.Interaction.SelectionCrossingFillColor = selectionCrossingFillColor;
+        _userSettings.Normalize();
+
+        CadDocumentViewModel.ApplyUserSettings(_userSettings);
+        SaveUserSettings();
+    }
+
+    private void SaveUserSettings()
+    {
+        try
+        {
+            _userSettingsService.Save(_userSettings);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _messageBoxService.ShowMessage(ex.Message, "User settings save failed");
+        }
+    }
+
     private void ApplyDocumentViewSettingsToToolbar()
     {
         _isSyncingViewSettings = true;
@@ -347,6 +492,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        SaveUserSettings();
         CadDocumentViewModel.ViewSettingsChanged -= OnCadDocumentViewSettingsChanged;
         CadDocumentViewModel.Dispose();
     }

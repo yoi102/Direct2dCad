@@ -20,6 +20,28 @@
                     Command="{Binding SaveFileCommand}" />
             <Button Content="Save As"
                     Command="{Binding SaveAsFileCommand}" />
+            <Separator Margin="20 0 0 0" />
+            <Button Content="Undo"
+                    Command="{Binding UndoCommand}" />
+            <Button Content="Redo"
+                    Command="{Binding RedoCommand}" />
+
+            <Separator Margin="20 0 0 0" />
+            <TextBlock Text="Grid"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="78"
+                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadGridType}}}"
+                      SelectedItem="{Binding ViewModelCadGridType}" />
+            <TextBlock Text="Snap Marker"
+                       VerticalAlignment="Center" />
+            <ComboBox Width="92"
+                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadSnapMarkerType}}}"
+                      SelectedItem="{Binding ViewModelCadSnapMarkerType}" />
+            <Separator />
+
+        </ToolBar>
+
+        <ToolBar DockPanel.Dock="Top">
 
             <Separator />
             <Button Content="Select"
@@ -52,18 +74,7 @@
                     CommandParameter="SetOrigin" />
             <TextBox Width="120"
                      Text="{Binding TextInput}" />
-            <Separator />
-            <TextBlock Text="Grid"
-                       VerticalAlignment="Center" />
-            <ComboBox Width="78"
-                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadGridType}}}"
-                      SelectedItem="{Binding ViewModelCadGridType}" />
-            <TextBlock Text="Snap Marker"
-                       VerticalAlignment="Center" />
-            <ComboBox Width="92"
-                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadSnapMarkerType}}}"
-                      SelectedItem="{Binding ViewModelCadSnapMarkerType}" />
-            <Separator />
+
 
         </ToolBar>
         <ToolBar DockPanel.Dock="Top">
@@ -107,13 +118,61 @@
                     Background="{Binding ViewModelCadOriginColorText}" />
             <TextBox Width="86"
                      Text="{Binding ViewModelCadOriginColorText, UpdateSourceTrigger=LostFocus}" />
-            <Separator />
-            <Button Content="Undo"
-                    Command="{Binding UndoCommand}" />
-            <Button Content="Redo"
-                    Command="{Binding RedoCommand}" />
+
         </ToolBar>
 
+        <ToolBar DockPanel.Dock="Top">
+            <TextBlock Text="User"
+                       VerticalAlignment="Center" />
+            <CheckBox Content="Antialias"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding IsAntialiasingEnabled}" />
+            <CheckBox Content="Text AA"
+                      VerticalAlignment="Center"
+                      IsChecked="{Binding IsTextAntialiasingEnabled}" />
+            <Separator />
+            <TextBlock Text="Selected"
+                       VerticalAlignment="Center" />
+            <Border Width="18"
+                    Height="18"
+                    BorderBrush="#66000000"
+                    BorderThickness="1"
+                    Background="{Binding SelectedEntityColorText}" />
+            <TextBox Width="86"
+                     Text="{Binding SelectedEntityColorText, UpdateSourceTrigger=LostFocus}" />
+            <TextBlock Text="Window"
+                       VerticalAlignment="Center" />
+            <Border Width="18"
+                    Height="18"
+                    BorderBrush="#66000000"
+                    BorderThickness="1"
+                    Background="{Binding SelectionWindowStrokeColorText}" />
+            <TextBox Width="86"
+                     Text="{Binding SelectionWindowStrokeColorText, UpdateSourceTrigger=LostFocus}" />
+            <Border Width="18"
+                    Height="18"
+                    BorderBrush="#66000000"
+                    BorderThickness="1"
+                    Background="{Binding SelectionWindowFillColorText}" />
+            <TextBox Width="86"
+                     Text="{Binding SelectionWindowFillColorText, UpdateSourceTrigger=LostFocus}" />
+            <TextBlock Text="Crossing"
+                       VerticalAlignment="Center" />
+            <Border Width="18"
+                    Height="18"
+                    BorderBrush="#66000000"
+                    BorderThickness="1"
+                    Background="{Binding SelectionCrossingStrokeColorText}" />
+            <TextBox Width="86"
+                     Text="{Binding SelectionCrossingStrokeColorText, UpdateSourceTrigger=LostFocus}" />
+            <Border Width="18"
+                    Height="18"
+                    BorderBrush="#66000000"
+                    BorderThickness="1"
+                    Background="{Binding SelectionCrossingFillColorText}" />
+            <TextBox Width="86"
+                     Text="{Binding SelectionCrossingFillColorText, UpdateSourceTrigger=LostFocus}" />
+        </ToolBar>
 
         <StatusBar DockPanel.Dock="Bottom">
             <TextBlock Text="{Binding CadDocumentViewModel.CadCanvasToolMode}" />

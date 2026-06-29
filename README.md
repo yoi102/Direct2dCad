@@ -1,5 +1,6 @@
 # Direct2dCad
 https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4
+![alt text](image.png)
 
 ## 1. 架构层级
 
@@ -80,6 +81,8 @@ flowchart TD
     WPF --> WpfViewServices
 
     WpfViewServices --> ViewServices
+    WpfViewServices --> ClientCommon
+    ViewServices --> ClientCommon
 
     VM --> ClientCommon
     VM --> ChangeTracking
@@ -99,6 +102,7 @@ flowchart TD
     Editor --> Rendering
 
     ChangeTracking --> Db
+    ClientCommon --> Db
 
     Commands --> ChangeTracking
     Commands --> Db
@@ -371,6 +375,7 @@ Direct2dCad.Db
 定义渲染器接口
 定义视口模型
 定义渲染选项
+定义抗锯齿等用户渲染偏好入口
 定义几何资源管理接口
 ```
 
@@ -392,9 +397,7 @@ CadRender
 
 #### 项目引用
 
-```text
-Direct2dCad.Db
-```
+无项目引用。
 
 #### 主要职责
 
@@ -480,6 +483,7 @@ Vortice.Direct3D9
 管理 Direct2D 画刷资源
 绘制 transient overlay
 绘制 selection handle overlay
+根据 CadRenderOptions 应用几何 / 文字抗锯齿设置
 管理 D3D11 / D3D9 shared surface
 向 WPF D3DImage 提供渲染结果
 ```
@@ -569,6 +573,7 @@ Microsoft.Extensions.DependencyInjection.Abstractions
 调用 CadEditor 执行编辑操作
 调用 IO 服务执行打开 / 保存
 调用 ViewServices 抽象服务
+加载并应用用户级设置
 维护 transient / handle overlay 场景
 维护渲染宿主对象
 ```
@@ -591,7 +596,9 @@ View / ViewModel 之间服务抽象层。
 
 #### 项目引用
 
-无项目引用。
+```text
+Direct2dCad.Client.Common
+```
 
 #### 主要职责
 
@@ -599,6 +606,7 @@ View / ViewModel 之间服务抽象层。
 定义打开文件接口
 定义保存文件接口
 定义消息框接口
+定义用户设置读写接口
 为后续 ViewModel 调用 View 能力预留抽象边界
 ```
 
@@ -607,6 +615,7 @@ View / ViewModel 之间服务抽象层。
 ```text
 IFileDialogService
 IMessageBoxService
+IUserSettingsService
 ```
 
 ---
@@ -618,6 +627,7 @@ WPF ViewServices 实现层。
 #### 项目引用
 
 ```text
+Direct2dCad.Client.Common
 Direct2dCad.ViewServices.Abstractions
 ```
 
@@ -626,6 +636,8 @@ Direct2dCad.ViewServices.Abstractions
 ```text
 实现 IFileDialogService
 实现 IMessageBoxService
+实现 IUserSettingsService
+将用户设置保存到 %AppData%\Direct2dCad\user-settings.json
 提供 View / ViewModel 服务的 DI 注册扩展
 ```
 
@@ -634,6 +646,7 @@ Direct2dCad.ViewServices.Abstractions
 ```text
 FileDialogService
 MessageBoxService
+UserSettingsService
 ServiceCollectionExtension
 ```
 
@@ -691,7 +704,9 @@ Views/CadDocumentView.xaml.cs
 
 #### 项目引用
 
-无项目引用。
+```text
+Direct2dCad.Db
+```
 
 #### 主要职责
 
@@ -716,7 +731,9 @@ Int32Rect
 
 #### 项目引用
 
-无项目引用。
+```text
+Direct2dCad.Db
+```
 
 #### 主要职责
 
@@ -724,6 +741,8 @@ Int32Rect
 提供客户端通用特性
 提供枚举描述转换
 提供本地化描述读取能力
+定义用户级设置模型
+区分用户偏好和 CadDocument 文档内容
 ```
 
 #### 主要类型
@@ -731,6 +750,23 @@ Int32Rect
 ```text
 LocalizedDescriptionAttribute
 EnumDescriptionTypeConverter
+CadUserSettings
+CadRenderingUserSettings
+CadInteractionUserSettings
+```
+
+#### 用户设置边界
+
+```text
+CadDocument / CadViewSettings 保存与图纸文件相关的内容：
+背景、网格、原点、图层绘制优先级等会随 .d2cad 文件保存。
+
+CadUserSettings 保存与当前用户相关的偏好：
+选中颜色、正选 / 反选框颜色、grip 颜色、是否开启抗锯齿等不随图纸文件保存。
+
+用户设置模型放在 Direct2dCad.Client.Common.Settings；
+读写接口放在 Direct2dCad.ViewServices.Abstractions；
+WPF 的本地 JSON 实现放在 Direct2dCad.wpf.ViewServices。
 ```
 
 ---
@@ -829,11 +865,11 @@ MainWindow.xaml.cs
 | `Direct2dCad.Rendering.Direct2D` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Common`, `Direct2dCad.Db`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient` |
 | `Direct2dCad.Editor` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Db`, `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.Rendering` |
 | `Direct2dCad.ViewModels` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.ViewServices.Abstractions`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient` |
-| `Direct2dCad.wpf.ViewServices` | `Direct2dCad.ViewServices.Abstractions` |
+| `Direct2dCad.wpf.ViewServices` | `Direct2dCad.Client.Common`, `Direct2dCad.ViewServices.Abstractions` |
 | `Direct2dCad.wpf` | `Direct2dCad.Common`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.wpf.ViewServices` |
 | `Direct2dCad.Common` | 无项目引用 |
-| `Direct2dCad.Client.Common` | 无项目引用 |
-| `Direct2dCad.ViewServices.Abstractions` | 无项目引用 |
+| `Direct2dCad.Client.Common` | `Direct2dCad.Db` |
+| `Direct2dCad.ViewServices.Abstractions` | `Direct2dCad.Client.Common` |
 | `Direct2dCad.Lang` | 无项目引用 |
 | `Direct2dCad.wpf.Control` | 无项目引用 |
 | `Direct2dCad.winui` | 无项目引用 |
@@ -865,6 +901,7 @@ Direct2dCad.wpf
   │   ├─ Direct2dCad.ViewServices.Abstractions
   │   ├─ Direct2dCad.Lang
   │   ├─ Direct2dCad.Client.Common
+  │   │   └─ Direct2dCad.Db
   │   ├─ Direct2dCad.Rendering.Handles
   │   ├─ Direct2dCad.Rendering.Transient
   │   └─ Direct2dCad.Rendering.Direct2D
@@ -877,7 +914,11 @@ Direct2dCad.wpf
   ├─ Direct2dCad.Editor
   ├─ Direct2dCad.Common
   └─ Direct2dCad.wpf.ViewServices
+      ├─ Direct2dCad.Client.Common
+      │   └─ Direct2dCad.Db
       └─ Direct2dCad.ViewServices.Abstractions
+          └─ Direct2dCad.Client.Common
+              └─ Direct2dCad.Db
 ```
 
 ### 数据模型相关链路
@@ -893,7 +934,8 @@ Direct2dCad.Db
   ├─ 被 Direct2dCad.Rendering 引用
   ├─ 被 Direct2dCad.Rendering.Handles 引用
   ├─ 被 Direct2dCad.Rendering.Transient 引用
-  └─ 被 Direct2dCad.Rendering.Direct2D 引用
+  ├─ 被 Direct2dCad.Rendering.Direct2D 引用
+  └─ 被 Direct2dCad.Client.Common 引用
 ```
 
 ### ViewServices 链路
@@ -901,9 +943,12 @@ Direct2dCad.Db
 ```text
 Direct2dCad.ViewModels
   └─ Direct2dCad.ViewServices.Abstractions
+      └─ Direct2dCad.Client.Common
 
 Direct2dCad.wpf.ViewServices
+  ├─ Direct2dCad.Client.Common
   └─ Direct2dCad.ViewServices.Abstractions
+      └─ Direct2dCad.Client.Common
 
 Direct2dCad.wpf
   └─ Direct2dCad.wpf.ViewServices

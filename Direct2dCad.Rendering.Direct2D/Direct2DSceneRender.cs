@@ -86,7 +86,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         options ??= new CadRenderOptions();
 
         var previousTransform = deviceContext.Transform;
+        var previousAntialiasMode = deviceContext.AntialiasMode;
+        var previousTextAntialiasMode = deviceContext.TextAntialiasMode;
         deviceContext.Transform = CreateViewportTransform(viewport);
+        deviceContext.AntialiasMode = options.IsAntialiasingEnabled
+            ? AntialiasMode.PerPrimitive
+            : AntialiasMode.Aliased;
+        deviceContext.TextAntialiasMode = options.IsTextAntialiasingEnabled
+            ? Vortice.Direct2D1.TextAntialiasMode.Default
+            : Vortice.Direct2D1.TextAntialiasMode.Aliased;
 
         try
         {
@@ -109,6 +117,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
         finally
         {
+            deviceContext.TextAntialiasMode = previousTextAntialiasMode;
+            deviceContext.AntialiasMode = previousAntialiasMode;
             deviceContext.Transform = previousTransform;
         }
     }

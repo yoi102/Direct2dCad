@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
+  </ItemGroup>
+
 </Project>
