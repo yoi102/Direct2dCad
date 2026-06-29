@@ -93,6 +93,12 @@ public sealed class CadEditor
 
     public CadDocumentChangeSet DrainDirtyChanges() => DirtySet.Drain();
 
+    public CadDocumentChangeSet PublishDocumentChanges(CadDocumentChangeSet changes)
+    {
+        _documentChanges.Publish(changes);
+        return changes;
+    }
+
     public bool TryGetEntity(EntityId entityId, out CadEntity? entity)
     {
         return Document.TryGetEntity(entityId, out entity);

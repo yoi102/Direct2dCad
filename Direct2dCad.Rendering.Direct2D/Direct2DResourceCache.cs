@@ -145,7 +145,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             bucket.FillBrush = CreateBrush(fillColor);
 
         if (entity is CadText text)
-            bucket.TextFormat = CreateTextFormat(document, text);
+            bucket.TextFormat = Direct2DTextServices.CreateTextFormat(WriteFactory, document, text);
 
         return bucket;
     }
@@ -262,40 +262,6 @@ internal sealed class Direct2DResourceCache : IDisposable
     private ID2D1SolidColorBrush CreateBrush(CadColor color)
     {
         return DeviceContext!.CreateSolidColorBrush(ToColor4(color));
-    }
-
-    private IDWriteTextFormat? CreateTextFormat(CadDocument document, CadText text)
-    {
-        if (WriteFactory is null)
-            return null;
-
-        var fontFamily = "Meiryo";
-        var fontSize = (float)(text.Height * CadText.FontSizeScale);
-        var fontWeight = FontWeight.Normal;
-        var fontStyle = FontStyle.Normal;
-
-        if (text.TextStyleId is not null &&
-            document.TryGetStyle(text.TextStyleId.Value, out var style) &&
-            style is CadTextStyle textStyle)
-        {
-            fontFamily = textStyle.FontFamily;
-            fontWeight = textStyle.IsBold ? FontWeight.Bold : FontWeight.Normal;
-            fontStyle = textStyle.IsItalic ? FontStyle.Italic : FontStyle.Normal;
-        }
-
-        var format = WriteFactory.CreateTextFormat(
-            fontFamily,
-            null,
-            fontWeight,
-            fontStyle,
-            FontStretch.Normal,
-            fontSize,
-            "ja-JP");
-
-        format.TextAlignment = TextAlignment.Leading;
-        format.ParagraphAlignment = ParagraphAlignment.Near;
-        format.WordWrapping = WordWrapping.NoWrap;
-        return format;
     }
 
     private CadGraphicStyle? ResolveGraphicStyle(

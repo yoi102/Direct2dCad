@@ -32,6 +32,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private ClipboardSnapshot? _clipboard;
     private bool _isPastePreviewActive;
     private bool _isRenderAttached;
+    private bool _isApplyingTextMeasurementChanges;
     private bool _disposed;
     private double _viewportWidth = 1.0;
     private double _viewportHeight = 1.0;
@@ -312,9 +313,30 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     public void RequestRender()
     {
+        UpdateTextMeasurements();
         UpdateOverlayScenes();
         Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions());
         Direct2DImageRenderHost.Render();
+    }
+
+    private void UpdateTextMeasurements()
+    {
+        if (!_isRenderAttached || _isApplyingTextMeasurementChanges)
+            return;
+
+        var changes = Direct2DImageRenderHost.UpdateTextMeasurements(CadEditor.Document);
+        if (!changes.DocumentChanged)
+            return;
+
+        try
+        {
+            _isApplyingTextMeasurementChanges = true;
+            CadEditor.PublishDocumentChanges(changes);
+        }
+        finally
+        {
+            _isApplyingTextMeasurementChanges = false;
+        }
     }
 
     private void BeginPan(CadPointD screen)
@@ -713,7 +735,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var bounds = CreateTextBounds(text.Text, position, height);
+        var bounds = CreateTextBounds(text.Text, position, height, text.TextStyleId);
         items.Add(new CadTransientText(text.Text, position, height, bounds, style));
         items.Add(new CadTransientRectangle(bounds, style with { FillColor = null }));
     }
@@ -843,7 +865,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static bool TryCreateTextGripGeometry(
+    private bool TryCreateTextGripGeometry(
         CadText text,
         GripDragState drag,
         double snapSpacingX,
@@ -867,8 +889,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var desiredHeight = Math.Abs(target.Y - oppositeY);
         var desiredWidth = Math.Abs(target.X - oppositeX);
 
-        height = SnapTextHeightUp(text.Text, Math.Max(desiredHeight, desiredWidth / widthFactor), snapSpacingX, snapSpacingY);
-        var width = height * widthFactor;
+        height = SnapTextHeightUp(
+            text.Text,
+            Math.Max(desiredHeight, desiredWidth / widthFactor),
+            snapSpacingX,
+            snapSpacingY,
+            text.TextStyleId);
+        var width = MeasureTextWidth(text.Text, height, text.TextStyleId);
         position = new CadPointD(
             dragLeft ? oppositeX - width : oppositeX,
             dragBottom ? oppositeY - height : oppositeY);
@@ -1398,15 +1425,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var grid = CadEditor.Document.ViewSettings.Grid;
         var spacingY = grid.GetSnapSpacingY();
         return IsFinitePositive(spacingY)
-            ? SnapTextHeightUp(text, spacingY, grid.GetSnapSpacingX(), spacingY) * 5
-            : Math.Max(8.0 / Math.Max(CadEditor.Viewport.Zoom, double.Epsilon) * 5, 1.0);
+            ? SnapTextHeightUp(text, spacingY, grid.GetSnapSpacingX(), spacingY) * 25
+            : Math.Max(8.0 / Math.Max(CadEditor.Viewport.Zoom, double.Epsilon) * 25, 1.0);
     }
 
-    private static double SnapTextHeightUp(
+    private double SnapTextHeightUp(
         string text,
         double desiredHeight,
         double snapSpacingX,
-        double snapSpacingY)
+        double snapSpacingY,
+        StyleId? textStyleId = null)
     {
         var heightStep = IsFinitePositive(snapSpacingY)
             ? snapSpacingY
@@ -1418,7 +1446,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         for (var offset = 0; offset < 128; offset++)
         {
             var height = heightStep * (startStep + offset);
-            if (IsDimensionAligned(CadText.EstimateTextWidth(text, height), snapSpacingX))
+            if (IsDimensionAligned(MeasureTextWidth(text, height, textStyleId), snapSpacingX))
                 return height;
         }
 
@@ -1439,20 +1467,44 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
-    private static CadRectD CreateTextBounds(string text, CadPointD position, double height)
+    private CadRectD CreateTextBounds(
+        string text,
+        CadPointD position,
+        double height,
+        StyleId? textStyleId = null)
     {
-        return CadRectD.FromLTRB(
-            position.X,
-            position.Y,
-            position.X + CadText.EstimateTextWidth(text, height),
-            position.Y + height);
+        return Direct2DImageRenderHost.TryMeasureTextBounds(
+            CadEditor.Document,
+            text,
+            position,
+            height,
+            textStyleId,
+            out var bounds)
+            ? bounds
+            : CadText.CreateUnmeasuredBounds(position, height);
     }
 
     private static double GetCachedTextWidthFactor(CadText text)
     {
-        return IsFinitePositive(text.Height) && IsFinitePositive(text.EstimatedWidth)
-            ? text.EstimatedWidth / text.Height
-            : CadText.EstimateTextWidth(text.Text, 1.0);
+        return IsFinitePositive(text.Height) && IsFinitePositive(text.LocalBounds.Width)
+            ? text.LocalBounds.Width / text.Height
+            : 1.0;
+    }
+
+    private double MeasureTextWidth(string text, double height, StyleId? textStyleId = null)
+    {
+        if (Direct2DImageRenderHost.TryMeasureTextBounds(
+            CadEditor.Document,
+            text,
+            CadPointD.Origin,
+            height,
+            textStyleId,
+            out var bounds))
+        {
+            return bounds.Width;
+        }
+
+        return CadText.CreateUnmeasuredBounds(CadPointD.Origin, height).Width;
     }
 
     private static bool TryCreateArcGeometry(
@@ -1527,7 +1579,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
-        RequestRender();
+        if (!_isApplyingTextMeasurementChanges)
+            RequestRender();
 
         if (e.AffectsViewSettings)
             ViewSettingsChanged?.Invoke(this, EventArgs.Empty);

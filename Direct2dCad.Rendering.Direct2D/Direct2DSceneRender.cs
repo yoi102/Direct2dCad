@@ -559,7 +559,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     break;
 
                 case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0 && !text.Bounds.IsEmpty:
-                    DrawTransientText(deviceContext, viewport, text.Text, text.Height, text.Bounds, text.Style);
+                    DrawTransientText(deviceContext, viewport, text.Text, text.Position, text.Height, text.Bounds, text.Style);
                     break;
 
                 case CadTransientEntityReference reference:
@@ -851,6 +851,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     deviceContext,
                     viewport,
                     text.Text,
+                    text.Position + reference.Offset,
                     text.Height,
                     bounds,
                     reference.Style);
@@ -1130,6 +1131,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         CadViewport viewport,
         string text,
+        CadPointD position,
         double height,
         CadRectD bounds,
         CadTransientStyle style)
@@ -1154,6 +1156,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             deviceContext,
             text,
             format,
+            position,
             bounds,
             brush);
     }
@@ -1237,6 +1240,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 deviceContext,
                 text.Text,
                 resources.TextFormat,
+                text.Position,
                 text.Bounds,
                 resources.StrokeBrush);
         }
@@ -1246,6 +1250,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         string text,
         IDWriteTextFormat format,
+        CadPointD layoutOrigin,
         CadRectD bounds,
         ID2D1Brush brush)
     {
@@ -1265,10 +1270,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 text,
                 format,
                 Rect.FromLTRB(
-                    (float)bounds.MinX,
-                    (float)bounds.MinY,
-                    (float)bounds.MaxX,
-                    (float)bounds.MaxY),
+                    (float)layoutOrigin.X,
+                    (float)layoutOrigin.Y,
+                    (float)(layoutOrigin.X + Math.Max(bounds.Width, 1e-6)),
+                    (float)(layoutOrigin.Y + Math.Max(bounds.Height, 1e-6))),
                 brush,
                 DrawTextOptions.Clip);
         }

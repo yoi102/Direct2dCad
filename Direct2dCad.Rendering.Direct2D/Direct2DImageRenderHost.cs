@@ -1,5 +1,8 @@
 using Direct2dCad.Common;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Vortice.Mathematics;
@@ -21,6 +24,59 @@ public sealed class Direct2DImageRenderHost : IDisposable
     public ICadGeometryResourceManager GeometryResourceManager => _renderer;
 
     public Color4 FallbackBackgroundColor { get; set; } = new(0.08f, 0.09f, 0.10f, 1.0f);
+
+    public CadDocumentChangeSet UpdateTextMeasurements(CadDocument document)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(document);
+
+        var changedIds = new List<EntityId>();
+        foreach (var text in document.Entities.Values.OfType<CadText>())
+        {
+            if (text.IsErased || !text.RequiresBoundsMeasurement)
+                continue;
+
+            if (Direct2DTextServices.TryMeasureTextBounds(
+                    _target.DwriteFactory,
+                    document,
+                    text,
+                    out var localBounds) &&
+                text.SetLocalBounds(localBounds))
+            {
+                changedIds.Add(text.Id);
+            }
+        }
+
+        return changedIds.Count == 0
+            ? CadDocumentChangeSet.Empty
+            : CadDocumentChangeSet.ForEntities(changedIds, CadEntityChangeKind.Geometry);
+    }
+
+    public bool TryMeasureTextBounds(
+        CadDocument document,
+        string text,
+        CadPointD position,
+        double height,
+        StyleId? textStyleId,
+        out CadRectD bounds)
+    {
+        ThrowIfDisposed();
+
+        if (Direct2DTextServices.TryMeasureTextBounds(
+                _target.DwriteFactory,
+                document,
+                text,
+                height,
+                textStyleId,
+                out var localBounds))
+        {
+            bounds = localBounds.Translate(position - CadPointD.Origin);
+            return true;
+        }
+
+        bounds = CadRectD.Empty;
+        return false;
+    }
 
     public void AttachImageSource(ID3D11ImageSource imageSource)
     {
