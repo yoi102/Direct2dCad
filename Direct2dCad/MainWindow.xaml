@@ -16,6 +16,7 @@
                  xmlns:ex="clr-namespace:Direct2dCad.wpf.Extensions"
                  xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
                  xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+                 xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
                  Topmost="{Binding Topmost}"
@@ -322,10 +323,26 @@
                                              DockLayout="{Binding DockLayout}"
                                              DocumentHeaderTemplate="{StaticResource DocumentTabHeaderTemplate}"
                                              LayoutItemContainerStyleSelector="{StaticResource PanesStyleSelector}">
+                <i:Interaction.Triggers>
+
+                    <!-- 文档关闭前 -->
+                    <i:EventTrigger EventName="DocumentClosed">
+                        <i:InvokeCommandAction Command="{Binding DocumentClosedCommand}"
+                                               EventArgsParameterPath="Document.Content"
+                                               PassEventArgsToCommand="True" />
+                    </i:EventTrigger>
+
+                    <!-- Active 文档切换 -->
+                    <i:EventTrigger EventName="ActiveContentChanged">
+                        <i:InvokeCommandAction Command="{Binding ActiveContentChangedCommand}" />
+                    </i:EventTrigger>
+
+                </i:Interaction.Triggers>
+                
                 <avalonDock:ToggleDockingManager.Theme>
                     <avalonDockThemes:ArcDarkTheme />
                 </avalonDock:ToggleDockingManager.Theme>
-                <avalonDock:LayoutRoot>
+                <!--<avalonDock:LayoutRoot>
                     <avalonDock:LayoutPanel Orientation="Horizontal">
                         <avalonDock:LayoutDocumentPaneGroup>
 
@@ -366,7 +383,7 @@
                             </avalonDock:LayoutDocumentPane>
                         </avalonDock:LayoutDocumentPaneGroup>
                     </avalonDock:LayoutPanel>
-                </avalonDock:LayoutRoot>
+                </avalonDock:LayoutRoot>-->
             </avalonDock:ToggleDockingManager>
         </Grid>
     </Grid>

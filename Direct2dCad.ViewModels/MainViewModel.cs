@@ -38,6 +38,15 @@ public partial class MainViewModel : ObservableObject
 
         FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesViewModel));
+
+        _dockLayoutService.OpenOrActivateDocument(
+                   e => false,
+                   () =>
+                   {
+                       var tab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
+                       CurrentEditorTabViewModel = tab;
+                       return tab;
+                   });
     }
 
     /// <summary>The MVVM layout tree — bind to DockLayout on the DockingManager.</summary>
@@ -77,6 +86,25 @@ public partial class MainViewModel : ObservableObject
             _messageBoxService.ShowMessage(ex.Message, "Open failed");
         }
     }
+    [RelayCommand]
+    private void DocumentClosed(object content)
+    {
+        if (content is EditorTabViewModel editorTabViewModel)
+        {
+            editorTabViewModel.Dispose();
+        }
+    }
+    [RelayCommand]
+    private void ActiveContentChanged()
+    {
+        CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
+    }
+
+
+
+
+
+
 
     #region TitleBar
 

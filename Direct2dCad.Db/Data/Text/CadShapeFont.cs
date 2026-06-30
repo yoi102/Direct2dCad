@@ -17,6 +17,7 @@ public readonly record struct CadShapeFontId(string Value)
 public enum CadShapeFontGlyphSet
 {
     Simplex,
+    UnicodeFallback,
     BoxFallback
 }
 
@@ -51,6 +52,7 @@ public static class CadShapeFontRegistry
         new CadShapeFont(
             CadShapeFontId.Unicode,
             "Unicode Shape",
+            CadShapeFontGlyphSet.UnicodeFallback,
             supportsUnicode: true),
         new CadShapeFont(CadShapeFontId.Simplex, "Simplex"),
         new CadShapeFont(CadShapeFontId.MonoLine, "MonoLine"),

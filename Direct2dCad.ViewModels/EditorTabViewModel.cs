@@ -41,7 +41,7 @@ public partial class EditorTabViewModel : ObservableDocument, IDisposable
         ApplyDocumentViewSettingsToToolbar();
         ApplyUserSettingsToToolbar();
         this.Id = Guid.NewGuid().ToString();
-        this.Title = Id;
+        this.Title = cadDocumentViewModel.CadEditor.Document.Name;
     }
 
     public override bool OnClose()
