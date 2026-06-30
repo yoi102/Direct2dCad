@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Editor.History;
@@ -201,6 +202,19 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddPolyline(
+        IEnumerable<CadPointD> points,
+        bool closed = false,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null,
+        string name = "")
+    {
+        var command = new AddPolylineCommand(points, closed, layerId, graphicStyleId, fillStyleId, name);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddSpline(
         IEnumerable<CadPointD> fitPoints,
         bool closed = false,
@@ -221,7 +235,9 @@ public sealed class CadEditor
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? textStyleId = null,
-        string name = "")
+        string name = "",
+        bool isInverted = false,
+        double invertedMarginFactor = CadText.DefaultInvertedMarginFactor)
     {
         var command = new AddTextCommand(
             text,
@@ -231,7 +247,43 @@ public sealed class CadEditor
             layerId,
             graphicStyleId,
             textStyleId,
-            name);
+            name,
+            isInverted,
+            invertedMarginFactor);
+
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
+    public EntityId AddShapeText(
+        string text,
+        CadPointD position,
+        double height,
+        double rotationRadians = 0,
+        double widthFactor = CadStrokeFont.DefaultWidthFactor,
+        double characterSpacingFactor = CadStrokeFont.DefaultCharacterSpacingFactor,
+        double obliqueAngleRadians = CadStrokeFont.DefaultObliqueAngleRadians,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        string name = "",
+        bool isInverted = false,
+        double invertedMarginFactor = CadShapeText.DefaultInvertedMarginFactor,
+        CadShapeFontId shapeFontId = default)
+    {
+        var command = new AddShapeTextCommand(
+            text,
+            position,
+            height,
+            rotationRadians,
+            widthFactor,
+            characterSpacingFactor,
+            obliqueAngleRadians,
+            layerId,
+            graphicStyleId,
+            name,
+            isInverted,
+            invertedMarginFactor,
+            shapeFontId);
 
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
@@ -309,6 +361,11 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetTextContentCommand(entityId, text));
     }
 
+    public CadDocumentChangeSet SetShapeTextContent(EntityId entityId, string text)
+    {
+        return DocumentCommands.Execute(new SetShapeTextContentCommand(entityId, text));
+    }
+
     public CadDocumentChangeSet SetTextGeometry(
         EntityId entityId,
         CadPointD position,
@@ -318,9 +375,58 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetTextGeometryCommand(entityId, position, height, rotationRadians));
     }
 
+    public CadDocumentChangeSet SetShapeTextGeometry(
+        EntityId entityId,
+        CadPointD position,
+        double height,
+        double rotationRadians,
+        double widthFactor,
+        double characterSpacingFactor,
+        double obliqueAngleRadians)
+    {
+        return DocumentCommands.Execute(new SetShapeTextGeometryCommand(
+            entityId,
+            position,
+            height,
+            rotationRadians,
+            widthFactor,
+            characterSpacingFactor,
+            obliqueAngleRadians));
+    }
+
+    public CadDocumentChangeSet SetShapeTextFont(EntityId entityId, CadShapeFontId shapeFontId)
+    {
+        return SetShapeTextFont([entityId], shapeFontId);
+    }
+
+    public CadDocumentChangeSet SetShapeTextFont(IEnumerable<EntityId> entityIds, CadShapeFontId shapeFontId)
+    {
+        return DocumentCommands.Execute(new SetShapeTextFontCommand(entityIds, shapeFontId));
+    }
+
     public CadDocumentChangeSet SetTextStyle(EntityId entityId, StyleId? textStyleId)
     {
         return DocumentCommands.Execute(new SetTextStyleCommand(entityId, textStyleId));
+    }
+
+    public CadDocumentChangeSet SetTextInverted(EntityId entityId, bool isInverted)
+    {
+        return SetTextInverted([entityId], isInverted);
+    }
+
+    public CadDocumentChangeSet SetTextInverted(IEnumerable<EntityId> entityIds, bool isInverted)
+    {
+        return DocumentCommands.Execute(new SetTextInvertedCommand(entityIds, isInverted));
+    }
+
+    public CadDocumentChangeSet SetTextInvertedMarginFactor(EntityId entityId, double marginFactor)
+    {
+        return SetTextInvertedMarginFactor([entityId], marginFactor);
+    }
+
+    public CadDocumentChangeSet SetTextInvertedMarginFactor(IEnumerable<EntityId> entityIds, double marginFactor)
+    {
+        return DocumentCommands.Execute(new SetTextInvertedMarginFactorCommand(entityIds, marginFactor));
     }
 
     public CadDocumentChangeSet SetEntityColor(EntityId entityId, CadColor color)

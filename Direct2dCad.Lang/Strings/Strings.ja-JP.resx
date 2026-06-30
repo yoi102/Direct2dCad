@@ -153,6 +153,9 @@
   <data name="Polygon" xml:space="preserve">
     <value>多角形</value>
   </data>
+  <data name="Polyline" xml:space="preserve">
+    <value>ポリライン</value>
+  </data>
   <data name="Rectangle" xml:space="preserve">
     <value>矩形</value>
   </data>
@@ -170,6 +173,9 @@
   </data>
   <data name="Spline" xml:space="preserve">
     <value>スプライン</value>
+  </data>
+  <data name="ShapeText" xml:space="preserve">
+    <value>CAD文字</value>
   </data>
   <data name="UnhandledException" xml:space="preserve">
     <value>未処理の例外</value>

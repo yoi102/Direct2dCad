@@ -77,7 +77,6 @@ public partial class CadCanvas : IDisposable
 
     private void CadCanvas_Loaded(object sender, RoutedEventArgs e)
     {
-        Focus();
         UpdateViewportSize();
         UpdateRenderSize();
         DocumentViewModel?.RequestRender();

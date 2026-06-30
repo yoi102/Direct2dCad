@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
@@ -109,7 +110,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 if (!_resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
                     continue;
 
-                DrawEntity(deviceContext, entity, resources, viewport, options);
+                DrawEntity(deviceContext, document, entity, resources, viewport, options);
             }
 
             DrawTransients(deviceContext, document, viewport, transientScene);
@@ -579,7 +580,35 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     break;
 
                 case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0 && !text.Bounds.IsEmpty:
-                    DrawTransientText(deviceContext, viewport, text.Text, text.Position, text.Height, text.Bounds, text.Style);
+                    DrawTransientText(
+                        deviceContext,
+                        viewport,
+                        text.Text,
+                        text.Position,
+                        text.Height,
+                        text.Bounds,
+                        text.Style,
+                        text.IsInverted,
+                        document.ViewSettings.BackgroundColor,
+                        text.InvertedMarginFactor);
+                    break;
+
+                case CadTransientShapeText text when text.Height > 0:
+                    DrawTransientShapeText(
+                        deviceContext,
+                        viewport,
+                        text.Text,
+                        text.Position,
+                        text.Height,
+                        text.RotationRadians,
+                        text.WidthFactor,
+                        text.CharacterSpacingFactor,
+                        text.ObliqueAngleRadians,
+                        text.Style,
+                        text.IsInverted,
+                        document.ViewSettings.BackgroundColor,
+                        text.InvertedMarginFactor,
+                        text.ShapeFontId);
                     break;
 
                 case CadTransientEntityReference reference:
@@ -680,6 +709,21 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     spline.FitPoints.Select(x => x + reference.Offset).ToArray(),
                     spline.Closed,
                     style);
+                break;
+
+            case CadShapeText shapeText:
+                DrawTransientShapeText(
+                    deviceContext,
+                    viewport,
+                    shapeText.Text,
+                    shapeText.Position + reference.Offset,
+                    shapeText.Height,
+                    shapeText.RotationRadians,
+                    shapeText.WidthFactor,
+                    shapeText.CharacterSpacingFactor,
+                    shapeText.ObliqueAngleRadians,
+                    style,
+                    shapeFontId: shapeText.ShapeFontId);
                 break;
 
             default:
@@ -885,8 +929,26 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     reference.Style);
                 break;
 
+            case CadShapeText shapeText:
+                DrawTransientShapeText(
+                    deviceContext,
+                    viewport,
+                    shapeText.Text,
+                    shapeText.Position + reference.Offset,
+                    shapeText.Height,
+                    shapeText.RotationRadians,
+                    shapeText.WidthFactor,
+                    shapeText.CharacterSpacingFactor,
+                    shapeText.ObliqueAngleRadians,
+                    reference.Style,
+                    shapeText.IsInverted,
+                    document.ViewSettings.BackgroundColor,
+                    shapeText.InvertedMarginFactor,
+                    shapeText.ShapeFontId);
+                break;
+
             case CadText text:
-                var bounds = text.Bounds.Translate(reference.Offset);
+                var bounds = text.TextBounds.Translate(reference.Offset);
                 DrawTransientText(
                     deviceContext,
                     viewport,
@@ -894,11 +956,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     text.Position + reference.Offset,
                     text.Height,
                     bounds,
-                    reference.Style);
+                    reference.Style,
+                    text.IsInverted,
+                    document.ViewSettings.BackgroundColor,
+                    text.InvertedMarginFactor);
                 DrawTransientRectangle(
                     deviceContext,
                     viewport,
-                    bounds,
+                    text.IsInverted ? bounds.Inflate(text.GetInvertedMargin()) : bounds,
                     reference.Style with { FillColor = null });
                 break;
 
@@ -1185,12 +1250,26 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadPointD position,
         double height,
         CadRectD bounds,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        bool isInverted = false,
+        CadColor? invertedTextColor = null,
+        double invertedMarginFactor = CadText.DefaultInvertedMarginFactor)
     {
         if (_resourceCache.WriteFactory is null || bounds.IsEmpty)
             return;
 
-        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        if (isInverted)
+        {
+            using var invertedFillBrush = CreateTransientBrush(deviceContext, style.StrokeColor);
+            FillBounds(
+                deviceContext,
+                CreateInvertedBackgroundBounds(bounds, height, invertedMarginFactor),
+                invertedFillBrush);
+        }
+
+        using var brush = CreateTransientBrush(
+            deviceContext,
+            isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
         using var format = _resourceCache.WriteFactory.CreateTextFormat(
             "Meiryo",
             null,
@@ -1210,6 +1289,70 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             position,
             bounds,
             brush);
+    }
+
+    private void DrawTransientShapeText(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        string text,
+        CadPointD position,
+        double height,
+        double rotationRadians,
+        double widthFactor,
+        double characterSpacingFactor,
+        double obliqueAngleRadians,
+        CadTransientStyle style,
+        bool isInverted = false,
+        CadColor? invertedTextColor = null,
+        double invertedMarginFactor = CadShapeText.DefaultInvertedMarginFactor,
+        CadShapeFontId shapeFontId = default)
+    {
+        var shapeFont = CadShapeFontRegistry.GetOrDefault(shapeFontId);
+        if (isInverted)
+        {
+            var bounds = CadStrokeFont.MeasureBounds(
+                text,
+                position,
+                height,
+                widthFactor,
+                characterSpacingFactor,
+                obliqueAngleRadians,
+                rotationRadians,
+                shapeFont.Id);
+
+            if (!bounds.IsEmpty)
+            {
+                using var invertedFillBrush = CreateTransientBrush(deviceContext, style.StrokeColor);
+                FillBounds(
+                    deviceContext,
+                    CreateInvertedBackgroundBounds(bounds, height, invertedMarginFactor),
+                    invertedFillBrush);
+            }
+        }
+
+        using var brush = CreateTransientBrush(
+            deviceContext,
+            isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        var strokeWidth = ResolveTransientStrokeWidth(style, viewport);
+
+        foreach (var segment in CadStrokeFont.CreateSegments(
+                     text,
+                     position,
+                     height,
+                     widthFactor,
+                     characterSpacingFactor,
+                     obliqueAngleRadians,
+                     rotationRadians,
+                     shapeFont.Id))
+        {
+            deviceContext.DrawLine(
+                ToVector2(segment.Start),
+                ToVector2(segment.End),
+                brush,
+                strokeWidth,
+                strokeStyle);
+        }
     }
 
     private ID2D1StrokeStyle? CreateTransientStrokeStyle(CadTransientStyle style)
@@ -1269,11 +1412,25 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private static void DrawEntity(
         ID2D1DeviceContext deviceContext,
+        CadDocument document,
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadViewport viewport,
         CadRenderOptions options)
     {
+        if (entity is CadShapeText { IsInverted: true } shapeText &&
+            resources.Geometry is not null &&
+            resources.StrokeBrush is not null)
+        {
+            FillBounds(deviceContext, shapeText.InvertedBackgroundBounds, resources.StrokeBrush);
+            using var invertedBrush = CreateTransientBrush(deviceContext, document.ViewSettings.BackgroundColor);
+            deviceContext.DrawGeometry(
+                resources.Geometry,
+                invertedBrush,
+                ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+            return;
+        }
+
         if (resources.Geometry is not null && resources.FillBrush is not null)
             deviceContext.FillGeometry(resources.Geometry, resources.FillBrush);
 
@@ -1287,14 +1444,65 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             resources.TextFormat is not null &&
             resources.StrokeBrush is not null)
         {
+            if (text.IsInverted)
+            {
+                FillBounds(deviceContext, text.InvertedBackgroundBounds, resources.StrokeBrush);
+                using var invertedBrush = CreateTransientBrush(deviceContext, document.ViewSettings.BackgroundColor);
+                DrawTextClipped(
+                    deviceContext,
+                    text.Text,
+                    resources.TextFormat,
+                    text.Position,
+                    text.TextBounds,
+                    invertedBrush);
+                return;
+            }
+
             DrawTextClipped(
                 deviceContext,
                 text.Text,
                 resources.TextFormat,
                 text.Position,
-                text.Bounds,
+                text.TextBounds,
                 resources.StrokeBrush);
         }
+    }
+
+    private static CadRectD CreateInvertedBackgroundBounds(
+        CadRectD textBounds,
+        double height,
+        double marginFactor)
+    {
+        if (textBounds.IsEmpty)
+            return textBounds;
+
+        var margin = height > 0 &&
+                     marginFactor > 0 &&
+                     !double.IsNaN(height) &&
+                     !double.IsInfinity(height) &&
+                     !double.IsNaN(marginFactor) &&
+                     !double.IsInfinity(marginFactor)
+            ? height * marginFactor
+            : 0;
+
+        return margin > 0 ? textBounds.Inflate(margin) : textBounds;
+    }
+
+    private static void FillBounds(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        ID2D1Brush brush)
+    {
+        if (bounds.IsEmpty)
+            return;
+
+        deviceContext.FillRectangle(
+            new RawRectF(
+                (float)bounds.MinX,
+                (float)bounds.MinY,
+                (float)bounds.MaxX,
+                (float)bounds.MaxY),
+            brush);
     }
 
     private static void DrawTextClipped(

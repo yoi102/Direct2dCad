@@ -145,7 +145,23 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 text.LayerId,
                 text.GraphicStyleId,
                 text.TextStyleId,
-                text.Name),
+                text.Name,
+                text.IsInverted,
+                text.InvertedMarginFactor),
+            CadShapeText shapeText => document.AddShapeText(
+                shapeText.Text,
+                shapeText.Position + delta,
+                shapeText.Height,
+                shapeText.RotationRadians,
+                shapeText.WidthFactor,
+                shapeText.CharacterSpacingFactor,
+                shapeText.ObliqueAngleRadians,
+                shapeText.LayerId,
+                shapeText.GraphicStyleId,
+                shapeText.Name,
+                shapeText.IsInverted,
+                shapeText.InvertedMarginFactor,
+                shapeText.ShapeFontId),
             _ => null
         };
 

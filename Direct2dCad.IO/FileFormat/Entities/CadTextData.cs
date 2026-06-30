@@ -13,4 +13,6 @@ public sealed class CadTextData
     [Key(4)] public double RotationRadians { get; set; }
     [Key(5)] public long? TextStyleId { get; set; }
     [Key(6)] public long? GraphicStyleId { get; set; }
+    [Key(7)] public bool IsInverted { get; set; }
+    [Key(8)] public double? InvertedMarginFactor { get; set; }
 }

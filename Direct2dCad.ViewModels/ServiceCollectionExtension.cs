@@ -7,6 +7,7 @@ public static class ServiceCollectionExtension
     public static IServiceCollection AddViewModels(this IServiceCollection services)
     {
         services.AddTransient<MainViewModel>();
+        services.AddTransient<EditorTabViewModel>();
         services.AddTransient<CadDocumentViewModel>();
 
         return services;

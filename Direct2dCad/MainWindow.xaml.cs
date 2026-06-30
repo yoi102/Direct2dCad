@@ -1,27 +1,47 @@
 using System.Diagnostics;
 using System.Windows;
-using CommunityToolkit.Mvvm.DependencyInjection;
+using AvalonDock;
+using AvalonDock.DependencyInjection;
+using AvalonDock.Themes;
 using Direct2dCad.ViewModels;
+using Direct2dCad.ViewServices.Abstractions.Events;
+using MessagePipe;
 
 namespace Direct2dCad.wpf;
 
-public partial class MainWindow 
+public partial class MainWindow
 {
     private MainViewModel _viewModel;
 
-    public MainWindow()
+    public MainWindow(MainViewModel viewModel, ISubscriber<ThemeChangedEvent> subscriber,
+        ToggleDockOptions dockOptions)
     {
         InitializeComponent();
-        _viewModel = Ioc.Default.GetRequiredService<MainViewModel>();
+        _viewModel = viewModel;
         DataContext = _viewModel;
 
-        Closed += MainWindow_Closed;
-    }
+        dockManager.ButtonSize = dockOptions.ButtonSize;
+        dockManager.DefaultDockWidth = dockOptions.DefaultDockWidth;
+        dockManager.DefaultDockHeight = dockOptions.DefaultDockHeight;
+        dockManager.ShowHeaderMinimizeButton = dockOptions.ShowHeaderMinimizeButton;
+        dockManager.ShowHeaderOptionsButton = dockOptions.ShowHeaderOptionsButton;
 
-    private void MainWindow_Closed(object? sender, EventArgs e)
-    {
-        _viewModel.Dispose();
-        cadDocumentView.Dispose();
+        if (Enum.TryParse<DockLayoutPriority>(dockOptions.LayoutPriority, out var priority))
+        {
+            dockManager.LayoutPriority = priority;
+        }
+
+        subscriber.Subscribe((h) =>
+        {
+            if (h.IsDark)
+            {
+                dockManager.Theme = new ArcDarkTheme();
+            }
+            else
+            {
+                dockManager.Theme = new ArcLightTheme();
+            }
+        });
     }
 
     private void IconClicked(object sender, RoutedEventArgs e)

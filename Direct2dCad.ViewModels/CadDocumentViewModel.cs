@@ -5,6 +5,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
@@ -22,6 +23,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private readonly CadHandleScene _handleScene = new();
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
     private readonly CadHandleHitTester _handleHitTester = new();
+    private readonly List<CadPointD> _pendingPolylinePoints = [];
     private readonly List<CadPointD> _pendingPolygonPoints = [];
     private readonly List<CadPointD> _pendingSplinePoints = [];
     private CadPointD? _pendingWorldPoint;
@@ -49,6 +51,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial string DrawingText { get; set; } = "Text";
+
+    [ObservableProperty]
+    public partial bool DrawingTextInverted { get; set; }
+
+    [ObservableProperty]
+    public partial double DrawingTextInvertedMarginFactor { get; set; } = CadText.DefaultInvertedMarginFactor;
+
+    [ObservableProperty]
+    public partial ViewModelCadShapeFont DrawingShapeFont { get; set; } = ViewModelCadShapeFont.Unicode;
 
     public event EventHandler? ViewSettingsChanged;
 
@@ -113,6 +124,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
+        RequestRender();
+    }
+
+    partial void OnDrawingTextInvertedChanged(bool value)
+    {
+        RequestRender();
+    }
+
+    partial void OnDrawingTextInvertedMarginFactorChanged(double value)
+    {
+        RequestRender();
+    }
+
+    partial void OnDrawingShapeFontChanged(ViewModelCadShapeFont value)
+    {
         RequestRender();
     }
 
@@ -293,6 +319,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         _isPastePreviewActive = true;
         _pendingWorldPoint = null;
+        _pendingPolylinePoints.Clear();
         _pendingPolygonPoints.Clear();
         _pendingSplinePoints.Clear();
         _selectionDragStart = null;
@@ -304,6 +331,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         switch (CadCanvasToolMode)
         {
+            case CadCanvasToolMode.Polyline when _pendingPolylinePoints.Count >= 2:
+                CompletePolyline();
+                RequestRender();
+                return CadCanvasInteractionResult.HandledOnly;
+
             case CadCanvasToolMode.Polygon when _pendingPolygonPoints.Count >= 3:
                 CadEditor.AddPolygon(_pendingPolygonPoints);
                 _pendingPolygonPoints.Clear();
@@ -460,6 +492,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 RequestRender();
                 break;
 
+            case CadCanvasToolMode.Polyline:
+                AddPolylineVertexOrComplete(world);
+                RequestRender();
+                break;
+
             case CadCanvasToolMode.Polygon:
                 AddPolygonVertexOrComplete(world);
                 RequestRender();
@@ -475,7 +512,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CadEditor.AddText(
                     drawingText,
                     world,
-                    ResolveTextBoxHeight(drawingText));
+                    ResolveTextBoxHeight(drawingText),
+                    isInverted: DrawingTextInverted,
+                    invertedMarginFactor: ResolveDrawingTextInvertedMarginFactor());
+                RequestRender();
+                break;
+
+            case CadCanvasToolMode.ShapeText:
+                var shapeText = ResolveDrawingText();
+                CadEditor.AddShapeText(
+                    shapeText,
+                    world,
+                    ResolveTextBoxHeight(shapeText),
+                    isInverted: DrawingTextInverted,
+                    invertedMarginFactor: ResolveDrawingTextInvertedMarginFactor(),
+                    shapeFontId: ResolveDrawingShapeFontId());
                 RequestRender();
                 break;
 
@@ -531,6 +582,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         _pendingWorldPoint = null;
         _pendingArcStartPoint = null;
+        _pendingPolylinePoints.Clear();
         _pendingPolygonPoints.Clear();
         _pendingSplinePoints.Clear();
         _selectionDragStart = null;
@@ -667,6 +719,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             case CadText text:
                 AddTextGripPreview(items, text, drag, style);
                 break;
+
+            case CadShapeText shapeText:
+                AddShapeTextGripPreview(items, shapeText, drag, style);
+                break;
         }
     }
 
@@ -782,8 +838,53 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
 
         var bounds = CreateTextBounds(text.Text, position, height, text.TextStyleId);
-        items.Add(new CadTransientText(text.Text, position, height, bounds, style));
-        items.Add(new CadTransientRectangle(bounds, style with { FillColor = null }));
+        items.Add(new CadTransientText(
+            text.Text,
+            position,
+            height,
+            bounds,
+            style,
+            text.IsInverted,
+            text.InvertedMarginFactor));
+        items.Add(new CadTransientRectangle(
+            text.IsInverted ? bounds.Inflate(height * text.InvertedMarginFactor) : bounds,
+            style with { FillColor = null }));
+    }
+
+    private void AddShapeTextGripPreview(
+        List<CadTransientItem> items,
+        CadShapeText text,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (!TryCreateShapeTextGripGeometry(text, drag, out var position, out var height))
+            return;
+
+        items.Add(new CadTransientShapeText(
+            text.Text,
+            position,
+            height,
+            text.RotationRadians,
+            text.WidthFactor,
+            text.CharacterSpacingFactor,
+            text.ObliqueAngleRadians,
+            style,
+            text.IsInverted,
+            text.InvertedMarginFactor,
+            text.ShapeFontId));
+        items.Add(new CadTransientRectangle(
+            CreateShapeTextPreviewBounds(
+                text.Text,
+                position,
+                height,
+                text.WidthFactor,
+                text.CharacterSpacingFactor,
+                text.ObliqueAngleRadians,
+                text.RotationRadians,
+                text.IsInverted,
+                text.InvertedMarginFactor,
+                text.ShapeFontId),
+            style with { FillColor = null }));
     }
 
     private void CommitGripDrag(CadPointD screen)
@@ -847,6 +948,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
             case CadText text:
                 CommitTextGripDrag(text, drag);
+                break;
+
+            case CadShapeText shapeText:
+                CommitShapeTextGripDrag(shapeText, drag);
                 break;
         }
 
@@ -921,6 +1026,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void CommitShapeTextGripDrag(CadShapeText text, GripDragState drag)
+    {
+        if (TryCreateShapeTextGripGeometry(text, drag, out var position, out var height))
+        {
+            CadEditor.SetShapeTextGeometry(
+                text.Id,
+                position,
+                height,
+                text.RotationRadians,
+                text.WidthFactor,
+                text.CharacterSpacingFactor,
+                text.ObliqueAngleRadians);
+        }
+    }
+
     private bool TryCreateTextGripGeometry(
         CadText text,
         GripDragState drag,
@@ -942,19 +1062,64 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var oppositeX = dragLeft ? bounds.MaxX : bounds.MinX;
         var oppositeY = dragBottom ? bounds.MaxY : bounds.MinY;
         var widthFactor = GetCachedTextWidthFactor(text);
+        var marginFactor = text.IsInverted ? text.InvertedMarginFactor : 0;
+        var heightScale = 1.0 + marginFactor * 2.0;
+        var widthScale = widthFactor + marginFactor * 2.0;
         var desiredHeight = Math.Abs(target.Y - oppositeY);
         var desiredWidth = Math.Abs(target.X - oppositeX);
 
         height = SnapTextHeightUp(
             text.Text,
-            Math.Max(desiredHeight, desiredWidth / widthFactor),
+            Math.Max(desiredHeight / heightScale, desiredWidth / widthScale),
             snapSpacingX,
             snapSpacingY,
             text.TextStyleId);
         var width = MeasureTextWidth(text.Text, height, text.TextStyleId);
+        var margin = height * marginFactor;
+        var outerWidth = width + margin * 2.0;
+        var outerHeight = height + margin * 2.0;
         position = new CadPointD(
-            dragLeft ? oppositeX - width : oppositeX,
-            dragBottom ? oppositeY - height : oppositeY);
+            (dragLeft ? oppositeX - outerWidth : oppositeX) + margin,
+            (dragBottom ? oppositeY - outerHeight : oppositeY) + margin);
+        return true;
+    }
+
+    private static bool TryCreateShapeTextGripGeometry(
+        CadShapeText text,
+        GripDragState drag,
+        out CadPointD position,
+        out double height)
+    {
+        position = text.Position;
+        height = text.Height;
+
+        if (drag.Handle.Type != CadHandleType.BoundsCorner || text.Bounds.IsEmpty)
+            return false;
+
+        var bounds = text.Bounds;
+        var target = drag.DraggedGripPosition;
+        var dragLeft = Math.Abs(drag.Handle.Position.X - bounds.MinX) <= Math.Abs(drag.Handle.Position.X - bounds.MaxX);
+        var dragBottom = Math.Abs(drag.Handle.Position.Y - bounds.MinY) <= Math.Abs(drag.Handle.Position.Y - bounds.MaxY);
+        var oppositeX = dragLeft ? bounds.MaxX : bounds.MinX;
+        var oppositeY = dragBottom ? bounds.MaxY : bounds.MinY;
+        var widthFactor = GetCachedShapeTextWidthFactor(text);
+        var marginFactor = text.IsInverted ? text.InvertedMarginFactor : 0;
+        var heightScale = 1.0 + marginFactor * 2.0;
+        var widthScale = widthFactor + marginFactor * 2.0;
+        var desiredHeight = Math.Abs(target.Y - oppositeY);
+        var desiredWidth = Math.Abs(target.X - oppositeX);
+
+        height = Math.Max(desiredHeight / heightScale, desiredWidth / widthScale);
+        if (!IsFinitePositive(height))
+            return false;
+
+        var width = Math.Max(text.TextBounds.Width / Math.Max(text.Height, double.Epsilon) * height, height * text.WidthFactor);
+        var margin = height * marginFactor;
+        var outerWidth = width + margin * 2.0;
+        var outerHeight = height + margin * 2.0;
+        position = new CadPointD(
+            (dragLeft ? oppositeX - outerWidth : oppositeX) + margin,
+            (dragBottom ? oppositeY - outerHeight : oppositeY) + margin);
         return true;
     }
 
@@ -1280,6 +1445,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     items.Add(new CadTransientRectangle(bounds, CadTransientStyle.Construction));
                 break;
 
+            case CadCanvasToolMode.Polyline:
+                AddPolylineDrawingPreview(items, mouseWorld);
+                break;
+
             case CadCanvasToolMode.Polygon:
                 AddPolygonDrawingPreview(items, mouseWorld);
                 break;
@@ -1296,13 +1465,85 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     mouseWorld,
                     drawingHeight,
                     CreateTextBounds(drawingText, mouseWorld, drawingHeight),
-                    CadTransientStyle.Construction));
+                    CadTransientStyle.Construction,
+                    DrawingTextInverted,
+                    ResolveDrawingTextInvertedMarginFactor()));
+                break;
+
+            case CadCanvasToolMode.ShapeText:
+                var drawingShapeText = ResolveDrawingText();
+                items.Add(new CadTransientShapeText(
+                    drawingShapeText,
+                    mouseWorld,
+                    ResolveTextBoxHeight(drawingShapeText),
+                    0,
+                    CadStrokeFont.DefaultWidthFactor,
+                    CadStrokeFont.DefaultCharacterSpacingFactor,
+                    CadStrokeFont.DefaultObliqueAngleRadians,
+                    CadTransientStyle.Construction,
+                    DrawingTextInverted,
+                    ResolveDrawingTextInvertedMarginFactor(),
+                    ResolveDrawingShapeFontId()));
                 break;
 
             case CadCanvasToolMode.SetOrigin:
                 AddOriginPositionPreview(items, mouseWorld);
                 break;
         }
+    }
+
+    private void AddPolylineVertexOrComplete(CadPointD world)
+    {
+        if (_pendingPolylinePoints.Count >= 2 && IsPolylineFinishPoint(world))
+        {
+            CompletePolyline();
+            return;
+        }
+
+        if (_pendingPolylinePoints.Count == 0 ||
+            !_pendingPolylinePoints[^1].NearEquals(world))
+        {
+            _pendingPolylinePoints.Add(world);
+        }
+    }
+
+    private void CompletePolyline()
+    {
+        if (_pendingPolylinePoints.Count < 2)
+            return;
+
+        CadEditor.AddPolyline(_pendingPolylinePoints, closed: false);
+        _pendingPolylinePoints.Clear();
+    }
+
+    private void AddPolylineDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
+    {
+        if (_pendingPolylinePoints.Count == 0)
+            return;
+
+        var previewPoints = _pendingPolylinePoints
+            .Append(mouseWorld)
+            .ToArray();
+
+        if (previewPoints.Length >= 2)
+            items.Add(new CadTransientPolyline(previewPoints, Closed: false, CadTransientStyle.Construction));
+    }
+
+    private bool IsPolylineFinishPoint(CadPointD world)
+    {
+        return _pendingPolylinePoints.Count >= 2 &&
+               _pendingPolylinePoints[^1].DistanceTo(world) <= ResolvePolylineFinishTolerance();
+    }
+
+    private double ResolvePolylineFinishTolerance()
+    {
+        var screenTolerance = 8.0 / Math.Max(CadEditor.Viewport.Zoom, double.Epsilon);
+        var grid = CadEditor.Document.ViewSettings.Grid;
+        var snapSpacing = Math.Min(grid.GetSnapSpacingX(), grid.GetSnapSpacingY());
+
+        return IsFinitePositive(snapSpacing)
+            ? Math.Max(1e-9, Math.Min(screenTolerance, snapSpacing * 0.49))
+            : screenTolerance;
     }
 
     private void AddSplineFitPointOrComplete(CadPointD world)
@@ -1550,6 +1791,26 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return string.IsNullOrWhiteSpace(DrawingText) ? "Text" : DrawingText;
     }
 
+    private double ResolveDrawingTextInvertedMarginFactor()
+    {
+        return DrawingTextInvertedMarginFactor >= 0 &&
+               !double.IsNaN(DrawingTextInvertedMarginFactor) &&
+               !double.IsInfinity(DrawingTextInvertedMarginFactor)
+            ? DrawingTextInvertedMarginFactor
+            : CadText.DefaultInvertedMarginFactor;
+    }
+
+    private CadShapeFontId ResolveDrawingShapeFontId()
+    {
+        return DrawingShapeFont switch
+        {
+            ViewModelCadShapeFont.Simplex => CadShapeFontId.Simplex,
+            ViewModelCadShapeFont.MonoLine => CadShapeFontId.MonoLine,
+            ViewModelCadShapeFont.BoxFallback => CadShapeFontId.BoxFallback,
+            _ => CadShapeFontId.Unicode
+        };
+    }
+
     private double ResolveTextBoxHeight(string text)
     {
         var grid = CadEditor.Document.ViewSettings.Grid;
@@ -1619,6 +1880,40 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return IsFinitePositive(text.Height) && IsFinitePositive(text.LocalBounds.Width)
             ? text.LocalBounds.Width / text.Height
             : 1.0;
+    }
+
+    private static double GetCachedShapeTextWidthFactor(CadShapeText text)
+    {
+        return IsFinitePositive(text.Height) && IsFinitePositive(text.TextBounds.Width)
+            ? Math.Max(text.TextBounds.Width / text.Height, 1e-6)
+            : Math.Max(text.WidthFactor, 1e-6);
+    }
+
+    private static CadRectD CreateShapeTextPreviewBounds(
+        string text,
+        CadPointD position,
+        double height,
+        double widthFactor,
+        double characterSpacingFactor,
+        double obliqueAngleRadians,
+        double rotationRadians,
+        bool isInverted,
+        double invertedMarginFactor,
+        CadShapeFontId shapeFontId)
+    {
+        var bounds = CadShapeFontMetrics.MeasureBounds(
+            text,
+            position,
+            height,
+            widthFactor,
+            characterSpacingFactor,
+            obliqueAngleRadians,
+            rotationRadians,
+            shapeFontId);
+
+        return isInverted
+            ? bounds.Inflate(height * Math.Max(invertedMarginFactor, 0))
+            : bounds;
     }
 
     private double MeasureTextWidth(string text, double height, StyleId? textStyleId = null)
@@ -1740,7 +2035,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private static bool CanDuplicate(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadEllipse or CadArc or CadRectangle or CadPolyline or CadSpline or CadText;
+        return entity is CadLine or CadCircle or CadEllipse or CadArc or CadRectangle or CadPolyline or CadSpline or CadText or CadShapeText;
     }
 
     public void Dispose()

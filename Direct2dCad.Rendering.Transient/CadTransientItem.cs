@@ -1,4 +1,6 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering.Transient;
@@ -54,7 +56,23 @@ public sealed record CadTransientText(
     CadPointD Position,
     double Height,
     CadRectD Bounds,
-    CadTransientStyle Style)
+    CadTransientStyle Style,
+    bool IsInverted = false,
+    double InvertedMarginFactor = CadText.DefaultInvertedMarginFactor)
+    : CadTransientItem(Style);
+
+public sealed record CadTransientShapeText(
+    string Text,
+    CadPointD Position,
+    double Height,
+    double RotationRadians,
+    double WidthFactor,
+    double CharacterSpacingFactor,
+    double ObliqueAngleRadians,
+    CadTransientStyle Style,
+    bool IsInverted = false,
+    double InvertedMarginFactor = CadShapeText.DefaultInvertedMarginFactor,
+    CadShapeFontId ShapeFontId = default)
     : CadTransientItem(Style);
 
 public sealed record CadTransientEntityReference(

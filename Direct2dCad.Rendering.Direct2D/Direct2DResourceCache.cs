@@ -4,6 +4,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Vortice;
 using Vortice.Direct2D1;
@@ -165,6 +166,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 : CreateArcPathGeometry(arc),
             CadPolyline polyline => CreatePolylineGeometry(polyline.Points, polyline.Closed),
             CadSpline spline => CreateSplineGeometry(spline.FitPoints, spline.Closed),
+            CadShapeText shapeText => CreateShapeTextGeometry(shapeText),
             CadText => null,
             CadBlockReference blockReference => CreateRectangleGeometry(blockReference.Bounds),
             _ => null
@@ -215,6 +217,22 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
 
         sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
+        sink.Close();
+        return geometry;
+    }
+
+    private ID2D1PathGeometry CreateShapeTextGeometry(CadShapeText text)
+    {
+        var geometry = Factory!.CreatePathGeometry();
+        using var sink = geometry.Open();
+
+        foreach (var segment in text.CreateStrokeSegments())
+        {
+            sink.BeginFigure(ToVector2(segment.Start), FigureBegin.Hollow);
+            sink.AddLine(ToVector2(segment.End));
+            sink.EndFigure(FigureEnd.Open);
+        }
+
         sink.Close();
         return geometry;
     }
@@ -292,6 +310,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
             CadText text => text.GraphicStyleId,
+            CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
             _ => null
         };

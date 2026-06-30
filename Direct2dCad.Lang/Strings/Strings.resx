@@ -197,6 +197,10 @@
     <value>Polygon</value>
     <comment>Polygon</comment>
   </data>
+  <data name="Polyline" xml:space="preserve">
+    <value>Polyline</value>
+    <comment>Polyline</comment>
+  </data>
   <data name="SaveAs" xml:space="preserve">
     <value>Save Image As...</value>
     <comment>Save Image As...</comment>
@@ -224,6 +228,10 @@
   <data name="Text" xml:space="preserve">
     <value>Text</value>
     <comment>Text</comment>
+  </data>
+  <data name="ShapeText" xml:space="preserve">
+    <value>CAD Text</value>
+    <comment>CAD stroke text</comment>
   </data>
   <data name="UnhandledException" xml:space="preserve">
     <value>Unhandled Exception</value>

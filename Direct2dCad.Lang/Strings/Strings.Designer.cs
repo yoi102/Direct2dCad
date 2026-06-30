@@ -241,6 +241,15 @@ namespace Direct2dCad.Lang.Strings {
         }
 
         /// <summary>
+        ///   查找类似 Polyline 的本地化字符串。
+        /// </summary>
+        public static string Polyline {
+            get {
+                return ResourceManager.GetString("Polyline", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Save Image As... 的本地化字符串。
         /// </summary>
         public static string SaveAs {
@@ -300,6 +309,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Text {
             get {
                 return ResourceManager.GetString("Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 CAD Text 的本地化字符串。
+        /// </summary>
+        public static string ShapeText {
+            get {
+                return ResourceManager.GetString("ShapeText", resourceCulture);
             }
         }
         

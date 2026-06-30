@@ -1,6 +1,7 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.HitTesting;
@@ -95,6 +96,9 @@ public static class CadEntityHitTester
 
             case CadSpline spline:
                 return HitSplineEdge(spline, point, tolerance, out result);
+
+            case CadShapeText shapeText:
+                return HitShapeTextEdge(shapeText, point, tolerance, out result);
 
             case CadBlockReference blockReference:
                 return HitBlockReferenceEdge(
@@ -469,6 +473,34 @@ public static class CadEntityHitTester
             new[] { entityId },
             point,
             distance);
+
+        return true;
+    }
+
+    private static bool HitShapeTextEdge(
+        CadShapeText text,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        result = default;
+        var bestDistance = double.PositiveInfinity;
+
+        foreach (var segment in text.CreateStrokeSegments())
+        {
+            var distance = DistancePointToSegment(point, segment.Start, segment.End);
+            if (distance < bestDistance)
+                bestDistance = distance;
+        }
+
+        if (bestDistance > tolerance)
+            return false;
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Edge,
+            [text.Id],
+            point,
+            bestDistance);
 
         return true;
     }

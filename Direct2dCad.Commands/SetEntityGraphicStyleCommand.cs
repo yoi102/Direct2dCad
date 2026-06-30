@@ -60,6 +60,7 @@ public sealed class SetEntityGraphicStyleCommand : ICadCommand
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
             CadText text => text.GraphicStyleId,
+            CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
             _ => null
         };
@@ -92,6 +93,9 @@ public sealed class SetEntityGraphicStyleCommand : ICadCommand
                 break;
             case CadText text:
                 text.SetGraphicStyleInternal(styleId);
+                break;
+            case CadShapeText shapeText:
+                shapeText.SetGraphicStyleInternal(styleId);
                 break;
             case CadBlockReference blockReference:
                 blockReference.SetGraphicStyleInternal(styleId);

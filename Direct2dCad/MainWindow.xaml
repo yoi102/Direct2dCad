@@ -6,12 +6,18 @@
                  xmlns:views="clr-namespace:Direct2dCad.wpf.Views"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 xmlns:avalonDock="https://github.com/Dirkster99/AvalonDock"
+                 xmlns:avalonDockControls="clr-namespace:AvalonDock.Controls;assembly=AvalonDock"
+                 xmlns:avalonDockThemes="clr-namespace:AvalonDock.Themes;assembly=AvalonDock.Themes.Arc"
+                 xmlns:tb_vm="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+                 xmlns:tb_v="clr-namespace:Direct2dCad.wpf.Views.Toolboxes"
+                 xmlns:selectors="clr-namespace:Direct2dCad.wpf.Selectors"
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:ex="clr-namespace:Direct2dCad.wpf.Extensions"
                  xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
-                 xmlns:viewmodels="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+                 xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
                  mc:Ignorable="d"
-                 d:DataContext="{d:DesignInstance Type=viewmodels:MainViewModel}"
+                 d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
                  Topmost="{Binding Topmost}"
                  Title="Direct2dCad"
                  TitleAlignment="Left"
@@ -64,197 +70,304 @@
                     </MenuItem>
                 </Menu>
             </StackPanel>
-
         </mah:WindowCommands>
     </mah:MetroWindow.RightWindowCommands>
 
+    <Grid RowDefinitions="auto * auto">
+        <StackPanel Grid.Row="0">
+            <ToolBar>
+                <Button ToolTip="Open"
+                        Content="{md:PackIcon Kind=File,  Size=20}"
+                        Command="{Binding OpenFileCommand}" />
+                <Button ToolTip="Save"
+                        Content="{md:PackIcon Kind=ContentSave,  Size=20}"
+                        Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}" />
+                <Button ToolTip="Save As"
+                        Content="{md:PackIcon Kind=ContentSaveAdd,  Size=20}"
+                        Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}" />
+                <Separator Margin="20 0 0 0" />
+                <Button ToolTip="Undo"
+                        Content="{md:PackIcon Kind=Undo,  Size=20}"
+                        Command="{Binding CurrentEditorTabViewModel.UndoCommand}" />
+                <Button ToolTip="Redo"
+                        Content="{md:PackIcon Kind=Redo,  Size=20}"
+                        Command="{Binding CurrentEditorTabViewModel.RedoCommand}" />
 
+                <Separator Margin="20 0 0 0" />
+                <TextBlock Text="Grid"
+                           VerticalAlignment="Center" />
+                <ComboBox Width="78"
+                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm:ViewModelCadGridType}}}"
+                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadGridType}" />
+                <TextBlock Text="Snap Marker"
+                           VerticalAlignment="Center" />
+                <ComboBox Width="92"
+                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm:ViewModelCadSnapMarkerType}}}"
+                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadSnapMarkerType}" />
+                <Separator />
+            </ToolBar>
+            <ToolBar>
 
-    <DockPanel>
-        <ToolBar DockPanel.Dock="Top">
-            <Button ToolTip="Open"
-                    Content="{md:PackIcon Kind=File,  Size=20}"
-                    Command="{Binding OpenFileCommand}" />
-            <Button ToolTip="Save"
-                    Content="{md:PackIcon Kind=ContentSave,  Size=20}"
-                    Command="{Binding SaveFileCommand}" />
-            <Button ToolTip="Save As"
-                    Content="{md:PackIcon Kind=ContentSaveAdd,  Size=20}"
-                    Command="{Binding SaveAsFileCommand}" />
-            <Separator Margin="20 0 0 0" />
-            <Button ToolTip="Undo"
-                    Content="{md:PackIcon Kind=Undo,  Size=20}"
-                    Command="{Binding UndoCommand}" />
-            <Button ToolTip="Redo"
-                    Content="{md:PackIcon Kind=Redo,  Size=20}"
-                    Command="{Binding RedoCommand}" />
+                <Separator />
+                <Button Content="Select"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Select" />
+                <Separator />
+                <Button Content="Line"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Line" />
+                <Button Content="Circle"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Circle" />
+                <Button Content="Ellipse"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Ellipse" />
+                <Button Content="Arc"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Arc" />
+                <Button Content="Rectangle"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Rectangle" />
+                <Button Content="Polyline"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Polyline" />
+                <Button Content="Polygon"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Polygon" />
+                <Button Content="Spline"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Spline" />
+                <Button Content="Text"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="Text" />
+                <Button Content="CAD Text"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="ShapeText" />
+                <TextBlock Text="Shape Font"
+                           VerticalAlignment="Center" />
+                <ComboBox Width="94"
+                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm:ViewModelCadShapeFont}}}"
+                          SelectedItem="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.DrawingShapeFont}" />
+                <Button Content="Set Origin"
+                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                        CommandParameter="SetOrigin" />
+                <TextBox Width="120"
+                         Text="{Binding CurrentEditorTabViewModel.TextInput}" />
+                <CheckBox Content="Inverted"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.DrawingTextInverted}" />
+                <TextBlock Text="Margin"
+                           VerticalAlignment="Center" />
+                <TextBox Width="52"
+                         Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.DrawingTextInvertedMarginFactor, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
+            </ToolBar>
+            <ToolBar>
+                <TextBlock Text="Origin"
+                           VerticalAlignment="Center" />
+                <ComboBox Width="112"
+                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm:ViewModelCadOriginDisplayType}}}"
+                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginDisplayType}" />
+                <TextBlock Text="X"
+                           VerticalAlignment="Center" />
+                <TextBox Width="64"
+                         Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginX, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
+                <TextBlock Text="Y"
+                           VerticalAlignment="Center" />
+                <TextBox Width="64"
+                         Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginY, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
+                <TextBlock Text="Origin Marker"
+                           VerticalAlignment="Center" />
+                <ComboBox Width="82"
+                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm:ViewModelCadOriginMarkerType}}}"
+                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginMarkerType}" />
+                <TextBlock Text="Origin Line"
+                           VerticalAlignment="Center" />
+                <ComboBox Width="82"
+                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm:ViewModelCadOriginLinePattern}}}"
+                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginLinePattern}" />
+                <TextBlock Text="Size"
+                           VerticalAlignment="Center" />
+                <TextBox Width="48"
+                         Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginSize, UpdateSourceTrigger=LostFocus, StringFormat=F1}" />
+                <TextBlock Text="Stroke"
+                           VerticalAlignment="Center" />
+                <TextBox Width="48"
+                         Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginStrokeWidth, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
+                <TextBlock Text="Color"
+                           VerticalAlignment="Center" />
+                <Border Width="18"
+                        Height="18"
+                        BorderBrush="#66000000"
+                        BorderThickness="1"
+                        Background="{Binding CurrentEditorTabViewModel.ViewModelCadOriginColorText}" />
+                <TextBox Width="86"
+                         Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginColorText, UpdateSourceTrigger=LostFocus}" />
+            </ToolBar>
+            <ToolBar>
+                <TextBlock Text="User"
+                           VerticalAlignment="Center" />
+                <CheckBox Content="Antialias"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding CurrentEditorTabViewModel.IsAntialiasingEnabled}" />
+                <CheckBox Content="Text AA"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding CurrentEditorTabViewModel.IsTextAntialiasingEnabled}" />
+                <Separator />
+                <TextBlock Text="Selected"
+                           VerticalAlignment="Center" />
+                <Border Width="18"
+                        Height="18"
+                        BorderBrush="#66000000"
+                        BorderThickness="1"
+                        Background="{Binding CurrentEditorTabViewModel.SelectedEntityColorText}" />
+                <TextBox Width="86"
+                         Text="{Binding CurrentEditorTabViewModel.SelectedEntityColorText, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Text="Window"
+                           VerticalAlignment="Center" />
+                <Border Width="18"
+                        Height="18"
+                        BorderBrush="#66000000"
+                        BorderThickness="1"
+                        Background="{Binding CurrentEditorTabViewModel.SelectionWindowStrokeColorText}" />
+                <TextBox Width="86"
+                         Text="{Binding CurrentEditorTabViewModel.SelectionWindowStrokeColorText, UpdateSourceTrigger=LostFocus}" />
+                <Border Width="18"
+                        Height="18"
+                        BorderBrush="#66000000"
+                        BorderThickness="1"
+                        Background="{Binding CurrentEditorTabViewModel.SelectionWindowFillColorText}" />
+                <TextBox Width="86"
+                         Text="{Binding CurrentEditorTabViewModel.SelectionWindowFillColorText, UpdateSourceTrigger=LostFocus}" />
+                <TextBlock Text="Crossing"
+                           VerticalAlignment="Center" />
+                <Border Width="18"
+                        Height="18"
+                        BorderBrush="#66000000"
+                        BorderThickness="1"
+                        Background="{Binding CurrentEditorTabViewModel.SelectionCrossingStrokeColorText}" />
+                <TextBox Width="86"
+                         Text="{Binding CurrentEditorTabViewModel.SelectionCrossingStrokeColorText, UpdateSourceTrigger=LostFocus}" />
+                <Border Width="18"
+                        Height="18"
+                        BorderBrush="#66000000"
+                        BorderThickness="1"
+                        Background="{Binding CurrentEditorTabViewModel.SelectionCrossingFillColorText}" />
+                <TextBox Width="86"
+                         Text="{Binding CurrentEditorTabViewModel.SelectionCrossingFillColorText, UpdateSourceTrigger=LostFocus}" />
+            </ToolBar>
+        </StackPanel>
 
-            <Separator Margin="20 0 0 0" />
-            <TextBlock Text="Grid"
-                       VerticalAlignment="Center" />
-            <ComboBox Width="78"
-                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadGridType}}}"
-                      SelectedItem="{Binding ViewModelCadGridType}" />
-            <TextBlock Text="Snap Marker"
-                       VerticalAlignment="Center" />
-            <ComboBox Width="92"
-                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadSnapMarkerType}}}"
-                      SelectedItem="{Binding ViewModelCadSnapMarkerType}" />
-            <Separator />
-
-        </ToolBar>
-
-        <ToolBar DockPanel.Dock="Top">
-
-            <Separator />
-            <Button Content="Select"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Select" />
-            <Separator />
-            <Button Content="Line"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Line" />
-            <Button Content="Circle"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Circle" />
-            <Button Content="Ellipse"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Ellipse" />
-            <Button Content="Arc"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Arc" />
-            <Button Content="Rectangle"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Rectangle" />
-            <Button Content="Polygon"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Polygon" />
-            <Button Content="Spline"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Spline" />
-            <Button Content="Text"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="Text" />
-            <Button Content="Set Origin"
-                    Command="{Binding SetCadCanvasToolModeCommand}"
-                    CommandParameter="SetOrigin" />
-            <TextBox Width="120"
-                     Text="{Binding TextInput}" />
-
-
-        </ToolBar>
-        <ToolBar DockPanel.Dock="Top">
-            <TextBlock Text="Origin"
-                       VerticalAlignment="Center" />
-            <ComboBox Width="112"
-                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadOriginDisplayType}}}"
-                      SelectedItem="{Binding ViewModelCadOriginDisplayType}" />
-            <TextBlock Text="X"
-                       VerticalAlignment="Center" />
-            <TextBox Width="64"
-                     Text="{Binding ViewModelCadOriginX, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
-            <TextBlock Text="Y"
-                       VerticalAlignment="Center" />
-            <TextBox Width="64"
-                     Text="{Binding ViewModelCadOriginY, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
-            <TextBlock Text="Origin Marker"
-                       VerticalAlignment="Center" />
-            <ComboBox Width="82"
-                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadOriginMarkerType}}}"
-                      SelectedItem="{Binding ViewModelCadOriginMarkerType}" />
-            <TextBlock Text="Origin Line"
-                       VerticalAlignment="Center" />
-            <ComboBox Width="82"
-                      ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type viewmodels:ViewModelCadOriginLinePattern}}}"
-                      SelectedItem="{Binding ViewModelCadOriginLinePattern}" />
-            <TextBlock Text="Size"
-                       VerticalAlignment="Center" />
-            <TextBox Width="48"
-                     Text="{Binding ViewModelCadOriginSize, UpdateSourceTrigger=LostFocus, StringFormat=F1}" />
-            <TextBlock Text="Stroke"
-                       VerticalAlignment="Center" />
-            <TextBox Width="48"
-                     Text="{Binding ViewModelCadOriginStrokeWidth, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
-            <TextBlock Text="Color"
-                       VerticalAlignment="Center" />
-            <Border Width="18"
-                    Height="18"
-                    BorderBrush="#66000000"
-                    BorderThickness="1"
-                    Background="{Binding ViewModelCadOriginColorText}" />
-            <TextBox Width="86"
-                     Text="{Binding ViewModelCadOriginColorText, UpdateSourceTrigger=LostFocus}" />
-
-        </ToolBar>
-
-        <ToolBar DockPanel.Dock="Top">
-            <TextBlock Text="User"
-                       VerticalAlignment="Center" />
-            <CheckBox Content="Antialias"
-                      VerticalAlignment="Center"
-                      IsChecked="{Binding IsAntialiasingEnabled}" />
-            <CheckBox Content="Text AA"
-                      VerticalAlignment="Center"
-                      IsChecked="{Binding IsTextAntialiasingEnabled}" />
-            <Separator />
-            <TextBlock Text="Selected"
-                       VerticalAlignment="Center" />
-            <Border Width="18"
-                    Height="18"
-                    BorderBrush="#66000000"
-                    BorderThickness="1"
-                    Background="{Binding SelectedEntityColorText}" />
-            <TextBox Width="86"
-                     Text="{Binding SelectedEntityColorText, UpdateSourceTrigger=LostFocus}" />
-            <TextBlock Text="Window"
-                       VerticalAlignment="Center" />
-            <Border Width="18"
-                    Height="18"
-                    BorderBrush="#66000000"
-                    BorderThickness="1"
-                    Background="{Binding SelectionWindowStrokeColorText}" />
-            <TextBox Width="86"
-                     Text="{Binding SelectionWindowStrokeColorText, UpdateSourceTrigger=LostFocus}" />
-            <Border Width="18"
-                    Height="18"
-                    BorderBrush="#66000000"
-                    BorderThickness="1"
-                    Background="{Binding SelectionWindowFillColorText}" />
-            <TextBox Width="86"
-                     Text="{Binding SelectionWindowFillColorText, UpdateSourceTrigger=LostFocus}" />
-            <TextBlock Text="Crossing"
-                       VerticalAlignment="Center" />
-            <Border Width="18"
-                    Height="18"
-                    BorderBrush="#66000000"
-                    BorderThickness="1"
-                    Background="{Binding SelectionCrossingStrokeColorText}" />
-            <TextBox Width="86"
-                     Text="{Binding SelectionCrossingStrokeColorText, UpdateSourceTrigger=LostFocus}" />
-            <Border Width="18"
-                    Height="18"
-                    BorderBrush="#66000000"
-                    BorderThickness="1"
-                    Background="{Binding SelectionCrossingFillColorText}" />
-            <TextBox Width="86"
-                     Text="{Binding SelectionCrossingFillColorText, UpdateSourceTrigger=LostFocus}" />
-        </ToolBar>
-
-        <StatusBar DockPanel.Dock="Bottom">
-            <TextBlock Text="{Binding CadDocumentViewModel.CadCanvasToolMode}" />
+        <StatusBar Grid.Row="2">
+            <TextBlock Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CadCanvasToolMode}" />
         </StatusBar>
-        <Grid>
-            <views:CadDocumentView x:Name="cadDocumentView"
-                                   DataContext="{Binding CadDocumentViewModel}" />
-            <Button HorizontalAlignment="Left"
-                    VerticalAlignment="Top"
-                    Style="{StaticResource MaterialDesignFlatButton}"
-                    Content="{md:PackIcon Kind=FitToScreen,  Size=25}"
-                    Background="Transparent"
-                    Foreground="White"
-                    Margin="12"
-                    ToolTip="Fit"
-                    Command="{Binding FitToWindowCommand}" />
+        <Grid Grid.Row="1">
+            <Grid.Resources>
+
+                <!-- DataTemplate: how to render each toolbox VM's content -->
+                <DataTemplate DataType="{x:Type tb_vm:FolderExplorerViewModel}">
+                    <tb_v:FolderExplorerView />
+                </DataTemplate>
+
+                <!-- DataTemplate: how to render document content -->
+                <DataTemplate DataType="{x:Type vm:EditorTabViewModel}">
+                    <views:EditorView />
+                </DataTemplate>
+
+                <!-- Document header template (tab header with icon + title) -->
+                <DataTemplate x:Key="DocumentTabHeaderTemplate">
+                    <StackPanel Orientation="Horizontal">
+                        <!--<Image Source="{Binding IconSource}"
+                               Width="14"
+                               Height="14"
+                               Margin="0,0,5,0"
+                               VerticalAlignment="Center"
+                               Visibility="{Binding IconSource, Converter={StaticResource NullToCollapsedConverter}}" />-->
+
+                        <TextBlock Text="{Binding Title}"
+                                   TextTrimming="CharacterEllipsis"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </DataTemplate>
+
+                <!-- LayoutItem style selector: different styles for toolboxes vs documents -->
+                <selectors:PanesStyleSelector x:Key="PanesStyleSelector">
+                    <selectors:PanesStyleSelector.ToolboxStyle>
+                        <Style TargetType="{x:Type avalonDockControls:LayoutAnchorableItem}">
+                            <Setter Property="Title"
+                                    Value="{Binding Model.Title}" />
+                            <Setter Property="ContentId"
+                                    Value="{Binding Model.ContentId}" />
+                            <Setter Property="ClipToBounds"
+                                    Value="True" />
+                        </Style>
+                    </selectors:PanesStyleSelector.ToolboxStyle>
+                    <selectors:PanesStyleSelector.DocumentStyle>
+                        <Style TargetType="{x:Type avalonDockControls:LayoutDocumentItem}">
+                            <Setter Property="Title"
+                                    Value="{Binding Model.Title}" />
+                            <Setter Property="ToolTip"
+                                    Value="{Binding Model.ToolTip}" />
+                            <Setter Property="IconSource"
+                                    Value="{Binding Model.IconSource}" />
+                            <Setter Property="ContentId"
+                                    Value="{Binding Model.ContentId}" />
+                        </Style>
+                    </selectors:PanesStyleSelector.DocumentStyle>
+                </selectors:PanesStyleSelector>
+            </Grid.Resources>
+
+            <avalonDock:ToggleDockingManager x:Name="dockManager"
+                                             Grid.Row="1"
+                                             BorderThickness="0"
+                                             DockLayout="{Binding DockLayout}"
+                                             DocumentHeaderTemplate="{StaticResource DocumentTabHeaderTemplate}"
+                                             LayoutItemContainerStyleSelector="{StaticResource PanesStyleSelector}">
+                <avalonDock:ToggleDockingManager.Theme>
+                    <avalonDockThemes:ArcDarkTheme />
+                </avalonDock:ToggleDockingManager.Theme>
+                <avalonDock:LayoutRoot>
+                    <avalonDock:LayoutPanel Orientation="Horizontal">
+                        <avalonDock:LayoutDocumentPaneGroup>
+
+                            <avalonDock:LayoutDocumentPane x:Name="LayoutDocumentPane">
+                                <avalonDock:LayoutDocument Title="Welcome"
+                                                           ContentId="welcome">
+                                    <Border Background="{DynamicResource AppEditorBg}"
+                                            Padding="40">
+                                        <StackPanel VerticalAlignment="Center"
+                                                    HorizontalAlignment="Center">
+                                            <TextBlock Text="AvalonDock Code"
+                                                       FontSize="28"
+                                                       FontWeight="Light"
+                                                       Foreground="{DynamicResource AppText}"
+                                                       HorizontalAlignment="Center" />
+                                            <TextBlock Text="Toggle Docking Demo — v5.0.0"
+                                                       FontSize="14"
+                                                       Foreground="{DynamicResource AppSubText}"
+                                                       HorizontalAlignment="Center"
+                                                       Margin="0,8,0,24" />
+                                            <TextBlock Foreground="{DynamicResource AppSubText}"
+                                                       FontSize="13"
+                                                       TextAlignment="Center"
+                                                       LineHeight="24">
+                                    <Run Text="Click sidebar icons to toggle panels" /><LineBreak />
+                                    <Run Text="Drag buttons between zones to rearrange" /><LineBreak />
+                                    <Run Text="Double-click files in Explorer to open" />
+                                            </TextBlock>
+                                            <TextBlock Foreground="{DynamicResource AppDimText}"
+                                                       FontSize="11"
+                                                       TextAlignment="Center"
+                                                       Margin="0,24,0,0">
+                                    <Run Text="Powered by AvalonDock + AvalonDock.Mvvm + AvalonDock-DependencyInjection" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </avalonDock:LayoutDocument>
+                            </avalonDock:LayoutDocumentPane>
+                        </avalonDock:LayoutDocumentPaneGroup>
+                    </avalonDock:LayoutPanel>
+                </avalonDock:LayoutRoot>
+            </avalonDock:ToggleDockingManager>
         </Grid>
-    </DockPanel>
+    </Grid>
 </mah:MetroWindow>

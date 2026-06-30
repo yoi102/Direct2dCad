@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Dirkster.AvalonDock.Core" Version="5.0.0-preview.90" />
+    <PackageReference Include="Dirkster.AvalonDock.Mvvm.CommunityToolkit" Version="5.0.0-preview.90" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115" />
   </ItemGroup>
 

@@ -1,6 +1,7 @@
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Db.Cad.Settings;
 
@@ -568,7 +569,9 @@ public sealed class CadDocument : IEquatable<CadDocument>
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? textStyleId = null,
-        string name = "")
+        string name = "",
+        bool isInverted = false,
+        double invertedMarginFactor = CadText.DefaultInvertedMarginFactor)
     {
         ValidateGraphicStyle(graphicStyleId, allowNull: true);
         ValidateTextStyle(textStyleId, allowNull: true);
@@ -582,7 +585,47 @@ public sealed class CadDocument : IEquatable<CadDocument>
             height,
             rotationRadians,
             textStyleId,
-            name);
+            name,
+            isInverted,
+            invertedMarginFactor);
+
+        entity.SetGraphicStyleInternal(graphicStyleId);
+        AddEntityCore(entity);
+        return entity;
+    }
+
+    public CadShapeText AddShapeText(
+        string text,
+        CadPointD position,
+        double height,
+        double rotationRadians = 0,
+        double widthFactor = CadStrokeFont.DefaultWidthFactor,
+        double characterSpacingFactor = CadStrokeFont.DefaultCharacterSpacingFactor,
+        double obliqueAngleRadians = CadStrokeFont.DefaultObliqueAngleRadians,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        string name = "",
+        bool isInverted = false,
+        double invertedMarginFactor = CadShapeText.DefaultInvertedMarginFactor,
+        CadShapeFontId shapeFontId = default)
+    {
+        ValidateGraphicStyle(graphicStyleId, allowNull: true);
+
+        var entity = new CadShapeText(
+            _ids.NewEntityId(),
+            layerId ?? LayerId.Default,
+            BlockId.ModelSpace,
+            text,
+            position,
+            height,
+            rotationRadians,
+            widthFactor,
+            characterSpacingFactor,
+            obliqueAngleRadians,
+            name,
+            isInverted,
+            invertedMarginFactor,
+            shapeFontId);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
         AddEntityCore(entity);

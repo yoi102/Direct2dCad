@@ -2,12 +2,11 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Direct2dCad"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
-             StartupUri="MainWindow.xaml">
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <md:MahAppsBundledTheme BaseTheme="Inherit"
+                <md:MahAppsBundledTheme BaseTheme="Dark"
                                         PrimaryColor="DeepPurple"
                                         SecondaryColor="Purple">
                     <md:MahAppsBundledTheme.ColorAdjustment>
@@ -26,6 +25,9 @@
 
                 <!--  Material Design: MahApps Compatibility  -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.MahApps;component/Themes/MaterialDesignTheme.MahApps.Defaults.xaml" />
+
+                <!--AvalonDock.Themes.Arc-->
+                <ResourceDictionary Source="/AvalonDock.Themes.Arc;component/DarkTheme.xaml" />
 
                 <ResourceDictionary Source="pack://application:,,,/Direct2dCad.wpf.Control;component/Generic.xaml" />
             </ResourceDictionary.MergedDictionaries>

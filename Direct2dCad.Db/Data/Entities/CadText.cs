@@ -5,6 +5,7 @@ namespace Direct2dCad.Db.Data.Entities;
 public sealed class CadText : CadEntity
 {
     public const double FontSizeScale = 0.78;
+    public const double DefaultInvertedMarginFactor = 0.12;
 
     private CadRectD _localBounds;
     private bool _requiresBoundsMeasurement;
@@ -15,11 +16,15 @@ public sealed class CadText : CadEntity
     public double RotationRadians { get; private set; }
     public StyleId? GraphicStyleId { get; private set; }
     public StyleId? TextStyleId { get; private set; }
+    public bool IsInverted { get; private set; }
+    public double InvertedMarginFactor { get; private set; }
 
     public CadRectD LocalBounds => _localBounds;
+    public CadRectD TextBounds => LocalBounds.Translate(Position - CadPointD.Origin);
+    public CadRectD InvertedBackgroundBounds => TextBounds.Inflate(GetInvertedMargin());
     public bool RequiresBoundsMeasurement => _requiresBoundsMeasurement;
 
-    public override CadRectD Bounds => LocalBounds.Translate(Position - CadPointD.Origin);
+    public override CadRectD Bounds => IsInverted ? InvertedBackgroundBounds : TextBounds;
 
     internal CadText(
         EntityId id,
@@ -30,7 +35,9 @@ public sealed class CadText : CadEntity
         double height,
         double rotationRadians = 0,
         StyleId? textStyleId = null,
-        string name = "")
+        string name = "",
+        bool isInverted = false,
+        double invertedMarginFactor = DefaultInvertedMarginFactor)
         : base(id, layerId, ownerBlockId, name)
     {
         Text = text ?? string.Empty;
@@ -38,6 +45,8 @@ public sealed class CadText : CadEntity
         Height = GuardPositive(height, nameof(height));
         RotationRadians = rotationRadians;
         TextStyleId = textStyleId;
+        IsInverted = isInverted;
+        InvertedMarginFactor = GuardNonNegative(invertedMarginFactor, nameof(invertedMarginFactor));
         MarkBoundsForMeasurement();
     }
 
@@ -56,6 +65,18 @@ public sealed class CadText : CadEntity
     }
 
     public void SetRotation(double rotationRadians) => RotationRadians = rotationRadians;
+
+    public void SetInverted(bool isInverted) => IsInverted = isInverted;
+
+    public void SetInvertedMarginFactor(double invertedMarginFactor)
+    {
+        InvertedMarginFactor = GuardNonNegative(invertedMarginFactor, nameof(invertedMarginFactor));
+    }
+
+    public double GetInvertedMargin()
+    {
+        return Height * InvertedMarginFactor;
+    }
 
     public void SetGraphicStyleInternal(StyleId? styleId) => GraphicStyleId = styleId;
 
@@ -100,6 +121,13 @@ public sealed class CadText : CadEntity
     private static double GuardPositive(double value, string paramName)
     {
         return value <= 0 || double.IsNaN(value) || double.IsInfinity(value)
+            ? throw new ArgumentOutOfRangeException(paramName)
+            : value;
+    }
+
+    private static double GuardNonNegative(double value, string paramName)
+    {
+        return value < 0 || double.IsNaN(value) || double.IsInfinity(value)
             ? throw new ArgumentOutOfRangeException(paramName)
             : value;
     }

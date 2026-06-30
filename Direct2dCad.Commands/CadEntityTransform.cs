@@ -33,6 +33,9 @@ internal static class CadEntityTransform
             case CadText text:
                 text.SetPosition(text.Position + delta);
                 break;
+            case CadShapeText shapeText:
+                shapeText.SetPosition(shapeText.Position + delta);
+                break;
             case CadBlockReference blockReference:
                 blockReference.SetPosition(blockReference.Position + delta);
                 break;

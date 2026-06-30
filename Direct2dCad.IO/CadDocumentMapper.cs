@@ -3,6 +3,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO.FileFormat.Common;
 using Direct2dCad.IO.FileFormat.Entities;
@@ -233,7 +234,34 @@ internal static class CadDocumentMapper
                     Height = x.Height,
                     RotationRadians = x.RotationRadians,
                     TextStyleId = x.TextStyleId?.Value,
-                    GraphicStyleId = x.GraphicStyleId?.Value
+                    GraphicStyleId = x.GraphicStyleId?.Value,
+                    IsInverted = x.IsInverted,
+                    InvertedMarginFactor = x.InvertedMarginFactor
+                })
+                .ToList()
+        };
+    }
+
+    internal static CadShapeTextsSection ToShapeTextsSection(CadDocument document)
+    {
+        return new CadShapeTextsSection
+        {
+            ShapeTexts = document.Entities.Values
+                .OfType<CadShapeText>()
+                .Select(x => new CadShapeTextData
+                {
+                    Entity = ToEntityData(x),
+                    Text = x.Text,
+                    Position = ToData(x.Position),
+                    Height = x.Height,
+                    RotationRadians = x.RotationRadians,
+                    WidthFactor = x.WidthFactor,
+                    CharacterSpacingFactor = x.CharacterSpacingFactor,
+                    ObliqueAngleRadians = x.ObliqueAngleRadians,
+                    GraphicStyleId = x.GraphicStyleId?.Value,
+                    IsInverted = x.IsInverted,
+                    InvertedMarginFactor = x.InvertedMarginFactor,
+                    ShapeFontId = x.ShapeFontId.Value
                 })
                 .ToList()
         };
@@ -251,7 +279,8 @@ internal static class CadDocumentMapper
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
         CadSplinesSection splines,
-        CadTextsSection texts)
+        CadTextsSection texts,
+        CadShapeTextsSection shapeTexts)
     {
         var document = new CadDocument(
             new DocumentId(documentInfo.Id),
@@ -261,7 +290,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
-        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts);
+        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts);
 
         return document;
     }
@@ -397,7 +426,8 @@ internal static class CadDocumentMapper
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
         CadSplinesSection splines,
-        CadTextsSection texts)
+        CadTextsSection texts,
+        CadShapeTextsSection shapeTexts)
     {
         foreach (var lineData in lines.Lines)
         {
@@ -518,7 +548,31 @@ internal static class CadDocumentMapper
                 textData.Height,
                 textData.RotationRadians,
                 ToStyleId(textData.TextStyleId),
-                textData.Entity.Name);
+                textData.Entity.Name,
+                textData.IsInverted,
+                textData.InvertedMarginFactor ?? CadText.DefaultInvertedMarginFactor);
+            text.SetGraphicStyleInternal(ToStyleId(textData.GraphicStyleId));
+            ApplyEntityState(text, textData.Entity);
+            document.AddEntityCore(text);
+        }
+
+        foreach (var textData in shapeTexts.ShapeTexts)
+        {
+            var text = new CadShapeText(
+                new EntityId(textData.Entity.Id),
+                new LayerId(textData.Entity.LayerId),
+                new BlockId(textData.Entity.OwnerBlockId),
+                textData.Text,
+                FromData(textData.Position),
+                textData.Height,
+                textData.RotationRadians,
+                textData.WidthFactor,
+                textData.CharacterSpacingFactor,
+                textData.ObliqueAngleRadians,
+                textData.Entity.Name,
+                textData.IsInverted,
+                textData.InvertedMarginFactor ?? CadShapeText.DefaultInvertedMarginFactor,
+                CadShapeFontRegistry.FromStoredValue(textData.ShapeFontId));
             text.SetGraphicStyleInternal(ToStyleId(textData.GraphicStyleId));
             ApplyEntityState(text, textData.Entity);
             document.AddEntityCore(text);

@@ -20,12 +20,16 @@ public enum CadCanvasToolMode
     Arc,
     [LocalizedDescription("Rectangle", typeof(Strings))]
     Rectangle,
+    [LocalizedDescription("Polyline", typeof(Strings))]
+    Polyline,
     [LocalizedDescription("Polygon", typeof(Strings))]
     Polygon,
     [LocalizedDescription("Spline", typeof(Strings))]
     Spline,
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
+    [LocalizedDescription("ShapeText", typeof(Strings))]
+    ShapeText,
     [LocalizedDescription("SetOrigin", typeof(Strings))]
     SetOrigin
 }
@@ -83,4 +87,13 @@ public enum ViewModelCadOriginLinePattern
     Dash,
     Dot,
     DashDot
+}
+
+[TypeConverter(typeof(EnumDescriptionTypeConverter))]
+public enum ViewModelCadShapeFont
+{
+    Unicode,
+    Simplex,
+    MonoLine,
+    BoxFallback
 }
