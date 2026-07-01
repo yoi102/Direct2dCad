@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using SharpGen.Runtime;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.Direct3D;
@@ -176,10 +177,21 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         try
         {
-            _d2dContext.EndDraw().CheckError();
+            var result = _d2dContext.EndDraw();
+            _isDrawing = false;
 
-            // 这里很重要：D2D 写入的是 D3D11 Texture，
-            // 需要 Flush 后 WPF/D3D9 侧才能稳定看到内容。
+            if (result.Failure)
+            {
+                if (IsRecoverableEndDrawFailure(result))
+                {
+                    RecreateDeviceResources();
+                    throw new Direct2DDeviceResourcesRecreatedException(result);
+                }
+
+                result.CheckError();
+            }
+
+
             _d3dContext?.Flush();
 
             if (_imageSource is not null)
@@ -455,6 +467,60 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         return resource.SharedHandle;
     }
 
+    private void RecreateDeviceResources()
+    {
+        if (_imageSource is null)
+            return;
+
+        var width = Math.Max(1, _width);
+        var height = Math.Max(1, _height);
+
+        try
+        {
+            _imageSource.SetSurface(nint.Zero);
+        }
+        catch
+        {
+            // The old shared surface may already be invalid when the device is lost.
+        }
+
+        ReleaseImageTarget();
+        ReleaseDeviceResources();
+
+        CreateD2DFactory();
+        CreateD3D11Device();
+        CreateD2DDeviceAndContext();
+        CreateD3D9Device();
+        GetDWriteFactory();
+
+        _width = width;
+        _height = height;
+
+        CreateD3D11RenderTargetTexture();
+        CreateD2DTargetBitmap();
+        CreateD3D9SharedSurface();
+
+        if (_d2dFactory is null || _dwriteFactory is null || _d2dContext is null)
+            throw new InvalidOperationException("Failed to recreate Direct2D device resources.");
+
+        Direct2DResourceCache ??= new Direct2DResourceCache();
+        Direct2DResourceCache.ResetDeviceResources(_d2dFactory, _dwriteFactory, _d2dContext);
+
+        _d2dContext.Target = _targetBitmap;
+        _imageSource.SetSurface(_sharedSurface9.NativePointer);
+        _imageSource.Invalidate();
+    }
+
+    private static bool IsRecoverableEndDrawFailure(Result result)
+    {
+        return result == Vortice.Direct2D1.ResultCode.RecreateTarget ||
+               result == Vortice.DXGI.ResultCode.DeviceRemoved ||
+               result == Vortice.DXGI.ResultCode.DeviceReset ||
+               result == Vortice.DXGI.ResultCode.DeviceHung ||
+               result == Vortice.DXGI.ResultCode.DriverInternalError ||
+               result == Vortice.DXGI.ResultCode.AccessLost;
+    }
+
     private void ReleaseImageTarget()
     {
         if (_d2dContext != null)
@@ -578,4 +644,15 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         [DllImport("user32.dll", SetLastError = false)]
         public static extern IntPtr GetDesktopWindow();
     }
+}
+
+internal sealed class Direct2DDeviceResourcesRecreatedException : Exception
+{
+    public Direct2DDeviceResourcesRecreatedException(Result result)
+        : base($"Direct2D device resources were recreated after EndDraw failed with {result}.")
+    {
+        Result = result;
+    }
+
+    public Result Result { get; }
 }

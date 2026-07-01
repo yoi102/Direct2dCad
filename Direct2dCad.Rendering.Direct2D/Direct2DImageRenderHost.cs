@@ -142,6 +142,13 @@ public sealed class Direct2DImageRenderHost : IDisposable
 
     public void Render(CadRenderInvalidation? invalidation = null)
     {
+        RenderCore(invalidation, retryAfterDeviceResourceRecreation: true);
+    }
+
+    private void RenderCore(
+        CadRenderInvalidation? invalidation,
+        bool retryAfterDeviceResourceRecreation)
+    {
         ThrowIfDisposed();
 
         if (!_target.IsTargetReady)
@@ -155,44 +162,52 @@ public sealed class Direct2DImageRenderHost : IDisposable
             ? FallbackBackgroundColor
             : ToColor4(_document.ViewSettings.BackgroundColor);
 
-        _target.DrawFrame(context =>
+        try
         {
-            if (!effectiveInvalidation.IsFull)
+            _target.DrawFrame(context =>
             {
-                foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
+                if (!effectiveInvalidation.IsFull)
                 {
-                    var clip = ToRawRectF(dirty);
-                    context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
-
-                    try
+                    foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
                     {
-                        FillScreenRect(context, clip, background);
+                        var clip = ToRawRectF(dirty);
+                        context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
 
-                        if (_document is not null && _viewport is not null)
+                        try
                         {
-                            var dirtyWorldBounds = ScreenRectToWorldBounds(dirty, _viewport);
-                            _renderer.Render(
-                                _document,
-                                _viewport,
-                                _transientScene,
-                                _handleScene,
-                                CreateRenderOptions(dirtyWorldBounds));
+                            FillScreenRect(context, clip, background);
+
+                            if (_document is not null && _viewport is not null)
+                            {
+                                var dirtyWorldBounds = ScreenRectToWorldBounds(dirty, _viewport);
+                                _renderer.Render(
+                                    _document,
+                                    _viewport,
+                                    _transientScene,
+                                    _handleScene,
+                                    CreateRenderOptions(dirtyWorldBounds));
+                            }
+                        }
+                        finally
+                        {
+                            context.PopAxisAlignedClip();
                         }
                     }
-                    finally
-                    {
-                        context.PopAxisAlignedClip();
-                    }
+
+                    return;
                 }
 
-                return;
-            }
+                context.Clear(background);
 
-            context.Clear(background);
-
-            if (_document is not null && _viewport is not null)
-                _renderer.Render(_document, _viewport, _transientScene, _handleScene, _renderOptions);
-        }, effectiveInvalidation.IsFull ? null : effectiveInvalidation.DirtyScreenRects);
+                if (_document is not null && _viewport is not null)
+                    _renderer.Render(_document, _viewport, _transientScene, _handleScene, _renderOptions);
+            }, effectiveInvalidation.IsFull ? null : effectiveInvalidation.DirtyScreenRects);
+        }
+        catch (Direct2DDeviceResourcesRecreatedException) when (retryAfterDeviceResourceRecreation)
+        {
+            ResetRendererDeviceResources();
+            RenderCore(CadRenderInvalidation.Full, retryAfterDeviceResourceRecreation: false);
+        }
     }
 
     private CadRenderInvalidation NormalizeInvalidation(CadRenderInvalidation? invalidation)
