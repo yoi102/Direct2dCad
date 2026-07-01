@@ -119,7 +119,7 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
 
     public void Invalidate(IntRect dirtyRect)
     {
-        Invalidate(new Int32Rect(dirtyRect.X, dirtyRect.Y, dirtyRect.Width, dirtyRect.Height));
+        Invalidate(new[] { dirtyRect });
     }
 
     public void Invalidate(Int32Rect dirtyRect)
@@ -151,6 +151,46 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         }
     }
 
+    public void Invalidate(IReadOnlyList<IntRect> dirtyRects)
+    {
+        if (!_hasBackBuffer)
+            return;
+
+        if (!IsFrontBufferAvailable)
+            return;
+
+        if (_surfaceWidth <= 0 || _surfaceHeight <= 0)
+            return;
+
+        if (dirtyRects.Count == 0)
+            return;
+
+        var clampedRects = new List<Int32Rect>(dirtyRects.Count);
+        foreach (var dirtyRect in dirtyRects)
+        {
+            if (dirtyRect.Width <= 0 || dirtyRect.Height <= 0)
+                continue;
+
+            var clampedRect = ClampDirtyRect(dirtyRect);
+            if (clampedRect.Width > 0 && clampedRect.Height > 0)
+                clampedRects.Add(clampedRect);
+        }
+
+        if (clampedRects.Count == 0)
+            return;
+
+        Lock();
+        try
+        {
+            foreach (var clampedRect in clampedRects)
+                AddDirtyRect(clampedRect);
+        }
+        finally
+        {
+            Unlock();
+        }
+    }
+
     private Int32Rect ClampDirtyRect(Int32Rect dirtyRect)
     {
         var x = Math.Clamp(dirtyRect.X, 0, _surfaceWidth);
@@ -158,6 +198,15 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         var right = Math.Clamp(dirtyRect.X + dirtyRect.Width, 0, _surfaceWidth);
         var bottom = Math.Clamp(dirtyRect.Y + dirtyRect.Height, 0, _surfaceHeight);
         return new Int32Rect(x, y, right - x, bottom - y);
+    }
+
+    private Int32Rect ClampDirtyRect(IntRect dirtyRect)
+    {
+        return ClampDirtyRect(new Int32Rect(
+            dirtyRect.X,
+            dirtyRect.Y,
+            dirtyRect.Width,
+            dirtyRect.Height));
     }
 
     public void Detach()

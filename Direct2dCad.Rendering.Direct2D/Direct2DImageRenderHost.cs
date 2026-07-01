@@ -151,38 +151,38 @@ public sealed class Direct2DImageRenderHost : IDisposable
         if (effectiveInvalidation.IsEmpty)
             return;
 
-        var dirtyScreenRect = effectiveInvalidation.IsFull
-            ? (CadScreenRect?)null
-            : effectiveInvalidation.DirtyScreenRect;
-        var dirtyWorldBounds = dirtyScreenRect is { } screenRect && _viewport is not null
-            ? ScreenRectToWorldBounds(screenRect, _viewport)
-            : (CadRectD?)null;
         var background = _document is null
             ? FallbackBackgroundColor
             : ToColor4(_document.ViewSettings.BackgroundColor);
 
         _target.DrawFrame(context =>
         {
-            if (dirtyScreenRect is { } dirty)
+            if (!effectiveInvalidation.IsFull)
             {
-                var clip = ToRawRectF(dirty);
-                context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
-
-                try
+                foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
                 {
-                    FillScreenRect(context, clip, background);
+                    var clip = ToRawRectF(dirty);
+                    context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
 
-                    if (_document is not null && _viewport is not null)
-                        _renderer.Render(
-                            _document,
-                            _viewport,
-                            _transientScene,
-                            _handleScene,
-                            CreateRenderOptions(dirtyWorldBounds));
-                }
-                finally
-                {
-                    context.PopAxisAlignedClip();
+                    try
+                    {
+                        FillScreenRect(context, clip, background);
+
+                        if (_document is not null && _viewport is not null)
+                        {
+                            var dirtyWorldBounds = ScreenRectToWorldBounds(dirty, _viewport);
+                            _renderer.Render(
+                                _document,
+                                _viewport,
+                                _transientScene,
+                                _handleScene,
+                                CreateRenderOptions(dirtyWorldBounds));
+                        }
+                    }
+                    finally
+                    {
+                        context.PopAxisAlignedClip();
+                    }
                 }
 
                 return;
@@ -192,7 +192,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
 
             if (_document is not null && _viewport is not null)
                 _renderer.Render(_document, _viewport, _transientScene, _handleScene, _renderOptions);
-        }, dirtyScreenRect);
+        }, effectiveInvalidation.IsFull ? null : effectiveInvalidation.DirtyScreenRects);
     }
 
     private CadRenderInvalidation NormalizeInvalidation(CadRenderInvalidation? invalidation)
@@ -200,18 +200,27 @@ public sealed class Direct2DImageRenderHost : IDisposable
         if (invalidation is null || invalidation.IsFull)
             return CadRenderInvalidation.Full;
 
-        var rect = ClampToTarget(invalidation.DirtyScreenRect);
-        if (rect.IsEmpty)
-            return CadRenderInvalidation.FromScreenRect(default);
-
         if (_target.Width <= 0 || _target.Height <= 0)
             return CadRenderInvalidation.Full;
 
-        var area = (double)rect.Width * rect.Height;
+        var rects = new List<CadScreenRect>(invalidation.DirtyScreenRects.Count);
+        foreach (var dirtyRect in invalidation.DirtyScreenRects)
+        {
+            var rect = ClampToTarget(dirtyRect);
+            if (!rect.IsEmpty)
+                rects.Add(rect);
+        }
+
+        if (rects.Count == 0)
+            return CadRenderInvalidation.FromScreenRect(default);
+
+        var normalizedInvalidation = CadRenderInvalidation.FromScreenRects(rects);
+
+        var area = normalizedInvalidation.DirtyScreenRects.Sum(static rect => (double)rect.Area);
         var targetArea = (double)_target.Width * _target.Height;
         return targetArea > 0 && area / targetArea >= PartialRenderMaxAreaRatio
             ? CadRenderInvalidation.Full
-            : CadRenderInvalidation.FromScreenRect(rect);
+            : normalizedInvalidation;
     }
 
     private CadScreenRect ClampToTarget(CadScreenRect rect)

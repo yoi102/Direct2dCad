@@ -8,5 +8,6 @@ public interface ID3D11ImageSource
     void SetSurface(nint surface9Ptr);
     void Invalidate();
     void Invalidate(IntRect dirtyRect);
+    void Invalidate(IReadOnlyList<IntRect> dirtyRects);
 
 }

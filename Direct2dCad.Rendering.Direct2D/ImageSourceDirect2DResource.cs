@@ -159,6 +159,13 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     public void EndDraw(CadScreenRect? dirtyRect = null)
     {
+        EndDraw(dirtyRect is { IsEmpty: false } rect
+            ? new[] { rect }
+            : null);
+    }
+
+    public void EndDraw(IReadOnlyList<CadScreenRect>? dirtyRects)
+    {
         ThrowIfDisposed();
 
         if (_d2dContext is null)
@@ -169,7 +176,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         try
         {
-            _d2dContext.EndDraw();
+            _d2dContext.EndDraw().CheckError();
 
             // 这里很重要：D2D 写入的是 D3D11 Texture，
             // 需要 Flush 后 WPF/D3D9 侧才能稳定看到内容。
@@ -177,8 +184,8 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
             if (_imageSource is not null)
             {
-                if (dirtyRect is { IsEmpty: false } rect)
-                    _imageSource.Invalidate(new IntRect(rect.X, rect.Y, rect.Width, rect.Height));
+                if (dirtyRects is { Count: > 0 })
+                    _imageSource.Invalidate(ToIntRects(dirtyRects));
                 else
                     _imageSource.Invalidate();
             }
@@ -199,6 +206,30 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         BeginDraw();
         drawAction(_d2dContext);
         EndDraw(dirtyRect);
+    }
+
+    public void DrawFrame(Action<ID2D1DeviceContext> drawAction, IReadOnlyList<CadScreenRect>? dirtyRects)
+    {
+        if (drawAction == null)
+            throw new ArgumentNullException(nameof(drawAction));
+
+        EnsureTargetReady();
+
+        BeginDraw();
+        drawAction(_d2dContext);
+        EndDraw(dirtyRects);
+    }
+
+    private static IntRect[] ToIntRects(IReadOnlyList<CadScreenRect> dirtyRects)
+    {
+        var rects = new IntRect[dirtyRects.Count];
+        for (var i = 0; i < dirtyRects.Count; i++)
+        {
+            var rect = dirtyRects[i];
+            rects[i] = new IntRect(rect.X, rect.Y, rect.Width, rect.Height);
+        }
+
+        return rects;
     }
 
     public void Clear(float r, float g, float b, float a)
