@@ -20,7 +20,6 @@
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-                 Title="{I18N {x:Static r:LangKeys.Direct2dCad}}"
                  Topmost="{Binding Topmost}"
                  TitleAlignment="Left"
                  TitleCharacterCasing="Normal"
@@ -29,10 +28,43 @@
                  Width="1400">
     <mah:MetroWindow.LeftWindowCommands>
         <mah:WindowCommands>
-            <Button  Content="{md:PackIcon Kind=Github, Size=20}"
-                     Click="IconClicked"
-                     Width="35"
-                     Height="22" />
+            <WrapPanel  Margin="15 0 0 0"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                <TextBlock Text="{I18N {x:Static r:LangKeys.Direct2dCad}}"
+                           FontWeight="DemiBold"
+                           FontSize="15" />
+                <Button  Content="{md:PackIcon Kind=Github, Size=20}"
+                         Click="IconClicked"
+                         Width="35"
+                         Height="22" />
+            </WrapPanel>
+
+
+            <Menu VerticalAlignment="Center"
+                  md:MenuAssist.TopLevelMenuItemHeight="25">
+                <MenuItem Header="{I18N {x:Static r:LangKeys.File}}">
+                    <MenuItem Command="{Binding NewCommand}"
+                              Icon="{md:PackIcon Kind=File}"
+                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Header="{I18N {x:Static r:LangKeys.New}}" />
+                    <MenuItem Command="{Binding OpenFileCommand}"
+                              Icon="{md:PackIcon Kind=FolderOpen}"
+                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Header="{I18N {x:Static r:LangKeys.File}}" />
+                    <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}"
+                              Icon="{md:PackIcon Kind=ContentSave}"
+                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                              Header="{I18N {x:Static r:LangKeys.Save}}" />
+                    <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}"
+                              Icon="{md:PackIcon Kind=ContentSaveAdd}"
+                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                              Header="{I18N {x:Static r:LangKeys.SaveAs}}" />
+                </MenuItem>
+            </Menu>
+
         </mah:WindowCommands>
     </mah:MetroWindow.LeftWindowCommands>
     <mah:MetroWindow.RightWindowCommands>
@@ -78,7 +110,7 @@
     <Grid RowDefinitions="auto * auto">
 
         <TabControl Grid.Row="0"
-                    Height="200"
+                    Height="150"
                     Style="{StaticResource MahApps.Styles.TabControl}"
                     TabStripPlacement="Bottom"
                     mah:TabControlHelper.Underlined="TabPanel"
@@ -87,20 +119,22 @@
                     mah:HeaderedControlHelper.HeaderFontSize="18">
 
             <TabItem Header="{I18N {x:Static r:LangKeys.File}}"
-                     Style="{StaticResource MahApps.Styles.TabItem}">
-
+                     Style="{StaticResource MahApps.Styles.TabItem}">             
                 <WrapPanel Margin="10">
 
                     <Button ToolTip="{I18N {x:Static r:LangKeys.New}}"
                             Style="{StaticResource MaterialDesignFlatButton}"
-                            Width="130"
-                            Height="130"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
                             Command="{Binding NewCommand}">
                         <Grid RowDefinitions="* auto">
 
                             <md:PackIcon Kind="File"
-                                         Width="80"
-                                         Height="80" />
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
                             <TextBlock Grid.Row="1"
                                        HorizontalAlignment="Center"
                                        Text="{I18N {x:Static r:LangKeys.New}}" />
@@ -110,14 +144,17 @@
 
                     <Button ToolTip="{I18N {x:Static r:LangKeys.OpenFile}}"
                             Style="{StaticResource MaterialDesignFlatButton}"
-                            Width="130"
-                            Height="130"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
                             Command="{Binding OpenFileCommand}">
                         <Grid RowDefinitions="* auto">
 
                             <md:PackIcon Kind="FolderOpen"
-                                         Width="80"
-                                         Height="80" />
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
                             <TextBlock Grid.Row="1"
                                        HorizontalAlignment="Center"
                                        Text="{I18N {x:Static r:LangKeys.OpenFile}}" />
@@ -126,15 +163,17 @@
                     </Button>
                     <Button ToolTip="{I18N {x:Static r:LangKeys.Save}}"
                             Style="{StaticResource MaterialDesignFlatButton}"
-                            Width="130"
-                            Height="130"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
                             Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                             Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}">
-                        <Grid RowDefinitions="* auto">
-
+                        <Grid RowDefinitions="* auto" Margin="0">
                             <md:PackIcon Kind="ContentSave"
-                                         Width="80"
-                                         Height="80" />
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
                             <TextBlock Grid.Row="1"
                                        HorizontalAlignment="Center"
                                        Text="{I18N {x:Static r:LangKeys.Save}}" />
@@ -143,14 +182,17 @@
                     </Button>
                     <Button ToolTip="{I18N {x:Static r:LangKeys.SaveAs}}"
                             Style="{StaticResource MaterialDesignFlatButton}"
-                            Width="130"
-                            Height="130"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
                             Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                             Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}">
                         <Grid RowDefinitions="* auto">
                             <md:PackIcon Kind="ContentSaveAdd"
-                                         Width="80"
-                                         Height="80" />
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
                             <TextBlock Grid.Row="1"
                                        HorizontalAlignment="Center"
                                        Text="{I18N {x:Static r:LangKeys.SaveAs}}" />
