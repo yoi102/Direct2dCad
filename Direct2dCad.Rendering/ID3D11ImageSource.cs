@@ -1,4 +1,4 @@
-namespace Direct2dCad.Common;
+namespace Direct2dCad.Rendering;
 
 public interface ID3D11ImageSource
 {

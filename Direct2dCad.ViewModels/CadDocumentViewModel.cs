@@ -39,6 +39,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private bool _disposed;
     private double _viewportWidth = 1.0;
     private double _viewportHeight = 1.0;
+    private CadRenderInvalidation _lastOverlayInvalidation = CadRenderInvalidation.FromScreenRect(default);
 
     [ObservableProperty]
     public partial CadEditor CadEditor { get; private set; } = new(CadDocument.Create("Untitled"));
@@ -191,22 +192,30 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public CadCanvasInteractionResult PointerMove(CadPointD screen)
     {
         _currentMousePoint = screen;
+        var requiresFullRender = false;
 
         if (IsPanning && _lastPanPoint is not null)
         {
             var delta = screen - _lastPanPoint.Value;
             _lastPanPoint = screen;
             CadEditor.Execute(new PanViewportCommand(delta));
+            requiresFullRender = true;
         }
 
         if (_activeGripDrag is not null)
         {
             _activeGripDrag.CurrentPointerWorld = ScreenToWorld(screen, snapToGrid: true);
-            RequestRender();
+            if (requiresFullRender)
+                RequestRender();
+            else
+                RequestOverlayRender();
             return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Hand);
         }
 
-        RequestRender();
+        if (requiresFullRender)
+            RequestRender();
+        else
+            RequestOverlayRender();
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -354,10 +363,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     public void RequestRender()
     {
+        RequestRender(CadRenderInvalidation.Full);
+    }
+
+    private void RequestOverlayRender()
+    {
+        RequestRender(CadRenderInvalidation.FromScreenRect(default));
+    }
+
+    private void RequestRender(CadRenderInvalidation? invalidation)
+    {
         UpdateTextMeasurements();
-        UpdateOverlayScenes();
+        var overlayInvalidation = UpdateOverlayScenesAndCreateInvalidation();
+        var effectiveInvalidation = (invalidation ?? CadRenderInvalidation.Full).Union(overlayInvalidation);
         Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions());
-        Direct2DImageRenderHost.Render();
+        Direct2DImageRenderHost.Render(effectiveInvalidation);
     }
 
     private void UpdateTextMeasurements()
@@ -596,9 +616,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         if (render)
         {
-            UpdateHandleScene();
-            Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions());
-            Direct2DImageRenderHost.Render();
+            RequestRender();
         }
     }
 
@@ -606,6 +624,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         UpdateTransientScene();
         UpdateHandleScene();
+    }
+
+    private CadRenderInvalidation UpdateOverlayScenesAndCreateInvalidation()
+    {
+        var previousOverlay = _lastOverlayInvalidation;
+        UpdateOverlayScenes();
+        var currentOverlay = CreateOverlayInvalidation();
+        _lastOverlayInvalidation = currentOverlay;
+        return previousOverlay.Union(currentOverlay);
     }
 
     private CadRenderOptions CreateRenderOptions()
@@ -651,6 +678,116 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             CadEditor.Selection.EntityIds,
             CreateHandleSceneBuildOptions());
         _handleScene.Replace(items);
+    }
+
+    private CadRenderInvalidation CreateOverlayInvalidation()
+    {
+        var invalidation = CadRenderInvalidation.FromScreenRect(default);
+
+        foreach (var item in _transientScene.Items)
+            invalidation = invalidation.Union(CreateTransientInvalidation(item));
+
+        foreach (var item in _handleScene.Items)
+            invalidation = invalidation.Union(CreateHandleInvalidation(item));
+
+        return invalidation;
+    }
+
+    private CadRenderInvalidation CreateTransientInvalidation(CadTransientItem item)
+    {
+        return item switch
+        {
+            CadTransientLine line => CreateWorldBoundsInvalidation(BoundsFromPoints(line.Start, line.End)),
+            CadTransientCircle circle when circle.Radius > 0 => CreateWorldBoundsInvalidation(CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2)),
+            CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 => CreateWorldBoundsInvalidation(CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2)),
+            CadTransientArc arc when arc.Radius > 0 => CreateWorldBoundsInvalidation(CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2)),
+            CadTransientPolyline polyline => CreateWorldBoundsInvalidation(BoundsFromPoints(polyline.Points)),
+            CadTransientSpline spline => CreateWorldBoundsInvalidation(BoundsFromPoints(spline.FitPoints)),
+            CadTransientRectangle rectangle => CreateWorldBoundsInvalidation(rectangle.Bounds),
+            CadTransientText text => CreateWorldBoundsInvalidation(ResolveTransientTextBounds(text)),
+            CadTransientShapeText text => CreateWorldBoundsInvalidation(ResolveTransientShapeTextBounds(text)),
+            CadTransientEntityReference reference => CreateEntityReferenceInvalidation(reference.EntityId, reference.Offset),
+            _ => CadRenderInvalidation.FromScreenRect(default)
+        };
+    }
+
+    private CadRenderInvalidation CreateHandleInvalidation(CadHandleItem item)
+    {
+        return item switch
+        {
+            CadSelectionEntityReference reference => CreateEntityReferenceInvalidation(reference.EntityId, reference.Offset),
+            CadGripHandle grip => CreateScreenPointInvalidation(
+                CadEditor.Viewport.WorldToScreen(grip.Position),
+                Math.Max(grip.Style.Size, grip.Style.StrokeWidth) + 4.0),
+            _ => CadRenderInvalidation.FromScreenRect(default)
+        };
+    }
+
+    private CadRenderInvalidation CreateEntityReferenceInvalidation(EntityId entityId, CadVectorD offset)
+    {
+        return CadEditor.Document.TryGetEntity(entityId, out var entity) && entity is not null
+            ? CreateWorldBoundsInvalidation(entity.Bounds.Translate(offset))
+            : CadRenderInvalidation.FromScreenRect(default);
+    }
+
+    private CadRenderInvalidation CreateWorldBoundsInvalidation(CadRectD bounds, double paddingPixels = 8.0)
+    {
+        return CadRenderInvalidation.FromWorldBounds(
+            CadEditor.Viewport,
+            bounds,
+            Direct2DImageRenderHost.TargetWidth,
+            Direct2DImageRenderHost.TargetHeight,
+            paddingPixels);
+    }
+
+    private CadRenderInvalidation CreateScreenPointInvalidation(CadPointD screenPoint, double radiusPixels)
+    {
+        var radius = Math.Max(1.0, radiusPixels);
+        return CadRenderInvalidation.FromScreenRect(new CadScreenRect(
+            Math.Max(0, (int)Math.Floor(screenPoint.X - radius)),
+            Math.Max(0, (int)Math.Floor(screenPoint.Y - radius)),
+            (int)Math.Ceiling(radius * 2),
+            (int)Math.Ceiling(radius * 2)));
+    }
+
+    private static CadRectD ResolveTransientTextBounds(CadTransientText text)
+    {
+        return text.IsInverted
+            ? text.Bounds.Inflate(text.Height * Math.Max(0, text.InvertedMarginFactor))
+            : text.Bounds;
+    }
+
+    private static CadRectD ResolveTransientShapeTextBounds(CadTransientShapeText text)
+    {
+        var bounds = CadShapeFontMetrics.MeasureBounds(
+            text.Text,
+            text.Position,
+            text.Height,
+            text.WidthFactor,
+            text.CharacterSpacingFactor,
+            text.ObliqueAngleRadians,
+            text.RotationRadians,
+            text.ShapeFontId);
+
+        return text.IsInverted
+            ? bounds.Inflate(text.Height * Math.Max(0, text.InvertedMarginFactor))
+            : bounds;
+    }
+
+    private static CadRectD BoundsFromPoints(CadPointD first, CadPointD second)
+    {
+        return CadRectD.Empty
+            .ExpandToInclude(first)
+            .ExpandToInclude(second);
+    }
+
+    private static CadRectD BoundsFromPoints(IEnumerable<CadPointD> points)
+    {
+        var bounds = CadRectD.Empty;
+        foreach (var point in points)
+            bounds = bounds.ExpandToInclude(point);
+
+        return bounds;
     }
 
     private bool TryBeginGripDrag(CadPointD screen)
@@ -2027,10 +2164,57 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
         if (!_isApplyingTextMeasurementChanges)
-            RequestRender();
+            RequestRender(CreateDocumentInvalidation(e));
 
         if (e.AffectsViewSettings)
             ViewSettingsChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private CadRenderInvalidation CreateDocumentInvalidation(CadDocumentChangeSet changes)
+    {
+        if (changes.AffectsDocumentStructure || changes.AffectsViewSettings)
+            return CadRenderInvalidation.Full;
+
+        var bounds = CadRectD.Empty;
+        foreach (var change in changes.EntityChanges)
+        {
+            if (RequiresFullRender(change))
+                return CadRenderInvalidation.Full;
+
+            if (!CadEditor.Document.TryGetEntity(change.EntityId, out var entity) ||
+                entity is null ||
+                entity.IsErased ||
+                !entity.IsVisible)
+            {
+                return CadRenderInvalidation.Full;
+            }
+
+            bounds = bounds.Union(entity.Bounds);
+        }
+
+        return bounds.IsEmpty
+            ? CadRenderInvalidation.Full
+            : CreateWorldBoundsInvalidation(bounds);
+    }
+
+    private static bool RequiresFullRender(CadEntityChange change)
+    {
+        var kind = change.Kind;
+        if (kind.HasFlag(CadEntityChangeKind.Deleted) ||
+            kind.HasFlag(CadEntityChangeKind.DrawOrder) ||
+            kind.HasFlag(CadEntityChangeKind.Layer))
+        {
+            return true;
+        }
+
+        if (kind.HasFlag(CadEntityChangeKind.Geometry) &&
+            !kind.HasFlag(CadEntityChangeKind.Created))
+        {
+            return true;
+        }
+
+        return kind.HasFlag(CadEntityChangeKind.Visibility) &&
+               !kind.HasFlag(CadEntityChangeKind.Created);
     }
 
     private static bool CanDuplicate(CadEntity entity)

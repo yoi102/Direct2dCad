@@ -3,7 +3,7 @@ using System.Text.Json;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.ViewServices.Abstractions;
 
-namespace Direct2dCad.wpf.ViewServices;
+namespace Direct2dCad.wpf.Services;
 
 internal sealed class UserSettingsService : IUserSettingsService
 {

@@ -1,4 +1,4 @@
-namespace Direct2dCad.Common;
+namespace Direct2dCad.Rendering;
 
 public struct IntRect
 {

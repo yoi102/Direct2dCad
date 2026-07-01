@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using Direct2dCad.Common;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.Direct3D;
@@ -158,7 +157,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         _isDrawing = true;
     }
 
-    public void EndDraw()
+    public void EndDraw(CadScreenRect? dirtyRect = null)
     {
         ThrowIfDisposed();
 
@@ -176,7 +175,13 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             // 需要 Flush 后 WPF/D3D9 侧才能稳定看到内容。
             _d3dContext?.Flush();
 
-            _imageSource?.Invalidate();
+            if (_imageSource is not null)
+            {
+                if (dirtyRect is { IsEmpty: false } rect)
+                    _imageSource.Invalidate(new IntRect(rect.X, rect.Y, rect.Width, rect.Height));
+                else
+                    _imageSource.Invalidate();
+            }
         }
         finally
         {
@@ -184,7 +189,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         }
     }
 
-    public void DrawFrame(Action<ID2D1DeviceContext> drawAction)
+    public void DrawFrame(Action<ID2D1DeviceContext> drawAction, CadScreenRect? dirtyRect = null)
     {
         if (drawAction == null)
             throw new ArgumentNullException(nameof(drawAction));
@@ -193,7 +198,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         BeginDraw();
         drawAction(_d2dContext);
-        EndDraw();
+        EndDraw(dirtyRect);
     }
 
     public void Clear(float r, float g, float b, float a)

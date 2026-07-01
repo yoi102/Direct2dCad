@@ -8,7 +8,6 @@
   <Folder Name="/clients/avalonia/" />
   <Folder Name="/clients/wpf/">
     <Project Path="Direct2dCad.Control/Direct2dCad.wpf.Control.csproj" />
-    <Project Path="Direct2dCad.wpf.ViewServices/Direct2dCad.wpf.ViewServices.csproj" Id="17aaf227-fc24-4152-85df-0a3b31ec4f11" />
     <Project Path="Direct2dCad/Direct2dCad.wpf.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
@@ -16,7 +15,6 @@
   </Folder>
   <Project Path="Direct2dCad.Commands/Direct2dCad.Commands.csproj" Id="135b8a89-715a-4c51-90bb-d7c5e3247ae0" />
   <Project Path="Direct2dCad.ChangeTracking/Direct2dCad.ChangeTracking.csproj" Id="c04ae8fe-b095-4864-8d25-a3835c21a28a" />
-  <Project Path="Direct2dCad.Common/Direct2dCad.Common.csproj" Id="cf78460a-3057-46fe-a170-ddd19ba93a35" />
   <Project Path="Direct2dCad.Db/Direct2dCad.Db.csproj" Id="b37bcda0-51d5-4cfb-a3ef-0e1799b2fa7f" />
   <Project Path="Direct2dCad.Rendering.Direct2D/Direct2dCad.Rendering.Direct2D.csproj" />
   <Project Path="Direct2dCad.Editor/Direct2dCad.Editor.csproj" Id="12d4350b-06b5-44be-9c28-df18cb074f94" />

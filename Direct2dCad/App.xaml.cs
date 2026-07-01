@@ -9,7 +9,6 @@ using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.ViewServices.Abstractions;
 using Direct2dCad.wpf;
 using Direct2dCad.wpf.Services;
-using Direct2dCad.wpf.ViewServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Direct2dCad;
@@ -48,8 +47,7 @@ public partial class App : System.Windows.Application
     private static void ConfigureServices(IServiceCollection services)
     {
         services.AddDirect2dCadEditor()
-             .AddViewModels()
-             .AddViewServices();
+                .AddViewModels();
         services.AddSingleton<ICultureSettingService, CultureSettingService>()
                 .AddSingleton<IThemeSettingService, ThemeSettingService>();
         services.AddMessagePipe();
@@ -70,6 +68,9 @@ public partial class App : System.Windows.Application
             dock.AddToolbox<EntityPropertiesViewModel>();
         });
 
+        services.AddTransient<IFileDialogService, FileDialogService>();
+        services.AddTransient<IMessageBoxService, MessageBoxService>();
+        services.AddSingleton<IUserSettingsService, UserSettingsService>();
 
         services.AddTransient<MainWindow>();
     }

@@ -47,6 +47,7 @@ public partial class MainViewModel : ObservableObject
                        CurrentEditorTabViewModel = tab;
                        return tab;
                    });
+        IsDarkTheme = themeSettingService.IsDarkTheme;
     }
 
     /// <summary>The MVVM layout tree — bind to DockLayout on the DockingManager.</summary>

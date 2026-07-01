@@ -100,12 +100,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         try
         {
             if (options.DrawGrid)
-                DrawGrid(deviceContext, document, viewport);
+                DrawGrid(deviceContext, document, viewport, options.DirtyWorldBounds);
 
             if (options.DrawOrigin)
-                DrawOrigin(deviceContext, document, viewport);
+                DrawOrigin(deviceContext, document, viewport, options.DirtyWorldBounds);
 
-            foreach (var entity in EnumerateDrawableEntities(document, options))
+            foreach (var entity in EnumerateDrawableEntities(document, viewport, options))
             {
                 if (!_resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
                     continue;
@@ -127,13 +127,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private void DrawGrid(
         ID2D1DeviceContext deviceContext,
         CadDocument document,
-        CadViewport viewport)
+        CadViewport viewport,
+        CadRectD? dirtyWorldBounds)
     {
         var grid = document.ViewSettings.Grid;
         if (grid.Type == CadGridType.None)
             return;
 
-        var bounds = viewport.VisibleWorldBounds;
+        var bounds = ResolveRenderWorldBounds(viewport, dirtyWorldBounds);
         if (bounds.IsEmpty)
             return;
 
@@ -185,13 +186,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private void DrawOrigin(
         ID2D1DeviceContext deviceContext,
         CadDocument document,
-        CadViewport viewport)
+        CadViewport viewport,
+        CadRectD? dirtyWorldBounds)
     {
         var origin = document.ViewSettings.Origin;
         if (origin.DisplayType == CadOriginDisplayType.None)
             return;
 
-        var bounds = viewport.VisibleWorldBounds;
+        var bounds = ResolveRenderWorldBounds(viewport, dirtyWorldBounds);
         if (bounds.IsEmpty)
             return;
 
@@ -1392,14 +1394,17 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private static IEnumerable<CadEntity> EnumerateDrawableEntities(
         CadDocument document,
+        CadViewport viewport,
         CadRenderOptions options)
     {
+        var dirtyWorldBounds = ResolveEntityDirtyWorldBounds(viewport, options);
         return document.Entities.Values
             .Select((entity, index) => new { Entity = entity, Index = index })
             .Where(x =>
                 !x.Entity.IsErased &&
                 x.Entity.IsVisible &&
                 !options.HiddenEntityIds.Contains(x.Entity.Id) &&
+                (dirtyWorldBounds is null || EntityIntersectsDirtyBounds(x.Entity, dirtyWorldBounds.Value)) &&
                 document.TryGetLayer(x.Entity.LayerId, out var layer) &&
                 layer is not null &&
                 layer.IsVisible &&
@@ -1408,6 +1413,35 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             .ThenBy(x => x.Entity.ZIndex)
             .ThenBy(x => x.Entity.Id.Value)
             .Select(x => x.Entity);
+    }
+
+    private static CadRectD ResolveRenderWorldBounds(CadViewport viewport, CadRectD? dirtyWorldBounds)
+    {
+        if (dirtyWorldBounds is not { } dirty)
+            return viewport.VisibleWorldBounds;
+
+        return viewport.VisibleWorldBounds.Intersection(dirty);
+    }
+
+    private static CadRectD? ResolveEntityDirtyWorldBounds(
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        if (options.DirtyWorldBounds is not { } dirty || dirty.IsEmpty)
+            return null;
+
+        var padding = Math.Max(
+            options.MinimumScreenStrokeWidth,
+            options.KeepStrokeWidthScreenConstant ? 6.0 : 2.0) /
+            Math.Max(viewport.Zoom, double.Epsilon);
+        return dirty.Inflate(padding);
+    }
+
+    private static bool EntityIntersectsDirtyBounds(CadEntity entity, CadRectD dirtyWorldBounds)
+    {
+        return entity.Bounds.Intersects(dirtyWorldBounds) ||
+               entity.Bounds.Contains(dirtyWorldBounds.Center) ||
+               dirtyWorldBounds.Contains(entity.Bounds);
     }
 
     private static void DrawEntity(

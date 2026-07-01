@@ -1,4 +1,5 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering;
 
@@ -11,4 +12,5 @@ public sealed class CadRenderOptions
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;
     public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = new HashSet<EntityId>();
+    public CadRectD? DirtyWorldBounds { get; init; }
 }

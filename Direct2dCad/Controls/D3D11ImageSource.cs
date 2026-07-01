@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Interop;
-using Direct2dCad.Common;
+using Direct2dCad.Rendering;
 
 namespace Direct2dCad.wpf.Controls;
 
@@ -136,6 +136,10 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         if (dirtyRect.Width <= 0 || dirtyRect.Height <= 0)
             return;
 
+        dirtyRect = ClampDirtyRect(dirtyRect);
+        if (dirtyRect.Width <= 0 || dirtyRect.Height <= 0)
+            return;
+
         Lock();
         try
         {
@@ -145,6 +149,15 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         {
             Unlock();
         }
+    }
+
+    private Int32Rect ClampDirtyRect(Int32Rect dirtyRect)
+    {
+        var x = Math.Clamp(dirtyRect.X, 0, _surfaceWidth);
+        var y = Math.Clamp(dirtyRect.Y, 0, _surfaceHeight);
+        var right = Math.Clamp(dirtyRect.X + dirtyRect.Width, 0, _surfaceWidth);
+        var bottom = Math.Clamp(dirtyRect.Y + dirtyRect.Height, 0, _surfaceHeight);
+        return new Int32Rect(x, y, right - x, bottom - y);
     }
 
     public void Detach()
