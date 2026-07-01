@@ -126,8 +126,14 @@
   <data name="Chinese" xml:space="preserve">
     <value>中国語</value>
   </data>
+  <data name="Circle" xml:space="preserve">
+    <value>円</value>
+  </data>
   <data name="Ellipse" xml:space="preserve">
     <value>楕円</value>
+  </data>
+  <data name="Rectangle" xml:space="preserve">
+    <value>矩形</value>
   </data>
   <data name="Confirm" xml:space="preserve">
     <value>確認</value>
@@ -138,6 +144,12 @@
   <data name="ConfirmExitTitle" xml:space="preserve">
     <value>終了の確認</value>
   </data>
+  <data name="Cross" xml:space="preserve">
+    <value>十字</value>
+  </data>
+  <data name="Dots" xml:space="preserve">
+    <value>点</value>
+  </data>
   <data name="English" xml:space="preserve">
     <value>英語</value>
   </data>
@@ -147,8 +159,20 @@
   <data name="Japanese" xml:space="preserve">
     <value>日本語</value>
   </data>
+  <data name="Line" xml:space="preserve">
+    <value>線分</value>
+  </data>
+  <data name="Lines" xml:space="preserve">
+    <value>線</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>なし</value>
+  </data>
   <data name="Ok" xml:space="preserve">
     <value>Ok</value>
+  </data>
+  <data name="Pan" xml:space="preserve">
+    <value>パン</value>
   </data>
   <data name="Polygon" xml:space="preserve">
     <value>多角形</value>
@@ -156,11 +180,11 @@
   <data name="Polyline" xml:space="preserve">
     <value>ポリライン</value>
   </data>
-  <data name="Rectangle" xml:space="preserve">
-    <value>矩形</value>
-  </data>
   <data name="SaveAs" xml:space="preserve">
     <value>名前を付けて保存...</value>
+  </data>
+  <data name="Select" xml:space="preserve">
+    <value>選択</value>
   </data>
   <data name="ShowImageInNewWindow" xml:space="preserve">
     <value>新しいウィンドウで画像を表示</value>
@@ -174,6 +198,9 @@
   <data name="Spline" xml:space="preserve">
     <value>スプライン</value>
   </data>
+  <data name="Text" xml:space="preserve">
+    <value>文字</value>
+  </data>
   <data name="ShapeText" xml:space="preserve">
     <value>CAD文字</value>
   </data>
@@ -185,5 +212,128 @@
   </data>
   <data name="View" xml:space="preserve">
     <value>ビュー</value>
+  </data>
+  <data name="Direct2dCad" xml:space="preserve">
+    <value>Direct2dCad</value>
+  </data>
+  <data name="OpenFile" xml:space="preserve">
+    <value>ファイルを開く</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Undo" xml:space="preserve">
+    <value>元に戻す</value>
+  </data>
+  <data name="Redo" xml:space="preserve">
+    <value>やり直し</value>
+  </data>
+  <data name="Grid" xml:space="preserve">
+    <value>グリッド</value>
+  </data>
+  <data name="SnapMarker" xml:space="preserve">
+    <value>スナップマーカー</value>
+  </data>
+  <data name="ShapeFont" xml:space="preserve">
+    <value>シェイプフォント</value>
+  </data>
+  <data name="SetOrigin" xml:space="preserve">
+    <value>原点を設定</value>
+  </data>
+  <data name="Inverted" xml:space="preserve">
+    <value>白抜き</value>
+  </data>
+  <data name="Margin" xml:space="preserve">
+    <value>余白</value>
+  </data>
+  <data name="Origin" xml:space="preserve">
+    <value>原点</value>
+  </data>
+  <data name="OriginMarker" xml:space="preserve">
+    <value>原点マーカー</value>
+  </data>
+  <data name="OriginLine" xml:space="preserve">
+    <value>原点軸</value>
+  </data>
+  <data name="Size" xml:space="preserve">
+    <value>サイズ</value>
+  </data>
+  <data name="Stroke" xml:space="preserve">
+    <value>線幅</value>
+  </data>
+  <data name="Color" xml:space="preserve">
+    <value>色</value>
+  </data>
+  <data name="User" xml:space="preserve">
+    <value>ユーザー</value>
+  </data>
+  <data name="Antialias" xml:space="preserve">
+    <value>アンチエイリアス</value>
+  </data>
+  <data name="TextAntialiasing" xml:space="preserve">
+    <value>文字AA</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>選択中</value>
+  </data>
+  <data name="SelectionWindow" xml:space="preserve">
+    <value>囲み選択</value>
+  </data>
+  <data name="SelectionCrossing" xml:space="preserve">
+    <value>交差選択</value>
+  </data>
+  <data name="Welcome" xml:space="preserve">
+    <value>ようこそ</value>
+  </data>
+  <data name="X" xml:space="preserve">
+    <value>X</value>
+  </data>
+  <data name="Square" xml:space="preserve">
+    <value>四角</value>
+  </data>
+  <data name="Axes" xml:space="preserve">
+    <value>軸</value>
+  </data>
+  <data name="Marker" xml:space="preserve">
+    <value>マーカー</value>
+  </data>
+  <data name="AxesAndMarker" xml:space="preserve">
+    <value>軸とマーカー</value>
+  </data>
+  <data name="Solid" xml:space="preserve">
+    <value>実線</value>
+  </data>
+  <data name="Dash" xml:space="preserve">
+    <value>破線</value>
+  </data>
+  <data name="Dot" xml:space="preserve">
+    <value>点線</value>
+  </data>
+  <data name="DashDot" xml:space="preserve">
+    <value>一点鎖線</value>
+  </data>
+  <data name="Unicode" xml:space="preserve">
+    <value>Unicode</value>
+  </data>
+  <data name="Simplex" xml:space="preserve">
+    <value>Simplex</value>
+  </data>
+  <data name="MonoLine" xml:space="preserve">
+    <value>単線</value>
+  </data>
+  <data name="BoxFallback" xml:space="preserve">
+    <value>ボックス代替</value>
+  </data>
+  <data name="Y" xml:space="preserve">
+    <value>Y</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>ファイル</value>
+  </data>
+  <data name="Draw" xml:space="preserve">
+    <value>绘制</value>
+  </data>
+  <data name="New" xml:space="preserve">
+    <value>クリエイト</value>
   </data>
 </root>

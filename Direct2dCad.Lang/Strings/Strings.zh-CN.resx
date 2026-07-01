@@ -126,8 +126,14 @@
   <data name="Chinese" xml:space="preserve">
     <value>中文</value>
   </data>
+  <data name="Circle" xml:space="preserve">
+    <value>圆</value>
+  </data>
   <data name="Ellipse" xml:space="preserve">
     <value>椭圆</value>
+  </data>
+  <data name="Rectangle" xml:space="preserve">
+    <value>矩形</value>
   </data>
   <data name="Confirm" xml:space="preserve">
     <value>确认</value>
@@ -138,6 +144,12 @@
   <data name="ConfirmExitTitle" xml:space="preserve">
     <value>退出确认</value>
   </data>
+  <data name="Cross" xml:space="preserve">
+    <value>十字</value>
+  </data>
+  <data name="Dots" xml:space="preserve">
+    <value>点</value>
+  </data>
   <data name="English" xml:space="preserve">
     <value>英文</value>
   </data>
@@ -147,8 +159,20 @@
   <data name="Japanese" xml:space="preserve">
     <value>日文</value>
   </data>
+  <data name="Line" xml:space="preserve">
+    <value>直线</value>
+  </data>
+  <data name="Lines" xml:space="preserve">
+    <value>线</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>无</value>
+  </data>
   <data name="Ok" xml:space="preserve">
     <value>Ok</value>
+  </data>
+  <data name="Pan" xml:space="preserve">
+    <value>平移</value>
   </data>
   <data name="Polygon" xml:space="preserve">
     <value>多边形</value>
@@ -156,11 +180,11 @@
   <data name="Polyline" xml:space="preserve">
     <value>多段线</value>
   </data>
-  <data name="Rectangle" xml:space="preserve">
-    <value>矩形</value>
-  </data>
   <data name="SaveAs" xml:space="preserve">
-    <value>另存为</value>
+    <value>另存为...</value>
+  </data>
+  <data name="Select" xml:space="preserve">
+    <value>选择</value>
   </data>
   <data name="ShowImageInNewWindow" xml:space="preserve">
     <value>在新窗口中显示图片</value>
@@ -174,6 +198,9 @@
   <data name="Spline" xml:space="preserve">
     <value>样条曲线</value>
   </data>
+  <data name="Text" xml:space="preserve">
+    <value>文字</value>
+  </data>
   <data name="ShapeText" xml:space="preserve">
     <value>CAD文字</value>
   </data>
@@ -185,5 +212,128 @@
   </data>
   <data name="View" xml:space="preserve">
     <value>视图</value>
+  </data>
+  <data name="Direct2dCad" xml:space="preserve">
+    <value>Direct2dCad</value>
+  </data>
+  <data name="OpenFile" xml:space="preserve">
+    <value>打开文件</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Undo" xml:space="preserve">
+    <value>撤销</value>
+  </data>
+  <data name="Redo" xml:space="preserve">
+    <value>重做</value>
+  </data>
+  <data name="Grid" xml:space="preserve">
+    <value>网格</value>
+  </data>
+  <data name="SnapMarker" xml:space="preserve">
+    <value>捕捉标记</value>
+  </data>
+  <data name="ShapeFont" xml:space="preserve">
+    <value>形文字体</value>
+  </data>
+  <data name="SetOrigin" xml:space="preserve">
+    <value>设置原点</value>
+  </data>
+  <data name="Inverted" xml:space="preserve">
+    <value>反白</value>
+  </data>
+  <data name="Margin" xml:space="preserve">
+    <value>边距</value>
+  </data>
+  <data name="Origin" xml:space="preserve">
+    <value>原点</value>
+  </data>
+  <data name="OriginMarker" xml:space="preserve">
+    <value>原点标记</value>
+  </data>
+  <data name="OriginLine" xml:space="preserve">
+    <value>原点轴线</value>
+  </data>
+  <data name="Size" xml:space="preserve">
+    <value>大小</value>
+  </data>
+  <data name="Stroke" xml:space="preserve">
+    <value>线宽</value>
+  </data>
+  <data name="Color" xml:space="preserve">
+    <value>颜色</value>
+  </data>
+  <data name="User" xml:space="preserve">
+    <value>用户</value>
+  </data>
+  <data name="Antialias" xml:space="preserve">
+    <value>抗锯齿</value>
+  </data>
+  <data name="TextAntialiasing" xml:space="preserve">
+    <value>文字抗锯齿</value>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>选中</value>
+  </data>
+  <data name="SelectionWindow" xml:space="preserve">
+    <value>正选</value>
+  </data>
+  <data name="SelectionCrossing" xml:space="preserve">
+    <value>反选</value>
+  </data>
+  <data name="Welcome" xml:space="preserve">
+    <value>欢迎</value>
+  </data>
+  <data name="X" xml:space="preserve">
+    <value>X</value>
+  </data>
+  <data name="Square" xml:space="preserve">
+    <value>方形</value>
+  </data>
+  <data name="Axes" xml:space="preserve">
+    <value>坐标轴</value>
+  </data>
+  <data name="Marker" xml:space="preserve">
+    <value>标记</value>
+  </data>
+  <data name="AxesAndMarker" xml:space="preserve">
+    <value>坐标轴和标记</value>
+  </data>
+  <data name="Solid" xml:space="preserve">
+    <value>实线</value>
+  </data>
+  <data name="Dash" xml:space="preserve">
+    <value>虚线</value>
+  </data>
+  <data name="Dot" xml:space="preserve">
+    <value>点线</value>
+  </data>
+  <data name="DashDot" xml:space="preserve">
+    <value>点划线</value>
+  </data>
+  <data name="Unicode" xml:space="preserve">
+    <value>Unicode</value>
+  </data>
+  <data name="Simplex" xml:space="preserve">
+    <value>Simplex</value>
+  </data>
+  <data name="MonoLine" xml:space="preserve">
+    <value>单线</value>
+  </data>
+  <data name="BoxFallback" xml:space="preserve">
+    <value>方框后备</value>
+  </data>
+  <data name="Y" xml:space="preserve">
+    <value>Y</value>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>文件</value>
+  </data>
+  <data name="Draw" xml:space="preserve">
+    <value>描画</value>
+  </data>
+  <data name="New" xml:space="preserve">
+    <value>新建</value>
   </data>
 </root>

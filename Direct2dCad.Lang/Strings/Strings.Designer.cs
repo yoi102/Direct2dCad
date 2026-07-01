@@ -61,20 +61,56 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Cancel 的本地化字符串。
+        ///   查找类似 Antialias 的本地化字符串。
         /// </summary>
-        public static string Cancel {
+        public static string Antialias {
             get {
-                return ResourceManager.GetString("Cancel", resourceCulture);
+                return ResourceManager.GetString("Antialias", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Arc 的本地化字符串。
         /// </summary>
         public static string Arc {
             get {
                 return ResourceManager.GetString("Arc", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Axes 的本地化字符串。
+        /// </summary>
+        public static string Axes {
+            get {
+                return ResourceManager.GetString("Axes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Axes &amp; Marker 的本地化字符串。
+        /// </summary>
+        public static string AxesAndMarker {
+            get {
+                return ResourceManager.GetString("AxesAndMarker", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Box Fallback 的本地化字符串。
+        /// </summary>
+        public static string BoxFallback {
+            get {
+                return ResourceManager.GetString("BoxFallback", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Cancel 的本地化字符串。
+        /// </summary>
+        public static string Cancel {
+            get {
+                return ResourceManager.GetString("Cancel", resourceCulture);
             }
         }
         
@@ -97,11 +133,11 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Ellipse 的本地化字符串。
+        ///   查找类似 Color 的本地化字符串。
         /// </summary>
-        public static string Ellipse {
+        public static string Color {
             get {
-                return ResourceManager.GetString("Ellipse", resourceCulture);
+                return ResourceManager.GetString("Color", resourceCulture);
             }
         }
         
@@ -142,11 +178,65 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Dash 的本地化字符串。
+        /// </summary>
+        public static string Dash {
+            get {
+                return ResourceManager.GetString("Dash", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Dash Dot 的本地化字符串。
+        /// </summary>
+        public static string DashDot {
+            get {
+                return ResourceManager.GetString("DashDot", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Direct2dCad 的本地化字符串。
+        /// </summary>
+        public static string Direct2dCad {
+            get {
+                return ResourceManager.GetString("Direct2dCad", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Dot 的本地化字符串。
+        /// </summary>
+        public static string Dot {
+            get {
+                return ResourceManager.GetString("Dot", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Dots 的本地化字符串。
         /// </summary>
         public static string Dots {
             get {
                 return ResourceManager.GetString("Dots", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Draw 的本地化字符串。
+        /// </summary>
+        public static string Draw {
+            get {
+                return ResourceManager.GetString("Draw", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Ellipse 的本地化字符串。
+        /// </summary>
+        public static string Ellipse {
+            get {
+                return ResourceManager.GetString("Ellipse", resourceCulture);
             }
         }
         
@@ -160,11 +250,38 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 File 的本地化字符串。
+        /// </summary>
+        public static string File {
+            get {
+                return ResourceManager.GetString("File", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Fit 的本地化字符串。
         /// </summary>
         public static string Fit {
             get {
                 return ResourceManager.GetString("Fit", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Grid 的本地化字符串。
+        /// </summary>
+        public static string Grid {
+            get {
+                return ResourceManager.GetString("Grid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Inverted 的本地化字符串。
+        /// </summary>
+        public static string Inverted {
+            get {
+                return ResourceManager.GetString("Inverted", resourceCulture);
             }
         }
         
@@ -194,13 +311,40 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Lines", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   查找类似 Rectangle 的本地化字符串。
+        ///   查找类似 Margin 的本地化字符串。
         /// </summary>
-        public static string Rectangle {
+        public static string Margin {
             get {
-                return ResourceManager.GetString("Rectangle", resourceCulture);
+                return ResourceManager.GetString("Margin", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Marker 的本地化字符串。
+        /// </summary>
+        public static string Marker {
+            get {
+                return ResourceManager.GetString("Marker", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Mono Line 的本地化字符串。
+        /// </summary>
+        public static string MonoLine {
+            get {
+                return ResourceManager.GetString("MonoLine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 New 的本地化字符串。
+        /// </summary>
+        public static string New {
+            get {
+                return ResourceManager.GetString("New", resourceCulture);
             }
         }
         
@@ -223,6 +367,42 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Open File 的本地化字符串。
+        /// </summary>
+        public static string OpenFile {
+            get {
+                return ResourceManager.GetString("OpenFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Origin 的本地化字符串。
+        /// </summary>
+        public static string Origin {
+            get {
+                return ResourceManager.GetString("Origin", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Origin Line 的本地化字符串。
+        /// </summary>
+        public static string OriginLine {
+            get {
+                return ResourceManager.GetString("OriginLine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Origin Marker 的本地化字符串。
+        /// </summary>
+        public static string OriginMarker {
+            get {
+                return ResourceManager.GetString("OriginMarker", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Pan 的本地化字符串。
         /// </summary>
         public static string Pan {
@@ -239,7 +419,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Polygon", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Polyline 的本地化字符串。
         /// </summary>
@@ -248,9 +428,36 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Polyline", resourceCulture);
             }
         }
-
+        
         /// <summary>
-        ///   查找类似 Save Image As... 的本地化字符串。
+        ///   查找类似 Rectangle 的本地化字符串。
+        /// </summary>
+        public static string Rectangle {
+            get {
+                return ResourceManager.GetString("Rectangle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Redo 的本地化字符串。
+        /// </summary>
+        public static string Redo {
+            get {
+                return ResourceManager.GetString("Redo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Save 的本地化字符串。
+        /// </summary>
+        public static string Save {
+            get {
+                return ResourceManager.GetString("Save", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Save As... 的本地化字符串。
         /// </summary>
         public static string SaveAs {
             get {
@@ -264,6 +471,60 @@ namespace Direct2dCad.Lang.Strings {
         public static string Select {
             get {
                 return ResourceManager.GetString("Select", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Selected 的本地化字符串。
+        /// </summary>
+        public static string Selected {
+            get {
+                return ResourceManager.GetString("Selected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Crossing 的本地化字符串。
+        /// </summary>
+        public static string SelectionCrossing {
+            get {
+                return ResourceManager.GetString("SelectionCrossing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Window 的本地化字符串。
+        /// </summary>
+        public static string SelectionWindow {
+            get {
+                return ResourceManager.GetString("SelectionWindow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Set Origin 的本地化字符串。
+        /// </summary>
+        public static string SetOrigin {
+            get {
+                return ResourceManager.GetString("SetOrigin", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Shape Font 的本地化字符串。
+        /// </summary>
+        public static string ShapeFont {
+            get {
+                return ResourceManager.GetString("ShapeFont", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 CAD Text 的本地化字符串。
+        /// </summary>
+        public static string ShapeText {
+            get {
+                return ResourceManager.GetString("ShapeText", resourceCulture);
             }
         }
         
@@ -286,6 +547,42 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Simplex 的本地化字符串。
+        /// </summary>
+        public static string Simplex {
+            get {
+                return ResourceManager.GetString("Simplex", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Size 的本地化字符串。
+        /// </summary>
+        public static string Size {
+            get {
+                return ResourceManager.GetString("Size", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Snap Marker 的本地化字符串。
+        /// </summary>
+        public static string SnapMarker {
+            get {
+                return ResourceManager.GetString("SnapMarker", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Solid 的本地化字符串。
+        /// </summary>
+        public static string Solid {
+            get {
+                return ResourceManager.GetString("Solid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Source 的本地化字符串。
         /// </summary>
         public static string Source {
@@ -302,7 +599,25 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Spline", resourceCulture);
             }
         }
-
+        
+        /// <summary>
+        ///   查找类似 Square 的本地化字符串。
+        /// </summary>
+        public static string Square {
+            get {
+                return ResourceManager.GetString("Square", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Stroke 的本地化字符串。
+        /// </summary>
+        public static string Stroke {
+            get {
+                return ResourceManager.GetString("Stroke", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   查找类似 Text 的本地化字符串。
         /// </summary>
@@ -313,11 +628,20 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 CAD Text 的本地化字符串。
+        ///   查找类似 Text AA 的本地化字符串。
         /// </summary>
-        public static string ShapeText {
+        public static string TextAntialiasing {
             get {
-                return ResourceManager.GetString("ShapeText", resourceCulture);
+                return ResourceManager.GetString("TextAntialiasing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Undo 的本地化字符串。
+        /// </summary>
+        public static string Undo {
+            get {
+                return ResourceManager.GetString("Undo", resourceCulture);
             }
         }
         
@@ -340,11 +664,56 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Unicode 的本地化字符串。
+        /// </summary>
+        public static string Unicode {
+            get {
+                return ResourceManager.GetString("Unicode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 User 的本地化字符串。
+        /// </summary>
+        public static string User {
+            get {
+                return ResourceManager.GetString("User", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 View 的本地化字符串。
         /// </summary>
         public static string View {
             get {
                 return ResourceManager.GetString("View", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Welcome 的本地化字符串。
+        /// </summary>
+        public static string Welcome {
+            get {
+                return ResourceManager.GetString("Welcome", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 X 的本地化字符串。
+        /// </summary>
+        public static string X {
+            get {
+                return ResourceManager.GetString("X", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Y 的本地化字符串。
+        /// </summary>
+        public static string Y {
+            get {
+                return ResourceManager.GetString("Y", resourceCulture);
             }
         }
     }

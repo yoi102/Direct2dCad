@@ -202,8 +202,8 @@
     <comment>Polyline</comment>
   </data>
   <data name="SaveAs" xml:space="preserve">
-    <value>Save Image As...</value>
-    <comment>Save Image As...</comment>
+    <value>Save As...</value>
+    <comment>Save As...</comment>
   </data>
   <data name="Select" xml:space="preserve">
     <value>Select</value>
@@ -244,5 +244,169 @@
   <data name="View" xml:space="preserve">
     <value>View</value>
     <comment>View</comment>
+  </data>
+  <data name="Direct2dCad" xml:space="preserve">
+    <value>Direct2dCad</value>
+    <comment>Direct2dCad</comment>
+  </data>
+  <data name="OpenFile" xml:space="preserve">
+    <value>Open File</value>
+    <comment>Open File</comment>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+    <comment>Save</comment>
+  </data>
+  <data name="Undo" xml:space="preserve">
+    <value>Undo</value>
+    <comment>Undo</comment>
+  </data>
+  <data name="Redo" xml:space="preserve">
+    <value>Redo</value>
+    <comment>Redo</comment>
+  </data>
+  <data name="Grid" xml:space="preserve">
+    <value>Grid</value>
+    <comment>Grid</comment>
+  </data>
+  <data name="SnapMarker" xml:space="preserve">
+    <value>Snap Marker</value>
+    <comment>Snap Marker</comment>
+  </data>
+  <data name="ShapeFont" xml:space="preserve">
+    <value>Shape Font</value>
+    <comment>Shape Font</comment>
+  </data>
+  <data name="SetOrigin" xml:space="preserve">
+    <value>Set Origin</value>
+    <comment>Set Origin</comment>
+  </data>
+  <data name="Inverted" xml:space="preserve">
+    <value>Inverted</value>
+    <comment>Inverted</comment>
+  </data>
+  <data name="Margin" xml:space="preserve">
+    <value>Margin</value>
+    <comment>Margin</comment>
+  </data>
+  <data name="Origin" xml:space="preserve">
+    <value>Origin</value>
+    <comment>Origin</comment>
+  </data>
+  <data name="OriginMarker" xml:space="preserve">
+    <value>Origin Marker</value>
+    <comment>Origin Marker</comment>
+  </data>
+  <data name="OriginLine" xml:space="preserve">
+    <value>Origin Line</value>
+    <comment>Origin Line</comment>
+  </data>
+  <data name="Size" xml:space="preserve">
+    <value>Size</value>
+    <comment>Size</comment>
+  </data>
+  <data name="Stroke" xml:space="preserve">
+    <value>Stroke</value>
+    <comment>Stroke</comment>
+  </data>
+  <data name="Color" xml:space="preserve">
+    <value>Color</value>
+    <comment>Color</comment>
+  </data>
+  <data name="User" xml:space="preserve">
+    <value>User</value>
+    <comment>User</comment>
+  </data>
+  <data name="Antialias" xml:space="preserve">
+    <value>Antialias</value>
+    <comment>Antialias</comment>
+  </data>
+  <data name="TextAntialiasing" xml:space="preserve">
+    <value>Text AA</value>
+    <comment>Text antialiasing</comment>
+  </data>
+  <data name="Selected" xml:space="preserve">
+    <value>Selected</value>
+    <comment>Selected</comment>
+  </data>
+  <data name="SelectionWindow" xml:space="preserve">
+    <value>Window</value>
+    <comment>Window selection</comment>
+  </data>
+  <data name="SelectionCrossing" xml:space="preserve">
+    <value>Crossing</value>
+    <comment>Crossing selection</comment>
+  </data>
+  <data name="Welcome" xml:space="preserve">
+    <value>Welcome</value>
+    <comment>Welcome</comment>
+  </data>
+  <data name="X" xml:space="preserve">
+    <value>X</value>
+    <comment>X</comment>
+  </data>
+  <data name="Square" xml:space="preserve">
+    <value>Square</value>
+    <comment>Square</comment>
+  </data>
+  <data name="Axes" xml:space="preserve">
+    <value>Axes</value>
+    <comment>Axes</comment>
+  </data>
+  <data name="Marker" xml:space="preserve">
+    <value>Marker</value>
+    <comment>Marker</comment>
+  </data>
+  <data name="AxesAndMarker" xml:space="preserve">
+    <value>Axes &amp; Marker</value>
+    <comment>Axes and marker</comment>
+  </data>
+  <data name="Solid" xml:space="preserve">
+    <value>Solid</value>
+    <comment>Solid</comment>
+  </data>
+  <data name="Dash" xml:space="preserve">
+    <value>Dash</value>
+    <comment>Dash</comment>
+  </data>
+  <data name="Dot" xml:space="preserve">
+    <value>Dot</value>
+    <comment>Dot</comment>
+  </data>
+  <data name="DashDot" xml:space="preserve">
+    <value>Dash Dot</value>
+    <comment>Dash Dot</comment>
+  </data>
+  <data name="Unicode" xml:space="preserve">
+    <value>Unicode</value>
+    <comment>Unicode</comment>
+  </data>
+  <data name="Simplex" xml:space="preserve">
+    <value>Simplex</value>
+    <comment>Simplex</comment>
+  </data>
+  <data name="MonoLine" xml:space="preserve">
+    <value>Mono Line</value>
+    <comment>Mono Line</comment>
+  </data>
+  <data name="BoxFallback" xml:space="preserve">
+    <value>Box Fallback</value>
+    <comment>Box Fallback</comment>
+  </data>
+  <data name="Y" xml:space="preserve">
+    <value>Y</value>
+    <comment>Y</comment>
+  </data>
+  <data name="File" xml:space="preserve">
+    <value>File</value>
+    <comment>File</comment>
+  </data>
+  <data name="Draw" xml:space="preserve">
+    <value>Draw</value>
+    <comment>Draw</comment>
+  </data>
+  <data name="New" xml:space="preserve">
+    <value>New</value>
+    <comment>New</comment>
   </data>
 </root>

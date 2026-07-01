@@ -36,6 +36,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private bool _isPastePreviewActive;
     private bool _isRenderAttached;
     private bool _isApplyingTextMeasurementChanges;
+    private bool _isInitialViewportViewApplied;
     private bool _disposed;
     private double _viewportWidth = 1.0;
     private double _viewportHeight = 1.0;
@@ -74,7 +75,9 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             DetachRenderResources();
 
         CadEditor = editor ?? throw new ArgumentNullException(nameof(editor));
+        _isInitialViewportViewApplied = false;
         CadEditor.Viewport.SetSize(_viewportWidth, _viewportHeight);
+        ApplyInitialViewportViewIfNeeded();
         ClearInteractionState(clearClipboard: true, render: false);
         _handleScene.Clear();
 
@@ -114,11 +117,27 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _viewportWidth = Math.Max(1, width);
         _viewportHeight = Math.Max(1, height);
         CadEditor.Viewport.SetSize(_viewportWidth, _viewportHeight);
+        ApplyInitialViewportViewIfNeeded();
     }
 
     public void SetRenderSize(int width, int height)
     {
         Direct2DImageRenderHost.SetSize(Math.Max(1, width), Math.Max(1, height));
+    }
+
+    private void ApplyInitialViewportViewIfNeeded()
+    {
+        if (_isInitialViewportViewApplied || _viewportWidth <= 1.0 || _viewportHeight <= 1.0)
+            return;
+
+        var zoom = CadEditor.Viewport.Zoom;
+        var origin = CadEditor.Document.ViewSettings.Origin.Position;
+        var offset = new CadPointD(
+            _viewportWidth * 0.5 - origin.X * zoom,
+            _viewportHeight * 0.5 - origin.Y * zoom);
+
+        CadEditor.Viewport.SetView(zoom, offset);
+        _isInitialViewportViewApplied = true;
     }
 
     public void ApplyUserSettings(CadUserSettings? settings)

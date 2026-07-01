@@ -39,14 +39,7 @@ public partial class MainViewModel : ObservableObject
         FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesViewModel));
 
-        _dockLayoutService.OpenOrActivateDocument(
-                   e => false,
-                   () =>
-                   {
-                       var tab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
-                       CurrentEditorTabViewModel = tab;
-                       return tab;
-                   });
+
         IsDarkTheme = themeSettingService.IsDarkTheme;
     }
 
@@ -63,6 +56,18 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
 
+    [RelayCommand]
+    private void New()
+    {
+        _dockLayoutService.OpenOrActivateDocument(
+           e => false,
+           () =>
+           {
+               var tab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
+               CurrentEditorTabViewModel = tab;
+               return tab;
+           });
+    }
     [RelayCommand]
     private void OpenFile()
     {
@@ -100,11 +105,6 @@ public partial class MainViewModel : ObservableObject
     {
         CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
     }
-
-
-
-
-
 
 
     #region TitleBar

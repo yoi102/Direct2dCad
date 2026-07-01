@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              mc:Ignorable="d"
              xmlns:views="clr-namespace:Direct2dCad.wpf.Views"
              xmlns:viewmodels="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
@@ -22,7 +23,7 @@
                 Background="Transparent"
                 Foreground="White"
                 Margin="12"
-                ToolTip="Fit"
+                ToolTip="{I18N {x:Static r:LangKeys.Fit}}"
                 Command="{Binding FitToWindowCommand}" />
     </Grid>
 </UserControl>

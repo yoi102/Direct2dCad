@@ -65,35 +65,51 @@ public enum ViewModelCadSnapMarkerType
 [TypeConverter(typeof(EnumDescriptionTypeConverter))]
 public enum ViewModelCadOriginDisplayType
 {
+    [LocalizedDescription("None", typeof(Strings))]
     None,
+    [LocalizedDescription("Axes", typeof(Strings))]
     Axes,
+    [LocalizedDescription("Marker", typeof(Strings))]
     Marker,
+    [LocalizedDescription("AxesAndMarker", typeof(Strings))]
     AxesAndMarker
 }
 
 [TypeConverter(typeof(EnumDescriptionTypeConverter))]
 public enum ViewModelCadOriginMarkerType
 {
+    [LocalizedDescription("Cross", typeof(Strings))]
     Cross,
+    [LocalizedDescription("X", typeof(Strings))]
     X,
+    [LocalizedDescription("Circle", typeof(Strings))]
     Circle,
+    [LocalizedDescription("Square", typeof(Strings))]
     Square
 }
 
 [TypeConverter(typeof(EnumDescriptionTypeConverter))]
 public enum ViewModelCadOriginLinePattern
 {
+    [LocalizedDescription("Solid", typeof(Strings))]
     Solid,
+    [LocalizedDescription("Dash", typeof(Strings))]
     Dash,
+    [LocalizedDescription("Dot", typeof(Strings))]
     Dot,
+    [LocalizedDescription("DashDot", typeof(Strings))]
     DashDot
 }
 
 [TypeConverter(typeof(EnumDescriptionTypeConverter))]
 public enum ViewModelCadShapeFont
 {
+    [LocalizedDescription("Unicode", typeof(Strings))]
     Unicode,
+    [LocalizedDescription("Simplex", typeof(Strings))]
     Simplex,
+    [LocalizedDescription("MonoLine", typeof(Strings))]
     MonoLine,
+    [LocalizedDescription("BoxFallback", typeof(Strings))]
     BoxFallback
 }
