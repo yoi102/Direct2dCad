@@ -1,5 +1,5 @@
 using Antelcat.I18N.WPF;
-using Direct2dCad.ViewServices.Abstractions;
+using Direct2dCad.ViewModels.Services;
 
 namespace Direct2dCad.wpf.Services;
 
@@ -20,4 +20,10 @@ internal class CultureSettingService : ICultureSettingService
         Thread.CurrentThread.CurrentUICulture = culture;
         I18NExtension.Culture = culture;
     }
+
+    public int GetCurrentCultureLCID()
+    {
+        return Thread.CurrentThread.CurrentUICulture.LCID;
+    }
+
 }

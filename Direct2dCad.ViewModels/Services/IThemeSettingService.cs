@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Direct2dCad.ViewServices.Abstractions;
+namespace Direct2dCad.ViewModels.Services;
 
 public interface IThemeSettingService
 {

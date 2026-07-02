@@ -1,46 +1,46 @@
 using AvalonDock.Core;
+using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
-using Direct2dCad.Client.Common.Settings;
-using Direct2dCad.Db.Cad;
-using Direct2dCad.Db.Cad.Settings;
-using Direct2dCad.Db.Geometry;
-using Direct2dCad.Editor;
 using Direct2dCad.IO;
+using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Toolboxes;
-using Direct2dCad.ViewServices.Abstractions;
 
 namespace Direct2dCad.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
-    private readonly CadDocumentStorage _storage = new();
     private readonly IFileDialogService _fileDialogService;
-    private readonly IMessageBoxService _messageBoxService;
+    private readonly IDialogService _dialogService;
+    private readonly ISnackbarService _snackbarService;
     private readonly IDockLayoutService _dockLayoutService;
+    private readonly SideToggleManager _sideToggleManager;
     private readonly ICultureSettingService _cultureSettingService;
     private readonly IThemeSettingService _themeSettingService;
 
-    public MainViewModel(IDockLayoutService dockLayoutService,
+    public MainViewModel(IDockLayoutService dockLayoutService, SideToggleManager sideToggleManager,
         ICultureSettingService cultureSettingService,
         IThemeSettingService themeSettingService,
         IFileDialogService fileDialogService,
-        IMessageBoxService messageBoxService
+        IDialogService dialogService,
+        ISnackbarService snackbarService
         )
     {
+        dockLayoutService.AnchorableStateChanged += OnAnchorableStateChanged;
         _dockLayoutService = dockLayoutService;
+        _sideToggleManager = sideToggleManager;
         _cultureSettingService = cultureSettingService;
         _themeSettingService = themeSettingService;
 
         _fileDialogService = fileDialogService;
-        _messageBoxService = messageBoxService;
-
+        _dialogService = dialogService;
+        _snackbarService = snackbarService;
         FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesViewModel));
 
-
         IsDarkTheme = themeSettingService.IsDarkTheme;
+        CurrentCultureLCID = cultureSettingService.GetCurrentCultureLCID();
     }
 
     /// <summary>The MVVM layout tree — bind to DockLayout on the DockingManager.</summary>
@@ -53,8 +53,36 @@ public partial class MainViewModel : ObservableObject
     public FolderExplorerViewModel FolderExplorer { get; }
 
     public EntityPropertiesViewModel EntityProperties { get; }
+
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
+
+    [ObservableProperty]
+    public partial bool IsPrimarySideBarOpen { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsBottomPanelOpen { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsSecondarySideBarOpen { get; set; }
+    [ObservableProperty]
+    public partial int TabControlSelectedIndex { get; set; } = 0;
+
+    private void OnAnchorableStateChanged(object? sender, EventArgs e)
+    {
+        IsPrimarySideBarOpen = _dockLayoutService.IsSideOpen(ToolboxSide.Left);
+        IsBottomPanelOpen = _dockLayoutService.IsSideOpen(ToolboxSide.Bottom);
+        IsSecondarySideBarOpen = _dockLayoutService.IsSideOpen(ToolboxSide.Right);
+    }
+
+    [RelayCommand]
+    private void TogglePrimarySideBar() => _sideToggleManager.Toggle(ToolboxSide.Left);
+
+    [RelayCommand]
+    private void ToggleBottomPanel() => _sideToggleManager.Toggle(ToolboxSide.Bottom);
+
+    [RelayCommand]
+    private void ToggleSecondarySideBar() => _sideToggleManager.Toggle(ToolboxSide.Right);
 
     [RelayCommand]
     private void New()
@@ -65,13 +93,15 @@ public partial class MainViewModel : ObservableObject
            {
                var tab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
                CurrentEditorTabViewModel = tab;
+               _snackbarService.Enqueue("New document created.");
                return tab;
            });
     }
+
     [RelayCommand]
     private void OpenFile()
     {
-        var fileName = _fileDialogService.OpenFile();
+        var fileName = _fileDialogService.OpenD2cadFile();
         if (fileName is null)
             return;
 
@@ -84,14 +114,16 @@ public partial class MainViewModel : ObservableObject
                 var tab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
                 tab.Load(fileName);
                 CurrentEditorTabViewModel = tab;
+                _snackbarService.Enqueue("File opened successfully.");
                 return tab;
             });
         }
         catch (Exception ex)
         {
-            _messageBoxService.ShowMessage(ex.Message, "Open failed");
+            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Open failed");
         }
     }
+
     [RelayCommand]
     private void DocumentClosed(object content)
     {
@@ -99,13 +131,18 @@ public partial class MainViewModel : ObservableObject
         {
             editorTabViewModel.Dispose();
         }
+        else
+        {
+            TabControlSelectedIndex = 0;
+        }
     }
+
     [RelayCommand]
     private void ActiveContentChanged()
     {
         CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
+        TabControlSelectedIndex = CurrentEditorTabViewModel != null ? 1 : 0;
     }
-
 
     #region TitleBar
 

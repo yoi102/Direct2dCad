@@ -7,7 +7,8 @@ using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.IO;
-using Direct2dCad.ViewServices.Abstractions;
+using Direct2dCad.ViewModels.Enums;
+using Direct2dCad.ViewModels.Services;
 
 namespace Direct2dCad.ViewModels;
 
@@ -18,21 +19,23 @@ public partial class EditorTabViewModel : ObservableDocument, IDisposable
     private readonly CadUserSettings _userSettings;
     private readonly CadDocumentStorage _storage = new();
     private readonly IFileDialogService _fileDialogService;
-    private readonly IMessageBoxService _messageBoxService;
+    private readonly IDialogService _dialogService;
+    private readonly ISnackbarService _snackbarService;
     private bool _isSyncingViewSettings;
     private bool _isSyncingUserSettings;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
         IUserSettingsService userSettingsService,
         IFileDialogService fileDialogService,
-        IMessageBoxService messageBoxService
+        IDialogService dialogService,
+        ISnackbarService snackbarService
         )
     {
         _userSettingsService = userSettingsService;
         _userSettings = _userSettingsService.Load();
         _fileDialogService = fileDialogService;
-        _messageBoxService = messageBoxService;
-
+        _dialogService = dialogService;
+        _snackbarService = snackbarService;
         CadDocumentViewModel = cadDocumentViewModel;
         _userSettingsService = userSettingsService;
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
@@ -273,7 +276,7 @@ public partial class EditorTabViewModel : ObservableDocument, IDisposable
         var fileName = string.IsNullOrWhiteSpace(CadDocumentViewModel.CadEditor.Document.Name)
                   ? "Untitled.d2cad"
                   : $"{CadDocumentViewModel.CadEditor.Document.Name}.d2cad";
-        var selectedFileName = _fileDialogService.SaveFile(fileName);
+        var selectedFileName = _fileDialogService.SaveAsD2cad(fileName);
         if (selectedFileName is null)
             return;
 
@@ -286,11 +289,12 @@ public partial class EditorTabViewModel : ObservableDocument, IDisposable
         try
         {
             _storage.Save(CadDocumentViewModel.CadEditor.Document, filePath);
+            _snackbarService.Enqueue("File saved successfully.");
             return true;
         }
         catch (Exception ex)
         {
-            _messageBoxService.ShowMessage(ex.Message, "Save failed");
+            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Save failed");
             return false;
         }
     }
@@ -375,7 +379,7 @@ public partial class EditorTabViewModel : ObservableDocument, IDisposable
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _messageBoxService.ShowMessage(ex.Message, "User settings save failed");
+            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "User settings save failed");
         }
     }
 

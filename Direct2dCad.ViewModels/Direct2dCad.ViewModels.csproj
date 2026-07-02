@@ -8,8 +8,9 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Dirkster.AvalonDock.Core" Version="5.0.0-preview.90" />
-    <PackageReference Include="Dirkster.AvalonDock.Mvvm.CommunityToolkit" Version="5.0.0-preview.90" />
+    <PackageReference Include="Dirkster.AvalonDock.Core" Version="5.0.0-preview.92" />
+    <PackageReference Include="Dirkster.AvalonDock.Mvvm" Version="5.0.0-preview.92" />
+    <PackageReference Include="Dirkster.AvalonDock.Mvvm.CommunityToolkit" Version="5.0.0-preview.92" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115" />
   </ItemGroup>
 
@@ -17,7 +18,6 @@
     <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
     <ProjectReference Include="..\Direct2dCad.Client.Common\Direct2dCad.Client.Common.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
-    <ProjectReference Include="..\Direct2dCad.ViewServices.Abstractions\Direct2dCad.ViewServices.Abstractions.csproj" />
     <ProjectReference Include="..\Direct2dCad.IO\Direct2dCad.IO.csproj" />
     <ProjectReference Include="..\Direct2dCad.Lang\Direct2dCad.Lang.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Direct2D\Direct2dCad.Rendering.Direct2D.csproj" />

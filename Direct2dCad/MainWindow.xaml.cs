@@ -4,7 +4,7 @@ using AvalonDock;
 using AvalonDock.DependencyInjection;
 using AvalonDock.Themes;
 using Direct2dCad.ViewModels;
-using Direct2dCad.ViewServices.Abstractions.Events;
+using Direct2dCad.ViewModels.Services.Events;
 using MessagePipe;
 
 namespace Direct2dCad.wpf;

@@ -1,5 +1,5 @@
-using Direct2dCad.ViewServices.Abstractions;
-using Direct2dCad.ViewServices.Abstractions.Events;
+using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.Events;
 using MaterialDesignThemes.Wpf;
 using MessagePipe;
 

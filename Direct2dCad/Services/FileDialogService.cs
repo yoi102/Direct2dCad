@@ -1,11 +1,11 @@
-using Direct2dCad.ViewServices.Abstractions;
+using Direct2dCad.ViewModels.Services;
 using Microsoft.Win32;
 
 namespace Direct2dCad.wpf.Services;
 
 internal class FileDialogService : IFileDialogService
 {
-    public string? SaveFile(string fileName)
+    public string? SaveAsD2cad(string fileName)
     {
         var dialog = new SaveFileDialog
         {
@@ -20,7 +20,7 @@ internal class FileDialogService : IFileDialogService
 
         return dialog.FileName;
     }
-    public string? OpenFile()
+    public string? OpenD2cadFile()
     {
         var dialog = new OpenFileDialog
         {

@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/clients/">
     <Project Path="Direct2dCad.Client.Common/Direct2dCad.Client.Common.csproj" Id="d3f18ae1-15bb-4994-bc9f-5d45016cd932" />
-    <Project Path="Direct2dCad.ViewServices.Abstractions/Direct2dCad.ViewServices.Abstractions.csproj" Id="1862336d-36e9-4c08-b571-d7b674b269be" />
     <Project Path="Direct2dCad.Lang/Direct2dCad.Lang.csproj" Id="2c6d1214-aa4a-4bb0-9c67-cf2fe44a4a76" />
     <Project Path="Direct2dCad.ViewModels/Direct2dCad.ViewModels.csproj" Id="c520de91-89cf-43ce-a51d-cf32f96f6b17" />
   </Folder>

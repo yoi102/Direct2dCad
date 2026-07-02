@@ -13,6 +13,7 @@ using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
+using Direct2dCad.ViewModels.Enums;
 
 namespace Direct2dCad.ViewModels;
 

@@ -1,38 +1,55 @@
 # Direct2dCad
+
 https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4
+
 ![alt text](image.png)
 
-## 1. 架构层级
+## 1. 当前项目
 
+当前 `Direct2dCad.slnx` 中保留的项目如下：
+
+```text
+Direct2dCad.Db
+Direct2dCad.ChangeTracking
+Direct2dCad.Commands
+Direct2dCad.Editor
+Direct2dCad.HitTesting
+Direct2dCad.Indexing
+Direct2dCad.IO
+Direct2dCad.Rendering
+Direct2dCad.Rendering.Transient
+Direct2dCad.Rendering.Handles
+Direct2dCad.Rendering.Direct2D
+Direct2dCad.Client.Common
+Direct2dCad.Lang
+Direct2dCad.ViewModels
+Direct2dCad.wpf.Control
+Direct2dCad.wpf
+```
+
+View / ViewModel 之间的服务接口现在放在 `Direct2dCad.ViewModels\Services`，WPF 实现放在 `Direct2dCad\Services`。
+
+## 2. 架构层级
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true}, "securityLevel": "loose"}}%%
-
 flowchart TD
-
-    UI["<div style='text-align:left; line-height:1.6; white-space:nowrap;'><b>UI 层</b><br/>&emsp;Direct2dCad.wpf<br/>&emsp;Direct2dCad.wpf.ViewServices<br/>&emsp;Direct2dCad.wpf.Control</div>"]
-
-    VM["<div style='text-align:left; line-height:1.6; white-space:nowrap;'><b>ViewModel / Client 层</b><br/>&emsp;Direct2dCad.ViewModels<br/>&emsp;Direct2dCad.Client.Common<br/>&emsp;Direct2dCad.ViewServices.Abstractions<br/>&emsp;Direct2dCad.Lang</div>"]
-
-    Editor["<div style='text-align:left; line-height:1.6; white-space:nowrap;'><b>应用编辑层</b><br/>&emsp;Direct2dCad.Editor</div>"]
-
-    Commands["<div style='text-align:left; line-height:1.6; white-space:nowrap;'><b>领域操作层</b><br/>&emsp;Direct2dCad.Commands</div>"]
-
-    ChangeTracking["<div style='text-align:left; line-height:1.6; white-space:nowrap;'><b>变更跟踪层</b><br/>&emsp;Direct2dCad.ChangeTracking</div>"]
-
-    Db["<div style='text-align:left; line-height:1.6; white-space:nowrap;'><b>核心数据层</b><br/>&emsp;Direct2dCad.Db</div>"]
-
-    Infra["<div style='text-align:left; line-height:1.6; white-space:nowrap;'><b>基础能力层</b><br/>&emsp;Direct2dCad.IO<br/>&emsp;Direct2dCad.HitTesting<br/>&emsp;Direct2dCad.Indexing<br/>&emsp;Direct2dCad.Rendering<br/>&emsp;Direct2dCad.Rendering.Transient<br/>&emsp;Direct2dCad.Rendering.Handles<br/>&emsp;Direct2dCad.Rendering.Direct2D<br/>&emsp;Direct2dCad.Common</div>"]
+    UI["UI 层<br/>Direct2dCad.wpf<br/>Direct2dCad.wpf.Control"]
+    VM["ViewModel / Client 层<br/>Direct2dCad.ViewModels<br/>Direct2dCad.Client.Common<br/>Direct2dCad.Lang"]
+    Editor["应用编辑层<br/>Direct2dCad.Editor"]
+    Commands["领域命令层<br/>Direct2dCad.Commands"]
+    ChangeTracking["变更跟踪层<br/>Direct2dCad.ChangeTracking"]
+    Db["核心数据层<br/>Direct2dCad.Db"]
+    Infra["基础能力层<br/>Direct2dCad.IO<br/>Direct2dCad.HitTesting<br/>Direct2dCad.Indexing<br/>Direct2dCad.Rendering<br/>Direct2dCad.Rendering.Transient<br/>Direct2dCad.Rendering.Handles<br/>Direct2dCad.Rendering.Direct2D"]
 
     UI --> VM
+    UI --> Editor
     VM --> Editor
     Editor --> Commands
     Editor --> ChangeTracking
     Commands --> ChangeTracking
     ChangeTracking --> Db
-
+    Infra --> Db
     Infra -.-> ChangeTracking
-    Infra -.-> Db
 
     classDef ui fill:#e8f1ff,stroke:#4a90e2,color:#000;
     classDef vm fill:#eaf7e8,stroke:#6aa84f,color:#000;
@@ -49,17 +66,17 @@ flowchart TD
     class ChangeTracking change;
     class Db data;
     class Infra infra;
-
 ```
 
-## 2. 项目依赖关系
+## 3. 项目依赖图
 
 ```mermaid
 flowchart TD
     WPF["Direct2dCad.wpf"]
+    WpfControl["Direct2dCad.wpf.Control"]
     VM["Direct2dCad.ViewModels"]
-    WpfViewServices["Direct2dCad.wpf.ViewServices"]
-    ViewServices["Direct2dCad.ViewServices.Abstractions"]
+    ClientCommon["Direct2dCad.Client.Common"]
+    Lang["Direct2dCad.Lang"]
     Editor["Direct2dCad.Editor"]
     Commands["Direct2dCad.Commands"]
     ChangeTracking["Direct2dCad.ChangeTracking"]
@@ -71,189 +88,117 @@ flowchart TD
     Direct2D["Direct2dCad.Rendering.Direct2D"]
     HitTesting["Direct2dCad.HitTesting"]
     Indexing["Direct2dCad.Indexing"]
-    Common["Direct2dCad.Common"]
-    ClientCommon["Direct2dCad.Client.Common"]
-    Lang["Direct2dCad.Lang"]
 
+    WPF --> WpfControl
     WPF --> VM
     WPF --> Editor
-    WPF --> Common
-    WPF --> WpfViewServices
 
-    WpfViewServices --> ViewServices
-    WpfViewServices --> ClientCommon
-    ViewServices --> ClientCommon
-
-    VM --> ClientCommon
     VM --> ChangeTracking
+    VM --> ClientCommon
     VM --> Editor
-    VM --> ViewServices
     VM --> IO
     VM --> Lang
     VM --> Direct2D
-    VM --> Transient
     VM --> Handles
+    VM --> Transient
 
-    Editor --> Commands
     Editor --> ChangeTracking
+    Editor --> Commands
     Editor --> Db
     Editor --> HitTesting
     Editor --> Indexing
     Editor --> Rendering
 
-    ChangeTracking --> Db
-    ClientCommon --> Db
-
     Commands --> ChangeTracking
     Commands --> Db
+
+    ChangeTracking --> Db
+    ClientCommon --> Db
     IO --> Db
     HitTesting --> Db
     Indexing --> Db
-
     Rendering --> ChangeTracking
     Rendering --> Db
     Transient --> Db
     Handles --> Db
 
     Direct2D --> ChangeTracking
-    Direct2D --> Common
     Direct2D --> Db
     Direct2D --> Rendering
-    Direct2D --> Transient
     Direct2D --> Handles
+    Direct2D --> Transient
 ```
 
-## 3. 项目说明
+## 4. 项目说明
 
 ### Direct2dCad.Db
 
-核心数据模型层。
+核心数据模型层，是 CAD 文档的 source of truth。
 
-#### 项目引用
+项目引用：无。
 
-无项目引用。
-
-#### NuGet 依赖
+NuGet：
 
 ```text
 StronglyTypedId
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
-定义 CAD 文档模型
-定义 CAD 图层模型
-定义 CAD 块定义模型
-定义 CAD 实体模型
-定义 CAD 样式模型
-定义几何基础类型
-定义强类型 ID
+定义 CadDocument、Layer、Block、Entity、Style、FillStyle 等核心模型
+定义 Line、Circle、Arc、Ellipse、Rectangle、Polyline、Polygon、Spline、Text、ShapeText 等实体
+定义 ViewSettings、GridSettings、OriginSettings、LayerDrawingPriority 等文档级视图设置
+定义 CadPointD、CadVectorD、CadRectD、CadMatrixD 等几何类型
+定义 EntityId、LayerId、BlockId、StyleId 等强类型 ID
 ```
-
-#### 主要类型
-
-```text
-CadDocument
-CadLayer
-CadBlockDefinition
-CadEntity
-CadLine
-CadCircle
-CadArc
-CadPolyline
-CadText
-CadBlockReference
-CadGraphicStyle
-CadTextStyle
-CadFillStyle
-CadPointD
-CadVectorD
-CadRectD
-CadMatrixD
-EntityId
-LayerId
-BlockId
-StyleId
-```
-
----
 
 ### Direct2dCad.ChangeTracking
 
 CAD 文档变更跟踪层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.Db
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
-定义 CadDocument 修改后的变更结果
-定义实体级变更类型
-定义文档结构变更标记
-定义视图设置变更标记
-为 Commands / Editor / Rendering 提供中性的变更通知模型
+定义 CadDocumentChangeSet
+定义 CadEntityChange / CadEntityChangeKind
+表达实体、文档结构、视图设置的变更范围
+为 Commands、Editor、Rendering 之间提供中性的变更通知模型
 避免 Rendering / Rendering.Direct2D 直接依赖 Direct2dCad.Commands
 ```
-
-#### 主要类型
-
-```text
-CadDocumentChangeSet
-CadEntityChange
-CadEntityChangeKind
-```
-
----
 
 ### Direct2dCad.Commands
 
 CAD 文档命令层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.ChangeTracking
 Direct2dCad.Db
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
-执行 CadDocument 修改操作
-提供 Undo / Redo 所需的命令对象
-返回文档变化结果
+定义 ICadCommand
+定义 CadCommandResult
+实现可 undo / redo 的文档修改命令
+支持单条命令和批量命令
+返回 CadDocumentChangeSet 以驱动索引、缓存和渲染资源更新
 ```
-
-#### 主要类型
-
-```text
-AddLineCommand
-AddCircleCommand
-AddTextCommand
-MoveEntitiesCommand
-DeleteEntitiesCommand
-DuplicateEntitiesCommand
-ChangeLayerCommand
-SetEntityColorCommand
-SetLineGeometryCommand
-SetCircleGeometryCommand
-SetTextContentCommand
-SetOriginSettingsCommand
-SetOriginPositionCommand
-```
-
----
 
 ### Direct2dCad.Editor
 
-编辑器核心协调层。
+编辑应用层，协调文档、命令、选择、命中测试、索引和视口。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.ChangeTracking
@@ -264,142 +209,93 @@ Direct2dCad.Indexing
 Direct2dCad.Rendering
 ```
 
-#### 主要职责
+NuGet：
 
 ```text
-管理 CadDocument
-管理 CadViewport
-管理选择集
-执行文档命令
-执行编辑器命令
-管理 Undo / Redo 历史
-发布文档变化
-更新 DirtySet
-调用空间索引
-调用渲染资源管理器
+Microsoft.Extensions.DependencyInjection.Abstractions
 ```
 
-#### 主要类型
+主要职责：
 
 ```text
-CadEditor
-CadSession
-CadSelectionSet
-DirtySet
-CadDocumentCommandManager
-CadEditorCommandManager
-CadDocumentChangeDispatcher
-CommandHistory
-ClickSelectCommand
-BoxSelectCommand
-PanViewportCommand
-ZoomViewportCommand
+提供 CadEditor 作为编辑入口
+管理文档命令执行、undo、redo
+维护选择集
+连接命中测试和空间索引
+发布 CadDocumentChangeSet
+向 ICadGeometryResourceManager 推送几何资源更新
+提供视口命令，例如 pan、zoom、fit
 ```
-
----
 
 ### Direct2dCad.HitTesting
 
 命中测试层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.Db
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
-执行 CAD 坐标下的点选测试
-判断点与实体的命中关系
-返回命中结果
+执行 CAD 世界坐标下的点选命中
+判断点与实体几何的命中关系
+返回命中结果和候选实体
 ```
-
-#### 主要类型
-
-```text
-CadEntityHitTester
-CadHitTestService
-CadHitTestResult
-```
-
----
 
 ### Direct2dCad.Indexing
 
 空间索引层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.Db
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
 记录实体 Bounds
 按区域查询实体
-为框选提供候选实体集合
-为局部刷新提供候选实体集合
-为命中测试提供候选实体集合
+为框选、命中测试、局部刷新提供候选实体集合
 ```
-
-#### 主要类型
-
-```text
-ICadSpatialIndex
-CadSpatialIndex
-CadSpatialIndexEntry
-CadSpatialQuery
-CadSpatialQueryResult
-```
-
----
 
 ### Direct2dCad.Rendering
 
 渲染抽象层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.ChangeTracking
 Direct2dCad.Db
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
-定义渲染器接口
-定义视口模型
-定义渲染选项
-定义抗锯齿等用户渲染偏好入口
-定义几何资源管理接口
+定义 ICadRenderer
+定义 ICadGeometryResourceManager
+定义 CadViewport
+定义 CadRenderOptions
+定义 CadRenderInvalidation 和多 dirty rect 局部刷新模型
+定义 ID3D11ImageSource 桥接接口
 ```
-
-#### 主要类型
-
-```text
-ICadRenderer
-ICadGeometryResourceManager
-CadViewport
-CadRenderOptions
-CadRender
-```
-
----
 
 ### Direct2dCad.Rendering.Transient
 
 临时绘制预览场景模型层。
 
-#### 项目引用
+项目引用：
 
-无项目引用。
+```text
+Direct2dCad.Db
+```
 
-#### 主要职责
+主要职责：
 
 ```text
 定义绘制模式中的临时图形
@@ -409,65 +305,40 @@ CadRender
 不负责命令执行和实体持久化
 ```
 
-#### 主要类型
-
-```text
-CadTransientScene
-CadTransientItem
-CadTransientStyle
-CadTransientLinePattern
-```
-
----
-
 ### Direct2dCad.Rendering.Handles
 
 选中实体可视化句柄场景模型层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.Db
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
 定义选中实体外框场景
-定义实体 grip / handle 点场景
-为后续 grip 拖拽编辑提供稳定的视觉模型
-不负责选择命中测试和命令执行
+定义 grip / handle 点场景
+提供 handle 场景构建和 handle 命中测试
+不直接修改 CadDocument
 ```
-
-#### 主要类型
-
-```text
-CadHandleScene
-CadHandleItem
-CadSelectionEntityReference
-CadGripHandle
-CadHandleStyle
-CadHandleType
-```
-
----
 
 ### Direct2dCad.Rendering.Direct2D
 
 Direct2D 渲染实现层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.ChangeTracking
-Direct2dCad.Common
 Direct2dCad.Db
 Direct2dCad.Rendering
 Direct2dCad.Rendering.Handles
 Direct2dCad.Rendering.Transient
 ```
 
-#### NuGet 依赖
+NuGet：
 
 ```text
 Vortice.Direct2D1
@@ -475,285 +346,66 @@ Vortice.Direct3D11
 Vortice.Direct3D9
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
 使用 Direct2D 绘制 CadDocument
-管理 Direct2D 几何资源
-管理 Direct2D 画刷资源
-绘制 transient overlay
-绘制 selection handle overlay
-根据 CadRenderOptions 应用几何 / 文字抗锯齿设置
-管理 D3D11 / D3D9 shared surface
-向 WPF D3DImage 提供渲染结果
+管理 Direct2D geometry / brush / text 资源
+绘制 grid、origin、实体、transient overlay、selection handle overlay
+支持多 dirty rect 局部刷新
+处理 D3D11 / D3D9 shared surface 与 WPF D3DImage 交互
+在 EndDraw 可恢复失败时重建设备资源并触发全量重绘
 ```
-
-#### 主要类型
-
-```text
-Direct2DImageRenderHost
-Direct2DSceneRender
-Direct2DResourceCache
-ImageSourceDirect2DResource
-```
-
----
 
 ### Direct2dCad.IO
 
 文件读写层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.Db
 ```
 
-#### NuGet 依赖
+NuGet：
 
 ```text
 MessagePack
 Riok.Mapperly
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
 保存 CadDocument
 读取 CadDocument
 定义 .d2cad 文件容器格式
-定义文件 Section
-定义文件版本迁移注册
+定义文件 section
+定义 section 级版本迁移注册
+支持读取单独 section，例如 settings
 ```
-
-#### 主要类型
-
-```text
-CadDocumentStorage
-CadContainerFormat
-CadFileModels
-CadSectionKind
-CadSectionMigrationRegistry
-```
-
----
-
-### Direct2dCad.ViewModels
-
-ViewModel 层。
-
-#### 项目引用
-
-```text
-Direct2dCad.ChangeTracking
-Direct2dCad.Client.Common
-Direct2dCad.Editor
-Direct2dCad.ViewServices.Abstractions
-Direct2dCad.IO
-Direct2dCad.Lang
-Direct2dCad.Rendering.Direct2D
-Direct2dCad.Rendering.Handles
-Direct2dCad.Rendering.Transient
-```
-
-#### NuGet 依赖
-
-```text
-CommunityToolkit.Mvvm
-Microsoft.Extensions.DependencyInjection.Abstractions
-```
-
-#### 主要职责
-
-```text
-管理主窗口状态
-管理 CAD 文档视图状态
-处理画布输入数据
-处理工具模式
-调用 CadEditor 执行编辑操作
-调用 IO 服务执行打开 / 保存
-调用 ViewServices 抽象服务
-加载并应用用户级设置
-维护 transient / handle overlay 场景
-维护渲染宿主对象
-```
-
-#### 主要类型
-
-```text
-MainViewModel
-CadDocumentViewModel
-CadCanvasInput
-Enums
-ServiceCollectionExtension
-```
-
----
-
-### Direct2dCad.ViewServices.Abstractions
-
-View / ViewModel 之间服务抽象层。
-
-#### 项目引用
-
-```text
-Direct2dCad.Client.Common
-```
-
-#### 主要职责
-
-```text
-定义打开文件接口
-定义保存文件接口
-定义消息框接口
-定义用户设置读写接口
-为后续 ViewModel 调用 View 能力预留抽象边界
-```
-
-#### 主要类型
-
-```text
-IFileDialogService
-IMessageBoxService
-IUserSettingsService
-```
-
----
-
-### Direct2dCad.wpf.ViewServices
-
-WPF ViewServices 实现层。
-
-#### 项目引用
-
-```text
-Direct2dCad.Client.Common
-Direct2dCad.ViewServices.Abstractions
-```
-
-#### 主要职责
-
-```text
-实现 IFileDialogService
-实现 IMessageBoxService
-实现 IUserSettingsService
-将用户设置保存到 %AppData%\Direct2dCad\user-settings.json
-提供 View / ViewModel 服务的 DI 注册扩展
-```
-
-#### 主要类型
-
-```text
-FileDialogService
-MessageBoxService
-UserSettingsService
-ServiceCollectionExtension
-```
-
----
-
-### Direct2dCad.wpf
-
-WPF 主程序。
-
-#### 项目引用
-
-```text
-Direct2dCad.Common
-Direct2dCad.Editor
-Direct2dCad.ViewModels
-Direct2dCad.wpf.ViewServices
-```
-
-#### NuGet 依赖
-
-```text
-CommunityToolkit.Mvvm
-MessagePipe
-Microsoft.Extensions.DependencyInjection
-```
-
-#### 主要职责
-
-```text
-程序启动
-配置依赖注入容器
-创建主窗口
-承载 CAD 画布控件
-承载 D3D11ImageSource
-绑定 ViewModel
-将 WPF 鼠标输入转换为画布输入数据
-将 WPF 键盘输入转换为画布输入数据
-```
-
-#### 主要文件
-
-```text
-App.xaml.cs
-MainWindow.xaml.cs
-Controls/CadCanvas.xaml.cs
-Controls/D3D11ImageSource.cs
-Views/CadDocumentView.xaml.cs
-```
-
----
-
-### Direct2dCad.Common
-
-通用桥接接口层。
-
-#### 项目引用
-
-无项目引用。
-
-#### 主要职责
-
-```text
-定义 D3D11 图像源接口
-定义通用矩形结构
-为 Direct2D 渲染层和 WPF 图像源提供桥接类型
-```
-
-#### 主要类型
-
-```text
-ID3D11ImageSource
-Int32Rect
-```
-
----
 
 ### Direct2dCad.Client.Common
 
-客户端通用工具层。
+客户端通用模型与转换辅助层。
 
-#### 项目引用
+项目引用：
 
 ```text
 Direct2dCad.Db
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
-提供客户端通用特性
-提供枚举描述转换
-提供本地化描述读取能力
-定义用户级设置模型
+定义 CadUserSettings
+定义用户级渲染和交互设置
+提供 LocalizedDescriptionAttribute
+提供 EnumDescriptionTypeConverter
 区分用户偏好和 CadDocument 文档内容
 ```
 
-#### 主要类型
-
-```text
-LocalizedDescriptionAttribute
-EnumDescriptionTypeConverter
-CadUserSettings
-CadRenderingUserSettings
-CadInteractionUserSettings
-```
-
-#### 用户设置边界
+用户设置边界：
 
 ```text
 CadDocument / CadViewSettings 保存与图纸文件相关的内容：
@@ -762,220 +414,229 @@ CadDocument / CadViewSettings 保存与图纸文件相关的内容：
 CadUserSettings 保存与当前用户相关的偏好：
 选中颜色、正选 / 反选框颜色、grip 颜色、是否开启抗锯齿等不随图纸文件保存。
 
-用户设置模型放在 Direct2dCad.Client.Common.Settings；
-读写接口放在 Direct2dCad.ViewServices.Abstractions；
-WPF 的本地 JSON 实现放在 Direct2dCad.wpf.ViewServices。
+服务接口放在 Direct2dCad.ViewModels.Services。
+WPF 的本地 JSON 实现放在 Direct2dCad.Services.UserSettingsService。
 ```
-
----
 
 ### Direct2dCad.Lang
 
 多语言资源层。
 
-#### 项目引用
+项目引用：无。
 
-无项目引用。
-
-#### NuGet 依赖
+NuGet：
 
 ```text
 Antelcat.I18N.SourceGenerators
 ```
 
-#### 主要职责
+主要职责：
 
 ```text
-管理语言资源
-提供资源 Key
-提供 resx 资源访问类型
+管理 resx 语言资源
+提供 LangKeys
+提供 Strings 资源访问类型
+支持 WPF 中的 I18N XAML 绑定
 ```
 
-#### 主要类型
+### Direct2dCad.ViewModels
+
+ViewModel 层。
+
+项目引用：
 
 ```text
-LangKeys
-Strings
-Strings.Designer.cs
-.resx
+Direct2dCad.ChangeTracking
+Direct2dCad.Client.Common
+Direct2dCad.Editor
+Direct2dCad.IO
+Direct2dCad.Lang
+Direct2dCad.Rendering.Direct2D
+Direct2dCad.Rendering.Handles
+Direct2dCad.Rendering.Transient
 ```
 
----
+NuGet：
+
+```text
+CommunityToolkit.Mvvm
+Dirkster.AvalonDock.Core
+Dirkster.AvalonDock.Mvvm
+Dirkster.AvalonDock.Mvvm.CommunityToolkit
+Microsoft.Extensions.DependencyInjection.Abstractions
+```
+
+主要职责：
+
+```text
+定义 MainViewModel、EditorTabViewModel、CadDocumentViewModel
+管理绘制模式、选择、拖拽、复制粘贴、原点设置、用户设置同步
+维护 transient scene 和 handle scene
+调用 Direct2DImageRenderHost 渲染
+定义 IFileDialogService、IMessageBoxService、IUserSettingsService、ICultureSettingService、IThemeSettingService
+定义 ThemeChangedEvent
+```
 
 ### Direct2dCad.wpf.Control
 
-WPF 控件库。
+WPF 控件库项目，当前文件夹为 `Direct2dCad.Control`。
 
-#### 项目引用
+项目引用：无。
 
-无项目引用。
-
-#### 项目配置
+项目配置：
 
 ```text
 net10.0-windows
 UseWPF=true
 ```
 
-#### 当前内容
+### Direct2dCad.wpf
+
+WPF 应用层。
+
+项目引用：
 
 ```text
-AssemblyInfo.cs
+Direct2dCad.wpf.Control
+Direct2dCad.Editor
+Direct2dCad.ViewModels
 ```
 
----
-
-### Direct2dCad.winui
-
-WinUI 客户端项目。
-
-#### 项目引用
-
-无项目引用。
-
-#### NuGet 依赖
+NuGet：
 
 ```text
-Microsoft.WindowsAppSDK
-Microsoft.Windows.SDK.BuildTools
+Antelcat.I18N.WPF
+CommunityToolkit.Mvvm
+Dirkster.AvalonDock
+Dirkster.AvalonDock.DependencyInjection
+Dirkster.AvalonDock.Themes.Arc
+MahApps.Metro
+MaterialDesignThemes.MahApps
+MessagePipe
+Microsoft.Extensions.DependencyInjection
 ```
 
-#### 主要内容
+主要职责：
 
 ```text
-App.xaml.cs
-MainWindow.xaml.cs
+提供 WPF 启动入口
+提供 MainWindow 和 CadCanvas
+实现文件对话框、消息框、主题、文化切换、用户设置读写服务
+承载 D3D11ImageSource / D3DImage
+通过依赖注入装配 ViewModel 和 WPF 服务
 ```
 
-## 4. 实际项目引用表
+## 5. 实际项目引用表
 
-| 项目 | 当前引用 |
+| 项目 | 当前项目引用 |
 |---|---|
-| `Direct2dCad.Db` | 无项目引用 |
+| `Direct2dCad.Db` | 无 |
 | `Direct2dCad.ChangeTracking` | `Direct2dCad.Db` |
 | `Direct2dCad.Commands` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
+| `Direct2dCad.Editor` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Db`, `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.Rendering` |
 | `Direct2dCad.HitTesting` | `Direct2dCad.Db` |
 | `Direct2dCad.Indexing` | `Direct2dCad.Db` |
 | `Direct2dCad.IO` | `Direct2dCad.Db` |
 | `Direct2dCad.Rendering` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
 | `Direct2dCad.Rendering.Transient` | `Direct2dCad.Db` |
 | `Direct2dCad.Rendering.Handles` | `Direct2dCad.Db` |
-| `Direct2dCad.Rendering.Direct2D` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Common`, `Direct2dCad.Db`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient` |
-| `Direct2dCad.Editor` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Db`, `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.Rendering` |
-| `Direct2dCad.ViewModels` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.ViewServices.Abstractions`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient` |
-| `Direct2dCad.wpf.ViewServices` | `Direct2dCad.Client.Common`, `Direct2dCad.ViewServices.Abstractions` |
-| `Direct2dCad.wpf` | `Direct2dCad.Common`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.wpf.ViewServices` |
-| `Direct2dCad.Common` | 无项目引用 |
+| `Direct2dCad.Rendering.Direct2D` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient` |
 | `Direct2dCad.Client.Common` | `Direct2dCad.Db` |
-| `Direct2dCad.ViewServices.Abstractions` | `Direct2dCad.Client.Common` |
-| `Direct2dCad.Lang` | 无项目引用 |
-| `Direct2dCad.wpf.Control` | 无项目引用 |
-| `Direct2dCad.winui` | 无项目引用 |
+| `Direct2dCad.Lang` | 无 |
+| `Direct2dCad.ViewModels` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient` |
+| `Direct2dCad.wpf.Control` | 无 |
+| `Direct2dCad.wpf` | `Direct2dCad.wpf.Control`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels` |
 
-## 5. 依赖链路
+## 6. 主要依赖链路
 
 ### 主程序链路
 
 ```text
 Direct2dCad.wpf
-  ├─ Direct2dCad.ViewModels
+  ├─ Direct2dCad.wpf.Control
+  ├─ Direct2dCad.Editor
   │   ├─ Direct2dCad.ChangeTracking
   │   │   └─ Direct2dCad.Db
-  │   ├─ Direct2dCad.Editor
+  │   ├─ Direct2dCad.Commands
   │   │   ├─ Direct2dCad.ChangeTracking
-  │   │   │   └─ Direct2dCad.Db
-  │   │   ├─ Direct2dCad.Commands
-  │   │   │   ├─ Direct2dCad.ChangeTracking
-  │   │   │   └─ Direct2dCad.Db
-  │   │   ├─ Direct2dCad.HitTesting
-  │   │   │   └─ Direct2dCad.Db
-  │   │   ├─ Direct2dCad.Indexing
-  │   │   │   └─ Direct2dCad.Db
-  │   │   └─ Direct2dCad.Rendering
-  │   │       ├─ Direct2dCad.ChangeTracking
-  │   │       └─ Direct2dCad.Db
-  │   ├─ Direct2dCad.IO
   │   │   └─ Direct2dCad.Db
-  │   ├─ Direct2dCad.ViewServices.Abstractions
-  │   ├─ Direct2dCad.Lang
-  │   ├─ Direct2dCad.Client.Common
+  │   ├─ Direct2dCad.HitTesting
   │   │   └─ Direct2dCad.Db
-  │   ├─ Direct2dCad.Rendering.Handles
-  │   ├─ Direct2dCad.Rendering.Transient
-  │   └─ Direct2dCad.Rendering.Direct2D
+  │   ├─ Direct2dCad.Indexing
+  │   │   └─ Direct2dCad.Db
+  │   └─ Direct2dCad.Rendering
   │       ├─ Direct2dCad.ChangeTracking
-  │       ├─ Direct2dCad.Common
-  │       ├─ Direct2dCad.Db
-  │       ├─ Direct2dCad.Rendering
-  │       ├─ Direct2dCad.Rendering.Handles
-  │       └─ Direct2dCad.Rendering.Transient
-  ├─ Direct2dCad.Editor
-  ├─ Direct2dCad.Common
-  └─ Direct2dCad.wpf.ViewServices
+  │       └─ Direct2dCad.Db
+  └─ Direct2dCad.ViewModels
       ├─ Direct2dCad.Client.Common
       │   └─ Direct2dCad.Db
-      └─ Direct2dCad.ViewServices.Abstractions
-          └─ Direct2dCad.Client.Common
-              └─ Direct2dCad.Db
+      ├─ Direct2dCad.Editor
+      ├─ Direct2dCad.IO
+      │   └─ Direct2dCad.Db
+      ├─ Direct2dCad.Lang
+      ├─ Direct2dCad.Rendering.Direct2D
+      │   ├─ Direct2dCad.ChangeTracking
+      │   ├─ Direct2dCad.Db
+      │   ├─ Direct2dCad.Rendering
+      │   ├─ Direct2dCad.Rendering.Handles
+      │   └─ Direct2dCad.Rendering.Transient
+      ├─ Direct2dCad.Rendering.Handles
+      │   └─ Direct2dCad.Db
+      └─ Direct2dCad.Rendering.Transient
+          └─ Direct2dCad.Db
 ```
 
-### 数据模型相关链路
+### 服务链路
 
 ```text
-Direct2dCad.Db
-  ├─ 被 Direct2dCad.ChangeTracking 引用
-  ├─ 被 Direct2dCad.Commands 引用
-  ├─ 被 Direct2dCad.Editor 引用
-  ├─ 被 Direct2dCad.HitTesting 引用
-  ├─ 被 Direct2dCad.Indexing 引用
-  ├─ 被 Direct2dCad.IO 引用
-  ├─ 被 Direct2dCad.Rendering 引用
-  ├─ 被 Direct2dCad.Rendering.Handles 引用
-  ├─ 被 Direct2dCad.Rendering.Transient 引用
-  ├─ 被 Direct2dCad.Rendering.Direct2D 引用
-  └─ 被 Direct2dCad.Client.Common 引用
-```
+Direct2dCad.ViewModels.Services
+  ├─ ICultureSettingService
+  ├─ IFileDialogService
+  ├─ IMessageBoxService
+  ├─ IThemeSettingService
+  └─ IUserSettingsService
 
-### ViewServices 链路
-
-```text
-Direct2dCad.ViewModels
-  └─ Direct2dCad.ViewServices.Abstractions
-      └─ Direct2dCad.Client.Common
-
-Direct2dCad.wpf.ViewServices
-  ├─ Direct2dCad.Client.Common
-  └─ Direct2dCad.ViewServices.Abstractions
-      └─ Direct2dCad.Client.Common
-
-Direct2dCad.wpf
-  └─ Direct2dCad.wpf.ViewServices
+Direct2dCad.Services
+  ├─ CultureSettingService
+  ├─ FileDialogService
+  ├─ MessageBoxService
+  ├─ ThemeSettingService
+  └─ UserSettingsService
 ```
 
 ### 渲染链路
 
 ```text
-Direct2dCad.ViewModels
-  └─ Direct2dCad.Rendering.Direct2D
-      ├─ Direct2dCad.ChangeTracking
-      ├─ Direct2dCad.Rendering
-      ├─ Direct2dCad.Rendering.Handles
-      ├─ Direct2dCad.Rendering.Transient
-      ├─ Direct2dCad.Db
-      └─ Direct2dCad.Common
+CadDocumentViewModel
+  └─ Direct2DImageRenderHost
+      ├─ Direct2DSceneRender
+      ├─ Direct2DResourceCache
+      ├─ ImageSourceDirect2DResource
+      ├─ CadTransientScene
+      └─ CadHandleScene
 
 Direct2dCad.Rendering
-  ├─ Direct2dCad.ChangeTracking
-  └─ Direct2dCad.Db
+  ├─ CadViewport
+  ├─ CadRenderOptions
+  ├─ CadRenderInvalidation
+  ├─ ICadRenderer
+  └─ ICadGeometryResourceManager
 ```
 
-## 6. NuGet 依赖汇总
+## 7. NuGet 依赖汇总
 
 | 项目 | NuGet 依赖 |
 |---|---|
 | `Direct2dCad.Db` | `StronglyTypedId` |
+| `Direct2dCad.Editor` | `Microsoft.Extensions.DependencyInjection.Abstractions` |
 | `Direct2dCad.IO` | `MessagePack`, `Riok.Mapperly` |
 | `Direct2dCad.Rendering.Direct2D` | `Vortice.Direct2D1`, `Vortice.Direct3D11`, `Vortice.Direct3D9` |
-| `Direct2dCad.ViewModels` | `CommunityToolkit.Mvvm`, `Microsoft.Extensions.DependencyInjection.Abstractions` |
-| `Direct2dCad.wpf` | `CommunityToolkit.Mvvm`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection` , `Antelcat.I18N.WPF`, `MaterialDesignThemes.MahApps`, `MahApps.Metro`|
+| `Direct2dCad.ViewModels` | `CommunityToolkit.Mvvm`, `Dirkster.AvalonDock.Core`, `Dirkster.AvalonDock.Mvvm`, `Dirkster.AvalonDock.Mvvm.CommunityToolkit`, `Microsoft.Extensions.DependencyInjection.Abstractions` |
+| `Direct2dCad.wpf` | `Antelcat.I18N.WPF`, `CommunityToolkit.Mvvm`, `Dirkster.AvalonDock`, `Dirkster.AvalonDock.DependencyInjection`, `Dirkster.AvalonDock.Themes.Arc`, `MahApps.Metro`, `MaterialDesignThemes.MahApps`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection` |
 | `Direct2dCad.Lang` | `Antelcat.I18N.SourceGenerators` |
+
+## 8. 构建
+
+```powershell
+dotnet build .\Direct2dCad.slnx
+```

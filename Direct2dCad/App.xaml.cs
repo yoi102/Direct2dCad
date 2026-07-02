@@ -5,8 +5,8 @@ using AvalonDock.DependencyInjection;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
+using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Toolboxes;
-using Direct2dCad.ViewServices.Abstractions;
 using Direct2dCad.wpf;
 using Direct2dCad.wpf.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,8 +69,9 @@ public partial class App : System.Windows.Application
         });
 
         services.AddTransient<IFileDialogService, FileDialogService>();
-        services.AddTransient<IMessageBoxService, MessageBoxService>();
+        services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IUserSettingsService, UserSettingsService>();
+        services.AddSingleton<ISnackbarService, SnackbarService>();
 
         services.AddTransient<MainWindow>();
     }

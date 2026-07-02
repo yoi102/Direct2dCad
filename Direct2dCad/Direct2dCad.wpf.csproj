@@ -12,9 +12,9 @@
   <ItemGroup>
     <PackageReference Include="Antelcat.I18N.WPF" Version="2.0.0-preview-1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.0-preview.90" />
-    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.0-preview.90" />
-    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.0-preview.90" />
+    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.0-preview.92" />
+    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.0-preview.92" />
+    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.0-preview.92" />
     <PackageReference Include="MahApps.Metro" Version="3.0.0-rc0529" />
     <PackageReference Include="MaterialDesignThemes.MahApps" Version="5.3.3-ci1401" />
     <PackageReference Include="MessagePipe" Version="1.8.2" />

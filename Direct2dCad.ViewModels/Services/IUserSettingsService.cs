@@ -1,6 +1,6 @@
 using Direct2dCad.Client.Common.Settings;
 
-namespace Direct2dCad.ViewServices.Abstractions;
+namespace Direct2dCad.ViewModels.Services;
 
 public interface IUserSettingsService
 {
