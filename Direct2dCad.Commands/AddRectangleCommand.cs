@@ -11,6 +11,9 @@ public sealed class AddRectangleCommand : ICadCommand
     private readonly StyleId? _graphicStyleId;
     private readonly StyleId? _fillStyleId;
     private readonly string _name;
+    private readonly CadLineWeight? _lineWeight;
+    private readonly int _zIndex;
+    private readonly bool _isVisible;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Rectangle";
@@ -21,13 +24,19 @@ public sealed class AddRectangleCommand : ICadCommand
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
         _bounds = bounds;
         _layerId = layerId;
         _graphicStyleId = graphicStyleId;
         _fillStyleId = fillStyleId;
         _name = name;
+        _lineWeight = lineWeight;
+        _zIndex = zIndex;
+        _isVisible = isVisible;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -37,12 +46,28 @@ public sealed class AddRectangleCommand : ICadCommand
         if (_createdEntityId is not null && document.TryGetEntity(_createdEntityId.Value, out var existing) && existing is not null)
         {
             existing.Restore();
-            return CadDocumentChangeSet.ForEntity(existing.Id, CadEntityChangeKind.Created | CadEntityChangeKind.Visibility);
+            return CadDocumentChangeSet.ForEntity(
+                existing.Id,
+                CadEntityChangeKind.Created |
+                CadEntityChangeKind.Geometry |
+                CadEntityChangeKind.Appearance |
+                CadEntityChangeKind.Visibility |
+                CadEntityChangeKind.DrawOrder);
         }
 
         var rectangle = document.AddRectangle(_bounds, _layerId, _graphicStyleId, _fillStyleId, _name);
+        rectangle.SetLineWeight(_lineWeight);
+        rectangle.SetZIndex(_zIndex);
+        rectangle.SetVisible(_isVisible);
+
         _createdEntityId = rectangle.Id;
-        return CadDocumentChangeSet.ForEntity(rectangle.Id, CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance);
+        return CadDocumentChangeSet.ForEntity(
+            rectangle.Id,
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.DrawOrder);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)

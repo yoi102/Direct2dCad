@@ -1,0 +1,370 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles;
+using Direct2dCad.Db.Geometry;
+
+namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
+
+public partial class EllipsePropertyViewModel : EntityPropertyViewModel
+{
+    private const double Epsilon = 1e-9;
+    private readonly CadDocumentViewModel _documentViewModel;
+    private bool _isRefreshing;
+
+    public EllipsePropertyViewModel(CadDocumentViewModel documentViewModel, EntityId entityId)
+    {
+        _documentViewModel = documentViewModel ?? throw new ArgumentNullException(nameof(documentViewModel));
+        EntityId = entityId;
+        RefreshFromEntity();
+    }
+
+    public EntityId EntityId { get; }
+    public string EntityIdText => EntityId.ToString();
+    public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
+    public double DiameterX => RadiusX * 2.0;
+    public double DiameterY => RadiusY * 2.0;
+
+    [ObservableProperty]
+    public partial double CenterX { get; set; }
+
+    [ObservableProperty]
+    public partial double CenterY { get; set; }
+
+    [ObservableProperty]
+    public partial double RadiusX { get; set; }
+
+    [ObservableProperty]
+    public partial double RadiusY { get; set; }
+
+    [ObservableProperty]
+    public partial FillStyleOption? SelectedFillStyleOption { get; set; }
+
+    [ObservableProperty]
+    public partial CadColor StrokeColor { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial int ZIndex { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsVisible { get; set; }
+
+    public void RefreshFromEntity()
+    {
+        if (!TryGetEllipse(out var ellipse))
+            return;
+
+        _isRefreshing = true;
+        try
+        {
+            CenterX = ellipse.Center.X;
+            CenterY = ellipse.Center.Y;
+            RadiusX = ellipse.RadiusX;
+            RadiusY = ellipse.RadiusY;
+            RefreshFillStyleOptions(ellipse.FillStyleId);
+            StrokeColor = ResolveStrokeColor(ellipse);
+            UseByLayerLineWeight = ellipse.LineWeight is null || ellipse.LineWeight.Value.IsByLayer;
+            LineWeight = ResolveLineWeight(ellipse).Value;
+            ZIndex = ellipse.ZIndex;
+            IsVisible = ellipse.IsVisible;
+        }
+        finally
+        {
+            _isRefreshing = false;
+        }
+
+        OnPropertyChanged(nameof(DiameterX));
+        OnPropertyChanged(nameof(DiameterY));
+    }
+
+    partial void OnCenterXChanged(double value) => CommitGeometry();
+
+    partial void OnCenterYChanged(double value) => CommitGeometry();
+
+    partial void OnRadiusXChanged(double value)
+    {
+        OnPropertyChanged(nameof(DiameterX));
+        CommitGeometry();
+    }
+
+    partial void OnRadiusYChanged(double value)
+    {
+        OnPropertyChanged(nameof(DiameterY));
+        CommitGeometry();
+    }
+
+    partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
+    {
+        if (_isRefreshing || !TryGetEllipse(out var ellipse))
+            return;
+
+        var fillStyleId = value?.Id;
+        if (Nullable.Equals(ellipse.FillStyleId, fillStyleId))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityFillStyle(EntityId, fillStyleId);
+    }
+
+    partial void OnStrokeColorChanged(CadColor value)
+    {
+        if (_isRefreshing || !TryGetEllipse(out var ellipse) || ResolveStrokeColor(ellipse) == value)
+            return;
+
+        _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        if (_isRefreshing || !TryGetEllipse(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityLineWeight(
+            EntityId,
+            value ? CadLineWeight.ByLayer : new CadLineWeight(ResolveLineWeightValue(LineWeight)));
+    }
+
+    partial void OnLineWeightChanged(double value)
+    {
+        if (_isRefreshing || UseByLayerLineWeight || !TryGetEllipse(out _))
+            return;
+
+        if (!IsFinitePositive(value))
+        {
+            RefreshFromEntity();
+            return;
+        }
+
+        _documentViewModel.CadEditor.SetEntityLineWeight(EntityId, new CadLineWeight(value));
+    }
+
+    partial void OnZIndexChanged(int value)
+    {
+        if (_isRefreshing || !TryGetEllipse(out var ellipse) || ellipse.ZIndex == value)
+            return;
+
+        _documentViewModel.CadEditor.SetEntityZIndex(EntityId, value);
+    }
+
+    partial void OnIsVisibleChanged(bool value)
+    {
+        if (_isRefreshing || !TryGetEllipse(out var ellipse) || ellipse.IsVisible == value)
+            return;
+
+        _documentViewModel.CadEditor.SetEntityVisibility(EntityId, value);
+    }
+
+    private void CommitGeometry()
+    {
+        if (_isRefreshing || !TryGetEllipse(out var ellipse))
+            return;
+
+        if (!TryCreateGeometry(out var center, out var radiusX, out var radiusY))
+        {
+            RefreshFromEntity();
+            return;
+        }
+
+        if (center.DistanceSquaredTo(ellipse.Center) <= Epsilon &&
+            Math.Abs(radiusX - ellipse.RadiusX) <= Epsilon &&
+            Math.Abs(radiusY - ellipse.RadiusY) <= Epsilon)
+        {
+            return;
+        }
+
+        _documentViewModel.CadEditor.SetEllipseGeometry(EntityId, center, radiusX, radiusY);
+    }
+
+    private bool TryCreateGeometry(out CadPointD center, out double radiusX, out double radiusY)
+    {
+        center = new CadPointD(CenterX, CenterY);
+        radiusX = RadiusX;
+        radiusY = RadiusY;
+
+        return IsFinite(CenterX) &&
+               IsFinite(CenterY) &&
+               IsFinitePositive(radiusX) &&
+               IsFinitePositive(radiusY);
+    }
+
+    private bool TryGetEllipse(out CadEllipse ellipse)
+    {
+        if (_documentViewModel.CadEditor.Document.TryGetEntity(EntityId, out var entity) &&
+            entity is CadEllipse currentEllipse &&
+            !currentEllipse.IsErased)
+        {
+            ellipse = currentEllipse;
+            return true;
+        }
+
+        ellipse = null!;
+        return false;
+    }
+
+    private void RefreshFillStyleOptions(StyleId? selectedStyleId)
+    {
+        FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
+        OnPropertyChanged(nameof(FillStyleOptions));
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+    }
+
+    private CadColor ResolveStrokeColor(CadEllipse ellipse)
+    {
+        var document = _documentViewModel.CadEditor.Document;
+        var layer = document.GetLayer(ellipse.LayerId);
+        var styleId = ellipse.GraphicStyleId ?? layer.DefaultGraphicStyleId;
+
+        if (styleId is { } graphicStyleId &&
+            document.TryGetStyle(graphicStyleId, out var style) &&
+            style is CadGraphicStyle graphic)
+        {
+            return graphic.StrokeColor;
+        }
+
+        return layer.Color;
+    }
+
+    private CadLineWeight ResolveLineWeight(CadEllipse ellipse)
+    {
+        var document = _documentViewModel.CadEditor.Document;
+        var layer = document.GetLayer(ellipse.LayerId);
+        var styleId = ellipse.GraphicStyleId ?? layer.DefaultGraphicStyleId;
+        var styleWeight = styleId is { } graphicStyleId &&
+                          document.TryGetStyle(graphicStyleId, out var style) &&
+                          style is CadGraphicStyle graphic
+            ? graphic.LineWeight
+            : (CadLineWeight?)null;
+
+        var weight = ellipse.LineWeight is { IsByLayer: false }
+            ? ellipse.LineWeight.Value
+            : styleWeight is { IsByLayer: false }
+            ? styleWeight.Value
+            : layer.LineWeight;
+
+        return weight.IsByLayer || weight.Value <= 0
+            ? CadLineWeight.Default
+            : weight;
+    }
+
+    private static double ResolveLineWeightValue(double value)
+    {
+        return IsFinitePositive(value) ? value : CadLineWeight.Default.Value;
+    }
+
+    private static bool IsFinitePositive(double value)
+    {
+        return value > 0 && IsFinite(value);
+    }
+
+    private static bool IsFinite(double value)
+    {
+        return !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+}
+
+public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
+{
+    private readonly CadDocumentViewModel _documentViewModel;
+    private bool _isRefreshing;
+
+    public TransientEllipsePropertyViewModel(CadDocumentViewModel documentViewModel)
+    {
+        _documentViewModel = documentViewModel ?? throw new ArgumentNullException(nameof(documentViewModel));
+        RefreshFromDocument();
+    }
+
+    public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+    public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
+
+    [ObservableProperty]
+    public partial FillStyleOption? SelectedFillStyleOption { get; set; }
+
+    [ObservableProperty]
+    public partial CadColor StrokeColor { get; set; }
+
+    [ObservableProperty]
+    public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial int ZIndex { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsVisible { get; set; }
+
+    public void RefreshFromDocument()
+    {
+        _isRefreshing = true;
+        try
+        {
+            RefreshFillStyleOptions(_documentViewModel.DrawingEllipseFillStyleId);
+            StrokeColor = _documentViewModel.DrawingEllipseStrokeColor;
+            LineWeight = _documentViewModel.DrawingEllipseLineWeight;
+            ZIndex = _documentViewModel.DrawingEllipseZIndex;
+            IsVisible = _documentViewModel.DrawingEllipseIsVisible;
+        }
+        finally
+        {
+            _isRefreshing = false;
+        }
+    }
+
+    partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingEllipseFillStyleId = value?.Id;
+    }
+
+    partial void OnStrokeColorChanged(CadColor value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingEllipseStrokeColor = value;
+    }
+
+    partial void OnLineWeightChanged(double value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingEllipseLineWeight = IsFinitePositive(value)
+            ? value
+            : CadLineWeight.Default.Value;
+    }
+
+    partial void OnZIndexChanged(int value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingEllipseZIndex = value;
+    }
+
+    partial void OnIsVisibleChanged(bool value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingEllipseIsVisible = value;
+    }
+
+    private void RefreshFillStyleOptions(StyleId? selectedStyleId)
+    {
+        FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
+        OnPropertyChanged(nameof(FillStyleOptions));
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+    }
+
+    private static bool IsFinitePositive(double value)
+    {
+        return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+}

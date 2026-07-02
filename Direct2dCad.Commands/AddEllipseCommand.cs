@@ -13,6 +13,9 @@ public sealed class AddEllipseCommand : ICadCommand
     private readonly StyleId? _graphicStyleId;
     private readonly StyleId? _fillStyleId;
     private readonly string _name;
+    private readonly CadLineWeight? _lineWeight;
+    private readonly int _zIndex;
+    private readonly bool _isVisible;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Ellipse";
@@ -25,7 +28,10 @@ public sealed class AddEllipseCommand : ICadCommand
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
         _center = center;
         _radiusX = radiusX;
@@ -34,6 +40,9 @@ public sealed class AddEllipseCommand : ICadCommand
         _graphicStyleId = graphicStyleId;
         _fillStyleId = fillStyleId;
         _name = name;
+        _lineWeight = lineWeight;
+        _zIndex = zIndex;
+        _isVisible = isVisible;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -43,12 +52,28 @@ public sealed class AddEllipseCommand : ICadCommand
         if (_createdEntityId is not null && document.TryGetEntity(_createdEntityId.Value, out var existing) && existing is not null)
         {
             existing.Restore();
-            return CadDocumentChangeSet.ForEntity(existing.Id, CadEntityChangeKind.Created | CadEntityChangeKind.Visibility);
+            return CadDocumentChangeSet.ForEntity(
+                existing.Id,
+                CadEntityChangeKind.Created |
+                CadEntityChangeKind.Geometry |
+                CadEntityChangeKind.Appearance |
+                CadEntityChangeKind.Visibility |
+                CadEntityChangeKind.DrawOrder);
         }
 
         var ellipse = document.AddEllipse(_center, _radiusX, _radiusY, _layerId, _graphicStyleId, _fillStyleId, _name);
+        ellipse.SetLineWeight(_lineWeight);
+        ellipse.SetZIndex(_zIndex);
+        ellipse.SetVisible(_isVisible);
+
         _createdEntityId = ellipse.Id;
-        return CadDocumentChangeSet.ForEntity(ellipse.Id, CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance);
+        return CadDocumentChangeSet.ForEntity(
+            ellipse.Id,
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.DrawOrder);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)

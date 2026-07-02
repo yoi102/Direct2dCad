@@ -104,6 +104,36 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
             return;
         }
 
+        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Ellipse)
+        {
+            if (Entity is TransientEllipsePropertyViewModel transient &&
+                ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
+            {
+                transient.RefreshFromDocument();
+            }
+            else
+            {
+                Entity = new TransientEllipsePropertyViewModel(_documentViewModel);
+            }
+
+            return;
+        }
+
+        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Rectangle)
+        {
+            if (Entity is TransientRectanglePropertyViewModel transient &&
+                ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
+            {
+                transient.RefreshFromDocument();
+            }
+            else
+            {
+                Entity = new TransientRectanglePropertyViewModel(_documentViewModel);
+            }
+
+            return;
+        }
+
         if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Polyline)
         {
             if (Entity is TransientPolylinePropertyViewModel transient &&
@@ -114,6 +144,21 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
             else
             {
                 Entity = new TransientPolylinePropertyViewModel(_documentViewModel);
+            }
+
+            return;
+        }
+
+        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Polygon)
+        {
+            if (Entity is TransientPolygonPropertyViewModel transient &&
+                ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
+            {
+                transient.RefreshFromDocument();
+            }
+            else
+            {
+                Entity = new TransientPolygonPropertyViewModel(_documentViewModel);
             }
 
             return;
@@ -199,6 +244,42 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
             else
             {
                 Entity = new CirclePropertyViewModel(_documentViewModel, circle.Id);
+            }
+
+            return;
+        }
+
+        if (selectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+            entity is CadEllipse ellipse &&
+            !ellipse.IsErased)
+        {
+            if (Entity is EllipsePropertyViewModel ellipseViewModel &&
+                ellipseViewModel.EntityId.Equals(ellipse.Id))
+            {
+                ellipseViewModel.RefreshFromEntity();
+            }
+            else
+            {
+                Entity = new EllipsePropertyViewModel(_documentViewModel, ellipse.Id);
+            }
+
+            return;
+        }
+
+        if (selectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+            entity is CadRectangle rectangle &&
+            !rectangle.IsErased)
+        {
+            if (Entity is RectanglePropertyViewModel rectangleViewModel &&
+                rectangleViewModel.EntityId.Equals(rectangle.Id))
+            {
+                rectangleViewModel.RefreshFromEntity();
+            }
+            else
+            {
+                Entity = new RectanglePropertyViewModel(_documentViewModel, rectangle.Id);
             }
 
             return;

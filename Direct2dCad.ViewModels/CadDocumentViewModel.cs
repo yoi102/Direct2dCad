@@ -85,6 +85,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public partial StyleId? DrawingPolylineFillStyleId { get; set; }
 
     [ObservableProperty]
+    public partial CadColor DrawingPolygonStrokeColor { get; set; } = CadColor.White;
+
+    [ObservableProperty]
+    public partial double DrawingPolygonLineWeight { get; set; } = CadLineWeight.Default.Value;
+
+    [ObservableProperty]
+    public partial int DrawingPolygonZIndex { get; set; }
+
+    [ObservableProperty]
+    public partial bool DrawingPolygonIsVisible { get; set; } = true;
+
+    [ObservableProperty]
+    public partial StyleId? DrawingPolygonFillStyleId { get; set; }
+
+    [ObservableProperty]
     public partial CadColor DrawingSplineStrokeColor { get; set; } = CadColor.White;
 
     [ObservableProperty]
@@ -113,6 +128,36 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial StyleId? DrawingCircleFillStyleId { get; set; }
+
+    [ObservableProperty]
+    public partial CadColor DrawingEllipseStrokeColor { get; set; } = CadColor.White;
+
+    [ObservableProperty]
+    public partial double DrawingEllipseLineWeight { get; set; } = CadLineWeight.Default.Value;
+
+    [ObservableProperty]
+    public partial int DrawingEllipseZIndex { get; set; }
+
+    [ObservableProperty]
+    public partial bool DrawingEllipseIsVisible { get; set; } = true;
+
+    [ObservableProperty]
+    public partial StyleId? DrawingEllipseFillStyleId { get; set; }
+
+    [ObservableProperty]
+    public partial CadColor DrawingRectangleStrokeColor { get; set; } = CadColor.White;
+
+    [ObservableProperty]
+    public partial double DrawingRectangleLineWeight { get; set; } = CadLineWeight.Default.Value;
+
+    [ObservableProperty]
+    public partial int DrawingRectangleZIndex { get; set; }
+
+    [ObservableProperty]
+    public partial bool DrawingRectangleIsVisible { get; set; } = true;
+
+    [ObservableProperty]
+    public partial StyleId? DrawingRectangleFillStyleId { get; set; }
 
     [ObservableProperty]
     public partial string DrawingText { get; set; } = "Text";
@@ -308,6 +353,37 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         RequestRender();
     }
 
+    partial void OnDrawingPolygonStrokeColorChanged(CadColor value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingPolygonLineWeightChanged(double value)
+    {
+        RaiseInteractionStateChanged();
+        if (IsFinitePositive(value))
+            RequestRender();
+    }
+
+    partial void OnDrawingPolygonZIndexChanged(int value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingPolygonIsVisibleChanged(bool value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingPolygonFillStyleIdChanged(StyleId? value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
     partial void OnDrawingSplineStrokeColorChanged(CadColor value)
     {
         RaiseInteractionStateChanged();
@@ -365,6 +441,68 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     }
 
     partial void OnDrawingCircleFillStyleIdChanged(StyleId? value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingEllipseStrokeColorChanged(CadColor value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingEllipseLineWeightChanged(double value)
+    {
+        RaiseInteractionStateChanged();
+        if (IsFinitePositive(value))
+            RequestRender();
+    }
+
+    partial void OnDrawingEllipseZIndexChanged(int value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingEllipseIsVisibleChanged(bool value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingEllipseFillStyleIdChanged(StyleId? value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingRectangleStrokeColorChanged(CadColor value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingRectangleLineWeightChanged(double value)
+    {
+        RaiseInteractionStateChanged();
+        if (IsFinitePositive(value))
+            RequestRender();
+    }
+
+    partial void OnDrawingRectangleZIndexChanged(int value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingRectangleIsVisibleChanged(bool value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingRectangleFillStyleIdChanged(StyleId? value)
     {
         RaiseInteractionStateChanged();
         RequestRender();
@@ -649,8 +787,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 return CadCanvasInteractionResult.HandledOnly;
 
             case CadCanvasToolMode.Polygon when _pendingPolygonPoints.Count >= 3:
-                CadEditor.AddPolygon(_pendingPolygonPoints);
-                _pendingPolygonPoints.Clear();
+                CompletePolygon();
                 RequestRender();
                 return CadCanvasInteractionResult.HandledOnly;
 
@@ -772,7 +909,17 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                         world.X,
                         world.Y);
                     if (TryCreateEllipseGeometry(bounds, out var center, out var radiusX, out var radiusY))
-                        CadEditor.AddEllipse(center, radiusX, radiusY);
+                    {
+                        CadEditor.AddEllipse(
+                            center,
+                            radiusX,
+                            radiusY,
+                            graphicStyleId: ResolveDrawingEllipseGraphicStyleId(),
+                            fillStyleId: ResolveDrawingEllipseFillStyleId(),
+                            lineWeight: ResolveDrawingEllipseLineWeight(),
+                            zIndex: DrawingEllipseZIndex,
+                            isVisible: DrawingEllipseIsVisible);
+                    }
 
                     _pendingWorldPoint = null;
                 }
@@ -827,7 +974,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                         world.X,
                         world.Y);
                     if (IsValidRectangleBounds(bounds))
-                        CadEditor.AddRectangle(bounds);
+                    {
+                        CadEditor.AddRectangle(
+                            bounds,
+                            graphicStyleId: ResolveDrawingRectangleGraphicStyleId(),
+                            fillStyleId: ResolveDrawingRectangleFillStyleId(),
+                            lineWeight: ResolveDrawingRectangleLineWeight(),
+                            zIndex: DrawingRectangleZIndex,
+                            isVisible: DrawingRectangleIsVisible);
+                    }
 
                     _pendingWorldPoint = null;
                 }
@@ -1913,6 +2068,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         };
     }
 
+    private CadTransientStyle CreateDrawingPolygonTransientStyle()
+    {
+        return CadTransientStyle.Construction with
+        {
+            StrokeColor = DrawingPolygonStrokeColor,
+            StrokeWidth = ResolveDrawingPolygonLineWeight().Value
+        };
+    }
+
     private StyleId? ResolveDrawingPolylineGraphicStyleId()
     {
         if (DrawingPolylineStrokeColor == ResolveDefaultPolylineStrokeColor())
@@ -1947,6 +2111,49 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     }
 
     private CadColor ResolveDefaultPolylineStrokeColor()
+    {
+        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
+            return CadColor.White;
+
+        if (layer.DefaultGraphicStyleId is { } styleId &&
+            CadEditor.Document.TryGetStyle(styleId, out var style) &&
+            style is CadGraphicStyle graphic)
+        {
+            return graphic.StrokeColor;
+        }
+
+        return layer.Color;
+    }
+
+    private StyleId? ResolveDrawingPolygonGraphicStyleId()
+    {
+        if (DrawingPolygonStrokeColor == ResolveDefaultPolygonStrokeColor())
+            return null;
+
+        return CadEditor.Document.CreateGraphicStyle(
+            $"Polygon stroke {DrawingPolygonStrokeColor.A:X2}{DrawingPolygonStrokeColor.R:X2}{DrawingPolygonStrokeColor.G:X2}{DrawingPolygonStrokeColor.B:X2}",
+            DrawingPolygonStrokeColor,
+            CadLineWeight.Default,
+            LineTypeId.Continuous);
+    }
+
+    private StyleId? ResolveDrawingPolygonFillStyleId()
+    {
+        return DrawingPolygonFillStyleId is { } styleId &&
+               CadEditor.Document.TryGetStyle(styleId, out var style) &&
+               style is CadFillStyle
+            ? styleId
+            : null;
+    }
+
+    private CadLineWeight ResolveDrawingPolygonLineWeight()
+    {
+        return IsFinitePositive(DrawingPolygonLineWeight)
+            ? new CadLineWeight(DrawingPolygonLineWeight)
+            : CadLineWeight.Default;
+    }
+
+    private CadColor ResolveDefaultPolygonStrokeColor()
     {
         if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
             return CadColor.White;
@@ -2027,6 +2234,24 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         };
     }
 
+    private CadTransientStyle CreateDrawingEllipseTransientStyle()
+    {
+        return CadTransientStyle.Construction with
+        {
+            StrokeColor = DrawingEllipseStrokeColor,
+            StrokeWidth = ResolveDrawingEllipseLineWeight().Value
+        };
+    }
+
+    private CadTransientStyle CreateDrawingRectangleTransientStyle()
+    {
+        return CadTransientStyle.Construction with
+        {
+            StrokeColor = DrawingRectangleStrokeColor,
+            StrokeWidth = ResolveDrawingRectangleLineWeight().Value
+        };
+    }
+
     private StyleId? ResolveDrawingCircleGraphicStyleId()
     {
         if (DrawingCircleStrokeColor == ResolveDefaultCircleStrokeColor())
@@ -2056,6 +2281,92 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     }
 
     private CadColor ResolveDefaultCircleStrokeColor()
+    {
+        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
+            return CadColor.White;
+
+        if (layer.DefaultGraphicStyleId is { } styleId &&
+            CadEditor.Document.TryGetStyle(styleId, out var style) &&
+            style is CadGraphicStyle graphic)
+        {
+            return graphic.StrokeColor;
+        }
+
+        return layer.Color;
+    }
+
+    private StyleId? ResolveDrawingEllipseGraphicStyleId()
+    {
+        if (DrawingEllipseStrokeColor == ResolveDefaultEllipseStrokeColor())
+            return null;
+
+        return CadEditor.Document.CreateGraphicStyle(
+            $"Ellipse stroke {DrawingEllipseStrokeColor.A:X2}{DrawingEllipseStrokeColor.R:X2}{DrawingEllipseStrokeColor.G:X2}{DrawingEllipseStrokeColor.B:X2}",
+            DrawingEllipseStrokeColor,
+            CadLineWeight.Default,
+            LineTypeId.Continuous);
+    }
+
+    private StyleId? ResolveDrawingEllipseFillStyleId()
+    {
+        return DrawingEllipseFillStyleId is { } styleId &&
+               CadEditor.Document.TryGetStyle(styleId, out var style) &&
+               style is CadFillStyle
+            ? styleId
+            : null;
+    }
+
+    private CadLineWeight ResolveDrawingEllipseLineWeight()
+    {
+        return IsFinitePositive(DrawingEllipseLineWeight)
+            ? new CadLineWeight(DrawingEllipseLineWeight)
+            : CadLineWeight.Default;
+    }
+
+    private CadColor ResolveDefaultEllipseStrokeColor()
+    {
+        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
+            return CadColor.White;
+
+        if (layer.DefaultGraphicStyleId is { } styleId &&
+            CadEditor.Document.TryGetStyle(styleId, out var style) &&
+            style is CadGraphicStyle graphic)
+        {
+            return graphic.StrokeColor;
+        }
+
+        return layer.Color;
+    }
+
+    private StyleId? ResolveDrawingRectangleGraphicStyleId()
+    {
+        if (DrawingRectangleStrokeColor == ResolveDefaultRectangleStrokeColor())
+            return null;
+
+        return CadEditor.Document.CreateGraphicStyle(
+            $"Rectangle stroke {DrawingRectangleStrokeColor.A:X2}{DrawingRectangleStrokeColor.R:X2}{DrawingRectangleStrokeColor.G:X2}{DrawingRectangleStrokeColor.B:X2}",
+            DrawingRectangleStrokeColor,
+            CadLineWeight.Default,
+            LineTypeId.Continuous);
+    }
+
+    private StyleId? ResolveDrawingRectangleFillStyleId()
+    {
+        return DrawingRectangleFillStyleId is { } styleId &&
+               CadEditor.Document.TryGetStyle(styleId, out var style) &&
+               style is CadFillStyle
+            ? styleId
+            : null;
+    }
+
+    private CadLineWeight ResolveDrawingRectangleLineWeight()
+    {
+        return IsFinitePositive(DrawingRectangleLineWeight)
+            ? new CadLineWeight(DrawingRectangleLineWeight)
+            : CadLineWeight.Default;
+    }
+
+    private CadColor ResolveDefaultRectangleStrokeColor()
     {
         if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
             return CadColor.White;
@@ -2168,7 +2479,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             case CadCanvasToolMode.Ellipse when _pendingWorldPoint is { } firstCorner:
                 var ellipseBounds = CadRectD.FromLTRB(firstCorner.X, firstCorner.Y, mouseWorld.X, mouseWorld.Y);
                 if (TryCreateEllipseGeometry(ellipseBounds, out var ellipseCenter, out var radiusX, out var radiusY))
-                    items.Add(new CadTransientEllipse(ellipseCenter, radiusX, radiusY, CadTransientStyle.Construction));
+                    items.Add(new CadTransientEllipse(ellipseCenter, radiusX, radiusY, CreateDrawingEllipseTransientStyle()));
                 break;
 
             case CadCanvasToolMode.Arc when _pendingWorldPoint is { } arcCenter && _pendingArcStartPoint is null:
@@ -2200,7 +2511,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             case CadCanvasToolMode.Rectangle when _pendingWorldPoint is { } firstCorner:
                 var bounds = CadRectD.FromLTRB(firstCorner.X, firstCorner.Y, mouseWorld.X, mouseWorld.Y);
                 if (IsValidRectangleBounds(bounds))
-                    items.Add(new CadTransientRectangle(bounds, CadTransientStyle.Construction));
+                    items.Add(new CadTransientRectangle(bounds, CreateDrawingRectangleTransientStyle()));
                 break;
 
             case CadCanvasToolMode.Polyline:
@@ -2386,8 +2697,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         if (_pendingPolygonPoints.Count >= 3 && IsPolygonClosePoint(world))
         {
-            CadEditor.AddPolygon(_pendingPolygonPoints);
-            _pendingPolygonPoints.Clear();
+            CompletePolygon();
             return;
         }
 
@@ -2403,12 +2713,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (_pendingPolygonPoints.Count == 0)
             return;
 
+        var style = CreateDrawingPolygonTransientStyle();
         if (_pendingPolygonPoints.Count >= 3 && IsPolygonClosePoint(mouseWorld))
         {
             items.Add(new CadTransientPolyline(
                 _pendingPolygonPoints.ToArray(),
                 Closed: true,
-                CadTransientStyle.Construction));
+                style));
             return;
         }
 
@@ -2417,10 +2728,25 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             .ToArray();
 
         if (previewPoints.Length >= 2)
-            items.Add(new CadTransientPolyline(previewPoints, Closed: false, CadTransientStyle.Construction));
+            items.Add(new CadTransientPolyline(previewPoints, Closed: false, style));
 
         if (_pendingPolygonPoints.Count >= 2)
-            items.Add(new CadTransientLine(mouseWorld, _pendingPolygonPoints[0], CadTransientStyle.Construction));
+            items.Add(new CadTransientLine(mouseWorld, _pendingPolygonPoints[0], style));
+    }
+
+    private void CompletePolygon()
+    {
+        if (_pendingPolygonPoints.Count < 3)
+            return;
+
+        CadEditor.AddPolygon(
+            _pendingPolygonPoints,
+            graphicStyleId: ResolveDrawingPolygonGraphicStyleId(),
+            fillStyleId: ResolveDrawingPolygonFillStyleId(),
+            lineWeight: ResolveDrawingPolygonLineWeight(),
+            zIndex: DrawingPolygonZIndex,
+            isVisible: DrawingPolygonIsVisible);
+        _pendingPolygonPoints.Clear();
     }
 
     private bool IsPolygonClosePoint(CadPointD world)

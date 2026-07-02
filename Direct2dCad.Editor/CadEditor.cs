@@ -175,9 +175,22 @@ public sealed class CadEditor
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
-        var command = new AddEllipseCommand(center, radiusX, radiusY, layerId, graphicStyleId, fillStyleId, name);
+        var command = new AddEllipseCommand(
+            center,
+            radiusX,
+            radiusY,
+            layerId,
+            graphicStyleId,
+            fillStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -214,9 +227,20 @@ public sealed class CadEditor
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
-        var command = new AddRectangleCommand(bounds, layerId, graphicStyleId, fillStyleId, name);
+        var command = new AddRectangleCommand(
+            bounds,
+            layerId,
+            graphicStyleId,
+            fillStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -226,9 +250,20 @@ public sealed class CadEditor
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
-        var command = new AddPolygonCommand(points, layerId, graphicStyleId, fillStyleId, name);
+        var command = new AddPolygonCommand(
+            points,
+            layerId,
+            graphicStyleId,
+            fillStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }

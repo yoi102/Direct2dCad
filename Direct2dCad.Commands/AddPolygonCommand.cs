@@ -11,6 +11,9 @@ public sealed class AddPolygonCommand : ICadCommand
     private readonly StyleId? _graphicStyleId;
     private readonly StyleId? _fillStyleId;
     private readonly string _name;
+    private readonly CadLineWeight? _lineWeight;
+    private readonly int _zIndex;
+    private readonly bool _isVisible;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Polygon";
@@ -21,7 +24,10 @@ public sealed class AddPolygonCommand : ICadCommand
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
         ArgumentNullException.ThrowIfNull(points);
 
@@ -33,6 +39,9 @@ public sealed class AddPolygonCommand : ICadCommand
         _graphicStyleId = graphicStyleId;
         _fillStyleId = fillStyleId;
         _name = name;
+        _lineWeight = lineWeight;
+        _zIndex = zIndex;
+        _isVisible = isVisible;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -46,7 +55,11 @@ public sealed class AddPolygonCommand : ICadCommand
             existing.Restore();
             return CadDocumentChangeSet.ForEntity(
                 existing.Id,
-                CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility);
+                CadEntityChangeKind.Created |
+                CadEntityChangeKind.Geometry |
+                CadEntityChangeKind.Appearance |
+                CadEntityChangeKind.Visibility |
+                CadEntityChangeKind.DrawOrder);
         }
 
         var polygon = document.AddPolyline(
@@ -56,11 +69,19 @@ public sealed class AddPolygonCommand : ICadCommand
             _graphicStyleId,
             _fillStyleId,
             _name);
+        polygon.SetLineWeight(_lineWeight);
+        polygon.SetZIndex(_zIndex);
+        polygon.SetVisible(_isVisible);
+
         _createdEntityId = polygon.Id;
 
         return CadDocumentChangeSet.ForEntity(
             polygon.Id,
-            CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance);
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.DrawOrder);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)

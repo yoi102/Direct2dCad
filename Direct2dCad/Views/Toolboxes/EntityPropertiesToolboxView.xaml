@@ -32,11 +32,26 @@
             <DataTemplate DataType="{x:Type vm_ep:TransientCirclePropertyViewModel}">
                 <v_ep:TransientCirclePropertyView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:EllipsePropertyViewModel}">
+                <v_ep:EllipsePropertyView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:TransientEllipsePropertyViewModel}">
+                <v_ep:TransientEllipsePropertyView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:RectanglePropertyViewModel}">
+                <v_ep:RectanglePropertyView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:TransientRectanglePropertyViewModel}">
+                <v_ep:TransientRectanglePropertyView />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:PolylinePropertyViewModel}">
                 <v_ep:PolylinePropertyView />
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:TransientPolylinePropertyViewModel}">
                 <v_ep:TransientPolylinePropertyView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:TransientPolygonPropertyViewModel}">
+                <v_ep:TransientPolygonPropertyView />
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:SplinePropertyViewModel}">
                 <v_ep:SplinePropertyView />
