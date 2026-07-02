@@ -38,6 +38,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0"
@@ -142,20 +144,44 @@
 
                 <TextBlock Grid.Row="9"
                            Grid.Column="0"
+                           Text="Corner X"
+                           VerticalAlignment="Center" />
+                <mah:NumericUpDown Grid.Row="9"
+                                   Grid.Column="1"
+                                   Value="{Binding CornerRadiusX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   Minimum="0"
+                                   StringFormat="F3"
+                                   Interval="1"
+                                   Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="10"
+                           Grid.Column="0"
+                           Text="Corner Y"
+                           VerticalAlignment="Center" />
+                <mah:NumericUpDown Grid.Row="10"
+                                   Grid.Column="1"
+                                   Value="{Binding CornerRadiusY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   Minimum="0"
+                                   StringFormat="F3"
+                                   Interval="1"
+                                   Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="11"
+                           Grid.Column="0"
                            Text="Fill"
                            VerticalAlignment="Center" />
-                <ComboBox Grid.Row="9"
+                <ComboBox Grid.Row="11"
                           Grid.Column="1"
                           ItemsSource="{Binding FillStyleOptions}"
                           SelectedItem="{Binding SelectedFillStyleOption, Mode=TwoWay}"
                           DisplayMemberPath="Name"
                           Margin="0,0,0,8" />
 
-                <TextBlock Grid.Row="10"
+                <TextBlock Grid.Row="12"
                            Grid.Column="0"
                            Text="Color"
                            VerticalAlignment="Center" />
-                <mah:ColorPicker Grid.Row="10"
+                <mah:ColorPicker Grid.Row="12"
                                  Grid.Column="1"
                                  mah:TextBoxHelper.AutoWatermark="True"
                                  mah:TextBoxHelper.ClearTextButton="True"
@@ -165,11 +191,11 @@
                                  SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
                                  Margin="0,0,0,8" />
 
-                <TextBlock Grid.Row="11"
+                <TextBlock Grid.Row="13"
                            Grid.Column="0"
                            Text="Line weight"
                            VerticalAlignment="Center" />
-                <StackPanel Grid.Row="11"
+                <StackPanel Grid.Row="13"
                             Grid.Column="1"
                             Orientation="Horizontal"
                             Margin="0,0,0,8">
@@ -184,18 +210,18 @@
                               Margin="10,0,0,0" />
                 </StackPanel>
 
-                <TextBlock Grid.Row="12"
+                <TextBlock Grid.Row="14"
                            Grid.Column="0"
                            Text="Draw order"
                            VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="12"
+                <mah:NumericUpDown Grid.Row="14"
                                    Grid.Column="1"
                                    Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    StringFormat="F0"
                                    Interval="1"
                                    Margin="0,0,0,8" />
 
-                <CheckBox Grid.Row="13"
+                <CheckBox Grid.Row="15"
                           Grid.ColumnSpan="2"
                           Content="Visible"
                           IsChecked="{Binding IsVisible}"

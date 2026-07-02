@@ -634,6 +634,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public CadRectangle AddRectangle(
         CadRectD bounds,
+        double cornerRadiusX = 0,
+        double cornerRadiusY = 0,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
@@ -644,6 +646,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             layerId ?? LayerId.Default,
             BlockId.ModelSpace,
             bounds,
+            cornerRadiusX,
+            cornerRadiusY,
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);

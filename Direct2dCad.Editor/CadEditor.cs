@@ -224,6 +224,8 @@ public sealed class CadEditor
 
     public EntityId AddRectangle(
         CadRectD bounds,
+        double cornerRadiusX = 0,
+        double cornerRadiusY = 0,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
@@ -234,6 +236,8 @@ public sealed class CadEditor
     {
         var command = new AddRectangleCommand(
             bounds,
+            cornerRadiusX,
+            cornerRadiusY,
             layerId,
             graphicStyleId,
             fillStyleId,
@@ -439,6 +443,11 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetRectangleGeometry(EntityId entityId, CadRectD bounds)
     {
         return DocumentCommands.Execute(new SetRectangleGeometryCommand(entityId, bounds));
+    }
+
+    public CadDocumentChangeSet SetRectangleCornerRadius(EntityId entityId, double radiusX, double radiusY)
+    {
+        return DocumentCommands.Execute(new SetRectangleCornerRadiusCommand(entityId, radiusX, radiusY));
     }
 
     public CadDocumentChangeSet SetPolylineGeometry(EntityId entityId, IEnumerable<CadPointD> points, bool closed)

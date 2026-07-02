@@ -89,7 +89,7 @@ public static class CadEntityHitTester
                 return HitEllipseEdge(ellipse, point, tolerance, out result);
 
             case CadRectangle rectangle:
-                return HitRectEdge(rectangle.Id, rectangle.Bounds, point, tolerance, out result);
+                return HitRectangleEdge(rectangle, point, tolerance, out result);
 
             case CadPolyline polyline:
                 return HitPolylineEdge(polyline, point, tolerance, out result);
@@ -287,7 +287,7 @@ public static class CadEntityHitTester
         CadPointD point,
         out CadHitTestResult result)
     {
-        if (rectangle.FillStyleId is null || !rectangle.Bounds.Contains(point))
+        if (rectangle.FillStyleId is null || !IsPointInsideRectangle(rectangle, point))
         {
             result = default;
             return false;
@@ -297,6 +297,84 @@ public static class CadEntityHitTester
             CadHitTestKind.Fill,
             [rectangle.Id],
             point);
+
+        return true;
+    }
+
+    private static bool HitRectangleEdge(
+        CadRectangle rectangle,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        if (!rectangle.HasRoundedCorners)
+            return HitRectEdge(rectangle.Id, rectangle.Bounds, point, tolerance, out result);
+
+        result = default;
+        var bounds = rectangle.Bounds;
+        if (bounds.IsEmpty)
+            return false;
+
+        var radiusX = ClampCornerRadius(rectangle.CornerRadiusX, bounds.Width);
+        var radiusY = ClampCornerRadius(rectangle.CornerRadiusY, bounds.Height);
+        if (radiusX <= Epsilon || radiusY <= Epsilon)
+            return HitRectEdge(rectangle.Id, bounds, point, tolerance, out result);
+
+        var bestDistance = double.PositiveInfinity;
+        bestDistance = Math.Min(bestDistance, DistancePointToSegment(
+            point,
+            new CadPointD(bounds.MinX + radiusX, bounds.MinY),
+            new CadPointD(bounds.MaxX - radiusX, bounds.MinY)));
+        bestDistance = Math.Min(bestDistance, DistancePointToSegment(
+            point,
+            new CadPointD(bounds.MaxX, bounds.MinY + radiusY),
+            new CadPointD(bounds.MaxX, bounds.MaxY - radiusY)));
+        bestDistance = Math.Min(bestDistance, DistancePointToSegment(
+            point,
+            new CadPointD(bounds.MaxX - radiusX, bounds.MaxY),
+            new CadPointD(bounds.MinX + radiusX, bounds.MaxY)));
+        bestDistance = Math.Min(bestDistance, DistancePointToSegment(
+            point,
+            new CadPointD(bounds.MinX, bounds.MaxY - radiusY),
+            new CadPointD(bounds.MinX, bounds.MinY + radiusY)));
+
+        bestDistance = Math.Min(bestDistance, DistanceToCornerEllipseEdge(
+            point,
+            new CadPointD(bounds.MinX + radiusX, bounds.MinY + radiusY),
+            radiusX,
+            radiusY,
+            dxSign: -1,
+            dySign: -1));
+        bestDistance = Math.Min(bestDistance, DistanceToCornerEllipseEdge(
+            point,
+            new CadPointD(bounds.MaxX - radiusX, bounds.MinY + radiusY),
+            radiusX,
+            radiusY,
+            dxSign: 1,
+            dySign: -1));
+        bestDistance = Math.Min(bestDistance, DistanceToCornerEllipseEdge(
+            point,
+            new CadPointD(bounds.MaxX - radiusX, bounds.MaxY - radiusY),
+            radiusX,
+            radiusY,
+            dxSign: 1,
+            dySign: 1));
+        bestDistance = Math.Min(bestDistance, DistanceToCornerEllipseEdge(
+            point,
+            new CadPointD(bounds.MinX + radiusX, bounds.MaxY - radiusY),
+            radiusX,
+            radiusY,
+            dxSign: -1,
+            dySign: 1));
+
+        if (bestDistance > tolerance)
+            return false;
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Edge,
+            [rectangle.Id],
+            point,
+            bestDistance);
 
         return true;
     }
@@ -654,6 +732,69 @@ public static class CadEntityHitTester
         var normalizedX = (point.X - center.X) / radiusX;
         var normalizedY = (point.Y - center.Y) / radiusY;
         return normalizedX * normalizedX + normalizedY * normalizedY <= 1.0 + Epsilon;
+    }
+
+    private static bool IsPointInsideRectangle(CadRectangle rectangle, CadPointD point)
+    {
+        var bounds = rectangle.Bounds;
+        if (!bounds.Contains(point))
+            return false;
+
+        if (!rectangle.HasRoundedCorners)
+            return true;
+
+        var radiusX = ClampCornerRadius(rectangle.CornerRadiusX, bounds.Width);
+        var radiusY = ClampCornerRadius(rectangle.CornerRadiusY, bounds.Height);
+        if (radiusX <= Epsilon || radiusY <= Epsilon)
+            return true;
+
+        if (point.X >= bounds.MinX + radiusX && point.X <= bounds.MaxX - radiusX)
+            return true;
+
+        if (point.Y >= bounds.MinY + radiusY && point.Y <= bounds.MaxY - radiusY)
+            return true;
+
+        var centerX = point.X < bounds.MinX + radiusX
+            ? bounds.MinX + radiusX
+            : bounds.MaxX - radiusX;
+        var centerY = point.Y < bounds.MinY + radiusY
+            ? bounds.MinY + radiusY
+            : bounds.MaxY - radiusY;
+
+        return IsPointInsideEllipse(point, new CadPointD(centerX, centerY), radiusX, radiusY);
+    }
+
+    private static double DistanceToCornerEllipseEdge(
+        CadPointD point,
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        int dxSign,
+        int dySign)
+    {
+        var dx = point.X - center.X;
+        var dy = point.Y - center.Y;
+
+        if ((dxSign < 0 && dx > Epsilon) ||
+            (dxSign > 0 && dx < -Epsilon) ||
+            (dySign < 0 && dy > Epsilon) ||
+            (dySign > 0 && dy < -Epsilon))
+        {
+            return double.PositiveInfinity;
+        }
+
+        var angle = Math.Atan2(dy / radiusY, dx / radiusX);
+        var edgePoint = new CadPointD(
+            center.X + Math.Cos(angle) * radiusX,
+            center.Y + Math.Sin(angle) * radiusY);
+        return point.DistanceTo(edgePoint);
+    }
+
+    private static double ClampCornerRadius(double radius, double size)
+    {
+        return radius <= 0 || double.IsNaN(radius) || double.IsInfinity(radius)
+            ? 0
+            : Math.Min(radius, size * 0.5);
     }
 
     private static bool PointInPolygon(CadPointD point, IReadOnlyList<CadPointD> polygon)

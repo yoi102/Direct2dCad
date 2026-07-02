@@ -155,15 +155,11 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         return entity switch
         {
-            CadLine line => CreateLineGeometry(line.Start, line.End),
-            CadCircle circle => Factory!.CreateEllipseGeometry(
-                new Ellipse(ToVector2(circle.Center), (float)circle.Radius, (float)circle.Radius)),
-            CadEllipse ellipse => Factory!.CreateEllipseGeometry(
-                new Ellipse(ToVector2(ellipse.Center), (float)ellipse.RadiusX, (float)ellipse.RadiusY)),
-            CadRectangle rectangle => CreateRectangleGeometry(rectangle.Bounds),
-            CadArc arc => arc.IsFullCircle
-                ? Factory!.CreateEllipseGeometry(new Ellipse(ToVector2(arc.Center), (float)arc.Radius, (float)arc.Radius))
-                : CreateArcPathGeometry(arc),
+            CadLine => null,
+            CadCircle => null,
+            CadEllipse => null,
+            CadRectangle => null,
+            CadArc arc => arc.IsFullCircle ? null : CreateArcPathGeometry(arc),
             CadPolyline polyline => CreatePolylineGeometry(polyline.Points, polyline.Closed),
             CadSpline spline => CreateSplineGeometry(spline.FitPoints, spline.Closed),
             CadShapeText shapeText => CreateShapeTextGeometry(shapeText),
@@ -171,17 +167,6 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadBlockReference blockReference => CreateRectangleGeometry(blockReference.Bounds),
             _ => null
         };
-    }
-
-    private ID2D1PathGeometry CreateLineGeometry(CadPointD start, CadPointD end)
-    {
-        var geometry = Factory!.CreatePathGeometry();
-        using var sink = geometry.Open();
-        sink.BeginFigure(ToVector2(start), FigureBegin.Hollow);
-        sink.AddLine(ToVector2(end));
-        sink.EndFigure(FigureEnd.Open);
-        sink.Close();
-        return geometry;
     }
 
     private ID2D1PathGeometry CreatePolylineGeometry(IReadOnlyList<CadPointD> points, bool closed)
@@ -270,7 +255,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             : SweepDirection.CounterClockwise;
     }
 
-    private ID2D1RectangleGeometry CreateRectangleGeometry(CadRectD bounds)
+    private ID2D1Geometry CreateRectangleGeometry(CadRectD bounds)
     {
         return Factory!.CreateRectangleGeometry(new RawRectF(
             (float)bounds.MinX,

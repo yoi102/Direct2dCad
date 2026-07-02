@@ -578,7 +578,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     break;
 
                 case CadTransientRectangle rectangle when !rectangle.Bounds.IsEmpty:
-                    DrawTransientRectangle(deviceContext, viewport, rectangle.Bounds, rectangle.Style);
+                    DrawTransientRectangle(
+                        deviceContext,
+                        viewport,
+                        rectangle.Bounds,
+                        rectangle.Style,
+                        rectangle.CornerRadiusX,
+                        rectangle.CornerRadiusY);
                     break;
 
                 case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0 && !text.Bounds.IsEmpty:
@@ -684,6 +690,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     ellipse.RadiusX,
                     ellipse.RadiusY,
                     style);
+                break;
+
+            case CadRectangle rectangle:
+                DrawTransientRectangle(
+                    deviceContext,
+                    viewport,
+                    rectangle.Bounds.Translate(reference.Offset),
+                    style,
+                    rectangle.CornerRadiusX,
+                    rectangle.CornerRadiusY);
                 break;
 
             case CadArc arc:
@@ -902,6 +918,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     ellipse.RadiusX,
                     ellipse.RadiusY,
                     reference.Style);
+                break;
+
+            case CadRectangle rectangle:
+                DrawTransientRectangle(
+                    deviceContext,
+                    viewport,
+                    rectangle.Bounds.Translate(reference.Offset),
+                    reference.Style,
+                    rectangle.CornerRadiusX,
+                    rectangle.CornerRadiusY);
                 break;
 
             case CadArc arc:
@@ -1226,17 +1252,46 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         CadViewport viewport,
         CadRectD bounds,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        double cornerRadiusX = 0,
+        double cornerRadiusY = 0)
     {
+        var radiusX = ClampCornerRadius(cornerRadiusX, bounds.Width);
+        var radiusY = ClampCornerRadius(cornerRadiusY, bounds.Height);
+        if (radiusX > 0 && radiusY > 0)
+        {
+            var roundedRect = CreateRoundedRectangle(bounds, radiusX, radiusY);
+
+            if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
+            {
+                using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
+                deviceContext.FillRoundedRectangle(roundedRect, fillBrush);
+            }
+
+            using var roundedBrush = CreateTransientBrush(deviceContext, style.StrokeColor);
+            using var roundedStrokeStyle = CreateTransientStrokeStyle(style);
+            var strokeWidth = ResolveTransientStrokeWidth(style, viewport);
+            if (roundedStrokeStyle is null)
+            {
+                deviceContext.DrawRoundedRectangle(roundedRect, roundedBrush, strokeWidth);
+            }
+            else
+            {
+                deviceContext.DrawRoundedRectangle(roundedRect, roundedBrush, strokeWidth, roundedStrokeStyle);
+            }
+
+            return;
+        }
+
         var rect = new RawRectF(
             (float)bounds.MinX,
             (float)bounds.MinY,
             (float)bounds.MaxX,
             (float)bounds.MaxY);
 
-        if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
+        if (style.FillColor is { } rectangleFillColor && !rectangleFillColor.IsTransparent)
         {
-            using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
+            using var fillBrush = CreateTransientBrush(deviceContext, rectangleFillColor);
             deviceContext.FillRectangle(rect, fillBrush);
         }
 
@@ -1247,6 +1302,25 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             brush,
             ResolveTransientStrokeWidth(style, viewport),
             strokeStyle);
+    }
+
+    private static RoundedRectangle CreateRoundedRectangle(CadRectD bounds, double radiusX, double radiusY)
+    {
+        return new RoundedRectangle(
+            new System.Drawing.RectangleF(
+                (float)bounds.MinX,
+                (float)bounds.MinY,
+                (float)bounds.Width,
+                (float)bounds.Height),
+            (float)radiusX,
+            (float)radiusY);
+    }
+
+    private static double ClampCornerRadius(double radius, double size)
+    {
+        return radius <= 0 || double.IsNaN(radius) || double.IsInfinity(radius)
+            ? 0
+            : Math.Min(radius, size * 0.5);
     }
 
     private void DrawTransientText(
@@ -1467,6 +1541,34 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return;
         }
 
+        switch (entity)
+        {
+            case CadLine line:
+                DrawLineEntity(deviceContext, line, resources, viewport, options);
+                return;
+
+            case CadCircle circle:
+                DrawCircleEntity(deviceContext, circle, resources, viewport, options);
+                return;
+
+            case CadEllipse ellipse:
+                DrawEllipseEntity(deviceContext, ellipse, resources, viewport, options);
+                return;
+
+            case CadArc { IsFullCircle: true } arc:
+                DrawEllipsePrimitive(
+                    deviceContext,
+                    new Ellipse(ToVector2(arc.Center), (float)arc.Radius, (float)arc.Radius),
+                    resources,
+                    viewport,
+                    options);
+                return;
+
+            case CadRectangle rectangle:
+                DrawRectangleEntity(deviceContext, rectangle, resources, viewport, options);
+                return;
+        }
+
         if (resources.Geometry is not null && resources.FillBrush is not null)
             deviceContext.FillGeometry(resources.Geometry, resources.FillBrush);
 
@@ -1501,6 +1603,121 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 text.Position,
                 text.TextBounds,
                 resources.StrokeBrush);
+        }
+    }
+
+    private static void DrawLineEntity(
+        ID2D1DeviceContext deviceContext,
+        CadLine line,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        if (resources.StrokeBrush is null)
+            return;
+
+        deviceContext.DrawLine(
+            ToVector2(line.Start),
+            ToVector2(line.End),
+            resources.StrokeBrush,
+            ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+    }
+
+    private static void DrawCircleEntity(
+        ID2D1DeviceContext deviceContext,
+        CadCircle circle,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        DrawEllipsePrimitive(
+            deviceContext,
+            new Ellipse(ToVector2(circle.Center), (float)circle.Radius, (float)circle.Radius),
+            resources,
+            viewport,
+            options);
+    }
+
+    private static void DrawEllipseEntity(
+        ID2D1DeviceContext deviceContext,
+        CadEllipse ellipse,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        DrawEllipsePrimitive(
+            deviceContext,
+            new Ellipse(ToVector2(ellipse.Center), (float)ellipse.RadiusX, (float)ellipse.RadiusY),
+            resources,
+            viewport,
+            options);
+    }
+
+    private static void DrawEllipsePrimitive(
+        ID2D1DeviceContext deviceContext,
+        Ellipse ellipse,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        if (resources.FillBrush is not null)
+            deviceContext.FillEllipse(ellipse, resources.FillBrush);
+
+        if (resources.StrokeBrush is not null)
+        {
+            deviceContext.DrawEllipse(
+                ellipse,
+                resources.StrokeBrush,
+                ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+        }
+    }
+
+    private static void DrawRectangleEntity(
+        ID2D1DeviceContext deviceContext,
+        CadRectangle rectangle,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        var bounds = rectangle.Bounds;
+        if (bounds.IsEmpty)
+            return;
+
+        var radiusX = ClampCornerRadius(rectangle.CornerRadiusX, bounds.Width);
+        var radiusY = ClampCornerRadius(rectangle.CornerRadiusY, bounds.Height);
+        if (radiusX > 0 && radiusY > 0)
+        {
+            var roundedRect = CreateRoundedRectangle(bounds, radiusX, radiusY);
+
+            if (resources.FillBrush is not null)
+                deviceContext.FillRoundedRectangle(roundedRect, resources.FillBrush);
+
+            if (resources.StrokeBrush is not null)
+            {
+                deviceContext.DrawRoundedRectangle(
+                    roundedRect,
+                    resources.StrokeBrush,
+                    ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+            }
+
+            return;
+        }
+
+        var rect = new RawRectF(
+            (float)bounds.MinX,
+            (float)bounds.MinY,
+            (float)bounds.MaxX,
+            (float)bounds.MaxY);
+
+        if (resources.FillBrush is not null)
+            deviceContext.FillRectangle(rect, resources.FillBrush);
+
+        if (resources.StrokeBrush is not null)
+        {
+            deviceContext.DrawRectangle(
+                rect,
+                resources.StrokeBrush,
+                ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
         }
     }
 

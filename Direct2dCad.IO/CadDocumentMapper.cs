@@ -179,7 +179,9 @@ internal static class CadDocumentMapper
                     Min = ToData(new CadPointD(x.Bounds.MinX, x.Bounds.MinY)),
                     Max = ToData(new CadPointD(x.Bounds.MaxX, x.Bounds.MaxY)),
                     GraphicStyleId = x.GraphicStyleId?.Value,
-                    FillStyleId = x.FillStyleId?.Value
+                    FillStyleId = x.FillStyleId?.Value,
+                    CornerRadiusX = x.CornerRadiusX,
+                    CornerRadiusY = x.CornerRadiusY
                 })
                 .ToList()
         };
@@ -501,6 +503,8 @@ internal static class CadDocumentMapper
                     rectangleData.Min.Y,
                     rectangleData.Max.X,
                     rectangleData.Max.Y),
+                rectangleData.CornerRadiusX,
+                rectangleData.CornerRadiusY,
                 rectangleData.Entity.Name);
             rectangle.SetGraphicStyleInternal(ToStyleId(rectangleData.GraphicStyleId));
             rectangle.SetFillStyleInternal(ToStyleId(rectangleData.FillStyleId));

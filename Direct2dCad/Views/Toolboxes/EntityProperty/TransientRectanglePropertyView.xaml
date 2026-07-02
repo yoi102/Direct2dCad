@@ -29,6 +29,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0"
@@ -70,16 +72,40 @@
 
                 <TextBlock Grid.Row="3"
                            Grid.Column="0"
-                           Text="Draw order"
+                           Text="Corner X"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="3"
+                                   Grid.Column="1"
+                                   Value="{Binding CornerRadiusX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   Minimum="0"
+                                   StringFormat="F3"
+                                   Interval="1"
+                                   Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="4"
+                           Grid.Column="0"
+                           Text="Corner Y"
+                           VerticalAlignment="Center" />
+                <mah:NumericUpDown Grid.Row="4"
+                                   Grid.Column="1"
+                                   Value="{Binding CornerRadiusY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   Minimum="0"
+                                   StringFormat="F3"
+                                   Interval="1"
+                                   Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="5"
+                           Grid.Column="0"
+                           Text="Draw order"
+                           VerticalAlignment="Center" />
+                <mah:NumericUpDown Grid.Row="5"
                                    Grid.Column="1"
                                    Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    StringFormat="F0"
                                    Interval="1"
                                    Margin="0,0,0,8" />
 
-                <CheckBox Grid.Row="4"
+                <CheckBox Grid.Row="6"
                           Grid.ColumnSpan="2"
                           Content="Visible"
                           IsChecked="{Binding IsVisible}"

@@ -160,6 +160,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public partial StyleId? DrawingRectangleFillStyleId { get; set; }
 
     [ObservableProperty]
+    public partial double DrawingRectangleCornerRadiusX { get; set; }
+
+    [ObservableProperty]
+    public partial double DrawingRectangleCornerRadiusY { get; set; }
+
+    [ObservableProperty]
     public partial string DrawingText { get; set; } = "Text";
 
     [ObservableProperty]
@@ -503,6 +509,18 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     }
 
     partial void OnDrawingRectangleFillStyleIdChanged(StyleId? value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingRectangleCornerRadiusXChanged(double value)
+    {
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    partial void OnDrawingRectangleCornerRadiusYChanged(double value)
     {
         RaiseInteractionStateChanged();
         RequestRender();
@@ -977,6 +995,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     {
                         CadEditor.AddRectangle(
                             bounds,
+                            cornerRadiusX: ResolveDrawingRectangleCornerRadiusX(bounds),
+                            cornerRadiusY: ResolveDrawingRectangleCornerRadiusY(bounds),
                             graphicStyleId: ResolveDrawingRectangleGraphicStyleId(),
                             fillStyleId: ResolveDrawingRectangleFillStyleId(),
                             lineWeight: ResolveDrawingRectangleLineWeight(),
@@ -2409,6 +2429,23 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             : CadLineWeight.Default;
     }
 
+    private double ResolveDrawingRectangleCornerRadiusX(CadRectD bounds)
+    {
+        return ResolveRectangleCornerRadius(DrawingRectangleCornerRadiusX, bounds.Width);
+    }
+
+    private double ResolveDrawingRectangleCornerRadiusY(CadRectD bounds)
+    {
+        return ResolveRectangleCornerRadius(DrawingRectangleCornerRadiusY, bounds.Height);
+    }
+
+    private static double ResolveRectangleCornerRadius(double radius, double size)
+    {
+        return radius <= 0 || double.IsNaN(radius) || double.IsInfinity(radius)
+            ? 0
+            : Math.Min(radius, size * 0.5);
+    }
+
     private CadColor ResolveDefaultRectangleStrokeColor()
     {
         if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
@@ -2554,7 +2591,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             case CadCanvasToolMode.Rectangle when _pendingWorldPoint is { } firstCorner:
                 var bounds = CadRectD.FromLTRB(firstCorner.X, firstCorner.Y, mouseWorld.X, mouseWorld.Y);
                 if (IsValidRectangleBounds(bounds))
-                    items.Add(new CadTransientRectangle(bounds, CreateDrawingRectangleTransientStyle()));
+                    items.Add(new CadTransientRectangle(
+                        bounds,
+                        CreateDrawingRectangleTransientStyle(),
+                        ResolveDrawingRectangleCornerRadiusX(bounds),
+                        ResolveDrawingRectangleCornerRadiusY(bounds)));
                 break;
 
             case CadCanvasToolMode.Polyline:

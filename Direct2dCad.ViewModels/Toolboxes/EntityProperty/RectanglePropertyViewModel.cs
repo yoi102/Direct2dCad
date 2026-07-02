@@ -50,6 +50,12 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
     public partial double Height { get; set; }
 
     [ObservableProperty]
+    public partial double CornerRadiusX { get; set; }
+
+    [ObservableProperty]
+    public partial double CornerRadiusY { get; set; }
+
+    [ObservableProperty]
     public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
@@ -76,6 +82,8 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshGeometryProperties(rectangle.Bounds);
+            CornerRadiusX = rectangle.CornerRadiusX;
+            CornerRadiusY = rectangle.CornerRadiusY;
             RefreshFillStyleOptions(rectangle.FillStyleId);
             StrokeColor = ResolveStrokeColor(rectangle);
             UseByLayerLineWeight = rectangle.LineWeight is null || rectangle.LineWeight.Value.IsByLayer;
@@ -104,6 +112,10 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
     partial void OnWidthChanged(double value) => CommitCenterSizeGeometryChange();
 
     partial void OnHeightChanged(double value) => CommitCenterSizeGeometryChange();
+
+    partial void OnCornerRadiusXChanged(double value) => CommitCornerRadius();
+
+    partial void OnCornerRadiusYChanged(double value) => CommitCornerRadius();
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
     {
@@ -221,6 +233,26 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
         _documentViewModel.CadEditor.SetRectangleGeometry(EntityId, bounds);
     }
 
+    private void CommitCornerRadius()
+    {
+        if (_isRefreshing || !TryGetRectangle(out var rectangle))
+            return;
+
+        if (!TryCreateCornerRadius(out var radiusX, out var radiusY))
+        {
+            RefreshFromEntity();
+            return;
+        }
+
+        if (Math.Abs(radiusX - rectangle.CornerRadiusX) <= Epsilon &&
+            Math.Abs(radiusY - rectangle.CornerRadiusY) <= Epsilon)
+        {
+            return;
+        }
+
+        _documentViewModel.CadEditor.SetRectangleCornerRadius(EntityId, radiusX, radiusY);
+    }
+
     private bool TryCreateBoundsFromEdges(out CadRectD bounds)
     {
         bounds = new CadRectD(Left, Bottom, Right, Top);
@@ -239,6 +271,17 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
                IsFinite(CenterY) &&
                IsFinitePositive(Width) &&
                IsFinitePositive(Height);
+    }
+
+    private bool TryCreateCornerRadius(out double radiusX, out double radiusY)
+    {
+        radiusX = CornerRadiusX;
+        radiusY = CornerRadiusY;
+
+        return IsFinite(radiusX) &&
+               IsFinite(radiusY) &&
+               radiusX >= 0 &&
+               radiusY >= 0;
     }
 
     private void RefreshGeometryProperties(CadRectD bounds)
@@ -362,6 +405,12 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
     public partial double LineWeight { get; set; }
 
     [ObservableProperty]
+    public partial double CornerRadiusX { get; set; }
+
+    [ObservableProperty]
+    public partial double CornerRadiusY { get; set; }
+
+    [ObservableProperty]
     public partial int ZIndex { get; set; }
 
     [ObservableProperty]
@@ -375,6 +424,8 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
             RefreshFillStyleOptions(_documentViewModel.DrawingRectangleFillStyleId);
             StrokeColor = _documentViewModel.DrawingRectangleStrokeColor;
             LineWeight = _documentViewModel.DrawingRectangleLineWeight;
+            CornerRadiusX = _documentViewModel.DrawingRectangleCornerRadiusX;
+            CornerRadiusY = _documentViewModel.DrawingRectangleCornerRadiusY;
             ZIndex = _documentViewModel.DrawingRectangleZIndex;
             IsVisible = _documentViewModel.DrawingRectangleIsVisible;
         }
@@ -410,6 +461,26 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
             : CadLineWeight.Default.Value;
     }
 
+    partial void OnCornerRadiusXChanged(double value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingRectangleCornerRadiusX = IsFiniteNonNegative(value)
+            ? value
+            : 0;
+    }
+
+    partial void OnCornerRadiusYChanged(double value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingRectangleCornerRadiusY = IsFiniteNonNegative(value)
+            ? value
+            : 0;
+    }
+
     partial void OnZIndexChanged(int value)
     {
         if (_isRefreshing)
@@ -436,5 +507,10 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
     private static bool IsFinitePositive(double value)
     {
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private static bool IsFiniteNonNegative(double value)
+    {
+        return value >= 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     }
 }

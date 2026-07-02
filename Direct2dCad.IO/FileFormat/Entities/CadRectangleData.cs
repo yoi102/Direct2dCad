@@ -11,4 +11,6 @@ public sealed class CadRectangleData
     [Key(2)] public CadPointData Max { get; set; }
     [Key(3)] public long? GraphicStyleId { get; set; }
     [Key(4)] public long? FillStyleId { get; set; }
+    [Key(5)] public double CornerRadiusX { get; set; }
+    [Key(6)] public double CornerRadiusY { get; set; }
 }

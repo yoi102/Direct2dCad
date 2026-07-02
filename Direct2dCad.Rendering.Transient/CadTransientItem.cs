@@ -48,7 +48,9 @@ public sealed record CadTransientSpline(
 
 public sealed record CadTransientRectangle(
     CadRectD Bounds,
-    CadTransientStyle Style)
+    CadTransientStyle Style,
+    double CornerRadiusX = 0,
+    double CornerRadiusY = 0)
     : CadTransientItem(Style);
 
 public sealed record CadTransientText(

@@ -10,6 +10,8 @@ public sealed class SetRectangleGeometryCommand : ICadCommand
     private readonly EntityId _entityId;
     private readonly CadRectD _bounds;
     private CadRectD? _previousBounds;
+    private double? _previousCornerRadiusX;
+    private double? _previousCornerRadiusY;
 
     public string Name => "Set Rectangle Geometry";
 
@@ -23,16 +25,20 @@ public sealed class SetRectangleGeometryCommand : ICadCommand
     {
         var rectangle = GetRectangle(document);
         _previousBounds = rectangle.Bounds;
+        _previousCornerRadiusX = rectangle.CornerRadiusX;
+        _previousCornerRadiusY = rectangle.CornerRadiusY;
         rectangle.SetBounds(_bounds);
         return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
-        if (_previousBounds is null)
+        if (_previousBounds is null || _previousCornerRadiusX is null || _previousCornerRadiusY is null)
             return CadDocumentChangeSet.Empty;
 
-        GetRectangle(document).SetBounds(_previousBounds.Value);
+        var rectangle = GetRectangle(document);
+        rectangle.SetBounds(_previousBounds.Value);
+        rectangle.SetCornerRadius(_previousCornerRadiusX.Value, _previousCornerRadiusY.Value);
         return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
     }
 

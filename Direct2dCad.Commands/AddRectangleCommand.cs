@@ -7,6 +7,8 @@ namespace Direct2dCad.Commands;
 public sealed class AddRectangleCommand : ICadCommand
 {
     private readonly CadRectD _bounds;
+    private readonly double _cornerRadiusX;
+    private readonly double _cornerRadiusY;
     private readonly LayerId? _layerId;
     private readonly StyleId? _graphicStyleId;
     private readonly StyleId? _fillStyleId;
@@ -21,6 +23,8 @@ public sealed class AddRectangleCommand : ICadCommand
 
     public AddRectangleCommand(
         CadRectD bounds,
+        double cornerRadiusX = 0,
+        double cornerRadiusY = 0,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
@@ -30,6 +34,8 @@ public sealed class AddRectangleCommand : ICadCommand
         bool isVisible = true)
     {
         _bounds = bounds;
+        _cornerRadiusX = cornerRadiusX;
+        _cornerRadiusY = cornerRadiusY;
         _layerId = layerId;
         _graphicStyleId = graphicStyleId;
         _fillStyleId = fillStyleId;
@@ -55,7 +61,14 @@ public sealed class AddRectangleCommand : ICadCommand
                 CadEntityChangeKind.DrawOrder);
         }
 
-        var rectangle = document.AddRectangle(_bounds, _layerId, _graphicStyleId, _fillStyleId, _name);
+        var rectangle = document.AddRectangle(
+            _bounds,
+            _cornerRadiusX,
+            _cornerRadiusY,
+            _layerId,
+            _graphicStyleId,
+            _fillStyleId,
+            _name);
         rectangle.SetLineWeight(_lineWeight);
         rectangle.SetZIndex(_zIndex);
         rectangle.SetVisible(_isVisible);
