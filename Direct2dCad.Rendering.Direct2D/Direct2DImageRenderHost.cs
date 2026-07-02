@@ -171,6 +171,8 @@ public sealed class Direct2DImageRenderHost : IDisposable
                     foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
                     {
                         var clip = ToRawRectF(dirty);
+                        var previousTransform = context.Transform;
+                        context.Transform = System.Numerics.Matrix3x2.Identity;
                         context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
 
                         try
@@ -191,6 +193,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
                         finally
                         {
                             context.PopAxisAlignedClip();
+                            context.Transform = previousTransform;
                         }
                     }
 

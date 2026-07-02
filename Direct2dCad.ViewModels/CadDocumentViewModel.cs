@@ -1183,18 +1183,61 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         return item switch
         {
-            CadTransientLine line => CreateWorldBoundsInvalidation(BoundsFromPoints(line.Start, line.End)),
-            CadTransientCircle circle when circle.Radius > 0 => CreateWorldBoundsInvalidation(CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2)),
-            CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 => CreateWorldBoundsInvalidation(CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2)),
-            CadTransientArc arc when arc.Radius > 0 => CreateWorldBoundsInvalidation(CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2)),
-            CadTransientPolyline polyline => CreateWorldBoundsInvalidation(BoundsFromPoints(polyline.Points)),
-            CadTransientSpline spline => CreateWorldBoundsInvalidation(BoundsFromPoints(spline.FitPoints)),
-            CadTransientRectangle rectangle => CreateWorldBoundsInvalidation(rectangle.Bounds),
-            CadTransientText text => CreateWorldBoundsInvalidation(ResolveTransientTextBounds(text)),
-            CadTransientShapeText text => CreateWorldBoundsInvalidation(ResolveTransientShapeTextBounds(text)),
+            CadTransientLine line => CreateTransientBoundsInvalidation(
+                BoundsFromPoints(line.Start, line.End),
+                line.Style),
+            CadTransientCircle circle when circle.Radius > 0 => CreateTransientBoundsInvalidation(
+                CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2),
+                circle.Style,
+                minimumPaddingPixels: 24.0),
+            CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 => CreateTransientBoundsInvalidation(
+                CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2),
+                ellipse.Style,
+                minimumPaddingPixels: 24.0),
+            CadTransientArc arc when arc.Radius > 0 => CreateTransientBoundsInvalidation(
+                CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2),
+                arc.Style,
+                minimumPaddingPixels: 24.0),
+            CadTransientPolyline polyline => CreateTransientBoundsInvalidation(
+                BoundsFromPoints(polyline.Points),
+                polyline.Style),
+            CadTransientSpline spline => CreateTransientBoundsInvalidation(
+                BoundsFromPoints(spline.FitPoints),
+                spline.Style,
+                minimumPaddingPixels: 16.0),
+            CadTransientRectangle rectangle => CreateTransientBoundsInvalidation(
+                rectangle.Bounds,
+                rectangle.Style),
+            CadTransientText text => CreateTransientBoundsInvalidation(
+                ResolveTransientTextBounds(text),
+                text.Style),
+            CadTransientShapeText text => CreateTransientBoundsInvalidation(
+                ResolveTransientShapeTextBounds(text),
+                text.Style),
             CadTransientEntityReference reference => CreateEntityReferenceInvalidation(reference.EntityId, reference.Offset),
             _ => CadRenderInvalidation.FromScreenRect(default)
         };
+    }
+
+    private CadRenderInvalidation CreateTransientBoundsInvalidation(
+        CadRectD bounds,
+        CadTransientStyle style,
+        double minimumPaddingPixels = 12.0)
+    {
+        return CreateWorldBoundsInvalidation(bounds, ResolveTransientInvalidationPadding(style, minimumPaddingPixels));
+    }
+
+    private double ResolveTransientInvalidationPadding(CadTransientStyle style, double minimumPaddingPixels)
+    {
+        var strokeScreenWidth = style.KeepStrokeWidthScreenConstant
+            ? style.StrokeWidth
+            : style.StrokeWidth * CadEditor.Viewport.Zoom;
+
+        var strokePadding = Math.Max(0.0, strokeScreenWidth) * 0.5 + 8.0;
+        if (style.LinePattern != CadTransientLinePattern.Solid)
+            strokePadding += Math.Max(6.0, Math.Max(0.0, strokeScreenWidth));
+
+        return Math.Max(minimumPaddingPixels, Math.Ceiling(strokePadding));
     }
 
     private CadRenderInvalidation CreateHandleInvalidation(CadHandleItem item)
