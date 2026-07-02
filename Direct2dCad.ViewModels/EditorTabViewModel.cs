@@ -12,7 +12,14 @@ using Direct2dCad.ViewModels.Services;
 
 namespace Direct2dCad.ViewModels;
 
-public partial class EditorTabViewModel : ObservableDocument, IDisposable
+
+public abstract class CadObservableDocument: ObservableDocument
+{
+
+}
+
+
+public partial class EditorTabViewModel : CadObservableDocument, IDisposable
 {
     private readonly IUserSettingsService _userSettingsService;
 
@@ -43,8 +50,9 @@ public partial class EditorTabViewModel : ObservableDocument, IDisposable
         CadDocumentViewModel.DrawingText = TextInput;
         ApplyDocumentViewSettingsToToolbar();
         ApplyUserSettingsToToolbar();
-        this.Id = Guid.NewGuid().ToString();
-        this.Title = cadDocumentViewModel.CadEditor.Document.Name;
+
+        Id = Guid.NewGuid().ToString();
+        Title = cadDocumentViewModel.CadEditor.Document.Name;
     }
 
     public override bool OnClose()
