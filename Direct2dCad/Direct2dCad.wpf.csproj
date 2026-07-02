@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Direct2dCad.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Antelcat.I18N.WPF" Version="2.0.0-preview-1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Dirkster.AvalonDock" Version="5.0.0-preview.92" />
@@ -25,6 +29,10 @@
     <ProjectReference Include="..\Direct2dCad.Control\Direct2dCad.wpf.Control.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Direct2dCad.ico" />
   </ItemGroup>
 
 </Project>

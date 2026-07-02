@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -11,13 +11,13 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace Direct2dCad.wpf.Controls.Toolboxes.EntityProperty;
+namespace Direct2dCad.wpf.Views.Toolboxes;
 /// <summary>
-/// TransientArcPropertyView.xaml 的交互逻辑
+/// EntityPropertiesToolboxView.xaml 的交互逻辑
 /// </summary>
-public partial class TransientArcPropertyView : UserControl
+public partial class EntityPropertiesToolboxView : UserControl
 {
-    public TransientArcPropertyView()
+    public EntityPropertiesToolboxView()
     {
         InitializeComponent();
     }

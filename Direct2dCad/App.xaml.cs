@@ -73,6 +73,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IUserSettingsService, UserSettingsService>();
         services.AddSingleton<ISnackbarService, SnackbarService>();
+        services.AddSingleton<IToolboxIconsService, ToolboxIconsService>();
 
         services.AddTransient<MainWindow>();
     }

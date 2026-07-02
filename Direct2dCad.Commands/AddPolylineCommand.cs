@@ -12,6 +12,9 @@ public sealed class AddPolylineCommand : ICadCommand
     private readonly StyleId? _graphicStyleId;
     private readonly StyleId? _fillStyleId;
     private readonly string _name;
+    private readonly CadLineWeight? _lineWeight;
+    private readonly int _zIndex;
+    private readonly bool _isVisible;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Polyline";
@@ -23,7 +26,10 @@ public sealed class AddPolylineCommand : ICadCommand
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
         ArgumentNullException.ThrowIfNull(points);
 
@@ -39,6 +45,9 @@ public sealed class AddPolylineCommand : ICadCommand
         _graphicStyleId = graphicStyleId;
         _fillStyleId = fillStyleId;
         _name = name;
+        _lineWeight = lineWeight;
+        _zIndex = zIndex;
+        _isVisible = isVisible;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -52,7 +61,11 @@ public sealed class AddPolylineCommand : ICadCommand
             existing.Restore();
             return CadDocumentChangeSet.ForEntity(
                 existing.Id,
-                CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility);
+                CadEntityChangeKind.Created |
+                CadEntityChangeKind.Geometry |
+                CadEntityChangeKind.Appearance |
+                CadEntityChangeKind.Visibility |
+                CadEntityChangeKind.DrawOrder);
         }
 
         var polyline = document.AddPolyline(
@@ -62,11 +75,19 @@ public sealed class AddPolylineCommand : ICadCommand
             _graphicStyleId,
             _fillStyleId,
             _name);
+        polyline.SetLineWeight(_lineWeight);
+        polyline.SetZIndex(_zIndex);
+        polyline.SetVisible(_isVisible);
+
         _createdEntityId = polyline.Id;
 
         return CadDocumentChangeSet.ForEntity(
             polyline.Id,
-            CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance);
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.DrawOrder);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)

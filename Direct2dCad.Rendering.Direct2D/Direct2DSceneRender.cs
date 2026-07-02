@@ -584,6 +584,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0 && !text.Bounds.IsEmpty:
                     DrawTransientText(
                         deviceContext,
+                        document,
                         viewport,
                         text.Text,
                         text.Position,
@@ -592,7 +593,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                         text.Style,
                         text.IsInverted,
                         document.ViewSettings.BackgroundColor,
-                        text.InvertedMarginFactor);
+                        text.InvertedMarginFactor,
+                        text.TextStyleId);
                     break;
 
                 case CadTransientShapeText text when text.Height > 0:
@@ -953,6 +955,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 var bounds = text.TextBounds.Translate(reference.Offset);
                 DrawTransientText(
                     deviceContext,
+                    document,
                     viewport,
                     text.Text,
                     text.Position + reference.Offset,
@@ -961,7 +964,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     reference.Style,
                     text.IsInverted,
                     document.ViewSettings.BackgroundColor,
-                    text.InvertedMarginFactor);
+                    text.InvertedMarginFactor,
+                    text.TextStyleId);
                 DrawTransientRectangle(
                     deviceContext,
                     viewport,
@@ -1247,6 +1251,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private void DrawTransientText(
         ID2D1DeviceContext deviceContext,
+        CadDocument document,
         CadViewport viewport,
         string text,
         CadPointD position,
@@ -1255,7 +1260,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadTransientStyle style,
         bool isInverted = false,
         CadColor? invertedTextColor = null,
-        double invertedMarginFactor = CadText.DefaultInvertedMarginFactor)
+        double invertedMarginFactor = CadText.DefaultInvertedMarginFactor,
+        StyleId? textStyleId = null)
     {
         if (_resourceCache.WriteFactory is null || bounds.IsEmpty)
             return;
@@ -1272,17 +1278,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         using var brush = CreateTransientBrush(
             deviceContext,
             isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
-        using var format = _resourceCache.WriteFactory.CreateTextFormat(
-            "Meiryo",
-            null,
-            FontWeight.Normal,
-            FontStyle.Normal,
-            FontStretch.Normal,
-            (float)(height * CadText.FontSizeScale),
-            "ja-JP");
-        format.TextAlignment = TextAlignment.Leading;
-        format.ParagraphAlignment = ParagraphAlignment.Near;
-        format.WordWrapping = WordWrapping.NoWrap;
+        using var format = Direct2DTextServices.CreateTextFormat(
+            _resourceCache.WriteFactory,
+            document,
+            textStyleId,
+            height);
+        if (format is null)
+            return;
 
         DrawTextClipped(
             deviceContext,

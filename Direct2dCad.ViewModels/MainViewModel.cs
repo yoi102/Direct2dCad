@@ -3,7 +3,6 @@ using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
-using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Toolboxes;
 
@@ -56,6 +55,11 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
+
+    partial void OnCurrentEditorTabViewModelChanged(EditorTabViewModel? value)
+    {
+        EntityProperties.Attach(value?.CadDocumentViewModel);
+    }
 
     [ObservableProperty]
     public partial bool IsPrimarySideBarOpen { get; set; }
@@ -130,19 +134,29 @@ public partial class MainViewModel : ObservableObject
     {
         if (content is EditorTabViewModel editorTabViewModel)
         {
+            if (CurrentEditorTabViewModel == editorTabViewModel)
+            {
+                CurrentEditorTabViewModel = null;
+            }
             editorTabViewModel.Dispose();
         }
         else
         {
-            TabControlSelectedIndex = 0;
+            //TabControlSelectedIndex = 0;
         }
     }
 
     [RelayCommand]
     private void ActiveContentChanged()
     {
-        CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
-        TabControlSelectedIndex = CurrentEditorTabViewModel != null ? 1 : 0;
+        if (_dockLayoutService.ActiveDockable is EditorTabViewModel editorTabView)
+        {
+            CurrentEditorTabViewModel = editorTabView;
+
+        }
+
+        //CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
+        //TabControlSelectedIndex = CurrentEditorTabViewModel != null ? 1 : 0;
     }
 
     #region TitleBar

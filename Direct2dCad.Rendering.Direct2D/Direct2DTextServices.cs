@@ -23,6 +23,19 @@ internal static class Direct2DTextServices
         return CreateTextFormat(writeFactory, style, text.Height);
     }
 
+    public static IDWriteTextFormat? CreateTextFormat(
+        IDWriteFactory? writeFactory,
+        CadDocument document,
+        StyleId? textStyleId,
+        double height)
+    {
+        if (writeFactory is null)
+            return null;
+
+        var style = ResolveTextStyle(document, textStyleId);
+        return CreateTextFormat(writeFactory, style, height);
+    }
+
     public static bool TryMeasureTextBounds(
         IDWriteFactory? writeFactory,
         CadDocument document,

@@ -58,7 +58,8 @@ public sealed record CadTransientText(
     CadRectD Bounds,
     CadTransientStyle Style,
     bool IsInverted = false,
-    double InvertedMarginFactor = CadText.DefaultInvertedMarginFactor)
+    double InvertedMarginFactor = CadText.DefaultInvertedMarginFactor,
+    StyleId? TextStyleId = null)
     : CadTransientItem(Style);
 
 public sealed record CadTransientShapeText(

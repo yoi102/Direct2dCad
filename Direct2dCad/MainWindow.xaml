@@ -21,31 +21,25 @@
                  xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels"
                  xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services;assembly=Direct2dCad.ViewModels"
                  xmlns:vm_tb="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
-                 xmlns:v_tb="clr-namespace:Direct2dCad.wpf.Controls.Toolboxes"
+                 xmlns:v_tb="clr-namespace:Direct2dCad.wpf.Views.Toolboxes"
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+                 Icon="Direct2dCad.ico"
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
                  Topmost="{Binding Topmost}"
                  TitleAlignment="Left"
                  TitleCharacterCasing="Normal"
+                 ShowIconOnTitleBar="True"
                  WindowStartupLocation="CenterScreen"
                  Height="1100"
                  Width="1400">
     <mah:MetroWindow.LeftWindowCommands>
         <mah:WindowCommands>
-            <WrapPanel  Margin="15 0 0 0"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center">
-                <TextBlock Text="{I18N {x:Static r:LangKeys.Direct2dCad}}"
-                           FontWeight="DemiBold"
-                           FontSize="15" />
-                <Button  Content="{md:PackIcon Kind=Github, Size=20}"
-                         Click="IconClicked"
-                         Width="35"
-                         Height="22" />
-            </WrapPanel>
-
-
+            <Button Margin="15 0 0 0"
+                    Content="{md:PackIcon Kind=Github, Size=20}"
+                    Click="IconClicked"
+                    Width="35"
+                    Height="22" />
             <Menu VerticalAlignment="Center"
                   md:MenuAssist.TopLevelMenuItemHeight="25">
                 <MenuItem Header="{I18N {x:Static r:LangKeys.File}}">
@@ -548,6 +542,10 @@
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm_tb:FolderExplorerToolboxViewModel}">
                             <v_tb:FolderExplorerToolboxView />
+                        </DataTemplate>
+                        <!-- DataTemplate: how to render each toolbox VM's content -->
+                        <DataTemplate DataType="{x:Type vm:EditorTabViewModel}">
+                            <views:EditorView />
                         </DataTemplate>
 
 

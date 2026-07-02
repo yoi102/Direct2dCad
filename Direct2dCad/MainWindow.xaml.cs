@@ -1,9 +1,12 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using AvalonDock;
 using AvalonDock.DependencyInjection;
 using AvalonDock.Themes;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.ViewModels;
+using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Services.Events;
 using MessagePipe;
 
@@ -42,6 +45,30 @@ public partial class MainWindow
                 dockManager.Theme = new ArcLightTheme();
             }
         });
+        Closing += OnWindowClosing;
+
+    }
+    private void OnWindowClosing(object? sender, CancelEventArgs e)
+    {
+        e.Cancel = true; // 临时取消关闭
+
+        // 不能直接 await，所以用 async void 包装异步处理
+        HandleExitConfirmationAsync(e);
+    }
+
+    private async void HandleExitConfirmationAsync(CancelEventArgs e)
+    {
+        var dialog =Ioc.Default.GetRequiredService<IDialogService>();
+
+        bool confirm = await dialog.ShowExitConfirmation();
+
+        if (confirm)
+        {
+            // 手动移除关闭事件，避免递归触发
+            Closing -= OnWindowClosing;
+
+            Close();  // 程序关闭
+        }
     }
 
     private void IconClicked(object sender, RoutedEventArgs e)

@@ -11,6 +11,9 @@ public sealed class AddSplineCommand : ICadCommand
     private readonly LayerId? _layerId;
     private readonly StyleId? _graphicStyleId;
     private readonly string _name;
+    private readonly CadLineWeight? _lineWeight;
+    private readonly int _zIndex;
+    private readonly bool _isVisible;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Spline";
@@ -21,7 +24,10 @@ public sealed class AddSplineCommand : ICadCommand
         bool closed = false,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
         ArgumentNullException.ThrowIfNull(fitPoints);
 
@@ -35,6 +41,9 @@ public sealed class AddSplineCommand : ICadCommand
         _layerId = layerId;
         _graphicStyleId = graphicStyleId;
         _name = name;
+        _lineWeight = lineWeight;
+        _zIndex = zIndex;
+        _isVisible = isVisible;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -48,7 +57,11 @@ public sealed class AddSplineCommand : ICadCommand
             existing.Restore();
             return CadDocumentChangeSet.ForEntity(
                 existing.Id,
-                CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility);
+                CadEntityChangeKind.Created |
+                CadEntityChangeKind.Geometry |
+                CadEntityChangeKind.Appearance |
+                CadEntityChangeKind.Visibility |
+                CadEntityChangeKind.DrawOrder);
         }
 
         var spline = document.AddSpline(
@@ -57,11 +70,19 @@ public sealed class AddSplineCommand : ICadCommand
             _layerId,
             _graphicStyleId,
             _name);
+        spline.SetLineWeight(_lineWeight);
+        spline.SetZIndex(_zIndex);
+        spline.SetVisible(_isVisible);
+
         _createdEntityId = spline.Id;
 
         return CadDocumentChangeSet.ForEntity(
             spline.Id,
-            CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance);
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.DrawOrder);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)

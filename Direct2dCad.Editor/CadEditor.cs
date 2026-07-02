@@ -27,6 +27,7 @@ public sealed class CadEditor
     public CommandHistorySettings EditorHistorySettings => EditorCommands.Settings;
 
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
+    public event EventHandler<CadEditorCommandResult>? EditorStateChanged;
 
     public CadEditor(CadDocument document)
         : this(document, new CadViewport(), new CadSelectionSet(), new CadSpatialIndex())
@@ -59,6 +60,7 @@ public sealed class CadEditor
             new CommandHistory<ICadEditorCommand>());
 
         _documentChanges.DocumentChanged += (_, result) => DocumentChanged?.Invoke(this, result);
+        EditorCommands.Changed += (_, result) => EditorStateChanged?.Invoke(this, result);
         RebuildSpatialIndex();
     }
 
@@ -123,9 +125,20 @@ public sealed class CadEditor
         CadPointD end,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
-        var command = new AddLineCommand(start, end, layerId, graphicStyleId, name);
+        var command = new AddLineCommand(
+            start,
+            end,
+            layerId,
+            graphicStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -136,9 +149,21 @@ public sealed class CadEditor
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
-        var command = new AddCircleCommand(center, radius, layerId, graphicStyleId, fillStyleId, name);
+        var command = new AddCircleCommand(
+            center,
+            radius,
+            layerId,
+            graphicStyleId,
+            fillStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -164,7 +189,10 @@ public sealed class CadEditor
         double sweepAngleRadians,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
         var command = new AddArcCommand(
             center,
@@ -173,7 +201,10 @@ public sealed class CadEditor
             sweepAngleRadians,
             layerId,
             graphicStyleId,
-            name);
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -208,9 +239,21 @@ public sealed class CadEditor
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
         StyleId? fillStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
-        var command = new AddPolylineCommand(points, closed, layerId, graphicStyleId, fillStyleId, name);
+        var command = new AddPolylineCommand(
+            points,
+            closed,
+            layerId,
+            graphicStyleId,
+            fillStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -220,9 +263,20 @@ public sealed class CadEditor
         bool closed = false,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
-        string name = "")
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
-        var command = new AddSplineCommand(fitPoints, closed, layerId, graphicStyleId, name);
+        var command = new AddSplineCommand(
+            fitPoints,
+            closed,
+            layerId,
+            graphicStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -237,7 +291,10 @@ public sealed class CadEditor
         StyleId? textStyleId = null,
         string name = "",
         bool isInverted = false,
-        double invertedMarginFactor = CadText.DefaultInvertedMarginFactor)
+        double invertedMarginFactor = CadText.DefaultInvertedMarginFactor,
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
     {
         var command = new AddTextCommand(
             text,
@@ -249,7 +306,10 @@ public sealed class CadEditor
             textStyleId,
             name,
             isInverted,
-            invertedMarginFactor);
+            invertedMarginFactor,
+            lineWeight,
+            zIndex,
+            isVisible);
 
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);

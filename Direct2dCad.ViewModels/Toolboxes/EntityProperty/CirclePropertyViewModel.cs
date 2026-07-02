@@ -3,17 +3,23 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
+using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class ArcPropertyViewModel : EntityPropertyViewModel
+public sealed record FillStyleOption(StyleId? Id, string Name)
+{
+    public override string ToString() => Name;
+}
+
+public partial class CirclePropertyViewModel : EntityPropertyViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;
 
-    public ArcPropertyViewModel(CadDocumentViewModel documentViewModel, EntityId entityId)
+    public CirclePropertyViewModel(CadDocumentViewModel documentViewModel, EntityId entityId)
     {
         _documentViewModel = documentViewModel ?? throw new ArgumentNullException(nameof(documentViewModel));
         EntityId = entityId;
@@ -22,7 +28,8 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     public EntityId EntityId { get; }
     public string EntityIdText => EntityId.ToString();
-    public double EndAngleDegrees => StartAngleDegrees + SweepAngleDegrees;
+    public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
+    public double Diameter => Radius * 2.0;
 
     [ObservableProperty]
     public partial double CenterX { get; set; }
@@ -34,13 +41,7 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
     public partial double Radius { get; set; }
 
     [ObservableProperty]
-    public partial double StartAngleDegrees { get; set; }
-
-    [ObservableProperty]
-    public partial double SweepAngleDegrees { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsCounterClockwise { get; set; }
+    public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
@@ -59,65 +60,55 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     public void RefreshFromEntity()
     {
-        if (!TryGetArc(out var arc))
+        if (!TryGetCircle(out var circle))
             return;
 
         _isRefreshing = true;
         try
         {
-            CenterX = arc.Center.X;
-            CenterY = arc.Center.Y;
-            Radius = arc.Radius;
-            StartAngleDegrees = CadArc.RadiansToDegrees(arc.StartAngleRadians);
-            SweepAngleDegrees = CadArc.RadiansToDegrees(arc.SweepAngleRadians);
-            IsCounterClockwise = arc.IsCounterClockwise;
-            StrokeColor = ResolveStrokeColor(arc);
-            UseByLayerLineWeight = arc.LineWeight is null || arc.LineWeight.Value.IsByLayer;
-            LineWeight = ResolveLineWeight(arc).Value;
-            ZIndex = arc.ZIndex;
-            IsVisible = arc.IsVisible;
+            CenterX = circle.Center.X;
+            CenterY = circle.Center.Y;
+            Radius = circle.Radius;
+            RefreshFillStyleOptions(circle.FillStyleId);
+            StrokeColor = ResolveStrokeColor(circle);
+            UseByLayerLineWeight = circle.LineWeight is null || circle.LineWeight.Value.IsByLayer;
+            LineWeight = ResolveLineWeight(circle).Value;
+            ZIndex = circle.ZIndex;
+            IsVisible = circle.IsVisible;
         }
         finally
         {
             _isRefreshing = false;
         }
 
-        OnPropertyChanged(nameof(EndAngleDegrees));
+        OnPropertyChanged(nameof(Diameter));
     }
 
     partial void OnCenterXChanged(double value) => CommitGeometry();
 
     partial void OnCenterYChanged(double value) => CommitGeometry();
 
-    partial void OnRadiusChanged(double value) => CommitGeometry();
-
-    partial void OnStartAngleDegreesChanged(double value)
+    partial void OnRadiusChanged(double value)
     {
-        OnPropertyChanged(nameof(EndAngleDegrees));
+        OnPropertyChanged(nameof(Diameter));
         CommitGeometry();
     }
 
-    partial void OnSweepAngleDegreesChanged(double value)
+    partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
     {
-        OnPropertyChanged(nameof(EndAngleDegrees));
-        CommitGeometry();
-    }
-
-    partial void OnIsCounterClockwiseChanged(bool value)
-    {
-        if (_isRefreshing)
+        if (_isRefreshing || !TryGetCircle(out var circle))
             return;
 
-        var magnitude = Math.Abs(SweepAngleDegrees);
-        if (!IsFinitePositive(magnitude))
-            magnitude = 90.0;
+        var fillStyleId = value?.Id;
+        if (Nullable.Equals(circle.FillStyleId, fillStyleId))
+            return;
 
-        SweepAngleDegrees = value ? magnitude : -magnitude;
+        _documentViewModel.CadEditor.SetEntityFillStyle(EntityId, fillStyleId);
     }
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetArc(out var arc) || ResolveStrokeColor(arc) == value)
+        if (_isRefreshing || !TryGetCircle(out var circle) || ResolveStrokeColor(circle) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
@@ -125,7 +116,7 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
-        if (_isRefreshing || !TryGetArc(out _))
+        if (_isRefreshing || !TryGetCircle(out _))
             return;
 
         _documentViewModel.CadEditor.SetEntityLineWeight(
@@ -135,7 +126,7 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing || UseByLayerLineWeight || !TryGetArc(out _))
+        if (_isRefreshing || UseByLayerLineWeight || !TryGetCircle(out _))
             return;
 
         if (!IsFinitePositive(value))
@@ -149,7 +140,7 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     partial void OnZIndexChanged(int value)
     {
-        if (_isRefreshing || !TryGetArc(out var arc) || arc.ZIndex == value)
+        if (_isRefreshing || !TryGetCircle(out var circle) || circle.ZIndex == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityZIndex(EntityId, value);
@@ -157,7 +148,7 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     partial void OnIsVisibleChanged(bool value)
     {
-        if (_isRefreshing || !TryGetArc(out var arc) || arc.IsVisible == value)
+        if (_isRefreshing || !TryGetCircle(out var circle) || circle.IsVisible == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityVisibility(EntityId, value);
@@ -165,65 +156,60 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     private void CommitGeometry()
     {
-        if (_isRefreshing || !TryGetArc(out var arc))
+        if (_isRefreshing || !TryGetCircle(out var circle))
             return;
 
-        if (!TryCreateGeometry(out var center, out var radius, out var startAngleRadians, out var sweepAngleRadians))
+        if (!TryCreateGeometry(out var center, out var radius))
         {
             RefreshFromEntity();
             return;
         }
 
-        if (center.DistanceSquaredTo(arc.Center) <= Epsilon &&
-            Math.Abs(radius - arc.Radius) <= Epsilon &&
-            Math.Abs(startAngleRadians - arc.StartAngleRadians) <= Epsilon &&
-            Math.Abs(sweepAngleRadians - arc.SweepAngleRadians) <= Epsilon)
+        if (center.DistanceSquaredTo(circle.Center) <= Epsilon &&
+            Math.Abs(radius - circle.Radius) <= Epsilon)
         {
             return;
         }
 
-        _documentViewModel.CadEditor.SetArcGeometry(EntityId, center, radius, startAngleRadians, sweepAngleRadians);
+        _documentViewModel.CadEditor.SetCircleGeometry(EntityId, center, radius);
     }
 
-    private bool TryCreateGeometry(
-        out CadPointD center,
-        out double radius,
-        out double startAngleRadians,
-        out double sweepAngleRadians)
+    private bool TryCreateGeometry(out CadPointD center, out double radius)
     {
         center = new CadPointD(CenterX, CenterY);
         radius = Radius;
-        startAngleRadians = CadArc.DegreesToRadians(StartAngleDegrees);
-        sweepAngleRadians = CadArc.DegreesToRadians(SweepAngleDegrees);
 
         return IsFinite(CenterX) &&
                IsFinite(CenterY) &&
-               IsFinitePositive(radius) &&
-               IsFinite(StartAngleDegrees) &&
-               IsFinite(SweepAngleDegrees) &&
-               Math.Abs(sweepAngleRadians) > 1e-12 &&
-               Math.Abs(sweepAngleRadians) <= Math.PI * 2.0 + 1e-12;
+               IsFinitePositive(radius);
     }
 
-    private bool TryGetArc(out CadArc arc)
+    private bool TryGetCircle(out CadCircle circle)
     {
         if (_documentViewModel.CadEditor.Document.TryGetEntity(EntityId, out var entity) &&
-            entity is CadArc currentArc &&
-            !currentArc.IsErased)
+            entity is CadCircle currentCircle &&
+            !currentCircle.IsErased)
         {
-            arc = currentArc;
+            circle = currentCircle;
             return true;
         }
 
-        arc = null!;
+        circle = null!;
         return false;
     }
 
-    private CadColor ResolveStrokeColor(CadArc arc)
+    private void RefreshFillStyleOptions(StyleId? selectedStyleId)
+    {
+        FillStyleOptions = BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
+        OnPropertyChanged(nameof(FillStyleOptions));
+        SelectedFillStyleOption = FindFillStyleOption(FillStyleOptions, selectedStyleId);
+    }
+
+    private CadColor ResolveStrokeColor(CadCircle circle)
     {
         var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(arc.LayerId);
-        var styleId = arc.GraphicStyleId ?? layer.DefaultGraphicStyleId;
+        var layer = document.GetLayer(circle.LayerId);
+        var styleId = circle.GraphicStyleId ?? layer.DefaultGraphicStyleId;
 
         if (styleId is { } graphicStyleId &&
             document.TryGetStyle(graphicStyleId, out var style) &&
@@ -235,19 +221,19 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
         return layer.Color;
     }
 
-    private CadLineWeight ResolveLineWeight(CadArc arc)
+    private CadLineWeight ResolveLineWeight(CadCircle circle)
     {
         var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(arc.LayerId);
-        var styleId = arc.GraphicStyleId ?? layer.DefaultGraphicStyleId;
+        var layer = document.GetLayer(circle.LayerId);
+        var styleId = circle.GraphicStyleId ?? layer.DefaultGraphicStyleId;
         var styleWeight = styleId is { } graphicStyleId &&
                           document.TryGetStyle(graphicStyleId, out var style) &&
                           style is CadGraphicStyle graphic
             ? graphic.LineWeight
             : (CadLineWeight?)null;
 
-        var weight = arc.LineWeight is { IsByLayer: false }
-            ? arc.LineWeight.Value
+        var weight = circle.LineWeight is { IsByLayer: false }
+            ? circle.LineWeight.Value
             : styleWeight is { IsByLayer: false }
             ? styleWeight.Value
             : layer.LineWeight;
@@ -255,6 +241,29 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
         return weight.IsByLayer || weight.Value <= 0
             ? CadLineWeight.Default
             : weight;
+    }
+
+    internal static IReadOnlyList<FillStyleOption> BuildFillStyleOptions(CadDocument document)
+    {
+        var options = new List<FillStyleOption>
+        {
+            new(null, "None")
+        };
+
+        options.AddRange(document.Styles.Values
+            .OfType<CadFillStyle>()
+            .OrderBy(style => style.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(style => new FillStyleOption(style.Id, style.Name)));
+
+        return options;
+    }
+
+    internal static FillStyleOption? FindFillStyleOption(
+        IReadOnlyList<FillStyleOption> options,
+        StyleId? styleId)
+    {
+        return options.FirstOrDefault(option => Nullable.Equals(option.Id, styleId)) ??
+               options.FirstOrDefault();
     }
 
     private static double ResolveLineWeightValue(double value)
@@ -273,18 +282,22 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
     }
 }
 
-public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
+public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;
 
-    public TransientArcPropertyViewModel(CadDocumentViewModel documentViewModel)
+    public TransientCirclePropertyViewModel(CadDocumentViewModel documentViewModel)
     {
         _documentViewModel = documentViewModel ?? throw new ArgumentNullException(nameof(documentViewModel));
         RefreshFromDocument();
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+    public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
+
+    [ObservableProperty]
+    public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
@@ -303,10 +316,11 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
-            StrokeColor = _documentViewModel.DrawingArcStrokeColor;
-            LineWeight = _documentViewModel.DrawingArcLineWeight;
-            ZIndex = _documentViewModel.DrawingArcZIndex;
-            IsVisible = _documentViewModel.DrawingArcIsVisible;
+            RefreshFillStyleOptions(_documentViewModel.DrawingCircleFillStyleId);
+            StrokeColor = _documentViewModel.DrawingCircleStrokeColor;
+            LineWeight = _documentViewModel.DrawingCircleLineWeight;
+            ZIndex = _documentViewModel.DrawingCircleZIndex;
+            IsVisible = _documentViewModel.DrawingCircleIsVisible;
         }
         finally
         {
@@ -314,12 +328,20 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         }
     }
 
+    partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingCircleFillStyleId = value?.Id;
+    }
+
     partial void OnStrokeColorChanged(CadColor value)
     {
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcStrokeColor = value;
+        _documentViewModel.DrawingCircleStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -327,7 +349,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingCircleLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -337,7 +359,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcZIndex = value;
+        _documentViewModel.DrawingCircleZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -345,7 +367,14 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcIsVisible = value;
+        _documentViewModel.DrawingCircleIsVisible = value;
+    }
+
+    private void RefreshFillStyleOptions(StyleId? selectedStyleId)
+    {
+        FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
+        OnPropertyChanged(nameof(FillStyleOptions));
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
     }
 
     private static bool IsFinitePositive(double value)
