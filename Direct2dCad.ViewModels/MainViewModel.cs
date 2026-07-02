@@ -36,8 +36,8 @@ public partial class MainViewModel : ObservableObject
         _fileDialogService = fileDialogService;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
-        FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerViewModel));
-        EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesViewModel));
+        FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerToolboxViewModel));
+        EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
 
         IsDarkTheme = themeSettingService.IsDarkTheme;
         CurrentCultureLCID = cultureSettingService.GetCurrentCultureLCID();
@@ -50,9 +50,9 @@ public partial class MainViewModel : ObservableObject
     public IDockLayoutService LayoutService => _dockLayoutService;
 
     /// <summary>Provides typed access to the folder explorer VM via the layout service.</summary>
-    public FolderExplorerViewModel FolderExplorer { get; }
+    public FolderExplorerToolboxViewModel FolderExplorer { get; }
 
-    public EntityPropertiesViewModel EntityProperties { get; }
+    public EntityPropertiesToolboxViewModel EntityProperties { get; }
 
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
@@ -65,6 +65,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool IsSecondarySideBarOpen { get; set; }
+
     [ObservableProperty]
     public partial int TabControlSelectedIndex { get; set; } = 0;
 

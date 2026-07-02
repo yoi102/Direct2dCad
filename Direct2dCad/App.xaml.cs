@@ -7,6 +7,7 @@ using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Toolboxes;
+using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 using Direct2dCad.wpf;
 using Direct2dCad.wpf.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,8 +65,8 @@ public partial class App : System.Windows.Application
             });
 
             // Register toolboxes — order determines sidebar button order
-            dock.AddToolbox<FolderExplorerViewModel>();
-            dock.AddToolbox<EntityPropertiesViewModel>();
+            dock.AddToolbox<FolderExplorerToolboxViewModel>();
+            dock.AddToolbox<EntityPropertiesToolboxViewModel>();
         });
 
         services.AddTransient<IFileDialogService, FileDialogService>();
