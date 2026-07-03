@@ -14,7 +14,7 @@ using Direct2dCad.ViewModels.Services;
 namespace Direct2dCad.ViewModels;
 
 
-public abstract class CadObservableDocument: ObservableDocument
+public abstract class CadObservableDocument : ObservableDocument
 {
 
 }
@@ -58,7 +58,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
 
     public override bool OnClose()
     {
-      return  base.OnClose();
+        return base.OnClose();
     }
     public CadDocumentViewModel CadDocumentViewModel { get; }
 
@@ -93,6 +93,9 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
 
     [ObservableProperty]
     public partial string ViewModelCadOriginColorText { get; set; } = "#FF50BEFF";
+
+    [ObservableProperty]
+    public partial CadColor ViewModelCadBackgroundColor { get; set; }
 
     [ObservableProperty]
     public partial double ViewModelCadOriginX { get; set; }
@@ -195,6 +198,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
             return;
 
         ApplyOriginSettingsFromToolbar();
+    }
+
+    partial void OnViewModelCadBackgroundColorChanged(CadColor value)
+    {
+        if (_isSyncingViewSettings)
+            return;
+
+        ApplyBackgroundColorFromToolbar();
     }
 
     partial void OnViewModelCadOriginXChanged(double value)
@@ -418,6 +429,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
             ViewModelCadOriginSize = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Size;
             ViewModelCadOriginStrokeWidth = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.StrokeWidth;
             ViewModelCadOriginColorText = FormatColor(CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Color);
+            ViewModelCadBackgroundColor = CadDocumentViewModel.CadEditor.Document.ViewSettings.BackgroundColor;
             ViewModelCadOriginX = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Position.X;
             ViewModelCadOriginY = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Position.Y;
         }
@@ -454,6 +466,13 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
 
         CadDocumentViewModel.CadEditor.SetOriginPosition(
             new CadPointD(ViewModelCadOriginX, ViewModelCadOriginY));
+    }
+
+    private void ApplyBackgroundColorFromToolbar()
+    {
+
+
+        CadDocumentViewModel.SetBackgroundColor(ViewModelCadBackgroundColor);
     }
 
     private static string FormatColor(CadColor color)

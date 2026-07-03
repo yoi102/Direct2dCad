@@ -342,4 +342,11 @@
   <data name="Refresh" xml:space="preserve">
     <value>更新</value>
   </data>
+  <data name="Background" xml:space="preserve">
+    <value>背景</value>
+  </data>
+  <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
+  <data name="ColorPickerAdvanced" type="System.Resources.ResXNullRef, System.Windows.Forms">
+    <value />
+  </data>
 </root>

@@ -417,4 +417,28 @@
     <value>Refresh</value>
     <comment>Refresh</comment>
   </data>
+  <data name="Background" xml:space="preserve">
+    <value>Background</value>
+    <comment>Background</comment>
+  </data>
+  <data name="ColorPickerPalettes" xml:space="preserve">
+    <value>Palettes</value>
+    <comment>Palettes</comment>
+  </data>
+  <data name="ColorPickerAdvanced" xml:space="preserve">
+    <value>Advanced</value>
+    <comment>Advanced</comment>
+  </data>
+  <data name="ColorPickerStandardColors" xml:space="preserve">
+    <value>Standard Colors</value>
+    <comment>Standard Colors</comment>
+  </data>
+  <data name="ColorPickerAvailableColors" xml:space="preserve">
+    <value>Available Colors</value>
+    <comment>Available Colors</comment>
+  </data>
+  <data name="ColorPickerRecentColors" xml:space="preserve">
+    <value>Recent Colors</value>
+    <comment>Recent Colors</comment>
+  </data>
 </root>

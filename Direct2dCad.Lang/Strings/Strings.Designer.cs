@@ -97,6 +97,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Background 的本地化字符串。
+        /// </summary>
+        public static string Background {
+            get {
+                return ResourceManager.GetString("Background", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Box Fallback 的本地化字符串。
         /// </summary>
         public static string BoxFallback {
@@ -138,6 +147,51 @@ namespace Direct2dCad.Lang.Strings {
         public static string Color {
             get {
                 return ResourceManager.GetString("Color", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Advanced 的本地化字符串。
+        /// </summary>
+        public static string ColorPickerAdvanced {
+            get {
+                return ResourceManager.GetString("ColorPickerAdvanced", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Available Colors 的本地化字符串。
+        /// </summary>
+        public static string ColorPickerAvailableColors {
+            get {
+                return ResourceManager.GetString("ColorPickerAvailableColors", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Palettes 的本地化字符串。
+        /// </summary>
+        public static string ColorPickerPalettes {
+            get {
+                return ResourceManager.GetString("ColorPickerPalettes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Recent Colors 的本地化字符串。
+        /// </summary>
+        public static string ColorPickerRecentColors {
+            get {
+                return ResourceManager.GetString("ColorPickerRecentColors", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Standard Colors 的本地化字符串。
+        /// </summary>
+        public static string ColorPickerStandardColors {
+            get {
+                return ResourceManager.GetString("ColorPickerStandardColors", resourceCulture);
             }
         }
         

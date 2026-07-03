@@ -108,9 +108,11 @@
 
     <Grid>
         <md:DialogHost Identifier="{x:Static svc:ViewServiceIdentifiers.RootDialogHost}"
+                       Background="{DynamicResource MaterialDesign.Brush.Background}"
                        DialogTheme="Inherit">
 
-            <Grid RowDefinitions="auto * auto">
+            <Grid RowDefinitions="auto * auto"
+                  Background="{DynamicResource MaterialDesign.Brush.Background}">
                 <Grid Grid.Row="0"
                       Height="150">
 
@@ -255,9 +257,6 @@
                         </ToggleButton>
                     </StackPanel>
 
-
-
-
                     <TabControl Style="{StaticResource MahApps.Styles.TabControl}"
                                 SelectedIndex="{Binding TabControlSelectedIndex}"
                                 TabStripPlacement="Bottom"
@@ -367,18 +366,7 @@
 
                                 <StackPanel>
                                     <ToolBar>
-                                        <Separator Margin="20 0 0 0" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.Grid}}"
-                                                   VerticalAlignment="Center" />
-                                        <ComboBox Width="78"
-                                                  ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadGridType}}}"
-                                                  SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadGridType}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.SnapMarker}}"
-                                                   VerticalAlignment="Center" />
-                                        <ComboBox Width="92"
-                                                  ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadSnapMarkerType}}}"
-                                                  SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadSnapMarkerType}" />
-                                        <Separator />
+
                                         <Button Content="{I18N {x:Static r:LangKeys.Select}}"
                                                 Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                                 CommandParameter="Select" />
@@ -413,117 +401,9 @@
                                         <Button Content="{I18N {x:Static r:LangKeys.ShapeText}}"
                                                 Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                                 CommandParameter="ShapeText" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.ShapeFont}}"
-                                                   VerticalAlignment="Center" />
-                                        <ComboBox Width="94"
-                                                  ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadShapeFont}}}"
-                                                  SelectedItem="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.DrawingShapeFont}" />
                                         <Button Content="{I18N {x:Static r:LangKeys.SetOrigin}}"
                                                 Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                                 CommandParameter="SetOrigin" />
-                                        <TextBox Width="120"
-                                                 Text="{Binding CurrentEditorTabViewModel.TextInput}" />
-                                        <CheckBox Content="{I18N {x:Static r:LangKeys.Inverted}}"
-                                                  VerticalAlignment="Center"
-                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.DrawingTextInverted}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.Margin}}"
-                                                   VerticalAlignment="Center" />
-                                        <TextBox Width="52"
-                                                 Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.DrawingTextInvertedMarginFactor, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
-                                    </ToolBar>
-                                    <ToolBar>
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.Origin}}"
-                                                   VerticalAlignment="Center" />
-                                        <ComboBox Width="112"
-                                                  ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadOriginDisplayType}}}"
-                                                  SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginDisplayType}" />
-                                        <TextBlock Text="X"
-                                                   VerticalAlignment="Center" />
-                                        <TextBox Width="64"
-                                                 Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginX, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
-                                        <TextBlock Text="Y"
-                                                   VerticalAlignment="Center" />
-                                        <TextBox Width="64"
-                                                 Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginY, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.OriginMarker}}"
-                                                   VerticalAlignment="Center" />
-                                        <ComboBox Width="82"
-                                                  ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadOriginMarkerType}}}"
-                                                  SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginMarkerType}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.OriginLine}}"
-                                                   VerticalAlignment="Center" />
-                                        <ComboBox Width="82"
-                                                  ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadOriginLinePattern}}}"
-                                                  SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginLinePattern}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.Size}}"
-                                                   VerticalAlignment="Center" />
-                                        <TextBox Width="48"
-                                                 Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginSize, UpdateSourceTrigger=LostFocus, StringFormat=F1}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.Stroke}}"
-                                                   VerticalAlignment="Center" />
-                                        <TextBox Width="48"
-                                                 Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginStrokeWidth, UpdateSourceTrigger=LostFocus, StringFormat=F2}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.Color}}"
-                                                   VerticalAlignment="Center" />
-                                        <Border Width="18"
-                                                Height="18"
-                                                BorderBrush="#66000000"
-                                                BorderThickness="1"
-                                                Background="{Binding CurrentEditorTabViewModel.ViewModelCadOriginColorText}" />
-                                        <TextBox Width="86"
-                                                 Text="{Binding CurrentEditorTabViewModel.ViewModelCadOriginColorText, UpdateSourceTrigger=LostFocus}" />
-                                    </ToolBar>
-                                    <ToolBar>
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.User}}"
-                                                   VerticalAlignment="Center" />
-                                        <CheckBox Content="{I18N {x:Static r:LangKeys.Antialias}}"
-                                                  VerticalAlignment="Center"
-                                                  IsChecked="{Binding CurrentEditorTabViewModel.IsAntialiasingEnabled}" />
-                                        <CheckBox Content="{I18N {x:Static r:LangKeys.TextAntialiasing}}"
-                                                  VerticalAlignment="Center"
-                                                  IsChecked="{Binding CurrentEditorTabViewModel.IsTextAntialiasingEnabled}" />
-                                        <Separator />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.Selected}}"
-                                                   VerticalAlignment="Center" />
-                                        <Border Width="18"
-                                                Height="18"
-                                                BorderBrush="#66000000"
-                                                BorderThickness="1"
-                                                Background="{Binding CurrentEditorTabViewModel.SelectedEntityColorText}" />
-                                        <TextBox Width="86"
-                                                 Text="{Binding CurrentEditorTabViewModel.SelectedEntityColorText, UpdateSourceTrigger=LostFocus}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.SelectionWindow}}"
-                                                   VerticalAlignment="Center" />
-                                        <Border Width="18"
-                                                Height="18"
-                                                BorderBrush="#66000000"
-                                                BorderThickness="1"
-                                                Background="{Binding CurrentEditorTabViewModel.SelectionWindowStrokeColorText}" />
-                                        <TextBox Width="86"
-                                                 Text="{Binding CurrentEditorTabViewModel.SelectionWindowStrokeColorText, UpdateSourceTrigger=LostFocus}" />
-                                        <Border Width="18"
-                                                Height="18"
-                                                BorderBrush="#66000000"
-                                                BorderThickness="1"
-                                                Background="{Binding CurrentEditorTabViewModel.SelectionWindowFillColorText}" />
-                                        <TextBox Width="86"
-                                                 Text="{Binding CurrentEditorTabViewModel.SelectionWindowFillColorText, UpdateSourceTrigger=LostFocus}" />
-                                        <TextBlock Text="{I18N {x:Static r:LangKeys.SelectionCrossing}}"
-                                                   VerticalAlignment="Center" />
-                                        <Border Width="18"
-                                                Height="18"
-                                                BorderBrush="#66000000"
-                                                BorderThickness="1"
-                                                Background="{Binding CurrentEditorTabViewModel.SelectionCrossingStrokeColorText}" />
-                                        <TextBox Width="86"
-                                                 Text="{Binding CurrentEditorTabViewModel.SelectionCrossingStrokeColorText, UpdateSourceTrigger=LostFocus}" />
-                                        <Border Width="18"
-                                                Height="18"
-                                                BorderBrush="#66000000"
-                                                BorderThickness="1"
-                                                Background="{Binding CurrentEditorTabViewModel.SelectionCrossingFillColorText}" />
-                                        <TextBox Width="86"
-                                                 Text="{Binding CurrentEditorTabViewModel.SelectionCrossingFillColorText, UpdateSourceTrigger=LostFocus}" />
                                     </ToolBar>
                                 </StackPanel>
                             </WrapPanel>
@@ -654,17 +534,97 @@
                 </Grid>
 
 
+                <Border Grid.Row="2"
+                        Background="{DynamicResource MaterialDesign.Brush.Background}">
 
-                <StatusBar Grid.Row="2">
-                    <TextBlock Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CadCanvasToolMode}" />
+                    <StatusBar Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotHiddenInstance}}">
+                        <StatusBarItem>
 
-                    <!--<StatusBarItem Content="就绪" />
-            <Separator />
-            <StatusBarItem Content="X: 0.00" />
-            <StatusBarItem Content="Y: 0.00" />
-            <Separator />
-            <StatusBarItem Content="缩放: 100%" />-->
-                </StatusBar>
+                            <TextBlock Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CadCanvasToolMode}" />
+                        </StatusBarItem>
+
+                        <Separator />
+
+                        <StatusBarItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.X}}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Width="78"
+                                           Margin="4,0,10,0"
+                                           Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldX, StringFormat={}{0:F3}}" />
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.Y}}"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Width="78"
+                                           Margin="4,0,0,0"
+                                           Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldY, StringFormat={}{0:F3}}" />
+                            </StackPanel>
+                        </StatusBarItem>
+
+                        <Separator />
+
+                        <StatusBarItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.Grid}}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,4,0" />
+                                <ComboBox Margin="5 0 0 0"
+                                          Width="82"
+                                          Height="24"
+                                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadGridType}}}"
+                                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadGridType}" />
+                            </StackPanel>
+                        </StatusBarItem>
+
+                        <StatusBarItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.OriginMarker}}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,4,0" />
+                                <ComboBox Margin="5 0 0 0"
+                                          Width="88"
+                                          Height="24"
+                                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadOriginDisplayType}}}"
+                                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginDisplayType}" />
+                            </StackPanel>
+                        </StatusBarItem>
+
+                        <StatusBarItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.SnapMarker}}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,4,0" />
+                                <ComboBox Margin="5 0 0 0"
+                                          Width="88"
+                                          Height="24"
+                                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadSnapMarkerType}}}"
+                                          SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadSnapMarkerType}" />
+                            </StackPanel>
+                        </StatusBarItem>
+
+                        <Separator />
+
+                        <StatusBarItem>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.Background}}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,4,0" />
+
+                                <mah:ColorPicker Margin="5 0 0 0"
+                                                 Width="160"
+                                                 Height="24"
+                                                 AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                                 ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                                 AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                                 RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                                 StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                                 mah:TextBoxHelper.AutoWatermark="True"
+                                                 mah:TextBoxHelper.ClearTextButton="False"
+                                                 AddToRecentColorsTrigger="SelectedColorChanged"
+                                                 SelectedColor="{Binding CurrentEditorTabViewModel.ViewModelCadBackgroundColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                            </StackPanel>
+                        </StatusBarItem>
+                    </StatusBar>
+                </Border>
 
             </Grid>
         </md:DialogHost>

@@ -32,8 +32,6 @@ public enum CadCanvasToolMode
     Spline,
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
-    [LocalizedDescription("ShapeText", typeof(Strings))]
-    ShapeText,
     [LocalizedDescription("SetOrigin", typeof(Strings))]
     SetOrigin
 }

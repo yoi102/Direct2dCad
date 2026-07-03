@@ -52,6 +52,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public partial Direct2DImageRenderHost Direct2DImageRenderHost { get; private set; } = new();
 
     [ObservableProperty]
+    public partial double CurrentPointerWorldX { get; private set; }
+
+    [ObservableProperty]
+    public partial double CurrentPointerWorldY { get; private set; }
+
+    [ObservableProperty]
     public partial CadCanvasToolMode CadCanvasToolMode { get; internal set; } = CadCanvasToolMode.Select;
 
     [ObservableProperty]
@@ -189,8 +195,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial StyleId? DrawingTextStyleId { get; set; }
 
-    [ObservableProperty]
-    public partial ViewModelCadShapeFont DrawingShapeFont { get; set; } = ViewModelCadShapeFont.Unicode;
 
     [ObservableProperty]
     public partial CadColor DrawingArcStrokeColor { get; set; } = CadColor.White;
@@ -227,6 +231,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _isInitialViewportViewApplied = false;
         CadEditor.Viewport.SetSize(_viewportWidth, _viewportHeight);
         ApplyInitialViewportViewIfNeeded();
+        RefreshPointerWorldStatus();
         ClearInteractionState(clearClipboard: true, render: false);
         _handleScene.Clear();
 
@@ -268,6 +273,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _viewportHeight = Math.Max(1, height);
         CadEditor.Viewport.SetSize(_viewportWidth, _viewportHeight);
         ApplyInitialViewportViewIfNeeded();
+        RefreshPointerWorldStatus();
     }
 
     public void SetRenderSize(int width, int height)
@@ -294,6 +300,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
+        RequestRender();
+    }
+
+    public void SetBackgroundColor(CadColor color)
+    {
+        if (CadEditor.Document.ViewSettings.BackgroundColor == color)
+            return;
+
+        CadEditor.Document.ViewSettings.BackgroundColor = color;
+        ViewSettingsChanged?.Invoke(this, EventArgs.Empty);
         RequestRender();
     }
 
@@ -575,10 +591,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         RequestRender();
     }
 
-    partial void OnDrawingShapeFontChanged(ViewModelCadShapeFont value)
-    {
-        RequestRender();
-    }
 
     partial void OnDrawingArcStrokeColorChanged(CadColor value)
     {
@@ -618,6 +630,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         bool forcePan)
     {
         _currentMousePoint = screen;
+        UpdatePointerWorldStatus(screen);
 
         if (forcePan || button is CadCanvasPointerButton.Middle or CadCanvasPointerButton.Right)
         {
@@ -661,6 +674,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             requiresFullRender = true;
         }
 
+        UpdatePointerWorldStatus(screen);
+
         if (_activeGripDrag is not null)
         {
             _activeGripDrag.CurrentPointerWorld = ScreenToWorld(screen, snapToGrid: true);
@@ -681,6 +696,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     public CadCanvasInteractionResult PointerUp(CadPointD screen, CadCanvasPointerButton button)
     {
         _currentMousePoint = screen;
+        UpdatePointerWorldStatus(screen);
 
         if (IsPanning)
         {
@@ -715,6 +731,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         var factor = delta > 0 ? 1.1 : 1.0 / 1.1;
         CadEditor.Execute(new ZoomViewportCommand(screen, factor));
+        UpdatePointerWorldStatus(screen);
         RequestRender();
         return CadCanvasInteractionResult.HandledOnly;
     }
@@ -1038,18 +1055,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     lineWeight: ResolveDrawingTextLineWeight(),
                     zIndex: DrawingTextZIndex,
                     isVisible: DrawingTextIsVisible);
-                RequestRender();
-                break;
-
-            case CadCanvasToolMode.ShapeText:
-                var shapeText = ResolveDrawingText();
-                CadEditor.AddShapeText(
-                    shapeText,
-                    world,
-                    ResolveTextBoxHeight(shapeText),
-                    isInverted: DrawingTextInverted,
-                    invertedMarginFactor: ResolveDrawingTextInvertedMarginFactor(),
-                    shapeFontId: ResolveDrawingShapeFontId());
                 RequestRender();
                 break;
 
@@ -2625,21 +2630,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     drawingTextStyleId));
                 break;
 
-            case CadCanvasToolMode.ShapeText:
-                var drawingShapeText = ResolveDrawingText();
-                items.Add(new CadTransientShapeText(
-                    drawingShapeText,
-                    mouseWorld,
-                    ResolveTextBoxHeight(drawingShapeText),
-                    0,
-                    CadStrokeFont.DefaultWidthFactor,
-                    CadStrokeFont.DefaultCharacterSpacingFactor,
-                    CadStrokeFont.DefaultObliqueAngleRadians,
-                    CadTransientStyle.Construction,
-                    DrawingTextInverted,
-                    ResolveDrawingTextInvertedMarginFactor(),
-                    ResolveDrawingShapeFontId()));
-                break;
 
             case CadCanvasToolMode.SetOrigin:
                 AddOriginPositionPreview(items, mouseWorld);
@@ -2963,6 +2953,19 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return snapToGrid ? SnapWorld(world) : world;
     }
 
+    private void RefreshPointerWorldStatus()
+    {
+        if (_currentMousePoint is { } screen)
+            UpdatePointerWorldStatus(screen);
+    }
+
+    private void UpdatePointerWorldStatus(CadPointD screen)
+    {
+        var world = ScreenToWorld(screen, snapToGrid: true);
+        CurrentPointerWorldX = world.X;
+        CurrentPointerWorldY = world.Y;
+    }
+
     private CadPointD SnapWorld(CadPointD world)
     {
         var grid = CadEditor.Document.ViewSettings.Grid;
@@ -2999,17 +3002,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                !double.IsInfinity(DrawingTextInvertedMarginFactor)
             ? DrawingTextInvertedMarginFactor
             : CadText.DefaultInvertedMarginFactor;
-    }
-
-    private CadShapeFontId ResolveDrawingShapeFontId()
-    {
-        return DrawingShapeFont switch
-        {
-            ViewModelCadShapeFont.Simplex => CadShapeFontId.Simplex,
-            ViewModelCadShapeFont.MonoLine => CadShapeFontId.MonoLine,
-            ViewModelCadShapeFont.BoxFallback => CadShapeFontId.BoxFallback,
-            _ => CadShapeFontId.Unicode
-        };
     }
 
     private double ResolveTextBoxHeight(string text, StyleId? textStyleId = null)
