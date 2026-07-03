@@ -1194,8 +1194,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private static SweepDirection ToD2DSweepDirection(double sweepAngleRadians)
     {
-        // The current viewport keeps Y increasing downward, so this maps to the
-        // same visual direction as CadArc.GetPointAtAngle's Y + sin(angle).
+        // Direct2D builds arcs in a Y-down local plane. The viewport flips Y
+        // for CAD coordinates, so clockwise local sweeps render as positive
+        // mathematical sweeps in the Y-up world.
         return sweepAngleRadians >= 0
             ? SweepDirection.Clockwise
             : SweepDirection.CounterClockwise;
@@ -1774,6 +1775,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             (float)bounds.MinY,
             (float)bounds.MaxX,
             (float)bounds.MaxY);
+        var previousTransform = deviceContext.Transform;
+        deviceContext.Transform = CreateTextLayoutTransform(bounds) * previousTransform;
         deviceContext.PushAxisAlignedClip(clip, AntialiasMode.PerPrimitive);
 
         try
@@ -1792,15 +1795,24 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         finally
         {
             deviceContext.PopAxisAlignedClip();
+            deviceContext.Transform = previousTransform;
         }
     }
 
     private static System.Numerics.Matrix3x2 CreateViewportTransform(CadViewport viewport)
     {
-        return System.Numerics.Matrix3x2.CreateScale((float)viewport.Zoom) *
+        return System.Numerics.Matrix3x2.CreateScale((float)viewport.Zoom, (float)-viewport.Zoom) *
                System.Numerics.Matrix3x2.CreateTranslation(
                    (float)viewport.Offset.X,
                    (float)viewport.Offset.Y);
+    }
+
+    private static System.Numerics.Matrix3x2 CreateTextLayoutTransform(CadRectD bounds)
+    {
+        return System.Numerics.Matrix3x2.CreateScale(1.0f, -1.0f) *
+               System.Numerics.Matrix3x2.CreateTranslation(
+                   0.0f,
+                   (float)(bounds.MinY + bounds.MaxY));
     }
 
     private static float ResolveStrokeWidth(

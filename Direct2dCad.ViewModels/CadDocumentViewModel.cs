@@ -485,7 +485,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var origin = CadEditor.Document.ViewSettings.Origin.Position;
         var offset = new CadPointD(
             _viewportWidth * 0.5 - origin.X * zoom,
-            _viewportHeight * 0.5 - origin.Y * zoom);
+            _viewportHeight * 0.5 + origin.Y * zoom);
 
         CadEditor.Viewport.SetView(zoom, offset);
         _isInitialViewportViewApplied = true;

@@ -65,7 +65,7 @@ public sealed class FitViewportCommand : ICadEditorCommand
                 1.0,
                 new CadPointD(
                     viewWidth * 0.5 - origin.X,
-                    viewHeight * 0.5 - origin.Y));
+                    viewHeight * 0.5 + origin.Y));
         }
 
         var availableWidth = Math.Max(1.0, viewWidth - _padding * 2.0);
@@ -76,7 +76,7 @@ public sealed class FitViewportCommand : ICadEditorCommand
         var center = contentBounds.Center;
         var offset = new CadPointD(
             viewWidth * 0.5 - center.X * zoom,
-            viewHeight * 0.5 - center.Y * zoom);
+            viewHeight * 0.5 + center.Y * zoom);
 
         return new FitView(zoom, offset);
     }

@@ -39,7 +39,7 @@ public sealed class CadViewport
 
     public void PanWorld(CadVectorD worldDelta)
     {
-        Offset += new CadVectorD(worldDelta.X * Zoom, worldDelta.Y * Zoom);
+        Offset += new CadVectorD(worldDelta.X * Zoom, -worldDelta.Y * Zoom);
         UpdateVisibleWorldBounds();
     }
 
@@ -52,7 +52,7 @@ public sealed class CadViewport
         Zoom = GuardZoom(Zoom * factor);
         Offset = new CadPointD(
             screenAnchor.X - worldAnchor.X * Zoom,
-            screenAnchor.Y - worldAnchor.Y * Zoom);
+            screenAnchor.Y + worldAnchor.Y * Zoom);
         UpdateVisibleWorldBounds();
     }
 
@@ -60,14 +60,14 @@ public sealed class CadViewport
     {
         return new CadPointD(
             (screen.X - Offset.X) / Zoom,
-            (screen.Y - Offset.Y) / Zoom);
+            (Offset.Y - screen.Y) / Zoom);
     }
 
     public CadPointD WorldToScreen(CadPointD world)
     {
         return new CadPointD(
             world.X * Zoom + Offset.X,
-            world.Y * Zoom + Offset.Y);
+            Offset.Y - world.Y * Zoom);
     }
 
     private void UpdateVisibleWorldBounds()
