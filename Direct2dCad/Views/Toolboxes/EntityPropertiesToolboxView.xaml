@@ -66,7 +66,11 @@
                 <v_ep:TransientTextPropertyView />
             </DataTemplate>
         </Grid.Resources>
-        <ScrollViewer>
+        <ScrollViewer Style="{StaticResource MaterialDesignScrollViewer}">
+            <!--<ScrollViewer.Resources>
+                <Style TargetType="ScrollBar" 
+                       Basedon="{StaticResource MaterialDesignScrollBarMinimal}" />
+            </ScrollViewer.Resources>-->
             <ContentControl Content="{Binding Entity}" />
         </ScrollViewer>
     </Grid>

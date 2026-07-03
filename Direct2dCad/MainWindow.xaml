@@ -44,13 +44,13 @@
                   md:MenuAssist.TopLevelMenuItemHeight="25">
                 <MenuItem Header="{I18N {x:Static r:LangKeys.File}}">
                     <MenuItem Command="{Binding NewCommand}"
-                              Icon="{md:PackIcon Kind=File}"
+                              Icon="{md:PackIcon Kind=FilePlus}"
                               Foreground="{DynamicResource MaterialDesignBody}"
                               Header="{I18N {x:Static r:LangKeys.New}}" />
                     <MenuItem Command="{Binding OpenFileCommand}"
                               Icon="{md:PackIcon Kind=FolderOpen}"
                               Foreground="{DynamicResource MaterialDesignBody}"
-                              Header="{I18N {x:Static r:LangKeys.File}}" />
+                              Header="{I18N {x:Static r:LangKeys.OpenFile}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}"
                               Icon="{md:PackIcon Kind=ContentSave}"
                               Foreground="{DynamicResource MaterialDesignBody}"
@@ -278,7 +278,7 @@
                                         Command="{Binding NewCommand}">
                                     <Grid RowDefinitions="* auto">
 
-                                        <md:PackIcon Kind="File"
+                                        <md:PackIcon Kind="FilePlus"
                                                      HorizontalAlignment="Center"
                                                      VerticalAlignment="Center"
                                                      Width="50"
