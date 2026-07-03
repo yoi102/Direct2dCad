@@ -70,7 +70,7 @@
                            VerticalAlignment="Center" />
                 <ComboBox Grid.Row="2"
                           Grid.Column="1"
-                          ItemsSource="{Binding TextStyleOptions}"
+                          ItemsSource="{Binding TextStyleOptions, Mode=OneWay}"
                           SelectedItem="{Binding SelectedTextStyleOption, Mode=TwoWay}"
                           DisplayMemberPath="Name"
                           Margin="0,0,0,8" />
@@ -126,7 +126,7 @@
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="7"
                          Grid.Column="1"
-                         Text="{Binding BoundsSizeText}"
+                         Text="{Binding BoundsSizeText, Mode=OneWay}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 
@@ -136,7 +136,7 @@
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="8"
                          Grid.Column="1"
-                         Text="{Binding BoundsMeasurementState}"
+                         Text="{Binding BoundsMeasurementState, Mode=OneWay}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 

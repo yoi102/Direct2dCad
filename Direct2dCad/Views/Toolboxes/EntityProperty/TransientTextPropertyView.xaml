@@ -53,7 +53,7 @@
                            VerticalAlignment="Center" />
                 <ComboBox Grid.Row="1"
                           Grid.Column="1"
-                          ItemsSource="{Binding TextStyleOptions}"
+                          ItemsSource="{Binding TextStyleOptions, Mode=OneWay}"
                           SelectedItem="{Binding SelectedTextStyleOption, Mode=TwoWay}"
                           DisplayMemberPath="Name"
                           Margin="0,0,0,8" />

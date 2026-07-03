@@ -112,7 +112,7 @@
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="6"
                          Grid.Column="1"
-                         Text="{Binding EndAngleDegrees, StringFormat=F2}"
+                         Text="{Binding EndAngleDegrees, Mode=OneWay, StringFormat=F2}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 

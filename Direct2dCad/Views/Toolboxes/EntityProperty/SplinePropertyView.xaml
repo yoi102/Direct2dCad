@@ -61,7 +61,7 @@
                            Margin="0,4,0,0" />
                 <DataGrid Grid.Row="2"
                           Grid.Column="1"
-                          ItemsSource="{Binding FitPoints}"
+                          ItemsSource="{Binding FitPoints, Mode=OneWay}"
                           SelectedItem="{Binding SelectedFitPoint, Mode=TwoWay}"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
@@ -71,7 +71,7 @@
                           Margin="0,0,0,8">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#"
-                                            Binding="{Binding Index}"
+                                            Binding="{Binding Index, Mode=OneWay}"
                                             IsReadOnly="True"
                                             Width="36" />
                         <DataGridTemplateColumn Header="X"
@@ -116,7 +116,7 @@
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="4"
                          Grid.Column="1"
-                         Text="{Binding FitPointCount}"
+                         Text="{Binding FitPointCount, Mode=OneWay}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 
@@ -126,7 +126,7 @@
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="5"
                          Grid.Column="1"
-                         Text="{Binding Length, StringFormat=F3}"
+                         Text="{Binding Length, Mode=OneWay, StringFormat=F3}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 

@@ -61,7 +61,7 @@
                            VerticalAlignment="Center" />
                 <ComboBox Grid.Row="2"
                           Grid.Column="1"
-                          ItemsSource="{Binding FillStyleOptions}"
+                          ItemsSource="{Binding FillStyleOptions, Mode=OneWay}"
                           SelectedItem="{Binding SelectedFillStyleOption, Mode=TwoWay}"
                           DisplayMemberPath="Name"
                           Margin="0,0,0,8" />
@@ -73,7 +73,7 @@
                            Margin="0,4,0,0" />
                 <DataGrid Grid.Row="3"
                           Grid.Column="1"
-                          ItemsSource="{Binding Vertices}"
+                          ItemsSource="{Binding Vertices, Mode=OneWay}"
                           SelectedItem="{Binding SelectedVertex, Mode=TwoWay}"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
@@ -83,7 +83,7 @@
                           Margin="0,0,0,8">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#"
-                                            Binding="{Binding Index}"
+                                            Binding="{Binding Index, Mode=OneWay}"
                                             IsReadOnly="True"
                                             Width="36" />
                         <DataGridTemplateColumn Header="X"
@@ -128,7 +128,7 @@
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="5"
                          Grid.Column="1"
-                         Text="{Binding PointCount}"
+                         Text="{Binding PointCount, Mode=OneWay}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 
@@ -138,7 +138,7 @@
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="6"
                          Grid.Column="1"
-                         Text="{Binding Length, StringFormat=F3}"
+                         Text="{Binding Length, Mode=OneWay, StringFormat=F3}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 

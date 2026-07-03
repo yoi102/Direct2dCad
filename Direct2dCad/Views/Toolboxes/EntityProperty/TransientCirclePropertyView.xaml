@@ -39,7 +39,7 @@
                            VerticalAlignment="Center" />
                 <ComboBox Grid.Row="0"
                           Grid.Column="1"
-                          ItemsSource="{Binding FillStyleOptions}"
+                          ItemsSource="{Binding FillStyleOptions, Mode=OneWay}"
                           SelectedItem="{Binding SelectedFillStyleOption, Mode=TwoWay}"
                           DisplayMemberPath="Name"
                           Margin="0,0,0,8" />
