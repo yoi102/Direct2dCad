@@ -287,7 +287,9 @@ public sealed class Direct2DImageRenderHost : IDisposable
     private static void FillScreenRect(ID2D1DeviceContext context, RawRectF rect, Color4 color)
     {
         var previousTransform = context.Transform;
+        var previousPrimitiveBlend = context.PrimitiveBlend;
         context.Transform = System.Numerics.Matrix3x2.Identity;
+        context.PrimitiveBlend = PrimitiveBlend.Copy;
 
         try
         {
@@ -296,6 +298,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
         }
         finally
         {
+            context.PrimitiveBlend = previousPrimitiveBlend;
             context.Transform = previousTransform;
         }
     }
