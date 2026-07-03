@@ -353,15 +353,16 @@
                         <TabItem Header="{I18N {x:Static r:LangKeys.Draw}}"
                                  Style="{StaticResource MahApps.Styles.TabItem}"
                                  Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
-                            <WrapPanel>
+                            <WrapPanel Margin="10">
 
-                                <Button ToolTip="{I18N {x:Static r:LangKeys.Select}}"
-                                        Style="{StaticResource MaterialDesignFlatButton}"
-                                        Width="80"
-                                        Height="80"
-                                        Padding="0"
-                                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                        CommandParameter="Select">
+                                <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Select}}"
+                                              Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                              IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Select}}"
+                                              Width="80"
+                                              Height="80"
+                                              Padding="0"
+                                              Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                              CommandParameter="Select">
                                     <Grid RowDefinitions="* auto">
 
                                         <md:PackIcon Kind="ArrowAll"
@@ -374,7 +375,7 @@
                                                    Text="{I18N {x:Static r:LangKeys.Select}}" />
 
                                     </Grid>
-                                </Button>
+                                </ToggleButton>
 
                                 <!--<Button ToolTip="{I18N {x:Static r:LangKeys.Undo}}"
                                         Style="{StaticResource MaterialDesignFlatButton}"
@@ -386,106 +387,116 @@
                                         Command="{Binding CurrentEditorTabViewModel.RedoCommand}" />-->
 
                                 <Separator />
-                                <WrapPanel Width="120">
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Line}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=Segment,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Line" />
+                                <WrapPanel Margin="50 0 0 0" Width="120">
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Line}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Line}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=Segment,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Line" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Circle}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=CheckboxBlankCircleOutline,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Circle" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Circle}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Circle}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=CheckboxBlankCircleOutline,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Circle" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Ellipse}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=EllipseOutline,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Ellipse" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Ellipse}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Ellipse}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=EllipseOutline,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Ellipse" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Arc}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=Arch,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Arc" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Arc}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Arc}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=Arch,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Arc" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Rectangle}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=RectangleOutline,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Rectangle" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Rectangle}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Rectangle}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=RectangleOutline,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Rectangle" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Polyline}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=VectorPolyline,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Polyline" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Polyline}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Polyline}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=VectorPolyline,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Polyline" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Polygon}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=ShapePolygonPlus,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Polygon" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Polygon}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Polygon}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=ShapePolygonPlus,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Polygon" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Spline}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=ChartAreaspline,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Spline" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Spline}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Spline}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=ChartAreaspline,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Spline" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Text}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Margin="5"
-                                            Height="20"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=TextShadow,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="Text" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Text}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Text}}"
+                                                  Width="20"
+                                                  Margin="5"
+                                                  Height="20"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=TextShadow,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="Text" />
 
-                                    <Button ToolTip="{I18N {x:Static r:LangKeys.SetOrigin}}"
-                                            Style="{StaticResource MaterialDesignFlatButton}"
-                                            Width="20"
-                                            Height="20"
-                                            Margin="5"
-                                            Padding="0"
-                                            Content="{md:PackIcon Kind=Target,Size=20}"
-                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                            CommandParameter="SetOrigin" />
+                                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.SetOrigin}}"
+                                                  Style="{StaticResource MaterialDesignFlatToggleButton}"
+                                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.SetOrigin}}"
+                                                  Width="20"
+                                                  Height="20"
+                                                  Margin="5"
+                                                  Padding="0"
+                                                  Content="{md:PackIcon Kind=Target,Size=20}"
+                                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                                  CommandParameter="SetOrigin" />
 
                                 </WrapPanel>
                             </WrapPanel>

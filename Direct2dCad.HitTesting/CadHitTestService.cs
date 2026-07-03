@@ -26,6 +26,23 @@ public sealed class CadHitTestService
         double tolerance,
         out CadHitTestResult result)
     {
+        return HitTestEntityEdge(
+            entityId,
+            point,
+            tolerance,
+            CadHitTestOptions.Default,
+            out result);
+    }
+
+    public bool HitTestEntityEdge(
+        EntityId entityId,
+        CadPointD point,
+        double tolerance,
+        CadHitTestOptions options,
+        out CadHitTestResult result)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
         if (!_cadDocument.TryGetEntity(entityId, out var entity) || entity is null)
         {
             result = default;
@@ -37,6 +54,7 @@ public sealed class CadHitTestService
             entity,
             point,
             tolerance,
+            options,
             out result);
     }
 
@@ -84,6 +102,56 @@ public sealed class CadHitTestService
             new HashSet<BlockId>());
     }
 
+    public CadRectD GetHitTestEntityBounds(
+        EntityId entityId,
+        CadHitTestOptions? options = null)
+    {
+        var entity = _cadDocument.GetEntity(entityId);
+        return GetHitTestEntityBounds(entity, options);
+    }
+
+    public CadRectD GetHitTestEntityBounds(
+        CadEntity entity,
+        CadHitTestOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        return GetHitTestEntityBounds(
+            entity,
+            options ?? CadHitTestOptions.Default,
+            new HashSet<BlockId>());
+    }
+
+    public double GetMaxStrokeHitPadding(CadHitTestOptions? options = null)
+    {
+        var resolvedOptions = options ?? CadHitTestOptions.Default;
+        var maxPadding = 0.0;
+
+        foreach (var entity in _cadDocument.Entities.Values)
+        {
+            if (entity.IsErased || !entity.IsVisible)
+                continue;
+
+            maxPadding = Math.Max(
+                maxPadding,
+                GetMaxStrokeHitPadding(entity, resolvedOptions, new HashSet<BlockId>()));
+        }
+
+        return maxPadding;
+    }
+
+    public double GetStrokeHitPadding(
+        CadEntity entity,
+        CadHitTestOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        return GetMaxStrokeHitPadding(
+            entity,
+            options ?? CadHitTestOptions.Default,
+            new HashSet<BlockId>());
+    }
+
     private CadRectD GetResolvedEntityBounds(
         CadEntity entity,
         HashSet<BlockId> visitedBlocks)
@@ -122,6 +190,87 @@ public sealed class CadHitTestService
                 bounds,
                 blockReference,
                 definition.BasePoint);
+        }
+        finally
+        {
+            visitedBlocks.Remove(blockReference.DefinitionBlockId);
+        }
+    }
+
+    private CadRectD GetHitTestEntityBounds(
+        CadEntity entity,
+        CadHitTestOptions options,
+        HashSet<BlockId> visitedBlocks)
+    {
+        if (entity.IsErased)
+            return CadRectD.Empty;
+
+        if (entity is not CadBlockReference blockReference)
+            return CadHitTestStyleResolver.InflateByStroke(_cadDocument, entity, options);
+
+        if (!visitedBlocks.Add(blockReference.DefinitionBlockId))
+            return CadRectD.Empty;
+
+        try
+        {
+            var definition = _cadDocument.GetBlock(blockReference.DefinitionBlockId);
+            var bounds = CadRectD.Empty;
+
+            foreach (var child in _cadDocument.GetEntitiesInBlock(blockReference.DefinitionBlockId))
+            {
+                bounds = bounds.Union(
+                    GetHitTestEntityBounds(child, options, visitedBlocks));
+            }
+
+            if (bounds.IsEmpty)
+            {
+                return CadRectD.FromLTRB(
+                    blockReference.Position.X,
+                    blockReference.Position.Y,
+                    blockReference.Position.X,
+                    blockReference.Position.Y);
+            }
+
+            return TransformBlockLocalBoundsToWorld(
+                bounds,
+                blockReference,
+                definition.BasePoint);
+        }
+        finally
+        {
+            visitedBlocks.Remove(blockReference.DefinitionBlockId);
+        }
+    }
+
+    private double GetMaxStrokeHitPadding(
+        CadEntity entity,
+        CadHitTestOptions options,
+        HashSet<BlockId> visitedBlocks)
+    {
+        if (entity.IsErased || !entity.IsVisible)
+            return 0.0;
+
+        if (entity is not CadBlockReference blockReference)
+            return CadHitTestStyleResolver.ResolveStrokeHitPadding(_cadDocument, entity, options);
+
+        if (!visitedBlocks.Add(blockReference.DefinitionBlockId))
+            return 0.0;
+
+        try
+        {
+            var scale = Math.Max(Math.Abs(blockReference.ScaleX), Math.Abs(blockReference.ScaleY));
+            if (scale <= 0)
+                scale = 1.0;
+
+            var maxPadding = 0.0;
+            foreach (var child in _cadDocument.GetEntitiesInBlock(blockReference.DefinitionBlockId))
+            {
+                maxPadding = Math.Max(
+                    maxPadding,
+                    GetMaxStrokeHitPadding(child, options, visitedBlocks) * scale);
+            }
+
+            return maxPadding;
         }
         finally
         {

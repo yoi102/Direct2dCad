@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.HitTesting;
 
 namespace Direct2dCad.Editor.Commands;
 
@@ -43,13 +44,15 @@ public sealed class ClickSelectCommand : SelectionCommandBase
 
     private EntityId? FindTopHit(CadEditorCommandContext context)
     {
+        var options = new CadHitTestOptions(context.Viewport.Zoom);
+        var queryPadding = _tolerance + context.HitTesting.GetMaxStrokeHitPadding(options);
         var queryArea = CadRectD.FromCenter(
             _worldPoint,
-            _tolerance * 2,
-            _tolerance * 2);
+            queryPadding * 2,
+            queryPadding * 2);
 
         var hit = context.SpatialIndex.Query(queryArea)
-            .Select(entityId => TryHit(context, entityId))
+            .Select(entityId => TryHit(context, entityId, options))
             .Where(x => x is not null)
             .OrderBy(x => x!.Value.Distance)
             .Select(x => x!.Value.TopEntityId)
@@ -58,9 +61,12 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         return hit.Equals(default(EntityId)) ? null : hit;
     }
 
-    private HitCandidate? TryHit(CadEditorCommandContext context, EntityId entityId)
+    private HitCandidate? TryHit(
+        CadEditorCommandContext context,
+        EntityId entityId,
+        CadHitTestOptions options)
     {
-        if (context.HitTesting.HitTestEntityEdge(entityId, _worldPoint, _tolerance, out var edgeHit))
+        if (context.HitTesting.HitTestEntityEdge(entityId, _worldPoint, _tolerance, options, out var edgeHit))
             return new HitCandidate(edgeHit.TopEntityId, edgeHit.Distance);
 
         if (context.HitTesting.HitTestEntityFill(entityId, _worldPoint, out var fillHit))

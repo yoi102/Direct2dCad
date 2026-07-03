@@ -1,5 +1,6 @@
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.HitTesting;
 
 namespace Direct2dCad.Editor.Commands;
 
@@ -26,20 +27,27 @@ public sealed class BoxSelectCommand : SelectionCommandBase
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
     {
-        var entityIds = context.SpatialIndex.Query(_worldArea)
+        var options = new CadHitTestOptions(context.Viewport.Zoom);
+        var queryArea = _worldArea.Inflate(context.HitTesting.GetMaxStrokeHitPadding(options));
+        var entityIds = context.SpatialIndex.Query(queryArea)
             .Where(entityId => context.Document.TryGetEntity(entityId, out var entity) &&
                                entity is not null &&
-                               IsSelectionMatch(entity))
+                               IsSelectionMatch(context, entity, options))
             .ToArray();
 
         ApplySelection(context.Selection, entityIds, _mode);
     }
 
-    private bool IsSelectionMatch(CadEntity entity)
+    private bool IsSelectionMatch(
+        CadEditorCommandContext context,
+        CadEntity entity,
+        CadHitTestOptions options)
     {
         return _requireContained
-            ? _worldArea.Contains(entity.Bounds)
-            : EntityTouchesArea(entity, _worldArea);
+            ? _worldArea.Contains(context.HitTesting.GetHitTestEntityBounds(entity, options))
+            : EntityTouchesArea(
+                entity,
+                _worldArea.Inflate(context.HitTesting.GetStrokeHitPadding(entity, options)));
     }
 
     private static bool EntityTouchesArea(CadEntity entity, CadRectD area)

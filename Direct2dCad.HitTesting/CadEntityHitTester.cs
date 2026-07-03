@@ -27,8 +27,26 @@ public static class CadEntityHitTester
         double tolerance,
         out CadHitTestResult result)
     {
+        return HitTestEdge(
+            document,
+            entity,
+            point,
+            tolerance,
+            CadHitTestOptions.Default,
+            out result);
+    }
+
+    public static bool HitTestEdge(
+        CadDocument document,
+        CadEntity entity,
+        CadPointD point,
+        double tolerance,
+        CadHitTestOptions options,
+        out CadHitTestResult result)
+    {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(entity);
+        ArgumentNullException.ThrowIfNull(options);
         GuardTolerance(tolerance);
 
         return HitTestEdgeCore(
@@ -36,6 +54,7 @@ public static class CadEntityHitTester
             entity,
             point,
             tolerance,
+            options,
             new HashSet<BlockId>(),
             out result);
     }
@@ -66,6 +85,7 @@ public static class CadEntityHitTester
         CadEntity entity,
         CadPointD point,
         double tolerance,
+        CadHitTestOptions options,
         HashSet<BlockId> visitedBlocks,
         out CadHitTestResult result)
     {
@@ -74,31 +94,36 @@ public static class CadEntityHitTester
         if (entity.IsErased)
             return false;
 
+        var edgeTolerance = tolerance + CadHitTestStyleResolver.ResolveStrokeHitPadding(
+            document,
+            entity,
+            options);
+
         switch (entity)
         {
             case CadLine line:
-                return HitLineEdge(line, point, tolerance, out result);
+                return HitLineEdge(line, point, edgeTolerance, out result);
 
             case CadArc arc:
-                return HitArcEdge(arc, point, tolerance, out result);
+                return HitArcEdge(arc, point, edgeTolerance, out result);
 
             case CadCircle circle:
-                return HitCircleEdge(circle, point, tolerance, out result);
+                return HitCircleEdge(circle, point, edgeTolerance, out result);
 
             case CadEllipse ellipse:
-                return HitEllipseEdge(ellipse, point, tolerance, out result);
+                return HitEllipseEdge(ellipse, point, edgeTolerance, out result);
 
             case CadRectangle rectangle:
-                return HitRectangleEdge(rectangle, point, tolerance, out result);
+                return HitRectangleEdge(rectangle, point, edgeTolerance, out result);
 
             case CadPolyline polyline:
-                return HitPolylineEdge(polyline, point, tolerance, out result);
+                return HitPolylineEdge(polyline, point, edgeTolerance, out result);
 
             case CadSpline spline:
-                return HitSplineEdge(spline, point, tolerance, out result);
+                return HitSplineEdge(spline, point, edgeTolerance, out result);
 
             case CadShapeText shapeText:
-                return HitShapeTextEdge(shapeText, point, tolerance, out result);
+                return HitShapeTextEdge(shapeText, point, edgeTolerance, out result);
 
             case CadBlockReference blockReference:
                 return HitBlockReferenceEdge(
@@ -106,6 +131,7 @@ public static class CadEntityHitTester
                     blockReference,
                     point,
                     tolerance,
+                    options,
                     visitedBlocks,
                     out result);
 
@@ -588,6 +614,7 @@ public static class CadEntityHitTester
         CadBlockReference blockReference,
         CadPointD worldPoint,
         double worldTolerance,
+        CadHitTestOptions options,
         HashSet<BlockId> visitedBlocks,
         out CadHitTestResult result)
     {
@@ -614,6 +641,7 @@ public static class CadEntityHitTester
                         child,
                         localPoint,
                         localTolerance,
+                        options,
                         visitedBlocks,
                         out var childResult))
                 {

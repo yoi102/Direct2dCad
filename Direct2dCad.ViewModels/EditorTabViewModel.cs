@@ -58,7 +58,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         CadDocumentViewModel.DrawingText = TextInput;
         ApplyDocumentViewSettingsToToolbar();
         ApplyUserSettingsToToolbar();
-
+        CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
         Id = Guid.NewGuid().ToString();
         Title = cadDocumentViewModel.CadEditor.Document.Name;
         ResetModificationBaseline(isModified: string.IsNullOrWhiteSpace(CurrentFilePath));
@@ -131,6 +131,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
 
     [ObservableProperty]
     public partial string SelectionCrossingFillColorText { get; set; } = "#245CDC80";
+    [ObservableProperty]
+    public partial CadCanvasToolMode CadCanvasToolMode { get; set; } = CadCanvasToolMode.Select;
 
     partial void OnTextInputChanged(string value)
     {
@@ -355,9 +357,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
     {
         if (!Enum.TryParse<CadCanvasToolMode>(mode_string, out var mode))
             return;
-
+        CadCanvasToolMode = mode;
         CadDocumentViewModel.SetToolMode(mode);
     }
+
 
     [RelayCommand]
     public void FitToWindow()
