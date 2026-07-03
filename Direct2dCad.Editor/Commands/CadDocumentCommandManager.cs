@@ -16,6 +16,8 @@ public sealed class CadDocumentCommandManager
     public bool CanUndo => _history.CanUndo;
     public bool CanRedo => _history.CanRedo;
     public CommandHistorySettings Settings => _settings;
+    public object CreateUndoHistorySnapshot() => _history.CreateUndoSnapshot();
+    public bool UndoHistoryEquals(object? snapshot) => _history.UndoStackEquals(snapshot);
 
     public CadDocumentCommandManager(
         CadDocument document,

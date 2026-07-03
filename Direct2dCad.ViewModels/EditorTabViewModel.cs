@@ -1,5 +1,6 @@
 using AvalonDock.Mvvm.CommunityToolkit;
 using System.IO;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
@@ -31,6 +32,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
     private readonly ISnackbarService _snackbarService;
     private bool _isSyncingViewSettings;
     private bool _isSyncingUserSettings;
+    private CadEditor? _trackedEditor;
+    private object? _savedDocumentHistorySnapshot;
+    private int _directChangeVersion;
+    private int _savedDirectChangeVersion;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
         IUserSettingsService userSettingsService,
@@ -47,13 +52,16 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         CadDocumentViewModel = cadDocumentViewModel;
         _userSettingsService = userSettingsService;
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
+        CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
         CadDocumentViewModel.ViewSettingsChanged += OnCadDocumentViewSettingsChanged;
+        AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
         CadDocumentViewModel.DrawingText = TextInput;
         ApplyDocumentViewSettingsToToolbar();
         ApplyUserSettingsToToolbar();
 
         Id = Guid.NewGuid().ToString();
         Title = cadDocumentViewModel.CadEditor.Document.Name;
+        ResetModificationBaseline(isModified: string.IsNullOrWhiteSpace(CurrentFilePath));
     }
 
     public override bool OnClose()
@@ -136,8 +144,11 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
             return;
 
         var gridType = (CadGridType)value;
+        if (CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.Type == gridType)
+            return;
 
         CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.Type = gridType;
+        MarkDirectDocumentChanged();
         CadDocumentViewModel.RequestRender();
     }
 
@@ -147,8 +158,11 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
             return;
 
         var markerType = (CadSnapMarkerType)value;
+        if (CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.SnapMarkerType == markerType)
+            return;
 
         CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.SnapMarkerType = markerType;
+        MarkDirectDocumentChanged();
         CadDocumentViewModel.RequestRender();
     }
 
@@ -311,6 +325,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         try
         {
             _storage.Save(CadDocumentViewModel.CadEditor.Document, filePath);
+            ResetModificationBaseline(isModified: false);
             _snackbarService.Enqueue("File saved successfully.");
             return true;
         }
@@ -355,8 +370,12 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         if (!TryNormalizeDocumentName(name, out var normalizedName))
             return false;
 
+        if (CadDocumentViewModel.CadEditor.Document.Name == normalizedName)
+            return true;
+
         CadDocumentViewModel.CadEditor.Document.Rename(normalizedName);
         Title = normalizedName;
+        MarkDirectDocumentChanged();
         OnPropertyChanged(nameof(DocumentName));
         return true;
     }
@@ -470,8 +489,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
 
     private void ApplyBackgroundColorFromToolbar()
     {
+        if (CadDocumentViewModel.CadEditor.Document.ViewSettings.BackgroundColor == ViewModelCadBackgroundColor)
+            return;
 
-
+        MarkDirectDocumentChanged();
         CadDocumentViewModel.SetBackgroundColor(ViewModelCadBackgroundColor);
     }
 
@@ -529,6 +550,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
     public void Dispose()
     {
         SaveUserSettings();
+        DetachDocumentChangeTracking();
+        CadDocumentViewModel.PropertyChanged -= OnCadDocumentViewModelPropertyChanged;
         CadDocumentViewModel.ViewSettingsChanged -= OnCadDocumentViewSettingsChanged;
         CadDocumentViewModel.Dispose();
     }
@@ -538,12 +561,66 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         ApplyDocumentViewSettingsToToolbar();
     }
 
+    private void OnCadDocumentViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(CadDocumentViewModel.CadEditor))
+            return;
+
+        AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
+    }
+
+    private void AttachDocumentChangeTracking(CadEditor editor)
+    {
+        if (ReferenceEquals(_trackedEditor, editor))
+            return;
+
+        DetachDocumentChangeTracking();
+        _trackedEditor = editor;
+        _trackedEditor.DocumentChanged += OnEditorDocumentChanged;
+    }
+
+    private void DetachDocumentChangeTracking()
+    {
+        if (_trackedEditor is null)
+            return;
+
+        _trackedEditor.DocumentChanged -= OnEditorDocumentChanged;
+        _trackedEditor = null;
+    }
+
+    private void OnEditorDocumentChanged(object? sender, CadDocumentChangeSet e)
+    {
+        RefreshModifiedState();
+    }
+
+    private void MarkDirectDocumentChanged()
+    {
+        _directChangeVersion++;
+        RefreshModifiedState();
+    }
+
+    private void ResetModificationBaseline(bool isModified)
+    {
+        _savedDocumentHistorySnapshot = CadDocumentViewModel.CadEditor.CreateDocumentHistorySnapshot();
+        _savedDirectChangeVersion = _directChangeVersion;
+        IsModified = isModified;
+    }
+
+    private void RefreshModifiedState()
+    {
+        IsModified =
+            string.IsNullOrWhiteSpace(CurrentFilePath) ||
+            !CadDocumentViewModel.CadEditor.DocumentHistoryEquals(_savedDocumentHistorySnapshot) ||
+            _directChangeVersion != _savedDirectChangeVersion;
+    }
+
     internal void Load(string fileName)
     {
         var document = _storage.Load(fileName);
         CadDocumentViewModel.ReplaceEditor(new CadEditor(document));
         CurrentFilePath = fileName;
         Title = CadDocumentViewModel.CadEditor.Document.Name;
+        ResetModificationBaseline(isModified: false);
         OnPropertyChanged(nameof(DocumentName));
     }
 

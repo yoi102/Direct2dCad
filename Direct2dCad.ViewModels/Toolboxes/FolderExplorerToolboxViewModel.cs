@@ -106,6 +106,9 @@ public sealed partial class FolderExplorerDocumentItemViewModel : ObservableObje
     [ObservableProperty]
     public partial string FilePath { get; private set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial bool IsModified { get; private set; }
+
     public string DisplayPath => string.IsNullOrWhiteSpace(FilePath)
         ? "Unsaved document"
         : FilePath;
@@ -125,6 +128,7 @@ public sealed partial class FolderExplorerDocumentItemViewModel : ObservableObje
         {
             DocumentName = Document.DocumentName;
             FilePath = Document.CurrentFilePath;
+            IsModified = Document.IsModified;
         }
         finally
         {
@@ -149,6 +153,7 @@ public sealed partial class FolderExplorerDocumentItemViewModel : ObservableObje
     {
         if (e.PropertyName is nameof(EditorTabViewModel.DocumentName) or
             nameof(EditorTabViewModel.CurrentFilePath) or
+            nameof(EditorTabViewModel.IsModified) or
             nameof(EditorTabViewModel.Title))
         {
             RefreshFromDocument();

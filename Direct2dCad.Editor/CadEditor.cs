@@ -94,6 +94,10 @@ public sealed class CadEditor
 
     public CadEditorCommandResult RedoEditor() => EditorCommands.Redo();
 
+    public object CreateDocumentHistorySnapshot() => DocumentCommands.CreateUndoHistorySnapshot();
+
+    public bool DocumentHistoryEquals(object? snapshot) => DocumentCommands.UndoHistoryEquals(snapshot);
+
     public CadDocumentChangeSet DrainDirtyChanges() => DirtySet.Drain();
 
     public CadDocumentChangeSet PublishDocumentChanges(CadDocumentChangeSet changes)

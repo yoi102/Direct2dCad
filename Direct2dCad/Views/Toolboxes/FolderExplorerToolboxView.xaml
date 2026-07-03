@@ -71,12 +71,29 @@
 
                             <StackPanel Grid.Column="1"
                                         ToolTip="{Binding DisplayPath}">
-                                <yr:EditableTextBlock Text="{Binding DocumentName, Mode=TwoWay}"
-                                                      FontSize="13"
-                                                      FontWeight="SemiBold"
-                                                      TextTrimming="CharacterEllipsis"
-                                                      EmptyTextErrorMessage="Document name cannot be empty."
-                                                      ToolTip="{Binding ToolTipText}" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <yr:EditableTextBlock Grid.Column="0"
+                                                          Text="{Binding DocumentName, Mode=TwoWay}"
+                                                          FontSize="13"
+                                                          FontWeight="SemiBold"
+                                                          TextTrimming="CharacterEllipsis"
+                                                          EmptyTextErrorMessage="Document name cannot be empty."
+                                                          ToolTip="{Binding ToolTipText}" />
+
+                                    <TextBlock x:Name="ModifiedMarker"
+                                               Grid.Column="1"
+                                               Text="*"
+                                               Foreground="#FFE53935"
+                                               FontSize="16"
+                                               FontWeight="Bold"
+                                               Margin="4,-2,0,0"
+                                               Visibility="Collapsed" />
+                                </Grid>
                             </StackPanel>
                         </Grid>
                     </StackPanel>
@@ -84,6 +101,12 @@
                         <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                                      Value="True">
                             <Setter TargetName="SelectedBorder"
+                                    Property="Visibility"
+                                    Value="Visible" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsModified}"
+                                     Value="True">
+                            <Setter TargetName="ModifiedMarker"
                                     Property="Visibility"
                                     Value="Visible" />
                         </DataTrigger>

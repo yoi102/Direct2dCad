@@ -13,6 +13,33 @@ public sealed class CommandHistory<TCommand>
     public int UndoCount => _undoStack.Count;
     public int RedoCount => _redoStack.Count;
 
+    public object CreateUndoSnapshot()
+    {
+        return _undoStack.ToArray();
+    }
+
+    public bool UndoStackEquals(object? snapshot)
+    {
+        if (snapshot is not CommandHistoryEntry<TCommand>[] entries ||
+            entries.Length != _undoStack.Count)
+        {
+            return false;
+        }
+
+        var index = 0;
+        foreach (var current in _undoStack)
+        {
+            var saved = entries[index++];
+            if (!ReferenceEquals(current.Command, saved.Command) ||
+                current.BatchId != saved.BatchId)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public void PushExecuted(TCommand command, Guid? batchId = null)
     {
         ArgumentNullException.ThrowIfNull(command);
