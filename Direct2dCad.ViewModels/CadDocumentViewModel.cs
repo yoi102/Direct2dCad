@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Runtime.CompilerServices;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
@@ -44,12 +45,60 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private double _viewportWidth = 1.0;
     private double _viewportHeight = 1.0;
     private CadRenderInvalidation _lastOverlayInvalidation = CadRenderInvalidation.FromScreenRect(default);
+    private CadColor _drawingLineStrokeColor = CadColor.White;
+    private double _drawingLineLineWeight = CadLineWeight.Default.Value;
+    private int _drawingLineZIndex;
+    private bool _drawingLineIsVisible = true;
+    private CadColor _drawingPolylineStrokeColor = CadColor.White;
+    private double _drawingPolylineLineWeight = CadLineWeight.Default.Value;
+    private int _drawingPolylineZIndex;
+    private bool _drawingPolylineIsVisible = true;
+    private bool _drawingPolylineClosed;
+    private StyleId? _drawingPolylineFillStyleId;
+    private CadColor _drawingPolygonStrokeColor = CadColor.White;
+    private double _drawingPolygonLineWeight = CadLineWeight.Default.Value;
+    private int _drawingPolygonZIndex;
+    private bool _drawingPolygonIsVisible = true;
+    private StyleId? _drawingPolygonFillStyleId;
+    private CadColor _drawingSplineStrokeColor = CadColor.White;
+    private double _drawingSplineLineWeight = CadLineWeight.Default.Value;
+    private int _drawingSplineZIndex;
+    private bool _drawingSplineIsVisible = true;
+    private bool _drawingSplineClosed;
+    private CadColor _drawingCircleStrokeColor = CadColor.White;
+    private double _drawingCircleLineWeight = CadLineWeight.Default.Value;
+    private int _drawingCircleZIndex;
+    private bool _drawingCircleIsVisible = true;
+    private StyleId? _drawingCircleFillStyleId;
+    private CadColor _drawingEllipseStrokeColor = CadColor.White;
+    private double _drawingEllipseLineWeight = CadLineWeight.Default.Value;
+    private int _drawingEllipseZIndex;
+    private bool _drawingEllipseIsVisible = true;
+    private StyleId? _drawingEllipseFillStyleId;
+    private CadColor _drawingRectangleStrokeColor = CadColor.White;
+    private double _drawingRectangleLineWeight = CadLineWeight.Default.Value;
+    private int _drawingRectangleZIndex;
+    private bool _drawingRectangleIsVisible = true;
+    private StyleId? _drawingRectangleFillStyleId;
+    private double _drawingRectangleCornerRadiusX;
+    private double _drawingRectangleCornerRadiusY;
+    private string _drawingText = "Text";
+    private bool _drawingTextInverted;
+    private double _drawingTextInvertedMarginFactor = CadText.DefaultInvertedMarginFactor;
+    private CadColor _drawingTextStrokeColor = CadColor.White;
+    private double _drawingTextLineWeight = CadLineWeight.Default.Value;
+    private int _drawingTextZIndex;
+    private bool _drawingTextIsVisible = true;
+    private StyleId? _drawingTextStyleId;
+    private CadColor _drawingArcStrokeColor = CadColor.White;
+    private double _drawingArcLineWeight = CadLineWeight.Default.Value;
+    private int _drawingArcZIndex;
+    private bool _drawingArcIsVisible = true;
 
     [ObservableProperty]
     public partial CadEditor CadEditor { get; private set; } = new(CadDocument.Create("Untitled"));
 
-    [ObservableProperty]
-    public partial Direct2DImageRenderHost Direct2DImageRenderHost { get; private set; } = new();
+    public Direct2DImageRenderHost Direct2DImageRenderHost { get; } = new();
 
     [ObservableProperty]
     public partial double CurrentPointerWorldX { get; private set; }
@@ -60,153 +109,299 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial CadCanvasToolMode CadCanvasToolMode { get; internal set; } = CadCanvasToolMode.Select;
 
-    [ObservableProperty]
-    public partial CadColor DrawingLineStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingLineStrokeColor
+    {
+        get => _drawingLineStrokeColor;
+        set => SetDrawingSetting(ref _drawingLineStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingLineLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingLineLineWeight
+    {
+        get => _drawingLineLineWeight;
+        set => SetDrawingSetting(ref _drawingLineLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingLineZIndex { get; set; }
+    public int DrawingLineZIndex
+    {
+        get => _drawingLineZIndex;
+        set => SetDrawingSetting(ref _drawingLineZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingLineIsVisible { get; set; } = true;
+    public bool DrawingLineIsVisible
+    {
+        get => _drawingLineIsVisible;
+        set => SetDrawingSetting(ref _drawingLineIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingPolylineStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingPolylineStrokeColor
+    {
+        get => _drawingPolylineStrokeColor;
+        set => SetDrawingSetting(ref _drawingPolylineStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingPolylineLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingPolylineLineWeight
+    {
+        get => _drawingPolylineLineWeight;
+        set => SetDrawingSetting(ref _drawingPolylineLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingPolylineZIndex { get; set; }
+    public int DrawingPolylineZIndex
+    {
+        get => _drawingPolylineZIndex;
+        set => SetDrawingSetting(ref _drawingPolylineZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingPolylineIsVisible { get; set; } = true;
+    public bool DrawingPolylineIsVisible
+    {
+        get => _drawingPolylineIsVisible;
+        set => SetDrawingSetting(ref _drawingPolylineIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingPolylineClosed { get; set; }
+    public bool DrawingPolylineClosed
+    {
+        get => _drawingPolylineClosed;
+        set => SetDrawingSetting(ref _drawingPolylineClosed, value);
+    }
 
-    [ObservableProperty]
-    public partial StyleId? DrawingPolylineFillStyleId { get; set; }
+    public StyleId? DrawingPolylineFillStyleId
+    {
+        get => _drawingPolylineFillStyleId;
+        set => SetDrawingSetting(ref _drawingPolylineFillStyleId, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingPolygonStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingPolygonStrokeColor
+    {
+        get => _drawingPolygonStrokeColor;
+        set => SetDrawingSetting(ref _drawingPolygonStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingPolygonLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingPolygonLineWeight
+    {
+        get => _drawingPolygonLineWeight;
+        set => SetDrawingSetting(ref _drawingPolygonLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingPolygonZIndex { get; set; }
+    public int DrawingPolygonZIndex
+    {
+        get => _drawingPolygonZIndex;
+        set => SetDrawingSetting(ref _drawingPolygonZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingPolygonIsVisible { get; set; } = true;
+    public bool DrawingPolygonIsVisible
+    {
+        get => _drawingPolygonIsVisible;
+        set => SetDrawingSetting(ref _drawingPolygonIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial StyleId? DrawingPolygonFillStyleId { get; set; }
+    public StyleId? DrawingPolygonFillStyleId
+    {
+        get => _drawingPolygonFillStyleId;
+        set => SetDrawingSetting(ref _drawingPolygonFillStyleId, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingSplineStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingSplineStrokeColor
+    {
+        get => _drawingSplineStrokeColor;
+        set => SetDrawingSetting(ref _drawingSplineStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingSplineLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingSplineLineWeight
+    {
+        get => _drawingSplineLineWeight;
+        set => SetDrawingSetting(ref _drawingSplineLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingSplineZIndex { get; set; }
+    public int DrawingSplineZIndex
+    {
+        get => _drawingSplineZIndex;
+        set => SetDrawingSetting(ref _drawingSplineZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingSplineIsVisible { get; set; } = true;
+    public bool DrawingSplineIsVisible
+    {
+        get => _drawingSplineIsVisible;
+        set => SetDrawingSetting(ref _drawingSplineIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingSplineClosed { get; set; }
+    public bool DrawingSplineClosed
+    {
+        get => _drawingSplineClosed;
+        set => SetDrawingSetting(ref _drawingSplineClosed, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingCircleStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingCircleStrokeColor
+    {
+        get => _drawingCircleStrokeColor;
+        set => SetDrawingSetting(ref _drawingCircleStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingCircleLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingCircleLineWeight
+    {
+        get => _drawingCircleLineWeight;
+        set => SetDrawingSetting(ref _drawingCircleLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingCircleZIndex { get; set; }
+    public int DrawingCircleZIndex
+    {
+        get => _drawingCircleZIndex;
+        set => SetDrawingSetting(ref _drawingCircleZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingCircleIsVisible { get; set; } = true;
+    public bool DrawingCircleIsVisible
+    {
+        get => _drawingCircleIsVisible;
+        set => SetDrawingSetting(ref _drawingCircleIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial StyleId? DrawingCircleFillStyleId { get; set; }
+    public StyleId? DrawingCircleFillStyleId
+    {
+        get => _drawingCircleFillStyleId;
+        set => SetDrawingSetting(ref _drawingCircleFillStyleId, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingEllipseStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingEllipseStrokeColor
+    {
+        get => _drawingEllipseStrokeColor;
+        set => SetDrawingSetting(ref _drawingEllipseStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingEllipseLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingEllipseLineWeight
+    {
+        get => _drawingEllipseLineWeight;
+        set => SetDrawingSetting(ref _drawingEllipseLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingEllipseZIndex { get; set; }
+    public int DrawingEllipseZIndex
+    {
+        get => _drawingEllipseZIndex;
+        set => SetDrawingSetting(ref _drawingEllipseZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingEllipseIsVisible { get; set; } = true;
+    public bool DrawingEllipseIsVisible
+    {
+        get => _drawingEllipseIsVisible;
+        set => SetDrawingSetting(ref _drawingEllipseIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial StyleId? DrawingEllipseFillStyleId { get; set; }
+    public StyleId? DrawingEllipseFillStyleId
+    {
+        get => _drawingEllipseFillStyleId;
+        set => SetDrawingSetting(ref _drawingEllipseFillStyleId, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingRectangleStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingRectangleStrokeColor
+    {
+        get => _drawingRectangleStrokeColor;
+        set => SetDrawingSetting(ref _drawingRectangleStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingRectangleLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingRectangleLineWeight
+    {
+        get => _drawingRectangleLineWeight;
+        set => SetDrawingSetting(ref _drawingRectangleLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingRectangleZIndex { get; set; }
+    public int DrawingRectangleZIndex
+    {
+        get => _drawingRectangleZIndex;
+        set => SetDrawingSetting(ref _drawingRectangleZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingRectangleIsVisible { get; set; } = true;
+    public bool DrawingRectangleIsVisible
+    {
+        get => _drawingRectangleIsVisible;
+        set => SetDrawingSetting(ref _drawingRectangleIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial StyleId? DrawingRectangleFillStyleId { get; set; }
+    public StyleId? DrawingRectangleFillStyleId
+    {
+        get => _drawingRectangleFillStyleId;
+        set => SetDrawingSetting(ref _drawingRectangleFillStyleId, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingRectangleCornerRadiusX { get; set; }
+    public double DrawingRectangleCornerRadiusX
+    {
+        get => _drawingRectangleCornerRadiusX;
+        set => SetDrawingSetting(ref _drawingRectangleCornerRadiusX, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingRectangleCornerRadiusY { get; set; }
+    public double DrawingRectangleCornerRadiusY
+    {
+        get => _drawingRectangleCornerRadiusY;
+        set => SetDrawingSetting(ref _drawingRectangleCornerRadiusY, value);
+    }
 
-    [ObservableProperty]
-    public partial string DrawingText { get; set; } = "Text";
+    public string DrawingText
+    {
+        get => _drawingText;
+        set => SetDrawingSetting(ref _drawingText, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingTextInverted { get; set; }
+    public bool DrawingTextInverted
+    {
+        get => _drawingTextInverted;
+        set => SetDrawingSetting(ref _drawingTextInverted, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingTextInvertedMarginFactor { get; set; } = CadText.DefaultInvertedMarginFactor;
+    public double DrawingTextInvertedMarginFactor
+    {
+        get => _drawingTextInvertedMarginFactor;
+        set => SetDrawingSetting(ref _drawingTextInvertedMarginFactor, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingTextStrokeColor { get; set; } = CadColor.White;
+    public CadColor DrawingTextStrokeColor
+    {
+        get => _drawingTextStrokeColor;
+        set => SetDrawingSetting(ref _drawingTextStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial double DrawingTextLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public double DrawingTextLineWeight
+    {
+        get => _drawingTextLineWeight;
+        set => SetDrawingSetting(ref _drawingTextLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial int DrawingTextZIndex { get; set; }
+    public int DrawingTextZIndex
+    {
+        get => _drawingTextZIndex;
+        set => SetDrawingSetting(ref _drawingTextZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial bool DrawingTextIsVisible { get; set; } = true;
+    public bool DrawingTextIsVisible
+    {
+        get => _drawingTextIsVisible;
+        set => SetDrawingSetting(ref _drawingTextIsVisible, value);
+    }
 
-    [ObservableProperty]
-    public partial StyleId? DrawingTextStyleId { get; set; }
+    public StyleId? DrawingTextStyleId
+    {
+        get => _drawingTextStyleId;
+        set => SetDrawingSetting(ref _drawingTextStyleId, value);
+    }
 
+    public CadColor DrawingArcStrokeColor
+    {
+        get => _drawingArcStrokeColor;
+        set => SetDrawingSetting(ref _drawingArcStrokeColor, value);
+    }
 
-    [ObservableProperty]
-    public partial CadColor DrawingArcStrokeColor { get; set; } = CadColor.White;
+    public double DrawingArcLineWeight
+    {
+        get => _drawingArcLineWeight;
+        set => SetDrawingSetting(ref _drawingArcLineWeight, value, IsFinitePositive(value));
+    }
 
-    [ObservableProperty]
-    public partial double DrawingArcLineWeight { get; set; } = CadLineWeight.Default.Value;
+    public int DrawingArcZIndex
+    {
+        get => _drawingArcZIndex;
+        set => SetDrawingSetting(ref _drawingArcZIndex, value);
+    }
 
-    [ObservableProperty]
-    public partial int DrawingArcZIndex { get; set; }
-
-    [ObservableProperty]
-    public partial bool DrawingArcIsVisible { get; set; } = true;
+    public bool DrawingArcIsVisible
+    {
+        get => _drawingArcIsVisible;
+        set => SetDrawingSetting(ref _drawingArcIsVisible, value);
+    }
 
     public event EventHandler? ViewSettingsChanged;
     public event EventHandler? InteractionStateChanged;
@@ -313,304 +508,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         RequestRender();
     }
 
-    partial void OnDrawingLineStrokeColorChanged(CadColor value)
+    private bool SetDrawingSetting<T>(
+        ref T field,
+        T value,
+        bool requestRender = true,
+        [CallerMemberName] string? propertyName = null)
     {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
+        if (!SetProperty(ref field, value, propertyName))
+            return false;
 
-    partial void OnDrawingLineLineWeightChanged(double value)
-    {
         RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
+
+        if (requestRender)
             RequestRender();
-    }
 
-    partial void OnDrawingLineZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingLineIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolylineStrokeColorChanged(CadColor value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolylineLineWeightChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingPolylineZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolylineIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolylineClosedChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolylineFillStyleIdChanged(StyleId? value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolygonStrokeColorChanged(CadColor value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolygonLineWeightChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingPolygonZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolygonIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingPolygonFillStyleIdChanged(StyleId? value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingSplineStrokeColorChanged(CadColor value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingSplineLineWeightChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingSplineZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingSplineIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingSplineClosedChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingCircleStrokeColorChanged(CadColor value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingCircleLineWeightChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingCircleZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingCircleIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingCircleFillStyleIdChanged(StyleId? value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingEllipseStrokeColorChanged(CadColor value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingEllipseLineWeightChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingEllipseZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingEllipseIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingEllipseFillStyleIdChanged(StyleId? value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingRectangleStrokeColorChanged(CadColor value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingRectangleLineWeightChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingRectangleZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingRectangleIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingRectangleFillStyleIdChanged(StyleId? value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingRectangleCornerRadiusXChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingRectangleCornerRadiusYChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingTextChanged(string value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingTextInvertedChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingTextInvertedMarginFactorChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingTextStrokeColorChanged(CadColor value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingTextLineWeightChanged(double value)
-    {
-        RaiseInteractionStateChanged();
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingTextZIndexChanged(int value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingTextIsVisibleChanged(bool value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-    partial void OnDrawingTextStyleIdChanged(StyleId? value)
-    {
-        RaiseInteractionStateChanged();
-        RequestRender();
-    }
-
-
-    partial void OnDrawingArcStrokeColorChanged(CadColor value)
-    {
-        RequestRender();
-    }
-
-    partial void OnDrawingArcLineWeightChanged(double value)
-    {
-        if (IsFinitePositive(value))
-            RequestRender();
-    }
-
-    partial void OnDrawingArcZIndexChanged(int value)
-    {
-        RequestRender();
-    }
-
-    partial void OnDrawingArcIsVisibleChanged(bool value)
-    {
-        RequestRender();
+        return true;
     }
 
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
