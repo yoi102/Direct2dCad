@@ -124,6 +124,56 @@ public sealed class CadEditor
             : throw new InvalidOperationException($"Entity {entityId} is not {typeof(TEntity).Name}.");
     }
 
+    public LayerId CreateLayer(
+        string name,
+        CadColor color,
+        CadLineWeight lineWeight,
+        StyleId? defaultGraphicStyleId = null,
+        int? drawingPriority = null)
+    {
+        var command = new CreateLayerCommand(
+            name,
+            color,
+            lineWeight,
+            defaultGraphicStyleId,
+            drawingPriority);
+        DocumentCommands.Execute(command);
+        return command.LayerId
+               ?? throw new InvalidOperationException("Create Layer did not return a layer id.");
+    }
+
+    public CadDocumentChangeSet DeleteLayer(LayerId layerId)
+    {
+        return DocumentCommands.Execute(new DeleteLayerCommand(layerId));
+    }
+
+    public CadDocumentChangeSet RenameLayer(LayerId layerId, string name)
+    {
+        return DocumentCommands.Execute(new RenameLayerCommand(layerId, name));
+    }
+
+    public CadDocumentChangeSet SetLayerState(
+        LayerId layerId,
+        bool isVisible,
+        bool isLocked,
+        bool isFrozen)
+    {
+        return DocumentCommands.Execute(new SetLayerStateCommand(layerId, isVisible, isLocked, isFrozen));
+    }
+
+    public CadDocumentChangeSet SetLayerAppearance(
+        LayerId layerId,
+        CadColor color,
+        CadLineWeight lineWeight)
+    {
+        return DocumentCommands.Execute(new SetLayerAppearanceCommand(layerId, color, lineWeight));
+    }
+
+    public CadDocumentChangeSet SetLayerDrawingPriorities(IReadOnlyDictionary<LayerId, int> priorities)
+    {
+        return DocumentCommands.Execute(new SetLayerDrawingPrioritiesCommand(priorities));
+    }
+
     public EntityId AddLine(
         CadPointD start,
         CadPointD end,
@@ -545,6 +595,16 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetEntityColor(IEnumerable<EntityId> entityIds, CadColor color)
     {
         return DocumentCommands.Execute(new SetEntityColorCommand(entityIds, color));
+    }
+
+    public CadDocumentChangeSet SetEntityUseLayerColor(EntityId entityId, bool useLayerColor)
+    {
+        return SetEntityUseLayerColor([entityId], useLayerColor);
+    }
+
+    public CadDocumentChangeSet SetEntityUseLayerColor(IEnumerable<EntityId> entityIds, bool useLayerColor)
+    {
+        return DocumentCommands.Execute(new SetEntityUseLayerColorCommand(entityIds, useLayerColor));
     }
 
     public CadDocumentChangeSet SetEntityGraphicStyle(EntityId entityId, StyleId? graphicStyleId)

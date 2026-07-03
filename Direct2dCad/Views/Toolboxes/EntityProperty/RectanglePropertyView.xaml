@@ -14,7 +14,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="12">
-            <TextBlock Text="Rectangle"
+            <TextBlock Text="{I18N {x:Static r:LangKeys.Rectangle}}"
                        FontSize="16"
                        FontWeight="SemiBold"
                        Margin="0,0,0,10" />
@@ -45,7 +45,7 @@
 
                 <TextBlock Grid.Row="0"
                            Grid.Column="0"
-                           Text="Id"
+                           Text="{I18N {x:Static r:LangKeys.Id}}"
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="0"
                          Grid.Column="1"
@@ -55,7 +55,7 @@
 
                 <TextBlock Grid.Row="1"
                            Grid.Column="0"
-                           Text="Left"
+                           Text="{I18N {x:Static r:LangKeys.Left}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="1"
                                    Grid.Column="1"
@@ -66,7 +66,7 @@
 
                 <TextBlock Grid.Row="2"
                            Grid.Column="0"
-                           Text="Bottom"
+                           Text="{I18N {x:Static r:LangKeys.Bottom}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="2"
                                    Grid.Column="1"
@@ -77,7 +77,7 @@
 
                 <TextBlock Grid.Row="3"
                            Grid.Column="0"
-                           Text="Right"
+                           Text="{I18N {x:Static r:LangKeys.Right}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="3"
                                    Grid.Column="1"
@@ -88,7 +88,7 @@
 
                 <TextBlock Grid.Row="4"
                            Grid.Column="0"
-                           Text="Top"
+                           Text="{I18N {x:Static r:LangKeys.Top}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="4"
                                    Grid.Column="1"
@@ -99,7 +99,7 @@
 
                 <TextBlock Grid.Row="5"
                            Grid.Column="0"
-                           Text="Center X"
+                           Text="{I18N {x:Static r:LangKeys.CenterX}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="5"
                                    Grid.Column="1"
@@ -110,7 +110,7 @@
 
                 <TextBlock Grid.Row="6"
                            Grid.Column="0"
-                           Text="Center Y"
+                           Text="{I18N {x:Static r:LangKeys.CenterY}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="6"
                                    Grid.Column="1"
@@ -121,7 +121,7 @@
 
                 <TextBlock Grid.Row="7"
                            Grid.Column="0"
-                           Text="Width"
+                           Text="{I18N {x:Static r:LangKeys.Width}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="7"
                                    Grid.Column="1"
@@ -133,7 +133,7 @@
 
                 <TextBlock Grid.Row="8"
                            Grid.Column="0"
-                           Text="Height"
+                           Text="{I18N {x:Static r:LangKeys.Height}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="8"
                                    Grid.Column="1"
@@ -145,7 +145,7 @@
 
                 <TextBlock Grid.Row="9"
                            Grid.Column="0"
-                           Text="Corner X"
+                           Text="{I18N {x:Static r:LangKeys.CornerX}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="9"
                                    Grid.Column="1"
@@ -157,7 +157,7 @@
 
                 <TextBlock Grid.Row="10"
                            Grid.Column="0"
-                           Text="Corner Y"
+                           Text="{I18N {x:Static r:LangKeys.CornerY}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="10"
                                    Grid.Column="1"
@@ -169,7 +169,7 @@
 
                 <TextBlock Grid.Row="11"
                            Grid.Column="0"
-                           Text="Fill"
+                           Text="{I18N {x:Static r:LangKeys.Fill}}"
                            VerticalAlignment="Center" />
                 <ComboBox Grid.Row="11"
                           Grid.Column="1"
@@ -180,24 +180,29 @@
 
                 <TextBlock Grid.Row="12"
                            Grid.Column="0"
-                           Text="Color"
+                           Text="{I18N {x:Static r:LangKeys.Color}}"
                            VerticalAlignment="Center" />
-                <mah:ColorPicker Grid.Row="12"
-                                 Grid.Column="1"
-                                 mah:TextBoxHelper.AutoWatermark="True"
-                                 mah:TextBoxHelper.ClearTextButton="True"
-                                 AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
-                                 ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
-                                 AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
-                                 RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
-                                 StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
-                                 AddToRecentColorsTrigger="SelectedColorChanged"
-                                 SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
-                                 Margin="0,0,0,8" />
+                <StackPanel Grid.Row="12"
+                            Grid.Column="1"
+                            Margin="0,0,0,8">
+                    <mah:ColorPicker mah:TextBoxHelper.AutoWatermark="True"
+                                     mah:TextBoxHelper.ClearTextButton="True"
+                                     AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                     ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                     AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                     RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                     StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                     AddToRecentColorsTrigger="SelectedColorChanged"
+                                     IsEnabled="{Binding ColorControlsEnabled}"
+                                     SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                    <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
+                              IsChecked="{Binding UseByLayerColor}"
+                              Margin="0,4,0,0" />
+                </StackPanel>
 
                 <TextBlock Grid.Row="13"
                            Grid.Column="0"
-                           Text="Line weight"
+                           Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                            VerticalAlignment="Center" />
                 <StackPanel Grid.Row="13"
                             Grid.Column="1"
@@ -205,10 +210,11 @@
                             Margin="0,0,0,8">
                     <mah:NumericUpDown Width="112"
                                        Value="{Binding LineWeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                       IsEnabled="{Binding LineWeightControlsEnabled}"
                                        Minimum="0.01"
                                        StringFormat="F3"
                                        Interval="0.05" />
-                    <CheckBox Content="By layer"
+                    <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
                               IsChecked="{Binding UseByLayerLineWeight}"
                               VerticalAlignment="Center"
                               Margin="10,0,0,0" />
@@ -216,7 +222,7 @@
 
                 <TextBlock Grid.Row="14"
                            Grid.Column="0"
-                           Text="Draw order"
+                           Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="14"
                                    Grid.Column="1"
@@ -227,7 +233,7 @@
 
                 <CheckBox Grid.Row="15"
                           Grid.ColumnSpan="2"
-                          Content="Visible"
+                          Content="{I18N {x:Static r:LangKeys.Visible}}"
                           IsChecked="{Binding IsVisible}"
                           Margin="0,2,0,0" />
             </Grid>

@@ -90,6 +90,9 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -100,6 +103,10 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
     {
@@ -113,7 +120,8 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
             IsClosed = polyline.Closed;
             RefreshFillStyleOptions(polyline.FillStyleId);
             StrokeColor = ResolveStrokeColor(polyline);
-            UseByLayerLineWeight = polyline.LineWeight is null || polyline.LineWeight.Value.IsByLayer;
+            UseByLayerColor = polyline.UseLayerColor;
+            UseByLayerLineWeight = polyline.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(polyline).Value;
             ZIndex = polyline.ZIndex;
             IsVisible = polyline.IsVisible;
@@ -162,14 +170,27 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetPolyline(out var polyline) || ResolveStrokeColor(polyline) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetPolyline(out var polyline) || ResolveStrokeColor(polyline) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetPolyline(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetPolyline(out _))
             return;
 
@@ -357,40 +378,12 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadPolyline polyline)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(polyline.LayerId);
-        var styleId = polyline.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, polyline, polyline.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadPolyline polyline)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(polyline.LayerId);
-        var styleId = polyline.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = polyline.LineWeight is { IsByLayer: false }
-            ? polyline.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, polyline, polyline.GraphicStyleId);
     }
 
     private static bool GeometryMatches(CadPolyline polyline, IReadOnlyList<CadPointD> points, bool closed)

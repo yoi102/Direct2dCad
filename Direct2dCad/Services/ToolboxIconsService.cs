@@ -11,6 +11,7 @@ namespace Direct2dCad.wpf.Services;
 internal class ToolboxIconsService : IToolboxIconsService
 {
     public object Explorer => CreateExplorerIcon();
+    public object Layers => CreateLayersIcon();
     public object Terminal => CreateTerminalIcon();
     public object Search => CreateSearchIcon();
     public object Git => CreateGitIcon();
@@ -41,6 +42,34 @@ internal class ToolboxIconsService : IToolboxIconsService
         canvas.Children.Add(folder);
         canvas.Children.Add(line);
         return new Viewbox { Width = 16, Height = 16, Child = canvas };
+    }
+
+    private static Viewbox CreateLayersIcon()
+    {
+        var canvas = new Canvas { Width = 16, Height = 16 };
+
+        var back = CreateLayerPath();
+        Canvas.SetTop(back, 4);
+        var middle = CreateLayerPath();
+        Canvas.SetTop(middle, 2);
+        var front = CreateLayerPath(strokeThickness: 1.1);
+
+        canvas.Children.Add(back);
+        canvas.Children.Add(middle);
+        canvas.Children.Add(front);
+        return new Viewbox { Width = 16, Height = 16, Child = canvas };
+    }
+
+    private static Path CreateLayerPath(double strokeThickness = 0.9)
+    {
+        var path = new Path
+        {
+            Data = Geometry.Parse("M2,6 L8,3 L14,6 L8,9 Z"),
+            StrokeThickness = strokeThickness,
+            Fill = Brushes.Transparent
+        };
+        path.SetBinding(Shape.StrokeProperty, ForegroundBinding());
+        return path;
     }
 
     private static Viewbox CreateTerminalIcon()

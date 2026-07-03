@@ -9,6 +9,7 @@ public sealed class CreateLayerCommand : ICadCommand
     private readonly CadColor _color;
     private readonly CadLineWeight _lineWeight;
     private readonly StyleId? _defaultGraphicStyleId;
+    private readonly int? _drawingPriority;
     private LayerId? _layerId;
 
     public string Name => "Create Layer";
@@ -18,12 +19,14 @@ public sealed class CreateLayerCommand : ICadCommand
         string name,
         CadColor color,
         CadLineWeight lineWeight,
-        StyleId? defaultGraphicStyleId = null)
+        StyleId? defaultGraphicStyleId = null,
+        int? drawingPriority = null)
     {
         _name = name;
         _color = color;
         _lineWeight = lineWeight;
         _defaultGraphicStyleId = defaultGraphicStyleId;
+        _drawingPriority = drawingPriority;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -31,9 +34,17 @@ public sealed class CreateLayerCommand : ICadCommand
         ArgumentNullException.ThrowIfNull(document);
 
         if (_layerId is not null && document.TryGetLayer(_layerId.Value, out _))
+        {
+            if (_drawingPriority is { } existingPriority)
+                document.DocumentSettings.LayerDrawingPriority.SetPriority(_layerId.Value, existingPriority);
+
             return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        }
 
         _layerId = document.CreateLayer(_name, _color, _lineWeight, _defaultGraphicStyleId);
+        if (_drawingPriority is { } priority)
+            document.DocumentSettings.LayerDrawingPriority.SetPriority(_layerId.Value, priority);
+
         return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
     }
 
@@ -42,7 +53,10 @@ public sealed class CreateLayerCommand : ICadCommand
         ArgumentNullException.ThrowIfNull(document);
 
         if (_layerId is not null)
+        {
+            document.DocumentSettings.LayerDrawingPriority.RemovePriority(_layerId.Value);
             document.RemoveLayer(_layerId.Value);
+        }
 
         return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
     }

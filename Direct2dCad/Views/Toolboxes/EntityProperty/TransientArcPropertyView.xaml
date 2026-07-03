@@ -14,7 +14,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="12">
-            <TextBlock Text="Arc drawing"
+            <TextBlock Text="{I18N {x:Static r:LangKeys.ArcDrawing}}"
                        FontSize="16"
                        FontWeight="SemiBold"
                        Margin="0,0,0,10" />
@@ -33,7 +33,7 @@
 
                 <TextBlock Grid.Row="0"
                            Grid.Column="0"
-                           Text="Color"
+                           Text="{I18N {x:Static r:LangKeys.Color}}"
                            VerticalAlignment="Center" />
                 <mah:ColorPicker Grid.Row="0"
                                  Grid.Column="1"
@@ -50,7 +50,7 @@
 
                 <TextBlock Grid.Row="1"
                            Grid.Column="0"
-                           Text="Line weight"
+                           Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="1"
                                    Grid.Column="1"
@@ -62,7 +62,7 @@
 
                 <TextBlock Grid.Row="2"
                            Grid.Column="0"
-                           Text="Draw order"
+                           Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="2"
                                    Grid.Column="1"
@@ -73,7 +73,7 @@
 
                 <CheckBox Grid.Row="3"
                           Grid.ColumnSpan="2"
-                          Content="Visible"
+                          Content="{I18N {x:Static r:LangKeys.Visible}}"
                           IsChecked="{Binding IsVisible}"
                           Margin="0,2,0,0" />
             </Grid>

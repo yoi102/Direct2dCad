@@ -508,6 +508,22 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         RequestRender();
     }
 
+    public void UpdateDrawingDefaultsForLayerAppearance(
+        LayerId layerId,
+        CadColor previousColor,
+        CadLineWeight previousLineWeight,
+        CadColor newColor,
+        CadLineWeight newLineWeight)
+    {
+        if (!layerId.Equals(LayerId.Default))
+            return;
+
+        UpdateDrawingStrokeColors(previousColor, newColor);
+        UpdateDrawingLineWeights(
+            ResolveDrawingLineWeightDisplayValue(previousLineWeight),
+            ResolveDrawingLineWeightDisplayValue(newLineWeight));
+    }
+
     private bool SetDrawingSetting<T>(
         ref T field,
         T value,
@@ -523,6 +539,32 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             RequestRender();
 
         return true;
+    }
+
+    private void UpdateDrawingStrokeColors(CadColor previousColor, CadColor newColor)
+    {
+        if (DrawingLineStrokeColor == previousColor) DrawingLineStrokeColor = newColor;
+        if (DrawingPolylineStrokeColor == previousColor) DrawingPolylineStrokeColor = newColor;
+        if (DrawingPolygonStrokeColor == previousColor) DrawingPolygonStrokeColor = newColor;
+        if (DrawingSplineStrokeColor == previousColor) DrawingSplineStrokeColor = newColor;
+        if (DrawingCircleStrokeColor == previousColor) DrawingCircleStrokeColor = newColor;
+        if (DrawingEllipseStrokeColor == previousColor) DrawingEllipseStrokeColor = newColor;
+        if (DrawingRectangleStrokeColor == previousColor) DrawingRectangleStrokeColor = newColor;
+        if (DrawingTextStrokeColor == previousColor) DrawingTextStrokeColor = newColor;
+        if (DrawingArcStrokeColor == previousColor) DrawingArcStrokeColor = newColor;
+    }
+
+    private void UpdateDrawingLineWeights(double previousLineWeight, double newLineWeight)
+    {
+        if (AreClose(DrawingLineLineWeight, previousLineWeight)) DrawingLineLineWeight = newLineWeight;
+        if (AreClose(DrawingPolylineLineWeight, previousLineWeight)) DrawingPolylineLineWeight = newLineWeight;
+        if (AreClose(DrawingPolygonLineWeight, previousLineWeight)) DrawingPolygonLineWeight = newLineWeight;
+        if (AreClose(DrawingSplineLineWeight, previousLineWeight)) DrawingSplineLineWeight = newLineWeight;
+        if (AreClose(DrawingCircleLineWeight, previousLineWeight)) DrawingCircleLineWeight = newLineWeight;
+        if (AreClose(DrawingEllipseLineWeight, previousLineWeight)) DrawingEllipseLineWeight = newLineWeight;
+        if (AreClose(DrawingRectangleLineWeight, previousLineWeight)) DrawingRectangleLineWeight = newLineWeight;
+        if (AreClose(DrawingTextLineWeight, previousLineWeight)) DrawingTextLineWeight = newLineWeight;
+        if (AreClose(DrawingArcLineWeight, previousLineWeight)) DrawingArcLineWeight = newLineWeight;
     }
 
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
@@ -2013,15 +2055,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Line stroke {DrawingLineStrokeColor.A:X2}{DrawingLineStrokeColor.R:X2}{DrawingLineStrokeColor.G:X2}{DrawingLineStrokeColor.B:X2}",
             DrawingLineStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
     private CadLineWeight ResolveDrawingLineLineWeight()
     {
-        return IsFinitePositive(DrawingLineLineWeight)
-            ? new CadLineWeight(DrawingLineLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingLineLineWeight);
     }
 
     private CadColor ResolveDefaultLineStrokeColor()
@@ -2065,7 +2105,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Polyline stroke {DrawingPolylineStrokeColor.A:X2}{DrawingPolylineStrokeColor.R:X2}{DrawingPolylineStrokeColor.G:X2}{DrawingPolylineStrokeColor.B:X2}",
             DrawingPolylineStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
@@ -2080,9 +2120,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadLineWeight ResolveDrawingPolylineLineWeight()
     {
-        return IsFinitePositive(DrawingPolylineLineWeight)
-            ? new CadLineWeight(DrawingPolylineLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingPolylineLineWeight);
     }
 
     private bool ResolveDrawingPolylineClosed(int pointCount)
@@ -2113,7 +2151,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Polygon stroke {DrawingPolygonStrokeColor.A:X2}{DrawingPolygonStrokeColor.R:X2}{DrawingPolygonStrokeColor.G:X2}{DrawingPolygonStrokeColor.B:X2}",
             DrawingPolygonStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
@@ -2128,9 +2166,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadLineWeight ResolveDrawingPolygonLineWeight()
     {
-        return IsFinitePositive(DrawingPolygonLineWeight)
-            ? new CadLineWeight(DrawingPolygonLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingPolygonLineWeight);
     }
 
     private CadColor ResolveDefaultPolygonStrokeColor()
@@ -2165,15 +2201,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Spline stroke {DrawingSplineStrokeColor.A:X2}{DrawingSplineStrokeColor.R:X2}{DrawingSplineStrokeColor.G:X2}{DrawingSplineStrokeColor.B:X2}",
             DrawingSplineStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
     private CadLineWeight ResolveDrawingSplineLineWeight()
     {
-        return IsFinitePositive(DrawingSplineLineWeight)
-            ? new CadLineWeight(DrawingSplineLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingSplineLineWeight);
     }
 
     private bool ResolveDrawingSplineClosed(int fitPointCount)
@@ -2240,7 +2274,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Circle stroke {DrawingCircleStrokeColor.A:X2}{DrawingCircleStrokeColor.R:X2}{DrawingCircleStrokeColor.G:X2}{DrawingCircleStrokeColor.B:X2}",
             DrawingCircleStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
@@ -2255,9 +2289,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadLineWeight ResolveDrawingCircleLineWeight()
     {
-        return IsFinitePositive(DrawingCircleLineWeight)
-            ? new CadLineWeight(DrawingCircleLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingCircleLineWeight);
     }
 
     private CadColor ResolveDefaultCircleStrokeColor()
@@ -2283,7 +2315,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Ellipse stroke {DrawingEllipseStrokeColor.A:X2}{DrawingEllipseStrokeColor.R:X2}{DrawingEllipseStrokeColor.G:X2}{DrawingEllipseStrokeColor.B:X2}",
             DrawingEllipseStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
@@ -2298,9 +2330,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadLineWeight ResolveDrawingEllipseLineWeight()
     {
-        return IsFinitePositive(DrawingEllipseLineWeight)
-            ? new CadLineWeight(DrawingEllipseLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingEllipseLineWeight);
     }
 
     private CadColor ResolveDefaultEllipseStrokeColor()
@@ -2326,7 +2356,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Rectangle stroke {DrawingRectangleStrokeColor.A:X2}{DrawingRectangleStrokeColor.R:X2}{DrawingRectangleStrokeColor.G:X2}{DrawingRectangleStrokeColor.B:X2}",
             DrawingRectangleStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
@@ -2341,9 +2371,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadLineWeight ResolveDrawingRectangleLineWeight()
     {
-        return IsFinitePositive(DrawingRectangleLineWeight)
-            ? new CadLineWeight(DrawingRectangleLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingRectangleLineWeight);
     }
 
     private double ResolveDrawingRectangleCornerRadiusX(CadRectD bounds)
@@ -2395,15 +2423,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Text stroke {DrawingTextStrokeColor.A:X2}{DrawingTextStrokeColor.R:X2}{DrawingTextStrokeColor.G:X2}{DrawingTextStrokeColor.B:X2}",
             DrawingTextStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
     private CadLineWeight ResolveDrawingTextLineWeight()
     {
-        return IsFinitePositive(DrawingTextLineWeight)
-            ? new CadLineWeight(DrawingTextLineWeight)
-            : CadLineWeight.Default;
+        return ResolveDrawingLineWeight(DrawingTextLineWeight);
     }
 
     private CadColor ResolveDefaultTextStrokeColor()
@@ -2429,15 +2455,43 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.CreateGraphicStyle(
             $"Arc stroke {DrawingArcStrokeColor.A:X2}{DrawingArcStrokeColor.R:X2}{DrawingArcStrokeColor.G:X2}{DrawingArcStrokeColor.B:X2}",
             DrawingArcStrokeColor,
-            CadLineWeight.Default,
+            CadLineWeight.ByLayer,
             LineTypeId.Continuous);
     }
 
     private CadLineWeight ResolveDrawingArcLineWeight()
     {
-        return IsFinitePositive(DrawingArcLineWeight)
-            ? new CadLineWeight(DrawingArcLineWeight)
+        return ResolveDrawingLineWeight(DrawingArcLineWeight);
+    }
+
+    private CadLineWeight ResolveDrawingLineWeight(double value)
+    {
+        if (!IsFinitePositive(value))
+            return CadLineWeight.ByLayer;
+
+        var layerWeight = ResolveDefaultLayerLineWeight();
+        return AreClose(value, ResolveDrawingLineWeightDisplayValue(layerWeight))
+            ? CadLineWeight.ByLayer
+            : new CadLineWeight(value);
+    }
+
+    private CadLineWeight ResolveDefaultLayerLineWeight()
+    {
+        return CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) && layer is not null
+            ? layer.LineWeight
             : CadLineWeight.Default;
+    }
+
+    private static double ResolveDrawingLineWeightDisplayValue(CadLineWeight lineWeight)
+    {
+        return lineWeight.IsByLayer || lineWeight.Value <= 0
+            ? CadLineWeight.Default.Value
+            : lineWeight.Value;
+    }
+
+    private static bool AreClose(double left, double right)
+    {
+        return Math.Abs(left - right) <= 1e-9;
     }
 
     private CadColor ResolveDefaultArcStrokeColor()

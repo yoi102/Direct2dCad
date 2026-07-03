@@ -37,6 +37,7 @@ public partial class MainViewModel : ObservableObject
         _snackbarService = snackbarService;
         FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerToolboxViewModel));
         FolderExplorer.Attach(_dockLayoutService);
+        Layers = _dockLayoutService.GetAnchorable<LayerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayerToolboxViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
 
         IsDarkTheme = themeSettingService.IsDarkTheme;
@@ -52,6 +53,8 @@ public partial class MainViewModel : ObservableObject
     /// <summary>Provides typed access to the folder explorer VM via the layout service.</summary>
     public FolderExplorerToolboxViewModel FolderExplorer { get; }
 
+    public LayerToolboxViewModel Layers { get; }
+
     public EntityPropertiesToolboxViewModel EntityProperties { get; }
 
     [ObservableProperty]
@@ -60,6 +63,7 @@ public partial class MainViewModel : ObservableObject
     partial void OnCurrentEditorTabViewModelChanged(EditorTabViewModel? value)
     {
         FolderExplorer.SetActiveDocument(value);
+        Layers.Attach(value?.CadDocumentViewModel);
         EntityProperties.Attach(value?.CadDocumentViewModel);
     }
 

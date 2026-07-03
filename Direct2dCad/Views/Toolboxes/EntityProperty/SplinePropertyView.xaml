@@ -14,7 +14,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="12">
-            <TextBlock Text="Spline"
+            <TextBlock Text="{I18N {x:Static r:LangKeys.Spline}}"
                        FontSize="16"
                        FontWeight="SemiBold"
                        Margin="0,0,0,10" />
@@ -40,7 +40,7 @@
 
                 <TextBlock Grid.Row="0"
                            Grid.Column="0"
-                           Text="Id"
+                           Text="{I18N {x:Static r:LangKeys.Id}}"
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="0"
                          Grid.Column="1"
@@ -50,13 +50,13 @@
 
                 <CheckBox Grid.Row="1"
                           Grid.ColumnSpan="2"
-                          Content="Closed"
+                          Content="{I18N {x:Static r:LangKeys.Closed}}"
                           IsChecked="{Binding IsClosed}"
                           Margin="0,2,0,8" />
 
                 <TextBlock Grid.Row="2"
                            Grid.Column="0"
-                           Text="Fit points"
+                           Text="{I18N {x:Static r:LangKeys.FitPoints}}"
                            VerticalAlignment="Top"
                            Margin="0,4,0,0" />
                 <DataGrid Grid.Row="2"
@@ -74,7 +74,7 @@
                                             Binding="{Binding Index, Mode=OneWay}"
                                             IsReadOnly="True"
                                             Width="36" />
-                        <DataGridTemplateColumn Header="X"
+                        <DataGridTemplateColumn Header="{I18N {x:Static r:LangKeys.X}}"
                                                 Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -85,7 +85,7 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTemplateColumn Header="Y"
+                        <DataGridTemplateColumn Header="{I18N {x:Static r:LangKeys.Y}}"
                                                 Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -103,16 +103,16 @@
                             Grid.Column="1"
                             Orientation="Horizontal"
                             Margin="0,0,0,8">
-                    <Button Content="Add after"
+                    <Button Content="{I18N {x:Static r:LangKeys.AddAfter}}"
                             Command="{Binding AddFitPointAfterSelectedCommand}"
                             Margin="0,0,8,0" />
-                    <Button Content="Remove"
+                    <Button Content="{I18N {x:Static r:LangKeys.Remove}}"
                             Command="{Binding RemoveSelectedFitPointCommand}" />
                 </StackPanel>
 
                 <TextBlock Grid.Row="4"
                            Grid.Column="0"
-                           Text="Point count"
+                           Text="{I18N {x:Static r:LangKeys.PointCount}}"
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="4"
                          Grid.Column="1"
@@ -122,7 +122,7 @@
 
                 <TextBlock Grid.Row="5"
                            Grid.Column="0"
-                           Text="Length"
+                           Text="{I18N {x:Static r:LangKeys.Length}}"
                            VerticalAlignment="Center" />
                 <TextBox Grid.Row="5"
                          Grid.Column="1"
@@ -132,24 +132,29 @@
 
                 <TextBlock Grid.Row="6"
                            Grid.Column="0"
-                           Text="Color"
+                           Text="{I18N {x:Static r:LangKeys.Color}}"
                            VerticalAlignment="Center" />
-                <mah:ColorPicker Grid.Row="6"
-                                 Grid.Column="1"
-                                 mah:TextBoxHelper.AutoWatermark="True"
-                                 mah:TextBoxHelper.ClearTextButton="True"
-                                 AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
-                                 ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
-                                 AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
-                                 RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
-                                 StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
-                                 AddToRecentColorsTrigger="SelectedColorChanged"
-                                 SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
-                                 Margin="0,0,0,8" />
+                <StackPanel Grid.Row="6"
+                            Grid.Column="1"
+                            Margin="0,0,0,8">
+                    <mah:ColorPicker mah:TextBoxHelper.AutoWatermark="True"
+                                     mah:TextBoxHelper.ClearTextButton="True"
+                                     AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                     ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                     AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                     RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                     StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                     AddToRecentColorsTrigger="SelectedColorChanged"
+                                     IsEnabled="{Binding ColorControlsEnabled}"
+                                     SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                    <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
+                              IsChecked="{Binding UseByLayerColor}"
+                              Margin="0,4,0,0" />
+                </StackPanel>
 
                 <TextBlock Grid.Row="7"
                            Grid.Column="0"
-                           Text="Line weight"
+                           Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                            VerticalAlignment="Center" />
                 <StackPanel Grid.Row="7"
                             Grid.Column="1"
@@ -157,10 +162,11 @@
                             Margin="0,0,0,8">
                     <mah:NumericUpDown Width="112"
                                        Value="{Binding LineWeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                       IsEnabled="{Binding LineWeightControlsEnabled}"
                                        Minimum="0.01"
                                        StringFormat="F3"
                                        Interval="0.05" />
-                    <CheckBox Content="By layer"
+                    <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
                               IsChecked="{Binding UseByLayerLineWeight}"
                               VerticalAlignment="Center"
                               Margin="10,0,0,0" />
@@ -168,7 +174,7 @@
 
                 <TextBlock Grid.Row="8"
                            Grid.Column="0"
-                           Text="Draw order"
+                           Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="8"
                                    Grid.Column="1"
@@ -179,7 +185,7 @@
 
                 <CheckBox Grid.Row="9"
                           Grid.ColumnSpan="2"
-                          Content="Visible"
+                          Content="{I18N {x:Static r:LangKeys.Visible}}"
                           IsChecked="{Binding IsVisible}"
                           Margin="0,2,0,0" />
             </Grid>

@@ -441,4 +441,268 @@
     <value>Recent Colors</value>
     <comment>Recent Colors</comment>
   </data>
+  <data name="Layers" xml:space="preserve">
+    <value>Layers</value>
+    <comment>Layers</comment>
+  </data>
+  <data name="AddLayer" xml:space="preserve">
+    <value>Add layer</value>
+    <comment>Add layer</comment>
+  </data>
+  <data name="DeleteLayer" xml:space="preserve">
+    <value>Delete layer</value>
+    <comment>Delete layer</comment>
+  </data>
+  <data name="Priority" xml:space="preserve">
+    <value>Priority</value>
+    <comment>Priority</comment>
+  </data>
+  <data name="Entities" xml:space="preserve">
+    <value>Entities</value>
+    <comment>Entities</comment>
+  </data>
+  <data name="Weight" xml:space="preserve">
+    <value>Weight</value>
+    <comment>Weight</comment>
+  </data>
+  <data name="Visible" xml:space="preserve">
+    <value>Visible</value>
+    <comment>Visible</comment>
+  </data>
+  <data name="Locked" xml:space="preserve">
+    <value>Locked</value>
+    <comment>Locked</comment>
+  </data>
+  <data name="Frozen" xml:space="preserve">
+    <value>Frozen</value>
+    <comment>Frozen</comment>
+  </data>
+  <data name="TogglePrimarySideBar" xml:space="preserve">
+    <value>Toggle primary side bar</value>
+    <comment>Toggle primary side bar</comment>
+  </data>
+  <data name="TogglePanel" xml:space="preserve">
+    <value>Toggle panel</value>
+    <comment>Toggle panel</comment>
+  </data>
+  <data name="ToggleSecondarySideBar" xml:space="preserve">
+    <value>Toggle secondary side bar</value>
+    <comment>Toggle secondary side bar</comment>
+  </data>
+  <data name="DocumentNameCannotBeEmpty" xml:space="preserve">
+    <value>Document name cannot be empty.</value>
+    <comment>Document name cannot be empty.</comment>
+  </data>
+  <data name="Id" xml:space="preserve">
+    <value>Id</value>
+    <comment>Id</comment>
+  </data>
+  <data name="CenterX" xml:space="preserve">
+    <value>Center X</value>
+    <comment>Center X</comment>
+  </data>
+  <data name="CenterY" xml:space="preserve">
+    <value>Center Y</value>
+    <comment>Center Y</comment>
+  </data>
+  <data name="Radius" xml:space="preserve">
+    <value>Radius</value>
+    <comment>Radius</comment>
+  </data>
+  <data name="RadiusX" xml:space="preserve">
+    <value>Radius X</value>
+    <comment>Radius X</comment>
+  </data>
+  <data name="RadiusY" xml:space="preserve">
+    <value>Radius Y</value>
+    <comment>Radius Y</comment>
+  </data>
+  <data name="Diameter" xml:space="preserve">
+    <value>Diameter</value>
+    <comment>Diameter</comment>
+  </data>
+  <data name="DiameterX" xml:space="preserve">
+    <value>Diameter X</value>
+    <comment>Diameter X</comment>
+  </data>
+  <data name="DiameterY" xml:space="preserve">
+    <value>Diameter Y</value>
+    <comment>Diameter Y</comment>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Start</value>
+    <comment>Start</comment>
+  </data>
+  <data name="StartX" xml:space="preserve">
+    <value>Start X</value>
+    <comment>Start X</comment>
+  </data>
+  <data name="StartY" xml:space="preserve">
+    <value>Start Y</value>
+    <comment>Start Y</comment>
+  </data>
+  <data name="End" xml:space="preserve">
+    <value>End</value>
+    <comment>End</comment>
+  </data>
+  <data name="EndX" xml:space="preserve">
+    <value>End X</value>
+    <comment>End X</comment>
+  </data>
+  <data name="EndY" xml:space="preserve">
+    <value>End Y</value>
+    <comment>End Y</comment>
+  </data>
+  <data name="Sweep" xml:space="preserve">
+    <value>Sweep</value>
+    <comment>Sweep</comment>
+  </data>
+  <data name="CounterClockwise" xml:space="preserve">
+    <value>Counter clockwise</value>
+    <comment>Counter clockwise</comment>
+  </data>
+  <data name="Fill" xml:space="preserve">
+    <value>Fill</value>
+    <comment>Fill</comment>
+  </data>
+  <data name="LineWeight" xml:space="preserve">
+    <value>Line weight</value>
+    <comment>Line weight</comment>
+  </data>
+  <data name="ByLayer" xml:space="preserve">
+    <value>By layer</value>
+    <comment>By layer</comment>
+  </data>
+  <data name="DrawOrder" xml:space="preserve">
+    <value>Draw order</value>
+    <comment>Draw order</comment>
+  </data>
+  <data name="Length" xml:space="preserve">
+    <value>Length</value>
+    <comment>Length</comment>
+  </data>
+  <data name="Angle" xml:space="preserve">
+    <value>Angle</value>
+    <comment>Angle</comment>
+  </data>
+  <data name="Closed" xml:space="preserve">
+    <value>Closed</value>
+    <comment>Closed</comment>
+  </data>
+  <data name="Vertices" xml:space="preserve">
+    <value>Vertices</value>
+    <comment>Vertices</comment>
+  </data>
+  <data name="AddAfter" xml:space="preserve">
+    <value>Add after</value>
+    <comment>Add after</comment>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Remove</comment>
+  </data>
+  <data name="PointCount" xml:space="preserve">
+    <value>Point count</value>
+    <comment>Point count</comment>
+  </data>
+  <data name="FitPoints" xml:space="preserve">
+    <value>Fit points</value>
+    <comment>Fit points</comment>
+  </data>
+  <data name="Left" xml:space="preserve">
+    <value>Left</value>
+    <comment>Left</comment>
+  </data>
+  <data name="Bottom" xml:space="preserve">
+    <value>Bottom</value>
+    <comment>Bottom</comment>
+  </data>
+  <data name="Right" xml:space="preserve">
+    <value>Right</value>
+    <comment>Right</comment>
+  </data>
+  <data name="Top" xml:space="preserve">
+    <value>Top</value>
+    <comment>Top</comment>
+  </data>
+  <data name="Width" xml:space="preserve">
+    <value>Width</value>
+    <comment>Width</comment>
+  </data>
+  <data name="Height" xml:space="preserve">
+    <value>Height</value>
+    <comment>Height</comment>
+  </data>
+  <data name="CornerX" xml:space="preserve">
+    <value>Corner X</value>
+    <comment>Corner X</comment>
+  </data>
+  <data name="CornerY" xml:space="preserve">
+    <value>Corner Y</value>
+    <comment>Corner Y</comment>
+  </data>
+  <data name="Content" xml:space="preserve">
+    <value>Content</value>
+    <comment>Content</comment>
+  </data>
+  <data name="Style" xml:space="preserve">
+    <value>Style</value>
+    <comment>Style</comment>
+  </data>
+  <data name="PositionX" xml:space="preserve">
+    <value>Position X</value>
+    <comment>Position X</comment>
+  </data>
+  <data name="PositionY" xml:space="preserve">
+    <value>Position Y</value>
+    <comment>Position Y</comment>
+  </data>
+  <data name="Rotation" xml:space="preserve">
+    <value>Rotation</value>
+    <comment>Rotation</comment>
+  </data>
+  <data name="Bounds" xml:space="preserve">
+    <value>Bounds</value>
+    <comment>Bounds</comment>
+  </data>
+  <data name="Measure" xml:space="preserve">
+    <value>Measure</value>
+    <comment>Measure</comment>
+  </data>
+  <data name="ArcDrawing" xml:space="preserve">
+    <value>Arc drawing</value>
+    <comment>Arc drawing</comment>
+  </data>
+  <data name="CircleDrawing" xml:space="preserve">
+    <value>Circle drawing</value>
+    <comment>Circle drawing</comment>
+  </data>
+  <data name="EllipseDrawing" xml:space="preserve">
+    <value>Ellipse drawing</value>
+    <comment>Ellipse drawing</comment>
+  </data>
+  <data name="LineDrawing" xml:space="preserve">
+    <value>Line drawing</value>
+    <comment>Line drawing</comment>
+  </data>
+  <data name="PolygonDrawing" xml:space="preserve">
+    <value>Polygon drawing</value>
+    <comment>Polygon drawing</comment>
+  </data>
+  <data name="PolylineDrawing" xml:space="preserve">
+    <value>Polyline drawing</value>
+    <comment>Polyline drawing</comment>
+  </data>
+  <data name="RectangleDrawing" xml:space="preserve">
+    <value>Rectangle drawing</value>
+    <comment>Rectangle drawing</comment>
+  </data>
+  <data name="SplineDrawing" xml:space="preserve">
+    <value>Spline drawing</value>
+    <comment>Spline drawing</comment>
+  </data>
+  <data name="TextDrawing" xml:space="preserve">
+    <value>Text drawing</value>
+    <comment>Text drawing</comment>
+  </data>
 </root>

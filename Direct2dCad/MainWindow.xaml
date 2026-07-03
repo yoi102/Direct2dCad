@@ -170,7 +170,7 @@
                         <!--Toggle Primary Side Bar (Left)-->
 
                         <ToggleButton Style="{StaticResource LayoutToggleButton}"
-                                      ToolTip="Toggle Primary Side Bar"
+                                      ToolTip="{I18N {x:Static r:LangKeys.TogglePrimarySideBar}}"
                                       IsChecked="{Binding IsPrimarySideBarOpen, Mode=OneWay}"
                                       Command="{Binding TogglePrimarySideBarCommand}">
                             <Viewbox Width="20"
@@ -200,7 +200,7 @@
                         <!--Toggle Panel (Bottom)-->
 
                         <ToggleButton Style="{StaticResource LayoutToggleButton}"
-                                      ToolTip="Toggle Panel"
+                                      ToolTip="{I18N {x:Static r:LangKeys.TogglePanel}}"
                                       IsChecked="{Binding IsBottomPanelOpen, Mode=OneWay}"
                                       Command="{Binding ToggleBottomPanelCommand}">
                             <Viewbox Width="14"
@@ -230,7 +230,7 @@
                         <!--Toggle Secondary Side Bar (Right)-->
 
                         <ToggleButton Style="{StaticResource LayoutToggleButton}"
-                                      ToolTip="Toggle Secondary Side Bar"
+                                      ToolTip="{I18N {x:Static r:LangKeys.ToggleSecondarySideBar}}"
                                       IsChecked="{Binding IsSecondarySideBarOpen, Mode=OneWay}"
                                       Command="{Binding ToggleSecondarySideBarCommand}">
                             <Viewbox Width="14"
@@ -355,57 +355,139 @@
                                  Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
                             <WrapPanel>
 
-                                <Button ToolTip="{I18N {x:Static r:LangKeys.Undo}}"
+                                <Button ToolTip="{I18N {x:Static r:LangKeys.Select}}"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        Width="80"
+                                        Height="80"
+                                        Padding="0"
+                                        Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                        CommandParameter="Select">
+                                    <Grid RowDefinitions="* auto">
+
+                                        <md:PackIcon Kind="ArrowAll"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center"
+                                                     Width="50"
+                                                     Height="50" />
+                                        <TextBlock Grid.Row="1"
+                                                   HorizontalAlignment="Center"
+                                                   Text="{I18N {x:Static r:LangKeys.Select}}" />
+
+                                    </Grid>
+                                </Button>
+
+                                <!--<Button ToolTip="{I18N {x:Static r:LangKeys.Undo}}"
                                         Style="{StaticResource MaterialDesignFlatButton}"
                                         Content="{md:PackIcon Kind=Undo,  Size=20}"
                                         Command="{Binding CurrentEditorTabViewModel.UndoCommand}" />
                                 <Button ToolTip="{I18N {x:Static r:LangKeys.Redo}}"
                                         Style="{StaticResource MaterialDesignFlatButton}"
                                         Content="{md:PackIcon Kind=Redo,  Size=20}"
-                                        Command="{Binding CurrentEditorTabViewModel.RedoCommand}" />
+                                        Command="{Binding CurrentEditorTabViewModel.RedoCommand}" />-->
 
-                                <StackPanel>
-                                    <ToolBar>
+                                <Separator />
+                                <WrapPanel Width="120">
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Line}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=Segment,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Line" />
 
-                                        <Button Content="{I18N {x:Static r:LangKeys.Select}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Select" />
-                                        <Separator />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Line}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Line" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Circle}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Circle" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Ellipse}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Ellipse" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Arc}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Arc" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Rectangle}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Rectangle" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Polyline}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Polyline" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Polygon}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Polygon" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Spline}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Spline" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.Text}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="Text" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.ShapeText}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="ShapeText" />
-                                        <Button Content="{I18N {x:Static r:LangKeys.SetOrigin}}"
-                                                Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
-                                                CommandParameter="SetOrigin" />
-                                    </ToolBar>
-                                </StackPanel>
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Circle}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=CheckboxBlankCircleOutline,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Circle" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Ellipse}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=EllipseOutline,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Ellipse" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Arc}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=Arch,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Arc" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Rectangle}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=RectangleOutline,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Rectangle" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Polyline}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=VectorPolyline,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Polyline" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Polygon}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=ShapePolygonPlus,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Polygon" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Spline}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=ChartAreaspline,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Spline" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.Text}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Margin="5"
+                                            Height="20"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=TextShadow,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="Text" />
+
+                                    <Button ToolTip="{I18N {x:Static r:LangKeys.SetOrigin}}"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Width="20"
+                                            Height="20"
+                                            Margin="5"
+                                            Padding="0"
+                                            Content="{md:PackIcon Kind=Target,Size=20}"
+                                            Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                            CommandParameter="SetOrigin" />
+
+                                </WrapPanel>
                             </WrapPanel>
                         </TabItem>
                     </TabControl>
@@ -422,6 +504,9 @@
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm_tb:FolderExplorerToolboxViewModel}">
                             <v_tb:FolderExplorerToolboxView />
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm_tb:LayerToolboxViewModel}">
+                            <v_tb:LayerToolboxView />
                         </DataTemplate>
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm:EditorTabViewModel}">

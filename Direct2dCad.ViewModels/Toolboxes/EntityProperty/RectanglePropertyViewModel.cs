@@ -62,6 +62,9 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -72,6 +75,10 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
     {
@@ -86,7 +93,8 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
             CornerRadiusY = rectangle.CornerRadiusY;
             RefreshFillStyleOptions(rectangle.FillStyleId);
             StrokeColor = ResolveStrokeColor(rectangle);
-            UseByLayerLineWeight = rectangle.LineWeight is null || rectangle.LineWeight.Value.IsByLayer;
+            UseByLayerColor = rectangle.UseLayerColor;
+            UseByLayerLineWeight = rectangle.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(rectangle).Value;
             ZIndex = rectangle.ZIndex;
             IsVisible = rectangle.IsVisible;
@@ -131,14 +139,27 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetRectangle(out var rectangle) || ResolveStrokeColor(rectangle) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetRectangle(out var rectangle) || ResolveStrokeColor(rectangle) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetRectangle(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetRectangle(out _))
             return;
 
@@ -329,40 +350,12 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadRectangle rectangle)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(rectangle.LayerId);
-        var styleId = rectangle.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, rectangle, rectangle.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadRectangle rectangle)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(rectangle.LayerId);
-        var styleId = rectangle.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = rectangle.LineWeight is { IsByLayer: false }
-            ? rectangle.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, rectangle, rectangle.GraphicStyleId);
     }
 
     private static double ResolveLineWeightValue(double value)

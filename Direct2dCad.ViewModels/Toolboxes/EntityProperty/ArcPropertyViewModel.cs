@@ -46,6 +46,9 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -56,6 +59,10 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
     {
@@ -72,7 +79,8 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
             SweepAngleDegrees = CadArc.RadiansToDegrees(arc.SweepAngleRadians);
             IsCounterClockwise = arc.IsCounterClockwise;
             StrokeColor = ResolveStrokeColor(arc);
-            UseByLayerLineWeight = arc.LineWeight is null || arc.LineWeight.Value.IsByLayer;
+            UseByLayerColor = arc.UseLayerColor;
+            UseByLayerLineWeight = arc.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(arc).Value;
             ZIndex = arc.ZIndex;
             IsVisible = arc.IsVisible;
@@ -117,14 +125,27 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetArc(out var arc) || ResolveStrokeColor(arc) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetArc(out var arc) || ResolveStrokeColor(arc) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetArc(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetArc(out _))
             return;
 
@@ -221,40 +242,12 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadArc arc)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(arc.LayerId);
-        var styleId = arc.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, arc, arc.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadArc arc)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(arc.LayerId);
-        var styleId = arc.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = arc.LineWeight is { IsByLayer: false }
-            ? arc.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, arc, arc.GraphicStyleId);
     }
 
     private static double ResolveLineWeightValue(double value)

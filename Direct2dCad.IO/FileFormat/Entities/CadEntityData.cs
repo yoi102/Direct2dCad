@@ -14,4 +14,6 @@ public sealed class CadEntityData
     [Key(6)] public bool IsVisible { get; set; }
     [Key(7)] public double? LineWeight { get; set; }
     [Key(8)] public int ZIndex { get; set; }
+    [Key(9)] public bool? UseLayerColor { get; set; }
+    [Key(10)] public bool? UseLayerLineWeight { get; set; }
 }

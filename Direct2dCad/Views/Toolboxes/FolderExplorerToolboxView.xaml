@@ -82,7 +82,7 @@
                                                           FontSize="13"
                                                           FontWeight="SemiBold"
                                                           TextTrimming="CharacterEllipsis"
-                                                          EmptyTextErrorMessage="Document name cannot be empty."
+                                                          EmptyTextErrorMessage="{I18N {x:Static r:LangKeys.DocumentNameCannotBeEmpty}}"
                                                           ToolTip="{Binding ToolTipText}" />
 
                                     <TextBlock x:Name="ModifiedMarker"

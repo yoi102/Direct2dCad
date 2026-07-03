@@ -47,6 +47,9 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -57,6 +60,10 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
     {
@@ -71,7 +78,8 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
             Radius = circle.Radius;
             RefreshFillStyleOptions(circle.FillStyleId);
             StrokeColor = ResolveStrokeColor(circle);
-            UseByLayerLineWeight = circle.LineWeight is null || circle.LineWeight.Value.IsByLayer;
+            UseByLayerColor = circle.UseLayerColor;
+            UseByLayerLineWeight = circle.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(circle).Value;
             ZIndex = circle.ZIndex;
             IsVisible = circle.IsVisible;
@@ -108,14 +116,27 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetCircle(out var circle) || ResolveStrokeColor(circle) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetCircle(out var circle) || ResolveStrokeColor(circle) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetCircle(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetCircle(out _))
             return;
 
@@ -207,40 +228,12 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadCircle circle)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(circle.LayerId);
-        var styleId = circle.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, circle, circle.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadCircle circle)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(circle.LayerId);
-        var styleId = circle.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = circle.LineWeight is { IsByLayer: false }
-            ? circle.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, circle, circle.GraphicStyleId);
     }
 
     internal static IReadOnlyList<FillStyleOption> BuildFillStyleOptions(CadDocument document)

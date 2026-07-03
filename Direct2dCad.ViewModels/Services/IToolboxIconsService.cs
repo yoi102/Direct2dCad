@@ -8,6 +8,7 @@ public interface IToolboxIconsService
 {
 
     object Explorer { get; }
+    object Layers { get; }
     object Terminal { get; }
     object Search { get; }
     object Git { get; }

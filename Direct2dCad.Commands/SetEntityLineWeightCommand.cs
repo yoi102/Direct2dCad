@@ -7,7 +7,7 @@ public sealed class SetEntityLineWeightCommand : ICadCommand
 {
     private readonly EntityId[] _entityIds;
     private readonly CadLineWeight? _lineWeight;
-    private readonly Dictionary<EntityId, CadLineWeight?> _previousLineWeights = [];
+    private readonly Dictionary<EntityId, EntityLineWeightState> _previousLineWeights = [];
 
     public string Name => "Set Entity Line Weight";
 
@@ -28,8 +28,12 @@ public sealed class SetEntityLineWeightCommand : ICadCommand
         foreach (var entityId in _entityIds)
         {
             var entity = document.GetEntity(entityId);
-            _previousLineWeights[entityId] = entity.LineWeight;
-            entity.SetLineWeight(_lineWeight);
+            _previousLineWeights[entityId] = new EntityLineWeightState(entity.LineWeight, entity.UseLayerLineWeight);
+
+            if (_lineWeight is { IsByLayer: true })
+                entity.SetUseLayerLineWeight(true);
+            else
+                entity.SetLineWeight(_lineWeight);
         }
 
         return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Appearance);
@@ -39,9 +43,11 @@ public sealed class SetEntityLineWeightCommand : ICadCommand
     {
         ArgumentNullException.ThrowIfNull(document);
 
-        foreach (var (entityId, lineWeight) in _previousLineWeights)
-            document.GetEntity(entityId).SetLineWeight(lineWeight);
+        foreach (var (entityId, state) in _previousLineWeights)
+            document.GetEntity(entityId).SetLineWeightState(state.LineWeight, state.UseLayerLineWeight);
 
         return CadDocumentChangeSet.ForEntities(_previousLineWeights.Keys, CadEntityChangeKind.Appearance);
     }
+
+    private readonly record struct EntityLineWeightState(CadLineWeight? LineWeight, bool UseLayerLineWeight);
 }

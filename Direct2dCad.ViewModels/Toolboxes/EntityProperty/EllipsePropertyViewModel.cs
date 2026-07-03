@@ -45,6 +45,9 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -55,6 +58,10 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
     {
@@ -70,7 +77,8 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
             RadiusY = ellipse.RadiusY;
             RefreshFillStyleOptions(ellipse.FillStyleId);
             StrokeColor = ResolveStrokeColor(ellipse);
-            UseByLayerLineWeight = ellipse.LineWeight is null || ellipse.LineWeight.Value.IsByLayer;
+            UseByLayerColor = ellipse.UseLayerColor;
+            UseByLayerLineWeight = ellipse.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(ellipse).Value;
             ZIndex = ellipse.ZIndex;
             IsVisible = ellipse.IsVisible;
@@ -114,14 +122,27 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetEllipse(out var ellipse) || ResolveStrokeColor(ellipse) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetEllipse(out var ellipse) || ResolveStrokeColor(ellipse) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetEllipse(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetEllipse(out _))
             return;
 
@@ -216,40 +237,12 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadEllipse ellipse)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(ellipse.LayerId);
-        var styleId = ellipse.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, ellipse, ellipse.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadEllipse ellipse)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(ellipse.LayerId);
-        var styleId = ellipse.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = ellipse.LineWeight is { IsByLayer: false }
-            ? ellipse.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, ellipse, ellipse.GraphicStyleId);
     }
 
     private static double ResolveLineWeightValue(double value)

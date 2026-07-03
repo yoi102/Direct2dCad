@@ -62,8 +62,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
             LayerId.Default,
             "0",
             CadColor.White,
-            CadLineWeight.Default,
-            StyleId.DefaultGraphic);
+            CadLineWeight.Default);
 
         AddLayerCore(defaultLayer);
 
@@ -110,6 +109,31 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
         AddLayerCore(layer);
         return layer.Id;
+    }
+
+    public void RestoreLayer(
+        LayerId layerId,
+        string name,
+        CadColor color,
+        CadLineWeight lineWeight,
+        bool isVisible,
+        bool isLocked,
+        bool isFrozen,
+        StyleId? defaultGraphicStyleId = null)
+    {
+        ValidateGraphicStyle(defaultGraphicStyleId, allowNull: true);
+
+        var layer = new CadLayer(
+            layerId,
+            name,
+            color,
+            lineWeight,
+            defaultGraphicStyleId);
+        layer.SetVisible(isVisible);
+        layer.SetLocked(isLocked);
+        layer.SetFrozen(isFrozen);
+
+        AddLayerCore(layer);
     }
 
     public void SetLayerDefaultGraphicStyle(LayerId layerId, StyleId? styleId)
@@ -431,6 +455,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         AddEntityCore(entity);
         return entity;
     }
@@ -452,6 +478,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         entity.SetFillStyleInternal(fillStyleId);
         AddEntityCore(entity);
         return entity;
@@ -476,6 +504,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         entity.SetFillStyleInternal(fillStyleId);
         AddEntityCore(entity);
         return entity;
@@ -501,6 +531,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         AddEntityCore(entity);
         return entity;
     }
@@ -541,6 +573,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         entity.SetFillStyleInternal(fillStyleId);
         AddEntityCore(entity);
         return entity;
@@ -562,6 +596,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         AddEntityCore(entity);
         return entity;
     }
@@ -595,6 +631,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             invertedMarginFactor);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         AddEntityCore(entity);
         return entity;
     }
@@ -633,6 +671,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             shapeFontId);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         AddEntityCore(entity);
         return entity;
     }
@@ -656,6 +696,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         entity.SetFillStyleInternal(fillStyleId);
         AddEntityCore(entity);
         return entity;
@@ -689,6 +731,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             name);
 
         entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
         AddEntityCore(entity);
         return entity;
     }

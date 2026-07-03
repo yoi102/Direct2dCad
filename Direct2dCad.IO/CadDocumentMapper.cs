@@ -441,7 +441,7 @@ internal static class CadDocumentMapper
                 FromData(lineData.End),
                 lineData.Entity.Name);
             line.SetGraphicStyleInternal(ToStyleId(lineData.GraphicStyleId));
-            ApplyEntityState(line, lineData.Entity);
+            ApplyEntityState(document, line, lineData.Entity);
             document.AddEntityCore(line);
         }
 
@@ -456,7 +456,7 @@ internal static class CadDocumentMapper
                 circleData.Entity.Name);
             circle.SetGraphicStyleInternal(ToStyleId(circleData.GraphicStyleId));
             circle.SetFillStyleInternal(ToStyleId(circleData.FillStyleId));
-            ApplyEntityState(circle, circleData.Entity);
+            ApplyEntityState(document, circle, circleData.Entity);
             document.AddEntityCore(circle);
         }
 
@@ -472,7 +472,7 @@ internal static class CadDocumentMapper
                 ellipseData.Entity.Name);
             ellipse.SetGraphicStyleInternal(ToStyleId(ellipseData.GraphicStyleId));
             ellipse.SetFillStyleInternal(ToStyleId(ellipseData.FillStyleId));
-            ApplyEntityState(ellipse, ellipseData.Entity);
+            ApplyEntityState(document, ellipse, ellipseData.Entity);
             document.AddEntityCore(ellipse);
         }
 
@@ -488,7 +488,7 @@ internal static class CadDocumentMapper
                 arcData.SweepAngleRadians,
                 arcData.Entity.Name);
             arc.SetGraphicStyleInternal(ToStyleId(arcData.GraphicStyleId));
-            ApplyEntityState(arc, arcData.Entity);
+            ApplyEntityState(document, arc, arcData.Entity);
             document.AddEntityCore(arc);
         }
 
@@ -508,7 +508,7 @@ internal static class CadDocumentMapper
                 rectangleData.Entity.Name);
             rectangle.SetGraphicStyleInternal(ToStyleId(rectangleData.GraphicStyleId));
             rectangle.SetFillStyleInternal(ToStyleId(rectangleData.FillStyleId));
-            ApplyEntityState(rectangle, rectangleData.Entity);
+            ApplyEntityState(document, rectangle, rectangleData.Entity);
             document.AddEntityCore(rectangle);
         }
 
@@ -523,7 +523,7 @@ internal static class CadDocumentMapper
                 polylineData.Entity.Name);
             polyline.SetGraphicStyleInternal(ToStyleId(polylineData.GraphicStyleId));
             polyline.SetFillStyleInternal(ToStyleId(polylineData.FillStyleId));
-            ApplyEntityState(polyline, polylineData.Entity);
+            ApplyEntityState(document, polyline, polylineData.Entity);
             document.AddEntityCore(polyline);
         }
 
@@ -537,7 +537,7 @@ internal static class CadDocumentMapper
                 splineData.Closed,
                 splineData.Entity.Name);
             spline.SetGraphicStyleInternal(ToStyleId(splineData.GraphicStyleId));
-            ApplyEntityState(spline, splineData.Entity);
+            ApplyEntityState(document, spline, splineData.Entity);
             document.AddEntityCore(spline);
         }
 
@@ -556,7 +556,7 @@ internal static class CadDocumentMapper
                 textData.IsInverted,
                 textData.InvertedMarginFactor ?? CadText.DefaultInvertedMarginFactor);
             text.SetGraphicStyleInternal(ToStyleId(textData.GraphicStyleId));
-            ApplyEntityState(text, textData.Entity);
+            ApplyEntityState(document, text, textData.Entity);
             document.AddEntityCore(text);
         }
 
@@ -578,7 +578,7 @@ internal static class CadDocumentMapper
                 textData.InvertedMarginFactor ?? CadShapeText.DefaultInvertedMarginFactor,
                 CadShapeFontRegistry.FromStoredValue(textData.ShapeFontId));
             text.SetGraphicStyleInternal(ToStyleId(textData.GraphicStyleId));
-            ApplyEntityState(text, textData.Entity);
+            ApplyEntityState(document, text, textData.Entity);
             document.AddEntityCore(text);
         }
     }
@@ -680,21 +680,66 @@ internal static class CadDocumentMapper
             IsErased = entity.IsErased,
             IsVisible = entity.IsVisible,
             LineWeight = entity.LineWeight?.Value,
-            ZIndex = entity.ZIndex
+            ZIndex = entity.ZIndex,
+            UseLayerColor = entity.UseLayerColor,
+            UseLayerLineWeight = entity.UseLayerLineWeight
         };
     }
 
-    private static void ApplyEntityState(CadEntity entity, CadEntityData data)
+    private static void ApplyEntityState(CadDocument document, CadEntity entity, CadEntityData data)
     {
         entity.SetLocked(data.IsLocked);
         entity.SetVisible(data.IsVisible);
-        entity.SetLineWeight(data.LineWeight is null ? null : new CadLineWeight(data.LineWeight.Value));
+        var storedLineWeight = ToStoredLineWeight(data.LineWeight);
+        var hasStoredByLayerLineWeight = data.LineWeight is { } rawLineWeight && rawLineWeight < 0;
+        var hasGraphicLineWeight = HasExplicitGraphicLineWeight(document, GetGraphicStyleId(entity));
+        var useLayerLineWeight = data.UseLayerLineWeight ??
+                                 (hasStoredByLayerLineWeight ||
+                                  storedLineWeight is null && !hasGraphicLineWeight);
+
+        entity.SetLineWeightState(storedLineWeight, useLayerLineWeight);
+        entity.SetUseLayerColor(data.UseLayerColor ?? (GetGraphicStyleId(entity) is null));
         entity.SetZIndex(data.ZIndex);
 
         if (data.IsErased)
             entity.Erase();
         else
             entity.Restore();
+    }
+
+    private static CadLineWeight? ToStoredLineWeight(double? value)
+    {
+        if (value is null)
+            return null;
+
+        var lineWeight = new CadLineWeight(value.Value);
+        return lineWeight.IsByLayer ? null : lineWeight;
+    }
+
+    private static StyleId? GetGraphicStyleId(CadEntity entity)
+    {
+        return entity switch
+        {
+            CadLine line => line.GraphicStyleId,
+            CadCircle circle => circle.GraphicStyleId,
+            CadEllipse ellipse => ellipse.GraphicStyleId,
+            CadRectangle rectangle => rectangle.GraphicStyleId,
+            CadArc arc => arc.GraphicStyleId,
+            CadPolyline polyline => polyline.GraphicStyleId,
+            CadSpline spline => spline.GraphicStyleId,
+            CadText text => text.GraphicStyleId,
+            CadShapeText shapeText => shapeText.GraphicStyleId,
+            CadBlockReference blockReference => blockReference.GraphicStyleId,
+            _ => null
+        };
+    }
+
+    private static bool HasExplicitGraphicLineWeight(CadDocument document, StyleId? styleId)
+    {
+        return styleId is { } graphicStyleId &&
+               document.TryGetStyle(graphicStyleId, out var style) &&
+               style is CadGraphicStyle graphic &&
+               graphic.LineWeight is { IsByLayer: false };
     }
 
     private static StyleId? ToStyleId(long? value) => value is null ? null : new StyleId(value.Value);

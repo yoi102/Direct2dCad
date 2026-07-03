@@ -137,8 +137,12 @@ internal sealed class Direct2DResourceCache : IDisposable
         var bucket = new EntityResourceBucket(entity.Id);
         var graphic = ResolveGraphicStyle(document, entity, layer);
 
-        bucket.StrokeWidth = ResolveStrokeWidth(entity.LineWeight, graphic?.LineWeight, layer.LineWeight);
-        bucket.StrokeBrush = CreateBrush(graphic?.StrokeColor ?? layer.Color);
+        bucket.StrokeWidth = ResolveStrokeWidth(
+            entity.LineWeight,
+            entity.UseLayerLineWeight,
+            graphic?.LineWeight,
+            layer.LineWeight);
+        bucket.StrokeBrush = CreateBrush(ResolveStrokeColor(document, entity, layer, graphic));
 
         bucket.Geometry = CreateGeometry(entity);
 
@@ -303,19 +307,48 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     private static float ResolveStrokeWidth(
         CadLineWeight? entityWeight,
+        bool useLayerLineWeight,
         CadLineWeight? styleWeight,
         CadLineWeight layerWeight)
     {
-        var weight = entityWeight is { IsByLayer: false }
-            ? entityWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layerWeight;
+        var weight = useLayerLineWeight
+            ? layerWeight
+            : entityWeight switch
+        {
+            { IsByLayer: false } explicitWeight => explicitWeight,
+            { IsByLayer: true } => layerWeight,
+            _ => styleWeight is { IsByLayer: false }
+                ? styleWeight.Value
+                : layerWeight
+        };
 
         if (weight.IsByLayer || weight.Value <= 0)
             weight = CadLineWeight.Default;
 
         return (float)Math.Max(weight.Value, 0.01);
+    }
+
+    private static CadColor ResolveStrokeColor(
+        CadDocument document,
+        CadEntity entity,
+        CadLayer layer,
+        CadGraphicStyle? graphic)
+    {
+        return entity.UseLayerColor
+            ? ResolveLayerStrokeColor(document, layer)
+            : graphic?.StrokeColor ?? ResolveLayerStrokeColor(document, layer);
+    }
+
+    private static CadColor ResolveLayerStrokeColor(CadDocument document, CadLayer layer)
+    {
+        if (layer.DefaultGraphicStyleId is { } styleId &&
+            document.TryGetStyle(styleId, out var style) &&
+            style is CadGraphicStyle graphic)
+        {
+            return graphic.StrokeColor;
+        }
+
+        return layer.Color;
     }
 
     private static bool TryResolveFillColor(CadDocument document, CadEntity entity, out CadColor color)

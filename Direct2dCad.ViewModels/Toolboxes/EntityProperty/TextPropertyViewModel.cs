@@ -57,6 +57,9 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -74,6 +77,10 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
     [ObservableProperty]
     public partial double InvertedMarginFactor { get; set; }
 
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
+
     public void RefreshFromEntity()
     {
         if (!TryGetText(out var text))
@@ -89,7 +96,8 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
             RotationDegrees = RadiansToDegrees(text.RotationRadians);
             RefreshTextStyleOptions(text.TextStyleId);
             StrokeColor = ResolveStrokeColor(text);
-            UseByLayerLineWeight = text.LineWeight is null || text.LineWeight.Value.IsByLayer;
+            UseByLayerColor = text.UseLayerColor;
+            UseByLayerLineWeight = text.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(text).Value;
             ZIndex = text.ZIndex;
             IsVisible = text.IsVisible;
@@ -134,14 +142,27 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetText(out var text) || ResolveStrokeColor(text) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetText(out var text) || ResolveStrokeColor(text) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetText(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetText(out _))
             return;
 
@@ -269,40 +290,12 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadText text)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(text.LayerId);
-        var styleId = text.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, text, text.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadText text)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(text.LayerId);
-        var styleId = text.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = text.LineWeight is { IsByLayer: false }
-            ? text.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, text, text.GraphicStyleId);
     }
 
     internal static IReadOnlyList<TextStyleOption> BuildTextStyleOptions(CadDocument document)

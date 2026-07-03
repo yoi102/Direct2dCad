@@ -18,6 +18,8 @@ public abstract class CadEntity : IEquatable<CadEntity>
     public bool IsErased { get; private set; }
     public bool IsVisible { get; private set; } = true;
     public CadLineWeight? LineWeight { get; private set; }
+    public bool UseLayerColor { get; private set; } = true;
+    public bool UseLayerLineWeight { get; private set; } = true;
     public int ZIndex { get; private set; }
 
     public abstract CadRectD Bounds { get; }
@@ -36,7 +38,27 @@ public abstract class CadEntity : IEquatable<CadEntity>
 
     public void SetVisible(bool visible) => IsVisible = visible;
 
-    public void SetLineWeight(CadLineWeight? lineWeight) => LineWeight = lineWeight;
+    public void SetLineWeight(CadLineWeight? lineWeight)
+    {
+        if (lineWeight is { IsByLayer: true })
+        {
+            UseLayerLineWeight = true;
+            return;
+        }
+
+        LineWeight = lineWeight;
+        UseLayerLineWeight = lineWeight is null;
+    }
+
+    public void SetLineWeightState(CadLineWeight? lineWeight, bool useLayerLineWeight)
+    {
+        LineWeight = lineWeight is { IsByLayer: true } ? null : lineWeight;
+        UseLayerLineWeight = useLayerLineWeight || LineWeight is null;
+    }
+
+    public void SetUseLayerColor(bool useLayerColor) => UseLayerColor = useLayerColor;
+
+    public void SetUseLayerLineWeight(bool useLayerLineWeight) => UseLayerLineWeight = useLayerLineWeight;
 
     public void SetZIndex(int zIndex) => ZIndex = zIndex;
 

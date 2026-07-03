@@ -345,4 +345,217 @@
   <data name="Background" xml:space="preserve">
     <value>背景</value>
   </data>
+  <data name="ColorPickerPalettes" xml:space="preserve">
+    <value>调色板</value>
+  </data>
+  <data name="ColorPickerAdvanced" xml:space="preserve">
+    <value>高级</value>
+  </data>
+  <data name="ColorPickerStandardColors" xml:space="preserve">
+    <value>标准颜色</value>
+  </data>
+  <data name="ColorPickerAvailableColors" xml:space="preserve">
+    <value>可用颜色</value>
+  </data>
+  <data name="ColorPickerRecentColors" xml:space="preserve">
+    <value>最近颜色</value>
+  </data>
+  <data name="Layers" xml:space="preserve">
+    <value>图层</value>
+  </data>
+  <data name="AddLayer" xml:space="preserve">
+    <value>添加图层</value>
+  </data>
+  <data name="DeleteLayer" xml:space="preserve">
+    <value>删除图层</value>
+  </data>
+  <data name="Priority" xml:space="preserve">
+    <value>优先级</value>
+  </data>
+  <data name="Entities" xml:space="preserve">
+    <value>实体</value>
+  </data>
+  <data name="Weight" xml:space="preserve">
+    <value>线宽</value>
+  </data>
+  <data name="Visible" xml:space="preserve">
+    <value>可见</value>
+  </data>
+  <data name="Locked" xml:space="preserve">
+    <value>锁定</value>
+  </data>
+  <data name="Frozen" xml:space="preserve">
+    <value>冻结</value>
+  </data>
+  <data name="TogglePrimarySideBar" xml:space="preserve">
+    <value>切换主侧栏</value>
+  </data>
+  <data name="TogglePanel" xml:space="preserve">
+    <value>切换面板</value>
+  </data>
+  <data name="ToggleSecondarySideBar" xml:space="preserve">
+    <value>切换副侧栏</value>
+  </data>
+  <data name="DocumentNameCannotBeEmpty" xml:space="preserve">
+    <value>文档名称不能为空。</value>
+  </data>
+  <data name="Id" xml:space="preserve">
+    <value>Id</value>
+  </data>
+  <data name="CenterX" xml:space="preserve">
+    <value>中心 X</value>
+  </data>
+  <data name="CenterY" xml:space="preserve">
+    <value>中心 Y</value>
+  </data>
+  <data name="Radius" xml:space="preserve">
+    <value>半径</value>
+  </data>
+  <data name="RadiusX" xml:space="preserve">
+    <value>X 半径</value>
+  </data>
+  <data name="RadiusY" xml:space="preserve">
+    <value>Y 半径</value>
+  </data>
+  <data name="Diameter" xml:space="preserve">
+    <value>直径</value>
+  </data>
+  <data name="DiameterX" xml:space="preserve">
+    <value>X 直径</value>
+  </data>
+  <data name="DiameterY" xml:space="preserve">
+    <value>Y 直径</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>起始角</value>
+  </data>
+  <data name="StartX" xml:space="preserve">
+    <value>起点 X</value>
+  </data>
+  <data name="StartY" xml:space="preserve">
+    <value>起点 Y</value>
+  </data>
+  <data name="End" xml:space="preserve">
+    <value>结束角</value>
+  </data>
+  <data name="EndX" xml:space="preserve">
+    <value>终点 X</value>
+  </data>
+  <data name="EndY" xml:space="preserve">
+    <value>终点 Y</value>
+  </data>
+  <data name="Sweep" xml:space="preserve">
+    <value>扫描角</value>
+  </data>
+  <data name="CounterClockwise" xml:space="preserve">
+    <value>逆时针</value>
+  </data>
+  <data name="Fill" xml:space="preserve">
+    <value>填充</value>
+  </data>
+  <data name="LineWeight" xml:space="preserve">
+    <value>线宽</value>
+  </data>
+  <data name="ByLayer" xml:space="preserve">
+    <value>随图层</value>
+  </data>
+  <data name="DrawOrder" xml:space="preserve">
+    <value>绘制顺序</value>
+  </data>
+  <data name="Length" xml:space="preserve">
+    <value>长度</value>
+  </data>
+  <data name="Angle" xml:space="preserve">
+    <value>角度</value>
+  </data>
+  <data name="Closed" xml:space="preserve">
+    <value>闭合</value>
+  </data>
+  <data name="Vertices" xml:space="preserve">
+    <value>顶点</value>
+  </data>
+  <data name="AddAfter" xml:space="preserve">
+    <value>在后添加</value>
+  </data>
+  <data name="Remove" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="PointCount" xml:space="preserve">
+    <value>点数</value>
+  </data>
+  <data name="FitPoints" xml:space="preserve">
+    <value>拟合点</value>
+  </data>
+  <data name="Left" xml:space="preserve">
+    <value>左</value>
+  </data>
+  <data name="Bottom" xml:space="preserve">
+    <value>底</value>
+  </data>
+  <data name="Right" xml:space="preserve">
+    <value>右</value>
+  </data>
+  <data name="Top" xml:space="preserve">
+    <value>顶</value>
+  </data>
+  <data name="Width" xml:space="preserve">
+    <value>宽度</value>
+  </data>
+  <data name="Height" xml:space="preserve">
+    <value>高度</value>
+  </data>
+  <data name="CornerX" xml:space="preserve">
+    <value>X 圆角</value>
+  </data>
+  <data name="CornerY" xml:space="preserve">
+    <value>Y 圆角</value>
+  </data>
+  <data name="Content" xml:space="preserve">
+    <value>内容</value>
+  </data>
+  <data name="Style" xml:space="preserve">
+    <value>样式</value>
+  </data>
+  <data name="PositionX" xml:space="preserve">
+    <value>位置 X</value>
+  </data>
+  <data name="PositionY" xml:space="preserve">
+    <value>位置 Y</value>
+  </data>
+  <data name="Rotation" xml:space="preserve">
+    <value>旋转</value>
+  </data>
+  <data name="Bounds" xml:space="preserve">
+    <value>边界</value>
+  </data>
+  <data name="Measure" xml:space="preserve">
+    <value>测量</value>
+  </data>
+  <data name="ArcDrawing" xml:space="preserve">
+    <value>绘制圆弧</value>
+  </data>
+  <data name="CircleDrawing" xml:space="preserve">
+    <value>绘制圆</value>
+  </data>
+  <data name="EllipseDrawing" xml:space="preserve">
+    <value>绘制椭圆</value>
+  </data>
+  <data name="LineDrawing" xml:space="preserve">
+    <value>绘制直线</value>
+  </data>
+  <data name="PolygonDrawing" xml:space="preserve">
+    <value>绘制多边形</value>
+  </data>
+  <data name="PolylineDrawing" xml:space="preserve">
+    <value>绘制多段线</value>
+  </data>
+  <data name="RectangleDrawing" xml:space="preserve">
+    <value>绘制矩形</value>
+  </data>
+  <data name="SplineDrawing" xml:space="preserve">
+    <value>绘制样条</value>
+  </data>
+  <data name="TextDrawing" xml:space="preserve">
+    <value>绘制文字</value>
+  </data>
 </root>

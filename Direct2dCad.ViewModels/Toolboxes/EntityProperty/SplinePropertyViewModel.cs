@@ -38,6 +38,9 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -48,6 +51,10 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
     {
@@ -60,7 +67,8 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
             RebuildFitPoints(spline.FitPoints);
             IsClosed = spline.Closed;
             StrokeColor = ResolveStrokeColor(spline);
-            UseByLayerLineWeight = spline.LineWeight is null || spline.LineWeight.Value.IsByLayer;
+            UseByLayerColor = spline.UseLayerColor;
+            UseByLayerLineWeight = spline.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(spline).Value;
             ZIndex = spline.ZIndex;
             IsVisible = spline.IsVisible;
@@ -97,14 +105,27 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetSpline(out var spline) || ResolveStrokeColor(spline) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetSpline(out var spline) || ResolveStrokeColor(spline) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetSpline(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetSpline(out _))
             return;
 
@@ -285,40 +306,12 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadSpline spline)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(spline.LayerId);
-        var styleId = spline.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, spline, spline.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadSpline spline)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(spline.LayerId);
-        var styleId = spline.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = spline.LineWeight is { IsByLayer: false }
-            ? spline.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, spline, spline.GraphicStyleId);
     }
 
     private static bool GeometryMatches(CadSpline spline, IReadOnlyList<CadPointD> fitPoints, bool closed)

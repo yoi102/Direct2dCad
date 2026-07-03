@@ -46,6 +46,9 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
@@ -56,6 +59,10 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
     {
@@ -71,7 +78,8 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel
             EndY = line.End.Y;
             RefreshDerivedGeometry(line.Start, line.End);
             StrokeColor = ResolveStrokeColor(line);
-            UseByLayerLineWeight = line.LineWeight is null || line.LineWeight.Value.IsByLayer;
+            UseByLayerColor = line.UseLayerColor;
+            UseByLayerLineWeight = line.UseLayerLineWeight;
             LineWeight = ResolveLineWeight(line).Value;
             ZIndex = line.ZIndex;
             IsVisible = line.IsVisible;
@@ -96,14 +104,27 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !TryGetLine(out var line) || ResolveStrokeColor(line) == value)
+        if (_isRefreshing || UseByLayerColor || !TryGetLine(out var line) || ResolveStrokeColor(line) == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
     }
 
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+
+        if (_isRefreshing || !TryGetLine(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        RefreshFromEntity();
+    }
+
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+
         if (_isRefreshing || !TryGetLine(out _))
             return;
 
@@ -254,40 +275,12 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel
 
     private CadColor ResolveStrokeColor(CadLine line)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(line.LayerId);
-        var styleId = line.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-
-        if (styleId is { } graphicStyleId &&
-            document.TryGetStyle(graphicStyleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveStrokeColor(_documentViewModel.CadEditor.Document, line, line.GraphicStyleId);
     }
 
     private CadLineWeight ResolveLineWeight(CadLine line)
     {
-        var document = _documentViewModel.CadEditor.Document;
-        var layer = document.GetLayer(line.LayerId);
-        var styleId = line.GraphicStyleId ?? layer.DefaultGraphicStyleId;
-        var styleWeight = styleId is { } graphicStyleId &&
-                          document.TryGetStyle(graphicStyleId, out var style) &&
-                          style is CadGraphicStyle graphic
-            ? graphic.LineWeight
-            : (CadLineWeight?)null;
-
-        var weight = line.LineWeight is { IsByLayer: false }
-            ? line.LineWeight.Value
-            : styleWeight is { IsByLayer: false }
-            ? styleWeight.Value
-            : layer.LineWeight;
-
-        return weight.IsByLayer || weight.Value <= 0
-            ? CadLineWeight.Default
-            : weight;
+        return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, line, line.GraphicStyleId);
     }
 
     private static double ResolveLineWeightValue(double value)
