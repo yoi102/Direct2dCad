@@ -409,4 +409,12 @@
     <value>New</value>
     <comment>New</comment>
   </data>
+  <data name="Documents" xml:space="preserve">
+    <value>Documents</value>
+    <comment>Documents</comment>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+    <comment>Refresh</comment>
+  </data>
 </root>

@@ -331,9 +331,15 @@
     <value>文件</value>
   </data>
   <data name="Draw" xml:space="preserve">
-    <value>描画</value>
+    <value>绘制</value>
   </data>
   <data name="New" xml:space="preserve">
     <value>新建</value>
+  </data>
+  <data name="Documents" xml:space="preserve">
+    <value>文档</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>刷新</value>
   </data>
 </root>

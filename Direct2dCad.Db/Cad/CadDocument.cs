@@ -40,7 +40,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     public CadDocument(DocumentId id, string name, CadIdGenerator? idGenerator = null)
     {
         Id = id;
-        Name = string.IsNullOrWhiteSpace(name) ? "Untitled" : name.Trim();
+        Name = NormalizeName(name);
         _ids = idGenerator ?? new CadIdGenerator();
         _ids.RegisterExisting(id);
         DocumentSettings = CadDocumentSettings.Default();
@@ -78,12 +78,17 @@ public sealed class CadDocument : IEquatable<CadDocument>
             CadPointD.Origin));
     }
 
+    private static string NormalizeName(string name)
+    {
+        return string.IsNullOrWhiteSpace(name) ? "Untitled" : name.Trim();
+    }
+
     public void Rename(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Name cannot be empty.", nameof(name));
 
-        Name = name.Trim();
+        Name = NormalizeName(name);
     }
 
     #region Layer

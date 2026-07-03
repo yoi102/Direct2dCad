@@ -36,6 +36,7 @@ public partial class MainViewModel : ObservableObject
         _dialogService = dialogService;
         _snackbarService = snackbarService;
         FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerToolboxViewModel));
+        FolderExplorer.Attach(_dockLayoutService);
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
 
         IsDarkTheme = themeSettingService.IsDarkTheme;
@@ -58,6 +59,7 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnCurrentEditorTabViewModelChanged(EditorTabViewModel? value)
     {
+        FolderExplorer.SetActiveDocument(value);
         EntityProperties.Attach(value?.CadDocumentViewModel);
     }
 
@@ -92,15 +94,17 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void New()
     {
-        _dockLayoutService.OpenOrActivateDocument(
+        var tab = _dockLayoutService.OpenOrActivateDocument(
            e => false,
            () =>
            {
-               var tab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
-               CurrentEditorTabViewModel = tab;
+               var newTab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
                _snackbarService.Enqueue("New document created.");
-               return tab;
+               return newTab;
            });
+
+        CurrentEditorTabViewModel = tab;
+        FolderExplorer.RefreshDocuments();
     }
 
     [RelayCommand]
@@ -112,16 +116,18 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            _dockLayoutService.OpenOrActivateDocument(
+            var tab = _dockLayoutService.OpenOrActivateDocument(
             e => e.CurrentFilePath == fileName,
             () =>
             {
-                var tab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
-                tab.Load(fileName);
-                CurrentEditorTabViewModel = tab;
+                var newTab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
+                newTab.Load(fileName);
                 _snackbarService.Enqueue("File opened successfully.");
-                return tab;
+                return newTab;
             });
+
+            CurrentEditorTabViewModel = tab;
+            FolderExplorer.RefreshDocuments();
         }
         catch (Exception ex)
         {
@@ -139,6 +145,7 @@ public partial class MainViewModel : ObservableObject
                 CurrentEditorTabViewModel = null;
             }
             editorTabViewModel.Dispose();
+            FolderExplorer.RefreshDocuments();
         }
         else
         {
@@ -152,7 +159,6 @@ public partial class MainViewModel : ObservableObject
         if (_dockLayoutService.ActiveDockable is EditorTabViewModel editorTabView)
         {
             CurrentEditorTabViewModel = editorTabView;
-
         }
 
         //CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;

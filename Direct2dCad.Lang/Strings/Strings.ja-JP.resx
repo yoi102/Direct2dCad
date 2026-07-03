@@ -331,9 +331,15 @@
     <value>ファイル</value>
   </data>
   <data name="Draw" xml:space="preserve">
-    <value>绘制</value>
+    <value>描画</value>
   </data>
   <data name="New" xml:space="preserve">
     <value>クリエイト</value>
+  </data>
+  <data name="Documents" xml:space="preserve">
+    <value>ドキュメント</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>更新</value>
   </data>
 </root>

@@ -1,4 +1,5 @@
 using AvalonDock.Mvvm.CommunityToolkit;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
@@ -60,6 +61,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
       return  base.OnClose();
     }
     public CadDocumentViewModel CadDocumentViewModel { get; }
+
+    public string DocumentName => CadDocumentViewModel.CadEditor.Document.Name;
 
     [ObservableProperty]
     public partial string CurrentFilePath { get; private set; } = string.Empty;
@@ -336,6 +339,17 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         CadDocumentViewModel.FitToWindow();
     }
 
+    public bool TryRenameDocument(string name)
+    {
+        if (!TryNormalizeDocumentName(name, out var normalizedName))
+            return false;
+
+        CadDocumentViewModel.CadEditor.Document.Rename(normalizedName);
+        Title = normalizedName;
+        OnPropertyChanged(nameof(DocumentName));
+        return true;
+    }
+
     private void ApplyUserSettingsToToolbar()
     {
         _isSyncingUserSettings = true;
@@ -510,5 +524,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         var document = _storage.Load(fileName);
         CadDocumentViewModel.ReplaceEditor(new CadEditor(document));
         CurrentFilePath = fileName;
+        Title = CadDocumentViewModel.CadEditor.Document.Name;
+        OnPropertyChanged(nameof(DocumentName));
+    }
+
+    private static bool TryNormalizeDocumentName(string? name, out string normalizedName)
+    {
+        normalizedName = name?.Trim() ?? string.Empty;
+        return normalizedName.Length > 0 &&
+               normalizedName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
     }
 }
