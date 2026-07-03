@@ -7,7 +7,8 @@ public readonly record struct CadTransientStyle(
     double StrokeWidth = 1.0,
     CadTransientLinePattern LinePattern = CadTransientLinePattern.Solid,
     CadColor? FillColor = null,
-    bool KeepStrokeWidthScreenConstant = true)
+    bool KeepStrokeWidthScreenConstant = true,
+    double MinimumScreenStrokeWidth = 0.5)
 {
     public static CadTransientStyle Construction { get; } = new(
         CadColor.FromArgb(230, 64, 196, 255),

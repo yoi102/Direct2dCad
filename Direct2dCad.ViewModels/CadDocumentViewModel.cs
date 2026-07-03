@@ -1211,6 +1211,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var strokeScreenWidth = style.KeepStrokeWidthScreenConstant
             ? style.StrokeWidth
             : style.StrokeWidth * CadEditor.Viewport.Zoom;
+        strokeScreenWidth = Math.Max(strokeScreenWidth, Math.Max(style.MinimumScreenStrokeWidth, 0.0));
 
         var strokePadding = Math.Max(0.0, strokeScreenWidth) * 0.5 + 8.0;
         if (style.LinePattern != CadTransientLinePattern.Solid)
@@ -1234,8 +1235,49 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private CadRenderInvalidation CreateEntityReferenceInvalidation(EntityId entityId, CadVectorD offset)
     {
         return CadEditor.Document.TryGetEntity(entityId, out var entity) && entity is not null
-            ? CreateWorldBoundsInvalidation(entity.Bounds.Translate(offset))
+            ? CreateEntityBoundsInvalidation(entity, offset)
             : CadRenderInvalidation.FromScreenRect(default);
+    }
+
+    private CadRenderInvalidation CreateEntityBoundsInvalidation(CadEntity entity, CadVectorD offset = default)
+    {
+        var bounds = ResolveEntityPaintBounds(entity).Translate(offset);
+        return CreateWorldBoundsInvalidation(bounds);
+    }
+
+    private CadRectD ResolveEntityPaintBounds(CadEntity entity)
+    {
+        var bounds = entity.Bounds;
+        if (bounds.IsEmpty || !EntityUsesStrokeWidth(entity))
+            return bounds;
+
+        var style = CreateEntityPreviewStyle(entity);
+        var strokeWidth = ResolveStyleWorldStrokeWidth(style);
+        return strokeWidth > 0 ? bounds.Inflate(strokeWidth * 0.5) : bounds;
+    }
+
+    private double ResolveStyleWorldStrokeWidth(CadTransientStyle style)
+    {
+        var zoom = Math.Max(CadEditor.Viewport.Zoom, double.Epsilon);
+        var screenStrokeWidth = style.KeepStrokeWidthScreenConstant
+            ? style.StrokeWidth
+            : style.StrokeWidth * zoom;
+        screenStrokeWidth = Math.Max(screenStrokeWidth, Math.Max(style.MinimumScreenStrokeWidth, 0.0));
+
+        return screenStrokeWidth / zoom;
+    }
+
+    private static bool EntityUsesStrokeWidth(CadEntity entity)
+    {
+        return entity is CadLine or
+            CadCircle or
+            CadEllipse or
+            CadRectangle or
+            CadArc or
+            CadPolyline or
+            CadSpline or
+            CadShapeText or
+            CadBlockReference;
     }
 
     private CadRenderInvalidation CreateWorldBoundsInvalidation(CadRectD bounds, double paddingPixels = 8.0)
@@ -1324,13 +1366,14 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var style = CreateGripPreviewStyle();
         if (drag.Handle.Type == CadHandleType.Center)
         {
-            AddMoveGripPreview(items, drag, style);
+            AddMoveGripPreview(items, drag);
             return;
         }
 
+        var style = CreateEntityPreviewStyle(entity);
+        var auxiliaryStyle = CreateGripAuxiliaryStyle();
         switch (entity)
         {
             case CadLine line:
@@ -1338,15 +1381,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 break;
 
             case CadCircle circle:
-                AddCircleGripPreview(items, circle, drag, style);
+                AddCircleGripPreview(items, circle, drag, style, auxiliaryStyle);
                 break;
 
             case CadEllipse ellipse:
-                AddEllipseGripPreview(items, ellipse, drag, style);
+                AddEllipseGripPreview(items, ellipse, drag, style, auxiliaryStyle);
                 break;
 
             case CadArc arc:
-                AddArcGripPreview(items, arc, drag, style);
+                AddArcGripPreview(items, arc, drag, style, auxiliaryStyle);
                 break;
 
             case CadRectangle rectangle:
@@ -1362,22 +1405,28 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 break;
 
             case CadText text:
-                AddTextGripPreview(items, text, drag, style);
+                AddTextGripPreview(items, text, drag, style, auxiliaryStyle);
                 break;
 
             case CadShapeText shapeText:
-                AddShapeTextGripPreview(items, shapeText, drag, style);
+                AddShapeTextGripPreview(items, shapeText, drag, style, auxiliaryStyle);
                 break;
         }
     }
 
     private void AddMoveGripPreview(
         List<CadTransientItem> items,
-        GripDragState drag,
-        CadTransientStyle style)
+        GripDragState drag)
     {
         foreach (var entityId in ResolveGripDragEntityIds(drag))
-            items.Add(new CadTransientEntityReference(entityId, drag.Delta, style));
+        {
+            if (CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+                entity is not null &&
+                !entity.IsErased)
+            {
+                items.Add(new CadTransientEntityReference(entityId, drag.Delta, CreateEntityPreviewStyle(entity)));
+            }
+        }
     }
 
     private static void AddLineGripPreview(
@@ -1397,41 +1446,44 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         List<CadTransientItem> items,
         CadCircle circle,
         GripDragState drag,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
     {
         var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
         if (radius <= double.Epsilon)
             return;
 
         items.Add(new CadTransientCircle(circle.Center, radius, style));
-        items.Add(new CadTransientLine(circle.Center, drag.DraggedGripPosition, style));
+        items.Add(new CadTransientLine(circle.Center, drag.DraggedGripPosition, auxiliaryStyle));
     }
 
     private static void AddEllipseGripPreview(
         List<CadTransientItem> items,
         CadEllipse ellipse,
         GripDragState drag,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
     {
         if (!TryCreateEllipseGripGeometry(ellipse, drag, out var center, out var radiusX, out var radiusY))
             return;
 
         items.Add(new CadTransientEllipse(center, radiusX, radiusY, style));
-        items.Add(new CadTransientLine(center, drag.DraggedGripPosition, style));
+        items.Add(new CadTransientLine(center, drag.DraggedGripPosition, auxiliaryStyle));
     }
 
     private static void AddArcGripPreview(
         List<CadTransientItem> items,
         CadArc arc,
         GripDragState drag,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
     {
         if (!TryCreateArcGripGeometry(arc, drag, out var center, out var radius, out var startAngle, out var sweepAngle))
             return;
 
         items.Add(new CadTransientArc(center, radius, startAngle, sweepAngle, style));
-        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle), style));
-        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle + sweepAngle), style));
+        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle), auxiliaryStyle));
+        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle + sweepAngle), auxiliaryStyle));
     }
 
     private static void AddRectangleGripPreview(
@@ -1441,7 +1493,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         CadTransientStyle style)
     {
         if (TryCreateRectangleGripGeometry(rectangle, drag, out var bounds))
-            items.Add(new CadTransientRectangle(bounds, style));
+            items.Add(new CadTransientRectangle(
+                bounds,
+                style,
+                rectangle.CornerRadiusX,
+                rectangle.CornerRadiusY));
     }
 
     private static void AddPolylineGripPreview(
@@ -1468,7 +1524,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         List<CadTransientItem> items,
         CadText text,
         GripDragState drag,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
     {
         var grid = CadEditor.Document.ViewSettings.Grid;
         if (!TryCreateTextGripGeometry(
@@ -1494,14 +1551,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             text.TextStyleId));
         items.Add(new CadTransientRectangle(
             text.IsInverted ? bounds.Inflate(height * text.InvertedMarginFactor) : bounds,
-            style with { FillColor = null }));
+            auxiliaryStyle));
     }
 
     private void AddShapeTextGripPreview(
         List<CadTransientItem> items,
         CadShapeText text,
         GripDragState drag,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
     {
         if (!TryCreateShapeTextGripGeometry(text, drag, out var position, out var height))
             return;
@@ -1530,7 +1588,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 text.IsInverted,
                 text.InvertedMarginFactor,
                 text.ShapeFontId),
-            style with { FillColor = null }));
+            auxiliaryStyle));
     }
 
     private void CommitGripDrag(CadPointD screen)
@@ -1921,17 +1979,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return IsValidArcGeometry(radius, sweepAngleRadians);
     }
 
-    private CadTransientStyle CreateGripPreviewStyle()
-    {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = UserSettings.Interaction.GripPreviewStrokeColor,
-            StrokeWidth = UserSettings.Interaction.GripPreviewStrokeWidth,
-            LinePattern = CadTransientLinePattern.Dash,
-            FillColor = UserSettings.Interaction.GripPreviewFillColor
-        };
-    }
-
     private IEnumerable<EntityId> ResolveGripDragEntityIds(GripDragState drag)
     {
         if (drag.Handle.Type != CadHandleType.Center)
@@ -1977,7 +2024,14 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         var delta = mouseWorld - _clipboard.BasePoint;
         foreach (var entityId in _clipboard.EntityIds)
-            items.Add(new CadTransientEntityReference(entityId, delta, CadTransientStyle.PastePreview));
+        {
+            if (CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+                entity is not null &&
+                !entity.IsErased)
+            {
+                items.Add(new CadTransientEntityReference(entityId, delta, CreateEntityPreviewStyle(entity)));
+            }
+        }
 
         items.Add(new CadTransientRectangle(
             _clipboard.Bounds.Translate(delta),
@@ -2038,13 +2092,147 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         };
     }
 
-    private CadTransientStyle CreateDrawingLineTransientStyle()
+    private CadTransientStyle CreateEntityPreviewStyle(
+        CadColor strokeColor,
+        CadLineWeight lineWeight,
+        StyleId? fillStyleId = null)
+    {
+        return new CadTransientStyle(
+            strokeColor,
+            ResolvePreviewStrokeWidth(lineWeight, ResolveDefaultLayerLineWeight()),
+            CadTransientLinePattern.Solid,
+            ResolveSolidFillColor(fillStyleId));
+    }
+
+    private CadTransientStyle CreateEntityPreviewStyle(CadEntity entity)
+    {
+        var layer = CadEditor.Document.TryGetLayer(entity.LayerId, out var resolvedLayer) && resolvedLayer is not null
+            ? resolvedLayer
+            : CadEditor.Document.GetLayer(LayerId.Default);
+        var graphic = ResolveEntityGraphicStyle(entity, layer);
+        var strokeColor = entity.UseLayerColor
+            ? ResolveLayerStrokeColor(layer)
+            : graphic?.StrokeColor ?? ResolveLayerStrokeColor(layer);
+        var lineWeight = ResolveEntityLineWeight(entity, graphic, layer);
+
+        return new CadTransientStyle(
+            strokeColor,
+            ResolvePreviewStrokeWidth(lineWeight, layer.LineWeight),
+            CadTransientLinePattern.Solid,
+            ResolveSolidFillColor(ResolveEntityFillStyleId(entity)));
+    }
+
+    private CadTransientStyle CreateDrawingAuxiliaryStyle(CadColor strokeColor)
     {
         return CadTransientStyle.Construction with
         {
-            StrokeColor = DrawingLineStrokeColor,
-            StrokeWidth = ResolveDrawingLineLineWeight().Value
+            StrokeColor = strokeColor,
+            StrokeWidth = 1.0,
+            LinePattern = CadTransientLinePattern.Dash,
+            FillColor = null
         };
+    }
+
+    private CadTransientStyle CreateGripAuxiliaryStyle()
+    {
+        return CadTransientStyle.Construction with
+        {
+            StrokeColor = UserSettings.Interaction.GripPreviewStrokeColor,
+            StrokeWidth = UserSettings.Interaction.GripPreviewStrokeWidth,
+            LinePattern = CadTransientLinePattern.Dash,
+            FillColor = null
+        };
+    }
+
+    private CadColor? ResolveSolidFillColor(StyleId? fillStyleId)
+    {
+        if (fillStyleId is not { } styleId ||
+            !CadEditor.Document.TryGetStyle(styleId, out var style) ||
+            style is not CadGradientFillStyle { IsSolid: true } fillStyle)
+        {
+            return null;
+        }
+
+        var color = fillStyle.Stops[0].Color;
+        return color.IsTransparent ? null : color;
+    }
+
+    private CadGraphicStyle? ResolveEntityGraphicStyle(CadEntity entity, CadLayer layer)
+    {
+        var styleId = ResolveEntityGraphicStyleId(entity) ?? layer.DefaultGraphicStyleId;
+        return styleId is { } graphicStyleId &&
+               CadEditor.Document.TryGetStyle(graphicStyleId, out var style) &&
+               style is CadGraphicStyle graphic
+            ? graphic
+            : null;
+    }
+
+    private CadColor ResolveLayerStrokeColor(CadLayer layer)
+    {
+        return layer.DefaultGraphicStyleId is { } styleId &&
+               CadEditor.Document.TryGetStyle(styleId, out var style) &&
+               style is CadGraphicStyle graphic
+            ? graphic.StrokeColor
+            : layer.Color;
+    }
+
+    private static StyleId? ResolveEntityGraphicStyleId(CadEntity entity)
+    {
+        return entity switch
+        {
+            CadLine line => line.GraphicStyleId,
+            CadCircle circle => circle.GraphicStyleId,
+            CadEllipse ellipse => ellipse.GraphicStyleId,
+            CadRectangle rectangle => rectangle.GraphicStyleId,
+            CadArc arc => arc.GraphicStyleId,
+            CadPolyline polyline => polyline.GraphicStyleId,
+            CadSpline spline => spline.GraphicStyleId,
+            CadText text => text.GraphicStyleId,
+            CadShapeText shapeText => shapeText.GraphicStyleId,
+            CadBlockReference blockReference => blockReference.GraphicStyleId,
+            _ => null
+        };
+    }
+
+    private static StyleId? ResolveEntityFillStyleId(CadEntity entity)
+    {
+        return entity switch
+        {
+            CadCircle circle => circle.FillStyleId,
+            CadEllipse ellipse => ellipse.FillStyleId,
+            CadRectangle rectangle => rectangle.FillStyleId,
+            CadPolyline { Closed: true } polyline => polyline.FillStyleId,
+            _ => null
+        };
+    }
+
+    private static CadLineWeight ResolveEntityLineWeight(
+        CadEntity entity,
+        CadGraphicStyle? graphic,
+        CadLayer layer)
+    {
+        if (entity.UseLayerLineWeight)
+            return layer.LineWeight;
+
+        return entity.LineWeight switch
+        {
+            { IsByLayer: false } explicitWeight => explicitWeight,
+            { IsByLayer: true } => layer.LineWeight,
+            _ => graphic?.LineWeight is { IsByLayer: false } styleWeight
+                ? styleWeight
+                : layer.LineWeight
+        };
+    }
+
+    private static double ResolvePreviewStrokeWidth(CadLineWeight lineWeight, CadLineWeight layerLineWeight)
+    {
+        var resolved = lineWeight.IsByLayer ? layerLineWeight : lineWeight;
+        return ResolveDrawingLineWeightDisplayValue(resolved);
+    }
+
+    private CadTransientStyle CreateDrawingLineTransientStyle()
+    {
+        return CreateEntityPreviewStyle(DrawingLineStrokeColor, ResolveDrawingLineLineWeight());
     }
 
     private StyleId? ResolveDrawingLineGraphicStyleId()
@@ -2081,20 +2269,23 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadTransientStyle CreateDrawingPolylineTransientStyle()
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingPolylineStrokeColor,
-            StrokeWidth = ResolveDrawingPolylineLineWeight().Value
-        };
+        return CreateDrawingPolylineTransientStyle(includeFill: false);
     }
 
-    private CadTransientStyle CreateDrawingPolygonTransientStyle()
+    private CadTransientStyle CreateDrawingPolylineTransientStyle(bool includeFill)
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingPolygonStrokeColor,
-            StrokeWidth = ResolveDrawingPolygonLineWeight().Value
-        };
+        return CreateEntityPreviewStyle(
+            DrawingPolylineStrokeColor,
+            ResolveDrawingPolylineLineWeight(),
+            includeFill ? ResolveDrawingPolylineFillStyleId() : null);
+    }
+
+    private CadTransientStyle CreateDrawingPolygonTransientStyle(bool includeFill = true)
+    {
+        return CreateEntityPreviewStyle(
+            DrawingPolygonStrokeColor,
+            ResolveDrawingPolygonLineWeight(),
+            includeFill ? ResolveDrawingPolygonFillStyleId() : null);
     }
 
     private StyleId? ResolveDrawingPolylineGraphicStyleId()
@@ -2186,11 +2377,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadTransientStyle CreateDrawingSplineTransientStyle()
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingSplineStrokeColor,
-            StrokeWidth = ResolveDrawingSplineLineWeight().Value
-        };
+        return CreateEntityPreviewStyle(DrawingSplineStrokeColor, ResolveDrawingSplineLineWeight());
     }
 
     private StyleId? ResolveDrawingSplineGraphicStyleId()
@@ -2232,38 +2419,31 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadTransientStyle CreateDrawingArcTransientStyle()
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingArcStrokeColor,
-            StrokeWidth = ResolveDrawingArcLineWeight().Value
-        };
+        return CreateEntityPreviewStyle(DrawingArcStrokeColor, ResolveDrawingArcLineWeight());
     }
 
     private CadTransientStyle CreateDrawingCircleTransientStyle()
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingCircleStrokeColor,
-            StrokeWidth = ResolveDrawingCircleLineWeight().Value
-        };
+        return CreateEntityPreviewStyle(
+            DrawingCircleStrokeColor,
+            ResolveDrawingCircleLineWeight(),
+            ResolveDrawingCircleFillStyleId());
     }
 
     private CadTransientStyle CreateDrawingEllipseTransientStyle()
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingEllipseStrokeColor,
-            StrokeWidth = ResolveDrawingEllipseLineWeight().Value
-        };
+        return CreateEntityPreviewStyle(
+            DrawingEllipseStrokeColor,
+            ResolveDrawingEllipseLineWeight(),
+            ResolveDrawingEllipseFillStyleId());
     }
 
     private CadTransientStyle CreateDrawingRectangleTransientStyle()
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingRectangleStrokeColor,
-            StrokeWidth = ResolveDrawingRectangleLineWeight().Value
-        };
+        return CreateEntityPreviewStyle(
+            DrawingRectangleStrokeColor,
+            ResolveDrawingRectangleLineWeight(),
+            ResolveDrawingRectangleFillStyleId());
     }
 
     private StyleId? ResolveDrawingCircleGraphicStyleId()
@@ -2408,11 +2588,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadTransientStyle CreateDrawingTextTransientStyle()
     {
-        return CadTransientStyle.Construction with
-        {
-            StrokeColor = DrawingTextStrokeColor,
-            StrokeWidth = ResolveDrawingTextLineWeight().Value
-        };
+        return CreateEntityPreviewStyle(DrawingTextStrokeColor, ResolveDrawingTextLineWeight());
     }
 
     private StyleId? ResolveDrawingTextGraphicStyleId()
@@ -2522,8 +2698,9 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 if (radius > 0)
                 {
                     var style = CreateDrawingCircleTransientStyle();
+                    var auxiliaryStyle = CreateDrawingAuxiliaryStyle(DrawingCircleStrokeColor);
                     items.Add(new CadTransientCircle(center, radius, style));
-                    items.Add(new CadTransientLine(center, mouseWorld, style));
+                    items.Add(new CadTransientLine(center, mouseWorld, auxiliaryStyle));
                 }
                 break;
 
@@ -2537,7 +2714,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 var previewRadius = arcCenter.DistanceTo(mouseWorld);
                 if (previewRadius > double.Epsilon)
                 {
-                    var style = CreateDrawingArcTransientStyle();
+                    var style = CreateDrawingAuxiliaryStyle(DrawingArcStrokeColor);
                     items.Add(new CadTransientCircle(arcCenter, previewRadius, style));
                     items.Add(new CadTransientLine(arcCenter, mouseWorld, style));
                 }
@@ -2553,9 +2730,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     out var arcSweepAngle))
                 {
                     var style = CreateDrawingArcTransientStyle();
+                    var auxiliaryStyle = CreateDrawingAuxiliaryStyle(DrawingArcStrokeColor);
                     items.Add(new CadTransientArc(arcCenter, arcRadius, arcStartAngle, arcSweepAngle, style));
-                    items.Add(new CadTransientLine(arcCenter, arcStart, style));
-                    items.Add(new CadTransientLine(arcCenter, GetArcPoint(arcCenter, arcRadius, arcStartAngle + arcSweepAngle), style));
+                    items.Add(new CadTransientLine(arcCenter, arcStart, auxiliaryStyle));
+                    items.Add(new CadTransientLine(arcCenter, GetArcPoint(arcCenter, arcRadius, arcStartAngle + arcSweepAngle), auxiliaryStyle));
                 }
                 break;
 
@@ -2647,7 +2825,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (previewPoints.Length >= 2)
         {
             var closed = ResolveDrawingPolylineClosed(previewPoints.Length);
-            items.Add(new CadTransientPolyline(previewPoints, closed, CreateDrawingPolylineTransientStyle()));
+            items.Add(new CadTransientPolyline(previewPoints, closed, CreateDrawingPolylineTransientStyle(closed)));
         }
     }
 
@@ -2753,13 +2931,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (_pendingPolygonPoints.Count == 0)
             return;
 
-        var style = CreateDrawingPolygonTransientStyle();
         if (_pendingPolygonPoints.Count >= 3 && IsPolygonClosePoint(mouseWorld))
         {
             items.Add(new CadTransientPolyline(
                 _pendingPolygonPoints.ToArray(),
                 Closed: true,
-                style));
+                CreateDrawingPolygonTransientStyle()));
             return;
         }
 
@@ -2767,11 +2944,20 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             .Append(mouseWorld)
             .ToArray();
 
-        if (previewPoints.Length >= 2)
-            items.Add(new CadTransientPolyline(previewPoints, Closed: false, style));
-
-        if (_pendingPolygonPoints.Count >= 2)
-            items.Add(new CadTransientLine(mouseWorld, _pendingPolygonPoints[0], style));
+        if (previewPoints.Length >= 3)
+        {
+            items.Add(new CadTransientPolyline(
+                previewPoints,
+                Closed: true,
+                CreateDrawingPolygonTransientStyle()));
+        }
+        else if (previewPoints.Length >= 2)
+        {
+            items.Add(new CadTransientPolyline(
+                previewPoints,
+                Closed: false,
+                CreateDrawingPolygonTransientStyle(includeFill: false)));
+        }
     }
 
     private void CompletePolygon()
@@ -3225,7 +3411,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 return CadRenderInvalidation.Full;
             }
 
-            bounds = bounds.Union(entity.Bounds);
+            bounds = bounds.Union(ResolveEntityPaintBounds(entity));
         }
 
         return bounds.IsEmpty
@@ -3244,6 +3430,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
 
         if (kind.HasFlag(CadEntityChangeKind.Geometry) &&
+            !kind.HasFlag(CadEntityChangeKind.Created))
+        {
+            return true;
+        }
+
+        if (kind.HasFlag(CadEntityChangeKind.Appearance) &&
             !kind.HasFlag(CadEntityChangeKind.Created))
         {
             return true;

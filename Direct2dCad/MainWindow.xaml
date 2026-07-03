@@ -107,7 +107,8 @@
     </mah:MetroWindow.RightWindowCommands>
 
     <Grid>
-        <md:DialogHost Identifier="{x:Static svc:ViewServiceIdentifiers.RootDialogHost}"
+        <md:DialogHost Style="{StaticResource MaterialDesignEmbeddedDialogHost}"
+                       Identifier="{x:Static svc:ViewServiceIdentifiers.RootDialogHost}"
                        Background="{DynamicResource MaterialDesign.Brush.Background}"
                        DialogTheme="Inherit">
 
@@ -387,7 +388,8 @@
                                         Command="{Binding CurrentEditorTabViewModel.RedoCommand}" />-->
 
                                 <Separator />
-                                <WrapPanel Margin="50 0 0 0" Width="120">
+                                <WrapPanel Margin="50 0 0 0"
+                                           Width="120">
                                     <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Line}}"
                                                   Style="{StaticResource MaterialDesignFlatToggleButton}"
                                                   IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Line}}"

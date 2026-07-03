@@ -992,11 +992,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     document.ViewSettings.BackgroundColor,
                     text.InvertedMarginFactor,
                     text.TextStyleId);
-                DrawTransientRectangle(
-                    deviceContext,
-                    viewport,
-                    text.IsInverted ? bounds.Inflate(text.GetInvertedMargin()) : bounds,
-                    reference.Style with { FillColor = null });
                 break;
 
             default:
@@ -1464,12 +1459,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private static float ResolveTransientStrokeWidth(CadTransientStyle style, CadViewport viewport)
     {
         var width = Math.Max(style.StrokeWidth, 0.1);
-        return style.KeepStrokeWidthScreenConstant
+        var strokeWidth = style.KeepStrokeWidthScreenConstant
             ? (float)(width / Math.Max(viewport.Zoom, double.Epsilon))
             : (float)width;
+        var minimumStrokeWidth = (float)(Math.Max(style.MinimumScreenStrokeWidth, 0.0) /
+                                         Math.Max(viewport.Zoom, double.Epsilon));
+
+        return Math.Max(strokeWidth, minimumStrokeWidth);
     }
 
-    private static IEnumerable<CadEntity> EnumerateDrawableEntities(
+    private IEnumerable<CadEntity> EnumerateDrawableEntities(
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options)
@@ -1481,7 +1480,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 !x.Entity.IsErased &&
                 x.Entity.IsVisible &&
                 !options.HiddenEntityIds.Contains(x.Entity.Id) &&
-                (dirtyWorldBounds is null || EntityIntersectsDirtyBounds(x.Entity, dirtyWorldBounds.Value)) &&
+                (dirtyWorldBounds is null || EntityIntersectsDirtyBounds(x.Entity, dirtyWorldBounds.Value, viewport, options)) &&
                 document.TryGetLayer(x.Entity.LayerId, out var layer) &&
                 layer is not null &&
                 layer.IsVisible &&
@@ -1514,11 +1513,48 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         return dirty.Inflate(padding);
     }
 
-    private static bool EntityIntersectsDirtyBounds(CadEntity entity, CadRectD dirtyWorldBounds)
+    private bool EntityIntersectsDirtyBounds(
+        CadEntity entity,
+        CadRectD dirtyWorldBounds,
+        CadViewport viewport,
+        CadRenderOptions options)
     {
-        return entity.Bounds.Intersects(dirtyWorldBounds) ||
-               entity.Bounds.Contains(dirtyWorldBounds.Center) ||
-               dirtyWorldBounds.Contains(entity.Bounds);
+        _resourceCache.TryGetEntityResources(entity.Id, out var resources);
+        var bounds = ResolveEntityPaintBounds(entity, resources, viewport, options);
+        return bounds.Intersects(dirtyWorldBounds) ||
+               bounds.Contains(dirtyWorldBounds.Center) ||
+               dirtyWorldBounds.Contains(bounds);
+    }
+
+    private static CadRectD ResolveEntityPaintBounds(
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket? resources,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        var bounds = entity.Bounds;
+        if (bounds.IsEmpty ||
+            resources?.StrokeBrush is null ||
+            !EntityUsesStrokeWidth(entity))
+        {
+            return bounds;
+        }
+
+        var strokeWidth = ResolveStrokeWidth(resources.StrokeWidth, viewport, options);
+        return strokeWidth > 0 ? bounds.Inflate(strokeWidth * 0.5) : bounds;
+    }
+
+    private static bool EntityUsesStrokeWidth(CadEntity entity)
+    {
+        return entity is CadLine or
+            CadCircle or
+            CadEllipse or
+            CadRectangle or
+            CadArc or
+            CadPolyline or
+            CadSpline or
+            CadShapeText or
+            CadBlockReference;
     }
 
     private static void DrawEntity(
