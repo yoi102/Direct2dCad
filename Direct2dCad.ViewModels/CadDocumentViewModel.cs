@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using System.Runtime.CompilerServices;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
@@ -16,9 +15,11 @@ using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
+using Direct2dCad.ViewModels.Drawing;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Geometry;
 using Direct2dCad.ViewModels.Rendering;
+using Direct2dCad.ViewModels.Text;
 using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
 
 namespace Direct2dCad.ViewModels;
@@ -30,6 +31,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private readonly CadHandleScene _handleScene = new();
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
     private readonly CadHandleHitTester _handleHitTester = new();
+    private readonly CadDrawingDefaults _drawingDefaults = new();
     private readonly List<CadPointD> _pendingPolylinePoints = [];
     private readonly List<CadPointD> _pendingPolygonPoints = [];
     private readonly List<CadPointD> _pendingSplinePoints = [];
@@ -52,55 +54,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private double _viewportWidth = 1.0;
     private double _viewportHeight = 1.0;
     private CadRenderInvalidation _lastOverlayInvalidation = CadRenderInvalidation.FromScreenRect(default);
-    private CadColor _drawingLineStrokeColor = CadColor.White;
-    private double _drawingLineLineWeight = CadLineWeight.Default.Value;
-    private int _drawingLineZIndex;
-    private bool _drawingLineIsVisible = true;
-    private CadColor _drawingPolylineStrokeColor = CadColor.White;
-    private double _drawingPolylineLineWeight = CadLineWeight.Default.Value;
-    private int _drawingPolylineZIndex;
-    private bool _drawingPolylineIsVisible = true;
-    private bool _drawingPolylineClosed;
-    private StyleId? _drawingPolylineFillStyleId;
-    private CadColor _drawingPolygonStrokeColor = CadColor.White;
-    private double _drawingPolygonLineWeight = CadLineWeight.Default.Value;
-    private int _drawingPolygonZIndex;
-    private bool _drawingPolygonIsVisible = true;
-    private StyleId? _drawingPolygonFillStyleId;
-    private CadColor _drawingSplineStrokeColor = CadColor.White;
-    private double _drawingSplineLineWeight = CadLineWeight.Default.Value;
-    private int _drawingSplineZIndex;
-    private bool _drawingSplineIsVisible = true;
-    private bool _drawingSplineClosed;
-    private CadColor _drawingCircleStrokeColor = CadColor.White;
-    private double _drawingCircleLineWeight = CadLineWeight.Default.Value;
-    private int _drawingCircleZIndex;
-    private bool _drawingCircleIsVisible = true;
-    private StyleId? _drawingCircleFillStyleId;
-    private CadColor _drawingEllipseStrokeColor = CadColor.White;
-    private double _drawingEllipseLineWeight = CadLineWeight.Default.Value;
-    private int _drawingEllipseZIndex;
-    private bool _drawingEllipseIsVisible = true;
-    private StyleId? _drawingEllipseFillStyleId;
-    private CadColor _drawingRectangleStrokeColor = CadColor.White;
-    private double _drawingRectangleLineWeight = CadLineWeight.Default.Value;
-    private int _drawingRectangleZIndex;
-    private bool _drawingRectangleIsVisible = true;
-    private StyleId? _drawingRectangleFillStyleId;
-    private double _drawingRectangleCornerRadiusX;
-    private double _drawingRectangleCornerRadiusY;
-    private string _drawingText = "Text";
-    private bool _drawingTextInverted;
-    private double _drawingTextInvertedMarginFactor = CadText.DefaultInvertedMarginFactor;
-    private CadColor _drawingTextStrokeColor = CadColor.White;
-    private double _drawingTextLineWeight = CadLineWeight.Default.Value;
-    private int _drawingTextZIndex;
-    private bool _drawingTextIsVisible = true;
-    private StyleId? _drawingTextStyleId;
-    private CadColor _drawingArcStrokeColor = CadColor.White;
-    private double _drawingArcLineWeight = CadLineWeight.Default.Value;
-    private int _drawingArcZIndex;
-    private bool _drawingArcIsVisible = true;
 
     [ObservableProperty]
     public partial CadEditor CadEditor { get; private set; } = new(CadDocument.Create("Untitled"));
@@ -138,296 +91,296 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     public CadColor DrawingLineStrokeColor
     {
-        get => _drawingLineStrokeColor;
-        set => SetDrawingSetting(ref _drawingLineStrokeColor, value);
+        get => _drawingDefaults.LineStrokeColor;
+        set => _drawingDefaults.LineStrokeColor = value;
     }
 
     public double DrawingLineLineWeight
     {
-        get => _drawingLineLineWeight;
-        set => SetDrawingSetting(ref _drawingLineLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.LineLineWeight;
+        set => _drawingDefaults.LineLineWeight = value;
     }
 
     public int DrawingLineZIndex
     {
-        get => _drawingLineZIndex;
-        set => SetDrawingSetting(ref _drawingLineZIndex, value);
+        get => _drawingDefaults.LineZIndex;
+        set => _drawingDefaults.LineZIndex = value;
     }
 
     public bool DrawingLineIsVisible
     {
-        get => _drawingLineIsVisible;
-        set => SetDrawingSetting(ref _drawingLineIsVisible, value);
+        get => _drawingDefaults.LineIsVisible;
+        set => _drawingDefaults.LineIsVisible = value;
     }
 
     public CadColor DrawingPolylineStrokeColor
     {
-        get => _drawingPolylineStrokeColor;
-        set => SetDrawingSetting(ref _drawingPolylineStrokeColor, value);
+        get => _drawingDefaults.PolylineStrokeColor;
+        set => _drawingDefaults.PolylineStrokeColor = value;
     }
 
     public double DrawingPolylineLineWeight
     {
-        get => _drawingPolylineLineWeight;
-        set => SetDrawingSetting(ref _drawingPolylineLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.PolylineLineWeight;
+        set => _drawingDefaults.PolylineLineWeight = value;
     }
 
     public int DrawingPolylineZIndex
     {
-        get => _drawingPolylineZIndex;
-        set => SetDrawingSetting(ref _drawingPolylineZIndex, value);
+        get => _drawingDefaults.PolylineZIndex;
+        set => _drawingDefaults.PolylineZIndex = value;
     }
 
     public bool DrawingPolylineIsVisible
     {
-        get => _drawingPolylineIsVisible;
-        set => SetDrawingSetting(ref _drawingPolylineIsVisible, value);
+        get => _drawingDefaults.PolylineIsVisible;
+        set => _drawingDefaults.PolylineIsVisible = value;
     }
 
     public bool DrawingPolylineClosed
     {
-        get => _drawingPolylineClosed;
-        set => SetDrawingSetting(ref _drawingPolylineClosed, value);
+        get => _drawingDefaults.PolylineClosed;
+        set => _drawingDefaults.PolylineClosed = value;
     }
 
     public StyleId? DrawingPolylineFillStyleId
     {
-        get => _drawingPolylineFillStyleId;
-        set => SetDrawingSetting(ref _drawingPolylineFillStyleId, value);
+        get => _drawingDefaults.PolylineFillStyleId;
+        set => _drawingDefaults.PolylineFillStyleId = value;
     }
 
     public CadColor DrawingPolygonStrokeColor
     {
-        get => _drawingPolygonStrokeColor;
-        set => SetDrawingSetting(ref _drawingPolygonStrokeColor, value);
+        get => _drawingDefaults.PolygonStrokeColor;
+        set => _drawingDefaults.PolygonStrokeColor = value;
     }
 
     public double DrawingPolygonLineWeight
     {
-        get => _drawingPolygonLineWeight;
-        set => SetDrawingSetting(ref _drawingPolygonLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.PolygonLineWeight;
+        set => _drawingDefaults.PolygonLineWeight = value;
     }
 
     public int DrawingPolygonZIndex
     {
-        get => _drawingPolygonZIndex;
-        set => SetDrawingSetting(ref _drawingPolygonZIndex, value);
+        get => _drawingDefaults.PolygonZIndex;
+        set => _drawingDefaults.PolygonZIndex = value;
     }
 
     public bool DrawingPolygonIsVisible
     {
-        get => _drawingPolygonIsVisible;
-        set => SetDrawingSetting(ref _drawingPolygonIsVisible, value);
+        get => _drawingDefaults.PolygonIsVisible;
+        set => _drawingDefaults.PolygonIsVisible = value;
     }
 
     public StyleId? DrawingPolygonFillStyleId
     {
-        get => _drawingPolygonFillStyleId;
-        set => SetDrawingSetting(ref _drawingPolygonFillStyleId, value);
+        get => _drawingDefaults.PolygonFillStyleId;
+        set => _drawingDefaults.PolygonFillStyleId = value;
     }
 
     public CadColor DrawingSplineStrokeColor
     {
-        get => _drawingSplineStrokeColor;
-        set => SetDrawingSetting(ref _drawingSplineStrokeColor, value);
+        get => _drawingDefaults.SplineStrokeColor;
+        set => _drawingDefaults.SplineStrokeColor = value;
     }
 
     public double DrawingSplineLineWeight
     {
-        get => _drawingSplineLineWeight;
-        set => SetDrawingSetting(ref _drawingSplineLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.SplineLineWeight;
+        set => _drawingDefaults.SplineLineWeight = value;
     }
 
     public int DrawingSplineZIndex
     {
-        get => _drawingSplineZIndex;
-        set => SetDrawingSetting(ref _drawingSplineZIndex, value);
+        get => _drawingDefaults.SplineZIndex;
+        set => _drawingDefaults.SplineZIndex = value;
     }
 
     public bool DrawingSplineIsVisible
     {
-        get => _drawingSplineIsVisible;
-        set => SetDrawingSetting(ref _drawingSplineIsVisible, value);
+        get => _drawingDefaults.SplineIsVisible;
+        set => _drawingDefaults.SplineIsVisible = value;
     }
 
     public bool DrawingSplineClosed
     {
-        get => _drawingSplineClosed;
-        set => SetDrawingSetting(ref _drawingSplineClosed, value);
+        get => _drawingDefaults.SplineClosed;
+        set => _drawingDefaults.SplineClosed = value;
     }
 
     public CadColor DrawingCircleStrokeColor
     {
-        get => _drawingCircleStrokeColor;
-        set => SetDrawingSetting(ref _drawingCircleStrokeColor, value);
+        get => _drawingDefaults.CircleStrokeColor;
+        set => _drawingDefaults.CircleStrokeColor = value;
     }
 
     public double DrawingCircleLineWeight
     {
-        get => _drawingCircleLineWeight;
-        set => SetDrawingSetting(ref _drawingCircleLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.CircleLineWeight;
+        set => _drawingDefaults.CircleLineWeight = value;
     }
 
     public int DrawingCircleZIndex
     {
-        get => _drawingCircleZIndex;
-        set => SetDrawingSetting(ref _drawingCircleZIndex, value);
+        get => _drawingDefaults.CircleZIndex;
+        set => _drawingDefaults.CircleZIndex = value;
     }
 
     public bool DrawingCircleIsVisible
     {
-        get => _drawingCircleIsVisible;
-        set => SetDrawingSetting(ref _drawingCircleIsVisible, value);
+        get => _drawingDefaults.CircleIsVisible;
+        set => _drawingDefaults.CircleIsVisible = value;
     }
 
     public StyleId? DrawingCircleFillStyleId
     {
-        get => _drawingCircleFillStyleId;
-        set => SetDrawingSetting(ref _drawingCircleFillStyleId, value);
+        get => _drawingDefaults.CircleFillStyleId;
+        set => _drawingDefaults.CircleFillStyleId = value;
     }
 
     public CadColor DrawingEllipseStrokeColor
     {
-        get => _drawingEllipseStrokeColor;
-        set => SetDrawingSetting(ref _drawingEllipseStrokeColor, value);
+        get => _drawingDefaults.EllipseStrokeColor;
+        set => _drawingDefaults.EllipseStrokeColor = value;
     }
 
     public double DrawingEllipseLineWeight
     {
-        get => _drawingEllipseLineWeight;
-        set => SetDrawingSetting(ref _drawingEllipseLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.EllipseLineWeight;
+        set => _drawingDefaults.EllipseLineWeight = value;
     }
 
     public int DrawingEllipseZIndex
     {
-        get => _drawingEllipseZIndex;
-        set => SetDrawingSetting(ref _drawingEllipseZIndex, value);
+        get => _drawingDefaults.EllipseZIndex;
+        set => _drawingDefaults.EllipseZIndex = value;
     }
 
     public bool DrawingEllipseIsVisible
     {
-        get => _drawingEllipseIsVisible;
-        set => SetDrawingSetting(ref _drawingEllipseIsVisible, value);
+        get => _drawingDefaults.EllipseIsVisible;
+        set => _drawingDefaults.EllipseIsVisible = value;
     }
 
     public StyleId? DrawingEllipseFillStyleId
     {
-        get => _drawingEllipseFillStyleId;
-        set => SetDrawingSetting(ref _drawingEllipseFillStyleId, value);
+        get => _drawingDefaults.EllipseFillStyleId;
+        set => _drawingDefaults.EllipseFillStyleId = value;
     }
 
     public CadColor DrawingRectangleStrokeColor
     {
-        get => _drawingRectangleStrokeColor;
-        set => SetDrawingSetting(ref _drawingRectangleStrokeColor, value);
+        get => _drawingDefaults.RectangleStrokeColor;
+        set => _drawingDefaults.RectangleStrokeColor = value;
     }
 
     public double DrawingRectangleLineWeight
     {
-        get => _drawingRectangleLineWeight;
-        set => SetDrawingSetting(ref _drawingRectangleLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.RectangleLineWeight;
+        set => _drawingDefaults.RectangleLineWeight = value;
     }
 
     public int DrawingRectangleZIndex
     {
-        get => _drawingRectangleZIndex;
-        set => SetDrawingSetting(ref _drawingRectangleZIndex, value);
+        get => _drawingDefaults.RectangleZIndex;
+        set => _drawingDefaults.RectangleZIndex = value;
     }
 
     public bool DrawingRectangleIsVisible
     {
-        get => _drawingRectangleIsVisible;
-        set => SetDrawingSetting(ref _drawingRectangleIsVisible, value);
+        get => _drawingDefaults.RectangleIsVisible;
+        set => _drawingDefaults.RectangleIsVisible = value;
     }
 
     public StyleId? DrawingRectangleFillStyleId
     {
-        get => _drawingRectangleFillStyleId;
-        set => SetDrawingSetting(ref _drawingRectangleFillStyleId, value);
+        get => _drawingDefaults.RectangleFillStyleId;
+        set => _drawingDefaults.RectangleFillStyleId = value;
     }
 
     public double DrawingRectangleCornerRadiusX
     {
-        get => _drawingRectangleCornerRadiusX;
-        set => SetDrawingSetting(ref _drawingRectangleCornerRadiusX, value);
+        get => _drawingDefaults.RectangleCornerRadiusX;
+        set => _drawingDefaults.RectangleCornerRadiusX = value;
     }
 
     public double DrawingRectangleCornerRadiusY
     {
-        get => _drawingRectangleCornerRadiusY;
-        set => SetDrawingSetting(ref _drawingRectangleCornerRadiusY, value);
+        get => _drawingDefaults.RectangleCornerRadiusY;
+        set => _drawingDefaults.RectangleCornerRadiusY = value;
     }
 
     public string DrawingText
     {
-        get => _drawingText;
-        set => SetDrawingSetting(ref _drawingText, value);
+        get => _drawingDefaults.Text;
+        set => _drawingDefaults.Text = value;
     }
 
     public bool DrawingTextInverted
     {
-        get => _drawingTextInverted;
-        set => SetDrawingSetting(ref _drawingTextInverted, value);
+        get => _drawingDefaults.TextInverted;
+        set => _drawingDefaults.TextInverted = value;
     }
 
     public double DrawingTextInvertedMarginFactor
     {
-        get => _drawingTextInvertedMarginFactor;
-        set => SetDrawingSetting(ref _drawingTextInvertedMarginFactor, value);
+        get => _drawingDefaults.TextInvertedMarginFactor;
+        set => _drawingDefaults.TextInvertedMarginFactor = value;
     }
 
     public CadColor DrawingTextStrokeColor
     {
-        get => _drawingTextStrokeColor;
-        set => SetDrawingSetting(ref _drawingTextStrokeColor, value);
+        get => _drawingDefaults.TextStrokeColor;
+        set => _drawingDefaults.TextStrokeColor = value;
     }
 
     public double DrawingTextLineWeight
     {
-        get => _drawingTextLineWeight;
-        set => SetDrawingSetting(ref _drawingTextLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.TextLineWeight;
+        set => _drawingDefaults.TextLineWeight = value;
     }
 
     public int DrawingTextZIndex
     {
-        get => _drawingTextZIndex;
-        set => SetDrawingSetting(ref _drawingTextZIndex, value);
+        get => _drawingDefaults.TextZIndex;
+        set => _drawingDefaults.TextZIndex = value;
     }
 
     public bool DrawingTextIsVisible
     {
-        get => _drawingTextIsVisible;
-        set => SetDrawingSetting(ref _drawingTextIsVisible, value);
+        get => _drawingDefaults.TextIsVisible;
+        set => _drawingDefaults.TextIsVisible = value;
     }
 
     public StyleId? DrawingTextStyleId
     {
-        get => _drawingTextStyleId;
-        set => SetDrawingSetting(ref _drawingTextStyleId, value);
+        get => _drawingDefaults.TextStyleId;
+        set => _drawingDefaults.TextStyleId = value;
     }
 
     public CadColor DrawingArcStrokeColor
     {
-        get => _drawingArcStrokeColor;
-        set => SetDrawingSetting(ref _drawingArcStrokeColor, value);
+        get => _drawingDefaults.ArcStrokeColor;
+        set => _drawingDefaults.ArcStrokeColor = value;
     }
 
     public double DrawingArcLineWeight
     {
-        get => _drawingArcLineWeight;
-        set => SetDrawingSetting(ref _drawingArcLineWeight, value, IsFinitePositive(value));
+        get => _drawingDefaults.ArcLineWeight;
+        set => _drawingDefaults.ArcLineWeight = value;
     }
 
     public int DrawingArcZIndex
     {
-        get => _drawingArcZIndex;
-        set => SetDrawingSetting(ref _drawingArcZIndex, value);
+        get => _drawingDefaults.ArcZIndex;
+        set => _drawingDefaults.ArcZIndex = value;
     }
 
     public bool DrawingArcIsVisible
     {
-        get => _drawingArcIsVisible;
-        set => SetDrawingSetting(ref _drawingArcIsVisible, value);
+        get => _drawingDefaults.ArcIsVisible;
+        set => _drawingDefaults.ArcIsVisible = value;
     }
 
     public event EventHandler? ViewSettingsChanged;
@@ -438,6 +391,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     public CadDocumentViewModel()
     {
+        _drawingDefaults.SettingChanged += OnDrawingDefaultChanged;
         CadEditor.EditorStateChanged += OnEditorStateChanged;
     }
 
@@ -545,16 +499,16 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (!layerId.Equals(ResolveDrawingLayerId()))
             return;
 
-        UpdateDrawingStrokeColors(previousColor, newColor);
-        UpdateDrawingLineWeights(
+        _drawingDefaults.UpdateStrokeColors(previousColor, newColor);
+        _drawingDefaults.UpdateLineWeights(
             ResolveDrawingLineWeightDisplayValue(previousLineWeight),
             ResolveDrawingLineWeightDisplayValue(newLineWeight));
     }
 
     private void UpdateDrawingDefaultsForLayerSelection(CadLayer previousLayer, CadLayer newLayer)
     {
-        UpdateDrawingStrokeColors(ResolveLayerStrokeColor(previousLayer), ResolveLayerStrokeColor(newLayer));
-        UpdateDrawingLineWeights(
+        _drawingDefaults.UpdateStrokeColors(ResolveLayerStrokeColor(previousLayer), ResolveLayerStrokeColor(newLayer));
+        _drawingDefaults.UpdateLineWeights(
             ResolveDrawingLineWeightDisplayValue(previousLayer.LineWeight),
             ResolveDrawingLineWeightDisplayValue(newLayer.LineWeight));
     }
@@ -580,47 +534,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return CadEditor.Document.GetLayer(ResolveDrawingLayerId());
     }
 
-    private bool SetDrawingSetting<T>(
-        ref T field,
-        T value,
-        bool requestRender = true,
-        [CallerMemberName] string? propertyName = null)
+    private void OnDrawingDefaultChanged(object? sender, CadDrawingDefaultChangedEventArgs e)
     {
-        if (!SetProperty(ref field, value, propertyName))
-            return false;
+        if (!string.IsNullOrWhiteSpace(e.PropertyName))
+            OnPropertyChanged($"Drawing{e.PropertyName}");
 
         RaiseInteractionStateChanged();
 
-        if (requestRender)
+        if (e.RequestRender)
             RequestRender();
-
-        return true;
-    }
-
-    private void UpdateDrawingStrokeColors(CadColor previousColor, CadColor newColor)
-    {
-        if (DrawingLineStrokeColor == previousColor) DrawingLineStrokeColor = newColor;
-        if (DrawingPolylineStrokeColor == previousColor) DrawingPolylineStrokeColor = newColor;
-        if (DrawingPolygonStrokeColor == previousColor) DrawingPolygonStrokeColor = newColor;
-        if (DrawingSplineStrokeColor == previousColor) DrawingSplineStrokeColor = newColor;
-        if (DrawingCircleStrokeColor == previousColor) DrawingCircleStrokeColor = newColor;
-        if (DrawingEllipseStrokeColor == previousColor) DrawingEllipseStrokeColor = newColor;
-        if (DrawingRectangleStrokeColor == previousColor) DrawingRectangleStrokeColor = newColor;
-        if (DrawingTextStrokeColor == previousColor) DrawingTextStrokeColor = newColor;
-        if (DrawingArcStrokeColor == previousColor) DrawingArcStrokeColor = newColor;
-    }
-
-    private void UpdateDrawingLineWeights(double previousLineWeight, double newLineWeight)
-    {
-        if (AreClose(DrawingLineLineWeight, previousLineWeight)) DrawingLineLineWeight = newLineWeight;
-        if (AreClose(DrawingPolylineLineWeight, previousLineWeight)) DrawingPolylineLineWeight = newLineWeight;
-        if (AreClose(DrawingPolygonLineWeight, previousLineWeight)) DrawingPolygonLineWeight = newLineWeight;
-        if (AreClose(DrawingSplineLineWeight, previousLineWeight)) DrawingSplineLineWeight = newLineWeight;
-        if (AreClose(DrawingCircleLineWeight, previousLineWeight)) DrawingCircleLineWeight = newLineWeight;
-        if (AreClose(DrawingEllipseLineWeight, previousLineWeight)) DrawingEllipseLineWeight = newLineWeight;
-        if (AreClose(DrawingRectangleLineWeight, previousLineWeight)) DrawingRectangleLineWeight = newLineWeight;
-        if (AreClose(DrawingTextLineWeight, previousLineWeight)) DrawingTextLineWeight = newLineWeight;
-        if (AreClose(DrawingArcLineWeight, previousLineWeight)) DrawingArcLineWeight = newLineWeight;
     }
 
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
@@ -1066,7 +988,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CadEditor.AddText(
                     drawingText,
                     world,
-                    ResolveTextBoxHeight(drawingText, drawingTextStyleId),
+                    CreateTextMeasurementService().ResolveTextBoxHeight(drawingText, drawingTextStyleId),
                     layerId: ResolveDrawingLayerId(),
                     graphicStyleId: ResolveDrawingTextGraphicStyleId(),
                     textStyleId: drawingTextStyleId,
@@ -1676,7 +1598,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var bounds = CreateTextBounds(text.Text, position, height, text.TextStyleId);
+        var bounds = CreateTextMeasurementService().CreateTextBounds(text.Text, position, height, text.TextStyleId);
         items.Add(new CadTransientText(
             text.Text,
             position,
@@ -1714,7 +1636,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             text.InvertedMarginFactor,
             text.ShapeFontId));
         items.Add(new CadTransientRectangle(
-            CreateShapeTextPreviewBounds(
+            CadTextMeasurementService.CreateShapeTextPreviewBounds(
                 text.Text,
                 position,
                 height,
@@ -1902,20 +1824,20 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var dragBottom = Math.Abs(drag.Handle.Position.Y - bounds.MinY) <= Math.Abs(drag.Handle.Position.Y - bounds.MaxY);
         var oppositeX = dragLeft ? bounds.MaxX : bounds.MinX;
         var oppositeY = dragBottom ? bounds.MaxY : bounds.MinY;
-        var widthFactor = GetCachedTextWidthFactor(text);
+        var widthFactor = CadTextMeasurementService.GetCachedTextWidthFactor(text);
         var marginFactor = text.IsInverted ? text.InvertedMarginFactor : 0;
         var heightScale = 1.0 + marginFactor * 2.0;
         var widthScale = widthFactor + marginFactor * 2.0;
         var desiredHeight = Math.Abs(target.Y - oppositeY);
         var desiredWidth = Math.Abs(target.X - oppositeX);
 
-        height = SnapTextHeightUp(
+        height = CreateTextMeasurementService().SnapTextHeightUp(
             text.Text,
             Math.Max(desiredHeight / heightScale, desiredWidth / widthScale),
             snapSpacingX,
             snapSpacingY,
             text.TextStyleId);
-        var width = MeasureTextWidth(text.Text, height, text.TextStyleId);
+        var width = CreateTextMeasurementService().MeasureTextWidth(text.Text, height, text.TextStyleId);
         var margin = height * marginFactor;
         var outerWidth = width + margin * 2.0;
         var outerHeight = height + margin * 2.0;
@@ -1943,7 +1865,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var dragBottom = Math.Abs(drag.Handle.Position.Y - bounds.MinY) <= Math.Abs(drag.Handle.Position.Y - bounds.MaxY);
         var oppositeX = dragLeft ? bounds.MaxX : bounds.MinX;
         var oppositeY = dragBottom ? bounds.MaxY : bounds.MinY;
-        var widthFactor = GetCachedShapeTextWidthFactor(text);
+        var widthFactor = CadTextMeasurementService.GetCachedShapeTextWidthFactor(text);
         var marginFactor = text.IsInverted ? text.InvertedMarginFactor : 0;
         var heightScale = 1.0 + marginFactor * 2.0;
         var widthScale = widthFactor + marginFactor * 2.0;
@@ -2837,12 +2759,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             case CadCanvasToolMode.Text:
                 var drawingText = ResolveDrawingText();
                 var drawingTextStyleId = ResolveDrawingTextStyleId();
-                var drawingHeight = ResolveTextBoxHeight(drawingText, drawingTextStyleId);
+                var drawingHeight = CreateTextMeasurementService().ResolveTextBoxHeight(drawingText, drawingTextStyleId);
                 items.Add(new CadTransientText(
                     drawingText,
                     mouseWorld,
                     drawingHeight,
-                    CreateTextBounds(drawingText, mouseWorld, drawingHeight, drawingTextStyleId),
+                    CreateTextMeasurementService().CreateTextBounds(drawingText, mouseWorld, drawingHeight, drawingTextStyleId),
                     CreateDrawingTextTransientStyle(),
                     DrawingTextInverted,
                     ResolveDrawingTextInvertedMarginFactor(),
@@ -3758,125 +3680,17 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             : CadText.DefaultInvertedMarginFactor;
     }
 
-    private double ResolveTextBoxHeight(string text, StyleId? textStyleId = null)
-    {
-        var grid = CadEditor.Document.ViewSettings.Grid;
-        var spacingY = grid.GetSnapSpacingY();
-        return IsFinitePositive(spacingY)
-            ? SnapTextHeightUp(text, spacingY, grid.GetSnapSpacingX(), spacingY, textStyleId) * 25
-            : Math.Max(8.0 / Math.Max(CadEditor.Viewport.Zoom, double.Epsilon) * 25, 1.0);
-    }
-
-    private double SnapTextHeightUp(
-        string text,
-        double desiredHeight,
-        double snapSpacingX,
-        double snapSpacingY,
-        StyleId? textStyleId = null)
-    {
-        var heightStep = IsFinitePositive(snapSpacingY)
-            ? snapSpacingY
-            : IsFinitePositive(snapSpacingX)
-                ? snapSpacingX
-                : 1.0;
-        var startStep = Math.Max(1, (int)Math.Ceiling(Math.Max(desiredHeight, heightStep) / heightStep));
-
-        for (var offset = 0; offset < 128; offset++)
-        {
-            var height = heightStep * (startStep + offset);
-            if (IsDimensionAligned(MeasureTextWidth(text, height, textStyleId), snapSpacingX))
-                return height;
-        }
-
-        return heightStep * startStep;
-    }
-
-    private static bool IsDimensionAligned(double value, double step)
-    {
-        if (!IsFinitePositive(step))
-            return true;
-
-        var units = value / step;
-        return Math.Abs(units - Math.Round(units)) <= 1e-6;
-    }
-
     private static bool IsFinitePositive(double value)
     {
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
-    private CadRectD CreateTextBounds(
-        string text,
-        CadPointD position,
-        double height,
-        StyleId? textStyleId = null)
+    private CadTextMeasurementService CreateTextMeasurementService()
     {
-        return Direct2DImageRenderHost.TryMeasureTextBounds(
+        return new CadTextMeasurementService(
             CadEditor.Document,
-            text,
-            position,
-            height,
-            textStyleId,
-            out var bounds)
-            ? bounds
-            : CadText.CreateUnmeasuredBounds(position, height);
-    }
-
-    private static double GetCachedTextWidthFactor(CadText text)
-    {
-        return IsFinitePositive(text.Height) && IsFinitePositive(text.LocalBounds.Width)
-            ? text.LocalBounds.Width / text.Height
-            : 1.0;
-    }
-
-    private static double GetCachedShapeTextWidthFactor(CadShapeText text)
-    {
-        return IsFinitePositive(text.Height) && IsFinitePositive(text.TextBounds.Width)
-            ? Math.Max(text.TextBounds.Width / text.Height, 1e-6)
-            : Math.Max(text.WidthFactor, 1e-6);
-    }
-
-    private static CadRectD CreateShapeTextPreviewBounds(
-        string text,
-        CadPointD position,
-        double height,
-        double widthFactor,
-        double characterSpacingFactor,
-        double obliqueAngleRadians,
-        double rotationRadians,
-        bool isInverted,
-        double invertedMarginFactor,
-        CadShapeFontId shapeFontId)
-    {
-        var bounds = CadShapeFontMetrics.MeasureBounds(
-            text,
-            position,
-            height,
-            widthFactor,
-            characterSpacingFactor,
-            obliqueAngleRadians,
-            rotationRadians,
-            shapeFontId);
-
-        return isInverted
-            ? bounds.Inflate(height * Math.Max(invertedMarginFactor, 0))
-            : bounds;
-    }
-
-    private double MeasureTextWidth(string text, double height, StyleId? textStyleId = null)
-    {
-        if (Direct2DImageRenderHost.TryMeasureTextBounds(
-            CadEditor.Document,
-            text,
-            CadPointD.Origin,
-            height,
-            textStyleId,
-            out var bounds))
-        {
-            return bounds.Width;
-        }
-
-        return CadText.CreateUnmeasuredBounds(CadPointD.Origin, height).Width;
+            Direct2DImageRenderHost,
+            CadEditor.Viewport);
     }
 
     private bool TryGetContinueArcBase(out CadPointD start, out CadVectorD tangent)
@@ -3971,6 +3785,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         DetachRenderResources();
         CadEditor.EditorStateChanged -= OnEditorStateChanged;
+        _drawingDefaults.SettingChanged -= OnDrawingDefaultChanged;
         Direct2DImageRenderHost.Dispose();
         _disposed = true;
     }
