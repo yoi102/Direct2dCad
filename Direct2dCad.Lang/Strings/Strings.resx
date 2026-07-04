@@ -821,4 +821,8 @@
     <value>Brick hatch</value>
     <comment>Brick hatch</comment>
   </data>
+  <data name="FillColor" xml:space="preserve">
+    <value>Fill color</value>
+    <comment>Fill color</comment>
+  </data>
 </root>

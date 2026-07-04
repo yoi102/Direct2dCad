@@ -38,6 +38,9 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
     public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
+    public partial CadColor FillColor { get; set; }
+
+    [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
@@ -57,6 +60,8 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
 
     public bool ColorControlsEnabled => !UseByLayerColor;
 
+    public bool FillColorControlsEnabled => SupportsFillColor(SelectedFillStyleOption);
+
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
@@ -71,6 +76,7 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
             CenterY = circle.Center.Y;
             Radius = circle.Radius;
             RefreshFillStyleOptions(circle.FillStyleId);
+            FillColor = ResolveFillColor(_documentViewModel.CadEditor.Document, circle.FillStyleId);
             StrokeColor = ResolveStrokeColor(circle);
             UseByLayerColor = circle.UseLayerColor;
             UseByLayerLineWeight = circle.UseLayerLineWeight;
@@ -98,10 +104,24 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
     {
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+
         if (_isRefreshing || !TryGetCircle(out var circle))
             return;
 
-        var fillStyleId = ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
+        var fillStyleId = ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        if (Nullable.Equals(circle.FillStyleId, fillStyleId))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityFillStyle(EntityId, fillStyleId);
+    }
+
+    partial void OnFillColorChanged(CadColor value)
+    {
+        if (_isRefreshing || !SupportsFillColor(SelectedFillStyleOption) || !TryGetCircle(out var circle))
+            return;
+
+        var fillStyleId = ResolveFillStyleId(_documentViewModel.CadEditor.Document, SelectedFillStyleOption, value);
         if (Nullable.Equals(circle.FillStyleId, fillStyleId))
             return;
 
@@ -218,6 +238,7 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
         FillStyleOptions = BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
         SelectedFillStyleOption = FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
     private CadColor ResolveStrokeColor(CadCircle circle)
@@ -240,6 +261,15 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
 
     internal static StyleId? ResolveFillStyleId(CadDocument document, FillStyleOption? option)
         => FillStyleCatalog.ResolveFillStyleId(document, option);
+
+    internal static StyleId? ResolveFillStyleId(CadDocument document, FillStyleOption? option, CadColor fillColor)
+        => FillStyleCatalog.ResolveFillStyleId(document, option, fillColor);
+
+    internal static CadColor ResolveFillColor(CadDocument document, StyleId? styleId)
+        => FillStyleCatalog.ResolveFillColor(document, styleId, FillStyleCatalog.DefaultFillColor);
+
+    internal static bool SupportsFillColor(FillStyleOption? option)
+        => FillStyleCatalog.SupportsFillColor(option);
 
     private static double ResolveLineWeightValue(double value)
     {
@@ -275,6 +305,9 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
     public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
+    public partial CadColor FillColor { get; set; }
+
+    [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
@@ -286,12 +319,15 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
 
+    public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
     public void RefreshFromDocument()
     {
         _isRefreshing = true;
         try
         {
             RefreshFillStyleOptions(_documentViewModel.DrawingCircleFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingCircleFillStyleId);
             StrokeColor = _documentViewModel.DrawingCircleStrokeColor;
             LineWeight = _documentViewModel.DrawingCircleLineWeight;
             ZIndex = _documentViewModel.DrawingCircleZIndex;
@@ -305,10 +341,23 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
     {
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingCircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
+        _documentViewModel.DrawingCircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+    }
+
+    partial void OnFillColorChanged(CadColor value)
+    {
+        if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
+            return;
+
+        _documentViewModel.DrawingCircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+            _documentViewModel.CadEditor.Document,
+            SelectedFillStyleOption,
+            value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -350,6 +399,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
         SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
     private static bool IsFinitePositive(double value)

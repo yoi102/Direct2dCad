@@ -645,4 +645,7 @@
   <data name="FillHatchBrick" xml:space="preserve">
     <value>砖块图案</value>
   </data>
+  <data name="FillColor" xml:space="preserve">
+    <value>填充颜色</value>
+  </data>
 </root>

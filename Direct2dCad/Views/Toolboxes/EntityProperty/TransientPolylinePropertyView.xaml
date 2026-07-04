@@ -53,9 +53,27 @@
 
                 <TextBlock Grid.Row="2"
                            Grid.Column="0"
-                           Text="{I18N {x:Static r:LangKeys.Color}}"
+                           Text="{I18N {x:Static r:LangKeys.FillColor}}"
                            VerticalAlignment="Center" />
                 <mah:ColorPicker Grid.Row="2"
+                                 Grid.Column="1"
+                                 mah:TextBoxHelper.AutoWatermark="True"
+                                 mah:TextBoxHelper.ClearTextButton="True"
+                                 AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                 ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                 AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                 RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                 StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                 AddToRecentColorsTrigger="SelectedColorChanged"
+                                 IsEnabled="{Binding FillColorControlsEnabled}"
+                                 SelectedColor="{Binding FillColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
+                                 Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="3"
+                           Grid.Column="0"
+                           Text="{I18N {x:Static r:LangKeys.Color}}"
+                           VerticalAlignment="Center" />
+                <mah:ColorPicker Grid.Row="3"
                                  Grid.Column="1"
                                  mah:TextBoxHelper.AutoWatermark="True"
                                  mah:TextBoxHelper.ClearTextButton="True"
@@ -68,11 +86,11 @@
                                  SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
                                  Margin="0,0,0,8" />
 
-                <TextBlock Grid.Row="3"
+                <TextBlock Grid.Row="4"
                            Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                            VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="3"
+                <mah:NumericUpDown Grid.Row="4"
                                    Grid.Column="1"
                                    Value="{Binding LineWeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    Minimum="0.01"
@@ -80,18 +98,18 @@
                                    Interval="0.05"
                                    Margin="0,0,0,8" />
 
-                <TextBlock Grid.Row="4"
+                <TextBlock Grid.Row="5"
                            Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
                            VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="4"
+                <mah:NumericUpDown Grid.Row="5"
                                    Grid.Column="1"
                                    Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    StringFormat="F0"
                                    Interval="1"
                                    Margin="0,0,0,8" />
 
-                <CheckBox Grid.Row="5"
+                <CheckBox Grid.Row="6"
                           Grid.ColumnSpan="2"
                           Content="{I18N {x:Static r:LangKeys.Visible}}"
                           IsChecked="{Binding IsVisible}"

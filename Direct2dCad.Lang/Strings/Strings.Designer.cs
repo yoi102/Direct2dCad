@@ -727,6 +727,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Fill color 的本地化字符串。
+        /// </summary>
+        public static string FillColor {
+            get {
+                return ResourceManager.GetString("FillColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 ANSI31 的本地化字符串。
         /// </summary>
         public static string FillHatchAnsi31 {

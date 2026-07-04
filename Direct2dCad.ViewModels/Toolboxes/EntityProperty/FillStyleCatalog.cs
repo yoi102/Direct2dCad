@@ -1,6 +1,7 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang.Strings;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
@@ -23,7 +24,9 @@ internal static class FillStyleCatalog
     private const string NoFillName = "No Fill";
     private const string SolidFillName = "Solid Fill";
     private static readonly CadColor DefaultSolidFillColor = CadColor.FromArgb(96, 255, 255, 255);
-    private static readonly CadColor DefaultHatchForegroundColor = CadColor.FromRgb(180, 220, 255);
+    private static readonly CadColor DefaultHatchForegroundColor = CadColor.FromArgb(96, 255, 255, 255);
+
+    public static CadColor DefaultFillColor => DefaultSolidFillColor;
 
     private static readonly DefaultHatchDefinition[] DefaultHatches =
     [
@@ -77,18 +80,25 @@ internal static class FillStyleCatalog
     }
 
     public static StyleId? ResolveFillStyleId(CadDocument document, FillStyleOption? option)
+        => ResolveFillStyleId(document, option, ResolveFillColor(document, option?.Id, DefaultFillColor));
+
+    public static StyleId? ResolveFillStyleId(CadDocument document, FillStyleOption? option, CadColor fillColor)
     {
         ArgumentNullException.ThrowIfNull(document);
 
         if (option is null || option.Kind == FillStyleOptionKind.None)
             return null;
 
-        if (option.Id is { } styleId)
-            return styleId;
+        if (option.Id is { } styleId &&
+            document.Styles.TryGetValue(styleId, out var existingStyle) &&
+            existingStyle is CadFillStyle existingFillStyle)
+        {
+            return ResolveFillStyleId(document, existingFillStyle, fillColor);
+        }
 
         if (option.Kind == FillStyleOptionKind.Solid)
-            return FindFillStyle(document, SolidFillName) ??
-                   document.CreateSolidFillStyle(SolidFillName, DefaultSolidFillColor);
+            return FindSolidFillStyle(document, fillColor) ??
+                   document.CreateSolidFillStyle(CreateSolidFillStyleName(fillColor), fillColor);
 
         if (option.Kind == FillStyleOptionKind.Hatch)
         {
@@ -101,15 +111,83 @@ internal static class FillStyleCatalog
 
             var patternId = FindHatchPattern(document, hatch.Name) ??
                 document.CreateHatchPattern(hatch.Name, hatch.CreateLines(), hatch.Description);
-            return FindFillStyle(document, hatch.Name) ??
+            return FindHatchFillStyle(
+                       document,
+                       patternId,
+                       fillColor,
+                       backgroundColor: null,
+                       hatchScale: 1.0,
+                       hatchAngle: 0.0,
+                       hatchOrigin: CadPointD.Origin,
+                       isAnnotative: false) ??
                 document.CreateHatchFillStyle(
-                    hatch.Name,
+                    CreateHatchFillStyleName(hatch.Name, fillColor),
                     patternId,
-                    DefaultHatchForegroundColor,
+                    fillColor,
                     hatchScale: 1.0);
         }
 
         return null;
+    }
+
+    public static CadColor ResolveFillColor(CadDocument document, StyleId? styleId, CadColor fallback)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        if (styleId is null ||
+            !document.Styles.TryGetValue(styleId.Value, out var style))
+        {
+            return fallback;
+        }
+
+        return style switch
+        {
+            CadGradientFillStyle gradient when gradient.IsSolid && gradient.Stops.Count > 0 => gradient.Stops[0].Color,
+            CadHatchFillStyle hatch => hatch.ForegroundColor,
+            _ => fallback
+        };
+    }
+
+    public static bool SupportsFillColor(FillStyleOption? option)
+        => option is not null && option.Kind != FillStyleOptionKind.None;
+
+    private static StyleId? ResolveFillStyleId(CadDocument document, CadFillStyle fillStyle, CadColor fillColor)
+    {
+        if (fillStyle is CadGradientFillStyle gradient)
+        {
+            return gradient.IsSolid
+                ? FindSolidFillStyle(document, fillColor) ??
+                  document.CreateSolidFillStyle(CreateSolidFillStyleName(fillColor), fillColor)
+                : gradient.Id;
+        }
+
+        if (fillStyle is CadHatchFillStyle hatch)
+        {
+            var patternName = document.HatchPatterns.TryGetValue(hatch.PatternId, out var pattern)
+                ? pattern.Name
+                : "Hatch";
+
+            return FindHatchFillStyle(
+                       document,
+                       hatch.PatternId,
+                       fillColor,
+                       hatch.BackgroundColor,
+                       hatch.HatchScale,
+                       hatch.HatchAngle,
+                       hatch.HatchOrigin,
+                       hatch.IsAnnotative) ??
+                   document.CreateHatchFillStyle(
+                       CreateHatchFillStyleName(patternName, fillColor),
+                       hatch.PatternId,
+                       fillColor,
+                       hatch.BackgroundColor,
+                       hatch.HatchScale,
+                       hatch.HatchAngle,
+                       hatch.HatchOrigin,
+                       hatch.IsAnnotative);
+        }
+
+        return fillStyle.Id;
     }
 
     private static StyleId? FindFillStyle(CadDocument document, string name)
@@ -117,6 +195,40 @@ internal static class FillStyleCatalog
         return document.Styles.Values
             .OfType<CadFillStyle>()
             .FirstOrDefault(style => string.Equals(style.Name, name, StringComparison.OrdinalIgnoreCase))
+            ?.Id;
+    }
+
+    private static StyleId? FindSolidFillStyle(CadDocument document, CadColor color)
+    {
+        return document.Styles.Values
+            .OfType<CadGradientFillStyle>()
+            .FirstOrDefault(style =>
+                style.IsSolid &&
+                style.Stops.Count > 0 &&
+                style.Stops[0].Color == color)
+            ?.Id;
+    }
+
+    private static StyleId? FindHatchFillStyle(
+        CadDocument document,
+        HatchPatternId patternId,
+        CadColor foregroundColor,
+        CadColor? backgroundColor,
+        double hatchScale,
+        double hatchAngle,
+        CadPointD hatchOrigin,
+        bool isAnnotative)
+    {
+        return document.Styles.Values
+            .OfType<CadHatchFillStyle>()
+            .FirstOrDefault(style =>
+                style.PatternId.Equals(patternId) &&
+                style.ForegroundColor == foregroundColor &&
+                Nullable.Equals(style.BackgroundColor, backgroundColor) &&
+                style.HatchScale.Equals(hatchScale) &&
+                style.HatchAngle.Equals(hatchAngle) &&
+                style.HatchOrigin == hatchOrigin &&
+                style.IsAnnotative == isAnnotative)
             ?.Id;
     }
 
@@ -130,6 +242,25 @@ internal static class FillStyleCatalog
     private static string Text(string key, string fallback)
     {
         return Strings.ResourceManager.GetString(key) ?? fallback;
+    }
+
+    private static string CreateSolidFillStyleName(CadColor color)
+    {
+        return string.Equals(ToColorKey(color), ToColorKey(DefaultSolidFillColor), StringComparison.Ordinal)
+            ? SolidFillName
+            : $"{SolidFillName} {ToColorKey(color)}";
+    }
+
+    private static string CreateHatchFillStyleName(string hatchName, CadColor color)
+    {
+        return string.Equals(ToColorKey(color), ToColorKey(DefaultHatchForegroundColor), StringComparison.Ordinal)
+            ? hatchName
+            : $"{hatchName} {ToColorKey(color)}";
+    }
+
+    private static string ToColorKey(CadColor color)
+    {
+        return $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
     }
 
     private sealed record DefaultHatchDefinition(

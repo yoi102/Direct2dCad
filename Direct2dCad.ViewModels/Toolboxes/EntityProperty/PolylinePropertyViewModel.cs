@@ -87,6 +87,9 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
     public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
+    public partial CadColor FillColor { get; set; }
+
+    [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
@@ -106,6 +109,8 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
 
     public bool ColorControlsEnabled => !UseByLayerColor;
 
+    public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
@@ -119,6 +124,7 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
             RebuildVertices(polyline.Points);
             IsClosed = polyline.Closed;
             RefreshFillStyleOptions(polyline.FillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, polyline.FillStyleId);
             StrokeColor = ResolveStrokeColor(polyline);
             UseByLayerColor = polyline.UseLayerColor;
             UseByLayerLineWeight = polyline.UseLayerLineWeight;
@@ -158,10 +164,24 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
     {
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+
         if (_isRefreshing || !TryGetPolyline(out var polyline))
             return;
 
-        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
+        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        if (Nullable.Equals(polyline.FillStyleId, fillStyleId))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityFillStyle(EntityId, fillStyleId);
+    }
+
+    partial void OnFillColorChanged(CadColor value)
+    {
+        if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption) || !TryGetPolyline(out var polyline))
+            return;
+
+        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, SelectedFillStyleOption, value);
         if (Nullable.Equals(polyline.FillStyleId, fillStyleId))
             return;
 
@@ -368,6 +388,7 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
         FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
         SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
     private void RaiseGeometrySummaryChanged()
@@ -461,6 +482,9 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
     public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
+    public partial CadColor FillColor { get; set; }
+
+    [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
@@ -472,6 +496,8 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
 
+    public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
     public void RefreshFromDocument()
     {
         _isRefreshing = true;
@@ -479,6 +505,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         {
             IsClosed = _documentViewModel.DrawingPolylineClosed;
             RefreshFillStyleOptions(_documentViewModel.DrawingPolylineFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingPolylineFillStyleId);
             StrokeColor = _documentViewModel.DrawingPolylineStrokeColor;
             LineWeight = _documentViewModel.DrawingPolylineLineWeight;
             ZIndex = _documentViewModel.DrawingPolylineZIndex;
@@ -500,10 +527,23 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
     {
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
+        _documentViewModel.DrawingPolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+    }
+
+    partial void OnFillColorChanged(CadColor value)
+    {
+        if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
+            return;
+
+        _documentViewModel.DrawingPolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+            _documentViewModel.CadEditor.Document,
+            SelectedFillStyleOption,
+            value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -545,6 +585,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
         SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
     private static bool IsFinitePositive(double value)

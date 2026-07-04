@@ -22,6 +22,9 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
     public partial FillStyleOption? SelectedFillStyleOption { get; set; }
 
     [ObservableProperty]
+    public partial CadColor FillColor { get; set; }
+
+    [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
@@ -33,12 +36,15 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
 
+    public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
     public void RefreshFromDocument()
     {
         _isRefreshing = true;
         try
         {
             RefreshFillStyleOptions(_documentViewModel.DrawingPolygonFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingPolygonFillStyleId);
             StrokeColor = _documentViewModel.DrawingPolygonStrokeColor;
             LineWeight = _documentViewModel.DrawingPolygonLineWeight;
             ZIndex = _documentViewModel.DrawingPolygonZIndex;
@@ -52,10 +58,23 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
     {
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
+        _documentViewModel.DrawingPolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+    }
+
+    partial void OnFillColorChanged(CadColor value)
+    {
+        if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
+            return;
+
+        _documentViewModel.DrawingPolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+            _documentViewModel.CadEditor.Document,
+            SelectedFillStyleOption,
+            value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -97,6 +116,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
         SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
     private static bool IsFinitePositive(double value)
