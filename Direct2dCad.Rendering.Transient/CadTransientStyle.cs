@@ -6,7 +6,6 @@ namespace Direct2dCad.Rendering.Transient;
 
 public sealed record CadTransientHatchFill(
     CadColor ForegroundColor,
-    CadColor? BackgroundColor,
     double HatchScale,
     double HatchAngle,
     CadPointD HatchOrigin,

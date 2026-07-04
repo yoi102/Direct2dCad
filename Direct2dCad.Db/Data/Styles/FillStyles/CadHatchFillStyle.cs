@@ -13,7 +13,6 @@ public sealed class CadHatchFillStyle : CadFillStyle
 
     public HatchPatternId PatternId { get; private set; }
     public CadColor ForegroundColor { get; private set; }
-    public CadColor? BackgroundColor { get; private set; }
     public double HatchScale { get; private set; }
     public double HatchAngle { get; private set; }
     public CadPointD HatchOrigin { get; private set; }
@@ -28,7 +27,6 @@ public sealed class CadHatchFillStyle : CadFillStyle
         string name,
         HatchPatternId patternId,
         CadColor foregroundColor,
-        CadColor? backgroundColor = null,
         double hatchScale = 1.0,
         double hatchAngle = 0.0,
         CadPointD? hatchOrigin = null,
@@ -37,7 +35,6 @@ public sealed class CadHatchFillStyle : CadFillStyle
     {
         PatternId = patternId;
         ForegroundColor = foregroundColor;
-        BackgroundColor = backgroundColor;
         HatchScale = GuardPositive(hatchScale, nameof(hatchScale));
         HatchAngle = hatchAngle;
         HatchOrigin = hatchOrigin ?? CadPointD.Origin;
@@ -47,7 +44,6 @@ public sealed class CadHatchFillStyle : CadFillStyle
     internal void SetPatternInternal(HatchPatternId patternId) => PatternId = patternId;
 
     public void SetForegroundColor(CadColor color) => ForegroundColor = color;
-    public void SetBackgroundColor(CadColor? color) => BackgroundColor = color;
     public void SetScale(double scale) => HatchScale = GuardPositive(scale, nameof(scale));
     public void SetAngle(double angle) => HatchAngle = angle;
     public void SetOrigin(CadPointD origin) => HatchOrigin = origin;

@@ -676,7 +676,7 @@ internal static class CadDocumentMapper
                 {
                     PatternId = hatch.PatternId.Value,
                     ForegroundColor = ToData(hatch.ForegroundColor),
-                    BackgroundColor = hatch.BackgroundColor is { } background ? ToData(background) : null,
+                    ReservedBackgroundColor = null,
                     HatchScale = hatch.HatchScale,
                     HatchAngle = hatch.HatchAngle,
                     HatchOrigin = ToData(hatch.HatchOrigin),
@@ -723,7 +723,6 @@ internal static class CadDocumentMapper
                 data.Name,
                 new HatchPatternId(data.HatchFill.PatternId),
                 FromData(data.HatchFill.ForegroundColor),
-                data.HatchFill.BackgroundColor is { } background ? FromData(background) : null,
                 data.HatchFill.HatchScale,
                 data.HatchFill.HatchAngle,
                 FromData(data.HatchFill.HatchOrigin),

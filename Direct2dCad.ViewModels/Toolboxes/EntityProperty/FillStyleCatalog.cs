@@ -10,8 +10,7 @@ public enum FillStyleOptionKind
 {
     None,
     Solid,
-    Hatch,
-    Custom
+    Hatch
 }
 
 public sealed record FillStyleOption(StyleId? Id, string Name, FillStyleOptionKind Kind, string StyleName = "")
@@ -57,26 +56,34 @@ internal static class FillStyleCatalog
                 FillStyleOptionKind.Hatch,
                 hatch.Name));
 
-        var knownStyleIds = options
-            .Where(x => x.Id is not null)
-            .Select(x => x.Id!.Value)
-            .ToHashSet();
-
-        options.AddRange(document.Styles.Values
-            .OfType<CadFillStyle>()
-            .Where(style => !knownStyleIds.Contains(style.Id))
-            .OrderBy(style => style.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(style => new FillStyleOption(style.Id, style.Name, FillStyleOptionKind.Custom)));
-
         return options;
     }
 
     public static FillStyleOption? FindFillStyleOption(
+        CadDocument document,
         IReadOnlyList<FillStyleOption> options,
         StyleId? styleId)
     {
-        return options.FirstOrDefault(option => Nullable.Equals(option.Id, styleId)) ??
-               options.FirstOrDefault();
+        ArgumentNullException.ThrowIfNull(document);
+
+        if (styleId is null)
+            return options.FirstOrDefault(option => option.Kind == FillStyleOptionKind.None) ??
+                   options.FirstOrDefault();
+
+        var exact = options.FirstOrDefault(option => Nullable.Equals(option.Id, styleId));
+        if (exact is not null)
+            return exact;
+
+        if (!document.Styles.TryGetValue(styleId.Value, out var style))
+            return options.FirstOrDefault();
+
+        return style switch
+        {
+            CadGradientFillStyle { IsSolid: true } => options.FirstOrDefault(option => option.Kind == FillStyleOptionKind.Solid) ??
+                                                      options.FirstOrDefault(),
+            CadHatchFillStyle hatch => FindHatchOption(document, options, hatch) ?? options.FirstOrDefault(),
+            _ => options.FirstOrDefault()
+        };
     }
 
     public static StyleId? ResolveFillStyleId(CadDocument document, FillStyleOption? option)
@@ -115,7 +122,6 @@ internal static class FillStyleCatalog
                        document,
                        patternId,
                        fillColor,
-                       backgroundColor: null,
                        hatchScale: 1.0,
                        hatchAngle: 0.0,
                        hatchOrigin: CadPointD.Origin,
@@ -171,7 +177,6 @@ internal static class FillStyleCatalog
                        document,
                        hatch.PatternId,
                        fillColor,
-                       hatch.BackgroundColor,
                        hatch.HatchScale,
                        hatch.HatchAngle,
                        hatch.HatchOrigin,
@@ -180,7 +185,6 @@ internal static class FillStyleCatalog
                        CreateHatchFillStyleName(patternName, fillColor),
                        hatch.PatternId,
                        fillColor,
-                       hatch.BackgroundColor,
                        hatch.HatchScale,
                        hatch.HatchAngle,
                        hatch.HatchOrigin,
@@ -213,7 +217,6 @@ internal static class FillStyleCatalog
         CadDocument document,
         HatchPatternId patternId,
         CadColor foregroundColor,
-        CadColor? backgroundColor,
         double hatchScale,
         double hatchAngle,
         CadPointD hatchOrigin,
@@ -224,12 +227,24 @@ internal static class FillStyleCatalog
             .FirstOrDefault(style =>
                 style.PatternId.Equals(patternId) &&
                 style.ForegroundColor == foregroundColor &&
-                Nullable.Equals(style.BackgroundColor, backgroundColor) &&
                 style.HatchScale.Equals(hatchScale) &&
                 style.HatchAngle.Equals(hatchAngle) &&
                 style.HatchOrigin == hatchOrigin &&
                 style.IsAnnotative == isAnnotative)
             ?.Id;
+    }
+
+    private static FillStyleOption? FindHatchOption(
+        CadDocument document,
+        IReadOnlyList<FillStyleOption> options,
+        CadHatchFillStyle hatch)
+    {
+        if (!document.HatchPatterns.TryGetValue(hatch.PatternId, out var pattern))
+            return null;
+
+        return options.FirstOrDefault(option =>
+            option.Kind == FillStyleOptionKind.Hatch &&
+            string.Equals(option.StyleName, pattern.Name, StringComparison.OrdinalIgnoreCase));
     }
 
     private static HatchPatternId? FindHatchPattern(CadDocument document, string name)

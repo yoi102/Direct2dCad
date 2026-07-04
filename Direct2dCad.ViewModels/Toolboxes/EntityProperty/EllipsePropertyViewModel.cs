@@ -252,7 +252,7 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
     {
         FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
-        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(_documentViewModel.CadEditor.Document, FillStyleOptions, selectedStyleId);
         OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
@@ -393,7 +393,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
     {
         FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
-        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(_documentViewModel.CadEditor.Document, FillStyleOptions, selectedStyleId);
         OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 

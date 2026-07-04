@@ -2578,7 +2578,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         {
             return (null, new CadTransientHatchFill(
                 hatchStyle.ForegroundColor,
-                hatchStyle.BackgroundColor,
                 hatchStyle.HatchScale,
                 hatchStyle.HatchAngle,
                 hatchStyle.HatchOrigin,

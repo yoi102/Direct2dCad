@@ -161,8 +161,6 @@ internal sealed class Direct2DResourceCache : IDisposable
                     bucket.HatchPattern = pattern;
                     if (!hatch.ForegroundColor.IsTransparent)
                         bucket.HatchBrush = CreateBrush(hatch.ForegroundColor);
-                    if (hatch.BackgroundColor is { IsTransparent: false } background)
-                        bucket.HatchBackgroundBrush = CreateBrush(background);
                     break;
             }
         }
@@ -472,7 +470,6 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1Brush? StrokeBrush { get; set; }
         public ID2D1Brush? FillBrush { get; set; }
         public ID2D1Brush? HatchBrush { get; set; }
-        public ID2D1Brush? HatchBackgroundBrush { get; set; }
         public CadHatchFillStyle? HatchFillStyle { get; set; }
         public CadHatchPatternDefinition? HatchPattern { get; set; }
         public IDWriteTextFormat? TextFormat { get; set; }
@@ -483,7 +480,6 @@ internal sealed class Direct2DResourceCache : IDisposable
             StrokeBrush is null &&
             FillBrush is null &&
             HatchBrush is null &&
-            HatchBackgroundBrush is null &&
             TextFormat is null;
 
         public EntityResourceBucket(EntityId entityId)
@@ -497,13 +493,11 @@ internal sealed class Direct2DResourceCache : IDisposable
             StrokeBrush?.Dispose();
             FillBrush?.Dispose();
             HatchBrush?.Dispose();
-            HatchBackgroundBrush?.Dispose();
             TextFormat?.Dispose();
             Geometry = null;
             StrokeBrush = null;
             FillBrush = null;
             HatchBrush = null;
-            HatchBackgroundBrush = null;
             HatchFillStyle = null;
             HatchPattern = null;
             TextFormat = null;

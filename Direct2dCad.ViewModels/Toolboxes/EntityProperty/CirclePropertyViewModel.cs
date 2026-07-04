@@ -237,7 +237,7 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
     {
         FillStyleOptions = BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
-        SelectedFillStyleOption = FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        SelectedFillStyleOption = FindFillStyleOption(_documentViewModel.CadEditor.Document, FillStyleOptions, selectedStyleId);
         OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
@@ -255,9 +255,10 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
         => FillStyleCatalog.BuildFillStyleOptions(document);
 
     internal static FillStyleOption? FindFillStyleOption(
+        CadDocument document,
         IReadOnlyList<FillStyleOption> options,
         StyleId? styleId)
-        => FillStyleCatalog.FindFillStyleOption(options, styleId);
+        => FillStyleCatalog.FindFillStyleOption(document, options, styleId);
 
     internal static StyleId? ResolveFillStyleId(CadDocument document, FillStyleOption? option)
         => FillStyleCatalog.ResolveFillStyleId(document, option);
@@ -398,7 +399,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
     {
         FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
         OnPropertyChanged(nameof(FillStyleOptions));
-        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(FillStyleOptions, selectedStyleId);
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(_documentViewModel.CadEditor.Document, FillStyleOptions, selectedStyleId);
         OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 
