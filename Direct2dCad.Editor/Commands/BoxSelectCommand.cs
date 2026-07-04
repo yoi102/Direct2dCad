@@ -62,6 +62,7 @@ public sealed class BoxSelectCommand : SelectionCommandBase
             CadSpline spline => SplineIntersectsArea(spline, area),
             CadCircle circle => CircleIntersectsArea(circle.Center, circle.Radius, area),
             CadEllipse ellipse => EllipseIntersectsArea(ellipse, area),
+            CadEllipseArc ellipseArc => EllipseArcIntersectsArea(ellipseArc, area),
             CadArc arc => ArcIntersectsArea(arc, area),
             _ => area.Intersects(entity.Bounds)
         };
@@ -151,6 +152,35 @@ public sealed class BoxSelectCommand : SelectionCommandBase
         return EnumerateEllipseRectIntersectionPoints(ellipse, area).Any();
     }
 
+    private static bool EllipseArcIntersectsArea(CadEllipseArc ellipseArc, CadRectD area)
+    {
+        if (!ellipseArc.Bounds.Intersects(area))
+            return false;
+
+        if (area.Contains(ellipseArc.StartPoint) || area.Contains(ellipseArc.EndPoint))
+            return true;
+
+        foreach (var point in EnumerateEllipseRectIntersectionPoints(
+            ellipseArc.Center,
+            ellipseArc.RadiusX,
+            ellipseArc.RadiusY,
+            area))
+        {
+            var angle = Math.Atan2(
+                (point.Y - ellipseArc.Center.Y) / ellipseArc.RadiusY,
+                (point.X - ellipseArc.Center.X) / ellipseArc.RadiusX);
+            if (ContainsAngleOnSweep(
+                ellipseArc.StartAngleRadians,
+                ellipseArc.SweepAngleRadians,
+                angle))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static bool SegmentIntersectsArea(CadPointD start, CadPointD end, CadRectD area)
     {
         if (area.Contains(start) || area.Contains(end))
@@ -204,16 +234,25 @@ public sealed class BoxSelectCommand : SelectionCommandBase
 
     private static IEnumerable<CadPointD> EnumerateEllipseRectIntersectionPoints(CadEllipse ellipse, CadRectD area)
     {
+        return EnumerateEllipseRectIntersectionPoints(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, area);
+    }
+
+    private static IEnumerable<CadPointD> EnumerateEllipseRectIntersectionPoints(
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        CadRectD area)
+    {
         foreach (var x in new[] { area.MinX, area.MaxX })
         {
-            var normalizedX = (x - ellipse.Center.X) / ellipse.RadiusX;
+            var normalizedX = (x - center.X) / radiusX;
             var remainder = 1.0 - normalizedX * normalizedX;
             if (remainder < 0)
                 continue;
 
-            var dy = ellipse.RadiusY * Math.Sqrt(Math.Max(0, remainder));
-            var y1 = ellipse.Center.Y - dy;
-            var y2 = ellipse.Center.Y + dy;
+            var dy = radiusY * Math.Sqrt(Math.Max(0, remainder));
+            var y1 = center.Y - dy;
+            var y2 = center.Y + dy;
             if (y1 >= area.MinY && y1 <= area.MaxY)
                 yield return new CadPointD(x, y1);
             if (dy > 0 && y2 >= area.MinY && y2 <= area.MaxY)
@@ -222,14 +261,14 @@ public sealed class BoxSelectCommand : SelectionCommandBase
 
         foreach (var y in new[] { area.MinY, area.MaxY })
         {
-            var normalizedY = (y - ellipse.Center.Y) / ellipse.RadiusY;
+            var normalizedY = (y - center.Y) / radiusY;
             var remainder = 1.0 - normalizedY * normalizedY;
             if (remainder < 0)
                 continue;
 
-            var dx = ellipse.RadiusX * Math.Sqrt(Math.Max(0, remainder));
-            var x1 = ellipse.Center.X - dx;
-            var x2 = ellipse.Center.X + dx;
+            var dx = radiusX * Math.Sqrt(Math.Max(0, remainder));
+            var x1 = center.X - dx;
+            var x2 = center.X + dx;
             if (x1 >= area.MinX && x1 <= area.MaxX)
                 yield return new CadPointD(x1, y);
             if (dx > 0 && x2 >= area.MinX && x2 <= area.MaxX)
@@ -239,19 +278,28 @@ public sealed class BoxSelectCommand : SelectionCommandBase
 
     private static bool ArcContainsAngle(CadArc arc, double angle)
     {
+        return ContainsAngleOnSweep(arc.StartAngleRadians, arc.SweepAngleRadians, angle, arc.IsFullCircle);
+    }
+
+    private static bool ContainsAngleOnSweep(
+        double startAngleRadians,
+        double sweepAngleRadians,
+        double angle,
+        bool isFullCircle = false)
+    {
         const double twoPi = Math.PI * 2.0;
         const double epsilon = 1e-12;
 
-        if (arc.IsFullCircle)
+        if (isFullCircle)
             return true;
 
-        var start = NormalizeAngle(arc.StartAngleRadians);
+        var start = NormalizeAngle(startAngleRadians);
         var target = NormalizeAngle(angle);
 
-        if (arc.SweepAngleRadians > 0)
-            return NormalizePositive(target - start) <= arc.SweepAngleRadians + epsilon;
+        if (sweepAngleRadians > 0)
+            return NormalizePositive(target - start) <= sweepAngleRadians + epsilon;
 
-        return NormalizePositive(start - target) <= -arc.SweepAngleRadians + epsilon;
+        return NormalizePositive(start - target) <= -sweepAngleRadians + epsilon;
 
         static double NormalizeAngle(double radians)
         {

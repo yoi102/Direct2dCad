@@ -123,6 +123,39 @@
   <data name="Arc" xml:space="preserve">
     <value>圆弧</value>
   </data>
+  <data name="ArcThreePoint" xml:space="preserve">
+    <value>三点圆弧</value>
+  </data>
+  <data name="ArcStartCenterEnd" xml:space="preserve">
+    <value>起点，圆心，端点</value>
+  </data>
+  <data name="ArcStartCenterAngle" xml:space="preserve">
+    <value>起点，圆心，角度</value>
+  </data>
+  <data name="ArcStartCenterLength" xml:space="preserve">
+    <value>起点，圆心，长度</value>
+  </data>
+  <data name="ArcStartEndAngle" xml:space="preserve">
+    <value>起点，端点，角度</value>
+  </data>
+  <data name="ArcStartEndDirection" xml:space="preserve">
+    <value>起点，端点，方向</value>
+  </data>
+  <data name="ArcStartEndRadius" xml:space="preserve">
+    <value>起点，端点，半径</value>
+  </data>
+  <data name="ArcCenterStartEnd" xml:space="preserve">
+    <value>圆心，起点，端点</value>
+  </data>
+  <data name="ArcCenterStartAngle" xml:space="preserve">
+    <value>圆心，起点，角度</value>
+  </data>
+  <data name="ArcCenterStartLength" xml:space="preserve">
+    <value>圆心，起点，长度</value>
+  </data>
+  <data name="ArcContinue" xml:space="preserve">
+    <value>连续</value>
+  </data>
   <data name="Chinese" xml:space="preserve">
     <value>中文</value>
   </data>
@@ -146,6 +179,9 @@
   </data>
   <data name="Cross" xml:space="preserve">
     <value>十字</value>
+  </data>
+  <data name="InfiniteCross" xml:space="preserve">
+    <value>无限十字</value>
   </data>
   <data name="Dots" xml:space="preserve">
     <value>点</value>
@@ -557,5 +593,26 @@
   </data>
   <data name="TextDrawing" xml:space="preserve">
     <value>绘制文字</value>
+  </data>
+  <data name="CircleCenterRadius" xml:space="preserve">
+    <value>圆心-半径圆</value>
+  </data>
+  <data name="CircleCenterDiameter" xml:space="preserve">
+    <value>圆心-直径圆</value>
+  </data>
+  <data name="CircleTwoPoint" xml:space="preserve">
+    <value>两点圆</value>
+  </data>
+  <data name="CircleThreePoint" xml:space="preserve">
+    <value>三点圆</value>
+  </data>
+  <data name="EllipseCenter" xml:space="preserve">
+    <value>圆心</value>
+  </data>
+  <data name="EllipseAxisEnd" xml:space="preserve">
+    <value>轴，端点</value>
+  </data>
+  <data name="EllipseArc" xml:space="preserve">
+    <value>椭圆弧</value>
   </data>
 </root>

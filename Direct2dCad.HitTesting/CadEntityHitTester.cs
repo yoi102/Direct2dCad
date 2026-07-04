@@ -113,6 +113,9 @@ public static class CadEntityHitTester
             case CadEllipse ellipse:
                 return HitEllipseEdge(ellipse, point, edgeTolerance, out result);
 
+            case CadEllipseArc ellipseArc:
+                return HitEllipseArcEdge(ellipseArc, point, edgeTolerance, out result);
+
             case CadRectangle rectangle:
                 return HitRectangleEdge(rectangle, point, edgeTolerance, out result);
 
@@ -304,6 +307,38 @@ public static class CadEntityHitTester
             CadHitTestKind.Fill,
             [ellipse.Id],
             point);
+
+        return true;
+    }
+
+    private static bool HitEllipseArcEdge(
+        CadEllipseArc ellipseArc,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        var dx = point.X - ellipseArc.Center.X;
+        var dy = point.Y - ellipseArc.Center.Y;
+        var angle = Math.Atan2(dy / ellipseArc.RadiusY, dx / ellipseArc.RadiusX);
+        if (!ContainsArcAngle(ellipseArc.StartAngleRadians, ellipseArc.SweepAngleRadians, angle))
+        {
+            result = default;
+            return false;
+        }
+
+        var edgePoint = ellipseArc.GetPointAtAngle(angle);
+        var distance = point.DistanceTo(edgePoint);
+        if (distance > tolerance)
+        {
+            result = default;
+            return false;
+        }
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Edge,
+            [ellipseArc.Id],
+            point,
+            distance);
 
         return true;
     }

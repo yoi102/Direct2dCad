@@ -30,7 +30,6 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0"
@@ -49,8 +48,8 @@
                            Text="{I18N {x:Static r:LangKeys.Color}}"
                            VerticalAlignment="Center" />
                 <mah:ColorPicker Grid.Row="1"
-                                 Grid.Column="1"
-                                 mah:TextBoxHelper.AutoWatermark="True"
+                                  Grid.Column="1"
+                                  mah:TextBoxHelper.AutoWatermark="True"
                                  mah:TextBoxHelper.ClearTextButton="True"
                                  AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
                                  ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
@@ -66,8 +65,8 @@
                            Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="2"
-                                   Grid.Column="1"
-                                   Value="{Binding LineWeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    Grid.Column="1"
+                                    Value="{Binding LineWeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    Minimum="0.01"
                                    StringFormat="F3"
                                    Interval="0.05"
@@ -78,8 +77,8 @@
                            Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
                            VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="3"
-                                   Grid.Column="1"
-                                   Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    Grid.Column="1"
+                                    Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    StringFormat="F0"
                                    Interval="1"
                                    Margin="0,0,0,8" />

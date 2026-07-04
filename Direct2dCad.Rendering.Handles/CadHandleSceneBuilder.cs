@@ -43,7 +43,7 @@ public sealed class CadHandleSceneBuilder
 
     public static bool SupportsCenterGrip(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadEllipse or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadShapeText or CadBlockReference;
+        return entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadShapeText or CadBlockReference;
     }
 
     private static bool TryGetSelectableEntity(
@@ -96,6 +96,10 @@ public sealed class CadHandleSceneBuilder
                 AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X, ellipse.Center.Y + ellipse.RadiusY), CadHandleType.Radius, gripStyle);
                 AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X - ellipse.RadiusX, ellipse.Center.Y), CadHandleType.Radius, gripStyle);
                 AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X, ellipse.Center.Y - ellipse.RadiusY), CadHandleType.Radius, gripStyle);
+                break;
+
+            case CadEllipseArc ellipseArc:
+                AddGrip(items, entity.Id, ellipseArc.Center, CadHandleType.Center, gripStyle);
                 break;
 
             case CadArc arc:

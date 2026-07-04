@@ -548,6 +548,21 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                         ellipse.Style);
                     break;
 
+                case CadTransientEllipseArc ellipseArc
+                    when ellipseArc.RadiusX > 0 &&
+                         ellipseArc.RadiusY > 0 &&
+                         Math.Abs(ellipseArc.SweepAngleRadians) > double.Epsilon:
+                    DrawTransientEllipseArc(
+                        deviceContext,
+                        viewport,
+                        ellipseArc.Center,
+                        ellipseArc.RadiusX,
+                        ellipseArc.RadiusY,
+                        ellipseArc.StartAngleRadians,
+                        ellipseArc.SweepAngleRadians,
+                        ellipseArc.Style);
+                    break;
+
                 case CadTransientArc arc when arc.Radius > 0 && Math.Abs(arc.SweepAngleRadians) > double.Epsilon:
                     DrawTransientArc(
                         deviceContext,
@@ -689,6 +704,18 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     ellipse.Center + reference.Offset,
                     ellipse.RadiusX,
                     ellipse.RadiusY,
+                    style);
+                break;
+
+            case CadEllipseArc ellipseArc:
+                DrawTransientEllipseArc(
+                    deviceContext,
+                    viewport,
+                    ellipseArc.Center + reference.Offset,
+                    ellipseArc.RadiusX,
+                    ellipseArc.RadiusY,
+                    ellipseArc.StartAngleRadians,
+                    ellipseArc.SweepAngleRadians,
                     style);
                 break;
 
@@ -917,6 +944,18 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     ellipse.Center + reference.Offset,
                     ellipse.RadiusX,
                     ellipse.RadiusY,
+                    reference.Style);
+                break;
+
+            case CadEllipseArc ellipseArc:
+                DrawTransientEllipseArc(
+                    deviceContext,
+                    viewport,
+                    ellipseArc.Center + reference.Offset,
+                    ellipseArc.RadiusX,
+                    ellipseArc.RadiusY,
+                    ellipseArc.StartAngleRadians,
+                    ellipseArc.SweepAngleRadians,
                     reference.Style);
                 break;
 
@@ -1174,6 +1213,52 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         return geometry;
     }
 
+    private void DrawTransientEllipseArc(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport,
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        double startAngleRadians,
+        double sweepAngleRadians,
+        CadTransientStyle style)
+    {
+        if (_resourceCache.Factory is null ||
+            radiusX <= 0 ||
+            radiusY <= 0 ||
+            Math.Abs(sweepAngleRadians) <= double.Epsilon)
+        {
+            return;
+        }
+
+        using var geometry = CreateTransientEllipseArcGeometry(center, radiusX, radiusY, startAngleRadians, sweepAngleRadians);
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        deviceContext.DrawGeometry(
+            geometry,
+            brush,
+            ResolveTransientStrokeWidth(style, viewport),
+            strokeStyle);
+    }
+
+    private ID2D1PathGeometry CreateTransientEllipseArcGeometry(
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        double startAngleRadians,
+        double sweepAngleRadians)
+    {
+        var geometry = _resourceCache.Factory!.CreatePathGeometry();
+        using var sink = geometry.Open();
+        var startPoint = GetEllipsePoint(center, radiusX, radiusY, startAngleRadians);
+        var endPoint = GetEllipsePoint(center, radiusX, radiusY, startAngleRadians + sweepAngleRadians);
+        sink.BeginFigure(ToVector2(startPoint), FigureBegin.Hollow);
+        sink.AddArc(CreateEllipseArcSegment(endPoint, radiusX, radiusY, sweepAngleRadians));
+        sink.EndFigure(FigureEnd.Open);
+        sink.Close();
+        return geometry;
+    }
+
     private static ArcSegment CreateArcSegment(
         CadPointD endPoint,
         double radius,
@@ -1182,6 +1267,20 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         return new ArcSegment(
             ToVector2(endPoint),
             new Size((float)radius, (float)radius),
+            rotationAngle: 0,
+            ToD2DSweepDirection(sweepAngleRadians),
+            Math.Abs(sweepAngleRadians) > Math.PI ? ArcSize.Large : ArcSize.Small);
+    }
+
+    private static ArcSegment CreateEllipseArcSegment(
+        CadPointD endPoint,
+        double radiusX,
+        double radiusY,
+        double sweepAngleRadians)
+    {
+        return new ArcSegment(
+            ToVector2(endPoint),
+            new Size((float)radiusX, (float)radiusY),
             rotationAngle: 0,
             ToD2DSweepDirection(sweepAngleRadians),
             Math.Abs(sweepAngleRadians) > Math.PI ? ArcSize.Large : ArcSize.Small);
@@ -1207,6 +1306,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         return new CadPointD(
             center.X + Math.Cos(angleRadians) * radius,
             center.Y + Math.Sin(angleRadians) * radius);
+    }
+
+    private static CadPointD GetEllipsePoint(CadPointD center, double radiusX, double radiusY, double angleRadians)
+    {
+        return new CadPointD(
+            center.X + Math.Cos(angleRadians) * radiusX,
+            center.Y + Math.Sin(angleRadians) * radiusY);
     }
 
     private void DrawTransientCircle(
@@ -1549,6 +1655,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         return entity is CadLine or
             CadCircle or
             CadEllipse or
+            CadEllipseArc or
             CadRectangle or
             CadArc or
             CadPolyline or

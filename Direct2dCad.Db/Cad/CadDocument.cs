@@ -511,6 +511,34 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return entity;
     }
 
+    public CadEllipseArc AddEllipseArc(
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        double startAngleRadians,
+        double sweepAngleRadians,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        string name = "")
+    {
+        var entity = new CadEllipseArc(
+            _ids.NewEntityId(),
+            layerId ?? LayerId.Default,
+            BlockId.ModelSpace,
+            center,
+            radiusX,
+            radiusY,
+            startAngleRadians,
+            sweepAngleRadians,
+            name);
+
+        entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
+        AddEntityCore(entity);
+        return entity;
+    }
+
     public CadArc AddArc(
         CadPointD center,
         double radius,

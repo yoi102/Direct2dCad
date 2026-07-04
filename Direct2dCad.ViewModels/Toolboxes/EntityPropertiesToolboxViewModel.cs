@@ -59,7 +59,7 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
             return;
         }
 
-        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Arc)
+        if (IsArcDrawingMode(_documentViewModel.CadCanvasToolMode))
         {
             if (Entity is TransientArcPropertyViewModel transient &&
                 ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
@@ -89,7 +89,7 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
             return;
         }
 
-        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Circle)
+        if (IsCircleDrawingMode(_documentViewModel.CadCanvasToolMode))
         {
             if (Entity is TransientCirclePropertyViewModel transient &&
                 ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
@@ -104,7 +104,7 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
             return;
         }
 
-        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Ellipse)
+        if (IsEllipseDrawingMode(_documentViewModel.CadCanvasToolMode))
         {
             if (Entity is TransientEllipsePropertyViewModel transient &&
                 ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
@@ -340,5 +340,38 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
         }
 
         Entity = null;
+    }
+
+    private static bool IsCircleDrawingMode(CadCanvasToolMode toolMode)
+    {
+        return toolMode is
+            CadCanvasToolMode.CircleCenterRadius or
+            CadCanvasToolMode.CircleCenterDiameter or
+            CadCanvasToolMode.CircleTwoPoint or
+            CadCanvasToolMode.CircleThreePoint;
+    }
+
+    private static bool IsEllipseDrawingMode(CadCanvasToolMode toolMode)
+    {
+        return toolMode is
+            CadCanvasToolMode.EllipseCenter or
+            CadCanvasToolMode.EllipseAxisEnd or
+            CadCanvasToolMode.EllipseArc;
+    }
+
+    private static bool IsArcDrawingMode(CadCanvasToolMode toolMode)
+    {
+        return toolMode is
+            CadCanvasToolMode.ArcThreePoint or
+            CadCanvasToolMode.ArcStartCenterEnd or
+            CadCanvasToolMode.ArcStartCenterAngle or
+            CadCanvasToolMode.ArcStartCenterLength or
+            CadCanvasToolMode.ArcStartEndAngle or
+            CadCanvasToolMode.ArcStartEndDirection or
+            CadCanvasToolMode.ArcStartEndRadius or
+            CadCanvasToolMode.ArcCenterStartEnd or
+            CadCanvasToolMode.ArcCenterStartAngle or
+            CadCanvasToolMode.ArcCenterStartLength or
+            CadCanvasToolMode.ArcContinue;
     }
 }

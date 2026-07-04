@@ -18,6 +18,9 @@ internal static class CadEntityTransform
             case CadEllipse ellipse:
                 ellipse.SetCenter(ellipse.Center + delta);
                 break;
+            case CadEllipseArc ellipseArc:
+                ellipseArc.SetCenter(ellipseArc.Center + delta);
+                break;
             case CadRectangle rectangle:
                 rectangle.SetBounds(rectangle.Bounds.Translate(delta));
                 break;

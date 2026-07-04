@@ -23,6 +23,24 @@ namespace Direct2dCad.ViewModels;
 public partial class CadDocumentViewModel : ObservableObject, IDisposable
 {
     private const double TwoPi = Math.PI * 2.0;
+
+    private readonly record struct ArcDrawingGeometry(
+        CadPointD Center,
+        double Radius,
+        double StartAngleRadians,
+        double SweepAngleRadians);
+
+    private readonly record struct EllipseDrawingGeometry(
+        CadPointD Center,
+        double RadiusX,
+        double RadiusY);
+
+    private readonly record struct EllipseArcDrawingGeometry(
+        CadPointD Center,
+        double RadiusX,
+        double RadiusY,
+        double StartAngleRadians,
+        double SweepAngleRadians);
     private readonly CadTransientScene _transientScene = new();
     private readonly CadHandleScene _handleScene = new();
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
@@ -30,8 +48,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private readonly List<CadPointD> _pendingPolylinePoints = [];
     private readonly List<CadPointD> _pendingPolygonPoints = [];
     private readonly List<CadPointD> _pendingSplinePoints = [];
+    private readonly List<CadPointD> _pendingEllipsePoints = [];
     private CadPointD? _pendingWorldPoint;
     private CadPointD? _pendingArcStartPoint;
+    private CadPointD? _pendingCircleSecondPoint;
     private CadPointD? _currentMousePoint;
     private CadPointD? _lastPanPoint;
     private CadPointD? _selectionDragStart;
@@ -758,9 +778,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         _isPastePreviewActive = true;
         _pendingWorldPoint = null;
+        _pendingCircleSecondPoint = null;
         _pendingPolylinePoints.Clear();
         _pendingPolygonPoints.Clear();
         _pendingSplinePoints.Clear();
+        _pendingEllipsePoints.Clear();
         _selectionDragStart = null;
         RequestRender();
         return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
@@ -864,91 +886,45 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 RequestRender();
                 break;
 
-            case CadCanvasToolMode.Circle:
-                if (_pendingWorldPoint is null)
-                    _pendingWorldPoint = world;
-                else
-                {
-                    var radius = _pendingWorldPoint.Value.DistanceTo(world);
-                    if (radius > 0)
-                    {
-                        CadEditor.AddCircle(
-                            _pendingWorldPoint.Value,
-                            radius,
-                            graphicStyleId: ResolveDrawingCircleGraphicStyleId(),
-                            fillStyleId: ResolveDrawingCircleFillStyleId(),
-                            lineWeight: ResolveDrawingCircleLineWeight(),
-                            zIndex: DrawingCircleZIndex,
-                            isVisible: DrawingCircleIsVisible);
-                    }
-
-                    _pendingWorldPoint = null;
-                }
+            case CadCanvasToolMode.CircleCenterRadius:
+                HandleCircleCenterRadiusClick(world);
                 RequestRender();
                 break;
 
-            case CadCanvasToolMode.Ellipse:
-                if (_pendingWorldPoint is null)
-                    _pendingWorldPoint = world;
-                else
-                {
-                    var bounds = CadRectD.FromLTRB(
-                        _pendingWorldPoint.Value.X,
-                        _pendingWorldPoint.Value.Y,
-                        world.X,
-                        world.Y);
-                    if (TryCreateEllipseGeometry(bounds, out var center, out var radiusX, out var radiusY))
-                    {
-                        CadEditor.AddEllipse(
-                            center,
-                            radiusX,
-                            radiusY,
-                            graphicStyleId: ResolveDrawingEllipseGraphicStyleId(),
-                            fillStyleId: ResolveDrawingEllipseFillStyleId(),
-                            lineWeight: ResolveDrawingEllipseLineWeight(),
-                            zIndex: DrawingEllipseZIndex,
-                            isVisible: DrawingEllipseIsVisible);
-                    }
-
-                    _pendingWorldPoint = null;
-                }
+            case CadCanvasToolMode.CircleCenterDiameter:
+                HandleCircleCenterDiameterClick(world);
                 RequestRender();
                 break;
 
-            case CadCanvasToolMode.Arc:
-                if (_pendingWorldPoint is null)
-                {
-                    _pendingWorldPoint = world;
-                }
-                else if (_pendingArcStartPoint is null)
-                {
-                    if (_pendingWorldPoint.Value.DistanceTo(world) > double.Epsilon)
-                        _pendingArcStartPoint = world;
-                }
-                else
-                {
-                    if (TryCreateArcGeometry(
-                        _pendingWorldPoint.Value,
-                        _pendingArcStartPoint.Value,
-                        world,
-                        out var radius,
-                        out var startAngleRadians,
-                        out var sweepAngleRadians))
-                    {
-                        CadEditor.AddArc(
-                            _pendingWorldPoint.Value,
-                            radius,
-                            startAngleRadians,
-                            sweepAngleRadians,
-                            graphicStyleId: ResolveDrawingArcGraphicStyleId(),
-                            lineWeight: ResolveDrawingArcLineWeight(),
-                            zIndex: DrawingArcZIndex,
-                            isVisible: DrawingArcIsVisible);
-                    }
+            case CadCanvasToolMode.CircleTwoPoint:
+                HandleCircleTwoPointClick(world);
+                RequestRender();
+                break;
 
-                    _pendingWorldPoint = null;
-                    _pendingArcStartPoint = null;
-                }
+            case CadCanvasToolMode.CircleThreePoint:
+                HandleCircleThreePointClick(world);
+                RequestRender();
+                break;
+
+            case CadCanvasToolMode.EllipseCenter:
+            case CadCanvasToolMode.EllipseAxisEnd:
+            case CadCanvasToolMode.EllipseArc:
+                HandleEllipseDrawingClick(world);
+                RequestRender();
+                break;
+
+            case CadCanvasToolMode.ArcThreePoint:
+            case CadCanvasToolMode.ArcStartCenterEnd:
+            case CadCanvasToolMode.ArcStartCenterAngle:
+            case CadCanvasToolMode.ArcStartCenterLength:
+            case CadCanvasToolMode.ArcStartEndAngle:
+            case CadCanvasToolMode.ArcStartEndDirection:
+            case CadCanvasToolMode.ArcStartEndRadius:
+            case CadCanvasToolMode.ArcCenterStartEnd:
+            case CadCanvasToolMode.ArcCenterStartAngle:
+            case CadCanvasToolMode.ArcCenterStartLength:
+            case CadCanvasToolMode.ArcContinue:
+                HandleArcDrawingClick(world);
                 RequestRender();
                 break;
 
@@ -1019,6 +995,243 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void HandleCircleCenterRadiusClick(CadPointD world)
+    {
+        if (_pendingWorldPoint is null)
+        {
+            _pendingWorldPoint = world;
+            return;
+        }
+
+        var center = _pendingWorldPoint.Value;
+        var radius = center.DistanceTo(world);
+        AddCircleIfValid(center, radius);
+        _pendingWorldPoint = null;
+    }
+
+    private void HandleCircleCenterDiameterClick(CadPointD world)
+    {
+        if (_pendingWorldPoint is null)
+        {
+            _pendingWorldPoint = world;
+            return;
+        }
+
+        var center = _pendingWorldPoint.Value;
+        var radius = center.DistanceTo(world) * 0.5;
+        AddCircleIfValid(center, radius);
+        _pendingWorldPoint = null;
+    }
+
+    private void HandleCircleTwoPointClick(CadPointD world)
+    {
+        if (_pendingWorldPoint is null)
+        {
+            _pendingWorldPoint = world;
+            return;
+        }
+
+        if (TryCreateCircleFromDiameterPoints(
+            _pendingWorldPoint.Value,
+            world,
+            out var center,
+            out var radius))
+        {
+            AddCircleIfValid(center, radius);
+        }
+
+        _pendingWorldPoint = null;
+    }
+
+    private void HandleCircleThreePointClick(CadPointD world)
+    {
+        if (_pendingWorldPoint is null)
+        {
+            _pendingWorldPoint = world;
+            return;
+        }
+
+        if (_pendingCircleSecondPoint is null)
+        {
+            if (_pendingWorldPoint.Value.DistanceTo(world) > double.Epsilon)
+                _pendingCircleSecondPoint = world;
+            return;
+        }
+
+        if (TryCreateCircleFromThreePoints(
+            _pendingWorldPoint.Value,
+            _pendingCircleSecondPoint.Value,
+            world,
+            out var center,
+            out var radius))
+        {
+            AddCircleIfValid(center, radius);
+        }
+
+        _pendingWorldPoint = null;
+        _pendingCircleSecondPoint = null;
+    }
+
+    private void AddCircleIfValid(CadPointD center, double radius)
+    {
+        if (radius <= double.Epsilon ||
+            double.IsNaN(radius) ||
+            double.IsInfinity(radius))
+        {
+            return;
+        }
+
+        CadEditor.AddCircle(
+            center,
+            radius,
+            graphicStyleId: ResolveDrawingCircleGraphicStyleId(),
+            fillStyleId: ResolveDrawingCircleFillStyleId(),
+            lineWeight: ResolveDrawingCircleLineWeight(),
+            zIndex: DrawingCircleZIndex,
+            isVisible: DrawingCircleIsVisible);
+    }
+
+    private void HandleArcDrawingClick(CadPointD world)
+    {
+        if (CadCanvasToolMode == CadCanvasToolMode.ArcContinue)
+        {
+            if (TryGetContinueArcBase(out var start, out var tangent) &&
+                TryCreateArcFromStartEndTangent(start, world, tangent, out var continueGeometry))
+            {
+                AddArcIfValid(continueGeometry);
+            }
+
+            return;
+        }
+
+        if (_pendingWorldPoint is null)
+        {
+            _pendingWorldPoint = world;
+            return;
+        }
+
+        if (_pendingArcStartPoint is null)
+        {
+            if (_pendingWorldPoint.Value.DistanceTo(world) > double.Epsilon)
+                _pendingArcStartPoint = world;
+            return;
+        }
+
+        if (TryCreateArcFromMode(
+            CadCanvasToolMode,
+            _pendingWorldPoint.Value,
+            _pendingArcStartPoint.Value,
+            world,
+            out var geometry))
+        {
+            AddArcIfValid(geometry);
+        }
+
+        _pendingWorldPoint = null;
+        _pendingArcStartPoint = null;
+    }
+
+    private void AddArcIfValid(ArcDrawingGeometry geometry)
+    {
+        if (!IsValidArcGeometry(geometry.Radius, geometry.SweepAngleRadians))
+            return;
+
+        CadEditor.AddArc(
+            geometry.Center,
+            geometry.Radius,
+            geometry.StartAngleRadians,
+            geometry.SweepAngleRadians,
+            graphicStyleId: ResolveDrawingArcGraphicStyleId(),
+            lineWeight: ResolveDrawingArcLineWeight(),
+            zIndex: DrawingArcZIndex,
+            isVisible: DrawingArcIsVisible);
+    }
+
+    private void HandleEllipseDrawingClick(CadPointD world)
+    {
+        _pendingEllipsePoints.Add(world);
+
+        switch (CadCanvasToolMode)
+        {
+            case CadCanvasToolMode.EllipseCenter when _pendingEllipsePoints.Count == 3:
+                if (TryCreateEllipseFromCenter(
+                    _pendingEllipsePoints[0],
+                    _pendingEllipsePoints[1],
+                    _pendingEllipsePoints[2],
+                    out var centerGeometry))
+                {
+                    AddEllipseIfValid(centerGeometry.Center, centerGeometry.RadiusX, centerGeometry.RadiusY);
+                }
+
+                _pendingEllipsePoints.Clear();
+                break;
+
+            case CadCanvasToolMode.EllipseAxisEnd when _pendingEllipsePoints.Count == 3:
+                if (TryCreateEllipseFromAxisEnd(
+                    _pendingEllipsePoints[0],
+                    _pendingEllipsePoints[1],
+                    _pendingEllipsePoints[2],
+                    out var axisGeometry))
+                {
+                    AddEllipseIfValid(axisGeometry.Center, axisGeometry.RadiusX, axisGeometry.RadiusY);
+                }
+
+                _pendingEllipsePoints.Clear();
+                break;
+
+            case CadCanvasToolMode.EllipseArc when _pendingEllipsePoints.Count == 5:
+                if (TryCreateEllipseArcFromPoints(
+                    _pendingEllipsePoints[0],
+                    _pendingEllipsePoints[1],
+                    _pendingEllipsePoints[2],
+                    _pendingEllipsePoints[3],
+                    _pendingEllipsePoints[4],
+                    out var arcGeometry))
+                {
+                    AddEllipseArcIfValid(arcGeometry);
+                }
+
+                _pendingEllipsePoints.Clear();
+                break;
+        }
+    }
+
+    private void AddEllipseIfValid(CadPointD center, double radiusX, double radiusY)
+    {
+        if (!IsValidEllipseGeometry(radiusX, radiusY))
+            return;
+
+        CadEditor.AddEllipse(
+            center,
+            radiusX,
+            radiusY,
+            graphicStyleId: ResolveDrawingEllipseGraphicStyleId(),
+            fillStyleId: ResolveDrawingEllipseFillStyleId(),
+            lineWeight: ResolveDrawingEllipseLineWeight(),
+            zIndex: DrawingEllipseZIndex,
+            isVisible: DrawingEllipseIsVisible);
+    }
+
+    private void AddEllipseArcIfValid(EllipseArcDrawingGeometry geometry)
+    {
+        if (!IsValidEllipseGeometry(geometry.RadiusX, geometry.RadiusY) ||
+            !IsValidArcGeometry(1.0, geometry.SweepAngleRadians))
+        {
+            return;
+        }
+
+        CadEditor.AddEllipseArc(
+            geometry.Center,
+            geometry.RadiusX,
+            geometry.RadiusY,
+            geometry.StartAngleRadians,
+            geometry.SweepAngleRadians,
+            graphicStyleId: ResolveDrawingEllipseGraphicStyleId(),
+            lineWeight: ResolveDrawingEllipseLineWeight(),
+            zIndex: DrawingEllipseZIndex,
+            isVisible: DrawingEllipseIsVisible);
+    }
+
     private void CompleteSelection(CadPointD endScreen)
     {
         if (_selectionDragStart is null)
@@ -1067,9 +1280,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         _pendingWorldPoint = null;
         _pendingArcStartPoint = null;
+        _pendingCircleSecondPoint = null;
         _pendingPolylinePoints.Clear();
         _pendingPolygonPoints.Clear();
         _pendingSplinePoints.Clear();
+        _pendingEllipsePoints.Clear();
         _selectionDragStart = null;
         _activeGripDrag = null;
         _isPastePreviewActive = false;
@@ -1173,6 +1388,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2),
                 ellipse.Style,
                 minimumPaddingPixels: 24.0),
+            CadTransientEllipseArc ellipseArc when ellipseArc.RadiusX > 0 && ellipseArc.RadiusY > 0 => CreateTransientBoundsInvalidation(
+                CadRectD.FromCenter(ellipseArc.Center, ellipseArc.RadiusX * 2, ellipseArc.RadiusY * 2),
+                ellipseArc.Style,
+                minimumPaddingPixels: 24.0),
             CadTransientArc arc when arc.Radius > 0 => CreateTransientBoundsInvalidation(
                 CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2),
                 arc.Style,
@@ -1272,6 +1491,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         return entity is CadLine or
             CadCircle or
             CadEllipse or
+            CadEllipseArc or
             CadRectangle or
             CadArc or
             CadPolyline or
@@ -2183,6 +2403,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
             CadEllipse ellipse => ellipse.GraphicStyleId,
+            CadEllipseArc ellipseArc => ellipseArc.GraphicStyleId,
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
@@ -2693,48 +2914,31 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 items.Add(new CadTransientLine(start, mouseWorld, CreateDrawingLineTransientStyle()));
                 break;
 
-            case CadCanvasToolMode.Circle when _pendingWorldPoint is { } center:
-                var radius = center.DistanceTo(mouseWorld);
-                if (radius > 0)
-                {
-                    var style = CreateDrawingCircleTransientStyle();
-                    var auxiliaryStyle = CreateDrawingAuxiliaryStyle(DrawingCircleStrokeColor);
-                    items.Add(new CadTransientCircle(center, radius, style));
-                    items.Add(new CadTransientLine(center, mouseWorld, auxiliaryStyle));
-                }
+            case CadCanvasToolMode.CircleCenterRadius:
+            case CadCanvasToolMode.CircleCenterDiameter:
+            case CadCanvasToolMode.CircleTwoPoint:
+            case CadCanvasToolMode.CircleThreePoint:
+                AddCircleDrawingPreview(items, mouseWorld);
                 break;
 
-            case CadCanvasToolMode.Ellipse when _pendingWorldPoint is { } firstCorner:
-                var ellipseBounds = CadRectD.FromLTRB(firstCorner.X, firstCorner.Y, mouseWorld.X, mouseWorld.Y);
-                if (TryCreateEllipseGeometry(ellipseBounds, out var ellipseCenter, out var radiusX, out var radiusY))
-                    items.Add(new CadTransientEllipse(ellipseCenter, radiusX, radiusY, CreateDrawingEllipseTransientStyle()));
+            case CadCanvasToolMode.EllipseCenter:
+            case CadCanvasToolMode.EllipseAxisEnd:
+            case CadCanvasToolMode.EllipseArc:
+                AddEllipseDrawingPreview(items, mouseWorld);
                 break;
 
-            case CadCanvasToolMode.Arc when _pendingWorldPoint is { } arcCenter && _pendingArcStartPoint is null:
-                var previewRadius = arcCenter.DistanceTo(mouseWorld);
-                if (previewRadius > double.Epsilon)
-                {
-                    var style = CreateDrawingAuxiliaryStyle(DrawingArcStrokeColor);
-                    items.Add(new CadTransientCircle(arcCenter, previewRadius, style));
-                    items.Add(new CadTransientLine(arcCenter, mouseWorld, style));
-                }
-                break;
-
-            case CadCanvasToolMode.Arc when _pendingWorldPoint is { } arcCenter && _pendingArcStartPoint is { } arcStart:
-                if (TryCreateArcGeometry(
-                    arcCenter,
-                    arcStart,
-                    mouseWorld,
-                    out var arcRadius,
-                    out var arcStartAngle,
-                    out var arcSweepAngle))
-                {
-                    var style = CreateDrawingArcTransientStyle();
-                    var auxiliaryStyle = CreateDrawingAuxiliaryStyle(DrawingArcStrokeColor);
-                    items.Add(new CadTransientArc(arcCenter, arcRadius, arcStartAngle, arcSweepAngle, style));
-                    items.Add(new CadTransientLine(arcCenter, arcStart, auxiliaryStyle));
-                    items.Add(new CadTransientLine(arcCenter, GetArcPoint(arcCenter, arcRadius, arcStartAngle + arcSweepAngle), auxiliaryStyle));
-                }
+            case CadCanvasToolMode.ArcThreePoint:
+            case CadCanvasToolMode.ArcStartCenterEnd:
+            case CadCanvasToolMode.ArcStartCenterAngle:
+            case CadCanvasToolMode.ArcStartCenterLength:
+            case CadCanvasToolMode.ArcStartEndAngle:
+            case CadCanvasToolMode.ArcStartEndDirection:
+            case CadCanvasToolMode.ArcStartEndRadius:
+            case CadCanvasToolMode.ArcCenterStartEnd:
+            case CadCanvasToolMode.ArcCenterStartAngle:
+            case CadCanvasToolMode.ArcCenterStartLength:
+            case CadCanvasToolMode.ArcContinue:
+                AddArcDrawingPreview(items, mouseWorld);
                 break;
 
             case CadCanvasToolMode.Rectangle when _pendingWorldPoint is { } firstCorner:
@@ -2779,6 +2983,515 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 AddOriginPositionPreview(items, mouseWorld);
                 break;
         }
+    }
+
+    private void AddEllipseDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
+    {
+        var style = CreateDrawingEllipseTransientStyle();
+        var auxiliaryStyle = CreateDrawingAuxiliaryStyle(DrawingEllipseStrokeColor);
+
+        switch (CadCanvasToolMode)
+        {
+            case CadCanvasToolMode.EllipseCenter:
+                AddEllipseCenterPreview(items, mouseWorld, style, auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.EllipseAxisEnd:
+                AddEllipseAxisEndPreview(items, mouseWorld, style, auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.EllipseArc:
+                AddEllipseArcPreview(items, mouseWorld, style, auxiliaryStyle);
+                break;
+        }
+    }
+
+    private void AddEllipseCenterPreview(
+        List<CadTransientItem> items,
+        CadPointD mouseWorld,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        if (_pendingEllipsePoints.Count == 0)
+            return;
+
+        var center = _pendingEllipsePoints[0];
+        items.Add(new CadTransientLine(center, mouseWorld, auxiliaryStyle));
+
+        if (_pendingEllipsePoints.Count < 2)
+            return;
+
+        if (!TryCreateEllipseFromCenter(center, _pendingEllipsePoints[1], mouseWorld, out var geometry))
+            return;
+
+        items.Add(new CadTransientEllipse(geometry.Center, geometry.RadiusX, geometry.RadiusY, style));
+        AddEllipseRadiusMeasurements(items, geometry, auxiliaryStyle);
+    }
+
+    private void AddEllipseAxisEndPreview(
+        List<CadTransientItem> items,
+        CadPointD mouseWorld,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        if (_pendingEllipsePoints.Count == 0)
+            return;
+
+        items.Add(new CadTransientLine(_pendingEllipsePoints[0], mouseWorld, auxiliaryStyle));
+
+        if (_pendingEllipsePoints.Count < 2)
+            return;
+
+        if (!TryCreateEllipseFromAxisEnd(_pendingEllipsePoints[0], _pendingEllipsePoints[1], mouseWorld, out var geometry))
+            return;
+
+        items.Add(new CadTransientEllipse(geometry.Center, geometry.RadiusX, geometry.RadiusY, style));
+        AddEllipseRadiusMeasurements(items, geometry, auxiliaryStyle);
+    }
+
+    private void AddEllipseArcPreview(
+        List<CadTransientItem> items,
+        CadPointD mouseWorld,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        if (_pendingEllipsePoints.Count == 0)
+            return;
+
+        var previewPoints = _pendingEllipsePoints.Concat([mouseWorld]).ToArray();
+
+        if (previewPoints.Length >= 2)
+            items.Add(new CadTransientLine(previewPoints[0], previewPoints[1], auxiliaryStyle));
+
+        if (previewPoints.Length < 3 ||
+            !TryCreateEllipseFromAxisEnd(previewPoints[0], previewPoints[1], previewPoints[2], out var ellipse))
+        {
+            return;
+        }
+
+        items.Add(new CadTransientEllipse(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, auxiliaryStyle));
+        AddEllipseRadiusMeasurements(items, ellipse, auxiliaryStyle);
+
+        if (previewPoints.Length >= 4)
+        {
+            var startAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, previewPoints[3]);
+            var startPoint = GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, startAngle);
+            items.Add(new CadTransientLine(ellipse.Center, startPoint, auxiliaryStyle));
+        }
+
+        if (previewPoints.Length < 5)
+            return;
+
+        if (!TryCreateEllipseArcFromPoints(
+            previewPoints[0],
+            previewPoints[1],
+            previewPoints[2],
+            previewPoints[3],
+            previewPoints[4],
+            out var arc))
+        {
+            return;
+        }
+
+        items.Add(new CadTransientEllipseArc(
+            arc.Center,
+            arc.RadiusX,
+            arc.RadiusY,
+            arc.StartAngleRadians,
+            arc.SweepAngleRadians,
+            style));
+        var endPoint = GetEllipsePoint(arc.Center, arc.RadiusX, arc.RadiusY, arc.StartAngleRadians + arc.SweepAngleRadians);
+        items.Add(new CadTransientLine(arc.Center, endPoint, auxiliaryStyle));
+        AddMeasurementPreview(
+            items,
+            arc.Center,
+            endPoint,
+            $"A {FormatAngleDegrees(Math.Abs(arc.SweepAngleRadians))}",
+            auxiliaryStyle);
+    }
+
+    private void AddEllipseRadiusMeasurements(
+        List<CadTransientItem> items,
+        EllipseDrawingGeometry geometry,
+        CadTransientStyle style)
+    {
+        AddMeasurementPreview(
+            items,
+            geometry.Center,
+            new CadPointD(geometry.Center.X + geometry.RadiusX, geometry.Center.Y),
+            $"X {FormatLength(geometry.RadiusX)}",
+            style);
+        AddMeasurementPreview(
+            items,
+            geometry.Center,
+            new CadPointD(geometry.Center.X, geometry.Center.Y + geometry.RadiusY),
+            $"Y {FormatLength(geometry.RadiusY)}",
+            style);
+    }
+
+    private void AddArcDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
+    {
+        var style = CreateDrawingArcTransientStyle();
+        var auxiliaryStyle = CreateDrawingAuxiliaryStyle(DrawingArcStrokeColor);
+
+        if (CadCanvasToolMode == CadCanvasToolMode.ArcContinue)
+        {
+            if (TryGetContinueArcBase(out var start, out var tangent) &&
+                TryCreateArcFromStartEndTangent(start, mouseWorld, tangent, out var geometry))
+            {
+                AddArcGeometryPreview(items, geometry, style, auxiliaryStyle);
+                items.Add(new CadTransientLine(start, start + tangent.Normalize() * geometry.Radius * 0.35, auxiliaryStyle));
+                AddArcMeasurementPreview(
+                    items,
+                    start,
+                    mouseWorld,
+                    $"R {FormatLength(geometry.Radius)}",
+                    auxiliaryStyle);
+            }
+
+            return;
+        }
+
+        if (_pendingWorldPoint is not { } first)
+            return;
+
+        if (_pendingArcStartPoint is not { } second)
+        {
+            AddArcFirstStagePreview(items, first, mouseWorld, auxiliaryStyle);
+            return;
+        }
+
+        if (!TryCreateArcFromMode(CadCanvasToolMode, first, second, mouseWorld, out var arcGeometry))
+        {
+            items.Add(new CadTransientLine(first, second, auxiliaryStyle));
+            items.Add(new CadTransientLine(second, mouseWorld, auxiliaryStyle));
+            return;
+        }
+
+        AddArcGeometryPreview(items, arcGeometry, style, auxiliaryStyle);
+        AddArcModeAuxiliaryPreview(items, first, second, mouseWorld, arcGeometry, auxiliaryStyle);
+        AddArcModeMeasurementPreview(items, first, second, mouseWorld, arcGeometry, auxiliaryStyle);
+    }
+
+    private void AddArcFirstStagePreview(
+        List<CadTransientItem> items,
+        CadPointD first,
+        CadPointD mouseWorld,
+        CadTransientStyle auxiliaryStyle)
+    {
+        items.Add(new CadTransientLine(first, mouseWorld, auxiliaryStyle));
+
+        switch (CadCanvasToolMode)
+        {
+            case CadCanvasToolMode.ArcStartCenterEnd:
+            case CadCanvasToolMode.ArcStartCenterAngle:
+            case CadCanvasToolMode.ArcStartCenterLength:
+                var startCenterRadius = first.DistanceTo(mouseWorld);
+                if (startCenterRadius > double.Epsilon)
+                    items.Add(new CadTransientCircle(mouseWorld, startCenterRadius, auxiliaryStyle));
+                break;
+
+            case CadCanvasToolMode.ArcCenterStartEnd:
+            case CadCanvasToolMode.ArcCenterStartAngle:
+            case CadCanvasToolMode.ArcCenterStartLength:
+                var centerStartRadius = first.DistanceTo(mouseWorld);
+                if (centerStartRadius > double.Epsilon)
+                    items.Add(new CadTransientCircle(first, centerStartRadius, auxiliaryStyle));
+                break;
+        }
+    }
+
+    private static void AddArcGeometryPreview(
+        List<CadTransientItem> items,
+        ArcDrawingGeometry geometry,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        items.Add(new CadTransientArc(
+            geometry.Center,
+            geometry.Radius,
+            geometry.StartAngleRadians,
+            geometry.SweepAngleRadians,
+            style));
+
+        items.Add(new CadTransientLine(
+            geometry.Center,
+            GetArcPoint(geometry.Center, geometry.Radius, geometry.StartAngleRadians),
+            auxiliaryStyle));
+        items.Add(new CadTransientLine(
+            geometry.Center,
+            GetArcPoint(geometry.Center, geometry.Radius, geometry.StartAngleRadians + geometry.SweepAngleRadians),
+            auxiliaryStyle));
+    }
+
+    private void AddArcModeAuxiliaryPreview(
+        List<CadTransientItem> items,
+        CadPointD first,
+        CadPointD second,
+        CadPointD third,
+        ArcDrawingGeometry geometry,
+        CadTransientStyle auxiliaryStyle)
+    {
+        switch (CadCanvasToolMode)
+        {
+            case CadCanvasToolMode.ArcThreePoint:
+                items.Add(new CadTransientLine(first, second, auxiliaryStyle));
+                items.Add(new CadTransientLine(second, third, auxiliaryStyle));
+                break;
+
+            case CadCanvasToolMode.ArcStartEndDirection:
+                items.Add(new CadTransientLine(first, third, auxiliaryStyle));
+                break;
+
+            case CadCanvasToolMode.ArcStartEndAngle:
+            case CadCanvasToolMode.ArcStartEndRadius:
+                items.Add(new CadTransientLine(first, second, auxiliaryStyle));
+                items.Add(new CadTransientLine(Midpoint(first, second), third, auxiliaryStyle));
+                break;
+
+            case CadCanvasToolMode.ArcStartCenterLength:
+            case CadCanvasToolMode.ArcCenterStartLength:
+                items.Add(new CadTransientLine(GetArcPoint(geometry.Center, geometry.Radius, geometry.StartAngleRadians), third, auxiliaryStyle));
+                break;
+        }
+    }
+
+    private void AddArcModeMeasurementPreview(
+        List<CadTransientItem> items,
+        CadPointD first,
+        CadPointD second,
+        CadPointD third,
+        ArcDrawingGeometry geometry,
+        CadTransientStyle auxiliaryStyle)
+    {
+        var startPoint = GetArcPoint(geometry.Center, geometry.Radius, geometry.StartAngleRadians);
+        var endPoint = GetArcPoint(geometry.Center, geometry.Radius, geometry.StartAngleRadians + geometry.SweepAngleRadians);
+
+        switch (CadCanvasToolMode)
+        {
+            case CadCanvasToolMode.ArcThreePoint:
+                break;
+
+            case CadCanvasToolMode.ArcStartCenterEnd:
+            case CadCanvasToolMode.ArcStartCenterAngle:
+            case CadCanvasToolMode.ArcCenterStartEnd:
+            case CadCanvasToolMode.ArcCenterStartAngle:
+            case CadCanvasToolMode.ArcStartEndAngle:
+                AddArcMeasurementPreview(
+                    items,
+                    geometry.Center,
+                    endPoint,
+                    $"A {FormatAngleDegrees(Math.Abs(geometry.SweepAngleRadians))}",
+                    auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.ArcStartCenterLength:
+            case CadCanvasToolMode.ArcCenterStartLength:
+                AddArcMeasurementPreview(
+                    items,
+                    startPoint,
+                    endPoint,
+                    $"L {FormatLength(startPoint.DistanceTo(endPoint))}",
+                    auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.ArcStartEndRadius:
+                AddArcMeasurementPreview(
+                    items,
+                    geometry.Center,
+                    startPoint,
+                    $"R {FormatLength(geometry.Radius)}",
+                    auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.ArcStartEndDirection:
+                AddArcMeasurementPreview(
+                    items,
+                    first,
+                    third,
+                    $"D {FormatAngleDegrees(NormalizePositive(AngleFrom(first, third)))}",
+                    auxiliaryStyle);
+                break;
+        }
+    }
+
+    private void AddArcMeasurementPreview(
+        List<CadTransientItem> items,
+        CadPointD lineStart,
+        CadPointD lineEnd,
+        string text,
+        CadTransientStyle style)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return;
+
+        AddMeasurementPreview(items, lineStart, lineEnd, text, style);
+    }
+
+    private void AddCircleDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
+    {
+        var style = CreateDrawingCircleTransientStyle();
+        var auxiliaryStyle = CreateDrawingAuxiliaryStyle(DrawingCircleStrokeColor);
+
+        switch (CadCanvasToolMode)
+        {
+            case CadCanvasToolMode.CircleCenterRadius:
+                if (_pendingWorldPoint is { } centerRadiusCenter)
+                    AddCircleCenterRadiusPreview(items, centerRadiusCenter, mouseWorld, style, auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.CircleCenterDiameter:
+                if (_pendingWorldPoint is { } centerDiameterCenter)
+                    AddCircleCenterDiameterPreview(items, centerDiameterCenter, mouseWorld, style, auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.CircleTwoPoint:
+                if (_pendingWorldPoint is { } firstDiameterPoint)
+                    AddCircleTwoPointPreview(items, firstDiameterPoint, mouseWorld, style, auxiliaryStyle);
+                break;
+
+            case CadCanvasToolMode.CircleThreePoint:
+                if (_pendingWorldPoint is { } firstPoint &&
+                    _pendingCircleSecondPoint is { } secondPoint)
+                {
+                    AddCircleThreePointPreview(items, firstPoint, secondPoint, mouseWorld, style, auxiliaryStyle);
+                }
+                else if (_pendingWorldPoint is { } firstOnlyPoint)
+                {
+                    items.Add(new CadTransientLine(firstOnlyPoint, mouseWorld, auxiliaryStyle));
+                }
+                break;
+        }
+    }
+
+    private void AddCircleCenterRadiusPreview(
+        List<CadTransientItem> items,
+        CadPointD center,
+        CadPointD edge,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        var radius = center.DistanceTo(edge);
+        if (!IsValidCircleGeometry(radius))
+            return;
+
+        items.Add(new CadTransientCircle(center, radius, style));
+        items.Add(new CadTransientLine(center, edge, auxiliaryStyle));
+        AddCircleMeasurementPreview(items, center, edge, radius, auxiliaryStyle);
+    }
+
+    private void AddCircleCenterDiameterPreview(
+        List<CadTransientItem> items,
+        CadPointD center,
+        CadPointD diameterPoint,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        var radius = center.DistanceTo(diameterPoint) * 0.5;
+        if (!IsValidCircleGeometry(radius))
+            return;
+
+        items.Add(new CadTransientCircle(center, radius, style));
+        var direction = diameterPoint - center;
+        var unit = direction.Normalize();
+        if (unit == CadVectorD.Zero)
+            return;
+
+        var start = center - unit * radius;
+        var end = center + unit * radius;
+        items.Add(new CadTransientLine(start, end, auxiliaryStyle));
+        AddCircleMeasurementPreview(items, start, end, radius * 2.0, auxiliaryStyle);
+    }
+
+    private void AddCircleTwoPointPreview(
+        List<CadTransientItem> items,
+        CadPointD first,
+        CadPointD second,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        if (!TryCreateCircleFromDiameterPoints(first, second, out var center, out var radius))
+            return;
+
+        items.Add(new CadTransientCircle(center, radius, style));
+        items.Add(new CadTransientLine(first, second, auxiliaryStyle));
+        AddCircleMeasurementPreview(items, first, second, radius * 2.0, auxiliaryStyle);
+    }
+
+    private void AddCircleThreePointPreview(
+        List<CadTransientItem> items,
+        CadPointD first,
+        CadPointD second,
+        CadPointD third,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        items.Add(new CadTransientLine(first, second, auxiliaryStyle));
+        items.Add(new CadTransientLine(second, third, auxiliaryStyle));
+
+        if (!TryCreateCircleFromThreePoints(first, second, third, out var center, out var radius))
+            return;
+
+        items.Add(new CadTransientCircle(center, radius, style));
+    }
+
+    private void AddCircleMeasurementPreview(
+        List<CadTransientItem> items,
+        CadPointD lineStart,
+        CadPointD lineEnd,
+        double value,
+        CadTransientStyle style)
+    {
+        if (value <= double.Epsilon)
+            return;
+
+        AddMeasurementPreview(items, lineStart, lineEnd, FormatLength(value), style);
+    }
+
+    private void AddMeasurementPreview(
+        List<CadTransientItem> items,
+        CadPointD lineStart,
+        CadPointD lineEnd,
+        string text,
+        CadTransientStyle style)
+    {
+        var zoom = Math.Max(CadEditor.Viewport.Zoom, double.Epsilon);
+        var textHeight = 13.0 / zoom;
+        var padding = 8.0 / zoom;
+        var direction = lineEnd - lineStart;
+        var unit = direction.Normalize();
+        if (unit == CadVectorD.Zero)
+            unit = CadVectorD.UnitX;
+
+        var normal = unit.Perpendicular();
+        var midpoint = lineStart + direction * 0.5;
+        var position = midpoint + normal * padding + unit * padding;
+        var width = EstimateTransientLabelWidth(text, textHeight);
+        var boundsHeight = textHeight * 1.35;
+        var bounds = CadRectD.FromLTRB(
+            position.X,
+            position.Y,
+            position.X + width,
+            position.Y + boundsHeight);
+
+        items.Add(new CadTransientText(text, position, textHeight, bounds, style));
+    }
+
+    private string FormatLength(double value)
+    {
+        var precision = Math.Clamp(CadEditor.Document.DocumentSettings.LengthPrecision, 0, 12);
+        return value.ToString($"F{precision}");
+    }
+
+    private string FormatAngleDegrees(double radians)
+    {
+        var precision = Math.Clamp(CadEditor.Document.DocumentSettings.AnglePrecision, 0, 12);
+        return CadArc.RadiansToDegrees(radians).ToString($"F{precision}");
+    }
+
+    private static double EstimateTransientLabelWidth(string text, double height)
+    {
+        return Math.Max(height * 2.0, text.Length * height * 0.85);
     }
 
     private void AddPolylineVertexOrComplete(CadPointD world)
@@ -3060,6 +3773,21 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         switch (grid.SnapMarkerType)
         {
+            case CadSnapMarkerType.InfiniteCross:
+                var visibleBounds = CadEditor.Viewport.VisibleWorldBounds;
+                if (visibleBounds.IsEmpty)
+                    break;
+
+                items.Add(new CadTransientLine(
+                    new CadPointD(visibleBounds.MinX, snappedWorld.Y),
+                    new CadPointD(visibleBounds.MaxX, snappedWorld.Y),
+                    style));
+                items.Add(new CadTransientLine(
+                    new CadPointD(snappedWorld.X, visibleBounds.MinY),
+                    new CadPointD(snappedWorld.X, visibleBounds.MaxY),
+                    style));
+                break;
+
             case CadSnapMarkerType.X:
                 items.Add(new CadTransientLine(
                     new CadPointD(snappedWorld.X - halfSize, snappedWorld.Y - halfSize),
@@ -3292,6 +4020,273 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                IsValidArcGeometry(radius, sweepAngleRadians);
     }
 
+    private bool TryCreateArcFromMode(
+        CadCanvasToolMode toolMode,
+        CadPointD first,
+        CadPointD second,
+        CadPointD third,
+        out ArcDrawingGeometry geometry)
+    {
+        return toolMode switch
+        {
+            CadCanvasToolMode.ArcThreePoint =>
+                TryCreateArcFromThreePoints(first, second, third, out geometry),
+            CadCanvasToolMode.ArcStartCenterEnd =>
+                TryCreateArcFromCenterStartEnd(second, first, third, out geometry),
+            CadCanvasToolMode.ArcStartCenterAngle =>
+                TryCreateArcFromCenterStartEnd(second, first, third, out geometry),
+            CadCanvasToolMode.ArcStartCenterLength =>
+                TryCreateArcFromCenterStartLength(second, first, third, out geometry),
+            CadCanvasToolMode.ArcStartEndAngle =>
+                TryCreateArcFromStartEndAngle(first, second, third, out geometry),
+            CadCanvasToolMode.ArcStartEndDirection =>
+                TryCreateArcFromStartEndTangent(first, second, third - first, out geometry),
+            CadCanvasToolMode.ArcStartEndRadius =>
+                TryCreateArcFromStartEndRadius(first, second, third, out geometry),
+            CadCanvasToolMode.ArcCenterStartEnd =>
+                TryCreateArcFromCenterStartEnd(first, second, third, out geometry),
+            CadCanvasToolMode.ArcCenterStartAngle =>
+                TryCreateArcFromCenterStartEnd(first, second, third, out geometry),
+            CadCanvasToolMode.ArcCenterStartLength =>
+                TryCreateArcFromCenterStartLength(first, second, third, out geometry),
+            _ => FailArcGeometry(out geometry)
+        };
+    }
+
+    private static bool TryCreateArcFromCenterStartEnd(
+        CadPointD center,
+        CadPointD start,
+        CadPointD endDirection,
+        out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+
+        if (!TryCreateArcGeometry(
+            center,
+            start,
+            endDirection,
+            out var radius,
+            out var startAngleRadians,
+            out var sweepAngleRadians))
+        {
+            return false;
+        }
+
+        geometry = new ArcDrawingGeometry(center, radius, startAngleRadians, sweepAngleRadians);
+        return true;
+    }
+
+    private static bool TryCreateArcFromCenterStartLength(
+        CadPointD center,
+        CadPointD start,
+        CadPointD lengthPoint,
+        out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+        var radius = center.DistanceTo(start);
+        var chordLength = start.DistanceTo(lengthPoint);
+        if (radius <= double.Epsilon || chordLength <= double.Epsilon)
+            return false;
+
+        chordLength = Math.Min(chordLength, radius * 2.0);
+        var ratio = Math.Clamp(chordLength / (radius * 2.0), 0.0, 1.0);
+        var sweepAngleRadians = 2.0 * Math.Asin(ratio);
+        if (!IsValidArcGeometry(radius, sweepAngleRadians))
+            return false;
+
+        geometry = new ArcDrawingGeometry(center, radius, AngleFrom(center, start), sweepAngleRadians);
+        return true;
+    }
+
+    private static bool TryCreateArcFromThreePoints(
+        CadPointD start,
+        CadPointD through,
+        CadPointD end,
+        out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+
+        if (!TryCreateCircleFromThreePoints(start, through, end, out var center, out var radius))
+            return false;
+
+        var startAngle = AngleFrom(center, start);
+        var throughAngle = AngleFrom(center, through);
+        var endAngle = AngleFrom(center, end);
+        var positiveSweep = ResolveSweepAngle(startAngle, endAngle, counterClockwise: true);
+        var sweepAngle = IsAngleOnSweep(startAngle, positiveSweep, throughAngle)
+            ? positiveSweep
+            : ResolveSweepAngle(startAngle, endAngle, counterClockwise: false);
+        if (!IsValidArcGeometry(radius, sweepAngle))
+            return false;
+
+        geometry = new ArcDrawingGeometry(center, radius, startAngle, sweepAngle);
+        return true;
+    }
+
+    private static bool TryCreateArcFromStartEndAngle(
+        CadPointD start,
+        CadPointD end,
+        CadPointD anglePoint,
+        out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+        var chord = end - start;
+        var chordLength = chord.Length;
+        if (chordLength <= double.Epsilon)
+            return false;
+
+        var midpoint = Midpoint(start, end);
+        var leftNormal = chord.Normalize().Perpendicular();
+        var signedSagitta = (anglePoint - midpoint).Dot(leftNormal);
+        if (Math.Abs(signedSagitta) <= double.Epsilon)
+            return false;
+
+        var sweepMagnitude = 4.0 * Math.Atan2(Math.Abs(signedSagitta), chordLength * 0.5);
+        var sweepAngle = -Math.Sign(signedSagitta) * sweepMagnitude;
+        return TryCreateArcFromStartEndSweep(start, end, sweepAngle, out geometry);
+    }
+
+    private static bool TryCreateArcFromStartEndRadius(
+        CadPointD start,
+        CadPointD end,
+        CadPointD radiusPoint,
+        out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+        var chord = end - start;
+        var chordLength = chord.Length;
+        if (chordLength <= double.Epsilon)
+            return false;
+
+        var midpoint = Midpoint(start, end);
+        var leftNormal = chord.Normalize().Perpendicular();
+        var side = (radiusPoint - midpoint).Dot(leftNormal);
+        if (Math.Abs(side) <= double.Epsilon)
+            side = -1.0;
+
+        var radius = Math.Max(start.DistanceTo(radiusPoint), chordLength * 0.5);
+        var ratio = Math.Clamp((chordLength * 0.5) / radius, 0.0, 1.0);
+        var sweepMagnitude = 2.0 * Math.Asin(ratio);
+        var sweepAngle = -Math.Sign(side) * sweepMagnitude;
+        return TryCreateArcFromStartEndSweep(start, end, sweepAngle, out geometry);
+    }
+
+    private static bool TryCreateArcFromStartEndTangent(
+        CadPointD start,
+        CadPointD end,
+        CadVectorD tangent,
+        out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+        var chord = end - start;
+        var tangentUnit = tangent.Normalize();
+        if (chord.Length <= double.Epsilon || tangentUnit == CadVectorD.Zero)
+            return false;
+
+        var centerDirection = tangentUnit.Perpendicular();
+        var denominator = 2.0 * chord.Dot(centerDirection);
+        if (Math.Abs(denominator) <= 1e-9)
+            return false;
+
+        var signedRadius = chord.LengthSquared / denominator;
+        var radius = Math.Abs(signedRadius);
+        var center = start + centerDirection * signedRadius;
+        var startAngle = AngleFrom(center, start);
+        var endAngle = AngleFrom(center, end);
+        var sweepAngle = signedRadius > 0
+            ? ResolveSweepAngle(startAngle, endAngle, counterClockwise: true)
+            : ResolveSweepAngle(startAngle, endAngle, counterClockwise: false);
+
+        if (!IsValidArcGeometry(radius, sweepAngle))
+            return false;
+
+        geometry = new ArcDrawingGeometry(center, radius, startAngle, sweepAngle);
+        return true;
+    }
+
+    private static bool TryCreateArcFromStartEndSweep(
+        CadPointD start,
+        CadPointD end,
+        double sweepAngleRadians,
+        out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+        var chord = end - start;
+        var chordLength = chord.Length;
+        var sweepMagnitude = Math.Abs(sweepAngleRadians);
+        if (chordLength <= double.Epsilon ||
+            sweepMagnitude <= 1e-9 ||
+            sweepMagnitude >= TwoPi - 1e-9)
+        {
+            return false;
+        }
+
+        var halfChord = chordLength * 0.5;
+        var halfSweep = sweepMagnitude * 0.5;
+        var sinHalfSweep = Math.Sin(halfSweep);
+        var tanHalfSweep = Math.Tan(halfSweep);
+        if (Math.Abs(sinHalfSweep) <= 1e-9 || Math.Abs(tanHalfSweep) <= 1e-9)
+            return false;
+
+        var radius = halfChord / Math.Abs(sinHalfSweep);
+        var centerOffset = halfChord / tanHalfSweep;
+        var midpoint = Midpoint(start, end);
+        var leftNormal = chord.Normalize().Perpendicular();
+        var center = sweepAngleRadians > 0
+            ? midpoint + leftNormal * centerOffset
+            : midpoint - leftNormal * centerOffset;
+        var startAngle = AngleFrom(center, start);
+
+        if (!IsValidArcGeometry(radius, sweepAngleRadians))
+            return false;
+
+        geometry = new ArcDrawingGeometry(center, radius, startAngle, sweepAngleRadians);
+        return true;
+    }
+
+    private bool TryGetContinueArcBase(out CadPointD start, out CadVectorD tangent)
+    {
+        foreach (var entity in CadEditor.Document.Entities.Values.Reverse())
+        {
+            if (entity.IsErased)
+                continue;
+
+            switch (entity)
+            {
+                case CadArc arc:
+                    start = arc.EndPoint;
+                    var radiusVector = start - arc.Center;
+                    tangent = arc.SweepAngleRadians > 0
+                        ? radiusVector.Perpendicular().Normalize()
+                        : (-radiusVector.Perpendicular()).Normalize();
+                    return tangent != CadVectorD.Zero;
+
+                case CadLine line:
+                    start = line.End;
+                    tangent = (line.End - line.Start).Normalize();
+                    return tangent != CadVectorD.Zero;
+            }
+        }
+
+        start = CadPointD.Origin;
+        tangent = CadVectorD.Zero;
+        return false;
+    }
+
+    private static bool FailArcGeometry(out ArcDrawingGeometry geometry)
+    {
+        geometry = default;
+        return false;
+    }
+
+    private static bool IsAngleOnSweep(double startAngleRadians, double sweepAngleRadians, double targetAngleRadians)
+    {
+        if (sweepAngleRadians > 0)
+            return NormalizePositive(targetAngleRadians - startAngleRadians) <= sweepAngleRadians + 1e-9;
+
+        return NormalizePositive(startAngleRadians - targetAngleRadians) <= -sweepAngleRadians + 1e-9;
+    }
+
     private static bool IsValidArcGeometry(double radius, double sweepAngleRadians)
     {
         return radius > double.Epsilon &&
@@ -3299,16 +4294,165 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                Math.Abs(sweepAngleRadians) <= TwoPi;
     }
 
-    private static bool TryCreateEllipseGeometry(
-        CadRectD bounds,
+    private static bool TryCreateCircleFromDiameterPoints(
+        CadPointD first,
+        CadPointD second,
         out CadPointD center,
-        out double radiusX,
-        out double radiusY)
+        out double radius)
     {
-        center = bounds.Center;
-        radiusX = bounds.Width * 0.5;
-        radiusY = bounds.Height * 0.5;
-        return IsValidEllipseGeometry(radiusX, radiusY);
+        center = Midpoint(first, second);
+        radius = first.DistanceTo(second) * 0.5;
+        return IsValidCircleGeometry(radius);
+    }
+
+    private static bool TryCreateCircleFromThreePoints(
+        CadPointD first,
+        CadPointD second,
+        CadPointD third,
+        out CadPointD center,
+        out double radius)
+    {
+        center = CadPointD.Origin;
+        radius = 0;
+
+        var d = 2.0 * (
+            first.X * (second.Y - third.Y) +
+            second.X * (third.Y - first.Y) +
+            third.X * (first.Y - second.Y));
+        if (Math.Abs(d) <= 1e-9)
+            return false;
+
+        var firstSquared = first.X * first.X + first.Y * first.Y;
+        var secondSquared = second.X * second.X + second.Y * second.Y;
+        var thirdSquared = third.X * third.X + third.Y * third.Y;
+        center = new CadPointD(
+            (firstSquared * (second.Y - third.Y) +
+             secondSquared * (third.Y - first.Y) +
+             thirdSquared * (first.Y - second.Y)) / d,
+            (firstSquared * (third.X - second.X) +
+             secondSquared * (first.X - third.X) +
+             thirdSquared * (second.X - first.X)) / d);
+        radius = center.DistanceTo(first);
+
+        return IsValidCircleGeometry(radius) &&
+               Math.Abs(center.DistanceTo(second) - radius) <= Math.Max(1e-7, radius * 1e-7) &&
+               Math.Abs(center.DistanceTo(third) - radius) <= Math.Max(1e-7, radius * 1e-7);
+    }
+
+    private static bool IsValidCircleGeometry(double radius)
+    {
+        return radius > double.Epsilon &&
+               !double.IsNaN(radius) &&
+               !double.IsInfinity(radius);
+    }
+
+    private static CadPointD Midpoint(CadPointD first, CadPointD second)
+    {
+        return new CadPointD((first.X + second.X) * 0.5, (first.Y + second.Y) * 0.5);
+    }
+
+    private static bool TryCreateEllipseFromCenter(
+        CadPointD center,
+        CadPointD axisEnd,
+        CadPointD otherAxisPoint,
+        out EllipseDrawingGeometry geometry)
+    {
+        geometry = default;
+        var axisVector = axisEnd - center;
+        if (axisVector.Length <= double.Epsilon)
+            return false;
+
+        double radiusX;
+        double radiusY;
+        if (Math.Abs(axisVector.X) >= Math.Abs(axisVector.Y))
+        {
+            radiusX = Math.Abs(axisVector.X);
+            radiusY = Math.Abs(otherAxisPoint.Y - center.Y);
+        }
+        else
+        {
+            radiusX = Math.Abs(otherAxisPoint.X - center.X);
+            radiusY = Math.Abs(axisVector.Y);
+        }
+
+        if (!IsValidEllipseGeometry(radiusX, radiusY))
+            return false;
+
+        geometry = new EllipseDrawingGeometry(center, radiusX, radiusY);
+        return true;
+    }
+
+    private static bool TryCreateEllipseFromAxisEnd(
+        CadPointD axisStart,
+        CadPointD axisEnd,
+        CadPointD otherAxisPoint,
+        out EllipseDrawingGeometry geometry)
+    {
+        geometry = default;
+        var center = Midpoint(axisStart, axisEnd);
+        var axisVector = axisEnd - axisStart;
+        if (axisVector.Length <= double.Epsilon)
+            return false;
+
+        double radiusX;
+        double radiusY;
+        if (Math.Abs(axisVector.X) >= Math.Abs(axisVector.Y))
+        {
+            radiusX = Math.Abs(axisVector.X) * 0.5;
+            radiusY = Math.Abs(otherAxisPoint.Y - center.Y);
+        }
+        else
+        {
+            radiusX = Math.Abs(otherAxisPoint.X - center.X);
+            radiusY = Math.Abs(axisVector.Y) * 0.5;
+        }
+
+        if (!IsValidEllipseGeometry(radiusX, radiusY))
+            return false;
+
+        geometry = new EllipseDrawingGeometry(center, radiusX, radiusY);
+        return true;
+    }
+
+    private static bool TryCreateEllipseArcFromPoints(
+        CadPointD axisStart,
+        CadPointD axisEnd,
+        CadPointD otherAxisPoint,
+        CadPointD startAnglePoint,
+        CadPointD endAnglePoint,
+        out EllipseArcDrawingGeometry geometry)
+    {
+        geometry = default;
+        if (!TryCreateEllipseFromAxisEnd(axisStart, axisEnd, otherAxisPoint, out var ellipse))
+            return false;
+
+        var startAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, startAnglePoint);
+        var endAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, endAnglePoint);
+        var sweepAngle = ResolveSweepAngle(startAngle, endAngle, counterClockwise: true);
+        if (!IsValidArcGeometry(1.0, sweepAngle))
+            return false;
+
+        geometry = new EllipseArcDrawingGeometry(
+            ellipse.Center,
+            ellipse.RadiusX,
+            ellipse.RadiusY,
+            startAngle,
+            sweepAngle);
+        return true;
+    }
+
+    private static double EllipseAngleFrom(CadPointD center, double radiusX, double radiusY, CadPointD point)
+    {
+        return Math.Atan2(
+            (point.Y - center.Y) / Math.Max(radiusY, double.Epsilon),
+            (point.X - center.X) / Math.Max(radiusX, double.Epsilon));
+    }
+
+    private static CadPointD GetEllipsePoint(CadPointD center, double radiusX, double radiusY, double angleRadians)
+    {
+        return new CadPointD(
+            center.X + Math.Cos(angleRadians) * radiusX,
+            center.Y + Math.Sin(angleRadians) * radiusY);
     }
 
     private static bool IsValidEllipseGeometry(double radiusX, double radiusY)
@@ -3447,7 +4591,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private static bool CanDuplicate(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadEllipse or CadArc or CadRectangle or CadPolyline or CadSpline or CadText or CadShapeText;
+        return entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadArc or CadRectangle or CadPolyline or CadSpline or CadText or CadShapeText;
     }
 
     public void Dispose()

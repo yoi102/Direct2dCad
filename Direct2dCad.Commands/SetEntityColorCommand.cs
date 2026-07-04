@@ -60,6 +60,7 @@ public sealed class SetEntityColorCommand : ICadCommand
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
             CadEllipse ellipse => ellipse.GraphicStyleId,
+            CadEllipseArc ellipseArc => ellipseArc.GraphicStyleId,
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
@@ -83,6 +84,9 @@ public sealed class SetEntityColorCommand : ICadCommand
                 break;
             case CadEllipse ellipse:
                 ellipse.SetGraphicStyleInternal(styleId);
+                break;
+            case CadEllipseArc ellipseArc:
+                ellipseArc.SetGraphicStyleInternal(styleId);
                 break;
             case CadRectangle rectangle:
                 rectangle.SetGraphicStyleInternal(styleId);

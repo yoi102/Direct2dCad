@@ -33,6 +33,7 @@ internal static class CadHitTestStyleResolver
         return entity is CadLine or
             CadCircle or
             CadEllipse or
+            CadEllipseArc or
             CadRectangle or
             CadArc or
             CadPolyline or
@@ -76,6 +77,7 @@ internal static class CadHitTestStyleResolver
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
             CadEllipse ellipse => ellipse.GraphicStyleId,
+            CadEllipseArc ellipseArc => ellipseArc.GraphicStyleId,
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,

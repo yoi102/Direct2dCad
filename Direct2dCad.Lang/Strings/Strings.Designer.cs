@@ -106,11 +106,110 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Center, Start, Angle Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcCenterStartAngle {
+            get {
+                return ResourceManager.GetString("ArcCenterStartAngle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Center, Start, End Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcCenterStartEnd {
+            get {
+                return ResourceManager.GetString("ArcCenterStartEnd", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Center, Start, Length Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcCenterStartLength {
+            get {
+                return ResourceManager.GetString("ArcCenterStartLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Continue Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcContinue {
+            get {
+                return ResourceManager.GetString("ArcContinue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Arc drawing 的本地化字符串。
         /// </summary>
         public static string ArcDrawing {
             get {
                 return ResourceManager.GetString("ArcDrawing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Start, Center, Angle Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcStartCenterAngle {
+            get {
+                return ResourceManager.GetString("ArcStartCenterAngle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Start, Center, End Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcStartCenterEnd {
+            get {
+                return ResourceManager.GetString("ArcStartCenterEnd", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Start, Center, Length Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcStartCenterLength {
+            get {
+                return ResourceManager.GetString("ArcStartCenterLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Start, End, Angle Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcStartEndAngle {
+            get {
+                return ResourceManager.GetString("ArcStartEndAngle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Start, End, Direction Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcStartEndDirection {
+            get {
+                return ResourceManager.GetString("ArcStartEndDirection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Start, End, Radius Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcStartEndRadius {
+            get {
+                return ResourceManager.GetString("ArcStartEndRadius", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 3-Point Arc 的本地化字符串。
+        /// </summary>
+        public static string ArcThreePoint {
+            get {
+                return ResourceManager.GetString("ArcThreePoint", resourceCulture);
             }
         }
         
@@ -223,11 +322,47 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Center, Diameter Circle 的本地化字符串。
+        /// </summary>
+        public static string CircleCenterDiameter {
+            get {
+                return ResourceManager.GetString("CircleCenterDiameter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Center, Radius Circle 的本地化字符串。
+        /// </summary>
+        public static string CircleCenterRadius {
+            get {
+                return ResourceManager.GetString("CircleCenterRadius", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Circle drawing 的本地化字符串。
         /// </summary>
         public static string CircleDrawing {
             get {
                 return ResourceManager.GetString("CircleDrawing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 3-Point Circle 的本地化字符串。
+        /// </summary>
+        public static string CircleThreePoint {
+            get {
+                return ResourceManager.GetString("CircleThreePoint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 2-Point Circle 的本地化字符串。
+        /// </summary>
+        public static string CircleTwoPoint {
+            get {
+                return ResourceManager.GetString("CircleTwoPoint", resourceCulture);
             }
         }
         
@@ -493,6 +628,33 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Elliptical Arc 的本地化字符串。
+        /// </summary>
+        public static string EllipseArc {
+            get {
+                return ResourceManager.GetString("EllipseArc", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Axis, End Ellipse 的本地化字符串。
+        /// </summary>
+        public static string EllipseAxisEnd {
+            get {
+                return ResourceManager.GetString("EllipseAxisEnd", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Center Ellipse 的本地化字符串。
+        /// </summary>
+        public static string EllipseCenter {
+            get {
+                return ResourceManager.GetString("EllipseCenter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Ellipse drawing 的本地化字符串。
         /// </summary>
         public static string EllipseDrawing {
@@ -615,6 +777,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Id {
             get {
                 return ResourceManager.GetString("Id", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Infinite Cross 的本地化字符串。
+        /// </summary>
+        public static string InfiniteCross {
+            get {
+                return ResourceManager.GetString("InfiniteCross", resourceCulture);
             }
         }
         

@@ -16,12 +16,42 @@ public enum CadCanvasToolMode
     Select,
     [LocalizedDescription("Line", typeof(Strings))]
     Line,
-    [LocalizedDescription("Circle", typeof(Strings))]
-    Circle,
-    [LocalizedDescription("Ellipse", typeof(Strings))]
-    Ellipse,
-    [LocalizedDescription("Arc", typeof(Strings))]
-    Arc,
+    [LocalizedDescription("CircleCenterRadius", typeof(Strings))]
+    CircleCenterRadius,
+    [LocalizedDescription("CircleCenterDiameter", typeof(Strings))]
+    CircleCenterDiameter,
+    [LocalizedDescription("CircleTwoPoint", typeof(Strings))]
+    CircleTwoPoint,
+    [LocalizedDescription("CircleThreePoint", typeof(Strings))]
+    CircleThreePoint,
+    [LocalizedDescription("EllipseCenter", typeof(Strings))]
+    EllipseCenter,
+    [LocalizedDescription("EllipseAxisEnd", typeof(Strings))]
+    EllipseAxisEnd,
+    [LocalizedDescription("EllipseArc", typeof(Strings))]
+    EllipseArc,
+    [LocalizedDescription("ArcThreePoint", typeof(Strings))]
+    ArcThreePoint,
+    [LocalizedDescription("ArcStartCenterEnd", typeof(Strings))]
+    ArcStartCenterEnd,
+    [LocalizedDescription("ArcStartCenterAngle", typeof(Strings))]
+    ArcStartCenterAngle,
+    [LocalizedDescription("ArcStartCenterLength", typeof(Strings))]
+    ArcStartCenterLength,
+    [LocalizedDescription("ArcStartEndAngle", typeof(Strings))]
+    ArcStartEndAngle,
+    [LocalizedDescription("ArcStartEndDirection", typeof(Strings))]
+    ArcStartEndDirection,
+    [LocalizedDescription("ArcStartEndRadius", typeof(Strings))]
+    ArcStartEndRadius,
+    [LocalizedDescription("ArcCenterStartEnd", typeof(Strings))]
+    ArcCenterStartEnd,
+    [LocalizedDescription("ArcCenterStartAngle", typeof(Strings))]
+    ArcCenterStartAngle,
+    [LocalizedDescription("ArcCenterStartLength", typeof(Strings))]
+    ArcCenterStartLength,
+    [LocalizedDescription("ArcContinue", typeof(Strings))]
+    ArcContinue,
     [LocalizedDescription("Rectangle", typeof(Strings))]
     Rectangle,
     [LocalizedDescription("Polyline", typeof(Strings))]

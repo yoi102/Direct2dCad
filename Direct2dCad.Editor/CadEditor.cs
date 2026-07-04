@@ -249,6 +249,35 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddEllipseArc(
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        double startAngleRadians,
+        double sweepAngleRadians,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        string name = "",
+        CadLineWeight? lineWeight = null,
+        int zIndex = 0,
+        bool isVisible = true)
+    {
+        var command = new AddEllipseArcCommand(
+            center,
+            radiusX,
+            radiusY,
+            startAngleRadians,
+            sweepAngleRadians,
+            layerId,
+            graphicStyleId,
+            name,
+            lineWeight,
+            zIndex,
+            isVisible);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddArc(
         CadPointD center,
         double radius,

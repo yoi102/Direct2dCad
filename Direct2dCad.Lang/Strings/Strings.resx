@@ -125,6 +125,50 @@
     <value>Arc</value>
     <comment>Arc</comment>
   </data>
+  <data name="ArcThreePoint" xml:space="preserve">
+    <value>3-Point Arc</value>
+    <comment>3-Point Arc</comment>
+  </data>
+  <data name="ArcStartCenterEnd" xml:space="preserve">
+    <value>Start, Center, End Arc</value>
+    <comment>Start, Center, End Arc</comment>
+  </data>
+  <data name="ArcStartCenterAngle" xml:space="preserve">
+    <value>Start, Center, Angle Arc</value>
+    <comment>Start, Center, Angle Arc</comment>
+  </data>
+  <data name="ArcStartCenterLength" xml:space="preserve">
+    <value>Start, Center, Length Arc</value>
+    <comment>Start, Center, Length Arc</comment>
+  </data>
+  <data name="ArcStartEndAngle" xml:space="preserve">
+    <value>Start, End, Angle Arc</value>
+    <comment>Start, End, Angle Arc</comment>
+  </data>
+  <data name="ArcStartEndDirection" xml:space="preserve">
+    <value>Start, End, Direction Arc</value>
+    <comment>Start, End, Direction Arc</comment>
+  </data>
+  <data name="ArcStartEndRadius" xml:space="preserve">
+    <value>Start, End, Radius Arc</value>
+    <comment>Start, End, Radius Arc</comment>
+  </data>
+  <data name="ArcCenterStartEnd" xml:space="preserve">
+    <value>Center, Start, End Arc</value>
+    <comment>Center, Start, End Arc</comment>
+  </data>
+  <data name="ArcCenterStartAngle" xml:space="preserve">
+    <value>Center, Start, Angle Arc</value>
+    <comment>Center, Start, Angle Arc</comment>
+  </data>
+  <data name="ArcCenterStartLength" xml:space="preserve">
+    <value>Center, Start, Length Arc</value>
+    <comment>Center, Start, Length Arc</comment>
+  </data>
+  <data name="ArcContinue" xml:space="preserve">
+    <value>Continue Arc</value>
+    <comment>Continue Arc</comment>
+  </data>
   <data name="Chinese" xml:space="preserve">
     <value>Chinese</value>
     <comment>Chinese</comment>
@@ -156,6 +200,10 @@
   <data name="Cross" xml:space="preserve">
     <value>Cross</value>
     <comment>Cross</comment>
+  </data>
+  <data name="InfiniteCross" xml:space="preserve">
+    <value>Infinite Cross</value>
+    <comment>Infinite Cross</comment>
   </data>
   <data name="Dots" xml:space="preserve">
     <value>Dots</value>
@@ -704,5 +752,33 @@
   <data name="TextDrawing" xml:space="preserve">
     <value>Text drawing</value>
     <comment>Text drawing</comment>
+  </data>
+  <data name="CircleCenterRadius" xml:space="preserve">
+    <value>Center, Radius Circle</value>
+    <comment>Center, Radius Circle</comment>
+  </data>
+  <data name="CircleCenterDiameter" xml:space="preserve">
+    <value>Center, Diameter Circle</value>
+    <comment>Center, Diameter Circle</comment>
+  </data>
+  <data name="CircleTwoPoint" xml:space="preserve">
+    <value>2-Point Circle</value>
+    <comment>2-Point Circle</comment>
+  </data>
+  <data name="CircleThreePoint" xml:space="preserve">
+    <value>3-Point Circle</value>
+    <comment>3-Point Circle</comment>
+  </data>
+  <data name="EllipseCenter" xml:space="preserve">
+    <value>Center Ellipse</value>
+    <comment>Center Ellipse</comment>
+  </data>
+  <data name="EllipseAxisEnd" xml:space="preserve">
+    <value>Axis, End Ellipse</value>
+    <comment>Axis, End Ellipse</comment>
+  </data>
+  <data name="EllipseArc" xml:space="preserve">
+    <value>Elliptical Arc</value>
+    <comment>Elliptical Arc</comment>
   </data>
 </root>

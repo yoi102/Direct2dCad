@@ -162,6 +162,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadLine => null,
             CadCircle => null,
             CadEllipse => null,
+            CadEllipseArc ellipseArc => CreateEllipseArcPathGeometry(ellipseArc),
             CadRectangle => null,
             CadArc arc => arc.IsFullCircle ? null : CreateArcPathGeometry(arc),
             CadPolyline polyline => CreatePolylineGeometry(polyline.Points, polyline.Closed),
@@ -237,6 +238,35 @@ internal sealed class Direct2DResourceCache : IDisposable
         return geometry;
     }
 
+    private ID2D1PathGeometry CreateEllipseArcPathGeometry(CadEllipseArc ellipseArc)
+    {
+        var geometry = Factory!.CreatePathGeometry();
+        using var sink = geometry.Open();
+        sink.BeginFigure(ToVector2(ellipseArc.StartPoint), FigureBegin.Hollow);
+        sink.AddArc(CreateEllipseArcSegment(
+            ellipseArc.EndPoint,
+            ellipseArc.RadiusX,
+            ellipseArc.RadiusY,
+            ellipseArc.SweepAngleRadians));
+        sink.EndFigure(FigureEnd.Open);
+        sink.Close();
+        return geometry;
+    }
+
+    private static ArcSegment CreateEllipseArcSegment(
+        CadPointD endPoint,
+        double radiusX,
+        double radiusY,
+        double sweepAngleRadians)
+    {
+        return new ArcSegment(
+            ToVector2(endPoint),
+            new Size((float)radiusX, (float)radiusY),
+            rotationAngle: 0,
+            ToD2DSweepDirection(sweepAngleRadians),
+            Math.Abs(sweepAngleRadians) > Math.PI ? ArcSize.Large : ArcSize.Small);
+    }
+
     private static ArcSegment CreateArcSegment(
         CadPointD endPoint,
         double radius,
@@ -294,6 +324,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
             CadEllipse ellipse => ellipse.GraphicStyleId,
+            CadEllipseArc ellipseArc => ellipseArc.GraphicStyleId,
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,

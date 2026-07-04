@@ -144,6 +144,19 @@ internal static class CadDocumentMapper
                     GraphicStyleId = x.GraphicStyleId?.Value,
                     FillStyleId = x.FillStyleId?.Value
                 })
+                .ToList(),
+            EllipseArcs = document.Entities.Values
+                .OfType<CadEllipseArc>()
+                .Select(x => new CadEllipseArcData
+                {
+                    Entity = ToEntityData(x),
+                    Center = ToData(x.Center),
+                    RadiusX = x.RadiusX,
+                    RadiusY = x.RadiusY,
+                    StartAngleRadians = x.StartAngleRadians,
+                    SweepAngleRadians = x.SweepAngleRadians,
+                    GraphicStyleId = x.GraphicStyleId?.Value
+                })
                 .ToList()
         };
     }
@@ -476,6 +489,23 @@ internal static class CadDocumentMapper
             document.AddEntityCore(ellipse);
         }
 
+        foreach (var ellipseArcData in ellipses.EllipseArcs ?? [])
+        {
+            var ellipseArc = new CadEllipseArc(
+                new EntityId(ellipseArcData.Entity.Id),
+                new LayerId(ellipseArcData.Entity.LayerId),
+                new BlockId(ellipseArcData.Entity.OwnerBlockId),
+                FromData(ellipseArcData.Center),
+                ellipseArcData.RadiusX,
+                ellipseArcData.RadiusY,
+                ellipseArcData.StartAngleRadians,
+                ellipseArcData.SweepAngleRadians,
+                ellipseArcData.Entity.Name);
+            ellipseArc.SetGraphicStyleInternal(ToStyleId(ellipseArcData.GraphicStyleId));
+            ApplyEntityState(document, ellipseArc, ellipseArcData.Entity);
+            document.AddEntityCore(ellipseArc);
+        }
+
         foreach (var arcData in arcs.Arcs)
         {
             var arc = new CadArc(
@@ -723,6 +753,7 @@ internal static class CadDocumentMapper
             CadLine line => line.GraphicStyleId,
             CadCircle circle => circle.GraphicStyleId,
             CadEllipse ellipse => ellipse.GraphicStyleId,
+            CadEllipseArc ellipseArc => ellipseArc.GraphicStyleId,
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,

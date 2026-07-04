@@ -12,11 +12,13 @@ namespace Direct2dCad.ViewModels.Enums;
 public enum ViewModelCadSnapMarkerType
 {
     [LocalizedDescription("None", typeof(Strings))]
-    None,
+    None = 0,
     [LocalizedDescription("Cross", typeof(Strings))]
-    Cross,
+    Cross = 1,
     [LocalizedDescription("X", typeof(Strings))]
-    X,
+    X = 2,
     [LocalizedDescription("Square", typeof(Strings))]
-    Square
+    Square = 3,
+    [LocalizedDescription("InfiniteCross", typeof(Strings))]
+    InfiniteCross = 4
 }

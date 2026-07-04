@@ -13,10 +13,11 @@ public enum CadGridType
 
 public enum CadSnapMarkerType
 {
-    None,
-    Cross,
-    X,
-    Square
+    None = 0,
+    Cross = 1,
+    X = 2,
+    Square = 3,
+    InfiniteCross = 4
 }
 
 public sealed class CadGridSettings
