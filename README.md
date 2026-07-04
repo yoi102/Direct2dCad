@@ -169,6 +169,7 @@ Direct2dCad.Db
 定义 CadDocumentChangeSet
 定义 CadEntityChange / CadEntityChangeKind
 表达实体、文档结构、视图设置的变更范围
+细分 Geometry / Appearance / Fill / Visibility / Layer / DrawOrder 等变更类型，支持渲染层选择 full render 或局部 dirty rect 刷新
 为 Commands、Editor、Rendering 之间提供中性的变更通知模型
 避免 Rendering / Rendering.Direct2D 直接依赖 Direct2dCad.Commands
 ```

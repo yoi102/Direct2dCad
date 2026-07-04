@@ -90,7 +90,8 @@ internal static class CadDocumentMapper
     {
         return new CadStylesSection
         {
-            Styles = document.Styles.Values.Select(ToData).ToList()
+            Styles = document.Styles.Values.Select(ToData).ToList(),
+            HatchPatterns = document.HatchPatterns.Values.Select(ToData).ToList()
         };
     }
 
@@ -412,6 +413,13 @@ internal static class CadDocumentMapper
 
     private static void ApplyStyles(CadDocument document, CadStylesSection section)
     {
+        foreach (var patternData in section.HatchPatterns ?? [])
+        {
+            var pattern = FromData(patternData);
+            if (!document.HatchPatterns.ContainsKey(pattern.Id))
+                document.AddHatchPatternCore(pattern);
+        }
+
         foreach (var styleData in section.Styles)
         {
             var style = FromData(styleData);
@@ -659,6 +667,22 @@ internal static class CadDocumentMapper
                     IsCentered = gradient.IsCentered
                 }
             },
+            CadHatchFillStyle hatch => new CadStyleData
+            {
+                Id = hatch.Id.Value,
+                Name = hatch.Name,
+                Kind = hatch.Kind,
+                HatchFill = new CadHatchFillStyleData
+                {
+                    PatternId = hatch.PatternId.Value,
+                    ForegroundColor = ToData(hatch.ForegroundColor),
+                    BackgroundColor = hatch.BackgroundColor is { } background ? ToData(background) : null,
+                    HatchScale = hatch.HatchScale,
+                    HatchAngle = hatch.HatchAngle,
+                    HatchOrigin = ToData(hatch.HatchOrigin),
+                    IsAnnotative = hatch.IsAnnotative
+                }
+            },
             _ => throw new NotSupportedException($"Unsupported style type: {style.GetType().Name}")
         };
     }
@@ -694,8 +718,59 @@ internal static class CadDocumentMapper
                 FromData(data.GradientFill.GradientOrigin),
                 data.GradientFill.IsCentered),
 
+            CadStyleKind.Fill when data.HatchFill is not null => new CadHatchFillStyle(
+                new StyleId(data.Id),
+                data.Name,
+                new HatchPatternId(data.HatchFill.PatternId),
+                FromData(data.HatchFill.ForegroundColor),
+                data.HatchFill.BackgroundColor is { } background ? FromData(background) : null,
+                data.HatchFill.HatchScale,
+                data.HatchFill.HatchAngle,
+                FromData(data.HatchFill.HatchOrigin),
+                data.HatchFill.IsAnnotative),
+
             _ => throw new InvalidDataException($"Invalid style data: {data.Id}")
         };
+    }
+
+    private static CadHatchPatternData ToData(CadHatchPatternDefinition pattern)
+    {
+        return new CadHatchPatternData
+        {
+            Id = pattern.Id.Value,
+            Name = pattern.Name,
+            Description = pattern.Description,
+            Lines = pattern.Lines.Select(ToData).ToList()
+        };
+    }
+
+    private static CadHatchPatternDefinition FromData(CadHatchPatternData data)
+    {
+        return new CadHatchPatternDefinition(
+            new HatchPatternId(data.Id),
+            data.Name,
+            data.Lines.Select(FromData),
+            data.Description);
+    }
+
+    private static CadHatchLineData ToData(CadHatchLineDefinition line)
+    {
+        return new CadHatchLineData
+        {
+            Angle = line.Angle,
+            Origin = ToData(line.Origin),
+            Offset = ToData(line.Offset),
+            DashPattern = line.DashPattern.ToList()
+        };
+    }
+
+    private static CadHatchLineDefinition FromData(CadHatchLineData data)
+    {
+        return new CadHatchLineDefinition(
+            data.Angle,
+            FromData(data.Origin),
+            ToVector(data.Offset),
+            data.DashPattern);
     }
 
     private static CadEntityData ToEntityData(CadEntity entity)
@@ -778,6 +853,10 @@ internal static class CadDocumentMapper
     private static CadPointData ToData(CadPointD point) => new(point.X, point.Y);
 
     private static CadPointD FromData(CadPointData point) => new(point.X, point.Y);
+
+    private static CadPointData ToData(CadVectorD vector) => new(vector.X, vector.Y);
+
+    private static CadVectorD ToVector(CadPointData point) => new(point.X, point.Y);
 
     private static CadColorData ToData(CadColor color) => new(color.A, color.R, color.G, color.B);
 

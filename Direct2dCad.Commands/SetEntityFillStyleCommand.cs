@@ -35,7 +35,7 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
             SetFillStyleId(entity, _fillStyleId);
         }
 
-        return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Appearance);
+        return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Appearance | CadEntityChangeKind.Fill);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -45,7 +45,7 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
         foreach (var (entityId, styleId) in _previousFillStyles)
             SetFillStyleId(document.GetEntity(entityId), styleId);
 
-        return CadDocumentChangeSet.ForEntities(_previousFillStyles.Keys, CadEntityChangeKind.Appearance);
+        return CadDocumentChangeSet.ForEntities(_previousFillStyles.Keys, CadEntityChangeKind.Appearance | CadEntityChangeKind.Fill);
     }
 
     private static StyleId? GetFillStyleId(CadEntity entity)

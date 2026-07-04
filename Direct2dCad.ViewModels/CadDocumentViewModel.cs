@@ -23,6 +23,8 @@ namespace Direct2dCad.ViewModels;
 public partial class CadDocumentViewModel : ObservableObject, IDisposable
 {
     private const double TwoPi = Math.PI * 2.0;
+    private const int MaxPathDirtyBounds = 16;
+    private const int DeferredGripHandleRenderDelayMilliseconds = 120;
 
     private readonly record struct ArcDrawingGeometry(
         CadPointD Center,
@@ -62,6 +64,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private bool _isApplyingTextMeasurementChanges;
     private bool _isInitialViewportViewApplied;
     private bool _disposed;
+    private int _deferredGripHandleRenderVersion;
     private double _viewportWidth = 1.0;
     private double _viewportHeight = 1.0;
     private CadRenderInvalidation _lastOverlayInvalidation = CadRenderInvalidation.FromScreenRect(default);
@@ -706,7 +709,11 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var factor = delta > 0 ? 1.1 : 1.0 / 1.1;
         CadEditor.Execute(new ZoomViewportCommand(screen, factor));
         UpdatePointerWorldStatus(screen);
-        RequestRender();
+        RequestRender(
+            CadRenderInvalidation.Full,
+            drawGripHandles: false,
+            updateHandleScene: false);
+        ScheduleDeferredGripHandleRender();
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -822,13 +829,60 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         RequestRender(CadRenderInvalidation.FromScreenRect(default));
     }
 
-    private void RequestRender(CadRenderInvalidation? invalidation)
+    private void RequestRender(
+        CadRenderInvalidation? invalidation,
+        bool drawGripHandles = true,
+        bool updateHandleScene = true)
     {
         UpdateTextMeasurements();
-        var overlayInvalidation = UpdateOverlayScenesAndCreateInvalidation();
-        var effectiveInvalidation = (invalidation ?? CadRenderInvalidation.Full).Union(overlayInvalidation);
-        Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions());
+        var requestedInvalidation = invalidation ?? CadRenderInvalidation.Full;
+        CadRenderInvalidation effectiveInvalidation;
+
+        if (requestedInvalidation.IsFull)
+        {
+            UpdateOverlayScenes(updateHandleScene);
+            _lastOverlayInvalidation = CreateOverlayInvalidation(drawGripHandles);
+            effectiveInvalidation = CadRenderInvalidation.Full;
+        }
+        else
+        {
+            var overlayInvalidation = UpdateOverlayScenesAndCreateInvalidation(
+                drawGripHandles,
+                updateHandleScene);
+            effectiveInvalidation = requestedInvalidation.Union(overlayInvalidation);
+        }
+
+        Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions(drawGripHandles));
         Direct2DImageRenderHost.Render(effectiveInvalidation);
+    }
+
+    private void ScheduleDeferredGripHandleRender()
+    {
+        var context = SynchronizationContext.Current;
+        if (context is null)
+            return;
+
+        var version = Interlocked.Increment(ref _deferredGripHandleRenderVersion);
+        _ = Task.Delay(DeferredGripHandleRenderDelayMilliseconds).ContinueWith(
+            task =>
+            {
+                if (!task.IsCompletedSuccessfully)
+                    return;
+
+                context.Post(
+                    _ =>
+                    {
+                        if (_disposed ||
+                            version != Volatile.Read(ref _deferredGripHandleRenderVersion))
+                        {
+                            return;
+                        }
+
+                        RequestOverlayRender();
+                    },
+                    null);
+            },
+            TaskScheduler.Default);
     }
 
     private void UpdateTextMeasurements()
@@ -1300,25 +1354,29 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void UpdateOverlayScenes()
+    private void UpdateOverlayScenes(bool updateHandleScene = true)
     {
         UpdateTransientScene();
-        UpdateHandleScene();
+        if (updateHandleScene)
+            UpdateHandleScene();
     }
 
-    private CadRenderInvalidation UpdateOverlayScenesAndCreateInvalidation()
+    private CadRenderInvalidation UpdateOverlayScenesAndCreateInvalidation(
+        bool includeGripHandles = true,
+        bool updateHandleScene = true)
     {
         var previousOverlay = _lastOverlayInvalidation;
-        UpdateOverlayScenes();
-        var currentOverlay = CreateOverlayInvalidation();
+        UpdateOverlayScenes(updateHandleScene);
+        var currentOverlay = CreateOverlayInvalidation(includeGripHandles);
         _lastOverlayInvalidation = currentOverlay;
         return previousOverlay.Union(currentOverlay);
     }
 
-    private CadRenderOptions CreateRenderOptions()
+    private CadRenderOptions CreateRenderOptions(bool drawGripHandles = true)
     {
         return new CadRenderOptions
         {
+            DrawGripHandles = drawGripHandles,
             IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
             HiddenEntityIds = _activeGripDrag is null
@@ -1360,7 +1418,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         _handleScene.Replace(items);
     }
 
-    private CadRenderInvalidation CreateOverlayInvalidation()
+    private CadRenderInvalidation CreateOverlayInvalidation(bool includeGripHandles = true)
     {
         var invalidation = CadRenderInvalidation.FromScreenRect(default);
 
@@ -1368,7 +1426,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             invalidation = invalidation.Union(CreateTransientInvalidation(item));
 
         foreach (var item in _handleScene.Items)
+        {
+            if (!includeGripHandles && item is CadGripHandle)
+                continue;
+
             invalidation = invalidation.Union(CreateHandleInvalidation(item));
+        }
 
         return invalidation;
     }
@@ -1399,10 +1462,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             CadTransientPolyline polyline => CreateTransientBoundsInvalidation(
                 BoundsFromPoints(polyline.Points),
                 polyline.Style),
-            CadTransientSpline spline => CreateTransientBoundsInvalidation(
-                BoundsFromPoints(spline.FitPoints),
-                spline.Style,
-                minimumPaddingPixels: 16.0),
+            CadTransientSpline spline => CreateTransientSplineInvalidation(spline),
             CadTransientRectangle rectangle => CreateTransientBoundsInvalidation(
                 rectangle.Bounds,
                 rectangle.Style),
@@ -1423,6 +1483,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         double minimumPaddingPixels = 12.0)
     {
         return CreateWorldBoundsInvalidation(bounds, ResolveTransientInvalidationPadding(style, minimumPaddingPixels));
+    }
+
+    private CadRenderInvalidation CreateTransientSplineInvalidation(CadTransientSpline spline)
+    {
+        var padding = ResolveTransientInvalidationPadding(spline.Style, 16.0);
+        return CreateSplinePathInvalidation(spline.FitPoints, spline.Closed, CadVectorD.Zero, padding);
     }
 
     private double ResolveTransientInvalidationPadding(CadTransientStyle style, double minimumPaddingPixels)
@@ -1460,8 +1526,87 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadRenderInvalidation CreateEntityBoundsInvalidation(CadEntity entity, CadVectorD offset = default)
     {
-        var bounds = ResolveEntityPaintBounds(entity).Translate(offset);
-        return CreateWorldBoundsInvalidation(bounds);
+        var padding = ResolveEntityInvalidationPadding(entity);
+        return entity switch
+        {
+            CadPolyline { FillStyleId: null } polyline => CreatePolylinePathInvalidation(polyline, offset, padding),
+            CadSpline spline => CreateSplinePathInvalidation(spline, offset, padding),
+            _ => CreateWorldBoundsInvalidation(ResolveEntityPaintBounds(entity).Translate(offset), padding)
+        };
+    }
+
+    private CadRenderInvalidation CreatePolylinePathInvalidation(
+        CadPolyline polyline,
+        CadVectorD offset,
+        double paddingPixels)
+    {
+        var points = polyline.Points;
+        if (points.Count < 2)
+            return CadRenderInvalidation.FromScreenRect(default);
+
+        var bounds = new List<CadRectD>(points.Count);
+        for (var i = 1; i < points.Count; i++)
+            bounds.Add(BoundsFromPoints(points[i - 1] + offset, points[i] + offset));
+
+        if (polyline.Closed && points.Count > 2)
+            bounds.Add(BoundsFromPoints(points[^1] + offset, points[0] + offset));
+
+        return CreateChunkedPathInvalidation(bounds, paddingPixels);
+    }
+
+    private CadRenderInvalidation CreateSplinePathInvalidation(
+        CadSpline spline,
+        CadVectorD offset,
+        double paddingPixels)
+    {
+        return CreateSplinePathInvalidation(spline.FitPoints, spline.Closed, offset, paddingPixels);
+    }
+
+    private CadRenderInvalidation CreateSplinePathInvalidation(
+        IReadOnlyList<CadPointD> fitPoints,
+        bool closed,
+        CadVectorD offset,
+        double paddingPixels)
+    {
+        var segments = CadSpline.CreateBezierSegments(fitPoints, closed);
+        if (segments.Count == 0)
+            return CreateWorldBoundsInvalidation(BoundsFromPoints(fitPoints).Translate(offset), paddingPixels);
+
+        var bounds = new List<CadRectD>(segments.Count);
+        foreach (var segment in segments)
+        {
+            bounds.Add(CadRectD.Empty
+                .ExpandToInclude(segment.Start + offset)
+                .ExpandToInclude(segment.Control1 + offset)
+                .ExpandToInclude(segment.Control2 + offset)
+                .ExpandToInclude(segment.End + offset));
+        }
+
+        return CreateChunkedPathInvalidation(bounds, paddingPixels);
+    }
+
+    private CadRenderInvalidation CreateChunkedPathInvalidation(
+        IReadOnlyList<CadRectD> bounds,
+        double paddingPixels)
+    {
+        if (bounds.Count <= MaxPathDirtyBounds)
+            return CreateWorldBoundsInvalidation(bounds, paddingPixels);
+
+        var chunked = new List<CadRectD>(MaxPathDirtyBounds);
+        for (var chunk = 0; chunk < MaxPathDirtyBounds; chunk++)
+        {
+            var start = chunk * bounds.Count / MaxPathDirtyBounds;
+            var end = (chunk + 1) * bounds.Count / MaxPathDirtyBounds;
+            var aggregate = CadRectD.Empty;
+
+            for (var i = start; i < end; i++)
+                aggregate = aggregate.Union(bounds[i]);
+
+            if (!aggregate.IsEmpty)
+                chunked.Add(aggregate);
+        }
+
+        return CreateWorldBoundsInvalidation(chunked, paddingPixels);
     }
 
     private CadRectD ResolveEntityPaintBounds(CadEntity entity)
@@ -1473,6 +1618,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         var style = CreateEntityPreviewStyle(entity);
         var strokeWidth = ResolveStyleWorldStrokeWidth(style);
         return strokeWidth > 0 ? bounds.Inflate(strokeWidth * 0.5) : bounds;
+    }
+
+    private double ResolveEntityInvalidationPadding(CadEntity entity)
+    {
+        var style = CreateEntityPreviewStyle(entity);
+        return ResolveTransientInvalidationPadding(style, style.HatchFill is null ? 8.0 : 16.0);
     }
 
     private double ResolveStyleWorldStrokeWidth(CadTransientStyle style)
@@ -1508,6 +1659,23 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             Direct2DImageRenderHost.TargetWidth,
             Direct2DImageRenderHost.TargetHeight,
             paddingPixels);
+    }
+
+    private CadRenderInvalidation CreateWorldBoundsInvalidation(
+        IEnumerable<CadRectD> bounds,
+        double paddingPixels = 8.0)
+    {
+        var rects = new List<CadScreenRect>();
+        foreach (var item in bounds)
+        {
+            if (item.IsEmpty)
+                continue;
+
+            var invalidation = CreateWorldBoundsInvalidation(item, paddingPixels);
+            rects.AddRange(invalidation.DirtyScreenRects);
+        }
+
+        return CadRenderInvalidation.FromScreenRects(rects);
     }
 
     private CadRenderInvalidation CreateScreenPointInvalidation(CadPointD screenPoint, double radiusPixels)
@@ -1569,7 +1737,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         _activeGripDrag = new GripDragState(
             grip,
-            ScreenToWorld(screen, snapToGrid: true));
+            ScreenToWorld(screen, snapToGrid: true),
+            ResolveGripPointIndex(grip));
         _selectionDragStart = null;
         _isPastePreviewActive = false;
         RequestRender();
@@ -2106,8 +2275,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (drag.Handle.Type != CadHandleType.Vertex || points.Length < 2)
             return false;
 
-        var vertexIndex = FindNearestPointIndex(points, drag.Handle.Position);
+        var vertexIndex = drag.PointIndex;
         if (vertexIndex < 0)
+            return false;
+        if (vertexIndex >= points.Length)
             return false;
 
         points[vertexIndex] = drag.DraggedGripPosition;
@@ -2126,12 +2297,31 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (drag.Handle.Type != CadHandleType.Vertex || fitPoints.Length < 2)
             return false;
 
-        var fitPointIndex = FindNearestPointIndex(fitPoints, drag.Handle.Position);
+        var fitPointIndex = drag.PointIndex;
         if (fitPointIndex < 0)
+            return false;
+        if (fitPointIndex >= fitPoints.Length)
             return false;
 
         fitPoints[fitPointIndex] = drag.DraggedGripPosition;
         return !closed || fitPoints.Length >= 3;
+    }
+
+    private int ResolveGripPointIndex(CadGripHandle grip)
+    {
+        if (grip.Type != CadHandleType.Vertex ||
+            !CadEditor.Document.TryGetEntity(grip.EntityId, out var entity) ||
+            entity is null)
+        {
+            return -1;
+        }
+
+        return entity switch
+        {
+            CadPolyline polyline => FindNearestPointIndex(polyline.Points, grip.Position),
+            CadSpline spline => FindNearestPointIndex(spline.FitPoints, grip.Position),
+            _ => -1
+        };
     }
 
     private static int FindNearestPointIndex(IReadOnlyList<CadPointD> points, CadPointD target)
@@ -2317,11 +2507,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         CadLineWeight lineWeight,
         StyleId? fillStyleId = null)
     {
+        var fill = ResolveTransientFill(fillStyleId);
         return new CadTransientStyle(
             strokeColor,
             ResolvePreviewStrokeWidth(lineWeight, ResolveDefaultLayerLineWeight()),
             CadTransientLinePattern.Solid,
-            ResolveSolidFillColor(fillStyleId));
+            fill.FillColor,
+            HatchFill: fill.HatchFill);
     }
 
     private CadTransientStyle CreateEntityPreviewStyle(CadEntity entity)
@@ -2335,11 +2527,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             : graphic?.StrokeColor ?? ResolveLayerStrokeColor(layer);
         var lineWeight = ResolveEntityLineWeight(entity, graphic, layer);
 
+        var fill = ResolveTransientFill(ResolveEntityFillStyleId(entity));
         return new CadTransientStyle(
             strokeColor,
             ResolvePreviewStrokeWidth(lineWeight, layer.LineWeight),
             CadTransientLinePattern.Solid,
-            ResolveSolidFillColor(ResolveEntityFillStyleId(entity)));
+            fill.FillColor,
+            HatchFill: fill.HatchFill);
     }
 
     private CadTransientStyle CreateDrawingAuxiliaryStyle(CadColor strokeColor)
@@ -2364,17 +2558,34 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         };
     }
 
-    private CadColor? ResolveSolidFillColor(StyleId? fillStyleId)
+    private (CadColor? FillColor, CadTransientHatchFill? HatchFill) ResolveTransientFill(StyleId? fillStyleId)
     {
         if (fillStyleId is not { } styleId ||
-            !CadEditor.Document.TryGetStyle(styleId, out var style) ||
-            style is not CadGradientFillStyle { IsSolid: true } fillStyle)
+            !CadEditor.Document.TryGetStyle(styleId, out var style))
         {
-            return null;
+            return (null, null);
         }
 
-        var color = fillStyle.Stops[0].Color;
-        return color.IsTransparent ? null : color;
+        if (style is CadGradientFillStyle { IsSolid: true } fillStyle)
+        {
+            var color = fillStyle.Stops[0].Color;
+            return (color.IsTransparent ? null : color, null);
+        }
+
+        if (style is CadHatchFillStyle hatchStyle &&
+            CadEditor.Document.TryGetHatchPattern(hatchStyle.PatternId, out var pattern) &&
+            pattern is not null)
+        {
+            return (null, new CadTransientHatchFill(
+                hatchStyle.ForegroundColor,
+                hatchStyle.BackgroundColor,
+                hatchStyle.HatchScale,
+                hatchStyle.HatchAngle,
+                hatchStyle.HatchOrigin,
+                pattern.Lines.ToArray()));
+        }
+
+        return (null, null);
     }
 
     private CadGraphicStyle? ResolveEntityGraphicStyle(CadEntity entity, CadLayer layer)
@@ -4560,7 +4771,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         return bounds.IsEmpty
             ? CadRenderInvalidation.Full
-            : CreateWorldBoundsInvalidation(bounds);
+            : CreateWorldBoundsInvalidation(bounds, ResolveDocumentInvalidationPadding(changes));
     }
 
     private static bool RequiresFullRender(CadEntityChange change)
@@ -4580,6 +4791,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
 
         if (kind.HasFlag(CadEntityChangeKind.Appearance) &&
+            !kind.HasFlag(CadEntityChangeKind.Fill) &&
             !kind.HasFlag(CadEntityChangeKind.Created))
         {
             return true;
@@ -4587,6 +4799,20 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         return kind.HasFlag(CadEntityChangeKind.Visibility) &&
                !kind.HasFlag(CadEntityChangeKind.Created);
+    }
+
+    private double ResolveDocumentInvalidationPadding(CadDocumentChangeSet changes)
+    {
+        var padding = 8.0;
+        foreach (var change in changes.EntityChanges)
+        {
+            if (!CadEditor.Document.TryGetEntity(change.EntityId, out var entity) || entity is null)
+                continue;
+
+            padding = Math.Max(padding, ResolveEntityInvalidationPadding(entity));
+        }
+
+        return padding;
     }
 
     private static bool CanDuplicate(CadEntity entity)
@@ -4613,16 +4839,18 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private sealed class GripDragState
     {
-        public GripDragState(CadGripHandle handle, CadPointD pointerWorld)
+        public GripDragState(CadGripHandle handle, CadPointD pointerWorld, int pointIndex)
         {
             Handle = handle;
             StartPointerWorld = pointerWorld;
             CurrentPointerWorld = pointerWorld;
+            PointIndex = pointIndex;
         }
 
         public CadGripHandle Handle { get; }
         public CadPointD StartPointerWorld { get; }
         public CadPointD CurrentPointerWorld { get; set; }
+        public int PointIndex { get; }
         public CadVectorD Delta => CurrentPointerWorld - StartPointerWorld;
         public CadPointD DraggedGripPosition => Handle.Position + Delta;
     }

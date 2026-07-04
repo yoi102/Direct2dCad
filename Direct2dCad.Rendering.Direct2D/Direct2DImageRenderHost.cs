@@ -259,6 +259,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
         {
             DrawGrid = _renderOptions.DrawGrid,
             DrawOrigin = _renderOptions.DrawOrigin,
+            DrawGripHandles = _renderOptions.DrawGripHandles,
             IsAntialiasingEnabled = _renderOptions.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = _renderOptions.IsTextAntialiasingEnabled,
             KeepStrokeWidthScreenConstant = _renderOptions.KeepStrokeWidthScreenConstant,

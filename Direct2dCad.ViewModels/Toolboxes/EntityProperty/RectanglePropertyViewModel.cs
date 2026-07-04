@@ -130,7 +130,7 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !TryGetRectangle(out var rectangle))
             return;
 
-        var fillStyleId = value?.Id;
+        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
         if (Nullable.Equals(rectangle.FillStyleId, fillStyleId))
             return;
 
@@ -433,7 +433,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleFillStyleId = value?.Id;
+        _documentViewModel.DrawingRectangleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)

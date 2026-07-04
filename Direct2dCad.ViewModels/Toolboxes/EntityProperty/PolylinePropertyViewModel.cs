@@ -161,7 +161,7 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !TryGetPolyline(out var polyline))
             return;
 
-        var fillStyleId = value?.Id;
+        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
         if (Nullable.Equals(polyline.FillStyleId, fillStyleId))
             return;
 
@@ -503,7 +503,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineFillStyleId = value?.Id;
+        _documentViewModel.DrawingPolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)

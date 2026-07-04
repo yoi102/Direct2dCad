@@ -12,7 +12,8 @@ public enum CadEntityChangeKind
     Layer = 8,
     Created = 16,
     Deleted = 32,
-    DrawOrder = 64
+    DrawOrder = 64,
+    Fill = 128
 }
 
 public readonly record struct CadEntityChange(

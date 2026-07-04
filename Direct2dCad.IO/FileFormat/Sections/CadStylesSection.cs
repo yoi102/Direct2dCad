@@ -7,4 +7,5 @@ namespace Direct2dCad.IO.FileFormat.Sections;
 public sealed class CadStylesSection
 {
     [Key(0)] public List<CadStyleData> Styles { get; set; } = [];
+    [Key(1)] public List<CadHatchPatternData> HatchPatterns { get; set; } = [];
 }

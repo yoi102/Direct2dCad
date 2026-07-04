@@ -55,7 +55,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolygonFillStyleId = value?.Id;
+        _documentViewModel.DrawingPolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)

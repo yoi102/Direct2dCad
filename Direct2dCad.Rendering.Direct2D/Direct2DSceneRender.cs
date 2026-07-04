@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
@@ -113,8 +114,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 DrawEntity(deviceContext, document, entity, resources, viewport, options);
             }
 
-            DrawTransients(deviceContext, document, viewport, transientScene);
-            DrawHandles(deviceContext, document, viewport, handleScene);
+            DrawTransients(deviceContext, document, viewport, transientScene, options);
+            DrawHandles(deviceContext, document, viewport, handleScene, options);
         }
         finally
         {
@@ -521,7 +522,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         CadDocument document,
         CadViewport viewport,
-        CadTransientScene? scene)
+        CadTransientScene? scene,
+        CadRenderOptions options)
     {
         if (scene is null || scene.IsEmpty)
             return;
@@ -637,7 +639,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     break;
 
                 case CadTransientEntityReference reference:
-                    DrawTransientEntityReference(deviceContext, document, viewport, reference);
+                    DrawTransientEntityReference(deviceContext, document, viewport, reference, options);
                     break;
             }
         }
@@ -647,7 +649,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         CadDocument document,
         CadViewport viewport,
-        CadHandleScene? scene)
+        CadHandleScene? scene,
+        CadRenderOptions options)
     {
         if (scene is null || scene.IsEmpty)
             return;
@@ -660,11 +663,22 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     DrawSelectionEntityReference(deviceContext, document, viewport, reference);
                     break;
 
-                case CadGripHandle grip:
+                case CadGripHandle grip when options.DrawGripHandles &&
+                                             IsGripVisibleInViewport(viewport, grip):
                     DrawGripHandle(deviceContext, viewport, grip);
                     break;
             }
         }
+    }
+
+    private static bool IsGripVisibleInViewport(CadViewport viewport, CadGripHandle grip)
+    {
+        var screen = viewport.WorldToScreen(grip.Position);
+        var margin = Math.Max(grip.Style.Size, grip.Style.StrokeWidth) + 8.0;
+        return screen.X >= -margin &&
+               screen.Y >= -margin &&
+               screen.X <= viewport.ViewWidth + margin &&
+               screen.Y <= viewport.ViewHeight + margin;
     }
 
     private void DrawSelectionEntityReference(
@@ -675,6 +689,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         var style = ToTransientStyle(reference.Style, includeFill: false);
         if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
+            return;
+
+        if (TryDrawCachedSelectionGeometry(deviceContext, entity, viewport, reference, style))
             return;
 
         switch (entity)
@@ -781,6 +798,46 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     style);
                 break;
         }
+    }
+
+    private bool TryDrawCachedSelectionGeometry(
+        ID2D1DeviceContext deviceContext,
+        CadEntity entity,
+        CadViewport viewport,
+        CadSelectionEntityReference reference,
+        CadTransientStyle style)
+    {
+        if (!_resourceCache.TryGetEntityResources(entity.Id, out var resources) ||
+            resources?.Geometry is null)
+        {
+            return false;
+        }
+
+        using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
+        using var strokeStyle = CreateTransientStrokeStyle(style);
+        var strokeWidth = ResolveTransientStrokeWidth(style, viewport);
+
+        if (reference.Offset == CadVectorD.Zero)
+        {
+            deviceContext.DrawGeometry(resources.Geometry, brush, strokeWidth, strokeStyle);
+            return true;
+        }
+
+        var previousTransform = deviceContext.Transform;
+        deviceContext.Transform = Matrix3x2.CreateTranslation(
+            (float)reference.Offset.X,
+            (float)reference.Offset.Y) * previousTransform;
+
+        try
+        {
+            deviceContext.DrawGeometry(resources.Geometry, brush, strokeWidth, strokeStyle);
+        }
+        finally
+        {
+            deviceContext.Transform = previousTransform;
+        }
+
+        return true;
     }
 
     private void DrawGripHandle(
@@ -912,9 +969,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         CadDocument document,
         CadViewport viewport,
-        CadTransientEntityReference reference)
+        CadTransientEntityReference reference,
+        CadRenderOptions options)
     {
         if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
+            return;
+
+        if (TryDrawTranslatedEntityReference(deviceContext, document, entity, viewport, reference, options))
             return;
 
         switch (entity)
@@ -1043,6 +1104,34 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
     }
 
+    private bool TryDrawTranslatedEntityReference(
+        ID2D1DeviceContext deviceContext,
+        CadDocument document,
+        CadEntity entity,
+        CadViewport viewport,
+        CadTransientEntityReference reference,
+        CadRenderOptions options)
+    {
+        if (!_resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
+            return false;
+
+        var previousTransform = deviceContext.Transform;
+        deviceContext.Transform = Matrix3x2.CreateTranslation(
+            (float)reference.Offset.X,
+            (float)reference.Offset.Y) * previousTransform;
+
+        try
+        {
+            DrawEntity(deviceContext, document, entity, resources, viewport, options);
+        }
+        finally
+        {
+            deviceContext.Transform = previousTransform;
+        }
+
+        return true;
+    }
+
     private void DrawTransientLine(
         ID2D1DeviceContext deviceContext,
         CadViewport viewport,
@@ -1074,7 +1163,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         using var strokeStyle = CreateTransientStrokeStyle(style);
         var strokeWidth = ResolveTransientStrokeWidth(style, viewport);
 
-        if (_resourceCache.Factory is null)
+        if (_resourceCache.Factory is null || !closed || !HasTransientFill(style))
         {
             for (var i = 1; i < points.Count; i++)
                 deviceContext.DrawLine(ToVector2(points[i - 1]), ToVector2(points[i]), brush, strokeWidth, strokeStyle);
@@ -1086,13 +1175,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
 
         using var geometry = CreateTransientPolylineGeometry(points, closed);
-        if (closed &&
-            style.FillColor is { } fillColor &&
-            !fillColor.IsTransparent)
-        {
-            using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
-            deviceContext.FillGeometry(geometry, fillBrush);
-        }
+        DrawTransientFillGeometry(deviceContext, geometry, BoundsFromPoints(points), style);
 
         deviceContext.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
     }
@@ -1335,7 +1418,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         var ellipse = new Ellipse(ToVector2(center), (float)radiusX, (float)radiusY);
 
-        if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
+        if (HasTransientFill(style) && _resourceCache.Factory is not null)
+        {
+            using var geometry = _resourceCache.Factory.CreateEllipseGeometry(ellipse);
+            DrawTransientFillGeometry(
+                deviceContext,
+                geometry,
+                CadRectD.FromCenter(center, radiusX * 2.0, radiusY * 2.0),
+                style);
+        }
+        else if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
         {
             using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
             deviceContext.FillEllipse(ellipse, fillBrush);
@@ -1364,7 +1456,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         {
             var roundedRect = CreateRoundedRectangle(bounds, radiusX, radiusY);
 
-            if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
+            if (HasTransientFill(style) && _resourceCache.Factory is not null)
+            {
+                using var geometry = _resourceCache.Factory.CreateRoundedRectangleGeometry(roundedRect);
+                DrawTransientFillGeometry(deviceContext, geometry, bounds, style);
+            }
+            else if (style.FillColor is { } fillColor && !fillColor.IsTransparent)
             {
                 using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
                 deviceContext.FillRoundedRectangle(roundedRect, fillBrush);
@@ -1391,7 +1488,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             (float)bounds.MaxX,
             (float)bounds.MaxY);
 
-        if (style.FillColor is { } rectangleFillColor && !rectangleFillColor.IsTransparent)
+        if (HasTransientFill(style) && _resourceCache.Factory is not null)
+        {
+            using var geometry = _resourceCache.Factory.CreateRectangleGeometry(rect);
+            DrawTransientFillGeometry(deviceContext, geometry, bounds, style);
+        }
+        else if (style.FillColor is { } rectangleFillColor && !rectangleFillColor.IsTransparent)
         {
             using var fillBrush = CreateTransientBrush(deviceContext, rectangleFillColor);
             deviceContext.FillRectangle(rect, fillBrush);
@@ -1639,15 +1741,28 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadRenderOptions options)
     {
         var bounds = entity.Bounds;
-        if (bounds.IsEmpty ||
-            resources?.StrokeBrush is null ||
-            !EntityUsesStrokeWidth(entity))
+        if (bounds.IsEmpty)
         {
             return bounds;
         }
 
-        var strokeWidth = ResolveStrokeWidth(resources.StrokeWidth, viewport, options);
-        return strokeWidth > 0 ? bounds.Inflate(strokeWidth * 0.5) : bounds;
+        var padding = 0.0;
+        if (resources?.StrokeBrush is not null && EntityUsesStrokeWidth(entity))
+        {
+            var strokeWidth = ResolveStrokeWidth(resources.StrokeWidth, viewport, options);
+            padding = Math.Max(padding, strokeWidth * 0.5);
+        }
+
+        if (resources is { FillBrush: not null } ||
+            resources is { HatchBrush: not null } ||
+            resources is { HatchBackgroundBrush: not null })
+        {
+            padding = Math.Max(
+                padding,
+                Math.Max(options.MinimumScreenStrokeWidth, 2.0) / Math.Max(viewport.Zoom, double.Epsilon));
+        }
+
+        return padding > 0 ? bounds.Inflate(padding) : bounds;
     }
 
     private static bool EntityUsesStrokeWidth(CadEntity entity)
@@ -1664,7 +1779,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             CadBlockReference;
     }
 
-    private static void DrawEntity(
+    private void DrawEntity(
         ID2D1DeviceContext deviceContext,
         CadDocument document,
         CadEntity entity,
@@ -1713,8 +1828,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 return;
         }
 
-        if (resources.Geometry is not null && resources.FillBrush is not null)
-            deviceContext.FillGeometry(resources.Geometry, resources.FillBrush);
+        if (resources.Geometry is not null)
+            DrawFillGeometry(deviceContext, resources.Geometry, entity.Bounds, resources);
 
         if (resources.Geometry is not null && resources.StrokeBrush is not null)
         {
@@ -1767,7 +1882,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
     }
 
-    private static void DrawCircleEntity(
+    private void DrawCircleEntity(
         ID2D1DeviceContext deviceContext,
         CadCircle circle,
         Direct2DResourceCache.EntityResourceBucket resources,
@@ -1782,7 +1897,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             options);
     }
 
-    private static void DrawEllipseEntity(
+    private void DrawEllipseEntity(
         ID2D1DeviceContext deviceContext,
         CadEllipse ellipse,
         Direct2DResourceCache.EntityResourceBucket resources,
@@ -1797,15 +1912,29 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             options);
     }
 
-    private static void DrawEllipsePrimitive(
+    private void DrawEllipsePrimitive(
         ID2D1DeviceContext deviceContext,
         Ellipse ellipse,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadViewport viewport,
         CadRenderOptions options)
     {
-        if (resources.FillBrush is not null)
+        if (HasFill(resources) && _resourceCache.Factory is not null)
+        {
+            using var geometry = _resourceCache.Factory.CreateEllipseGeometry(ellipse);
+            DrawFillGeometry(
+                deviceContext,
+                geometry,
+                CadRectD.FromCenter(
+                    new CadPointD(ellipse.Point.X, ellipse.Point.Y),
+                    ellipse.RadiusX * 2.0,
+                    ellipse.RadiusY * 2.0),
+                resources);
+        }
+        else if (resources.FillBrush is not null)
+        {
             deviceContext.FillEllipse(ellipse, resources.FillBrush);
+        }
 
         if (resources.StrokeBrush is not null)
         {
@@ -1816,7 +1945,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
     }
 
-    private static void DrawRectangleEntity(
+    private void DrawRectangleEntity(
         ID2D1DeviceContext deviceContext,
         CadRectangle rectangle,
         Direct2DResourceCache.EntityResourceBucket resources,
@@ -1833,8 +1962,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         {
             var roundedRect = CreateRoundedRectangle(bounds, radiusX, radiusY);
 
-            if (resources.FillBrush is not null)
+            if (HasFill(resources) && _resourceCache.Factory is not null)
+            {
+                using var geometry = _resourceCache.Factory.CreateRoundedRectangleGeometry(roundedRect);
+                DrawFillGeometry(deviceContext, geometry, bounds, resources);
+            }
+            else if (resources.FillBrush is not null)
+            {
                 deviceContext.FillRoundedRectangle(roundedRect, resources.FillBrush);
+            }
 
             if (resources.StrokeBrush is not null)
             {
@@ -1853,8 +1989,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             (float)bounds.MaxX,
             (float)bounds.MaxY);
 
-        if (resources.FillBrush is not null)
+        if (HasFill(resources) && _resourceCache.Factory is not null)
+        {
+            using var geometry = _resourceCache.Factory.CreateRectangleGeometry(rect);
+            DrawFillGeometry(deviceContext, geometry, bounds, resources);
+        }
+        else if (resources.FillBrush is not null)
+        {
             deviceContext.FillRectangle(rect, resources.FillBrush);
+        }
 
         if (resources.StrokeBrush is not null)
         {
@@ -1863,6 +2006,310 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 resources.StrokeBrush,
                 ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
         }
+    }
+
+    private static bool HasFill(Direct2DResourceCache.EntityResourceBucket resources)
+    {
+        return resources.FillBrush is not null ||
+               resources.HatchBrush is not null ||
+               resources.HatchBackgroundBrush is not null;
+    }
+
+    private static bool HasTransientFill(CadTransientStyle style)
+    {
+        return style.FillColor is { IsTransparent: false } ||
+               style.HatchFill is { BackgroundColor: { IsTransparent: false } } ||
+               style.HatchFill is { ForegroundColor.IsTransparent: false, Lines.Count: > 0 };
+    }
+
+    private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
+
+    private static CadVectorD Rotate(CadVectorD vector, double angleRadians)
+    {
+        var cos = Math.Cos(angleRadians);
+        var sin = Math.Sin(angleRadians);
+        return new CadVectorD(
+            vector.X * cos - vector.Y * sin,
+            vector.X * sin + vector.Y * cos);
+    }
+
+    private void DrawFillGeometry(
+        ID2D1DeviceContext deviceContext,
+        ID2D1Geometry geometry,
+        CadRectD bounds,
+        Direct2DResourceCache.EntityResourceBucket resources)
+    {
+        if (resources.FillBrush is not null)
+            deviceContext.FillGeometry(geometry, resources.FillBrush);
+
+        if (resources.HatchBackgroundBrush is not null)
+            deviceContext.FillGeometry(geometry, resources.HatchBackgroundBrush);
+
+        if (resources.HatchBrush is null ||
+            resources.HatchFillStyle is null ||
+            resources.HatchPattern is null ||
+            bounds.IsEmpty)
+        {
+            return;
+        }
+
+        var hatch = new CadTransientHatchFill(
+            resources.HatchFillStyle.ForegroundColor,
+            resources.HatchFillStyle.BackgroundColor,
+            resources.HatchFillStyle.HatchScale,
+            resources.HatchFillStyle.HatchAngle,
+            resources.HatchFillStyle.HatchOrigin,
+            resources.HatchPattern.Lines.ToArray());
+        DrawHatchGeometry(deviceContext, geometry, bounds, hatch, resources.HatchBrush);
+    }
+
+    private void DrawHatchGeometry(
+        ID2D1DeviceContext deviceContext,
+        ID2D1Geometry geometry,
+        CadRectD bounds,
+        CadTransientHatchFill hatchFill,
+        ID2D1Brush hatchBrush)
+    {
+        if (_resourceCache.Factory is null || hatchFill.Lines.Count == 0)
+        {
+            return;
+        }
+
+        var paddedBounds = bounds.Inflate(Math.Max(4.0, hatchFill.HatchScale * 4.0));
+        var layerParameters = new LayerParameters1
+        {
+            ContentBounds = new RawRectF(
+                (float)paddedBounds.MinX,
+                (float)paddedBounds.MinY,
+                (float)paddedBounds.MaxX,
+                (float)paddedBounds.MaxY),
+            GeometricMask = geometry,
+            MaskAntialiasMode = AntialiasMode.PerPrimitive,
+            MaskTransform = Matrix3x2.Identity,
+            Opacity = 1.0f,
+            OpacityBrush = null,
+            LayerOptions = LayerOptions1.None
+        };
+
+        using var layer = deviceContext.CreateLayer(null);
+        deviceContext.PushLayer(ref layerParameters, layer);
+        try
+        {
+            foreach (var line in hatchFill.Lines)
+                DrawHatchLineSet(deviceContext, paddedBounds, hatchFill, line, hatchBrush);
+        }
+        finally
+        {
+            deviceContext.PopLayer();
+        }
+    }
+
+    private void DrawTransientFillGeometry(
+        ID2D1DeviceContext deviceContext,
+        ID2D1Geometry geometry,
+        CadRectD bounds,
+        CadTransientStyle style)
+    {
+        if (style.FillColor is { IsTransparent: false } fillColor)
+        {
+            using var fillBrush = CreateTransientBrush(deviceContext, fillColor);
+            deviceContext.FillGeometry(geometry, fillBrush);
+        }
+
+        if (style.HatchFill is not { } hatchFill || bounds.IsEmpty)
+            return;
+
+        if (hatchFill.BackgroundColor is { IsTransparent: false } background)
+        {
+            using var backgroundBrush = CreateTransientBrush(deviceContext, background);
+            deviceContext.FillGeometry(geometry, backgroundBrush);
+        }
+
+        if (hatchFill.ForegroundColor.IsTransparent || hatchFill.Lines.Count == 0)
+            return;
+
+        using var hatchBrush = CreateTransientBrush(deviceContext, hatchFill.ForegroundColor);
+        DrawHatchGeometry(deviceContext, geometry, bounds, hatchFill, hatchBrush);
+    }
+
+    private static void DrawHatchLineSet(
+        ID2D1DeviceContext deviceContext,
+        CadRectD bounds,
+        CadTransientHatchFill hatchStyle,
+        CadHatchLineDefinition line,
+        ID2D1Brush brush)
+    {
+        var hatchRotation = DegreesToRadians(hatchStyle.HatchAngle);
+        var angleRadians = DegreesToRadians(line.Angle + hatchStyle.HatchAngle);
+        var direction = new CadVectorD(Math.Cos(angleRadians), Math.Sin(angleRadians)).Normalize();
+        if (direction.LengthSquared <= double.Epsilon)
+            return;
+
+        var normal = new CadVectorD(-direction.Y, direction.X);
+        var offset = Rotate(line.Offset, hatchRotation) * hatchStyle.HatchScale;
+        var projectedSpacing = Math.Abs(offset.Dot(normal));
+        var spacing = projectedSpacing > 1e-6
+            ? projectedSpacing
+            : Math.Max(offset.Length, 1e-6);
+        var origin = hatchStyle.HatchOrigin + Rotate(line.Origin - CadPointD.Origin, hatchRotation) * hatchStyle.HatchScale;
+        var corners = GetBoundsCorners(bounds);
+        var minNormal = double.PositiveInfinity;
+        var maxNormal = double.NegativeInfinity;
+        foreach (var corner in corners)
+        {
+            var distance = (corner - origin).Dot(normal);
+            minNormal = Math.Min(minNormal, distance);
+            maxNormal = Math.Max(maxNormal, distance);
+        }
+
+        var margin = Math.Max(spacing * 2.0, hatchStyle.HatchScale * 2.0);
+        var startIndex = (int)Math.Floor((minNormal - margin) / spacing) - 1;
+        var endIndex = (int)Math.Ceiling((maxNormal + margin) / spacing) + 1;
+
+        for (var index = startIndex; index <= endIndex; index++)
+        {
+            var basePoint = origin + offset * index;
+            var minAlong = double.PositiveInfinity;
+            var maxAlong = double.NegativeInfinity;
+            foreach (var corner in corners)
+            {
+                var distance = (corner - basePoint).Dot(direction);
+                minAlong = Math.Min(minAlong, distance);
+                maxAlong = Math.Max(maxAlong, distance);
+            }
+
+            var startDistance = minAlong - margin;
+            var endDistance = maxAlong + margin;
+
+            if (line.IsSolidLine)
+            {
+                deviceContext.DrawLine(
+                    ToVector2(basePoint + direction * startDistance),
+                    ToVector2(basePoint + direction * endDistance),
+                    brush,
+                    1.0f);
+            }
+            else
+            {
+                DrawDashedHatchLine(
+                    deviceContext,
+                    basePoint,
+                    direction,
+                    startDistance,
+                    endDistance,
+                    line.DashPattern,
+                    hatchStyle.HatchScale,
+                    brush);
+            }
+        }
+    }
+
+    private static void DrawDashedHatchLine(
+        ID2D1DeviceContext deviceContext,
+        CadPointD basePoint,
+        CadVectorD direction,
+        double startDistance,
+        double endDistance,
+        IReadOnlyList<double> dashPattern,
+        double scale,
+        ID2D1Brush brush)
+    {
+        if (endDistance <= startDistance)
+            return;
+
+        var patternLength = dashPattern.Sum(x => Math.Abs(x) * scale);
+        if (patternLength <= 1e-6)
+            return;
+
+        var position = startDistance;
+        var cyclePosition = PositiveModulo(position, patternLength);
+        var segmentIndex = 0;
+        var segmentOffset = 0.0;
+        var consumed = 0.0;
+
+        for (var index = 0; index < dashPattern.Count; index++)
+        {
+            var segmentLength = Math.Abs(dashPattern[index]) * scale;
+            if (segmentLength <= 1e-6)
+            {
+                if (Math.Abs(cyclePosition - consumed) <= 1e-9)
+                {
+                    segmentIndex = index;
+                    segmentOffset = 0.0;
+                    break;
+                }
+
+                continue;
+            }
+
+            if (cyclePosition < consumed + segmentLength || index == dashPattern.Count - 1)
+            {
+                segmentIndex = index;
+                segmentOffset = Math.Max(0.0, cyclePosition - consumed);
+                break;
+            }
+
+            consumed += segmentLength;
+        }
+
+        while (position < endDistance)
+        {
+            var dash = dashPattern[segmentIndex];
+            var segmentLength = Math.Abs(dash) * scale;
+
+            if (segmentLength <= 1e-6)
+            {
+                if (dash >= 0)
+                {
+                    var point = basePoint + direction * position;
+                    deviceContext.DrawLine(ToVector2(point), ToVector2(point + direction * 0.01), brush, 1.0f);
+                }
+
+                segmentIndex = (segmentIndex + 1) % dashPattern.Count;
+                segmentOffset = 0.0;
+                continue;
+            }
+
+            var next = Math.Min(endDistance, position + segmentLength - segmentOffset);
+            if (dash > 0 && next > position)
+            {
+                deviceContext.DrawLine(
+                    ToVector2(basePoint + direction * position),
+                    ToVector2(basePoint + direction * next),
+                    brush,
+                    1.0f);
+            }
+
+            position = next;
+            segmentIndex = (segmentIndex + 1) % dashPattern.Count;
+            segmentOffset = 0.0;
+        }
+    }
+
+    private static double PositiveModulo(double value, double divisor)
+    {
+        var result = value % divisor;
+        return result < 0 ? result + divisor : result;
+    }
+
+    private static CadPointD[] GetBoundsCorners(CadRectD bounds)
+    {
+        return
+        [
+            new CadPointD(bounds.MinX, bounds.MinY),
+            new CadPointD(bounds.MaxX, bounds.MinY),
+            new CadPointD(bounds.MaxX, bounds.MaxY),
+            new CadPointD(bounds.MinX, bounds.MaxY)
+        ];
+    }
+
+    private static CadRectD BoundsFromPoints(IReadOnlyList<CadPointD> points)
+    {
+        var bounds = CadRectD.Empty;
+        foreach (var point in points)
+            bounds = bounds.ExpandToInclude(point);
+
+        return bounds;
     }
 
     private static CadRectD CreateInvertedBackgroundBounds(

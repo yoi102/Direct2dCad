@@ -1,0 +1,1270 @@
+﻿<UserControl x:Class="Direct2dCad.wpf.Views.MainRibbonView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+             xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
+             d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+             mc:Ignorable="d"
+             d:DesignHeight="150"
+             d:DesignWidth="1500">
+    <Grid>
+        <Grid.Resources>
+            <Style TargetType="ToggleButton">
+                <!--<Style x:Key="LayoutToggleButton"
+                         TargetType="ToggleButton">-->
+                <Setter Property="Width"
+                        Value="26" />
+                <Setter Property="Height"
+                        Value="22" />
+                <Setter Property="Background"
+                        Value="Transparent" />
+                <Setter Property="BorderThickness"
+                        Value="0" />
+                <Setter Property="Cursor"
+                        Value="Hand" />
+                <Setter Property="Margin"
+                        Value="1,0" />
+                <Setter Property="Padding"
+                        Value="4,3" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}"
+                                    CornerRadius="3">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver"
+                                         Value="True">
+                                    <Setter Property="Background"
+                                            Value="{StaticResource MaterialDesign.Brush.ToolBar.Item.Foreground}" />
+                                    <Setter Property="Foreground"
+                                            Value="{DynamicResource MaterialDesign.Brush.ToolBar.Item.Background}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked"
+                                         Value="True">
+                                    <Setter Property="Background"
+                                            Value="{StaticResource MaterialDesign.Brush.ToolBar.Item.Foreground}" />
+
+                                    <Setter Property="Foreground"
+                                            Value="{DynamicResource MaterialDesign.Brush.SnackBar.Foreground}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked"
+                                         Value="False">
+                                    <Setter Property="Foreground"
+                                            Value="{DynamicResource MaterialDesign.Brush.SnackBar.MouseOver}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </Grid.Resources>
+
+        <StackPanel HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0 0 10 5"
+                    Orientation="Horizontal"
+                    Panel.ZIndex="11">
+
+            <!--Toggle Primary Side Bar (Left)-->
+
+            <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.TogglePrimarySideBar}}"
+                          IsChecked="{Binding IsPrimarySideBarOpen, Mode=OneWay}"
+                          Command="{Binding TogglePrimarySideBarCommand}">
+                <Viewbox Width="20"
+                         Height="20">
+                    <Canvas Width="20"
+                            Height="20">
+                        <Rectangle Width="15"
+                                   Height="13"
+                                   RadiusX="1"
+                                   RadiusY="1"
+                                   StrokeThickness="1"
+                                   Fill="Transparent"
+                                   Stroke="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Canvas.Left="0.5"
+                                   Canvas.Top="1.5" />
+                        <Rectangle Width="4.5"
+                                   Height="11"
+                                   Fill="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Opacity="0.4"
+                                   Canvas.Left="1.5"
+                                   Canvas.Top="2.5" />
+                    </Canvas>
+                </Viewbox>
+            </ToggleButton>
+
+
+            <!--Toggle Panel (Bottom)-->
+
+            <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.TogglePanel}}"
+                          IsChecked="{Binding IsBottomPanelOpen, Mode=OneWay}"
+                          Command="{Binding ToggleBottomPanelCommand}">
+                <Viewbox Width="14"
+                         Height="14">
+                    <Canvas Width="16"
+                            Height="16">
+                        <Rectangle Width="15"
+                                   Height="13"
+                                   RadiusX="1"
+                                   RadiusY="1"
+                                   StrokeThickness="1"
+                                   Fill="Transparent"
+                                   Stroke="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Canvas.Left="0.5"
+                                   Canvas.Top="1.5" />
+                        <Rectangle Width="13"
+                                   Height="4.5"
+                                   Fill="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Opacity="0.4"
+                                   Canvas.Left="1.5"
+                                   Canvas.Top="9" />
+                    </Canvas>
+                </Viewbox>
+            </ToggleButton>
+
+
+            <!--Toggle Secondary Side Bar (Right)-->
+
+            <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ToggleSecondarySideBar}}"
+                          IsChecked="{Binding IsSecondarySideBarOpen, Mode=OneWay}"
+                          Command="{Binding ToggleSecondarySideBarCommand}">
+                <Viewbox Width="14"
+                         Height="14">
+                    <Canvas Width="16"
+                            Height="16">
+                        <Rectangle Width="15"
+                                   Height="13"
+                                   RadiusX="1"
+                                   RadiusY="1"
+                                   StrokeThickness="1"
+                                   Fill="Transparent"
+                                   Stroke="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Canvas.Left="0.5"
+                                   Canvas.Top="1.5" />
+                        <Rectangle Width="4.5"
+                                   Height="11"
+                                   Fill="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Opacity="0.4"
+                                   Canvas.Left="10"
+                                   Canvas.Top="2.5" />
+                    </Canvas>
+                </Viewbox>
+            </ToggleButton>
+        </StackPanel>
+
+        <TabControl Style="{StaticResource MahApps.Styles.TabControl}"
+                    SelectedIndex="{Binding TabControlSelectedIndex}"
+                    TabStripPlacement="Bottom"
+                    mah:TabControlHelper.Underlined="TabPanel"
+                    mah:TabControlHelper.UnderlinePlacement="Top"
+                    mah:HeaderedControlHelper.HeaderFontFamily="Segoe Script"
+                    mah:HeaderedControlHelper.HeaderFontSize="18">
+
+            <TabItem Header="{I18N {x:Static r:LangKeys.File}}"
+                     Style="{StaticResource MahApps.Styles.TabItem}">
+                <WrapPanel Margin="10">
+
+                    <Button ToolTip="{I18N {x:Static r:LangKeys.New}}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
+                            Command="{Binding NewCommand}">
+                        <Grid RowDefinitions="* auto">
+
+                            <md:PackIcon Kind="FilePlus"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Center"
+                                       Text="{I18N {x:Static r:LangKeys.New}}" />
+
+                        </Grid>
+                    </Button>
+
+                    <Button ToolTip="{I18N {x:Static r:LangKeys.OpenFile}}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
+                            Command="{Binding OpenFileCommand}">
+                        <Grid RowDefinitions="* auto">
+
+                            <md:PackIcon Kind="FolderOpen"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Center"
+                                       Text="{I18N {x:Static r:LangKeys.OpenFile}}" />
+
+                        </Grid>
+                    </Button>
+                    <Button ToolTip="{I18N {x:Static r:LangKeys.Save}}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
+                            Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                            Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}">
+                        <Grid RowDefinitions="* auto"
+                              Margin="0">
+                            <md:PackIcon Kind="ContentSave"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Center"
+                                       Text="{I18N {x:Static r:LangKeys.Save}}" />
+
+                        </Grid>
+                    </Button>
+                    <Button ToolTip="{I18N {x:Static r:LangKeys.SaveAs}}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
+                            Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                            Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}">
+                        <Grid RowDefinitions="* auto">
+                            <md:PackIcon Kind="ContentSaveAdd"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Center"
+                                       Text="{I18N {x:Static r:LangKeys.SaveAs}}" />
+
+                        </Grid>
+                    </Button>
+                </WrapPanel>
+            </TabItem>
+
+            <TabItem Header="{I18N {x:Static r:LangKeys.Draw}}"
+                     Style="{StaticResource MahApps.Styles.TabItem}"
+                     Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
+                <WrapPanel Margin="10">
+
+                    <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Select}}"
+                                  IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Select}}"
+                                  Width="80"
+                                  Height="80"
+                                  Padding="0"
+                                  Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                  CommandParameter="Select">
+                        <Grid RowDefinitions="* auto">
+
+                            <md:PackIcon Kind="ArrowAll"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Center"
+                                       Text="{I18N {x:Static r:LangKeys.Select}}" />
+
+                        </Grid>
+                    </ToggleButton>
+
+                    <Border Width="1"
+                            Margin="15,0"
+                            Background="#616161"
+                            Opacity="0.4" />
+
+                    <WrapPanel Width="80">
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.CircleCenterRadius}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.CircleCenterRadius}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="0"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="CircleCenterRadius">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+
+                                    <Ellipse Width="300"
+                                             Height="300"
+                                             Canvas.Left="106"
+                                             Canvas.Top="106"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             StrokeThickness="38"
+                                             Fill="Transparent"
+                                             d:Stroke="#616161" />
+
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="32"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          d:Stroke="#616161"
+                                          Data="M 256,256 L 350,180" />
+
+                                    <Ellipse Width="40"
+                                             Height="40"
+                                             Canvas.Left="236"
+                                             Canvas.Top="236"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.CircleCenterDiameter}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.CircleCenterDiameter}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="CircleCenterDiameter">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+
+                                    <Ellipse Width="300"
+                                             Height="300"
+                                             Canvas.Left="106"
+                                             Canvas.Top="106"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             StrokeThickness="38"
+                                             Fill="Transparent"
+                                             d:Stroke="#616161" />
+
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="10"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          d:Stroke="#616161"
+                                          Data="M 160,320 L 352,192" />
+
+                                    <Ellipse Width="40"
+                                             Height="40"
+                                             Canvas.Left="236"
+                                             Canvas.Top="236"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.CircleTwoPoint}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.CircleTwoPoint}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="CircleTwoPoint">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <!-- 圆 -->
+                                    <Ellipse Width="300"
+                                             Height="300"
+                                             Canvas.Left="106"
+                                             Canvas.Top="106"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             StrokeThickness="22"
+                                             Fill="Transparent"
+                                             d:Stroke="#616161" />
+
+
+
+                                    <!-- 点1 -->
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="128"
+                                             Canvas.Top="308"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+
+                                    <!-- 点2 -->
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="340"
+                                             Canvas.Top="160"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.CircleThreePoint}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.CircleThreePoint}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="CircleThreePoint">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+
+                                    <!-- 圆 -->
+                                    <Ellipse Width="300"
+                                             Height="300"
+                                             Canvas.Left="106"
+                                             Canvas.Top="106"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             StrokeThickness="22"
+                                             Fill="Transparent"
+                                             d:Stroke="#616161" />
+
+
+                                    <!-- 三个点 -->
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="108"
+                                             Canvas.Top="292"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="234"
+                                             Canvas.Top="94"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="360"
+                                             Canvas.Top="292"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                    </WrapPanel>
+
+
+                    <Border Width="1"
+                            Margin="15,0"
+                            Background="#616161"
+                            Opacity="0.4" />
+
+                    <WrapPanel Width="80">
+
+
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.EllipseCenter}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.EllipseCenter}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="EllipseCenter">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Ellipse Width="330"
+                                             Height="220"
+                                             Canvas.Left="91"
+                                             Canvas.Top="146"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             StrokeThickness="34"
+                                             Fill="Transparent"
+                                             d:Stroke="#616161" />
+                                    <Line X1="256"
+                                          Y1="256"
+                                          X2="421"
+                                          Y2="256"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="24"
+                                          StrokeDashArray="2 2"
+                                          d:Stroke="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="233"
+                                             Canvas.Top="233"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="398"
+                                             Canvas.Top="233"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.EllipseAxisEnd}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.EllipseAxisEnd}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="EllipseAxisEnd">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Ellipse Width="330"
+                                             Height="220"
+                                             Canvas.Left="91"
+                                             Canvas.Top="146"
+                                             Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             StrokeThickness="34"
+                                             Fill="Transparent"
+                                             d:Stroke="#616161" />
+                                    <Line X1="91"
+                                          Y1="256"
+                                          X2="421"
+                                          Y2="256"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="24"
+                                          StrokeDashArray="2 2"
+                                          d:Stroke="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="68"
+                                             Canvas.Top="233"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="398"
+                                             Canvas.Top="233"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="233"
+                                             Canvas.Top="123"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.EllipseArc}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.EllipseArc}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="EllipseArc">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="42"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          d:Stroke="#616161"
+                                          Data="M 101,279 A 155,103 0 0 1 411,279" />
+                                    <Line X1="256"
+                                          Y1="256"
+                                          X2="411"
+                                          Y2="279"
+                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="20"
+                                          StrokeDashArray="2 2"
+                                          d:Stroke="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="78"
+                                             Canvas.Top="256"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="388"
+                                             Canvas.Top="256"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="233"
+                                             Canvas.Top="233"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                             d:Fill="#616161" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                    </WrapPanel>
+
+                    <Border Width="1"
+                            Margin="15,0"
+                            Background="#616161"
+                            Opacity="0.4" />
+
+                    <WrapPanel Width="250">
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcThreePoint}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcThreePoint}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcThreePoint">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="42"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          d:Stroke="#616161"
+                                          Data="M 110,390 A 230,230 0 0 1 410,90" />
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="88"
+                                             Canvas.Top="368"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="230"
+                                             Canvas.Top="150"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="44"
+                                             Height="44"
+                                             Canvas.Left="388"
+                                             Canvas.Top="68"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcStartCenterEnd}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcStartCenterEnd}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcStartCenterEnd">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 110,390 A 230,230 0 0 1 410,90" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="24"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 256,256 L 110,390 M 256,256 L 410,90" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="87"
+                                             Canvas.Top="367"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="36"
+                                             Height="36"
+                                             Canvas.Left="238"
+                                             Canvas.Top="238"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="387"
+                                             Canvas.Top="67"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcStartCenterAngle}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcStartCenterAngle}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcStartCenterAngle">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 112,390 A 220,220 0 0 1 390,110" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="22"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 256,256 L 112,390 M 256,256 L 390,110" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="26"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 210,304 A 72,72 0 0 1 304,210" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="89"
+                                             Canvas.Top="367"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="36"
+                                             Height="36"
+                                             Canvas.Left="238"
+                                             Canvas.Top="238"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcStartCenterLength}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcStartCenterLength}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcStartCenterLength">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 112,390 A 220,220 0 0 1 390,110" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="22"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 256,256 L 112,390 M 112,390 L 390,110" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="89"
+                                             Canvas.Top="367"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="36"
+                                             Height="36"
+                                             Canvas.Left="238"
+                                             Canvas.Top="238"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcStartEndAngle}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcStartEndAngle}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcStartEndAngle">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 110,390 A 230,230 0 0 1 410,90" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="22"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 110,390 L 410,90 M 180,330 A 80,80 0 0 1 250,250" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="87"
+                                             Canvas.Top="367"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="387"
+                                             Canvas.Top="67"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcStartEndDirection}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcStartEndDirection}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcStartEndDirection">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 110,390 A 230,230 0 0 1 410,90" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="24"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 110,390 L 110,220" />
+                                    <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          Data="M 110,210 L 78,260 L 142,260 Z" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="87"
+                                             Canvas.Top="367"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="387"
+                                             Canvas.Top="67"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcStartEndRadius}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcStartEndRadius}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcStartEndRadius">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 110,390 A 230,230 0 0 1 410,90" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="22"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 256,256 L 110,390 M 110,390 L 410,90" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="87"
+                                             Canvas.Top="367"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="46"
+                                             Height="46"
+                                             Canvas.Left="387"
+                                             Canvas.Top="67"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="34"
+                                             Height="34"
+                                             Canvas.Left="239"
+                                             Canvas.Top="239"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcCenterStartEnd}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcCenterStartEnd}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcCenterStartEnd">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 110,390 A 230,230 0 0 1 410,90" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="24"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 256,256 L 110,390 M 256,256 L 410,90" />
+                                    <Ellipse Width="56"
+                                             Height="56"
+                                             Canvas.Left="228"
+                                             Canvas.Top="228"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="38"
+                                             Height="38"
+                                             Canvas.Left="91"
+                                             Canvas.Top="371"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="38"
+                                             Height="38"
+                                             Canvas.Left="391"
+                                             Canvas.Top="71"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcCenterStartAngle}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcCenterStartAngle}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcCenterStartAngle">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 112,390 A 220,220 0 0 1 390,110" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="22"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 256,256 L 112,390 M 256,256 L 390,110 M 210,304 A 72,72 0 0 1 304,210" />
+                                    <Ellipse Width="56"
+                                             Height="56"
+                                             Canvas.Left="228"
+                                             Canvas.Top="228"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="40"
+                                             Height="40"
+                                             Canvas.Left="92"
+                                             Canvas.Top="370"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcCenterStartLength}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcCenterStartLength}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcCenterStartLength">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 112,390 A 220,220 0 0 1 390,110" />
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="22"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 256,256 L 112,390 M 112,390 L 390,110" />
+                                    <Ellipse Width="56"
+                                             Height="56"
+                                             Canvas.Left="228"
+                                             Canvas.Top="228"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                    <Ellipse Width="40"
+                                             Height="40"
+                                             Canvas.Left="92"
+                                             Canvas.Top="370"
+                                             Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.ArcContinue}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.ArcContinue}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="3"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="ArcContinue">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="38"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          Data="M 92,400 L 170,330 M 170,330 A 210,210 0 0 1 420,120" />
+                                    <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          Data="M 170,330 L 112,324 L 150,280 Z" />
+                                    <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          Data="M 420,120 L 366,136 L 402,78 Z" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                    </WrapPanel>
+
+                    <Border Width="1"
+                            Margin="15,0"
+                            Background="#616161"
+                            Opacity="0.4" />
+
+                    <WrapPanel Width="180">
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Line}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Line}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Line">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="35"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          Fill="Transparent"
+                                          d:Stroke="#616161"
+                                          Data="M 96,416 L 416,96" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Rectangle}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Rectangle}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      Content="{md:PackIcon Kind=RectangleOutline,Size=33}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Rectangle" />
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Polyline}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Polyline}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Polyline">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="42"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Fill="Transparent"
+                                          d:Stroke="#616161"
+                                          Data="M 80,360
+                                                      L 180,180
+                                                      L 280,300
+                                                      L 420,120" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Polygon}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Polygon}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Polygon">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Canvas Width="512"
+                                        Height="512">
+                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                          StrokeThickness="42"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Fill="Transparent"
+                                          d:Stroke="#616161"
+                                          Data="M 96,360
+                                                      L 180,170
+                                                      L 320,140
+                                                      L 420,260
+                                                      L 300,390
+                                                      Z" />
+                                </Canvas>
+                            </Viewbox>
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Spline}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Spline}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      x:Name="SplineToggleButton"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Spline">
+                            <Viewbox Width="33"
+                                     Height="33"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center"
+                                     Stretch="Uniform">
+                                <Path Stroke="{Binding ElementName=SplineToggleButton, Path=Foreground}"
+                                      StrokeThickness="35"
+                                      d:Stroke="#616161"
+                                      Fill="Transparent"
+                                      Data="M 50,200 
+                                                  C 100,50 180,50 230,200
+                                                  C 280,350 360,350 410,200" />
+                            </Viewbox>
+
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Text}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Text}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      Content="{md:PackIcon Kind=TextShadow,Size=33}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Text" />
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.SetOrigin}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.SetOrigin}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      Content="{md:PackIcon Kind=Target,Size=33}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="SetOrigin" />
+
+                    </WrapPanel>
+                </WrapPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

@@ -7,6 +7,7 @@ public sealed class CadRenderOptions
 {
     public bool DrawGrid { get; init; } = true;
     public bool DrawOrigin { get; init; } = true;
+    public bool DrawGripHandles { get; init; } = true;
     public bool IsAntialiasingEnabled { get; init; } = true;
     public bool IsTextAntialiasingEnabled { get; init; } = true;
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;

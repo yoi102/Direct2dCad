@@ -615,4 +615,34 @@
   <data name="EllipseArc" xml:space="preserve">
     <value>楕円弧</value>
   </data>
+  <data name="FillNoFill" xml:space="preserve">
+    <value>塗りなし</value>
+  </data>
+  <data name="FillSolid" xml:space="preserve">
+    <value>単色塗り</value>
+  </data>
+  <data name="FillHatchAnsi31" xml:space="preserve">
+    <value>ANSI31 ハッチ</value>
+  </data>
+  <data name="FillHatchHorizontal" xml:space="preserve">
+    <value>水平ハッチ</value>
+  </data>
+  <data name="FillHatchVertical" xml:space="preserve">
+    <value>垂直ハッチ</value>
+  </data>
+  <data name="FillHatchGrid" xml:space="preserve">
+    <value>グリッドハッチ</value>
+  </data>
+  <data name="FillHatchCross45" xml:space="preserve">
+    <value>45度クロスハッチ</value>
+  </data>
+  <data name="FillHatchDashed" xml:space="preserve">
+    <value>破線ハッチ</value>
+  </data>
+  <data name="FillHatchDotted" xml:space="preserve">
+    <value>点線ハッチ</value>
+  </data>
+  <data name="FillHatchBrick" xml:space="preserve">
+    <value>レンガハッチ</value>
+  </data>
 </root>

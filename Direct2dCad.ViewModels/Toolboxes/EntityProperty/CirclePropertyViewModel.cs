@@ -3,15 +3,9 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
-using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
-
-public sealed record FillStyleOption(StyleId? Id, string Name)
-{
-    public override string ToString() => Name;
-}
 
 public partial class CirclePropertyViewModel : EntityPropertyViewModel
 {
@@ -107,7 +101,7 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !TryGetCircle(out var circle))
             return;
 
-        var fillStyleId = value?.Id;
+        var fillStyleId = ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
         if (Nullable.Equals(circle.FillStyleId, fillStyleId))
             return;
 
@@ -237,27 +231,15 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
     }
 
     internal static IReadOnlyList<FillStyleOption> BuildFillStyleOptions(CadDocument document)
-    {
-        var options = new List<FillStyleOption>
-        {
-            new(null, "None")
-        };
-
-        options.AddRange(document.Styles.Values
-            .OfType<CadFillStyle>()
-            .OrderBy(style => style.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(style => new FillStyleOption(style.Id, style.Name)));
-
-        return options;
-    }
+        => FillStyleCatalog.BuildFillStyleOptions(document);
 
     internal static FillStyleOption? FindFillStyleOption(
         IReadOnlyList<FillStyleOption> options,
         StyleId? styleId)
-    {
-        return options.FirstOrDefault(option => Nullable.Equals(option.Id, styleId)) ??
-               options.FirstOrDefault();
-    }
+        => FillStyleCatalog.FindFillStyleOption(options, styleId);
+
+    internal static StyleId? ResolveFillStyleId(CadDocument document, FillStyleOption? option)
+        => FillStyleCatalog.ResolveFillStyleId(document, option);
 
     private static double ResolveLineWeightValue(double value)
     {
@@ -326,7 +308,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingCircleFillStyleId = value?.Id;
+        _documentViewModel.DrawingCircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)

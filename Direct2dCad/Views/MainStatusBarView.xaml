@@ -1,0 +1,109 @@
+﻿<UserControl x:Class="Direct2dCad.wpf.Views.MainStatusBarView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:ex="clr-namespace:Direct2dCad.wpf.Extensions"
+             xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+             xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
+             d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+             mc:Ignorable="d" 
+             d:DesignHeight="35" d:DesignWidth="1200">
+    <Border
+            Background="{DynamicResource MaterialDesign.Brush.Background}">
+
+        <StatusBar Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotHiddenInstance}}">
+            <StatusBarItem>
+
+                <TextBlock Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CadCanvasToolMode}" />
+            </StatusBarItem>
+
+            <Separator />
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.X}}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Width="78"
+                               Margin="4,0,10,0"
+                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldX, StringFormat={}{0:F3}}" />
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.Y}}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Width="78"
+                               Margin="4,0,0,0"
+                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldY, StringFormat={}{0:F3}}" />
+                </StackPanel>
+            </StatusBarItem>
+
+            <Separator />
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.Grid}}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,4,0" />
+                    <ComboBox Margin="5 0 0 0"
+                              Width="82"
+                              Height="24"
+                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadGridType}}}"
+                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadGridType}" />
+                </StackPanel>
+            </StatusBarItem>
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.OriginMarker}}"
+                               VerticalAlignment="Center"
+                               Margin="8,0,4,0" />
+                    <ComboBox Margin="5 0 0 0"
+                              Width="88"
+                              Height="24"
+                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadOriginDisplayType}}}"
+                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginDisplayType}" />
+                </StackPanel>
+            </StatusBarItem>
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.SnapMarker}}"
+                               VerticalAlignment="Center"
+                               Margin="8,0,4,0" />
+                    <ComboBox Margin="5 0 0 0"
+                              Width="88"
+                              Height="24"
+                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadSnapMarkerType}}}"
+                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadSnapMarkerType}" />
+                </StackPanel>
+            </StatusBarItem>
+
+            <Separator />
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.Background}}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,4,0" />
+
+                    <mah:ColorPicker Margin="5 0 0 0"
+                                     Width="160"
+                                     Height="24"
+                                     AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                     ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                     AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                     RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                     StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                     mah:TextBoxHelper.AutoWatermark="True"
+                                     mah:TextBoxHelper.ClearTextButton="False"
+                                     AddToRecentColorsTrigger="SelectedColorChanged"
+                                     SelectedColor="{Binding CurrentEditorTabViewModel.ViewModelCadBackgroundColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
+    </Border>
+
+</UserControl>

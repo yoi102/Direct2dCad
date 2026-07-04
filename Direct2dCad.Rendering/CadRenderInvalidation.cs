@@ -37,7 +37,7 @@ public readonly record struct CadScreenRect(int X, int Y, int Width, int Height)
 
 public sealed class CadRenderInvalidation
 {
-    private const int MaxDirtyScreenRectCount = 12;
+    private const int MaxDirtyScreenRectCount = 32;
     private const double MaxMergeWasteRatio = 1.25;
     private static readonly CadRenderInvalidation EmptyInvalidation = new(false, [], default);
     private static readonly CadRenderInvalidation FullInvalidation = new(true, [], default);

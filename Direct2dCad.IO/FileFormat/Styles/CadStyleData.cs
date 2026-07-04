@@ -12,4 +12,5 @@ public sealed class CadStyleData
     [Key(3)] public CadGraphicStyleData? Graphic { get; set; }
     [Key(4)] public CadTextStyleData? Text { get; set; }
     [Key(5)] public CadGradientFillStyleData? GradientFill { get; set; }
+    [Key(6)] public CadHatchFillStyleData? HatchFill { get; set; }
 }

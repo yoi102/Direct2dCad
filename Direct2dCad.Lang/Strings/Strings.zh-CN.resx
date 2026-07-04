@@ -615,4 +615,34 @@
   <data name="EllipseArc" xml:space="preserve">
     <value>椭圆弧</value>
   </data>
+  <data name="FillNoFill" xml:space="preserve">
+    <value>不填充</value>
+  </data>
+  <data name="FillSolid" xml:space="preserve">
+    <value>纯色填充</value>
+  </data>
+  <data name="FillHatchAnsi31" xml:space="preserve">
+    <value>ANSI31 图案</value>
+  </data>
+  <data name="FillHatchHorizontal" xml:space="preserve">
+    <value>水平线图案</value>
+  </data>
+  <data name="FillHatchVertical" xml:space="preserve">
+    <value>垂直线图案</value>
+  </data>
+  <data name="FillHatchGrid" xml:space="preserve">
+    <value>网格图案</value>
+  </data>
+  <data name="FillHatchCross45" xml:space="preserve">
+    <value>45度交叉图案</value>
+  </data>
+  <data name="FillHatchDashed" xml:space="preserve">
+    <value>虚线图案</value>
+  </data>
+  <data name="FillHatchDotted" xml:space="preserve">
+    <value>点线图案</value>
+  </data>
+  <data name="FillHatchBrick" xml:space="preserve">
+    <value>砖块图案</value>
+  </data>
 </root>

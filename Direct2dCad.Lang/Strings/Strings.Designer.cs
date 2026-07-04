@@ -727,6 +727,96 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 ANSI31 的本地化字符串。
+        /// </summary>
+        public static string FillHatchAnsi31 {
+            get {
+                return ResourceManager.GetString("FillHatchAnsi31", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Brick hatch 的本地化字符串。
+        /// </summary>
+        public static string FillHatchBrick {
+            get {
+                return ResourceManager.GetString("FillHatchBrick", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Cross 45 hatch 的本地化字符串。
+        /// </summary>
+        public static string FillHatchCross45 {
+            get {
+                return ResourceManager.GetString("FillHatchCross45", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Dashed hatch 的本地化字符串。
+        /// </summary>
+        public static string FillHatchDashed {
+            get {
+                return ResourceManager.GetString("FillHatchDashed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Dotted hatch 的本地化字符串。
+        /// </summary>
+        public static string FillHatchDotted {
+            get {
+                return ResourceManager.GetString("FillHatchDotted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Grid hatch 的本地化字符串。
+        /// </summary>
+        public static string FillHatchGrid {
+            get {
+                return ResourceManager.GetString("FillHatchGrid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Horizontal hatch 的本地化字符串。
+        /// </summary>
+        public static string FillHatchHorizontal {
+            get {
+                return ResourceManager.GetString("FillHatchHorizontal", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Vertical hatch 的本地化字符串。
+        /// </summary>
+        public static string FillHatchVertical {
+            get {
+                return ResourceManager.GetString("FillHatchVertical", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 No fill 的本地化字符串。
+        /// </summary>
+        public static string FillNoFill {
+            get {
+                return ResourceManager.GetString("FillNoFill", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Solid fill 的本地化字符串。
+        /// </summary>
+        public static string FillSolid {
+            get {
+                return ResourceManager.GetString("FillSolid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Fit 的本地化字符串。
         /// </summary>
         public static string Fit {

@@ -1,6 +1,16 @@
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering.Transient;
+
+public sealed record CadTransientHatchFill(
+    CadColor ForegroundColor,
+    CadColor? BackgroundColor,
+    double HatchScale,
+    double HatchAngle,
+    CadPointD HatchOrigin,
+    IReadOnlyList<CadHatchLineDefinition> Lines);
 
 public readonly record struct CadTransientStyle(
     CadColor StrokeColor,
@@ -8,7 +18,8 @@ public readonly record struct CadTransientStyle(
     CadTransientLinePattern LinePattern = CadTransientLinePattern.Solid,
     CadColor? FillColor = null,
     bool KeepStrokeWidthScreenConstant = true,
-    double MinimumScreenStrokeWidth = 0.5)
+    double MinimumScreenStrokeWidth = 0.5,
+    CadTransientHatchFill? HatchFill = null)
 {
     public static CadTransientStyle Construction { get; } = new(
         CadColor.FromArgb(230, 64, 196, 255),

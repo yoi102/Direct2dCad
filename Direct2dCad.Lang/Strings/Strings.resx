@@ -781,4 +781,44 @@
     <value>Elliptical Arc</value>
     <comment>Elliptical Arc</comment>
   </data>
+  <data name="FillNoFill" xml:space="preserve">
+    <value>No fill</value>
+    <comment>No fill</comment>
+  </data>
+  <data name="FillSolid" xml:space="preserve">
+    <value>Solid fill</value>
+    <comment>Solid fill</comment>
+  </data>
+  <data name="FillHatchAnsi31" xml:space="preserve">
+    <value>ANSI31</value>
+    <comment>ANSI31 hatch</comment>
+  </data>
+  <data name="FillHatchHorizontal" xml:space="preserve">
+    <value>Horizontal hatch</value>
+    <comment>Horizontal hatch</comment>
+  </data>
+  <data name="FillHatchVertical" xml:space="preserve">
+    <value>Vertical hatch</value>
+    <comment>Vertical hatch</comment>
+  </data>
+  <data name="FillHatchGrid" xml:space="preserve">
+    <value>Grid hatch</value>
+    <comment>Grid hatch</comment>
+  </data>
+  <data name="FillHatchCross45" xml:space="preserve">
+    <value>Cross 45 hatch</value>
+    <comment>Cross 45 hatch</comment>
+  </data>
+  <data name="FillHatchDashed" xml:space="preserve">
+    <value>Dashed hatch</value>
+    <comment>Dashed hatch</comment>
+  </data>
+  <data name="FillHatchDotted" xml:space="preserve">
+    <value>Dotted hatch</value>
+    <comment>Dotted hatch</comment>
+  </data>
+  <data name="FillHatchBrick" xml:space="preserve">
+    <value>Brick hatch</value>
+    <comment>Brick hatch</comment>
+  </data>
 </root>

@@ -4,7 +4,6 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
-using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Vortice;
 using Vortice.Direct2D1;
@@ -146,8 +145,27 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         bucket.Geometry = CreateGeometry(entity);
 
-        if (TryResolveFillColor(document, entity, out var fillColor))
-            bucket.FillBrush = CreateBrush(fillColor);
+        if (TryResolveFillStyle(document, entity, out var fillStyle))
+        {
+            switch (fillStyle)
+            {
+                case CadGradientFillStyle { IsSolid: true } gradient:
+                    var fillColor = gradient.Stops[0].Color;
+                    if (!fillColor.IsTransparent)
+                        bucket.FillBrush = CreateBrush(fillColor);
+                    break;
+
+                case CadHatchFillStyle hatch when document.TryGetHatchPattern(hatch.PatternId, out var pattern) &&
+                                                  pattern is not null:
+                    bucket.HatchFillStyle = hatch;
+                    bucket.HatchPattern = pattern;
+                    if (!hatch.ForegroundColor.IsTransparent)
+                        bucket.HatchBrush = CreateBrush(hatch.ForegroundColor);
+                    if (hatch.BackgroundColor is { IsTransparent: false } background)
+                        bucket.HatchBackgroundBrush = CreateBrush(background);
+                    break;
+            }
+        }
 
         if (entity is CadText text)
             bucket.TextFormat = Direct2DTextServices.CreateTextFormat(WriteFactory, document, text);
@@ -345,13 +363,13 @@ internal sealed class Direct2DResourceCache : IDisposable
         var weight = useLayerLineWeight
             ? layerWeight
             : entityWeight switch
-        {
-            { IsByLayer: false } explicitWeight => explicitWeight,
-            { IsByLayer: true } => layerWeight,
-            _ => styleWeight is { IsByLayer: false }
-                ? styleWeight.Value
-                : layerWeight
-        };
+            {
+                { IsByLayer: false } explicitWeight => explicitWeight,
+                { IsByLayer: true } => layerWeight,
+                _ => styleWeight is { IsByLayer: false }
+                    ? styleWeight.Value
+                    : layerWeight
+            };
 
         if (weight.IsByLayer || weight.Value <= 0)
             weight = CadLineWeight.Default;
@@ -382,7 +400,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         return layer.Color;
     }
 
-    private static bool TryResolveFillColor(CadDocument document, CadEntity entity, out CadColor color)
+    private static bool TryResolveFillStyle(CadDocument document, CadEntity entity, out CadFillStyle fillStyle)
     {
         var fillStyleId = entity switch
         {
@@ -395,14 +413,14 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         if (fillStyleId is null ||
             !document.TryGetStyle(fillStyleId.Value, out var style) ||
-            style is not CadGradientFillStyle { IsSolid: true } fillStyle)
+            style is not CadFillStyle resolvedFillStyle)
         {
-            color = default;
+            fillStyle = default!;
             return false;
         }
 
-        color = fillStyle.Stops[0].Color;
-        return !color.IsTransparent;
+        fillStyle = resolvedFillStyle;
+        return true;
     }
 
     private bool CanCreateDeviceResources()
@@ -453,6 +471,10 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1Geometry? Geometry { get; set; }
         public ID2D1Brush? StrokeBrush { get; set; }
         public ID2D1Brush? FillBrush { get; set; }
+        public ID2D1Brush? HatchBrush { get; set; }
+        public ID2D1Brush? HatchBackgroundBrush { get; set; }
+        public CadHatchFillStyle? HatchFillStyle { get; set; }
+        public CadHatchPatternDefinition? HatchPattern { get; set; }
         public IDWriteTextFormat? TextFormat { get; set; }
         public float StrokeWidth { get; set; }
 
@@ -460,6 +482,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             Geometry is null &&
             StrokeBrush is null &&
             FillBrush is null &&
+            HatchBrush is null &&
+            HatchBackgroundBrush is null &&
             TextFormat is null;
 
         public EntityResourceBucket(EntityId entityId)
@@ -472,10 +496,16 @@ internal sealed class Direct2DResourceCache : IDisposable
             Geometry?.Dispose();
             StrokeBrush?.Dispose();
             FillBrush?.Dispose();
+            HatchBrush?.Dispose();
+            HatchBackgroundBrush?.Dispose();
             TextFormat?.Dispose();
             Geometry = null;
             StrokeBrush = null;
             FillBrush = null;
+            HatchBrush = null;
+            HatchBackgroundBrush = null;
+            HatchFillStyle = null;
+            HatchPattern = null;
             TextFormat = null;
         }
     }

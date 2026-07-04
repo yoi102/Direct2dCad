@@ -113,7 +113,7 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !TryGetEllipse(out var ellipse))
             return;
 
-        var fillStyleId = value?.Id;
+        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
         if (Nullable.Equals(ellipse.FillStyleId, fillStyleId))
             return;
 
@@ -312,7 +312,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingEllipseFillStyleId = value?.Id;
+        _documentViewModel.DrawingEllipseFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)

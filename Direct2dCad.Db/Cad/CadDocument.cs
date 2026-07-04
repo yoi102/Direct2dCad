@@ -60,7 +60,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
         var defaultLayer = new CadLayer(
             LayerId.Default,
-            "0",
+            "DefaultLayer",
             CadColor.White,
             CadLineWeight.Default);
 
