@@ -43,6 +43,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             RefreshFillStyleOptions(_documentViewModel.DrawingPolygonFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingPolygonFillStyleId);
             StrokeColor = _documentViewModel.DrawingPolygonStrokeColor;

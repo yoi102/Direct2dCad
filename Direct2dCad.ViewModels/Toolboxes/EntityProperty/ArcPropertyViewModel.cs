@@ -72,6 +72,7 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, arc);
             CenterX = arc.Center.X;
             CenterY = arc.Center.Y;
             Radius = arc.Radius;
@@ -296,6 +297,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             StrokeColor = _documentViewModel.DrawingArcStrokeColor;
             LineWeight = _documentViewModel.DrawingArcLineWeight;
             ZIndex = _documentViewModel.DrawingArcZIndex;

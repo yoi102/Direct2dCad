@@ -121,6 +121,7 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, polyline);
             RebuildVertices(polyline.Points);
             IsClosed = polyline.Closed;
             RefreshFillStyleOptions(polyline.FillStyleId);
@@ -503,6 +504,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             IsClosed = _documentViewModel.DrawingPolylineClosed;
             RefreshFillStyleOptions(_documentViewModel.DrawingPolylineFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingPolylineFillStyleId);

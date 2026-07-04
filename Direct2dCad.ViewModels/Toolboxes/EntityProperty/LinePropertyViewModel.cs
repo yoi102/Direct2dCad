@@ -72,6 +72,7 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, line);
             StartX = line.Start.X;
             StartY = line.Start.Y;
             EndX = line.End.X;
@@ -333,6 +334,7 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             StrokeColor = _documentViewModel.DrawingLineStrokeColor;
             LineWeight = _documentViewModel.DrawingLineLineWeight;
             ZIndex = _documentViewModel.DrawingLineZIndex;

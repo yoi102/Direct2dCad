@@ -51,6 +51,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     private readonly List<CadPointD> _pendingPolygonPoints = [];
     private readonly List<CadPointD> _pendingSplinePoints = [];
     private readonly List<CadPointD> _pendingEllipsePoints = [];
+    private LayerId _drawingLayerId = LayerId.Default;
     private CadPointD? _pendingWorldPoint;
     private CadPointD? _pendingArcStartPoint;
     private CadPointD? _pendingCircleSecondPoint;
@@ -131,6 +132,26 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial CadCanvasToolMode CadCanvasToolMode { get; internal set; } = CadCanvasToolMode.Select;
+
+    public LayerId DrawingLayerId
+    {
+        get => ResolveDrawingLayerId();
+        set
+        {
+            var previousLayerId = ResolveDrawingLayerId();
+            var resolvedLayerId = ResolveExistingDrawingLayerId(value);
+            if (_drawingLayerId.Equals(resolvedLayerId))
+                return;
+
+            var previousLayer = CadEditor.Document.GetLayer(previousLayerId);
+            var newLayer = CadEditor.Document.GetLayer(resolvedLayerId);
+            _drawingLayerId = resolvedLayerId;
+            OnPropertyChanged();
+            UpdateDrawingDefaultsForLayerSelection(previousLayer, newLayer);
+            RaiseInteractionStateChanged();
+            RequestRender();
+        }
+    }
 
     public CadColor DrawingLineStrokeColor
     {
@@ -538,13 +559,42 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         CadColor newColor,
         CadLineWeight newLineWeight)
     {
-        if (!layerId.Equals(LayerId.Default))
+        if (!layerId.Equals(ResolveDrawingLayerId()))
             return;
 
         UpdateDrawingStrokeColors(previousColor, newColor);
         UpdateDrawingLineWeights(
             ResolveDrawingLineWeightDisplayValue(previousLineWeight),
             ResolveDrawingLineWeightDisplayValue(newLineWeight));
+    }
+
+    private void UpdateDrawingDefaultsForLayerSelection(CadLayer previousLayer, CadLayer newLayer)
+    {
+        UpdateDrawingStrokeColors(ResolveLayerStrokeColor(previousLayer), ResolveLayerStrokeColor(newLayer));
+        UpdateDrawingLineWeights(
+            ResolveDrawingLineWeightDisplayValue(previousLayer.LineWeight),
+            ResolveDrawingLineWeightDisplayValue(newLayer.LineWeight));
+    }
+
+    private LayerId ResolveDrawingLayerId()
+    {
+        if (CadEditor.Document.TryGetLayer(_drawingLayerId, out var layer) && layer is not null)
+            return _drawingLayerId;
+
+        _drawingLayerId = LayerId.Default;
+        return LayerId.Default;
+    }
+
+    private LayerId ResolveExistingDrawingLayerId(LayerId layerId)
+    {
+        return CadEditor.Document.TryGetLayer(layerId, out var layer) && layer is not null
+            ? layerId
+            : LayerId.Default;
+    }
+
+    private CadLayer ResolveDrawingLayer()
+    {
+        return CadEditor.Document.GetLayer(ResolveDrawingLayerId());
     }
 
     private bool SetDrawingSetting<T>(
@@ -931,6 +981,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     CadEditor.AddLine(
                         _pendingWorldPoint.Value,
                         world,
+                        layerId: ResolveDrawingLayerId(),
                         graphicStyleId: ResolveDrawingLineGraphicStyleId(),
                         lineWeight: ResolveDrawingLineLineWeight(),
                         zIndex: DrawingLineZIndex,
@@ -996,6 +1047,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     {
                         CadEditor.AddRectangle(
                             bounds,
+                            layerId: ResolveDrawingLayerId(),
                             cornerRadiusX: ResolveDrawingRectangleCornerRadiusX(bounds),
                             cornerRadiusY: ResolveDrawingRectangleCornerRadiusY(bounds),
                             graphicStyleId: ResolveDrawingRectangleGraphicStyleId(),
@@ -1032,6 +1084,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                     drawingText,
                     world,
                     ResolveTextBoxHeight(drawingText, drawingTextStyleId),
+                    layerId: ResolveDrawingLayerId(),
                     graphicStyleId: ResolveDrawingTextGraphicStyleId(),
                     textStyleId: drawingTextStyleId,
                     isInverted: DrawingTextInverted,
@@ -1138,6 +1191,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         CadEditor.AddCircle(
             center,
             radius,
+            layerId: ResolveDrawingLayerId(),
             graphicStyleId: ResolveDrawingCircleGraphicStyleId(),
             fillStyleId: ResolveDrawingCircleFillStyleId(),
             lineWeight: ResolveDrawingCircleLineWeight(),
@@ -1195,6 +1249,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             geometry.Radius,
             geometry.StartAngleRadians,
             geometry.SweepAngleRadians,
+            layerId: ResolveDrawingLayerId(),
             graphicStyleId: ResolveDrawingArcGraphicStyleId(),
             lineWeight: ResolveDrawingArcLineWeight(),
             zIndex: DrawingArcZIndex,
@@ -1259,6 +1314,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             center,
             radiusX,
             radiusY,
+            layerId: ResolveDrawingLayerId(),
             graphicStyleId: ResolveDrawingEllipseGraphicStyleId(),
             fillStyleId: ResolveDrawingEllipseFillStyleId(),
             lineWeight: ResolveDrawingEllipseLineWeight(),
@@ -1280,6 +1336,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             geometry.RadiusY,
             geometry.StartAngleRadians,
             geometry.SweepAngleRadians,
+            layerId: ResolveDrawingLayerId(),
             graphicStyleId: ResolveDrawingEllipseGraphicStyleId(),
             lineWeight: ResolveDrawingEllipseLineWeight(),
             zIndex: DrawingEllipseZIndex,
@@ -2685,17 +2742,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultLineStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private CadTransientStyle CreateDrawingPolylineTransientStyle()
@@ -2752,17 +2799,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultPolylineStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private StyleId? ResolveDrawingPolygonGraphicStyleId()
@@ -2793,17 +2830,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultPolygonStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private CadTransientStyle CreateDrawingSplineTransientStyle()
@@ -2835,17 +2862,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultSplineStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private CadTransientStyle CreateDrawingArcTransientStyle()
@@ -2905,17 +2922,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultCircleStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private StyleId? ResolveDrawingEllipseGraphicStyleId()
@@ -2946,17 +2953,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultEllipseStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private StyleId? ResolveDrawingRectangleGraphicStyleId()
@@ -3004,17 +3001,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultRectangleStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private CadTransientStyle CreateDrawingTextTransientStyle()
@@ -3041,17 +3028,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultTextStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
-
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+        return ResolveDefaultDrawingStrokeColor();
     }
 
     private StyleId? ResolveDrawingArcGraphicStyleId()
@@ -3084,9 +3061,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadLineWeight ResolveDefaultLayerLineWeight()
     {
-        return CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) && layer is not null
-            ? layer.LineWeight
-            : CadLineWeight.Default;
+        return ResolveDrawingLayer().LineWeight;
     }
 
     private static double ResolveDrawingLineWeightDisplayValue(CadLineWeight lineWeight)
@@ -3103,17 +3078,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private CadColor ResolveDefaultArcStrokeColor()
     {
-        if (!CadEditor.Document.TryGetLayer(LayerId.Default, out var layer) || layer is null)
-            return CadColor.White;
+        return ResolveDefaultDrawingStrokeColor();
+    }
 
-        if (layer.DefaultGraphicStyleId is { } styleId &&
-            CadEditor.Document.TryGetStyle(styleId, out var style) &&
-            style is CadGraphicStyle graphic)
-        {
-            return graphic.StrokeColor;
-        }
-
-        return layer.Color;
+    private CadColor ResolveDefaultDrawingStrokeColor()
+    {
+        return ResolveLayerStrokeColor(ResolveDrawingLayer());
     }
 
     private void AddDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
@@ -3728,6 +3698,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         CadEditor.AddPolyline(
             _pendingPolylinePoints,
             closed,
+            layerId: ResolveDrawingLayerId(),
             graphicStyleId: ResolveDrawingPolylineGraphicStyleId(),
             fillStyleId: closed ? ResolveDrawingPolylineFillStyleId() : null,
             lineWeight: ResolveDrawingPolylineLineWeight(),
@@ -3792,6 +3763,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         CadEditor.AddSpline(
             _pendingSplinePoints,
             ResolveDrawingSplineClosed(_pendingSplinePoints.Count),
+            layerId: ResolveDrawingLayerId(),
             graphicStyleId: ResolveDrawingSplineGraphicStyleId(),
             lineWeight: ResolveDrawingSplineLineWeight(),
             zIndex: DrawingSplineZIndex,
@@ -3890,6 +3862,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
         CadEditor.AddPolygon(
             _pendingPolygonPoints,
+            layerId: ResolveDrawingLayerId(),
             graphicStyleId: ResolveDrawingPolygonGraphicStyleId(),
             fillStyleId: ResolveDrawingPolygonFillStyleId(),
             lineWeight: ResolveDrawingPolygonLineWeight(),

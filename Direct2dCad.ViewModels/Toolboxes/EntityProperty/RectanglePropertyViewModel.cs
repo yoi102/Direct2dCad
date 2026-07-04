@@ -93,6 +93,7 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, rectangle);
             RefreshGeometryProperties(rectangle.Bounds);
             CornerRadiusX = rectangle.CornerRadiusX;
             CornerRadiusY = rectangle.CornerRadiusY;
@@ -440,6 +441,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             RefreshFillStyleOptions(_documentViewModel.DrawingRectangleFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingRectangleFillStyleId);
             StrokeColor = _documentViewModel.DrawingRectangleStrokeColor;

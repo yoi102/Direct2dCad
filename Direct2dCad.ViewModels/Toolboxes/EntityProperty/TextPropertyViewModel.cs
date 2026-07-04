@@ -89,6 +89,7 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, text);
             TextContent = text.Text;
             PositionX = text.Position.X;
             PositionY = text.Position.Y;
@@ -389,6 +390,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             TextContent = _documentViewModel.DrawingText;
             RefreshTextStyleOptions(_documentViewModel.DrawingTextStyleId);
             StrokeColor = _documentViewModel.DrawingTextStrokeColor;

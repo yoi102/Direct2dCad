@@ -84,6 +84,21 @@
                           IsChecked="{Binding IsVisible}"
                           Margin="0,2,0,0" />
             </Grid>
+
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0"
+                           Text="{I18N {x:Static r:LangKeys.Layers}}"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding LayerOptions, Mode=OneWay}"
+                          SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}"
+                          DisplayMemberPath="Name" />
+            </Grid>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

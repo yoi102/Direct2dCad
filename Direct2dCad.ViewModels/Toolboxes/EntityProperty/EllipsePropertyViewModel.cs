@@ -76,6 +76,7 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, ellipse);
             CenterX = ellipse.Center.X;
             CenterY = ellipse.Center.Y;
             RadiusX = ellipse.RadiusX;
@@ -321,6 +322,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             RefreshFillStyleOptions(_documentViewModel.DrawingEllipseFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingEllipseFillStyleId);
             StrokeColor = _documentViewModel.DrawingEllipseStrokeColor;

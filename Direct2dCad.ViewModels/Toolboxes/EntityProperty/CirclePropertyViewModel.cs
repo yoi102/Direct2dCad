@@ -72,6 +72,7 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, circle);
             CenterX = circle.Center.X;
             CenterY = circle.Center.Y;
             Radius = circle.Radius;
@@ -327,6 +328,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             RefreshFillStyleOptions(_documentViewModel.DrawingCircleFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingCircleFillStyleId);
             StrokeColor = _documentViewModel.DrawingCircleStrokeColor;

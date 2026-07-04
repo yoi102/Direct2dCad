@@ -8,6 +8,70 @@ namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
 public abstract class EntityPropertyViewModel : ObservableObject
 {
+    private bool _isRefreshingLayerOptions;
+    private bool _isDrawingLayerSelection;
+    private CadDocumentViewModel? _layerDocumentViewModel;
+    private EntityId? _layerEntityId;
+    private EntityLayerOption? _selectedLayerOption;
+
+    public IReadOnlyList<EntityLayerOption> LayerOptions { get; private set; } = [];
+
+    public EntityLayerOption? SelectedLayerOption
+    {
+        get => _selectedLayerOption;
+        set
+        {
+            if (SetProperty(ref _selectedLayerOption, value))
+                OnSelectedLayerOptionChanged(value);
+        }
+    }
+
+    protected void RefreshLayerOptions(CadDocumentViewModel documentViewModel, CadEntity entity)
+    {
+        ArgumentNullException.ThrowIfNull(documentViewModel);
+        ArgumentNullException.ThrowIfNull(entity);
+
+        _layerDocumentViewModel = documentViewModel;
+        _layerEntityId = entity.Id;
+        _isDrawingLayerSelection = false;
+
+        RefreshLayerOptionsCore(documentViewModel, entity.LayerId);
+    }
+
+    protected void RefreshDrawingLayerOptions(CadDocumentViewModel documentViewModel)
+    {
+        ArgumentNullException.ThrowIfNull(documentViewModel);
+
+        _layerDocumentViewModel = documentViewModel;
+        _layerEntityId = null;
+        _isDrawingLayerSelection = true;
+
+        RefreshLayerOptionsCore(documentViewModel, documentViewModel.DrawingLayerId);
+    }
+
+    private void RefreshLayerOptionsCore(CadDocumentViewModel documentViewModel, LayerId selectedLayerId)
+    {
+        var document = documentViewModel.CadEditor.Document;
+        LayerOptions = document.Layers.Values
+            .OrderBy(layer => document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id))
+            .ThenBy(layer => layer.Id.Value)
+            .Select(layer => new EntityLayerOption(layer.Id, layer.Name, layer.Color))
+            .ToArray();
+        OnPropertyChanged(nameof(LayerOptions));
+
+        _isRefreshingLayerOptions = true;
+        try
+        {
+            SelectedLayerOption =
+                LayerOptions.FirstOrDefault(option => option.LayerId.Equals(selectedLayerId)) ??
+                LayerOptions.FirstOrDefault();
+        }
+        finally
+        {
+            _isRefreshingLayerOptions = false;
+        }
+    }
+
     protected static CadColor ResolveStrokeColor(
         CadDocument document,
         CadEntity entity,
@@ -64,4 +128,39 @@ public abstract class EntityPropertyViewModel : ObservableObject
             ? CadLineWeight.Default
             : lineWeight;
     }
+
+    private void OnSelectedLayerOptionChanged(EntityLayerOption? option)
+    {
+        if (_isRefreshingLayerOptions ||
+            option is null ||
+            _layerDocumentViewModel is not { } documentViewModel ||
+            (!_isDrawingLayerSelection && _layerEntityId is null))
+        {
+            return;
+        }
+
+        if (_isDrawingLayerSelection)
+        {
+            if (!documentViewModel.DrawingLayerId.Equals(option.LayerId))
+                documentViewModel.DrawingLayerId = option.LayerId;
+
+            return;
+        }
+
+        if (_layerEntityId is not { } entityId ||
+            !documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            entity.IsErased ||
+            entity.LayerId.Equals(option.LayerId))
+        {
+            return;
+        }
+
+        documentViewModel.CadEditor.ChangeEntityLayer(entityId, option.LayerId);
+    }
+}
+
+public sealed record EntityLayerOption(LayerId LayerId, string Name, CadColor Color)
+{
+    public string LayerIdText => LayerId.Value.ToString();
 }

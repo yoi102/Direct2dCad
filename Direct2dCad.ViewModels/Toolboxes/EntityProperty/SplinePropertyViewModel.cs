@@ -64,6 +64,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshLayerOptions(_documentViewModel, spline);
             RebuildFitPoints(spline.FitPoints);
             IsClosed = spline.Closed;
             StrokeColor = ResolveStrokeColor(spline);
@@ -406,6 +407,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         _isRefreshing = true;
         try
         {
+            RefreshDrawingLayerOptions(_documentViewModel);
             IsClosed = _documentViewModel.DrawingSplineClosed;
             StrokeColor = _documentViewModel.DrawingSplineStrokeColor;
             LineWeight = _documentViewModel.DrawingSplineLineWeight;
