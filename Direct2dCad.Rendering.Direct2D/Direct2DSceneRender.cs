@@ -2079,6 +2079,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (hatchBounds.IsEmpty)
             return;
 
+        var anchoredHatchFill = hatchFill with
+        {
+            HatchOrigin = ResolveHatchOrigin(bounds, hatchFill)
+        };
         var strokeWidth = ResolveHatchStrokeWidth(viewport);
         var layerParameters = new LayerParameters1
         {
@@ -2104,8 +2108,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             layerPushed = true;
 
             deviceContext.PrimitiveBlend = PrimitiveBlend.Copy;
-            foreach (var line in hatchFill.Lines)
-                DrawHatchLineSet(deviceContext, hatchBounds, hatchFill, line, hatchBrush, strokeWidth);
+            foreach (var line in anchoredHatchFill.Lines)
+                DrawHatchLineSet(deviceContext, hatchBounds, anchoredHatchFill, line, hatchBrush, strokeWidth);
             deviceContext.PrimitiveBlend = previousPrimitiveBlend;
         }
         finally
@@ -2120,6 +2124,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
             deviceContext.PrimitiveBlend = previousPrimitiveBlend;
         }
+    }
+
+    private static CadPointD ResolveHatchOrigin(CadRectD entityBounds, CadTransientHatchFill hatchFill)
+    {
+        if (entityBounds.IsEmpty)
+            return hatchFill.HatchOrigin;
+
+        return new CadPointD(
+            entityBounds.MinX + hatchFill.HatchOrigin.X,
+            entityBounds.MaxY + hatchFill.HatchOrigin.Y);
     }
 
     private void DrawTransientFillGeometry(

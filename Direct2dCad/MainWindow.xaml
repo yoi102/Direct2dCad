@@ -27,8 +27,8 @@
                  TitleCharacterCasing="Normal"
                  ShowIconOnTitleBar="True"
                  WindowStartupLocation="CenterScreen"
-                 Height="1100"
-                 Width="1400">
+                 Height="1000"
+                 Width="1200">
     <mah:MetroWindow.LeftWindowCommands>
         <mah:WindowCommands>
             <Button Margin="15 0 0 0"
