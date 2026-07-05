@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views.Dialogs"
              mc:Ignorable="d" 
@@ -24,12 +25,31 @@
                    Margin="0 8 0 8"
                    FontStretch="ExtraCondensed" />
 
-        <Button Grid.Row="2"
-                Margin="0 20 0 0"
-                Width="80"
-                IsCancel="True"
-                IsDefault="False"
-                Content="{I18N {x:Static r:LangKeys.Ok}}"
-                Command="{x:Static md:DialogHost.CloseDialogCommand}" />
+        <!-- 按钮 -->
+        <StackPanel Grid.Row="2"
+                    x:Name="ButtonStackPanel"
+                    Margin="0 50 0 0"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Center">
+
+            <Button x:Name="OkButton"
+                    Content="{I18N {x:Static r:LangKeys.Ok}}"
+                    IsDefault="True"
+                    IsCancel="True"
+                    Margin="0 0 0 0"
+                    Command="{x:Static md:DialogHost.CloseDialogCommand}"
+                    CommandParameter="{x:Static sys:Boolean.TrueString}" />
+
+            <!-- 取消按钮 -->
+            <Button x:Name="CancelButton"
+                    Content="{I18N {x:Static r:LangKeys.Cancel}}"
+                    Visibility="Collapsed"
+                    IsCancel="True"
+                    Margin="0 0 0 0"
+                    Command="{x:Static md:DialogHost.CloseDialogCommand}"
+                    CommandParameter="{x:Static sys:Boolean.FalseString}" />
+
+
+        </StackPanel>
     </Grid>
 </UserControl>

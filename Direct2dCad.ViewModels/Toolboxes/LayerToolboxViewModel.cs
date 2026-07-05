@@ -15,8 +15,9 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
 {
     private CadDocumentViewModel? _documentViewModel;
     private readonly IDisposable _interactionStateChangedSubscription;
+    private readonly IDialogService _dialogService;
 
-    public LayerToolboxViewModel(
+    public LayerToolboxViewModel(IDialogService dialogService,
         IToolboxIconsService toolboxIconsService,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
@@ -26,6 +27,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
         Icon = toolboxIconsService.Layers;
         Shortcut = "Ctrl+Shift+L";
         IsOpenByDefault = true;
+        _dialogService = dialogService;
     }
 
     public ObservableCollection<LayerItemViewModel> Layers { get; } = [];
@@ -173,9 +175,17 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteSelectedLayer))]
-    private void DeleteSelectedLayer()
+    private async Task DeleteSelectedLayer()
     {
-        if (_documentViewModel is null || SelectedLayer is not { } layer || !layer.CanDelete)
+        if (_documentViewModel is null || SelectedLayer is not { } layer || Layers.Count < 1)
+            return;
+
+        var is_delete = await _dialogService.ShowOrReplaceMessageDialogWithCancelAsync(
+                        $"Are you sure you want to delete layer '{layer.Name}'? \rAll entities on this layer will be deleted.",
+                        "Confirm Delete Layer",
+                        ViewServiceIdentifiers.RootDialogHost);
+
+        if (!is_delete)
             return;
 
         var fallbackSelection = Layers.FirstOrDefault(x => !ReferenceEquals(x, layer))?.LayerId;
@@ -186,7 +196,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
 
     private bool CanDeleteSelectedLayer()
     {
-        return SelectedLayer?.CanDelete == true;
+        return Layers.Count > 1;
     }
 
     [RelayCommand(CanExecute = nameof(CanMoveSelectedLayerUp))]
@@ -325,14 +335,6 @@ public sealed partial class LayerItemViewModel : ObservableObject
 
     public bool IsDefaultLayer => LayerId.Equals(LayerId.Default);
 
-    public bool CanDelete => !IsDefaultLayer && EntityCount == 0;
-
-    public string DeleteToolTip => IsDefaultLayer
-        ? "Default layer cannot be deleted."
-        : EntityCount > 0
-            ? "Layer contains entities."
-            : "Delete layer";
-
     public string ToolTipText => $"Id: {LayerIdText}, Entities: {EntityCount}";
 
     [ObservableProperty]
@@ -348,10 +350,10 @@ public sealed partial class LayerItemViewModel : ObservableObject
     public partial bool IsFrozen { get; set; }
 
     [ObservableProperty]
-    public partial CadColor Color { get;  set; }
+    public partial CadColor Color { get; set; }
 
     [ObservableProperty]
-    public partial double LineWeight { get;  set; }
+    public partial double LineWeight { get; set; }
 
     [ObservableProperty]
     public partial int Priority { get; private set; }
@@ -378,8 +380,6 @@ public sealed partial class LayerItemViewModel : ObservableObject
             _isRefreshing = false;
         }
 
-        OnPropertyChanged(nameof(CanDelete));
-        OnPropertyChanged(nameof(DeleteToolTip));
         OnPropertyChanged(nameof(ToolTipText));
     }
 

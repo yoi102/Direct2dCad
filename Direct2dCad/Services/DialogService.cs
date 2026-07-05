@@ -1,8 +1,9 @@
+using System.Windows;
 using Direct2dCad.Client.Common;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.wpf.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
-using System.Windows;
 
 namespace Direct2dCad.wpf.Services;
 
@@ -44,24 +45,36 @@ internal sealed class DialogService : IDialogService
         return ShowMessageAsync(header, message, dialogIdentifier);
     }
 
-    public Task ShowOrReplaceMessageInActiveWindowAsync(
-        string header,
+    public async Task<bool> ShowOrReplaceMessageDialogWithCancelAsync(
         string message,
+        string header = "",
         string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost)
     {
-        return ShowMessageAsync(header, message, dialogIdentifier);
+        var result = await ShowMessageAsync(header, message, dialogIdentifier, MessageDialogButton.OKCancel);
+        return result is string resultString && resultString == bool.TrueString;
     }
 
     public async Task<bool> ShowExitConfirmation(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost)
     {
-        var result = await ShowReplacingCurrentAsync(() => new ExitConfirmDialog(), dialogIdentifier);
+        var header = Strings.ConfirmExitTitle;
+        var message = Strings.ConfirmExitMessage;
+        var buttonType = MessageDialogButton.OKCancel;
+        var width = 350;
+        var okButtonContent = Strings.Confirm;
+
+        MessageDialog messageDialog = new(header, message, buttonType);
+        messageDialog.Width = width;
+        messageDialog.SetOKButtonContent(okButtonContent);
+        var result = await ShowReplacingCurrentAsync(() => messageDialog, dialogIdentifier);
 
         return result is string resultString && resultString == bool.TrueString;
     }
 
-    private static Task ShowMessageAsync(string header, string message, string dialogIdentifier)
+    private static Task<object?> ShowMessageAsync(string header, string message, string dialogIdentifier, MessageDialogButton buttonType = MessageDialogButton.OK)
     {
-        return ShowReplacingCurrentAsync(() => new MessageDialog(header, message), dialogIdentifier);
+        MessageDialog messageDialog = new(header, message, buttonType);
+
+        return ShowReplacingCurrentAsync(() => messageDialog, dialogIdentifier);
     }
 
     private static Task<object?> ShowReplacingCurrentAsync(Func<object> dialogFactory, string dialogIdentifier)
