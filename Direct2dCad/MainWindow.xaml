@@ -38,23 +38,24 @@
                     Height="22" />
             <Menu VerticalAlignment="Center"
                   md:MenuAssist.TopLevelMenuItemHeight="25">
-                <MenuItem Header="{I18N {x:Static r:LangKeys.File}}">
+                <MenuItem Foreground="White"
+                          Header="{I18N {x:Static r:LangKeys.File}}">
                     <MenuItem Command="{Binding NewCommand}"
                               Icon="{md:PackIcon Kind=FilePlus}"
-                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Foreground="White"
                               Header="{I18N {x:Static r:LangKeys.New}}" />
                     <MenuItem Command="{Binding OpenFileCommand}"
                               Icon="{md:PackIcon Kind=FolderOpen}"
-                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Foreground="White"
                               Header="{I18N {x:Static r:LangKeys.OpenFile}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}"
                               Icon="{md:PackIcon Kind=ContentSave}"
-                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Foreground="White"
                               Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.Save}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}"
                               Icon="{md:PackIcon Kind=ContentSaveAdd}"
-                              Foreground="{DynamicResource MaterialDesignBody}"
+                              Foreground="White"
                               Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.SaveAs}}" />
                 </MenuItem>
