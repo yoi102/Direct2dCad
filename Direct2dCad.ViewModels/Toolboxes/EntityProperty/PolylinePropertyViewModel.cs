@@ -72,7 +72,8 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
 
     public EntityId EntityId { get; }
     public string EntityIdText => EntityId.ToString();
-    public ObservableCollection<PolylineVertexPropertyViewModel> Vertices { get; } = [];
+    [ObservableProperty]
+    public partial ObservableCollection<PolylineVertexPropertyViewModel> Vertices { get; private set; } = [];
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
     public int PointCount => Vertices.Count;
     public double Length => TryGetPolyline(out var polyline) ? polyline.Length : CalculateLength(Vertices.Select(x => x.ToPoint()), IsClosed);
@@ -322,14 +323,43 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
 
     private void RebuildVertices(IReadOnlyList<CadPointD> points)
     {
+        if (VertexCollectionMatches(Vertices, points))
+            return;
+
+        var selectedIndex = SelectedVertex is not null
+            ? Vertices.IndexOf(SelectedVertex)
+            : 0;
+
         foreach (var vertex in Vertices)
             vertex.Changed -= OnVertexChanged;
 
-        Vertices.Clear();
+        var vertices = new ObservableCollection<PolylineVertexPropertyViewModel>();
         for (var i = 0; i < points.Count; i++)
-            Vertices.Add(CreateVertex(i, points[i]));
+            vertices.Add(CreateVertex(i, points[i]));
 
-        SelectedVertex = Vertices.FirstOrDefault();
+        Vertices = vertices;
+        SelectedVertex = Vertices.Count > 0
+            ? Vertices[Math.Clamp(Math.Max(selectedIndex, 0), 0, Vertices.Count - 1)]
+            : null;
+    }
+
+    private static bool VertexCollectionMatches(
+        IReadOnlyList<PolylineVertexPropertyViewModel> vertices,
+        IReadOnlyList<CadPointD> points)
+    {
+        if (vertices.Count != points.Count)
+            return false;
+
+        for (var i = 0; i < points.Count; i++)
+        {
+            if (vertices[i].Index != i ||
+                vertices[i].ToPoint().DistanceSquaredTo(points[i]) > Epsilon)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private PolylineVertexPropertyViewModel CreateVertex(int index, CadPointD point)

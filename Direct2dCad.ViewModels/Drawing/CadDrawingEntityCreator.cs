@@ -1,0 +1,197 @@
+using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Styles;
+using Direct2dCad.Db.Geometry;
+using Direct2dCad.Editor;
+using Direct2dCad.ViewModels.Geometry;
+using Direct2dCad.ViewModels.Text;
+using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
+
+namespace Direct2dCad.ViewModels.Drawing;
+
+internal sealed class CadDrawingEntityCreator(
+    CadEditor editor,
+    LayerId layerId,
+    CadDrawingDefaults defaults,
+    CadDrawingStyleResolver styleResolver,
+    CadTextMeasurementService textMeasurementService)
+{
+    public void AddLine(CadPointD start, CadPointD end)
+    {
+        editor.AddLine(
+            start,
+            end,
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolveLineGraphicStyleId(),
+            lineWeight: styleResolver.ResolveLineLineWeight(),
+            zIndex: defaults.LineZIndex,
+            isVisible: defaults.LineIsVisible);
+    }
+
+    public void AddRectangleIfValid(CadRectD bounds)
+    {
+        if (!IsValidRectangleBounds(bounds))
+            return;
+
+        editor.AddRectangle(
+            bounds,
+            layerId: layerId,
+            cornerRadiusX: styleResolver.ResolveRectangleCornerRadiusX(bounds),
+            cornerRadiusY: styleResolver.ResolveRectangleCornerRadiusY(bounds),
+            graphicStyleId: styleResolver.ResolveRectangleGraphicStyleId(),
+            fillStyleId: styleResolver.ResolveRectangleFillStyleId(),
+            lineWeight: styleResolver.ResolveRectangleLineWeight(),
+            zIndex: defaults.RectangleZIndex,
+            isVisible: defaults.RectangleIsVisible);
+    }
+
+    public void AddCircleIfValid(CadPointD center, double radius)
+    {
+        if (!IsValidCircleGeometry(radius))
+            return;
+
+        editor.AddCircle(
+            center,
+            radius,
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolveCircleGraphicStyleId(),
+            fillStyleId: styleResolver.ResolveCircleFillStyleId(),
+            lineWeight: styleResolver.ResolveCircleLineWeight(),
+            zIndex: defaults.CircleZIndex,
+            isVisible: defaults.CircleIsVisible);
+    }
+
+    public void AddArcIfValid(ArcDrawingGeometry geometry)
+    {
+        if (!IsValidArcGeometry(geometry.Radius, geometry.SweepAngleRadians))
+            return;
+
+        editor.AddArc(
+            geometry.Center,
+            geometry.Radius,
+            geometry.StartAngleRadians,
+            geometry.SweepAngleRadians,
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolveArcGraphicStyleId(),
+            lineWeight: styleResolver.ResolveArcLineWeight(),
+            zIndex: defaults.ArcZIndex,
+            isVisible: defaults.ArcIsVisible);
+    }
+
+    public void AddEllipseIfValid(CadPointD center, double radiusX, double radiusY)
+    {
+        if (!IsValidEllipseGeometry(radiusX, radiusY))
+            return;
+
+        editor.AddEllipse(
+            center,
+            radiusX,
+            radiusY,
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolveEllipseGraphicStyleId(),
+            fillStyleId: styleResolver.ResolveEllipseFillStyleId(),
+            lineWeight: styleResolver.ResolveEllipseLineWeight(),
+            zIndex: defaults.EllipseZIndex,
+            isVisible: defaults.EllipseIsVisible);
+    }
+
+    public void AddEllipseArcIfValid(EllipseArcDrawingGeometry geometry)
+    {
+        if (!IsValidEllipseGeometry(geometry.RadiusX, geometry.RadiusY) ||
+            !IsValidArcGeometry(1.0, geometry.SweepAngleRadians))
+        {
+            return;
+        }
+
+        editor.AddEllipseArc(
+            geometry.Center,
+            geometry.RadiusX,
+            geometry.RadiusY,
+            geometry.StartAngleRadians,
+            geometry.SweepAngleRadians,
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolveEllipseGraphicStyleId(),
+            lineWeight: styleResolver.ResolveEllipseLineWeight(),
+            zIndex: defaults.EllipseZIndex,
+            isVisible: defaults.EllipseIsVisible);
+    }
+
+    public void AddPolyline(IReadOnlyList<CadPointD> points)
+    {
+        if (points.Count < 2)
+            return;
+
+        var closed = styleResolver.ResolvePolylineClosed(points.Count);
+        editor.AddPolyline(
+            points,
+            closed,
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolvePolylineGraphicStyleId(),
+            fillStyleId: closed ? styleResolver.ResolvePolylineFillStyleId() : null,
+            lineWeight: styleResolver.ResolvePolylineLineWeight(),
+            zIndex: defaults.PolylineZIndex,
+            isVisible: defaults.PolylineIsVisible);
+    }
+
+    public void AddSpline(IReadOnlyList<CadPointD> fitPoints)
+    {
+        if (fitPoints.Count < 2)
+            return;
+
+        editor.AddSpline(
+            fitPoints,
+            styleResolver.ResolveSplineClosed(fitPoints.Count),
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolveSplineGraphicStyleId(),
+            lineWeight: styleResolver.ResolveSplineLineWeight(),
+            zIndex: defaults.SplineZIndex,
+            isVisible: defaults.SplineIsVisible);
+    }
+
+    public void AddPolygon(IReadOnlyList<CadPointD> points)
+    {
+        if (points.Count < 3)
+            return;
+
+        editor.AddPolygon(
+            points,
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolvePolygonGraphicStyleId(),
+            fillStyleId: styleResolver.ResolvePolygonFillStyleId(),
+            lineWeight: styleResolver.ResolvePolygonLineWeight(),
+            zIndex: defaults.PolygonZIndex,
+            isVisible: defaults.PolygonIsVisible);
+    }
+
+    public void AddText(CadPointD position, string text, StyleId? textStyleId, double invertedMarginFactor)
+    {
+        editor.AddText(
+            text,
+            position,
+            textMeasurementService.ResolveTextBoxHeight(text, textStyleId),
+            layerId: layerId,
+            graphicStyleId: styleResolver.ResolveTextGraphicStyleId(),
+            textStyleId: textStyleId,
+            isInverted: defaults.TextInverted,
+            invertedMarginFactor: invertedMarginFactor,
+            lineWeight: styleResolver.ResolveTextLineWeight(),
+            zIndex: defaults.TextZIndex,
+            isVisible: defaults.TextIsVisible);
+    }
+
+    public void SetOriginPosition(CadPointD position)
+    {
+        editor.SetOriginPosition(position);
+    }
+
+    public static bool IsValidRectangleBounds(CadRectD bounds)
+    {
+        return !bounds.IsEmpty &&
+               bounds.Width > 0 &&
+               bounds.Height > 0 &&
+               !double.IsNaN(bounds.Width) &&
+               !double.IsNaN(bounds.Height) &&
+               !double.IsInfinity(bounds.Width) &&
+               !double.IsInfinity(bounds.Height);
+    }
+}

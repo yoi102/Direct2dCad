@@ -1,0 +1,252 @@
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Editor;
+using Direct2dCad.Rendering.Handles;
+using Direct2dCad.Rendering.Transient;
+using Direct2dCad.ViewModels.Styling;
+using Direct2dCad.ViewModels.Text;
+using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
+using static Direct2dCad.ViewModels.Geometry.CadGripDragGeometryFactory;
+
+namespace Direct2dCad.ViewModels.Interactions;
+
+internal sealed class CadGripDragPreviewBuilder(
+    CadEditor editor,
+    CadPreviewStyleService styleService,
+    CadTextMeasurementService textMeasurementService)
+{
+    public void AddPreview(List<CadTransientItem> items, GripDragState? drag)
+    {
+        if (drag is null ||
+            !editor.Document.TryGetEntity(drag.Handle.EntityId, out var entity) ||
+            entity is null ||
+            entity.IsErased)
+        {
+            return;
+        }
+
+        if (drag.Handle.Type == CadHandleType.Center)
+        {
+            AddMoveGripPreview(items, drag);
+            return;
+        }
+
+        var style = styleService.CreateEntityPreviewStyle(entity);
+        var auxiliaryStyle = styleService.CreateGripAuxiliaryStyle();
+        switch (entity)
+        {
+            case CadLine line:
+                AddLineGripPreview(items, line, drag, style);
+                break;
+
+            case CadCircle circle:
+                AddCircleGripPreview(items, circle, drag, style, auxiliaryStyle);
+                break;
+
+            case CadEllipse ellipse:
+                AddEllipseGripPreview(items, ellipse, drag, style, auxiliaryStyle);
+                break;
+
+            case CadArc arc:
+                AddArcGripPreview(items, arc, drag, style, auxiliaryStyle);
+                break;
+
+            case CadRectangle rectangle:
+                AddRectangleGripPreview(items, rectangle, drag, style);
+                break;
+
+            case CadPolyline polyline:
+                AddPolylineGripPreview(items, polyline, drag, style);
+                break;
+
+            case CadSpline spline:
+                AddSplineGripPreview(items, spline, drag, style);
+                break;
+
+            case CadText text:
+                AddTextGripPreview(items, text, drag, style, auxiliaryStyle);
+                break;
+
+            case CadShapeText shapeText:
+                AddShapeTextGripPreview(items, shapeText, drag, style, auxiliaryStyle);
+                break;
+        }
+    }
+
+    private void AddMoveGripPreview(
+        List<CadTransientItem> items,
+        GripDragState drag)
+    {
+        foreach (var entityId in CadGripDragEntityResolver.ResolveMoveEntityIds(editor, drag))
+        {
+            if (editor.Document.TryGetEntity(entityId, out var entity) &&
+                entity is not null &&
+                !entity.IsErased)
+            {
+                items.Add(new CadTransientEntityReference(entityId, drag.Delta, styleService.CreateEntityPreviewStyle(entity)));
+            }
+        }
+    }
+
+    private static void AddLineGripPreview(
+        List<CadTransientItem> items,
+        CadLine line,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        var moveStart = IsLineStartGrip(line, drag.Handle.Position);
+        items.Add(new CadTransientLine(
+            moveStart ? drag.DraggedGripPosition : line.Start,
+            moveStart ? line.End : drag.DraggedGripPosition,
+            style));
+    }
+
+    private static void AddCircleGripPreview(
+        List<CadTransientItem> items,
+        CadCircle circle,
+        GripDragState drag,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        var radius = circle.Center.DistanceTo(drag.DraggedGripPosition);
+        if (radius <= double.Epsilon)
+            return;
+
+        items.Add(new CadTransientCircle(circle.Center, radius, style));
+        items.Add(new CadTransientLine(circle.Center, drag.DraggedGripPosition, auxiliaryStyle));
+    }
+
+    private static void AddEllipseGripPreview(
+        List<CadTransientItem> items,
+        CadEllipse ellipse,
+        GripDragState drag,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        if (!TryCreateEllipseGripGeometry(ellipse, drag, out var center, out var radiusX, out var radiusY))
+            return;
+
+        items.Add(new CadTransientEllipse(center, radiusX, radiusY, style));
+        items.Add(new CadTransientLine(center, drag.DraggedGripPosition, auxiliaryStyle));
+    }
+
+    private static void AddArcGripPreview(
+        List<CadTransientItem> items,
+        CadArc arc,
+        GripDragState drag,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        if (!TryCreateArcGripGeometry(arc, drag, out var center, out var radius, out var startAngle, out var sweepAngle))
+            return;
+
+        items.Add(new CadTransientArc(center, radius, startAngle, sweepAngle, style));
+        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle), auxiliaryStyle));
+        items.Add(new CadTransientLine(center, GetArcPoint(center, radius, startAngle + sweepAngle), auxiliaryStyle));
+    }
+
+    private static void AddRectangleGripPreview(
+        List<CadTransientItem> items,
+        CadRectangle rectangle,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (TryCreateRectangleGripGeometry(rectangle, drag, out var bounds))
+            items.Add(new CadTransientRectangle(
+                bounds,
+                style,
+                rectangle.CornerRadiusX,
+                rectangle.CornerRadiusY));
+    }
+
+    private static void AddPolylineGripPreview(
+        List<CadTransientItem> items,
+        CadPolyline polyline,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (TryCreatePolylineGripGeometry(polyline, drag, out var points, out var closed))
+            items.Add(new CadTransientPolyline(points, closed, style));
+    }
+
+    private static void AddSplineGripPreview(
+        List<CadTransientItem> items,
+        CadSpline spline,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (TryCreateSplineGripGeometry(spline, drag, out var fitPoints, out var closed))
+            items.Add(new CadTransientSpline(fitPoints, closed, style));
+    }
+
+    private void AddTextGripPreview(
+        List<CadTransientItem> items,
+        CadText text,
+        GripDragState drag,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        var grid = editor.Document.ViewSettings.Grid;
+        if (!TryCreateTextGripGeometry(
+            text,
+            drag,
+            grid.GetSnapSpacingX(),
+            grid.GetSnapSpacingY(),
+            textMeasurementService,
+            out var position,
+            out var height))
+        {
+            return;
+        }
+
+        var bounds = textMeasurementService.CreateTextBounds(text.Text, position, height, text.TextStyleId);
+        items.Add(new CadTransientText(
+            text.Text,
+            position,
+            height,
+            bounds,
+            style,
+            text.IsInverted,
+            text.InvertedMarginFactor,
+            text.TextStyleId));
+        items.Add(new CadTransientRectangle(
+            text.IsInverted ? bounds.Inflate(height * text.InvertedMarginFactor) : bounds,
+            auxiliaryStyle));
+    }
+
+    private static void AddShapeTextGripPreview(
+        List<CadTransientItem> items,
+        CadShapeText text,
+        GripDragState drag,
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
+    {
+        if (!TryCreateShapeTextGripGeometry(text, drag, out var position, out var height))
+            return;
+
+        items.Add(new CadTransientShapeText(
+            text.Text,
+            position,
+            height,
+            text.RotationRadians,
+            text.WidthFactor,
+            text.CharacterSpacingFactor,
+            text.ObliqueAngleRadians,
+            style,
+            text.IsInverted,
+            text.InvertedMarginFactor,
+            text.ShapeFontId));
+        items.Add(new CadTransientRectangle(
+            CadTextMeasurementService.CreateShapeTextPreviewBounds(
+                text.Text,
+                position,
+                height,
+                text.WidthFactor,
+                text.CharacterSpacingFactor,
+                text.ObliqueAngleRadians,
+                text.RotationRadians,
+                text.IsInverted,
+                text.InvertedMarginFactor,
+                text.ShapeFontId),
+            auxiliaryStyle));
+    }
+}

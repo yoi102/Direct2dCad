@@ -24,7 +24,8 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
 
     public EntityId EntityId { get; }
     public string EntityIdText => EntityId.ToString();
-    public ObservableCollection<PolylineVertexPropertyViewModel> FitPoints { get; } = [];
+    [ObservableProperty]
+    public partial ObservableCollection<PolylineVertexPropertyViewModel> FitPoints { get; private set; } = [];
     public int FitPointCount => FitPoints.Count;
     public double Length => TryGetSpline(out var spline) ? spline.Length : CalculateLength(FitPoints.Select(x => x.ToPoint()), IsClosed);
 
@@ -237,14 +238,43 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
 
     private void RebuildFitPoints(IReadOnlyList<CadPointD> fitPoints)
     {
+        if (FitPointCollectionMatches(FitPoints, fitPoints))
+            return;
+
+        var selectedIndex = SelectedFitPoint is not null
+            ? FitPoints.IndexOf(SelectedFitPoint)
+            : 0;
+
         foreach (var fitPoint in FitPoints)
             fitPoint.Changed -= OnFitPointChanged;
 
-        FitPoints.Clear();
+        var newFitPoints = new ObservableCollection<PolylineVertexPropertyViewModel>();
         for (var i = 0; i < fitPoints.Count; i++)
-            FitPoints.Add(CreateFitPoint(i, fitPoints[i]));
+            newFitPoints.Add(CreateFitPoint(i, fitPoints[i]));
 
-        SelectedFitPoint = FitPoints.FirstOrDefault();
+        FitPoints = newFitPoints;
+        SelectedFitPoint = FitPoints.Count > 0
+            ? FitPoints[Math.Clamp(Math.Max(selectedIndex, 0), 0, FitPoints.Count - 1)]
+            : null;
+    }
+
+    private static bool FitPointCollectionMatches(
+        IReadOnlyList<PolylineVertexPropertyViewModel> fitPoints,
+        IReadOnlyList<CadPointD> points)
+    {
+        if (fitPoints.Count != points.Count)
+            return false;
+
+        for (var i = 0; i < points.Count; i++)
+        {
+            if (fitPoints[i].Index != i ||
+                fitPoints[i].ToPoint().DistanceSquaredTo(points[i]) > Epsilon)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private PolylineVertexPropertyViewModel CreateFitPoint(int index, CadPointD point)

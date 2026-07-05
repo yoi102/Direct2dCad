@@ -11,6 +11,7 @@
     <PackageReference Include="Dirkster.AvalonDock.Core" Version="5.0.0-preview.92" />
     <PackageReference Include="Dirkster.AvalonDock.Mvvm" Version="5.0.0-preview.92" />
     <PackageReference Include="Dirkster.AvalonDock.Mvvm.CommunityToolkit" Version="5.0.0-preview.92" />
+    <PackageReference Include="MessagePipe" Version="1.8.2" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115" />
   </ItemGroup>
 
