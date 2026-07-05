@@ -3,9 +3,9 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Handles;
-using static Direct2dCad.ViewModels.Geometry.CadGripDragGeometryFactory;
+using static Direct2dCad.ViewModels.Services.Geometry.CadGripDragGeometryFactory;
 
-namespace Direct2dCad.ViewModels.Interactions;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadGripDragController(CadHandleHitTester hitTester)
 {

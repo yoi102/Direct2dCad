@@ -2,7 +2,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.Drawing;
+namespace Direct2dCad.ViewModels.Services.Drawing;
 
 internal sealed class CadContinueArcResolver(CadDocument document)
 {

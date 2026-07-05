@@ -3,9 +3,9 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Transient;
-using Direct2dCad.ViewModels.Styling;
+using Direct2dCad.ViewModels.Services.Styling;
 
-namespace Direct2dCad.ViewModels.Interactions;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadClipboardInteractionService(
     CadEditor editor,

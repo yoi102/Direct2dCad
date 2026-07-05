@@ -3,9 +3,9 @@ using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Transient;
-using Direct2dCad.ViewModels.Styling;
+using Direct2dCad.ViewModels.Services.Styling;
 
-namespace Direct2dCad.ViewModels.Interactions;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadSelectionInteractionService(
     CadEditor editor,

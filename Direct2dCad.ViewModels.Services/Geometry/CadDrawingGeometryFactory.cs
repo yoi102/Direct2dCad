@@ -1,7 +1,7 @@
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Enums;
 
-namespace Direct2dCad.ViewModels.Geometry;
+namespace Direct2dCad.ViewModels.Services.Geometry;
 
 internal readonly record struct ArcDrawingGeometry(
     CadPointD Center,

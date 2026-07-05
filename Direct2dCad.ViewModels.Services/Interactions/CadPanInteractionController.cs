@@ -2,7 +2,7 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
 
-namespace Direct2dCad.ViewModels.Interactions;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadPanInteractionController
 {

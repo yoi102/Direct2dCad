@@ -2,7 +2,7 @@ using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Transient;
 
-namespace Direct2dCad.ViewModels.Drawing;
+namespace Direct2dCad.ViewModels.Services.Drawing;
 
 internal sealed class CadOriginPositionPreviewBuilder(
     CadOriginSettings origin,

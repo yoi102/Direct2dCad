@@ -6,7 +6,7 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D;
 
-namespace Direct2dCad.ViewModels.Text;
+namespace Direct2dCad.ViewModels.Services.Text;
 
 internal sealed class CadTextMeasurementService(
     CadDocument document,

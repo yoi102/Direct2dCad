@@ -1,10 +1,11 @@
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
-using Direct2dCad.ViewModels.Text;
-using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
+using Direct2dCad.ViewModels.Services.Interactions;
+using Direct2dCad.ViewModels.Services.Text;
+using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
 
-namespace Direct2dCad.ViewModels.Geometry;
+namespace Direct2dCad.ViewModels.Services.Geometry;
 
 internal static class CadGripDragGeometryFactory
 {

@@ -3,8 +3,8 @@ using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.ViewModels.Enums;
-using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Services.Events;
+using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 using MessagePipe;
 

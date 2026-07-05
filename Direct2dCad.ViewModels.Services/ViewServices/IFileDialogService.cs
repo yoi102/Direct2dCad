@@ -1,4 +1,4 @@
-namespace Direct2dCad.ViewModels.Services;
+namespace Direct2dCad.ViewModels.Services.ViewServices;
 
 public interface IFileDialogService
 {

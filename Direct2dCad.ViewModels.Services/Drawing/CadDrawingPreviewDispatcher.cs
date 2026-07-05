@@ -3,10 +3,10 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Enums;
-using Direct2dCad.ViewModels.Styling;
-using Direct2dCad.ViewModels.Text;
+using Direct2dCad.ViewModels.Services.Styling;
+using Direct2dCad.ViewModels.Services.Text;
 
-namespace Direct2dCad.ViewModels.Drawing;
+namespace Direct2dCad.ViewModels.Services.Drawing;
 
 internal sealed class CadDrawingPreviewDispatcher(
     CadCanvasToolMode toolMode,

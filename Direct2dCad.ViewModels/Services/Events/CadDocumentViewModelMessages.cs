@@ -1,7 +1,0 @@
-namespace Direct2dCad.ViewModels.Services.Events;
-
-public sealed record CadDocumentInteractionStateChangedMessage(CadDocumentViewModel DocumentViewModel);
-
-public sealed record CadDocumentViewSettingsChangedMessage(CadDocumentViewModel DocumentViewModel);
-
-public sealed record EditorTabDocumentSummaryChangedMessage(EditorTabViewModel EditorTabViewModel);

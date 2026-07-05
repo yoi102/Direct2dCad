@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Direct2dCad.ViewModels.Services;
+namespace Direct2dCad.ViewModels.Services.ViewServices;
 
 public interface IThemeSettingService
 {

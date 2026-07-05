@@ -5,7 +5,7 @@ using AvalonDock.DependencyInjection;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
-using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 using Direct2dCad.wpf;

@@ -37,7 +37,7 @@ Direct2dCad.wpf.Control
 Direct2dCad.wpf
 ```
 
-View / ViewModel 之间的服务接口目前放在 `Direct2dCad.ViewModels/Services`，WPF 实现放在 `Direct2dCad/Services`。`Direct2dCad.ViewModels.Services` 是另一个项目，用来承载非 UI 的 ViewModel 业务服务，不是对话框、Snackbar 这类 View 服务实现。
+View / ViewModel 之间的服务接口目前放在 `Direct2dCad.ViewModels.Services/ViewServices`，MessagePipe 消息放在 `Direct2dCad.ViewModels.Services/Events`，WPF 实现放在 `Direct2dCad/Services`。`Direct2dCad.ViewModels.Services` 同时承载非 UI 的 ViewModel 业务服务，例如 drawing、interactions、rendering、snapping、styling、text 等。
 
 ## 架构分层
 
@@ -274,6 +274,8 @@ WPF / ViewModel 共享的轻量抽象层。
 
 主要职责：
 
+- ViewServices：定义 file dialog、dialog、snackbar、theme、culture、user settings、toolbox icons 等 View / ViewModel 服务接口。
+- Events：定义 MessagePipe 消息，例如 document interaction state、view settings、editor tab document summary、theme changed。
 - Drawing：绘制状态、绘制点击处理、绘制实体创建、绘制预览、绘制默认样式。
 - Geometry：绘制预览和 grip drag 相关几何构造。
 - Interactions：pan、selection window、copy / paste、grip drag、viewport 初始化等交互控制器。
@@ -292,7 +294,7 @@ WPF ViewModel 层。
 - 定义 folder explorer、layer toolbox、entity property toolbox 及各实体属性面板 VM。
 - 绑定绘制模式、选择状态、图层、实体属性、用户设置和文档设置。
 - 协调 transient scene、handle scene 和 `Direct2DImageRenderHost`。
-- 定义 View / ViewModel 服务接口，例如 file dialog、dialog、snackbar、theme、culture、user settings、toolbox icons。
+- 使用 `Direct2dCad.ViewModels.Services` 中定义的服务接口和 MessagePipe 消息。
 
 `CadDocumentViewModel` 的方向：只保留画布输入协调、命令入口和状态聚合。绘制预览、grip drag、snapping、render invalidation、文本测量等细分逻辑应继续放到 `Direct2dCad.ViewModels.Services`。
 
@@ -313,7 +315,7 @@ WPF 应用层。
 
 - 提供 WPF 启动入口、`MainWindow`、`CadCanvas`。
 - 提供 Ribbon、StatusBar、FolderExplorer、LayerToolbox、EntityProperties 等 View。
-- 实现 `Direct2dCad.ViewModels/Services` 中定义的对话框、Snackbar、文件选择、主题、语言、用户设置、图标等服务。
+- 实现 `Direct2dCad.ViewModels.Services/ViewServices` 中定义的对话框、Snackbar、文件选择、主题、语言、用户设置、图标等服务。
 - 承载 `D3D11ImageSource` / `D3DImage`。
 - 通过依赖注入装配 ViewModel 和 WPF 服务。
 
@@ -394,7 +396,7 @@ SetOrigin
 | `Direct2dCad.ViewModels.Services` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions` |
 | `Direct2dCad.ViewModels` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.wpf.Control` | 无 |
-| `Direct2dCad.wpf` | `Direct2dCad.wpf.Control`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels` |
+| `Direct2dCad.wpf` | `Direct2dCad.wpf.Control`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
 
 ## NuGet 依赖
 

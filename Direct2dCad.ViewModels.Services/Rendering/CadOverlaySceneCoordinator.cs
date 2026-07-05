@@ -3,7 +3,7 @@ using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 
-namespace Direct2dCad.ViewModels.Rendering;
+namespace Direct2dCad.ViewModels.Services.Rendering;
 
 internal sealed class CadOverlaySceneCoordinator
 {

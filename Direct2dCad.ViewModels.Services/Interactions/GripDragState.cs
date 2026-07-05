@@ -1,7 +1,7 @@
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
 
-namespace Direct2dCad.ViewModels;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class GripDragState
 {

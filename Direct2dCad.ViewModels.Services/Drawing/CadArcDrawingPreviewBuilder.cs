@@ -1,10 +1,10 @@
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Enums;
-using Direct2dCad.ViewModels.Geometry;
-using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
+using Direct2dCad.ViewModels.Services.Geometry;
+using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
 
-namespace Direct2dCad.ViewModels.Drawing;
+namespace Direct2dCad.ViewModels.Services.Drawing;
 
 internal sealed class CadArcDrawingPreviewBuilder(
     CadCanvasToolMode toolMode,

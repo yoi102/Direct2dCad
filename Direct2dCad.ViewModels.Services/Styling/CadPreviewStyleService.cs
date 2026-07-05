@@ -7,7 +7,7 @@ using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 
-namespace Direct2dCad.ViewModels.Styling;
+namespace Direct2dCad.ViewModels.Services.Styling;
 
 internal sealed class CadPreviewStyleService(
     CadDocument document,

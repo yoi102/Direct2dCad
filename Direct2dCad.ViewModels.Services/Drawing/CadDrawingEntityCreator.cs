@@ -1,13 +1,11 @@
 using Direct2dCad.Db;
-using Direct2dCad.Db.Cad;
-using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
-using Direct2dCad.ViewModels.Geometry;
-using Direct2dCad.ViewModels.Text;
-using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
+using Direct2dCad.ViewModels.Services.Geometry;
+using Direct2dCad.ViewModels.Services.Text;
+using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
 
-namespace Direct2dCad.ViewModels.Drawing;
+namespace Direct2dCad.ViewModels.Services.Drawing;
 
 internal sealed class CadDrawingEntityCreator(
     CadEditor editor,

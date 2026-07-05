@@ -3,7 +3,7 @@ using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
-using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.ViewModels.Toolboxes;
 
 namespace Direct2dCad.ViewModels;

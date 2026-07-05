@@ -3,8 +3,8 @@ using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Services.Events;
+using Direct2dCad.ViewModels.Services.ViewServices;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;

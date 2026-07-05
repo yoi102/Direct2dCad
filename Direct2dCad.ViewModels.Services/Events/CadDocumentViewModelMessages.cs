@@ -1,0 +1,11 @@
+namespace Direct2dCad.ViewModels.Services.Events;
+
+public interface ICadDocumentViewModelMessageSource;
+
+public interface IEditorTabDocumentSummaryMessageSource;
+
+public sealed record CadDocumentInteractionStateChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
+
+public sealed record CadDocumentViewSettingsChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
+
+public sealed record EditorTabDocumentSummaryChangedMessage(IEditorTabDocumentSummaryMessageSource EditorTabViewModel);

@@ -2,12 +2,12 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
-using Direct2dCad.ViewModels.Styling;
-using Direct2dCad.ViewModels.Text;
-using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
-using static Direct2dCad.ViewModels.Geometry.CadGripDragGeometryFactory;
+using Direct2dCad.ViewModels.Services.Styling;
+using Direct2dCad.ViewModels.Services.Text;
+using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
+using static Direct2dCad.ViewModels.Services.Geometry.CadGripDragGeometryFactory;
 
-namespace Direct2dCad.ViewModels.Interactions;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadGripDragPreviewBuilder(
     CadEditor editor,

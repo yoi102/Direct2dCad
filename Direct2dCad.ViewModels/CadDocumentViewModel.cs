@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db;
@@ -13,19 +13,19 @@ using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
-using Direct2dCad.ViewModels.Drawing;
 using Direct2dCad.ViewModels.Enums;
-using Direct2dCad.ViewModels.Interactions;
-using Direct2dCad.ViewModels.Rendering;
-using Direct2dCad.ViewModels.Snapping;
-using Direct2dCad.ViewModels.Styling;
-using Direct2dCad.ViewModels.Text;
 using Direct2dCad.ViewModels.Services.Events;
 using MessagePipe;
+using Direct2dCad.ViewModels.Services.Styling;
+using Direct2dCad.ViewModels.Services.Drawing;
+using Direct2dCad.ViewModels.Services.Snapping;
+using Direct2dCad.ViewModels.Services.Text;
+using Direct2dCad.ViewModels.Services.Rendering;
+using Direct2dCad.ViewModels.Services.Interactions;
 
 namespace Direct2dCad.ViewModels;
 
-public partial class CadDocumentViewModel : ObservableObject, IDisposable
+public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewModelMessageSource, IDisposable
 {
     private readonly IPublisher<CadDocumentInteractionStateChangedMessage> _interactionStateChangedPublisher;
     private readonly IPublisher<CadDocumentViewSettingsChangedMessage> _viewSettingsChangedPublisher;

@@ -10,9 +10,9 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Enums;
-using Direct2dCad.ViewModels.Services;
 using Direct2dCad.ViewModels.Services.Events;
 using MessagePipe;
+using Direct2dCad.ViewModels.Services.ViewServices;
 
 namespace Direct2dCad.ViewModels;
 
@@ -23,7 +23,7 @@ public abstract class CadObservableDocument : ObservableDocument
 }
 
 
-public partial class EditorTabViewModel : CadObservableDocument, IDisposable
+public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocumentSummaryMessageSource, IDisposable
 {
     private readonly IUserSettingsService _userSettingsService;
 

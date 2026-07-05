@@ -1,9 +1,9 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Enums;
-using static Direct2dCad.ViewModels.Geometry.CadDrawingGeometryFactory;
+using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
 
-namespace Direct2dCad.ViewModels.Drawing;
+namespace Direct2dCad.ViewModels.Services.Drawing;
 
 internal readonly record struct CadContinueArcBase(
     bool HasValue,

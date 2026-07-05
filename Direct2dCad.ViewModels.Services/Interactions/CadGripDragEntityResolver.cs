@@ -2,7 +2,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Handles;
 
-namespace Direct2dCad.ViewModels.Interactions;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal static class CadGripDragEntityResolver
 {

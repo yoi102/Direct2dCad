@@ -1,5 +1,5 @@
 using Antelcat.I18N.WPF;
-using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.ViewServices;
 
 namespace Direct2dCad.wpf.Services;
 

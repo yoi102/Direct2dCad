@@ -1,7 +1,7 @@
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 
-namespace Direct2dCad.ViewModels.Interactions;
+namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadViewportInitializationState
 {

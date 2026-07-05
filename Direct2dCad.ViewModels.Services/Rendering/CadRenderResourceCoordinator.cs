@@ -4,7 +4,7 @@ using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 
-namespace Direct2dCad.ViewModels.Rendering;
+namespace Direct2dCad.ViewModels.Services.Rendering;
 
 internal sealed class CadRenderResourceCoordinator
 {

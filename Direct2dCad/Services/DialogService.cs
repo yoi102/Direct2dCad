@@ -1,5 +1,5 @@
 using Direct2dCad.Client.Common;
-using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.wpf.Views.Dialogs;
 using MaterialDesignThemes.Wpf;
 using System.Windows;
