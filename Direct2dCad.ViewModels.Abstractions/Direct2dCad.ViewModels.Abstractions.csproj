@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Client.Common\Direct2dCad.Client.Common.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Lang\Direct2dCad.Lang.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,24 +8,18 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Dirkster.AvalonDock.Core" Version="5.0.0-preview.92" />
-    <PackageReference Include="Dirkster.AvalonDock.Mvvm" Version="5.0.0-preview.92" />
-    <PackageReference Include="Dirkster.AvalonDock.Mvvm.CommunityToolkit" Version="5.0.0-preview.92" />
-    <PackageReference Include="MessagePipe" Version="1.8.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0-preview.5.26302.115" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
     <ProjectReference Include="..\Direct2dCad.Client.Common\Direct2dCad.Client.Common.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
-    <ProjectReference Include="..\Direct2dCad.IO\Direct2dCad.IO.csproj" />
-    <ProjectReference Include="..\Direct2dCad.Lang\Direct2dCad.Lang.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Direct2D\Direct2dCad.Rendering.Direct2D.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Handles\Direct2dCad.Rendering.Handles.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Transient\Direct2dCad.Rendering.Transient.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering\Direct2dCad.Rendering.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels.Abstractions\Direct2dCad.ViewModels.Abstractions.csproj" />
-    <ProjectReference Include="..\Direct2dCad.ViewModels.Services\Direct2dCad.ViewModels.Services.csproj" />
   </ItemGroup>
 
 </Project>

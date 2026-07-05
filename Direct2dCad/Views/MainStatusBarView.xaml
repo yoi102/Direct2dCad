@@ -8,7 +8,7 @@
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:ex="clr-namespace:Direct2dCad.wpf.Extensions"
              xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
-             xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels"
+             xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels.Abstractions"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
