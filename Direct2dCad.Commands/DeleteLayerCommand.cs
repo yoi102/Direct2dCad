@@ -6,6 +6,7 @@ namespace Direct2dCad.Commands;
 public sealed class DeleteLayerCommand : ICadCommand
 {
     private readonly LayerId _layerId;
+    private readonly Dictionary<EntityId, bool> _previousEntityErasedStates = [];
     private LayerSnapshot? _snapshot;
 
     public string Name => "Delete Layer";
@@ -22,13 +23,23 @@ public sealed class DeleteLayerCommand : ICadCommand
         if (!document.TryGetLayer(_layerId, out var layer) || layer is null)
             return CadDocumentChangeSet.Empty;
 
-        if (document.HasEntitiesOnLayer(_layerId))
-            throw new InvalidOperationException("Layer cannot be removed while it contains entities.");
+        var entityIdsOnLayer = document.Entities.Values
+            .Where(x => x.LayerId.Equals(_layerId))
+            .Select(x => x.Id)
+            .ToArray();
+
+        _previousEntityErasedStates.Clear();
+        foreach (var entityId in entityIdsOnLayer)
+            _previousEntityErasedStates[entityId] = document.GetEntity(entityId).IsErased;
 
         _snapshot ??= LayerSnapshot.From(document, layer);
         document.DocumentSettings.LayerDrawingPriority.RemovePriority(_layerId);
-        document.RemoveLayer(_layerId);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        document.RemoveLayerAndDeleteEntities(_layerId);
+
+        return CreateEntityChangeSet(
+            entityIdsOnLayer,
+            CadEntityChangeKind.Deleted | CadEntityChangeKind.Visibility)
+            .WithDocumentStructureChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -51,7 +62,37 @@ public sealed class DeleteLayerCommand : ICadCommand
         if (snapshot.HasExplicitPriority)
             document.DocumentSettings.LayerDrawingPriority.SetPriority(snapshot.Id, snapshot.Priority);
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        foreach (var (entityId, wasErased) in _previousEntityErasedStates)
+        {
+            if (!document.TryGetEntity(entityId, out var entity) || entity is null)
+                continue;
+
+            if (wasErased)
+                entity.Erase();
+            else
+                entity.Restore();
+        }
+
+        return CreateEntityChangeSet(
+            _previousEntityErasedStates.Keys,
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Fill |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.Layer |
+            CadEntityChangeKind.DrawOrder)
+            .WithDocumentStructureChanged();
+    }
+
+    private static CadDocumentChangeSet CreateEntityChangeSet(
+        IEnumerable<EntityId> entityIds,
+        CadEntityChangeKind kind)
+    {
+        var ids = entityIds.ToArray();
+        return ids.Length == 0
+            ? CadDocumentChangeSet.Empty
+            : CadDocumentChangeSet.ForEntities(ids, kind);
     }
 
     private sealed record LayerSnapshot(

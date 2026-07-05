@@ -41,7 +41,23 @@ public sealed class CreateLayerCommand : ICadCommand
             return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
         }
 
-        _layerId = document.CreateLayer(_name, _color, _lineWeight, _defaultGraphicStyleId);
+        if (_layerId is { } existingLayerId)
+        {
+            document.RestoreLayer(
+                existingLayerId,
+                _name,
+                _color,
+                _lineWeight,
+                isVisible: true,
+                isLocked: false,
+                isFrozen: false,
+                _defaultGraphicStyleId);
+        }
+        else
+        {
+            _layerId = document.CreateLayer(_name, _color, _lineWeight, _defaultGraphicStyleId);
+        }
+
         if (_drawingPriority is { } priority)
             document.DocumentSettings.LayerDrawingPriority.SetPriority(_layerId.Value, priority);
 

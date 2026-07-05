@@ -477,15 +477,24 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (CadEditor.Document.TryGetLayer(_drawingLayerId, out var layer) && layer is not null)
             return _drawingLayerId;
 
-        _drawingLayerId = LayerId.Default;
-        return LayerId.Default;
+        _drawingLayerId = ResolveFallbackDrawingLayerId();
+        return _drawingLayerId;
     }
 
     private LayerId ResolveExistingDrawingLayerId(LayerId layerId)
     {
         return CadEditor.Document.TryGetLayer(layerId, out var layer) && layer is not null
             ? layerId
-            : LayerId.Default;
+            : ResolveFallbackDrawingLayerId();
+    }
+
+    private LayerId ResolveFallbackDrawingLayerId()
+    {
+        return CadEditor.Document.Layers.Values
+            .OrderBy(x => CadEditor.Document.DocumentSettings.LayerDrawingPriority.GetPriority(x.Id))
+            .ThenBy(x => x.Id.Value)
+            .FirstOrDefault()?.Id
+            ?? throw new InvalidOperationException("Document must contain at least one layer.");
     }
 
     private CadLayer ResolveDrawingLayer()

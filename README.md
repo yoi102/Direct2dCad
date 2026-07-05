@@ -1,16 +1,26 @@
 # Direct2dCad
 
-Direct2dCad 是一个基于 Direct2D、DirectWrite 和 WPF 的 CAD 编辑器实验项目，旨在探索桌面端 CAD 编辑器的核心架构与渲染实现。当前重点包括文档模型设计、命令系统与 undo / redo、命中测试、空间索引、Direct2D 资源缓存、局部刷新、临时绘制预览、选中对象的 handle / grip 操作，以及可扩展的 WPF ViewModel 架构。
+## 项目简介
+
+Direct2dCad 是一个基于 Direct2D、DirectWrite 和 WPF 的桌面 CAD 编辑器实验项目。项目目标是把 CAD 编辑器常见的文档模型、命令历史、对象选择、图层管理、绘制预览和 GPU 资源管理拆成可维护的模块，并验证 WPF 与 Direct2D / D3D 互操作下的高性能渲染方案。
+
+当前项目已经形成一套可操作的 CAD 编辑闭环：
+
+- 文档与实体：支持图层、块、样式、填充 / hatch 图案、视图设置，以及直线、圆、圆弧、椭圆、椭圆弧、矩形、多段线、多边形、样条、TrueType 文本、ShapeText 等实体。
+- 命令与历史：实体 CRUD、图层创建 / 删除 / 改名 / 排序、属性修改、原点设置、视口操作等通过命令执行，支持 undo / redo；批量命令可根据设置成组撤销或逐条撤销。
+- 选择与编辑：支持点击选中、正选 / 反选框选、Delete 删除选中实体、copy / paste 预览、handle / grip 命中与拖拽，多个实体可一起移动；Esc 可从绘制、拖拽或缩放状态回到 Select。
+- 绘制工具：支持 line、rectangle、polyline、polygon、spline、text、圆的多种模式、AutoCAD 风格圆弧多模式、椭圆 / 椭圆弧、原点设置模式，并提供 transient preview、辅助线、测量文字和 snap marker。
+- 图层与绘制顺序：图层可新增、删除、重命名、调整优先级；当层数量大于 1 时，包括默认层在内都可以删除，删除层会同时删除该层实体并支持 undo / redo。绘制顺序遵循“图层优先级 → 实体 ZIndex → 同 ZIndex 的实体加入顺序”。
+- 渲染与资源：Direct2D 后端负责背景、CAD grid、origin marker、实体、hatch / fill、transient overlay 和 handles overlay 的绘制；实体变更通过 change tracking 更新 geometry / brush / text / hatch 等 GPU 资源，支持 dirty rect 局部刷新和设备资源重建。
+- WPF 应用层：当前 WPF 端已接入 `CadCanvas`、Ribbon 绘制工具、属性面板、FolderExplorer、LayerToolbox、状态栏设置、保存 / 读取 `.d2cad`、多语言资源，以及 MessagePipe 解耦的 ViewModel 通信。
+
+整体架构上，`Direct2dCad.Db` 负责 CAD 数据模型，`Direct2dCad.Commands` 和 `Direct2dCad.Editor` 负责可撤销编辑流程，`Direct2dCad.Rendering` 定义渲染抽象，`Direct2dCad.Rendering.Direct2D` 提供 Direct2D 实现，`Direct2dCad.Rendering.Transient` 和 `Direct2dCad.Rendering.Handles` 分别描述临时预览与选中控制点场景，`Direct2dCad.ViewModels` / `Direct2dCad.ViewModels.Services` 负责 WPF 交互状态、属性面板和 View 服务抽象。
 
 Figma:
 
-
 https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4
 
-
 https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
-
-
 
 ## 当前项目
 

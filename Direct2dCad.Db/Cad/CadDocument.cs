@@ -168,15 +168,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
         EnsureLayerCanBeRemoved(layerId);
 
-        var entityIds = _entities.Values
-            .Where(x => x.LayerId.Equals(layerId))
-            .Select(x => x.Id)
-            .ToArray();
-
-        foreach (var entityId in entityIds)
-        {
-            RemoveEntity(entityId);
-        }
+        foreach (var entity in _entities.Values.Where(x => x.LayerId.Equals(layerId)).ToArray())
+            entity.Erase();
 
         _layers.Remove(layerId);
         return true;
@@ -208,22 +201,19 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public bool HasEntitiesOnLayer(LayerId layerId)
     {
-        return _entities.Values.Any(x => x.LayerId.Equals(layerId));
+        return _entities.Values.Any(x => x.LayerId.Equals(layerId) && !x.IsErased);
     }
 
     public IReadOnlyList<EntityId> GetEntityIdsOnLayer(LayerId layerId)
     {
         return _entities.Values
-            .Where(x => x.LayerId.Equals(layerId))
+            .Where(x => x.LayerId.Equals(layerId) && !x.IsErased)
             .Select(x => x.Id)
             .ToArray();
     }
 
     private void EnsureLayerCanBeRemoved(LayerId layerId)
     {
-        if (layerId.Equals(LayerId.Default))
-            throw new InvalidOperationException("Default layer cannot be removed.");
-
         if (_layers.Count <= 1)
             throw new InvalidOperationException("Document must contain at least one layer.");
     }
