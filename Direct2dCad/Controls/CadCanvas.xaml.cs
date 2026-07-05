@@ -151,6 +151,12 @@ public partial class CadCanvas : IDisposable
             return;
         }
 
+        if (e.Key == Key.Delete)
+        {
+            ApplyInteractionResult(DocumentViewModel.DeleteSelection(), e);
+            return;
+        }
+
         if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
             return;
 

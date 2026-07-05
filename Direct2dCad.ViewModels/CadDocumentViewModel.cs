@@ -5,7 +5,6 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
-using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
@@ -14,14 +13,14 @@ using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Enums;
-using Direct2dCad.ViewModels.Services.Events;
-using MessagePipe;
-using Direct2dCad.ViewModels.Services.Styling;
 using Direct2dCad.ViewModels.Services.Drawing;
-using Direct2dCad.ViewModels.Services.Snapping;
-using Direct2dCad.ViewModels.Services.Text;
-using Direct2dCad.ViewModels.Services.Rendering;
+using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Interactions;
+using Direct2dCad.ViewModels.Services.Rendering;
+using Direct2dCad.ViewModels.Services.Snapping;
+using Direct2dCad.ViewModels.Services.Styling;
+using Direct2dCad.ViewModels.Services.Text;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
 
@@ -657,6 +656,29 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public void CopySelection()
     {
         _paste.Copy(CreateClipboardInteractionService());
+    }
+
+    public CadCanvasInteractionResult DeleteSelection()
+    {
+        var entityIds = CadEditor.Selection.EntityIds
+            .Where(entityId =>
+                CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+                entity is { IsErased: false })
+            .ToArray();
+
+        if (entityIds.Length == 0)
+            return CadCanvasInteractionResult.NotHandled;
+
+        CadEditor.DeleteEntities(entityIds);
+        CadEditor.Selection.Clear();
+        ClearInteractionState(clearClipboard: false, render: false);
+        RaiseInteractionStateChanged();
+        RequestRender();
+
+        return new CadCanvasInteractionResult(
+            true,
+            ReleaseMouseCapture: true,
+            Cursor: CadCanvasCursorKind.Cross);
     }
 
     public CadCanvasInteractionResult BeginPastePreview()
