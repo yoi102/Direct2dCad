@@ -1,12 +1,16 @@
 # Direct2dCad
 
-Direct2dCad 是一个基于 Direct2D / DirectWrite / WPF 的 CAD 编辑器实验项目。当前重点是建立清晰的文档模型、命令 undo / redo、命中测试、索引、Direct2D 资源缓存、局部刷新、临时绘制预览、选中 handle / grip 操作，以及可扩展的 WPF ViewModel 架构。
+Direct2dCad 是一个基于 Direct2D、DirectWrite 和 WPF 的 CAD 编辑器实验项目，旨在探索桌面端 CAD 编辑器的核心架构与渲染实现。当前重点包括文档模型设计、命令系统与 undo / redo、命中测试、空间索引、Direct2D 资源缓存、局部刷新、临时绘制预览、选中对象的 handle / grip 操作，以及可扩展的 WPF ViewModel 架构。
 
 Figma:
 
+
 https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4
 
-<video controls src="video.mp4" title="Title"></video>
+
+https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
+
+
 
 ## 当前项目
 
