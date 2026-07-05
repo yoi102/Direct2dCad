@@ -68,6 +68,13 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
             : CadGripDragEntityResolver.ResolveMoveEntityIds(editor, ActiveDrag);
     }
 
+    public CadGripHandle? CreateActiveGripHandle()
+    {
+        return ActiveDrag is { } drag
+            ? drag.Handle with { Position = drag.DraggedGripPosition }
+            : null;
+    }
+
     public void Clear()
     {
         ActiveDrag = null;

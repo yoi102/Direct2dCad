@@ -27,7 +27,6 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 {
     private readonly CadOverlaySceneCoordinator _overlayScenes = new();
     private readonly CadRenderResourceCoordinator _renderResources = new();
-    private readonly CadDeferredRenderScheduler _deferredGripHandleRender = new(120);
     private readonly CadGripDragController _gripDrag = new(new CadHandleHitTester());
     private readonly CadViewportInitializationState _viewportInitialization = new();
     private readonly CadPanInteractionController _pan = new();
@@ -617,9 +616,8 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         UpdatePointerWorldStatus(screen);
         RequestRender(
             CadRenderInvalidation.Full,
-            drawGripHandles: false,
+            drawGripHandles: true,
             updateHandleScene: false);
-        ScheduleDeferredGripHandleRender();
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -705,7 +703,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CadEditor,
                 CreateTransientItems(),
                 updateHandleScene,
-                _gripDrag.IsActive,
+                _gripDrag.CreateActiveGripHandle(),
                 CreateHandleSceneBuildOptions());
             _overlayScenes.RefreshLastOverlayInvalidation(
                 CreateRenderInvalidationCalculator(),
@@ -720,18 +718,13 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
                 CreateTransientItems(),
                 drawGripHandles,
                 updateHandleScene,
-                _gripDrag.IsActive,
+                _gripDrag.CreateActiveGripHandle(),
                 CreateHandleSceneBuildOptions());
             effectiveInvalidation = requestedInvalidation.Union(overlayInvalidation);
         }
 
         Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions(drawGripHandles));
         Direct2DImageRenderHost.Render(effectiveInvalidation);
-    }
-
-    private void ScheduleDeferredGripHandleRender()
-    {
-        _deferredGripHandleRender.Schedule(RequestOverlayRender, () => _disposed);
     }
 
     private void UpdateTextMeasurements()
@@ -835,7 +828,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
     {
         _overlayScenes.UpdateHandleScene(
             CadEditor,
-            isGripDragActive: false,
+            activeGripHandle: null,
             CreateHandleSceneBuildOptions());
 
         if (!_gripDrag.TryBegin(CadEditor, _overlayScenes.HandleScene, ScreenToSnappedWorld, screen))

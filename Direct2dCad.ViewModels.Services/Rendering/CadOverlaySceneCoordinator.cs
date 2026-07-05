@@ -28,13 +28,13 @@ internal sealed class CadOverlaySceneCoordinator
         CadEditor editor,
         IReadOnlyList<CadTransientItem> transientItems,
         bool updateHandleScene,
-        bool isGripDragActive,
+        CadGripHandle? activeGripHandle,
         CadHandleSceneBuildOptions handleOptions)
     {
         TransientScene.Replace(transientItems);
 
         if (updateHandleScene)
-            UpdateHandleScene(editor, isGripDragActive, handleOptions);
+            UpdateHandleScene(editor, activeGripHandle, handleOptions);
     }
 
     public CadRenderInvalidation UpdateOverlayScenesAndCreateInvalidation(
@@ -43,11 +43,11 @@ internal sealed class CadOverlaySceneCoordinator
         IReadOnlyList<CadTransientItem> transientItems,
         bool includeGripHandles,
         bool updateHandleScene,
-        bool isGripDragActive,
+        CadGripHandle? activeGripHandle,
         CadHandleSceneBuildOptions handleOptions)
     {
         var previousOverlay = _lastOverlayInvalidation;
-        UpdateOverlayScenes(editor, transientItems, updateHandleScene, isGripDragActive, handleOptions);
+        UpdateOverlayScenes(editor, transientItems, updateHandleScene, activeGripHandle, handleOptions);
         var currentOverlay = CreateOverlayInvalidation(invalidationCalculator, includeGripHandles);
         _lastOverlayInvalidation = currentOverlay;
         return previousOverlay.Union(currentOverlay);
@@ -72,12 +72,12 @@ internal sealed class CadOverlaySceneCoordinator
 
     public void UpdateHandleScene(
         CadEditor editor,
-        bool isGripDragActive,
+        CadGripHandle? activeGripHandle,
         CadHandleSceneBuildOptions handleOptions)
     {
-        if (isGripDragActive)
+        if (activeGripHandle is not null)
         {
-            HandleScene.Clear();
+            HandleScene.Replace([activeGripHandle]);
             return;
         }
 
