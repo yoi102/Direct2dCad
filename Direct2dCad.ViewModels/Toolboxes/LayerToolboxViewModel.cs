@@ -6,16 +6,22 @@ using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.Events;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class LayerToolboxViewModel : ObservableToolboxBase
+public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
 {
     private CadDocumentViewModel? _documentViewModel;
+    private readonly IDisposable _interactionStateChangedSubscription;
 
-    public LayerToolboxViewModel(IToolboxIconsService toolboxIconsService)
+    public LayerToolboxViewModel(
+        IToolboxIconsService toolboxIconsService,
+        ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
         Title = "Layers";
+        _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.BottomLeft;
         Icon = toolboxIconsService.Layers;
         Shortcut = "Ctrl+Shift+L";
@@ -39,13 +45,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase
             return;
         }
 
-        if (_documentViewModel is not null)
-            _documentViewModel.InteractionStateChanged -= OnInteractionStateChanged;
-
         _documentViewModel = documentViewModel;
-
-        if (_documentViewModel is not null)
-            _documentViewModel.InteractionStateChanged += OnInteractionStateChanged;
 
         OnPropertyChanged(nameof(HasDocument));
         RefreshLayers();
@@ -219,9 +219,17 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase
                Layers.IndexOf(selected) < Layers.Count - 1;
     }
 
-    private void OnInteractionStateChanged(object? sender, EventArgs e)
+    private void OnInteractionStateChanged(CadDocumentInteractionStateChangedMessage message)
     {
+        if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
+            return;
+
         RefreshLayers(SelectedLayer?.LayerId);
+    }
+
+    public void Dispose()
+    {
+        _interactionStateChangedSubscription.Dispose();
     }
 
     private void RefreshLayers(LayerId? selectedLayerId = null)

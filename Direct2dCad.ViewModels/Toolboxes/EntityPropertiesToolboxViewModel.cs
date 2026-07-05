@@ -4,17 +4,24 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
+public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, IDisposable
 {
 
-    public EntityPropertiesToolboxViewModel(IToolboxIconsService toolboxIconsService)
+    private readonly IDisposable _interactionStateChangedSubscription;
+
+    public EntityPropertiesToolboxViewModel(
+        IToolboxIconsService toolboxIconsService,
+        ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
         Title = "Property";
         _toolboxIconsService = toolboxIconsService;
+        _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.LeftBottom;
         Icon = toolboxIconsService.Git;
         Shortcut = "Ctrl+Shift+G";
@@ -35,20 +42,22 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase
             return;
         }
 
-        if (_documentViewModel is not null)
-            _documentViewModel.InteractionStateChanged -= OnInteractionStateChanged;
-
         _documentViewModel = documentViewModel;
-
-        if (_documentViewModel is not null)
-            _documentViewModel.InteractionStateChanged += OnInteractionStateChanged;
 
         Refresh();
     }
 
-    private void OnInteractionStateChanged(object? sender, EventArgs e)
+    private void OnInteractionStateChanged(CadDocumentInteractionStateChangedMessage message)
     {
+        if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
+            return;
+
         Refresh();
+    }
+
+    public void Dispose()
+    {
+        _interactionStateChangedSubscription.Dispose();
     }
 
     private void Refresh()

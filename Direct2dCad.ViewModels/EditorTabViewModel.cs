@@ -11,6 +11,8 @@ using Direct2dCad.Editor;
 using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.Events;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
 
@@ -36,12 +38,16 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
     private object? _savedDocumentHistorySnapshot;
     private int _directChangeVersion;
     private int _savedDirectChangeVersion;
+    private readonly IDisposable _viewSettingsChangedSubscription;
+    private readonly IPublisher<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedPublisher;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
         IUserSettingsService userSettingsService,
         IFileDialogService fileDialogService,
         IDialogService dialogService,
-        ISnackbarService snackbarService
+        ISnackbarService snackbarService,
+        ISubscriber<CadDocumentViewSettingsChangedMessage> viewSettingsChangedSubscriber,
+        IPublisher<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedPublisher
         )
     {
         _userSettingsService = userSettingsService;
@@ -49,11 +55,12 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         _fileDialogService = fileDialogService;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
+        _documentSummaryChangedPublisher = documentSummaryChangedPublisher;
         CadDocumentViewModel = cadDocumentViewModel;
         _userSettingsService = userSettingsService;
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
         CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
-        CadDocumentViewModel.ViewSettingsChanged += OnCadDocumentViewSettingsChanged;
+        _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
         AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
         CadDocumentViewModel.DrawingText = TextInput;
         ApplyDocumentViewSettingsToToolbar();
@@ -74,6 +81,11 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
 
     [ObservableProperty]
     public partial string CurrentFilePath { get; private set; } = string.Empty;
+
+    partial void OnCurrentFilePathChanged(string value)
+    {
+        PublishDocumentSummaryChanged();
+    }
 
     [ObservableProperty]
     public partial string TextInput { get; set; } = "Text";
@@ -380,6 +392,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         Title = normalizedName;
         MarkDirectDocumentChanged();
         OnPropertyChanged(nameof(DocumentName));
+        PublishDocumentSummaryChanged();
         return true;
     }
 
@@ -555,21 +568,28 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         SaveUserSettings();
         DetachDocumentChangeTracking();
         CadDocumentViewModel.PropertyChanged -= OnCadDocumentViewModelPropertyChanged;
-        CadDocumentViewModel.ViewSettingsChanged -= OnCadDocumentViewSettingsChanged;
+        _viewSettingsChangedSubscription.Dispose();
         CadDocumentViewModel.Dispose();
     }
 
-    private void OnCadDocumentViewSettingsChanged(object? sender, EventArgs e)
+    private void OnCadDocumentViewSettingsChanged(CadDocumentViewSettingsChangedMessage message)
     {
+        if (!ReferenceEquals(message.DocumentViewModel, CadDocumentViewModel))
+            return;
+
         ApplyDocumentViewSettingsToToolbar();
     }
 
     private void OnCadDocumentViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(CadDocumentViewModel.CadEditor))
+        if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
+        {
+            CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
             return;
+        }
 
-        AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
+        if (e.PropertyName == nameof(CadDocumentViewModel.CadEditor))
+            AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
     }
 
     private void AttachDocumentChangeTracking(CadEditor editor)
@@ -607,6 +627,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         _savedDocumentHistorySnapshot = CadDocumentViewModel.CadEditor.CreateDocumentHistorySnapshot();
         _savedDirectChangeVersion = _directChangeVersion;
         IsModified = isModified;
+        PublishDocumentSummaryChanged();
     }
 
     private void RefreshModifiedState()
@@ -615,6 +636,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
             string.IsNullOrWhiteSpace(CurrentFilePath) ||
             !CadDocumentViewModel.CadEditor.DocumentHistoryEquals(_savedDocumentHistorySnapshot) ||
             _directChangeVersion != _savedDirectChangeVersion;
+        PublishDocumentSummaryChanged();
     }
 
     internal void Load(string fileName)
@@ -625,6 +647,12 @@ public partial class EditorTabViewModel : CadObservableDocument, IDisposable
         Title = CadDocumentViewModel.CadEditor.Document.Name;
         ResetModificationBaseline(isModified: false);
         OnPropertyChanged(nameof(DocumentName));
+        PublishDocumentSummaryChanged();
+    }
+
+    private void PublishDocumentSummaryChanged()
+    {
+        _documentSummaryChangedPublisher.Publish(new EditorTabDocumentSummaryChangedMessage(this));
     }
 
     private static bool TryNormalizeDocumentName(string? name, out string normalizedName)

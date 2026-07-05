@@ -1,20 +1,25 @@
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.ViewModels.Services;
+using Direct2dCad.ViewModels.Services.Events;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
 public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
 {
     private IDockLayoutService? _dockLayoutService;
+    private readonly ISubscriber<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedSubscriber;
     private bool _isSynchronizingSelection;
 
-    public FolderExplorerToolboxViewModel(IToolboxIconsService toolboxIconsService)
+    public FolderExplorerToolboxViewModel(
+        IToolboxIconsService toolboxIconsService,
+        ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
     {
+        _documentSummaryChangedSubscriber = documentSummaryChangedSubscriber;
         Id = Guid.NewGuid().ToString();
         Title = "FolderExplorer";
         Icon = toolboxIconsService.Explorer;
@@ -50,7 +55,7 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
         if (_dockLayoutService is not null)
         {
             foreach (var document in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
-                Documents.Add(new FolderExplorerDocumentItemViewModel(document));
+                Documents.Add(new FolderExplorerDocumentItemViewModel(document, _documentSummaryChangedSubscriber));
         }
 
         OnPropertyChanged(nameof(HasDocuments));
@@ -90,11 +95,14 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
 public sealed partial class FolderExplorerDocumentItemViewModel : ObservableObject, IDisposable
 {
     private bool _isRefreshing;
+    private readonly IDisposable _documentSummaryChangedSubscription;
 
-    public FolderExplorerDocumentItemViewModel(EditorTabViewModel document)
+    public FolderExplorerDocumentItemViewModel(
+        EditorTabViewModel document,
+        ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
     {
         Document = document ?? throw new ArgumentNullException(nameof(document));
-        Document.PropertyChanged += OnDocumentPropertyChanged;
+        _documentSummaryChangedSubscription = documentSummaryChangedSubscriber.Subscribe(OnDocumentSummaryChanged);
         RefreshFromDocument();
     }
 
@@ -149,19 +157,16 @@ public sealed partial class FolderExplorerDocumentItemViewModel : ObservableObje
         RefreshFromDocument();
     }
 
-    private void OnDocumentPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnDocumentSummaryChanged(EditorTabDocumentSummaryChangedMessage message)
     {
-        if (e.PropertyName is nameof(EditorTabViewModel.DocumentName) or
-            nameof(EditorTabViewModel.CurrentFilePath) or
-            nameof(EditorTabViewModel.IsModified) or
-            nameof(EditorTabViewModel.Title))
-        {
-            RefreshFromDocument();
-        }
+        if (!ReferenceEquals(message.EditorTabViewModel, Document))
+            return;
+
+        RefreshFromDocument();
     }
 
     public void Dispose()
     {
-        Document.PropertyChanged -= OnDocumentPropertyChanged;
+        _documentSummaryChangedSubscription.Dispose();
     }
 }

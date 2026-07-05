@@ -20,11 +20,15 @@ using Direct2dCad.ViewModels.Rendering;
 using Direct2dCad.ViewModels.Snapping;
 using Direct2dCad.ViewModels.Styling;
 using Direct2dCad.ViewModels.Text;
+using Direct2dCad.ViewModels.Services.Events;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
 
 public partial class CadDocumentViewModel : ObservableObject, IDisposable
 {
+    private readonly IPublisher<CadDocumentInteractionStateChangedMessage> _interactionStateChangedPublisher;
+    private readonly IPublisher<CadDocumentViewSettingsChangedMessage> _viewSettingsChangedPublisher;
     private readonly CadOverlaySceneCoordinator _overlayScenes = new();
     private readonly CadRenderResourceCoordinator _renderResources = new();
     private readonly CadGripDragController _gripDrag = new(new CadHandleHitTester());
@@ -366,14 +370,15 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         set => _drawingDefaults.ArcIsVisible = value;
     }
 
-    public event EventHandler? ViewSettingsChanged;
-    public event EventHandler? InteractionStateChanged;
-
     public bool IsPanning => _pan.IsPanning;
     public CadUserSettings UserSettings { get; private set; } = CadUserSettings.CreateDefault();
 
-    public CadDocumentViewModel()
+    public CadDocumentViewModel(
+        IPublisher<CadDocumentInteractionStateChangedMessage> interactionStateChangedPublisher,
+        IPublisher<CadDocumentViewSettingsChangedMessage> viewSettingsChangedPublisher)
     {
+        _interactionStateChangedPublisher = interactionStateChangedPublisher;
+        _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
         _drawingDefaults.SettingChanged += OnDrawingDefaultChanged;
         CadEditor.EditorStateChanged += OnEditorStateChanged;
     }
@@ -440,7 +445,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             return;
 
         CadEditor.Document.ViewSettings.BackgroundColor = color;
-        ViewSettingsChanged?.Invoke(this, EventArgs.Empty);
+        PublishViewSettingsChanged();
         RequestRender();
     }
 
@@ -528,6 +533,9 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         if (button != CadCanvasPointerButton.Left)
             return CadCanvasInteractionResult.NotHandled;
 
+        if (_gripDrag.IsActive)
+            return CommitActiveGripDrag(screen);
+
         if (_paste.IsPreviewActive)
         {
             CommitPaste(screen);
@@ -590,13 +598,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         }
 
         if (button == CadCanvasPointerButton.Left && _gripDrag.IsActive)
-        {
-            CommitGripDrag(screen);
-            return new CadCanvasInteractionResult(
-                true,
-                ReleaseMouseCapture: true,
-                Cursor: CadCanvasCursorKind.Cross);
-        }
+            return KeepActiveGripDragAfterRelease(screen);
 
         if (CadCanvasToolMode == CadCanvasToolMode.Select &&
             button == CadCanvasPointerButton.Left &&
@@ -623,9 +625,10 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     public CadCanvasInteractionResult Escape()
     {
+        CadCanvasToolMode = CadCanvasToolMode.Select;
         ClearInteractionState(clearClipboard: false);
         EndPan();
-        _gripDrag.Clear();
+        RaiseInteractionStateChanged();
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
@@ -856,6 +859,25 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
         RequestRender();
     }
 
+    private CadCanvasInteractionResult CommitActiveGripDrag(CadPointD screen)
+    {
+        CommitGripDrag(screen);
+        return new CadCanvasInteractionResult(
+            true,
+            ReleaseMouseCapture: true,
+            Cursor: CadCanvasCursorKind.Cross);
+    }
+
+    private CadCanvasInteractionResult KeepActiveGripDragAfterRelease(CadPointD screen)
+    {
+        _gripDrag.UpdatePointer(ScreenToSnappedWorld, screen);
+        RequestOverlayRender();
+        return new CadCanvasInteractionResult(
+            true,
+            ReleaseMouseCapture: true,
+            Cursor: CadCanvasCursorKind.Hand);
+    }
+
     private CadGripDragCommitter CreateGripDragCommitter()
     {
         return new CadGripDragCommitter(CadEditor, CreateTextMeasurementService());
@@ -1070,7 +1092,7 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
             RequestRender(CreateDocumentInvalidation(e));
 
         if (e.AffectsViewSettings)
-            ViewSettingsChanged?.Invoke(this, EventArgs.Empty);
+            PublishViewSettingsChanged();
 
         if (e.DocumentChanged)
             RaiseInteractionStateChanged();
@@ -1084,7 +1106,12 @@ public partial class CadDocumentViewModel : ObservableObject, IDisposable
 
     private void RaiseInteractionStateChanged()
     {
-        InteractionStateChanged?.Invoke(this, EventArgs.Empty);
+        _interactionStateChangedPublisher.Publish(new CadDocumentInteractionStateChangedMessage(this));
+    }
+
+    private void PublishViewSettingsChanged()
+    {
+        _viewSettingsChangedPublisher.Publish(new CadDocumentViewSettingsChangedMessage(this));
     }
 
     private CadRenderInvalidation CreateDocumentInvalidation(CadDocumentChangeSet changes)
