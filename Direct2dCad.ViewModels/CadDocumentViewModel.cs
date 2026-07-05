@@ -33,7 +33,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly CadGripDragController _gripDrag = new(new CadHandleHitTester());
     private readonly CadViewportInitializationState _viewportInitialization = new();
     private readonly CadPanInteractionController _pan = new();
-    private readonly CadPasteInteractionController _paste = new();
+    private readonly CadPasteInteractionController _paste;
     private readonly CadSelectionDragController _selectionDrag = new();
     private readonly CadDrawingDefaults _drawingDefaults = new();
     private readonly CadDrawingSessionState _drawingState = new();
@@ -374,10 +374,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadDocumentViewModel(
         IPublisher<CadDocumentInteractionStateChangedMessage> interactionStateChangedPublisher,
-        IPublisher<CadDocumentViewSettingsChangedMessage> viewSettingsChangedPublisher)
+        IPublisher<CadDocumentViewSettingsChangedMessage> viewSettingsChangedPublisher,
+        ICadClipboardStore clipboardStore)
     {
         _interactionStateChangedPublisher = interactionStateChangedPublisher;
         _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
+        _paste = new CadPasteInteractionController(clipboardStore);
         _drawingDefaults.SettingChanged += OnDrawingDefaultChanged;
         CadEditor.EditorStateChanged += OnEditorStateChanged;
     }
@@ -394,7 +396,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _viewportInitialization.ResetInitialView();
         _viewportInitialization.ApplyCurrentSize(CadEditor);
         RefreshPointerWorldStatus();
-        ClearInteractionState(clearClipboard: true, render: false);
+        ClearInteractionState(clearClipboard: false, render: false);
         _overlayScenes.ClearHandleScene();
 
         if (wasAttached)
@@ -926,7 +928,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private CadClipboardInteractionService CreateClipboardInteractionService()
     {
-        return new CadClipboardInteractionService(CadEditor, CreatePreviewStyleService());
+        return new CadClipboardInteractionService(CadEditor);
     }
 
     private CadSelectionInteractionService CreateSelectionInteractionService()

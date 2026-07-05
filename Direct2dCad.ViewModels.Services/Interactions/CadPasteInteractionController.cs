@@ -6,21 +6,26 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadPasteInteractionController
 {
-    private ClipboardSnapshot? _clipboard;
+    private readonly ICadClipboardStore _clipboardStore;
 
     public bool IsPreviewActive { get; private set; }
 
+    public CadPasteInteractionController(ICadClipboardStore clipboardStore)
+    {
+        _clipboardStore = clipboardStore ?? throw new ArgumentNullException(nameof(clipboardStore));
+    }
+
     public void Copy(CadClipboardInteractionService clipboardService)
     {
-        _clipboard = clipboardService.CreateSelectionSnapshot();
+        _clipboardStore.Set(clipboardService.CreateSelectionSnapshot());
     }
 
     public bool BeginPreview(CadClipboardInteractionService clipboardService)
     {
-        if (_clipboard is null)
+        if (_clipboardStore.Snapshot is null)
             Copy(clipboardService);
 
-        if (_clipboard is null)
+        if (_clipboardStore.Snapshot is null)
             return false;
 
         IsPreviewActive = true;
@@ -29,10 +34,11 @@ internal sealed class CadPasteInteractionController
 
     public IReadOnlyList<EntityId> Commit(CadClipboardInteractionService clipboardService, CadPointD target)
     {
-        if (_clipboard is null)
+        var snapshot = _clipboardStore.Snapshot;
+        if (snapshot is null)
             return [];
 
-        var createdIds = clipboardService.CommitPaste(_clipboard, target);
+        var createdIds = clipboardService.CommitPaste(snapshot, target);
         IsPreviewActive = false;
         return createdIds;
     }
@@ -42,7 +48,7 @@ internal sealed class CadPasteInteractionController
         List<CadTransientItem> items,
         CadPointD mouseWorld)
     {
-        clipboardService.AddPastePreview(items, _clipboard, IsPreviewActive, mouseWorld);
+        clipboardService.AddPastePreview(items, _clipboardStore.Snapshot, IsPreviewActive, mouseWorld);
     }
 
     public void Clear(bool clearClipboard)
@@ -50,6 +56,6 @@ internal sealed class CadPasteInteractionController
         IsPreviewActive = false;
 
         if (clearClipboard)
-            _clipboard = null;
+            _clipboardStore.Clear();
     }
 }

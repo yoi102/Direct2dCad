@@ -1,4 +1,5 @@
 using Direct2dCad.Commands;
+using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
@@ -489,6 +490,13 @@ public sealed class CadEditor
     public IReadOnlyList<EntityId> DuplicateEntities(IEnumerable<EntityId> entityIds, CadVectorD delta)
     {
         var command = new DuplicateEntitiesCommand(entityIds, delta);
+        DocumentCommands.Execute(command);
+        return command.CreatedEntityIds.ToArray();
+    }
+
+    public IReadOnlyList<EntityId> PasteEntities(CadClipboardSnapshot snapshot, CadVectorD delta)
+    {
+        var command = new PasteEntitiesCommand(snapshot, delta);
         DocumentCommands.Execute(command);
         return command.CreatedEntityIds.ToArray();
     }

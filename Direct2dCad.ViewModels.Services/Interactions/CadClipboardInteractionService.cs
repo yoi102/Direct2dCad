@@ -1,45 +1,27 @@
+using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
-using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Transient;
-using Direct2dCad.ViewModels.Services.Styling;
 
 namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadClipboardInteractionService(
-    CadEditor editor,
-    CadPreviewStyleService styleService)
+    CadEditor editor)
 {
-    public ClipboardSnapshot? CreateSelectionSnapshot()
+    public CadClipboardSnapshot? CreateSelectionSnapshot()
     {
         if (editor.Selection.Count == 0)
             return null;
 
-        var entityIds = new List<EntityId>();
-        var bounds = CadRectD.Empty;
-        foreach (var entityId in editor.Selection.EntityIds)
-        {
-            if (!editor.Document.TryGetEntity(entityId, out var entity) ||
-                entity is null ||
-                entity.IsErased ||
-                !CanDuplicate(entity))
-            {
-                continue;
-            }
-
-            entityIds.Add(entityId);
-            bounds = bounds.Union(entity.Bounds);
-        }
-
-        return entityIds.Count == 0 || bounds.IsEmpty
-            ? null
-            : new ClipboardSnapshot(entityIds.ToArray(), bounds.Center, bounds);
+        return CadClipboardSnapshotFactory.Create(editor.Document, editor.Selection.EntityIds);
     }
 
     public void AddPastePreview(
         List<CadTransientItem> items,
-        ClipboardSnapshot? clipboard,
+        CadClipboardSnapshot? clipboard,
         bool isPastePreviewActive,
         CadPointD mouseWorld)
     {
@@ -47,29 +29,166 @@ internal sealed class CadClipboardInteractionService(
             return;
 
         var delta = mouseWorld - clipboard.BasePoint;
-        foreach (var entityId in clipboard.EntityIds)
-        {
-            if (editor.Document.TryGetEntity(entityId, out var entity) &&
-                entity is not null &&
-                !entity.IsErased)
-            {
-                items.Add(new CadTransientEntityReference(entityId, delta, styleService.CreateEntityPreviewStyle(entity)));
-            }
-        }
-
-        items.Add(new CadTransientRectangle(
-            clipboard.Bounds.Translate(delta),
-            CadTransientStyle.PastePreview));
+        foreach (var item in clipboard.Items)
+            AddPreviewItem(items, item, delta);
     }
 
-    public IReadOnlyList<EntityId> CommitPaste(ClipboardSnapshot clipboard, CadPointD target)
+    public IReadOnlyList<EntityId> CommitPaste(CadClipboardSnapshot clipboard, CadPointD target)
     {
         var delta = target - clipboard.BasePoint;
-        return editor.DuplicateEntities(clipboard.EntityIds, delta);
+        return editor.PasteEntities(clipboard, delta);
     }
 
-    private static bool CanDuplicate(CadEntity entity)
+    private static void AddPreviewItem(
+        List<CadTransientItem> items,
+        CadClipboardEntityItem item,
+        CadVectorD delta)
     {
-        return entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadArc or CadRectangle or CadPolyline or CadSpline or CadText or CadShapeText;
+        var style = CreatePreviewStyle(item);
+        switch (item.Entity)
+        {
+            case CadLineClipboardSnapshot line:
+                items.Add(new CadTransientLine(line.Start + delta, line.End + delta, style));
+                break;
+
+            case CadCircleClipboardSnapshot circle:
+                items.Add(new CadTransientCircle(circle.Center + delta, circle.Radius, style));
+                break;
+
+            case CadEllipseClipboardSnapshot ellipse:
+                items.Add(new CadTransientEllipse(ellipse.Center + delta, ellipse.RadiusX, ellipse.RadiusY, style));
+                break;
+
+            case CadEllipseArcClipboardSnapshot ellipseArc:
+                items.Add(new CadTransientEllipseArc(
+                    ellipseArc.Center + delta,
+                    ellipseArc.RadiusX,
+                    ellipseArc.RadiusY,
+                    ellipseArc.StartAngleRadians,
+                    ellipseArc.SweepAngleRadians,
+                    style));
+                break;
+
+            case CadArcClipboardSnapshot arc:
+                items.Add(new CadTransientArc(
+                    arc.Center + delta,
+                    arc.Radius,
+                    arc.StartAngleRadians,
+                    arc.SweepAngleRadians,
+                    style));
+                break;
+
+            case CadRectangleClipboardSnapshot rectangle:
+                items.Add(new CadTransientRectangle(
+                    rectangle.Bounds.Translate(delta),
+                    style,
+                    rectangle.CornerRadiusX,
+                    rectangle.CornerRadiusY));
+                break;
+
+            case CadPolylineClipboardSnapshot polyline:
+                items.Add(new CadTransientPolyline(
+                    polyline.Points.Select(x => x + delta).ToArray(),
+                    polyline.Closed,
+                    style));
+                break;
+
+            case CadSplineClipboardSnapshot spline:
+                items.Add(new CadTransientSpline(
+                    spline.FitPoints.Select(x => x + delta).ToArray(),
+                    spline.Closed,
+                    style));
+                break;
+
+            case CadTextClipboardSnapshot text:
+                items.Add(new CadTransientText(
+                    text.Text,
+                    text.Position + delta,
+                    text.Height,
+                    text.LocalBounds.Translate(text.Position + delta - CadPointD.Origin),
+                    style,
+                    text.IsInverted,
+                    text.InvertedMarginFactor,
+                    null));
+                break;
+
+            case CadShapeTextClipboardSnapshot shapeText:
+                items.Add(new CadTransientShapeText(
+                    shapeText.Text,
+                    shapeText.Position + delta,
+                    shapeText.Height,
+                    shapeText.RotationRadians,
+                    shapeText.WidthFactor,
+                    shapeText.CharacterSpacingFactor,
+                    shapeText.ObliqueAngleRadians,
+                    style,
+                    shapeText.IsInverted,
+                    shapeText.InvertedMarginFactor,
+                    shapeText.ShapeFontId));
+                break;
+        }
+    }
+
+    private static CadTransientStyle CreatePreviewStyle(CadClipboardEntityItem item)
+    {
+        var graphic = item.GraphicStyle as CadGraphicStyleClipboardSnapshot;
+        var strokeColor = item.Entity.State.UseLayerColor
+            ? item.Layer.Color
+            : graphic?.StrokeColor ?? item.Layer.Color;
+        var strokeWidth = ResolveStrokeWidth(item, graphic);
+
+        return new CadTransientStyle(
+            strokeColor,
+            strokeWidth,
+            CadTransientLinePattern.Solid,
+            ResolvePreviewFillColor(item.FillStyle),
+            HatchFill: ResolvePreviewHatchFill(item.FillStyle));
+    }
+
+    private static double ResolveStrokeWidth(
+        CadClipboardEntityItem item,
+        CadGraphicStyleClipboardSnapshot? graphic)
+    {
+        if (item.Entity.State.UseLayerLineWeight)
+            return ResolveLineWeight(item.Layer.LineWeight);
+
+        if (item.Entity.State.LineWeight is { } entityLineWeight)
+            return ResolveLineWeight(entityLineWeight);
+
+        if (graphic is not null)
+            return ResolveLineWeight(graphic.LineWeight);
+
+        return ResolveLineWeight(item.Layer.LineWeight);
+    }
+
+    private static double ResolveLineWeight(CadLineWeight lineWeight)
+    {
+        return lineWeight.IsByLayer || lineWeight.Value <= 0
+            ? CadLineWeight.Default.Value
+            : lineWeight.Value;
+    }
+
+    private static CadColor? ResolvePreviewFillColor(CadStyleClipboardSnapshot? fillStyle)
+    {
+        if (fillStyle is CadGradientFillStyleClipboardSnapshot { Stops.Count: > 0 } gradient &&
+            gradient.Stops.All(x => x.Color == gradient.Stops[0].Color))
+        {
+            var color = gradient.Stops[0].Color;
+            return color.IsTransparent ? null : color;
+        }
+
+        return null;
+    }
+
+    private static CadTransientHatchFill? ResolvePreviewHatchFill(CadStyleClipboardSnapshot? fillStyle)
+    {
+        return fillStyle is CadHatchFillStyleClipboardSnapshot hatch && !hatch.ForegroundColor.IsTransparent
+            ? new CadTransientHatchFill(
+                hatch.ForegroundColor,
+                hatch.HatchScale,
+                hatch.HatchAngle,
+                hatch.HatchOrigin,
+                hatch.Pattern.Lines)
+            : null;
     }
 }
