@@ -39,6 +39,7 @@ public partial class MainViewModel : ObservableObject
         FolderExplorer.Attach(_dockLayoutService);
         Layers = _dockLayoutService.GetAnchorable<LayerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayerToolboxViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
+        Search = _dockLayoutService.GetAnchorable<SearchViewModel>() ?? throw new ArgumentNullException(nameof(SearchViewModel));
 
         IsDarkTheme = themeSettingService.IsDarkTheme;
         CurrentCultureLCID = cultureSettingService.GetCurrentCultureLCID();
@@ -56,6 +57,7 @@ public partial class MainViewModel : ObservableObject
     public LayerToolboxViewModel Layers { get; }
 
     public EntityPropertiesToolboxViewModel EntityProperties { get; }
+    public SearchViewModel Search { get; }
 
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
@@ -65,6 +67,7 @@ public partial class MainViewModel : ObservableObject
         FolderExplorer.SetActiveDocument(value);
         Layers.Attach(value?.CadDocumentViewModel);
         EntityProperties.Attach(value?.CadDocumentViewModel);
+        Search.Attach(value?.CadDocumentViewModel);
     }
 
     [ObservableProperty]

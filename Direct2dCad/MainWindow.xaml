@@ -129,10 +129,13 @@
                         <DataTemplate DataType="{x:Type vm_tb:LayerToolboxViewModel}">
                             <v_tb:LayerToolboxView />
                         </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm_tb:SearchViewModel}">
+                            <v_tb:SearchView />
+                        </DataTemplate>
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm:EditorTabViewModel}">
                             <views:EditorView />
-                        </DataTemplate>
+                        </DataTemplate>            
 
 
 

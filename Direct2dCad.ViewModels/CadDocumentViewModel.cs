@@ -669,6 +669,23 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _paste.Copy(CreateClipboardInteractionService());
     }
 
+    public void SelectEntities(IEnumerable<EntityId> entityIds)
+    {
+        ArgumentNullException.ThrowIfNull(entityIds);
+
+        var resolvedEntityIds = entityIds
+            .Where(entityId =>
+                CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+                entity is { IsErased: false })
+            .Distinct()
+            .ToArray();
+
+        CadEditor.Selection.Replace(resolvedEntityIds);
+        ClearInteractionState(clearClipboard: false, render: false);
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
     public CadCanvasInteractionResult DeleteSelection()
     {
         var entityIds = CadEditor.Selection.EntityIds

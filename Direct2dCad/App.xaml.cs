@@ -68,6 +68,7 @@ public partial class App : System.Windows.Application
             dock.AddToolbox<FolderExplorerToolboxViewModel>();
             dock.AddToolbox<LayerToolboxViewModel>();
             dock.AddToolbox<EntityPropertiesToolboxViewModel>();
+            dock.AddToolbox<SearchViewModel>();
         });
 
         services.AddTransient<IFileDialogService, FileDialogService>();
