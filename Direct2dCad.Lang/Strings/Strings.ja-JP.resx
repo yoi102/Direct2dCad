@@ -648,4 +648,10 @@
   <data name="FillColor" xml:space="preserve">
     <value>塗り色</value>
   </data>
+  <data name="LayerDeleteConfirmTitle" xml:space="preserve">
+    <value>レイヤー削除の確認</value>
+  </data>
+  <data name="LayerDeleteConfirmMessageFormat" xml:space="preserve">
+    <value> レイヤー「{0}」を削除してもよろしいですか？ このレイヤー上のすべての図形も削除されます。</value>
+  </data>
 </root>

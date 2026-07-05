@@ -825,4 +825,12 @@
     <value>Fill color</value>
     <comment>Fill color</comment>
   </data>
+  <data name="LayerDeleteConfirmTitle" xml:space="preserve">
+    <value>LayerDeleteConfirmTitle</value>
+    <comment>Confirm Delete Layer</comment>
+  </data>
+  <data name="LayerDeleteConfirmMessageFormat" xml:space="preserve">
+    <value>Are you sure you want to delete layer '{0}'? All entities on this layer will be deleted.</value>
+    <comment>LayerDeleteConfirmMessageFormat</comment>
+  </data>
 </root>

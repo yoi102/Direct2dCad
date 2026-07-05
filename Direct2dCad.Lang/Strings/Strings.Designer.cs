@@ -907,6 +907,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Are you sure you want to delete layer &apos;{0}&apos;? All entities on this layer will be deleted. 的本地化字符串。
+        /// </summary>
+        public static string LayerDeleteConfirmMessageFormat {
+            get {
+                return ResourceManager.GetString("LayerDeleteConfirmMessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 LayerDeleteConfirmTitle 的本地化字符串。
+        /// </summary>
+        public static string LayerDeleteConfirmTitle {
+            get {
+                return ResourceManager.GetString("LayerDeleteConfirmTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Layers 的本地化字符串。
         /// </summary>
         public static string Layers {

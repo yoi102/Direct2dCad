@@ -5,6 +5,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Lang;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using MessagePipe;
@@ -180,12 +182,17 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
         if (_documentViewModel is null || SelectedLayer is not { } layer || Layers.Count < 1)
             return;
 
-        var is_delete = await _dialogService.ShowOrReplaceMessageDialogWithCancelAsync(
-                        $"Are you sure you want to delete layer '{layer.Name}'? \rAll entities on this layer will be deleted.",
-                        "Confirm Delete Layer",
-                        ViewServiceIdentifiers.RootDialogHost);
+        var message = string.Format(
+           Strings.LayerDeleteConfirmMessageFormat,
+           layer.Name,
+           Environment.NewLine);
 
-        if (!is_delete)
+        var deleteConfirmed = await _dialogService.ShowOrReplaceMessageDialogWithCancelAsync(
+            message,
+            Strings.LayerDeleteConfirmTitle,
+            ViewServiceIdentifiers.RootDialogHost);
+
+        if (!deleteConfirmed)
             return;
 
         var fallbackSelection = Layers.FirstOrDefault(x => !ReferenceEquals(x, layer))?.LayerId;

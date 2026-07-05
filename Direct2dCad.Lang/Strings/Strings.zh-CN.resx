@@ -648,4 +648,10 @@
   <data name="FillColor" xml:space="preserve">
     <value>填充颜色</value>
   </data>
+  <data name="LayerDeleteConfirmTitle" xml:space="preserve">
+    <value>确认删除图层</value>
+  </data>
+  <data name="LayerDeleteConfirmMessageFormat" xml:space="preserve">
+    <value>确定要删除图层“{0}”吗？ 该图层上的所有实体都会被删除。</value>
+  </data>
 </root>
