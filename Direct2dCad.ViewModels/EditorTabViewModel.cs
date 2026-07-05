@@ -66,9 +66,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ApplyDocumentViewSettingsToToolbar();
         ApplyUserSettingsToToolbar();
         CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
-        Id = Guid.NewGuid().ToString();
-        Title = cadDocumentViewModel.CadEditor.Document.Name;
+        ContentId = Id = Guid.NewGuid().ToString();
+        ToolTip = Title = cadDocumentViewModel.CadEditor.Document.Name;
         ResetModificationBaseline(isModified: string.IsNullOrWhiteSpace(CurrentFilePath));
+
     }
 
     public override bool OnClose()
@@ -87,6 +88,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         PublishDocumentSummaryChanged();
     }
 
+    [ObservableProperty]
+    public partial string ToolTip { get; private set; }
+    [ObservableProperty]
+    public partial string ContentId { get; private set; }
     [ObservableProperty]
     public partial string TextInput { get; set; } = "Text";
 
@@ -389,7 +394,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return true;
 
         CadDocumentViewModel.CadEditor.Document.Rename(normalizedName);
-        Title = normalizedName;
+        ToolTip = Title = normalizedName;
         MarkDirectDocumentChanged();
         OnPropertyChanged(nameof(DocumentName));
         PublishDocumentSummaryChanged();

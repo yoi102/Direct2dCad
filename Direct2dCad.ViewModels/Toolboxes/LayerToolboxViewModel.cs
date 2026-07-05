@@ -30,8 +30,10 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
         Shortcut = "Ctrl+Shift+L";
         IsOpenByDefault = true;
         _dialogService = dialogService;
+        ContentId = Id = Guid.NewGuid().ToString();
     }
-
+    [ObservableProperty]
+    public partial string ContentId { get; private set; }
     public ObservableCollection<LayerItemViewModel> Layers { get; } = [];
 
     public bool HasDocument => _documentViewModel is not null;

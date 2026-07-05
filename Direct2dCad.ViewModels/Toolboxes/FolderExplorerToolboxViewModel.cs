@@ -20,13 +20,14 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
         ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
     {
         _documentSummaryChangedSubscriber = documentSummaryChangedSubscriber;
-        Id = Guid.NewGuid().ToString();
+        ContentId = Id = Guid.NewGuid().ToString();
         Title = "FolderExplorer";
         Icon = toolboxIconsService.Explorer;
         Shortcut = "Ctrl+Shift+E";
         IsOpenByDefault = true;
     }
-
+    [ObservableProperty]
+    public partial string ContentId { get; private set; }
     public ObservableCollection<FolderExplorerDocumentItemViewModel> Documents { get; } = [];
 
     public bool HasDocuments => Documents.Count > 0;
