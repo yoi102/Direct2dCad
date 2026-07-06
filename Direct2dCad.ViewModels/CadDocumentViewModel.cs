@@ -38,6 +38,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly CadDrawingDefaults _drawingDefaults = new();
     private readonly CadDrawingSessionState _drawingState = new();
     private LayerId _drawingLayerId = LayerId.Default;
+    private LayerId _pasteTargetLayerId = LayerId.Default;
     private CadPointD? _currentMousePoint;
     private bool _disposed;
 
@@ -74,6 +75,24 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             RequestRender();
         }
     }
+
+    public LayerId PasteTargetLayerId
+    {
+        get => ResolveExistingPasteTargetLayerId();
+        set
+        {
+            var resolvedLayerId = ResolveExistingDrawingLayerId(value);
+            if (_pasteTargetLayerId.Equals(resolvedLayerId))
+                return;
+
+            _pasteTargetLayerId = resolvedLayerId;
+            OnPropertyChanged();
+            RaiseInteractionStateChanged();
+            RequestRender();
+        }
+    }
+
+    public bool IsPastePreviewActive => _paste.IsPreviewActive;
 
     public CadColor DrawingLineStrokeColor
     {
@@ -396,6 +415,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _viewportInitialization.ResetInitialView();
         _viewportInitialization.ApplyCurrentSize(CadEditor);
         RefreshPointerWorldStatus();
+        _pasteTargetLayerId = ResolveExistingDrawingLayerId(_pasteTargetLayerId);
         ClearInteractionState(clearClipboard: false, render: false);
         _overlayScenes.ClearHandleScene();
 
@@ -488,6 +508,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return CadEditor.Document.TryGetLayer(layerId, out var layer) && layer is not null
             ? layerId
             : ResolveFallbackDrawingLayerId();
+    }
+
+    private LayerId ResolveExistingPasteTargetLayerId()
+    {
+        _pasteTargetLayerId = ResolveExistingDrawingLayerId(_pasteTargetLayerId);
+        return _pasteTargetLayerId;
     }
 
     private LayerId ResolveFallbackDrawingLayerId()
@@ -714,8 +740,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (!_paste.BeginPreview(CreateClipboardInteractionService()))
             return CadCanvasInteractionResult.NotHandled;
 
+        _pasteTargetLayerId = ResolveExistingDrawingLayerId(DrawingLayerId);
         _drawingState.Clear();
         _selectionDrag.Clear();
+        OnPropertyChanged(nameof(PasteTargetLayerId));
+        OnPropertyChanged(nameof(IsPastePreviewActive));
+        RaiseInteractionStateChanged();
         RequestRender();
         return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
     }
@@ -813,13 +843,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void CommitPaste(CadPointD screen)
     {
         var target = ScreenToWorld(screen, snapToGrid: true);
-        var createdIds = _paste.Commit(CreateClipboardInteractionService(), target);
+        var createdIds = _paste.Commit(CreateClipboardInteractionService(), target, PasteTargetLayerId);
         if (createdIds.Count > 0)
         {
             CadEditor.Selection.Replace(createdIds);
             RaiseInteractionStateChanged();
         }
 
+        OnPropertyChanged(nameof(IsPastePreviewActive));
         RequestRender();
     }
 
@@ -829,6 +860,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _selectionDrag.Clear();
         _gripDrag.Clear();
         _paste.Clear(clearClipboard);
+        OnPropertyChanged(nameof(IsPastePreviewActive));
 
         _overlayScenes.ClearTransientScene();
 
@@ -935,7 +967,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void AddPastePreview(List<CadTransientItem> items, CadPointD mouseWorld)
     {
-        _paste.AddPreview(CreateClipboardInteractionService(), items, mouseWorld);
+        _paste.AddPreview(CreateClipboardInteractionService(), items, mouseWorld, PasteTargetLayerId);
     }
 
     private void AddSelectionWindowPreview(List<CadTransientItem> items, CadPointD mousePoint)

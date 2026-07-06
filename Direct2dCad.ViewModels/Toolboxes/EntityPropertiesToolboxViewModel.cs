@@ -70,6 +70,21 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
             return;
         }
 
+        if (_documentViewModel.IsPastePreviewActive)
+        {
+            if (Entity is TransientPastePropertyViewModel transient &&
+                ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
+            {
+                transient.RefreshFromDocument();
+            }
+            else
+            {
+                Entity = new TransientPastePropertyViewModel(_documentViewModel);
+            }
+
+            return;
+        }
+
         if (IsArcDrawingMode(_documentViewModel.CadCanvasToolMode))
         {
             if (Entity is TransientArcPropertyViewModel transient &&

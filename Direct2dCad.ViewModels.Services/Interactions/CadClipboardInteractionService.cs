@@ -1,6 +1,7 @@
 using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
@@ -23,28 +24,37 @@ internal sealed class CadClipboardInteractionService(
         List<CadTransientItem> items,
         CadClipboardSnapshot? clipboard,
         bool isPastePreviewActive,
-        CadPointD mouseWorld)
+        CadPointD mouseWorld,
+        LayerId targetLayerId)
     {
         if (!isPastePreviewActive || clipboard is null)
             return;
 
         var delta = mouseWorld - clipboard.BasePoint;
+        var targetLayer = editor.Document.TryGetLayer(targetLayerId, out var resolvedLayer) && resolvedLayer is not null
+            ? resolvedLayer
+            : null;
         foreach (var item in clipboard.Items)
-            AddPreviewItem(items, item, delta);
+            AddPreviewItem(items, item, delta, targetLayer, editor.Document);
     }
 
-    public IReadOnlyList<EntityId> CommitPaste(CadClipboardSnapshot clipboard, CadPointD target)
+    public IReadOnlyList<EntityId> CommitPaste(
+        CadClipboardSnapshot clipboard,
+        CadPointD target,
+        LayerId targetLayerId)
     {
         var delta = target - clipboard.BasePoint;
-        return editor.PasteEntities(clipboard, delta);
+        return editor.PasteEntities(clipboard, delta, targetLayerId);
     }
 
     private static void AddPreviewItem(
         List<CadTransientItem> items,
         CadClipboardEntityItem item,
-        CadVectorD delta)
+        CadVectorD delta,
+        CadLayer? targetLayer,
+        CadDocument document)
     {
-        var style = CreatePreviewStyle(item);
+        var style = CreatePreviewStyle(item, targetLayer, document);
         switch (item.Entity)
         {
             case CadLineClipboardSnapshot line:
@@ -129,13 +139,19 @@ internal sealed class CadClipboardInteractionService(
         }
     }
 
-    private static CadTransientStyle CreatePreviewStyle(CadClipboardEntityItem item)
+    private static CadTransientStyle CreatePreviewStyle(
+        CadClipboardEntityItem item,
+        CadLayer? targetLayer,
+        CadDocument document)
     {
         var graphic = item.GraphicStyle as CadGraphicStyleClipboardSnapshot;
+        var layerColor = targetLayer is not null
+            ? ResolveLayerStrokeColor(document, targetLayer)
+            : item.Layer.Color;
         var strokeColor = item.Entity.State.UseLayerColor
-            ? item.Layer.Color
-            : graphic?.StrokeColor ?? item.Layer.Color;
-        var strokeWidth = ResolveStrokeWidth(item, graphic);
+            ? layerColor
+            : graphic?.StrokeColor ?? layerColor;
+        var strokeWidth = ResolveStrokeWidth(item, graphic, targetLayer);
 
         return new CadTransientStyle(
             strokeColor,
@@ -147,10 +163,11 @@ internal sealed class CadClipboardInteractionService(
 
     private static double ResolveStrokeWidth(
         CadClipboardEntityItem item,
-        CadGraphicStyleClipboardSnapshot? graphic)
+        CadGraphicStyleClipboardSnapshot? graphic,
+        CadLayer? targetLayer)
     {
         if (item.Entity.State.UseLayerLineWeight)
-            return ResolveLineWeight(item.Layer.LineWeight);
+            return ResolveLineWeight(targetLayer?.LineWeight ?? item.Layer.LineWeight);
 
         if (item.Entity.State.LineWeight is { } entityLineWeight)
             return ResolveLineWeight(entityLineWeight);
@@ -159,6 +176,15 @@ internal sealed class CadClipboardInteractionService(
             return ResolveLineWeight(graphic.LineWeight);
 
         return ResolveLineWeight(item.Layer.LineWeight);
+    }
+
+    private static CadColor ResolveLayerStrokeColor(CadDocument document, CadLayer layer)
+    {
+        return layer.DefaultGraphicStyleId is { } styleId &&
+               document.TryGetStyle(styleId, out var style) &&
+               style is CadGraphicStyle graphic
+            ? graphic.StrokeColor
+            : layer.Color;
     }
 
     private static double ResolveLineWeight(CadLineWeight lineWeight)

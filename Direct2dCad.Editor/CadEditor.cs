@@ -494,9 +494,9 @@ public sealed class CadEditor
         return command.CreatedEntityIds.ToArray();
     }
 
-    public IReadOnlyList<EntityId> PasteEntities(CadClipboardSnapshot snapshot, CadVectorD delta)
+    public IReadOnlyList<EntityId> PasteEntities(CadClipboardSnapshot snapshot, CadVectorD delta, LayerId? targetLayerId = null)
     {
-        var command = new PasteEntitiesCommand(snapshot, delta);
+        var command = new PasteEntitiesCommand(snapshot, delta, targetLayerId);
         DocumentCommands.Execute(command);
         return command.CreatedEntityIds.ToArray();
     }

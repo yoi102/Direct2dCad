@@ -10,6 +10,7 @@ public abstract class EntityPropertyViewModel : ObservableObject
 {
     private bool _isRefreshingLayerOptions;
     private bool _isDrawingLayerSelection;
+    private bool _isPasteLayerSelection;
     private CadDocumentViewModel? _layerDocumentViewModel;
     private EntityId? _layerEntityId;
     private EntityLayerOption? _selectedLayerOption;
@@ -34,6 +35,7 @@ public abstract class EntityPropertyViewModel : ObservableObject
         _layerDocumentViewModel = documentViewModel;
         _layerEntityId = entity.Id;
         _isDrawingLayerSelection = false;
+        _isPasteLayerSelection = false;
 
         RefreshLayerOptionsCore(documentViewModel, entity.LayerId);
     }
@@ -45,8 +47,21 @@ public abstract class EntityPropertyViewModel : ObservableObject
         _layerDocumentViewModel = documentViewModel;
         _layerEntityId = null;
         _isDrawingLayerSelection = true;
+        _isPasteLayerSelection = false;
 
         RefreshLayerOptionsCore(documentViewModel, documentViewModel.DrawingLayerId);
+    }
+
+    protected void RefreshPasteLayerOptions(CadDocumentViewModel documentViewModel)
+    {
+        ArgumentNullException.ThrowIfNull(documentViewModel);
+
+        _layerDocumentViewModel = documentViewModel;
+        _layerEntityId = null;
+        _isDrawingLayerSelection = false;
+        _isPasteLayerSelection = true;
+
+        RefreshLayerOptionsCore(documentViewModel, documentViewModel.PasteTargetLayerId);
     }
 
     private void RefreshLayerOptionsCore(CadDocumentViewModel documentViewModel, LayerId selectedLayerId)
@@ -134,7 +149,7 @@ public abstract class EntityPropertyViewModel : ObservableObject
         if (_isRefreshingLayerOptions ||
             option is null ||
             _layerDocumentViewModel is not { } documentViewModel ||
-            (!_isDrawingLayerSelection && _layerEntityId is null))
+            (!_isDrawingLayerSelection && !_isPasteLayerSelection && _layerEntityId is null))
         {
             return;
         }
@@ -144,6 +159,12 @@ public abstract class EntityPropertyViewModel : ObservableObject
             if (!documentViewModel.DrawingLayerId.Equals(option.LayerId))
                 documentViewModel.DrawingLayerId = option.LayerId;
 
+            return;
+        }
+
+        if (_isPasteLayerSelection)
+        {
+            documentViewModel.PasteTargetLayerId = option.LayerId;
             return;
         }
 

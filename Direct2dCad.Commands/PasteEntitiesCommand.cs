@@ -12,15 +12,20 @@ public sealed class PasteEntitiesCommand : ICadCommand
 {
     private readonly CadClipboardSnapshot _snapshot;
     private readonly CadVectorD _delta;
+    private readonly LayerId? _targetLayerId;
     private readonly List<EntityId> _createdEntityIds = [];
 
     public string Name => "Paste Entities";
     public IReadOnlyList<EntityId> CreatedEntityIds => _createdEntityIds;
 
-    public PasteEntitiesCommand(CadClipboardSnapshot snapshot, CadVectorD delta)
+    public PasteEntitiesCommand(
+        CadClipboardSnapshot snapshot,
+        CadVectorD delta,
+        LayerId? targetLayerId = null)
     {
         _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
         _delta = delta;
+        _targetLayerId = targetLayerId;
 
         if (_snapshot.IsEmpty)
             throw new ArgumentException("Clipboard snapshot must contain at least one entity.", nameof(snapshot));
@@ -49,7 +54,10 @@ public sealed class PasteEntitiesCommand : ICadCommand
                     CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility);
         }
 
-        var context = new PasteEntityContext(document);
+        var context = new PasteEntityContext(document)
+        {
+            TargetLayerId = _targetLayerId
+        };
         foreach (var item in _snapshot.Items)
         {
             if (TryCreateEntity(context, item, _delta, out var created) && created is not null)
@@ -89,7 +97,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
         out CadEntity? created)
     {
         var document = context.Document;
-        var layerId = context.ResolveLayer(item.Layer);
+        var layerId = context.ResolveLayer(item.Layer, context.TargetLayerId);
         var graphicStyleId = context.ResolveStyle(item.GraphicStyle);
         var fillStyleId = context.ResolveStyle(item.FillStyle);
         var textStyleId = context.ResolveStyle(item.TextStyle);
@@ -223,8 +231,17 @@ public sealed class PasteEntitiesCommand : ICadCommand
 
         public CadDocument Document { get; } = document;
 
-        public LayerId ResolveLayer(CadLayerClipboardSnapshot snapshot)
+        public LayerId? TargetLayerId { get; init; }
+
+        public LayerId ResolveLayer(CadLayerClipboardSnapshot snapshot, LayerId? targetLayerId)
         {
+            if (targetLayerId is { } overrideLayerId &&
+                Document.TryGetLayer(overrideLayerId, out var overrideLayer) &&
+                overrideLayer is not null)
+            {
+                return overrideLayerId;
+            }
+
             if (_layers.TryGetValue(snapshot, out var cached))
                 return cached;
 

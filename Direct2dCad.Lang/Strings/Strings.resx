@@ -833,4 +833,12 @@
     <value>Are you sure you want to delete layer '{0}'? All entities on this layer will be deleted.</value>
     <comment>LayerDeleteConfirmMessageFormat</comment>
   </data>
+  <data name="Paste" xml:space="preserve">
+    <value>Paste</value>
+    <comment>Paste</comment>
+  </data>
+  <data name="TargetLayer" xml:space="preserve">
+    <value>Target layer</value>
+    <comment>Target layer</comment>
+  </data>
 </root>

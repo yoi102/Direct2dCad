@@ -654,4 +654,10 @@
   <data name="LayerDeleteConfirmMessageFormat" xml:space="preserve">
     <value> レイヤー「{0}」を削除してもよろしいですか？ このレイヤー上のすべての図形も削除されます。</value>
   </data>
+  <data name="Paste" xml:space="preserve">
+    <value>ペースト</value>
+  </data>
+  <data name="TargetLayer" xml:space="preserve">
+    <value>ターゲットレイヤー</value>
+  </data>
 </root>

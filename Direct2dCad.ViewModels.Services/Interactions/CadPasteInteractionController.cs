@@ -32,13 +32,16 @@ internal sealed class CadPasteInteractionController
         return true;
     }
 
-    public IReadOnlyList<EntityId> Commit(CadClipboardInteractionService clipboardService, CadPointD target)
+    public IReadOnlyList<EntityId> Commit(
+        CadClipboardInteractionService clipboardService,
+        CadPointD target,
+        LayerId targetLayerId)
     {
         var snapshot = _clipboardStore.Snapshot;
         if (snapshot is null)
             return [];
 
-        var createdIds = clipboardService.CommitPaste(snapshot, target);
+        var createdIds = clipboardService.CommitPaste(snapshot, target, targetLayerId);
         IsPreviewActive = false;
         return createdIds;
     }
@@ -46,9 +49,10 @@ internal sealed class CadPasteInteractionController
     public void AddPreview(
         CadClipboardInteractionService clipboardService,
         List<CadTransientItem> items,
-        CadPointD mouseWorld)
+        CadPointD mouseWorld,
+        LayerId targetLayerId)
     {
-        clipboardService.AddPastePreview(items, _clipboardStore.Snapshot, IsPreviewActive, mouseWorld);
+        clipboardService.AddPastePreview(items, _clipboardStore.Snapshot, IsPreviewActive, mouseWorld, targetLayerId);
     }
 
     public void Clear(bool clearClipboard)

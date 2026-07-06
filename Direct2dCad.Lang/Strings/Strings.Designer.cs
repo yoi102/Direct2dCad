@@ -1105,6 +1105,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Paste 的本地化字符串。
+        /// </summary>
+        public static string Paste {
+            get {
+                return ResourceManager.GetString("Paste", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Point count 的本地化字符串。
         /// </summary>
         public static string PointCount {
@@ -1488,6 +1497,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Sweep {
             get {
                 return ResourceManager.GetString("Sweep", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Target layer 的本地化字符串。
+        /// </summary>
+        public static string TargetLayer {
+            get {
+                return ResourceManager.GetString("TargetLayer", resourceCulture);
             }
         }
         
