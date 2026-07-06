@@ -96,6 +96,14 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
         if (string.Equals(currentLayer.Name, name.Trim(), StringComparison.Ordinal))
             return;
 
+        if (_documentViewModel.CadEditor.Document.Layers.Values.Any(x =>
+                !x.Id.Equals(layer.LayerId) &&
+                string.Equals(x.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            RefreshLayers(layer.LayerId);
+            return;
+        }
+
         ExecuteAndRefresh(
             () => _documentViewModel.CadEditor.RenameLayer(layer.LayerId, name),
             layer.LayerId);

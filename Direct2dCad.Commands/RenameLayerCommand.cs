@@ -23,7 +23,7 @@ public sealed class RenameLayerCommand : ICadCommand
 
         var layer = document.GetLayer(_layerId);
         _previousName ??= layer.Name;
-        layer.Rename(_name);
+        document.RenameLayer(_layerId, _name);
         return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
     }
 
@@ -34,7 +34,7 @@ public sealed class RenameLayerCommand : ICadCommand
         if (_previousName is null)
             return CadDocumentChangeSet.Empty;
 
-        document.GetLayer(_layerId).Rename(_previousName);
+        document.RenameLayer(_layerId, _previousName);
         return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
     }
 }

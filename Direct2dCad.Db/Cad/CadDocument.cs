@@ -99,6 +99,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         StyleId? defaultGraphicStyleId = null)
     {
         ValidateGraphicStyle(defaultGraphicStyleId, allowNull: true);
+        ValidateUniqueLayerName(name);
 
         var layer = new CadLayer(
             _ids.NewLayerId(),
@@ -122,6 +123,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         StyleId? defaultGraphicStyleId = null)
     {
         ValidateGraphicStyle(defaultGraphicStyleId, allowNull: true);
+        ValidateUniqueLayerName(name, layerId);
 
         var layer = new CadLayer(
             layerId,
@@ -134,6 +136,13 @@ public sealed class CadDocument : IEquatable<CadDocument>
         layer.SetFrozen(isFrozen);
 
         AddLayerCore(layer);
+    }
+
+    public void RenameLayer(LayerId layerId, string name)
+    {
+        var layer = GetLayer(layerId);
+        ValidateUniqueLayerName(name, layerId);
+        layer.Rename(name);
     }
 
     public void SetLayerDefaultGraphicStyle(LayerId layerId, StyleId? styleId)
@@ -1062,6 +1071,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         if (_layers.ContainsKey(layer.Id))
             throw new InvalidOperationException($"Layer already exists: {layer.Id}");
 
+        ValidateUniqueLayerName(layer.Name, layer.Id);
         ValidateGraphicStyle(layer.DefaultGraphicStyleId, allowNull: true);
         _layers.Add(layer.Id, layer);
         _ids.RegisterExisting(layer.Id);
@@ -1148,6 +1158,24 @@ public sealed class CadDocument : IEquatable<CadDocument>
     {
         if (!_layers.ContainsKey(layerId))
             throw new InvalidOperationException($"Layer does not exist: {layerId}");
+    }
+
+    private void ValidateUniqueLayerName(string name, LayerId? layerId = null)
+    {
+        var normalizedName = NormalizeLayerName(name);
+        var duplicate = _layers.Values.FirstOrDefault(layer =>
+            (layerId is null || !layer.Id.Equals(layerId.Value)) &&
+            string.Equals(layer.Name, normalizedName, StringComparison.OrdinalIgnoreCase));
+
+        if (duplicate is not null)
+            throw new InvalidOperationException($"Layer name already exists: {normalizedName}");
+    }
+
+    private static string NormalizeLayerName(string name)
+    {
+        return string.IsNullOrWhiteSpace(name)
+            ? throw new ArgumentException("Layer name cannot be empty.", nameof(name))
+            : name.Trim();
     }
 
     private void ValidateBlock(BlockId blockId)

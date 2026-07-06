@@ -395,7 +395,7 @@ internal static class CadDocumentMapper
 
             if (layerId.Equals(LayerId.Default))
             {
-                layer.Rename(layerData.Name);
+                document.RenameLayer(layerId, layerData.Name);
                 layer.SetColor(FromData(layerData.Color));
                 layer.SetLineWeight(new CadLineWeight(layerData.LineWeight));
                 document.SetLayerDefaultGraphicStyle(layerId, ToStyleId(layerData.DefaultGraphicStyleId));

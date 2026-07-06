@@ -29,7 +29,7 @@ public sealed class CadLayer : IEquatable<CadLayer>
         DefaultGraphicStyleId = defaultGraphicStyleId;
     }
 
-    public void Rename(string name) => Name = GuardName(name);
+    internal void Rename(string name) => Name = GuardName(name);
     public void SetVisible(bool visible) => IsVisible = visible;
     public void SetLocked(bool locked) => IsLocked = locked;
     public void SetFrozen(bool frozen) => IsFrozen = frozen;
