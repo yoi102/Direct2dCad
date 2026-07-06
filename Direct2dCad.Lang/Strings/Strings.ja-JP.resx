@@ -660,4 +660,7 @@
   <data name="TargetLayer" xml:space="preserve">
     <value>ターゲットレイヤー</value>
   </data>
+  <data name="LayerNameAlreadyExists" xml:space="preserve">
+    <value>レイヤー名は既に存在します。</value>
+  </data>
 </root>

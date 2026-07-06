@@ -925,6 +925,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Layer name already exists. 的本地化字符串。
+        /// </summary>
+        public static string LayerNameAlreadyExists {
+            get {
+                return ResourceManager.GetString("LayerNameAlreadyExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Layers 的本地化字符串。
         /// </summary>
         public static string Layers {

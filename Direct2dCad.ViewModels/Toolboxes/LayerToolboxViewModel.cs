@@ -18,8 +18,9 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
     private CadDocumentViewModel? _documentViewModel;
     private readonly IDisposable _interactionStateChangedSubscription;
     private readonly IDialogService _dialogService;
+    private readonly ISnackbarService _snackbarService;
 
-    public LayerToolboxViewModel(IDialogService dialogService,
+    public LayerToolboxViewModel(IDialogService dialogService,ISnackbarService snackbarService,
         IToolboxIconsService toolboxIconsService,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
@@ -30,6 +31,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
         Shortcut = "Ctrl+Shift+L";
         IsOpenByDefault = true;
         _dialogService = dialogService;
+        _snackbarService = snackbarService;
         ContentId = Id = Guid.NewGuid().ToString();
     }
     [ObservableProperty]
@@ -100,6 +102,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
                 !x.Id.Equals(layer.LayerId) &&
                 string.Equals(x.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
         {
+            _snackbarService.Enqueue(Strings.LayerNameAlreadyExists);
             RefreshLayers(layer.LayerId);
             return;
         }

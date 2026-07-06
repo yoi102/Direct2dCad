@@ -841,4 +841,8 @@
     <value>Target layer</value>
     <comment>Target layer</comment>
   </data>
+  <data name="LayerNameAlreadyExists" xml:space="preserve">
+    <value>Layer name already exists.</value>
+    <comment>Layer name already exists.</comment>
+  </data>
 </root>
