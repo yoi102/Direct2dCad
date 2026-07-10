@@ -438,6 +438,9 @@
   <data name="Id" xml:space="preserve">
     <value>ID</value>
   </data>
+  <data name="Name" xml:space="preserve">
+    <value>名前</value>
+  </data>
   <data name="CenterX" xml:space="preserve">
     <value>中心 X</value>
   </data>

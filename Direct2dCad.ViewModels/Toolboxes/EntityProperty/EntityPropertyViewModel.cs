@@ -9,13 +9,25 @@ namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 public abstract class EntityPropertyViewModel : ObservableObject
 {
     private bool _isRefreshingLayerOptions;
+    private bool _isRefreshingEntityName;
     private bool _isDrawingLayerSelection;
     private bool _isPasteLayerSelection;
     private CadDocumentViewModel? _layerDocumentViewModel;
     private EntityId? _layerEntityId;
     private EntityLayerOption? _selectedLayerOption;
+    private string _entityName = string.Empty;
 
     public IReadOnlyList<EntityLayerOption> LayerOptions { get; private set; } = [];
+
+    public string EntityName
+    {
+        get => _entityName;
+        set
+        {
+            if (SetProperty(ref _entityName, value ?? string.Empty))
+                OnEntityNameChanged(_entityName);
+        }
+    }
 
     public EntityLayerOption? SelectedLayerOption
     {
@@ -36,6 +48,7 @@ public abstract class EntityPropertyViewModel : ObservableObject
         _layerEntityId = entity.Id;
         _isDrawingLayerSelection = false;
         _isPasteLayerSelection = false;
+        RefreshEntityName(entity);
 
         RefreshLayerOptionsCore(documentViewModel, entity.LayerId);
     }
@@ -178,6 +191,38 @@ public abstract class EntityPropertyViewModel : ObservableObject
         }
 
         documentViewModel.CadEditor.ChangeEntityLayer(entityId, option.LayerId);
+    }
+
+    private void RefreshEntityName(CadEntity entity)
+    {
+        _isRefreshingEntityName = true;
+        try
+        {
+            EntityName = entity.Name;
+        }
+        finally
+        {
+            _isRefreshingEntityName = false;
+        }
+    }
+
+    private void OnEntityNameChanged(string value)
+    {
+        if (_isRefreshingEntityName ||
+            _layerDocumentViewModel is not { } documentViewModel ||
+            _layerEntityId is not { } entityId ||
+            !documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            entity.IsErased)
+        {
+            return;
+        }
+
+        var normalizedName = value ?? string.Empty;
+        if (string.Equals(entity.Name, normalizedName, StringComparison.Ordinal))
+            return;
+
+        documentViewModel.CadEditor.RenameEntity(entityId, normalizedName);
     }
 }
 

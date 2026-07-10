@@ -545,6 +545,10 @@
     <value>Id</value>
     <comment>Id</comment>
   </data>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+    <comment>Name</comment>
+  </data>
   <data name="CenterX" xml:space="preserve">
     <value>Center X</value>
     <comment>Center X</comment>

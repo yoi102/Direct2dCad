@@ -68,8 +68,11 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         foreach (var change in changes.EntityChanges)
         {
-            if (change.Kind == CadEntityChangeKind.DrawOrder)
+            if (change.Kind == CadEntityChangeKind.DrawOrder ||
+                change.Kind == CadEntityChangeKind.Metadata)
+            {
                 continue;
+            }
 
             RebuildEntityResources(document, change.EntityId);
         }

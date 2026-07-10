@@ -48,6 +48,9 @@ internal sealed class CadRenderInvalidationCalculator(
         var bounds = CadRectD.Empty;
         foreach (var change in changes.EntityChanges)
         {
+            if (change.Kind == CadEntityChangeKind.Metadata)
+                continue;
+
             if (RequiresFullRender(change))
                 return CadRenderInvalidation.Full;
 
@@ -63,7 +66,7 @@ internal sealed class CadRenderInvalidationCalculator(
         }
 
         return bounds.IsEmpty
-            ? CadRenderInvalidation.Full
+            ? CadRenderInvalidation.Empty
             : CreateWorldBoundsInvalidation(bounds, ResolveDocumentInvalidationPadding(changes));
     }
 

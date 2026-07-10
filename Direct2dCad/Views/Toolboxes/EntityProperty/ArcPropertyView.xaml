@@ -19,6 +19,18 @@
                        FontWeight="SemiBold"
                        Margin="0,0,0,10" />
 
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{I18N {x:Static r:LangKeys.Name}}"
+                           VerticalAlignment="Center" />
+                <TextBox Grid.Column="1"
+                         Text="{Binding EntityName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+            </Grid>
+
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="96" />

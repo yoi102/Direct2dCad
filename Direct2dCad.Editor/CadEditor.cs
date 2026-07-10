@@ -153,6 +153,11 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new RenameLayerCommand(layerId, name));
     }
 
+    public CadDocumentChangeSet RenameEntity(EntityId entityId, string name)
+    {
+        return DocumentCommands.Execute(new RenameEntityCommand(entityId, name));
+    }
+
     public CadDocumentChangeSet SetLayerState(
         LayerId layerId,
         bool isVisible,
