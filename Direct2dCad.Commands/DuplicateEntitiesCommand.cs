@@ -147,6 +147,7 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 spline.Closed,
                 spline.LayerId,
                 spline.GraphicStyleId,
+                spline.FillStyleId,
                 spline.Name),
             CadText text => document.AddText(
                 text.Text,

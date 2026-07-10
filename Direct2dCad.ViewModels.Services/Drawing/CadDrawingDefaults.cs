@@ -37,6 +37,7 @@ internal sealed class CadDrawingDefaults : ObservableObject
     private int _splineZIndex;
     private bool _splineIsVisible = true;
     private bool _splineClosed;
+    private StyleId? _splineFillStyleId;
     private CadColor _circleStrokeColor = CadColor.White;
     private double _circleLineWeight = CadLineWeight.Default.Value;
     private int _circleZIndex;
@@ -187,6 +188,12 @@ internal sealed class CadDrawingDefaults : ObservableObject
     {
         get => _splineClosed;
         set => SetDrawingSetting(ref _splineClosed, value);
+    }
+
+    public StyleId? SplineFillStyleId
+    {
+        get => _splineFillStyleId;
+        set => SetDrawingSetting(ref _splineFillStyleId, value);
     }
 
     public CadColor CircleStrokeColor

@@ -194,6 +194,7 @@ internal sealed class CadPreviewStyleService(
             CadEllipse ellipse => ellipse.FillStyleId,
             CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline { Closed: true } polyline => polyline.FillStyleId,
+            CadSpline { Closed: true } spline => spline.FillStyleId,
             _ => null
         };
     }

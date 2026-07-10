@@ -354,6 +354,7 @@ public static class CadClipboardSnapshotFactory
             CadEllipse ellipse => ellipse.FillStyleId,
             CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline polyline => polyline.FillStyleId,
+            CadSpline spline => spline.FillStyleId,
             _ => null
         };
 

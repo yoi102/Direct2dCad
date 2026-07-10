@@ -136,11 +136,13 @@ internal sealed class CadDrawingEntityCreator(
         if (fitPoints.Count < 2)
             return;
 
+        var closed = styleResolver.ResolveSplineClosed(fitPoints.Count);
         editor.AddSpline(
             fitPoints,
-            styleResolver.ResolveSplineClosed(fitPoints.Count),
+            closed,
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveSplineGraphicStyleId(),
+            fillStyleId: closed ? styleResolver.ResolveSplineFillStyleId() : null,
             lineWeight: styleResolver.ResolveSplineLineWeight(),
             zIndex: defaults.SplineZIndex,
             isVisible: defaults.SplineIsVisible);

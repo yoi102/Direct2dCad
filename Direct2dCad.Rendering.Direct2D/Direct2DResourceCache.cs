@@ -212,7 +212,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             return geometry;
 
         using var sink = geometry.Open();
-        sink.BeginFigure(ToVector2(segments[0].Start), FigureBegin.Hollow);
+        sink.BeginFigure(ToVector2(segments[0].Start), closed ? FigureBegin.Filled : FigureBegin.Hollow);
 
         foreach (var segment in segments)
         {
@@ -406,6 +406,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadEllipse ellipse => ellipse.FillStyleId,
             CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline { Closed: true } polyline => polyline.FillStyleId,
+            CadSpline { Closed: true } spline => spline.FillStyleId,
             _ => null
         };
 

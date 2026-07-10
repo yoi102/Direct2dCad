@@ -79,14 +79,22 @@ internal sealed class CadDrawingStyleResolver(
         return ResolveLineWeight(defaults.PolygonLineWeight);
     }
 
-    public CadTransientStyle CreateSplineTransientStyle()
+    public CadTransientStyle CreateSplineTransientStyle(bool includeFill = false)
     {
-        return CreatePreviewStyle(defaults.SplineStrokeColor, ResolveSplineLineWeight());
+        return CreatePreviewStyle(
+            defaults.SplineStrokeColor,
+            ResolveSplineLineWeight(),
+            includeFill ? ResolveSplineFillStyleId() : null);
     }
 
     public StyleId? ResolveSplineGraphicStyleId()
     {
         return ResolveGraphicStyleId("Spline", defaults.SplineStrokeColor);
+    }
+
+    public StyleId? ResolveSplineFillStyleId()
+    {
+        return ResolveFillStyleId(defaults.SplineFillStyleId);
     }
 
     public CadLineWeight ResolveSplineLineWeight()

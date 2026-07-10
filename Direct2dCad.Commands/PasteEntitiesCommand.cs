@@ -162,6 +162,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 spline.Closed,
                 layerId,
                 graphicStyleId,
+                fillStyleId,
                 spline.State.Name),
             CadTextClipboardSnapshot text => CreateText(document, text, delta, layerId, graphicStyleId, textStyleId),
             CadShapeTextClipboardSnapshot shapeText => document.AddShapeText(

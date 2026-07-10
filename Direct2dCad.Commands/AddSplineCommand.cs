@@ -10,6 +10,7 @@ public sealed class AddSplineCommand : ICadCommand
     private readonly bool _closed;
     private readonly LayerId? _layerId;
     private readonly StyleId? _graphicStyleId;
+    private readonly StyleId? _fillStyleId;
     private readonly string _name;
     private readonly CadLineWeight? _lineWeight;
     private readonly int _zIndex;
@@ -24,6 +25,7 @@ public sealed class AddSplineCommand : ICadCommand
         bool closed = false,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null,
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
@@ -40,6 +42,7 @@ public sealed class AddSplineCommand : ICadCommand
         _closed = closed;
         _layerId = layerId;
         _graphicStyleId = graphicStyleId;
+        _fillStyleId = fillStyleId;
         _name = name;
         _lineWeight = lineWeight;
         _zIndex = zIndex;
@@ -69,6 +72,7 @@ public sealed class AddSplineCommand : ICadCommand
             _closed,
             _layerId,
             _graphicStyleId,
+            _fillStyleId,
             _name);
         spline.SetLineWeight(_lineWeight);
         spline.SetZIndex(_zIndex);

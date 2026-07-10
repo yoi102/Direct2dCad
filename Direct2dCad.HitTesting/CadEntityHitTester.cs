@@ -169,6 +169,9 @@ public static class CadEntityHitTester
             case CadPolyline polyline:
                 return HitPolylineFill(polyline, point, out result);
 
+            case CadSpline spline:
+                return HitSplineFill(spline, point, out result);
+
             case CadText text:
                 return HitTextFill(text, point, out result);
 
@@ -579,6 +582,28 @@ public static class CadEntityHitTester
             [spline.Id],
             point,
             bestDistance);
+
+        return true;
+    }
+
+    private static bool HitSplineFill(
+        CadSpline spline,
+        CadPointD point,
+        out CadHitTestResult result)
+    {
+        result = default;
+
+        if (!spline.IsClosed || spline.FillStyleId is null)
+            return false;
+
+        var flattened = spline.EnumerateFlattenedPoints(24).ToArray();
+        if (flattened.Length < 3 || !PointInPolygon(point, flattened))
+            return false;
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Fill,
+            [spline.Id],
+            point);
 
         return true;
     }

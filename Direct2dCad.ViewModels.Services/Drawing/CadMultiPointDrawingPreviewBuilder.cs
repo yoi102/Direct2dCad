@@ -38,10 +38,11 @@ internal sealed class CadMultiPointDrawingPreviewBuilder(
         if (previewPoints.Length < 2)
             return;
 
+        var closed = styleResolver.ResolveSplineClosed(previewPoints.Length);
         items.Add(new CadTransientSpline(
             previewPoints,
-            styleResolver.ResolveSplineClosed(previewPoints.Length),
-            styleResolver.CreateSplineTransientStyle()));
+            closed,
+            styleResolver.CreateSplineTransientStyle(closed)));
     }
 
     public void AddPolygonPreview(

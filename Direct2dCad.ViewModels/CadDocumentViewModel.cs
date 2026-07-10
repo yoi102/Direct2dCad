@@ -214,6 +214,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         set => _drawingDefaults.SplineClosed = value;
     }
 
+    public StyleId? DrawingSplineFillStyleId
+    {
+        get => _drawingDefaults.SplineFillStyleId;
+        set => _drawingDefaults.SplineFillStyleId = value;
+    }
+
     public CadColor DrawingCircleStrokeColor
     {
         get => _drawingDefaults.CircleStrokeColor;

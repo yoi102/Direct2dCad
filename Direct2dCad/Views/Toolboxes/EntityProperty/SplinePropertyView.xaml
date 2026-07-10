@@ -36,6 +36,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock Grid.Row="0"
@@ -56,10 +58,40 @@
 
                 <TextBlock Grid.Row="2"
                            Grid.Column="0"
+                           Text="{I18N {x:Static r:LangKeys.Fill}}"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Row="2"
+                          Grid.Column="1"
+                          ItemsSource="{Binding FillStyleOptions, Mode=OneWay}"
+                          SelectedItem="{Binding SelectedFillStyleOption, Mode=TwoWay}"
+                          DisplayMemberPath="Name"
+                          IsEnabled="{Binding FillControlsEnabled}"
+                          Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="3"
+                           Grid.Column="0"
+                           Text="{I18N {x:Static r:LangKeys.FillColor}}"
+                           VerticalAlignment="Center" />
+                <mah:ColorPicker Grid.Row="3"
+                                  Grid.Column="1"
+                                  mah:TextBoxHelper.AutoWatermark="True"
+                                  mah:TextBoxHelper.ClearTextButton="True"
+                                  AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                  ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                  AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                  RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                  StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                  AddToRecentColorsTrigger="SelectedColorChanged"
+                                  IsEnabled="{Binding FillColorControlsEnabled}"
+                                  SelectedColor="{Binding FillColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
+                                  Margin="0,0,0,8" />
+
+                <TextBlock Grid.Row="4"
+                           Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.FitPoints}}"
                            VerticalAlignment="Top"
                            Margin="0,4,0,0" />
-                <DataGrid Grid.Row="2"
+                <DataGrid Grid.Row="4"
                           Grid.Column="1"
                           ItemsSource="{Binding FitPoints, Mode=OneWay}"
                           SelectedItem="{Binding SelectedFitPoint, Mode=TwoWay}"
@@ -99,7 +131,7 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <StackPanel Grid.Row="3"
+                <StackPanel Grid.Row="5"
                             Grid.Column="1"
                             Orientation="Horizontal"
                             Margin="0,0,0,8">
@@ -110,31 +142,31 @@
                             Command="{Binding RemoveSelectedFitPointCommand}" />
                 </StackPanel>
 
-                <TextBlock Grid.Row="4"
+                <TextBlock Grid.Row="6"
                            Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.PointCount}}"
                            VerticalAlignment="Center" />
-                <TextBox Grid.Row="4"
+                <TextBox Grid.Row="6"
                          Grid.Column="1"
                          Text="{Binding FitPointCount, Mode=OneWay}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 
-                <TextBlock Grid.Row="5"
+                <TextBlock Grid.Row="7"
                            Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.Length}}"
                            VerticalAlignment="Center" />
-                <TextBox Grid.Row="5"
+                <TextBox Grid.Row="7"
                          Grid.Column="1"
                          Text="{Binding Length, Mode=OneWay, StringFormat=F3}"
                          IsReadOnly="True"
                          Margin="0,0,0,8" />
 
-                <TextBlock Grid.Row="6"
+                <TextBlock Grid.Row="8"
                            Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.Color}}"
                            VerticalAlignment="Center" />
-                <StackPanel Grid.Row="6"
+                <StackPanel Grid.Row="8"
                             Grid.Column="1"
                             Margin="0,0,0,8">
                     <mah:ColorPicker mah:TextBoxHelper.AutoWatermark="True"
@@ -152,11 +184,11 @@
                               Margin="0,4,0,0" />
                 </StackPanel>
 
-                <TextBlock Grid.Row="7"
+                <TextBlock Grid.Row="9"
                            Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                            VerticalAlignment="Center" />
-                <StackPanel Grid.Row="7"
+                <StackPanel Grid.Row="9"
                             Grid.Column="1"
                             Orientation="Horizontal"
                             Margin="0,0,0,8">
@@ -172,18 +204,18 @@
                               Margin="10,0,0,0" />
                 </StackPanel>
 
-                <TextBlock Grid.Row="8"
+                <TextBlock Grid.Row="10"
                            Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
                            VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="8"
+                <mah:NumericUpDown Grid.Row="10"
                                    Grid.Column="1"
                                    Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    StringFormat="F0"
                                    Interval="1"
                                    Margin="0,0,0,8" />
 
-                <CheckBox Grid.Row="9"
+                <CheckBox Grid.Row="11"
                           Grid.ColumnSpan="2"
                           Content="{I18N {x:Static r:LangKeys.Visible}}"
                           IsChecked="{Binding IsVisible}"

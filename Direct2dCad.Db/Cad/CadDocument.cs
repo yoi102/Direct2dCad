@@ -610,6 +610,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         bool closed = false,
         LayerId? layerId = null,
         StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null,
         string name = "")
     {
         var entity = new CadSpline(
@@ -623,6 +624,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         entity.SetGraphicStyleInternal(graphicStyleId);
         entity.SetUseLayerColor(graphicStyleId is null);
         entity.SetUseLayerLineWeight(graphicStyleId is null);
+        entity.SetFillStyleInternal(fillStyleId);
         AddEntityCore(entity);
         return entity;
     }

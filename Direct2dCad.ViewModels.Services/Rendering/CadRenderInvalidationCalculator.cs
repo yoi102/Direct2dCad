@@ -161,7 +161,8 @@ internal sealed class CadRenderInvalidationCalculator(
         return entity switch
         {
             CadPolyline { FillStyleId: null } polyline => CreatePolylinePathInvalidation(polyline, offset, padding),
-            CadSpline spline => CreateSplinePathInvalidation(spline, offset, padding),
+            CadSpline { Closed: false } spline => CreateSplinePathInvalidation(spline, offset, padding),
+            CadSpline { FillStyleId: null } spline => CreateSplinePathInvalidation(spline, offset, padding),
             _ => CreateWorldBoundsInvalidation(ResolveEntityPaintBounds(entity).Translate(offset), padding)
         };
     }

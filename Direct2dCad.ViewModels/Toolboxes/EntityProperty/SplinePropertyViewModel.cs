@@ -26,6 +26,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
     public string EntityIdText => EntityId.ToString();
     [ObservableProperty]
     public partial ObservableCollection<PolylineVertexPropertyViewModel> FitPoints { get; private set; } = [];
+    public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
     public int FitPointCount => FitPoints.Count;
     public double Length => TryGetSpline(out var spline) ? spline.Length : CalculateLength(FitPoints.Select(x => x.ToPoint()), IsClosed);
 
@@ -34,6 +35,12 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty]
     public partial bool IsClosed { get; set; }
+
+    [ObservableProperty]
+    public partial FillStyleOption? SelectedFillStyleOption { get; set; }
+
+    [ObservableProperty]
+    public partial CadColor FillColor { get; set; }
 
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
@@ -55,6 +62,10 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
 
     public bool ColorControlsEnabled => !UseByLayerColor;
 
+    public bool FillControlsEnabled => IsClosed;
+
+    public bool FillColorControlsEnabled => IsClosed && CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromEntity()
@@ -68,6 +79,8 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
             RefreshLayerOptions(_documentViewModel, spline);
             RebuildFitPoints(spline.FitPoints);
             IsClosed = spline.Closed;
+            RefreshFillStyleOptions(spline.FillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, spline.FillStyleId);
             StrokeColor = ResolveStrokeColor(spline);
             UseByLayerColor = spline.UseLayerColor;
             UseByLayerLineWeight = spline.UseLayerLineWeight;
@@ -103,6 +116,39 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
         }
 
         CommitGeometryFromFitPoints();
+        OnPropertyChanged(nameof(FillControlsEnabled));
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+    }
+
+    partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
+    {
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+
+        if (_isRefreshing || !IsClosed || !TryGetSpline(out var spline))
+            return;
+
+        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        if (Nullable.Equals(spline.FillStyleId, fillStyleId))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityFillStyle(EntityId, fillStyleId);
+    }
+
+    partial void OnFillColorChanged(CadColor value)
+    {
+        if (_isRefreshing ||
+            !IsClosed ||
+            !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption) ||
+            !TryGetSpline(out var spline))
+        {
+            return;
+        }
+
+        var fillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, SelectedFillStyleOption, value);
+        if (Nullable.Equals(spline.FillStyleId, fillStyleId))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityFillStyle(EntityId, fillStyleId);
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -345,6 +391,15 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
         return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, spline, spline.GraphicStyleId);
     }
 
+    private void RefreshFillStyleOptions(StyleId? selectedStyleId)
+    {
+        FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
+        OnPropertyChanged(nameof(FillStyleOptions));
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(_documentViewModel.CadEditor.Document, FillStyleOptions, selectedStyleId);
+        OnPropertyChanged(nameof(FillControlsEnabled));
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+    }
+
     private static bool GeometryMatches(CadSpline spline, IReadOnlyList<CadPointD> fitPoints, bool closed)
     {
         if (spline.Closed != closed || spline.FitPoints.Count != fitPoints.Count)
@@ -416,9 +471,16 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+    public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
 
     [ObservableProperty]
     public partial bool IsClosed { get; set; }
+
+    [ObservableProperty]
+    public partial FillStyleOption? SelectedFillStyleOption { get; set; }
+
+    [ObservableProperty]
+    public partial CadColor FillColor { get; set; }
 
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
@@ -432,6 +494,10 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
 
+    public bool FillControlsEnabled => IsClosed;
+
+    public bool FillColorControlsEnabled => IsClosed && CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
     public void RefreshFromDocument()
     {
         _isRefreshing = true;
@@ -439,6 +505,8 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         {
             RefreshDrawingLayerOptions(_documentViewModel);
             IsClosed = _documentViewModel.DrawingSplineClosed;
+            RefreshFillStyleOptions(_documentViewModel.DrawingSplineFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingSplineFillStyleId);
             StrokeColor = _documentViewModel.DrawingSplineStrokeColor;
             LineWeight = _documentViewModel.DrawingSplineLineWeight;
             ZIndex = _documentViewModel.DrawingSplineZIndex;
@@ -456,6 +524,29 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
             return;
 
         _documentViewModel.DrawingSplineClosed = value;
+        OnPropertyChanged(nameof(FillControlsEnabled));
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+    }
+
+    partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
+    {
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
+
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingSplineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+    }
+
+    partial void OnFillColorChanged(CadColor value)
+    {
+        if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
+            return;
+
+        _documentViewModel.DrawingSplineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+            _documentViewModel.CadEditor.Document,
+            SelectedFillStyleOption,
+            value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -495,5 +586,14 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
     private static bool IsFinitePositive(double value)
     {
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private void RefreshFillStyleOptions(StyleId? selectedStyleId)
+    {
+        FillStyleOptions = CirclePropertyViewModel.BuildFillStyleOptions(_documentViewModel.CadEditor.Document);
+        OnPropertyChanged(nameof(FillStyleOptions));
+        SelectedFillStyleOption = CirclePropertyViewModel.FindFillStyleOption(_documentViewModel.CadEditor.Document, FillStyleOptions, selectedStyleId);
+        OnPropertyChanged(nameof(FillControlsEnabled));
+        OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
 }

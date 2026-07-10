@@ -13,6 +13,7 @@ public sealed class CadSpline : Curve
     public override bool IsClosed => Closed;
 
     public StyleId? GraphicStyleId { get; private set; }
+    public StyleId? FillStyleId { get; private set; }
 
     public override double Length
     {
@@ -107,6 +108,8 @@ public sealed class CadSpline : Curve
     }
 
     public void SetGraphicStyleInternal(StyleId? styleId) => GraphicStyleId = styleId;
+
+    public void SetFillStyleInternal(StyleId? styleId) => FillStyleId = styleId;
 
     public static IReadOnlyList<CadBezierSegmentD> CreateBezierSegments(
         IReadOnlyList<CadPointD> fitPoints,

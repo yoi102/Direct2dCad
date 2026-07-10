@@ -230,7 +230,8 @@ internal static class CadDocumentMapper
                     Entity = ToEntityData(x),
                     FitPoints = x.FitPoints.Select(ToData).ToList(),
                     Closed = x.Closed,
-                    GraphicStyleId = x.GraphicStyleId?.Value
+                    GraphicStyleId = x.GraphicStyleId?.Value,
+                    FillStyleId = x.FillStyleId?.Value
                 })
                 .ToList()
         };
@@ -575,6 +576,7 @@ internal static class CadDocumentMapper
                 splineData.Closed,
                 splineData.Entity.Name);
             spline.SetGraphicStyleInternal(ToStyleId(splineData.GraphicStyleId));
+            spline.SetFillStyleInternal(ToStyleId(splineData.FillStyleId));
             ApplyEntityState(document, spline, splineData.Entity);
             document.AddEntityCore(spline);
         }

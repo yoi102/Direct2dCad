@@ -10,4 +10,5 @@ public sealed class CadSplineData
     [Key(1)] public List<CadPointData> FitPoints { get; set; } = [];
     [Key(2)] public bool Closed { get; set; }
     [Key(3)] public long? GraphicStyleId { get; set; }
+    [Key(4)] public long? FillStyleId { get; set; }
 }

@@ -1212,6 +1212,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         using var geometry = CreateTransientSplineGeometry(fitPoints, closed);
         using var brush = CreateTransientBrush(deviceContext, style.StrokeColor);
         using var strokeStyle = CreateTransientStrokeStyle(style);
+        if (closed && HasTransientFill(style))
+            DrawTransientFillGeometry(deviceContext, geometry, BoundsFromPoints(fitPoints), style, viewport);
+
         deviceContext.DrawGeometry(
             geometry,
             brush,
@@ -1229,7 +1232,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return geometry;
 
         using var sink = geometry.Open();
-        sink.BeginFigure(ToVector2(segments[0].Start), FigureBegin.Hollow);
+        sink.BeginFigure(ToVector2(segments[0].Start), closed ? FigureBegin.Filled : FigureBegin.Hollow);
 
         foreach (var segment in segments)
         {
