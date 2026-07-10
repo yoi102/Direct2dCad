@@ -43,7 +43,7 @@ public sealed class CadHandleSceneBuilder
 
     public static bool SupportsCenterGrip(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadShapeText or CadBlockReference;
+        return entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadShapeText or CadImage or CadBlockReference;
     }
 
     private static bool TryGetSelectableEntity(
@@ -129,6 +129,10 @@ public sealed class CadHandleSceneBuilder
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;
 
+            case CadImage:
+                AddImageGripHandles(items, entity.Id, entity.Bounds, gripStyle);
+                break;
+
             default:
                 if (SupportsCenterGrip(entity) && !entity.Bounds.IsEmpty)
                     AddGrip(items, entity.Id, entity.Bounds.Center, CadHandleType.Center, gripStyle);
@@ -173,6 +177,26 @@ public sealed class CadHandleSceneBuilder
         AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MinY), CadHandleType.BoundsCorner, gripStyle);
         AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MaxY), CadHandleType.BoundsCorner, gripStyle);
         AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MaxY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, bounds.Center, CadHandleType.Center, gripStyle);
+    }
+
+    private static void AddImageGripHandles(
+        List<CadHandleItem> items,
+        EntityId entityId,
+        CadRectD bounds,
+        CadHandleStyle gripStyle)
+    {
+        if (bounds.IsEmpty)
+            return;
+
+        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MinY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MinY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.MaxY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.MaxY), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.Center.X, bounds.MinY), CadHandleType.BoundsSide, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MaxX, bounds.Center.Y), CadHandleType.BoundsSide, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.Center.X, bounds.MaxY), CadHandleType.BoundsSide, gripStyle);
+        AddGrip(items, entityId, new CadPointD(bounds.MinX, bounds.Center.Y), CadHandleType.BoundsSide, gripStyle);
         AddGrip(items, entityId, bounds.Center, CadHandleType.Center, gripStyle);
     }
 

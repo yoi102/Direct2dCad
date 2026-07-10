@@ -72,6 +72,7 @@ public sealed class CadDocumentStorage
         var splines = ReadOptionalSection(filePath, CadSectionKind.Splines, new CadSplinesSection());
         var texts = ReadSection<CadTextsSection>(filePath, CadSectionKind.Texts);
         var shapeTexts = ReadOptionalSection(filePath, CadSectionKind.ShapeTexts, new CadShapeTextsSection());
+        var images = ReadOptionalSection(filePath, CadSectionKind.Images, new CadImagesSection());
 
         return CadDocumentMapper.FromSections(
             documentInfo,
@@ -86,7 +87,8 @@ public sealed class CadDocumentStorage
             polylines,
             splines,
             texts,
-            shapeTexts);
+            shapeTexts,
+            images);
     }
 
     public CadFileHeader ReadHeader(string filePath)
@@ -163,7 +165,8 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(document)),
             Serialize(CadSectionKind.Splines, CadDocumentMapper.ToSplinesSection(document)),
             Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(document)),
-            Serialize(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(document))
+            Serialize(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(document)),
+            Serialize(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(document))
         ];
     }
 

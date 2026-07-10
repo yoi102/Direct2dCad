@@ -62,6 +62,16 @@ public sealed record CadTransientRectangle(
     double CornerRadiusY = 0)
     : CadTransientItem(Style);
 
+public sealed record CadTransientImage(
+    CadRectD Bounds,
+    int PixelWidth,
+    int PixelHeight,
+    int Stride,
+    byte[] Pixels,
+    CadTransientStyle Style,
+    EntityId? SourceEntityId = null)
+    : CadTransientItem(Style);
+
 public sealed record CadTransientText(
     string Text,
     CadPointD Position,

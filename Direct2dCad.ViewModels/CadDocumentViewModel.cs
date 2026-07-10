@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -20,6 +21,7 @@ using Direct2dCad.ViewModels.Services.Rendering;
 using Direct2dCad.ViewModels.Services.Snapping;
 using Direct2dCad.ViewModels.Services.Styling;
 using Direct2dCad.ViewModels.Services.Text;
+using Direct2dCad.ViewModels.Services.ViewServices;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
@@ -34,6 +36,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly CadViewportInitializationState _viewportInitialization = new();
     private readonly CadPanInteractionController _pan = new();
     private readonly CadPasteInteractionController _paste;
+    private readonly IImageImportService _imageImportService;
     private readonly CadSelectionDragController _selectionDrag = new();
     private readonly CadDrawingDefaults _drawingDefaults = new();
     private readonly CadDrawingSessionState _drawingState = new();
@@ -400,10 +403,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadDocumentViewModel(
         IPublisher<CadDocumentInteractionStateChangedMessage> interactionStateChangedPublisher,
         IPublisher<CadDocumentViewSettingsChangedMessage> viewSettingsChangedPublisher,
-        ICadClipboardStore clipboardStore)
+        ICadClipboardStore clipboardStore,
+        IImageImportService imageImportService)
     {
         _interactionStateChangedPublisher = interactionStateChangedPublisher;
         _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
+        _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
         _paste = new CadPasteInteractionController(clipboardStore);
         _drawingDefaults.SettingChanged += OnDrawingDefaultChanged;
         CadEditor.EditorStateChanged += OnEditorStateChanged;
@@ -746,14 +751,31 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (!_paste.BeginPreview(CreateClipboardInteractionService()))
             return CadCanvasInteractionResult.NotHandled;
 
-        _pasteTargetLayerId = ResolveExistingDrawingLayerId(DrawingLayerId);
-        _drawingState.Clear();
-        _selectionDrag.Clear();
-        OnPropertyChanged(nameof(PasteTargetLayerId));
-        OnPropertyChanged(nameof(IsPastePreviewActive));
-        RaiseInteractionStateChanged();
-        RequestRender();
-        return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
+        return BeginPastePreviewCore();
+    }
+
+    public CadCanvasInteractionResult BeginClipboardPastePreview()
+    {
+        if (_paste.HasUserCopySnapshot)
+            return BeginPastePreview();
+
+        CadImageImportData? image;
+        try
+        {
+            image = _imageImportService.LoadFromClipboard();
+        }
+        catch
+        {
+            image = null;
+        }
+
+        if (image is not null)
+        {
+            _paste.SetSnapshot(CreateImageClipboardSnapshot(image));
+            return BeginPastePreviewCore();
+        }
+
+        return BeginPastePreview();
     }
 
     public CadCanvasInteractionResult CompleteCurrentDrawing()
@@ -858,6 +880,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         OnPropertyChanged(nameof(IsPastePreviewActive));
         RequestRender();
+    }
+
+    private CadCanvasInteractionResult BeginPastePreviewCore()
+    {
+        _pasteTargetLayerId = ResolveExistingDrawingLayerId(DrawingLayerId);
+        _drawingState.Clear();
+        _selectionDrag.Clear();
+        OnPropertyChanged(nameof(PasteTargetLayerId));
+        OnPropertyChanged(nameof(IsPastePreviewActive));
+        RaiseInteractionStateChanged();
+        RequestRender();
+        return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
     }
 
     private void ClearInteractionState(bool clearClipboard, bool render = true)
@@ -989,6 +1023,57 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadSelectionInteractionService CreateSelectionInteractionService()
     {
         return new CadSelectionInteractionService(CadEditor, CadEditor.Viewport, CreatePreviewStyleService());
+    }
+
+    private CadClipboardSnapshot CreateImageClipboardSnapshot(CadImageImportData image)
+    {
+        var layer = ResolveDrawingLayer();
+        var bounds = CreateClipboardImageBounds(image);
+        var state = new CadEntityStateClipboardSnapshot(
+            image.SourceName,
+            null,
+            UseLayerColor: true,
+            UseLayerLineWeight: true,
+            IsVisible: true,
+            IsLocked: false,
+            CadStrokeStyle.Default,
+            ZIndex: 0);
+        var item = new CadClipboardEntityItem(
+            new CadImageClipboardSnapshot(
+                state,
+                bounds,
+                image.PixelWidth,
+                image.PixelHeight,
+                image.Stride,
+                image.Pixels,
+                image.ContentType,
+                image.SourceName),
+            new CadLayerClipboardSnapshot(
+                layer.Name,
+                layer.Color,
+                layer.LineWeight,
+                layer.IsVisible,
+                layer.IsLocked,
+                layer.IsFrozen),
+            GraphicStyle: null,
+            FillStyle: null,
+            TextStyle: null);
+
+        return new CadClipboardSnapshot([item], bounds.Center, bounds);
+    }
+
+    private CadRectD CreateClipboardImageBounds(CadImageImportData image)
+    {
+        var maxPixelSide = Math.Max(Math.Max(image.PixelWidth, image.PixelHeight), 1);
+        var visible = CadEditor.Viewport.VisibleWorldBounds;
+        var maxWorldSide = visible.IsEmpty
+            ? Math.Max(maxPixelSide, 1)
+            : Math.Max(Math.Min(visible.Width, visible.Height) * 0.35, 1.0);
+        var scale = maxWorldSide / maxPixelSide;
+        var width = Math.Max(image.PixelWidth * scale, 1.0);
+        var height = Math.Max(image.PixelHeight * scale, 1.0);
+
+        return CadRectD.FromCenter(CadPointD.Origin, width, height);
     }
 
     private CadHandleSceneBuildOptions CreateHandleSceneBuildOptions()

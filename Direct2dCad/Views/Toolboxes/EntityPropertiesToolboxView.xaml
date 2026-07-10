@@ -63,6 +63,9 @@
             <DataTemplate DataType="{x:Type vm_ep:TextPropertyViewModel}">
                 <v_ep:TextPropertyView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:ImagePropertyViewModel}">
+                <v_ep:ImagePropertyView />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:TransientTextPropertyViewModel}">
                 <v_ep:TransientTextPropertyView />
             </DataTemplate>

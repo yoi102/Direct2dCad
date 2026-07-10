@@ -684,4 +684,22 @@
   <data name="LayerNameAlreadyExists" xml:space="preserve">
     <value>图层名称已存在。</value>
   </data>
+  <data name="Image" xml:space="preserve">
+    <value>图片</value>
+  </data>
+  <data name="InsertImage" xml:space="preserve">
+    <value>插入图片</value>
+  </data>
+  <data name="PasteImage" xml:space="preserve">
+    <value>粘贴图片</value>
+  </data>
+  <data name="ContentType" xml:space="preserve">
+    <value>内容类型</value>
+  </data>
+  <data name="PixelWidth" xml:space="preserve">
+    <value>像素宽度</value>
+  </data>
+  <data name="PixelHeight" xml:space="preserve">
+    <value>像素高度</value>
+  </data>
 </root>

@@ -39,6 +39,9 @@ internal static class CadEntityTransform
             case CadShapeText shapeText:
                 shapeText.SetPosition(shapeText.Position + delta);
                 break;
+            case CadImage image:
+                image.SetBounds(image.Bounds.Translate(delta));
+                break;
             case CadBlockReference blockReference:
                 blockReference.SetPosition(blockReference.Position + delta);
                 break;

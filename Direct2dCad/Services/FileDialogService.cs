@@ -33,4 +33,18 @@ internal class FileDialogService : IFileDialogService
 
         return dialog.FileName;
     }
+
+    public string? OpenImageFile()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Image files|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.tif;*.tiff;*.webp|All files (*.*)|*.*",
+            DefaultExt = ".png"
+        };
+
+        if (dialog.ShowDialog() != true)
+            return null;
+
+        return dialog.FileName;
+    }
 }

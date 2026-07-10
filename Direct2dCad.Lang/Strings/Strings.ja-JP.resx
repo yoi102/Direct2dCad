@@ -684,4 +684,22 @@
   <data name="LayerNameAlreadyExists" xml:space="preserve">
     <value>レイヤー名は既に存在します。</value>
   </data>
+  <data name="Image" xml:space="preserve">
+    <value>画像</value>
+  </data>
+  <data name="InsertImage" xml:space="preserve">
+    <value>画像を挿入</value>
+  </data>
+  <data name="PasteImage" xml:space="preserve">
+    <value>画像を貼り付け</value>
+  </data>
+  <data name="ContentType" xml:space="preserve">
+    <value>コンテンツタイプ</value>
+  </data>
+  <data name="PixelWidth" xml:space="preserve">
+    <value>ピクセル幅</value>
+  </data>
+  <data name="PixelHeight" xml:space="preserve">
+    <value>ピクセル高さ</value>
+  </data>
 </root>

@@ -338,6 +338,35 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddImage(
+        CadRectD bounds,
+        int pixelWidth,
+        int pixelHeight,
+        int stride,
+        byte[] pixels,
+        LayerId? layerId = null,
+        string contentType = "image/bgra32",
+        string sourceName = "",
+        string name = "",
+        int zIndex = 0,
+        bool isVisible = true)
+    {
+        var command = new AddImageCommand(
+            bounds,
+            pixelWidth,
+            pixelHeight,
+            stride,
+            pixels,
+            layerId,
+            contentType,
+            sourceName,
+            name,
+            zIndex,
+            isVisible);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddPolygon(
         IEnumerable<CadPointD> points,
         LayerId? layerId = null,
@@ -541,6 +570,11 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetRectangleGeometry(EntityId entityId, CadRectD bounds)
     {
         return DocumentCommands.Execute(new SetRectangleGeometryCommand(entityId, bounds));
+    }
+
+    public CadDocumentChangeSet SetImageBounds(EntityId entityId, CadRectD bounds)
+    {
+        return DocumentCommands.Execute(new SetImageBoundsCommand(entityId, bounds));
     }
 
     public CadDocumentChangeSet SetRectangleCornerRadius(EntityId entityId, double radiusX, double radiusY)

@@ -128,6 +128,9 @@ public static class CadEntityHitTester
             case CadShapeText shapeText:
                 return HitShapeTextEdge(shapeText, point, edgeTolerance, out result);
 
+            case CadImage image:
+                return HitRectEdge(image.Id, image.Bounds, point, edgeTolerance, out result);
+
             case CadBlockReference blockReference:
                 return HitBlockReferenceEdge(
                     document,
@@ -174,6 +177,9 @@ public static class CadEntityHitTester
 
             case CadText text:
                 return HitTextFill(text, point, out result);
+
+            case CadImage image:
+                return HitImageFill(image, point, out result);
 
             case CadBlockReference blockReference:
                 return HitBlockReferenceFill(
@@ -457,6 +463,25 @@ public static class CadEntityHitTester
         result = new CadHitTestResult(
             CadHitTestKind.Fill,
             [text.Id],
+            point);
+
+        return true;
+    }
+
+    private static bool HitImageFill(
+        CadImage image,
+        CadPointD point,
+        out CadHitTestResult result)
+    {
+        if (!image.Bounds.Contains(point))
+        {
+            result = default;
+            return false;
+        }
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Fill,
+            [image.Id],
             point);
 
         return true;

@@ -114,6 +114,16 @@ public sealed record CadShapeTextClipboardSnapshot(
     double InvertedMarginFactor,
     CadShapeFontId ShapeFontId) : CadEntityClipboardSnapshot(State);
 
+public sealed record CadImageClipboardSnapshot(
+    CadEntityStateClipboardSnapshot State,
+    CadRectD Bounds,
+    int PixelWidth,
+    int PixelHeight,
+    int Stride,
+    byte[] Pixels,
+    string ContentType,
+    string SourceName) : CadEntityClipboardSnapshot(State);
+
 public abstract record CadStyleClipboardSnapshot(string Name);
 
 public sealed record CadGraphicStyleClipboardSnapshot(
@@ -279,6 +289,15 @@ public static class CadClipboardSnapshotFactory
                 shapeText.IsInverted,
                 shapeText.InvertedMarginFactor,
                 shapeText.ShapeFontId),
+            CadImage image => new CadImageClipboardSnapshot(
+                state,
+                image.Bounds,
+                image.PixelWidth,
+                image.PixelHeight,
+                image.Stride,
+                image.CopyPixels(),
+                image.ContentType,
+                image.SourceName),
             _ => null
         };
 

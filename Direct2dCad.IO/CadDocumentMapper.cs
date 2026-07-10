@@ -284,6 +284,28 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadImagesSection ToImagesSection(CadDocument document)
+    {
+        return new CadImagesSection
+        {
+            Images = document.Entities.Values
+                .OfType<CadImage>()
+                .Select(x => new CadImageData
+                {
+                    Entity = ToEntityData(x),
+                    Min = ToData(new CadPointD(x.Bounds.MinX, x.Bounds.MinY)),
+                    Max = ToData(new CadPointD(x.Bounds.MaxX, x.Bounds.MaxY)),
+                    PixelWidth = x.PixelWidth,
+                    PixelHeight = x.PixelHeight,
+                    Stride = x.Stride,
+                    Pixels = x.CopyPixels(),
+                    ContentType = x.ContentType,
+                    SourceName = x.SourceName
+                })
+                .ToList()
+        };
+    }
+
     internal static CadDocument FromSections(
         CadDocumentSection documentInfo,
         CadSettingsSection settings,
@@ -297,7 +319,8 @@ internal static class CadDocumentMapper
         CadPolylinesSection polylines,
         CadSplinesSection splines,
         CadTextsSection texts,
-        CadShapeTextsSection shapeTexts)
+        CadShapeTextsSection shapeTexts,
+        CadImagesSection images)
     {
         var document = new CadDocument(
             new DocumentId(documentInfo.Id),
@@ -307,7 +330,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
-        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts);
+        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts, images);
 
         return document;
     }
@@ -451,7 +474,8 @@ internal static class CadDocumentMapper
         CadPolylinesSection polylines,
         CadSplinesSection splines,
         CadTextsSection texts,
-        CadShapeTextsSection shapeTexts)
+        CadShapeTextsSection shapeTexts,
+        CadImagesSection images)
     {
         foreach (var lineData in lines.Lines)
         {
@@ -620,6 +644,28 @@ internal static class CadDocumentMapper
             text.SetGraphicStyleInternal(ToStyleId(textData.GraphicStyleId));
             ApplyEntityState(document, text, textData.Entity);
             document.AddEntityCore(text);
+        }
+
+        foreach (var imageData in images.Images)
+        {
+            var image = new CadImage(
+                new EntityId(imageData.Entity.Id),
+                new LayerId(imageData.Entity.LayerId),
+                new BlockId(imageData.Entity.OwnerBlockId),
+                CadRectD.FromLTRB(
+                    imageData.Min.X,
+                    imageData.Min.Y,
+                    imageData.Max.X,
+                    imageData.Max.Y),
+                imageData.PixelWidth,
+                imageData.PixelHeight,
+                imageData.Stride,
+                imageData.Pixels,
+                imageData.ContentType,
+                imageData.SourceName,
+                imageData.Entity.Name);
+            ApplyEntityState(document, image, imageData.Entity);
+            document.AddEntityCore(image);
         }
     }
 

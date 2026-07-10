@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Interactions;
@@ -7,8 +8,10 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 internal sealed class CadPasteInteractionController
 {
     private readonly ICadClipboardStore _clipboardStore;
+    private bool _hasUserCopySnapshot;
 
     public bool IsPreviewActive { get; private set; }
+    public bool HasUserCopySnapshot => _hasUserCopySnapshot && _clipboardStore.Snapshot is not null;
 
     public CadPasteInteractionController(ICadClipboardStore clipboardStore)
     {
@@ -17,7 +20,9 @@ internal sealed class CadPasteInteractionController
 
     public void Copy(CadClipboardInteractionService clipboardService)
     {
-        _clipboardStore.Set(clipboardService.CreateSelectionSnapshot());
+        var snapshot = clipboardService.CreateSelectionSnapshot();
+        _clipboardStore.Set(snapshot);
+        _hasUserCopySnapshot = snapshot is not null;
     }
 
     public bool BeginPreview(CadClipboardInteractionService clipboardService)
@@ -30,6 +35,15 @@ internal sealed class CadPasteInteractionController
 
         IsPreviewActive = true;
         return true;
+    }
+
+    public void SetSnapshot(CadClipboardSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        _clipboardStore.Set(snapshot);
+        IsPreviewActive = true;
+        _hasUserCopySnapshot = false;
     }
 
     public IReadOnlyList<EntityId> Commit(
@@ -60,6 +74,9 @@ internal sealed class CadPasteInteractionController
         IsPreviewActive = false;
 
         if (clearClipboard)
+        {
             _clipboardStore.Clear();
+            _hasUserCopySnapshot = false;
+        }
     }
 }

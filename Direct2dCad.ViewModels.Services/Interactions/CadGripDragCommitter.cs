@@ -62,6 +62,10 @@ internal sealed class CadGripDragCommitter(
             case CadShapeText shapeText:
                 CommitShapeTextGripDrag(shapeText, drag);
                 break;
+
+            case CadImage image:
+                CommitImageGripDrag(image, drag);
+                break;
         }
     }
 
@@ -147,5 +151,11 @@ internal sealed class CadGripDragCommitter(
                 text.CharacterSpacingFactor,
                 text.ObliqueAngleRadians);
         }
+    }
+
+    private void CommitImageGripDrag(CadImage image, GripDragState drag)
+    {
+        if (TryCreateImageGripGeometry(image.Bounds, drag, out var bounds))
+            editor.SetImageBounds(image.Id, bounds);
     }
 }

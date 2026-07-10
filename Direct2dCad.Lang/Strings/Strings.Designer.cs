@@ -466,6 +466,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Content type 的本地化字符串。
+        /// </summary>
+        public static string ContentType {
+            get {
+                return ResourceManager.GetString("ContentType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Corner X 的本地化字符串。
         /// </summary>
         public static string CornerX {
@@ -907,11 +916,29 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Image 的本地化字符串。
+        /// </summary>
+        public static string Image {
+            get {
+                return ResourceManager.GetString("Image", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Infinite Cross 的本地化字符串。
         /// </summary>
         public static string InfiniteCross {
             get {
                 return ResourceManager.GetString("InfiniteCross", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Insert Image 的本地化字符串。
+        /// </summary>
+        public static string InsertImage {
+            get {
+                return ResourceManager.GetString("InsertImage", resourceCulture);
             }
         }
         
@@ -1164,6 +1191,33 @@ namespace Direct2dCad.Lang.Strings {
         public static string Paste {
             get {
                 return ResourceManager.GetString("Paste", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Paste Image 的本地化字符串。
+        /// </summary>
+        public static string PasteImage {
+            get {
+                return ResourceManager.GetString("PasteImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Pixel height 的本地化字符串。
+        /// </summary>
+        public static string PixelHeight {
+            get {
+                return ResourceManager.GetString("PixelHeight", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Pixel width 的本地化字符串。
+        /// </summary>
+        public static string PixelWidth {
+            get {
+                return ResourceManager.GetString("PixelWidth", resourceCulture);
             }
         }
         

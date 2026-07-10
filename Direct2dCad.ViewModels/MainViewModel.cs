@@ -3,6 +3,7 @@ using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.ViewModels.Toolboxes;
 
@@ -11,6 +12,7 @@ namespace Direct2dCad.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly IFileDialogService _fileDialogService;
+    private readonly IImageImportService _imageImportService;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
     private readonly IDockLayoutService _dockLayoutService;
@@ -22,6 +24,7 @@ public partial class MainViewModel : ObservableObject
         ICultureSettingService cultureSettingService,
         IThemeSettingService themeSettingService,
         IFileDialogService fileDialogService,
+        IImageImportService imageImportService,
         IDialogService dialogService,
         ISnackbarService snackbarService
         )
@@ -33,6 +36,7 @@ public partial class MainViewModel : ObservableObject
         _themeSettingService = themeSettingService;
 
         _fileDialogService = fileDialogService;
+        _imageImportService = imageImportService;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
         FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerToolboxViewModel));
@@ -140,6 +144,97 @@ public partial class MainViewModel : ObservableObject
         {
             _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Open failed");
         }
+    }
+
+    [RelayCommand]
+    private void InsertImageFromFile()
+    {
+        var fileName = _fileDialogService.OpenImageFile();
+        if (fileName is null)
+            return;
+
+        try
+        {
+            InsertImage(_imageImportService.LoadFromFile(fileName));
+            _snackbarService.Enqueue("Image inserted.");
+        }
+        catch (Exception ex)
+        {
+            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Insert image failed");
+        }
+    }
+
+    [RelayCommand]
+    private void PasteImageFromClipboard()
+    {
+        try
+        {
+            var image = _imageImportService.LoadFromClipboard();
+            if (image is null)
+            {
+                _snackbarService.Enqueue("Clipboard does not contain an image.");
+                return;
+            }
+
+            InsertImage(image);
+            _snackbarService.Enqueue("Image pasted.");
+        }
+        catch (Exception ex)
+        {
+            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Paste image failed");
+        }
+    }
+
+    private void InsertImage(CadImageImportData image)
+    {
+        var documentViewModel = CurrentEditorTabViewModel?.CadDocumentViewModel;
+        if (documentViewModel is null)
+        {
+            _snackbarService.Enqueue("Open or create a document before inserting an image.");
+            return;
+        }
+
+        var bounds = CreateImageBounds(documentViewModel, image.PixelWidth, image.PixelHeight);
+        var entityId = documentViewModel.CadEditor.AddImage(
+            bounds,
+            image.PixelWidth,
+            image.PixelHeight,
+            image.Stride,
+            image.Pixels,
+            documentViewModel.DrawingLayerId,
+            image.ContentType,
+            image.SourceName,
+            image.SourceName);
+
+        documentViewModel.SelectEntities([entityId]);
+        FolderExplorer.RefreshDocuments();
+    }
+
+    private static CadRectD CreateImageBounds(
+        CadDocumentViewModel documentViewModel,
+        int pixelWidth,
+        int pixelHeight)
+    {
+        var viewportBounds = documentViewModel.CadEditor.Viewport.VisibleWorldBounds;
+        if (viewportBounds.IsEmpty)
+        {
+            var fallbackWidth = Math.Max(pixelWidth, 1);
+            var fallbackHeight = Math.Max(pixelHeight, 1);
+            return CadRectD.FromCenter(CadPointD.Origin, fallbackWidth, fallbackHeight);
+        }
+
+        var maxPixelSide = Math.Max(pixelWidth, pixelHeight);
+        if (maxPixelSide <= 0)
+            maxPixelSide = 1;
+
+        var maxWorldSide = Math.Max(
+            Math.Min(viewportBounds.Width, viewportBounds.Height) * 0.35,
+            1.0);
+        var scale = maxWorldSide / maxPixelSide;
+        var width = Math.Max(pixelWidth * scale, 1.0);
+        var height = Math.Max(pixelHeight * scale, 1.0);
+
+        return CadRectD.FromCenter(viewportBounds.Center, width, height);
     }
 
     [RelayCommand]

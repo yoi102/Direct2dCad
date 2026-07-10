@@ -730,6 +730,34 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return entity;
     }
 
+    public CadImage AddImage(
+        CadRectD bounds,
+        int pixelWidth,
+        int pixelHeight,
+        int stride,
+        byte[] pixels,
+        LayerId? layerId = null,
+        string contentType = "image/bgra32",
+        string sourceName = "",
+        string name = "")
+    {
+        var entity = new CadImage(
+            _ids.NewEntityId(),
+            layerId ?? LayerId.Default,
+            BlockId.ModelSpace,
+            bounds,
+            pixelWidth,
+            pixelHeight,
+            stride,
+            pixels,
+            contentType,
+            sourceName,
+            name);
+
+        AddEntityCore(entity);
+        return entity;
+    }
+
     public CadBlockReference AddBlockReference(
         BlockId definitionBlockId,
         CadPointD position,

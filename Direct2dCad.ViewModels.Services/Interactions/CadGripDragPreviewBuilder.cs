@@ -69,6 +69,10 @@ internal sealed class CadGripDragPreviewBuilder(
             case CadShapeText shapeText:
                 AddShapeTextGripPreview(items, shapeText, drag, style, auxiliaryStyle);
                 break;
+
+            case CadImage image:
+                AddImageGripPreview(items, image, drag, style);
+                break;
         }
     }
 
@@ -248,5 +252,24 @@ internal sealed class CadGripDragPreviewBuilder(
                 text.InvertedMarginFactor,
                 text.ShapeFontId),
             auxiliaryStyle));
+    }
+
+    private static void AddImageGripPreview(
+        List<CadTransientItem> items,
+        CadImage image,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (!TryCreateImageGripGeometry(image.Bounds, drag, out var bounds))
+            return;
+
+        items.Add(new CadTransientImage(
+            bounds,
+            image.PixelWidth,
+            image.PixelHeight,
+            image.Stride,
+            image.CopyPixels(),
+            style,
+            image.Id));
     }
 }

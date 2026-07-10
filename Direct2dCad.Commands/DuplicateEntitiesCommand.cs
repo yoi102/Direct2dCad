@@ -174,6 +174,16 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 shapeText.IsInverted,
                 shapeText.InvertedMarginFactor,
                 shapeText.ShapeFontId),
+            CadImage image => document.AddImage(
+                image.Bounds.Translate(delta),
+                image.PixelWidth,
+                image.PixelHeight,
+                image.Stride,
+                image.CopyPixels(),
+                image.LayerId,
+                image.ContentType,
+                image.SourceName,
+                image.Name),
             _ => null
         };
 

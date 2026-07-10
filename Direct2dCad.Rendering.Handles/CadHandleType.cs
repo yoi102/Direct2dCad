@@ -5,5 +5,6 @@ public enum CadHandleType
     Vertex,
     Center,
     Radius,
-    BoundsCorner
+    BoundsCorner,
+    BoundsSide
 }

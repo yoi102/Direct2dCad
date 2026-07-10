@@ -179,6 +179,16 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 shapeText.IsInverted,
                 shapeText.InvertedMarginFactor,
                 shapeText.ShapeFontId),
+            CadImageClipboardSnapshot image => document.AddImage(
+                image.Bounds.Translate(delta),
+                image.PixelWidth,
+                image.PixelHeight,
+                image.Stride,
+                image.Pixels,
+                layerId,
+                image.ContentType,
+                image.SourceName,
+                image.State.Name),
             _ => null
         };
 

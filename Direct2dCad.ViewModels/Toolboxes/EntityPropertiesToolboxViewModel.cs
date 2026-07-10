@@ -365,6 +365,24 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
             return;
         }
 
+        if (selectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+            entity is CadImage image &&
+            !image.IsErased)
+        {
+            if (Entity is ImagePropertyViewModel imageViewModel &&
+                imageViewModel.EntityId.Equals(image.Id))
+            {
+                imageViewModel.RefreshFromEntity();
+            }
+            else
+            {
+                Entity = new ImagePropertyViewModel(_documentViewModel, image.Id);
+            }
+
+            return;
+        }
+
         Entity = null;
     }
 

@@ -1263,6 +1263,28 @@
                                       CommandParameter="SetOrigin" />
 
                     </WrapPanel>
+
+                    <Border Width="1"
+                            Margin="15,0"
+                            Background="#616161"
+                            Opacity="0.4" />
+
+                    <WrapPanel>
+                        <Button ToolTip="{I18N {x:Static r:LangKeys.InsertImage}}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Width="33"
+                                Height="33"
+                                Content="{md:PackIcon Kind=ImagePlus, Size=30}"
+                                Margin="5"
+                                Padding="0"
+                                Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                                Command="{Binding InsertImageFromFileCommand}">
+                          
+                        </Button>
+                    </WrapPanel>
+
+
+                    
                 </WrapPanel>
             </TabItem>
         </TabControl>

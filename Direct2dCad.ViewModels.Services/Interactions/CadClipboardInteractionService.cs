@@ -136,6 +136,16 @@ internal sealed class CadClipboardInteractionService(
                     shapeText.InvertedMarginFactor,
                     shapeText.ShapeFontId));
                 break;
+
+            case CadImageClipboardSnapshot image:
+                items.Add(new CadTransientImage(
+                    image.Bounds.Translate(delta),
+                    image.PixelWidth,
+                    image.PixelHeight,
+                    image.Stride,
+                    image.Pixels,
+                    style));
+                break;
         }
     }
 

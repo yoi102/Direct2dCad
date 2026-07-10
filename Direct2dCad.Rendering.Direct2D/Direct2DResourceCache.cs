@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -6,9 +7,12 @@ using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 using Vortice;
+using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
+using Vortice.DXGI;
 using Vortice.Mathematics;
+using DXGIFormat = Vortice.DXGI.Format;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
@@ -172,6 +176,13 @@ internal sealed class Direct2DResourceCache : IDisposable
         if (entity is CadText text)
             bucket.TextFormat = Direct2DTextServices.CreateTextFormat(WriteFactory, document, text);
 
+        if (entity is CadImage image)
+        {
+            bucket.Bitmap = CreateBitmap(image);
+            if (bucket.Bitmap is not null)
+                bucket.BitmapBrush = CreateBitmapBrush(image, bucket.Bitmap);
+        }
+
         return bucket;
     }
 
@@ -192,6 +203,57 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadBlockReference blockReference => CreateRectangleGeometry(blockReference.Bounds),
             _ => null
         };
+    }
+
+    private ID2D1Bitmap? CreateBitmap(CadImage image)
+    {
+        if (DeviceContext is null)
+            return null;
+
+        var pixels = image.CopyPixels();
+        var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+        try
+        {
+            return DeviceContext.CreateBitmap(
+                new SizeI(image.PixelWidth, image.PixelHeight),
+                handle.AddrOfPinnedObject(),
+                (uint)image.Stride,
+                new BitmapProperties1
+                {
+                    PixelFormat = new PixelFormat(
+                        DXGIFormat.B8G8R8A8_UNorm,
+                        Vortice.DCommon.AlphaMode.Premultiplied),
+                    DpiX = 96.0f,
+                    DpiY = 96.0f,
+                    BitmapOptions = BitmapOptions.None
+                });
+        }
+        finally
+        {
+            handle.Free();
+        }
+    }
+
+    private ID2D1BitmapBrush? CreateBitmapBrush(CadImage image, ID2D1Bitmap bitmap)
+    {
+        if (DeviceContext is null || image.Bounds.IsEmpty)
+            return null;
+
+        var transform =
+            Matrix3x2.CreateScale(
+                (float)(image.Bounds.Width / image.PixelWidth),
+                (float)(image.Bounds.Height / image.PixelHeight)) *
+            Matrix3x2.CreateTranslation(
+                (float)image.Bounds.MinX,
+                (float)image.Bounds.MinY);
+
+        return DeviceContext.CreateBitmapBrush(
+            bitmap,
+            new BitmapBrushProperties1(
+                ExtendMode.Clamp,
+                ExtendMode.Clamp,
+                InterpolationMode.Linear),
+            new BrushProperties(1.0f, transform));
     }
 
     private ID2D1PathGeometry CreatePolylineGeometry(IReadOnlyList<CadPointD> points, bool closed)
@@ -528,6 +590,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         public CadHatchFillStyle? HatchFillStyle { get; set; }
         public CadHatchPatternDefinition? HatchPattern { get; set; }
         public IDWriteTextFormat? TextFormat { get; set; }
+        public ID2D1Bitmap? Bitmap { get; set; }
+        public ID2D1BitmapBrush? BitmapBrush { get; set; }
         public float StrokeWidth { get; set; }
 
         public bool IsEmpty =>
@@ -536,7 +600,9 @@ internal sealed class Direct2DResourceCache : IDisposable
             StrokeStyle is null &&
             FillBrush is null &&
             HatchBrush is null &&
-            TextFormat is null;
+            TextFormat is null &&
+            Bitmap is null &&
+            BitmapBrush is null;
 
         public EntityResourceBucket(EntityId entityId)
         {
@@ -551,6 +617,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             FillBrush?.Dispose();
             HatchBrush?.Dispose();
             TextFormat?.Dispose();
+            BitmapBrush?.Dispose();
+            Bitmap?.Dispose();
             Geometry = null;
             StrokeBrush = null;
             StrokeStyle = null;
@@ -559,6 +627,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             HatchFillStyle = null;
             HatchPattern = null;
             TextFormat = null;
+            BitmapBrush = null;
+            Bitmap = null;
         }
     }
 }

@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
@@ -9,9 +10,11 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
+using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
 using Vortice.Mathematics;
+using DXGIFormat = Vortice.DXGI.Format;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
@@ -20,6 +23,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private const double TwoPi = Math.PI * 2.0;
     private const double FullCircleTolerance = 1e-9;
     private readonly Direct2DResourceCache _resourceCache = new();
+    private readonly Dictionary<EntityId, ID2D1Bitmap> _transientEntityImageBitmaps = [];
+    private readonly Dictionary<byte[], ID2D1Bitmap> _transientImageBitmaps = new(ReferenceEqualityComparer.Instance);
     private bool _disposed;
 
     public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
@@ -37,6 +42,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadDocument? document = null)
     {
         ThrowIfDisposed();
+        ClearTransientImageCache();
         _resourceCache.ResetDeviceResources(factory, writeFactory, deviceContext, document);
     }
 
@@ -529,7 +535,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadRenderOptions options)
     {
         if (scene is null || scene.IsEmpty)
+        {
+            ClearTransientImageCache();
             return;
+        }
+
+        ReconcileTransientImageCache(scene);
 
         foreach (var item in scene.Items)
         {
@@ -605,6 +616,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                         rectangle.Style,
                         rectangle.CornerRadiusX,
                         rectangle.CornerRadiusY);
+                    break;
+
+                case CadTransientImage image when !image.Bounds.IsEmpty:
+                    DrawTransientImage(deviceContext, image);
                     break;
 
                 case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0 && !text.Bounds.IsEmpty:
@@ -1104,6 +1119,117 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     entity.Bounds.Translate(reference.Offset),
                     reference.Style);
                 break;
+        }
+    }
+
+    private void DrawTransientImage(
+        ID2D1DeviceContext deviceContext,
+        CadTransientImage image)
+    {
+        var bitmap = GetOrCreateTransientImageBitmap(image);
+        if (bitmap is null)
+            return;
+
+        var bounds = image.Bounds;
+        deviceContext.DrawBitmap(
+            bitmap: bitmap,
+            destinationRectangle: new RawRectF(
+                (float)bounds.MinX,
+                (float)bounds.MinY,
+                (float)bounds.MaxX,
+                (float)bounds.MaxY),
+            opacity: 1.0f,
+            interpolationMode: InterpolationMode.Linear,
+            sourceRectangle: null,
+            perspectiveTransform: null);
+    }
+
+    private ID2D1Bitmap? GetOrCreateTransientImageBitmap(CadTransientImage image)
+    {
+        if (image.SourceEntityId is { } sourceEntityId &&
+            _transientEntityImageBitmaps.TryGetValue(sourceEntityId, out var cachedEntityBitmap))
+        {
+            return cachedEntityBitmap;
+        }
+
+        if (_transientImageBitmaps.TryGetValue(image.Pixels, out var cached))
+            return cached;
+
+        var deviceContext = _resourceCache.DeviceContext;
+        if (deviceContext is null ||
+            image.PixelWidth <= 0 ||
+            image.PixelHeight <= 0 ||
+            image.Stride < image.PixelWidth * 4 ||
+            image.Pixels.Length < image.Stride * image.PixelHeight)
+        {
+            return null;
+        }
+
+        var handle = GCHandle.Alloc(image.Pixels, GCHandleType.Pinned);
+        try
+        {
+            var bitmap = deviceContext.CreateBitmap(
+                new SizeI(image.PixelWidth, image.PixelHeight),
+                handle.AddrOfPinnedObject(),
+                (uint)image.Stride,
+                new BitmapProperties1
+                {
+                    PixelFormat = new PixelFormat(
+                        DXGIFormat.B8G8R8A8_UNorm,
+                        AlphaMode.Premultiplied),
+                    DpiX = 96.0f,
+                    DpiY = 96.0f,
+                    BitmapOptions = BitmapOptions.None
+                });
+
+            if (image.SourceEntityId is { } entityId)
+                _transientEntityImageBitmaps[entityId] = bitmap;
+            else
+                _transientImageBitmaps[image.Pixels] = bitmap;
+
+            return bitmap;
+        }
+        finally
+        {
+            handle.Free();
+        }
+    }
+
+    private void ReconcileTransientImageCache(CadTransientScene scene)
+    {
+        var activeEntityImages = scene.Items
+            .OfType<CadTransientImage>()
+            .Where(x => x.SourceEntityId is not null)
+            .Select(x => x.SourceEntityId!.Value)
+            .ToHashSet();
+        var activeImages = scene.Items
+            .OfType<CadTransientImage>()
+            .Where(x => x.SourceEntityId is null)
+            .Select(x => x.Pixels)
+            .ToHashSet(ReferenceEqualityComparer.Instance);
+
+        if (activeEntityImages.Count == 0 && activeImages.Count == 0)
+        {
+            ClearTransientImageCache();
+            return;
+        }
+
+        foreach (var entityId in _transientEntityImageBitmaps.Keys.ToArray())
+        {
+            if (activeEntityImages.Contains(entityId))
+                continue;
+
+            _transientEntityImageBitmaps[entityId].Dispose();
+            _transientEntityImageBitmaps.Remove(entityId);
+        }
+
+        foreach (var pixels in _transientImageBitmaps.Keys.ToArray())
+        {
+            if (activeImages.Contains(pixels))
+                continue;
+
+            _transientImageBitmaps[pixels].Dispose();
+            _transientImageBitmaps.Remove(pixels);
         }
     }
 
@@ -1832,6 +1958,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             case CadRectangle rectangle:
                 DrawRectangleEntity(deviceContext, rectangle, resources, viewport, options);
                 return;
+
+            case CadImage image:
+                DrawImageEntity(deviceContext, image, resources);
+                return;
         }
 
         if (resources.Geometry is not null)
@@ -1887,6 +2017,24 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             resources.StrokeBrush,
             ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
             resources.StrokeStyle);
+    }
+
+    private static void DrawImageEntity(
+        ID2D1DeviceContext deviceContext,
+        CadImage image,
+        Direct2DResourceCache.EntityResourceBucket resources)
+    {
+        if (resources.BitmapBrush is null || image.Bounds.IsEmpty)
+            return;
+
+        var bounds = image.Bounds;
+        deviceContext.FillRectangle(
+            new RawRectF(
+                (float)bounds.MinX,
+                (float)bounds.MinY,
+                (float)bounds.MaxX,
+                (float)bounds.MaxY),
+            resources.BitmapBrush);
     }
 
     private void DrawCircleEntity(
@@ -2513,7 +2661,20 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return;
 
         _resourceCache.Dispose();
+        ClearTransientImageCache();
         _disposed = true;
+    }
+
+    private void ClearTransientImageCache()
+    {
+        foreach (var bitmap in _transientEntityImageBitmaps.Values)
+            bitmap.Dispose();
+
+        foreach (var bitmap in _transientImageBitmaps.Values)
+            bitmap.Dispose();
+
+        _transientEntityImageBitmaps.Clear();
+        _transientImageBitmaps.Clear();
     }
 
     private void ThrowIfDisposed()

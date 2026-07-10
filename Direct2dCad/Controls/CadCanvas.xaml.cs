@@ -178,7 +178,7 @@ public partial class CadCanvas : IDisposable
                 break;
 
             case Key.V:
-                ApplyInteractionResult(DocumentViewModel.BeginPastePreview(), e);
+                ApplyInteractionResult(DocumentViewModel.BeginClipboardPastePreview(), e);
                 break;
         }
     }

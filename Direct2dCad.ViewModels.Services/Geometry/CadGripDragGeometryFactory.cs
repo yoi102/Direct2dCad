@@ -19,12 +19,19 @@ internal static class CadGripDragGeometryFactory
         GripDragState drag,
         out CadRectD bounds)
     {
-        bounds = rectangle.Bounds;
+        return TryCreateBoundsGripGeometry(rectangle.Bounds, drag, out bounds);
+    }
 
-        if (drag.Handle.Type != CadHandleType.BoundsCorner || rectangle.Bounds.IsEmpty)
+    public static bool TryCreateBoundsGripGeometry(
+        CadRectD oldBounds,
+        GripDragState drag,
+        out CadRectD bounds)
+    {
+        bounds = oldBounds;
+
+        if (drag.Handle.Type != CadHandleType.BoundsCorner || oldBounds.IsEmpty)
             return false;
 
-        var oldBounds = rectangle.Bounds;
         var target = drag.DraggedGripPosition;
         var dragLeft = Math.Abs(drag.Handle.Position.X - oldBounds.MinX) <= Math.Abs(drag.Handle.Position.X - oldBounds.MaxX);
         var dragBottom = Math.Abs(drag.Handle.Position.Y - oldBounds.MinY) <= Math.Abs(drag.Handle.Position.Y - oldBounds.MaxY);
@@ -32,6 +39,93 @@ internal static class CadGripDragGeometryFactory
         var oppositeY = dragBottom ? oldBounds.MaxY : oldBounds.MinY;
 
         bounds = CadRectD.FromLTRB(oppositeX, oppositeY, target.X, target.Y);
+        return IsValidRectangleBounds(bounds);
+    }
+
+    public static bool TryCreateImageGripGeometry(
+        CadRectD oldBounds,
+        GripDragState drag,
+        out CadRectD bounds)
+    {
+        bounds = oldBounds;
+
+        if (oldBounds.IsEmpty)
+            return false;
+
+        return drag.Handle.Type switch
+        {
+            CadHandleType.BoundsCorner => TryCreateAspectBoundsGripGeometry(oldBounds, drag, out bounds),
+            CadHandleType.BoundsSide => TryCreateSideBoundsGripGeometry(oldBounds, drag, out bounds),
+            _ => false
+        };
+    }
+
+    private static bool TryCreateAspectBoundsGripGeometry(
+        CadRectD oldBounds,
+        GripDragState drag,
+        out CadRectD bounds)
+    {
+        bounds = oldBounds;
+
+        var target = drag.DraggedGripPosition;
+        var dragLeft = Math.Abs(drag.Handle.Position.X - oldBounds.MinX) <= Math.Abs(drag.Handle.Position.X - oldBounds.MaxX);
+        var dragBottom = Math.Abs(drag.Handle.Position.Y - oldBounds.MinY) <= Math.Abs(drag.Handle.Position.Y - oldBounds.MaxY);
+        var oppositeX = dragLeft ? oldBounds.MaxX : oldBounds.MinX;
+        var oppositeY = dragBottom ? oldBounds.MaxY : oldBounds.MinY;
+        var sourceSignX = dragLeft ? -1.0 : 1.0;
+        var sourceSignY = dragBottom ? -1.0 : 1.0;
+        var deltaX = target.X - oppositeX;
+        var deltaY = target.Y - oppositeY;
+        var signX = Math.Abs(deltaX) > double.Epsilon ? Math.Sign(deltaX) : sourceSignX;
+        var signY = Math.Abs(deltaY) > double.Epsilon ? Math.Sign(deltaY) : sourceSignY;
+        var scaleX = Math.Abs(deltaX) / oldBounds.Width;
+        var scaleY = Math.Abs(deltaY) / oldBounds.Height;
+        var scale = Math.Max(scaleX, scaleY);
+
+        if (!IsFinitePositive(scale))
+            return false;
+
+        var width = oldBounds.Width * scale;
+        var height = oldBounds.Height * scale;
+        bounds = CadRectD.FromLTRB(
+            oppositeX,
+            oppositeY,
+            oppositeX + signX * width,
+            oppositeY + signY * height);
+        return IsValidRectangleBounds(bounds);
+    }
+
+    private static bool TryCreateSideBoundsGripGeometry(
+        CadRectD oldBounds,
+        GripDragState drag,
+        out CadRectD bounds)
+    {
+        bounds = oldBounds;
+
+        var target = drag.DraggedGripPosition;
+        var handle = drag.Handle.Position;
+        var horizontalOffset = Math.Min(
+            Math.Abs(handle.X - oldBounds.MinX),
+            Math.Abs(handle.X - oldBounds.MaxX));
+        var verticalOffset = Math.Min(
+            Math.Abs(handle.Y - oldBounds.MinY),
+            Math.Abs(handle.Y - oldBounds.MaxY));
+
+        if (horizontalOffset <= verticalOffset)
+        {
+            var dragLeft = Math.Abs(handle.X - oldBounds.MinX) <= Math.Abs(handle.X - oldBounds.MaxX);
+            bounds = dragLeft
+                ? CadRectD.FromLTRB(target.X, oldBounds.MinY, oldBounds.MaxX, oldBounds.MaxY)
+                : CadRectD.FromLTRB(oldBounds.MinX, oldBounds.MinY, target.X, oldBounds.MaxY);
+        }
+        else
+        {
+            var dragBottom = Math.Abs(handle.Y - oldBounds.MinY) <= Math.Abs(handle.Y - oldBounds.MaxY);
+            bounds = dragBottom
+                ? CadRectD.FromLTRB(oldBounds.MinX, target.Y, oldBounds.MaxX, oldBounds.MaxY)
+                : CadRectD.FromLTRB(oldBounds.MinX, oldBounds.MinY, oldBounds.MaxX, target.Y);
+        }
+
         return IsValidRectangleBounds(bounds);
     }
 
