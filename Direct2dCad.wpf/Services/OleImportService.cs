@@ -14,7 +14,7 @@ internal sealed class OleImportService : IOleImportService, IDisposable
 {
     private readonly IPublisher<CadOleObjectUpdatedMessage> _updatedPublisher;
     private readonly Dictionary<(Guid SessionId, EntityId EntityId), CadOleServices.CadOleEditSession> _editSessions = [];
-    private readonly Dictionary<(Guid SessionId, EntityId EntityId), CadOleServices.CadOleRenderSession> _renderSessions = [];
+    private readonly Dictionary<RenderSessionKey, CadOleServices.CadOleRenderSession> _renderSessions = [];
 
     public OleImportService(IPublisher<CadOleObjectUpdatedMessage> updatedPublisher)
     {
@@ -27,21 +27,17 @@ internal sealed class OleImportService : IOleImportService, IDisposable
         return data is null
             ? null
             : new CadOleImportData(
-                data.PixelWidth,
-                data.PixelHeight,
-                data.Stride,
-                data.Pixels,
                 data.OleBytes,
                 data.ContentType,
-                data.SourceName);
+                data.SourceName,
+                data.NaturalAspectRatio);
     }
 
     public void BeginEdit(
         Guid sessionId,
         EntityId entityId,
         byte[] oleBytes,
-        string objectName,
-        int maxPreviewPixelSide)
+        string objectName)
     {
         var key = (sessionId, entityId);
         if (_editSessions.Remove(key, out var priorSession))
@@ -56,26 +52,24 @@ internal sealed class OleImportService : IOleImportService, IDisposable
             hwnd,
             objectName,
             "Direct2dCad",
-            maxPreviewPixelSide,
-            (data, isPersisted) => PublishUpdatedPreview(sessionId, entityId, data, isPersisted));
-    }
-
-    public CadOleImportData? CreatePreview(byte[] oleBytes, int maxPreviewPixelSide)
-    {
-        return ToImportData(CadOleServices.CreatePreview(oleBytes, maxPreviewPixelSide));
+            (data, isPersisted) => PublishUpdatedObject(sessionId, entityId, data, isPersisted));
     }
 
     public ViewOleDrawData? DrawOleObject(
         Guid sessionId,
-        EntityId entityId,
+        EntityId? entityId,
+        Guid renderId,
         byte[] oleBytes,
         int pixelWidth,
         int pixelHeight)
     {
-        if (_editSessions.TryGetValue((sessionId, entityId), out var session))
+        if (entityId is { } persistedEntityId &&
+            _editSessions.TryGetValue((sessionId, persistedEntityId), out var session))
+        {
             return ToDrawData(session.Draw(pixelWidth, pixelHeight));
+        }
 
-        var key = (sessionId, entityId);
+        var key = new RenderSessionKey(sessionId, entityId, renderId);
         if (!_renderSessions.TryGetValue(key, out var renderSession))
         {
             renderSession = CadOleServices.CreateRenderSession(oleBytes);
@@ -103,7 +97,14 @@ internal sealed class OleImportService : IOleImportService, IDisposable
 
     public void ReleaseRenderSession(Guid sessionId, EntityId entityId)
     {
-        var key = (sessionId, entityId);
+        var key = new RenderSessionKey(sessionId, entityId, Guid.Empty);
+        if (_renderSessions.Remove(key, out var session))
+            session.Dispose();
+    }
+
+    public void ReleaseTransientRenderSession(Guid sessionId, Guid renderId)
+    {
+        var key = new RenderSessionKey(sessionId, null, renderId);
         if (_renderSessions.Remove(key, out var session))
             session.Dispose();
     }
@@ -130,12 +131,13 @@ internal sealed class OleImportService : IOleImportService, IDisposable
         _renderSessions.Clear();
     }
 
-    private void PublishUpdatedPreview(Guid sessionId, EntityId entityId, CadOleClipboardData data, bool isPersisted)
+    private void PublishUpdatedObject(
+        Guid sessionId,
+        EntityId entityId,
+        CadOleClipboardData? data,
+        bool isPersisted)
     {
         var updated = ToImportData(data);
-        if (updated is null)
-            return;
-
         _ = Application.Current?.Dispatcher.BeginInvoke(() =>
             _updatedPublisher.Publish(new CadOleObjectUpdatedMessage(sessionId, entityId, updated, isPersisted)));
     }
@@ -145,13 +147,10 @@ internal sealed class OleImportService : IOleImportService, IDisposable
         return data is null
             ? null
             : new CadOleImportData(
-                data.PixelWidth,
-                data.PixelHeight,
-                data.Stride,
-                data.Pixels,
                 data.OleBytes,
                 data.ContentType,
-                data.SourceName);
+                data.SourceName,
+                data.NaturalAspectRatio);
     }
 
     private static ViewOleDrawData? ToDrawData(OleDrawData? data)
@@ -164,4 +163,9 @@ internal sealed class OleImportService : IOleImportService, IDisposable
                 data.Stride,
                 data.Pixels);
     }
+
+    private readonly record struct RenderSessionKey(
+        Guid SessionId,
+        EntityId? EntityId,
+        Guid RenderId);
 }

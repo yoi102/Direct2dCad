@@ -25,8 +25,6 @@ public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
 
     [ObservableProperty] public partial string SourceName { get; private set; } = string.Empty;
     [ObservableProperty] public partial string ContentType { get; private set; } = string.Empty;
-    [ObservableProperty] public partial int PixelWidth { get; private set; }
-    [ObservableProperty] public partial int PixelHeight { get; private set; }
     [ObservableProperty] public partial double Left { get; set; }
     [ObservableProperty] public partial double Bottom { get; set; }
     [ObservableProperty] public partial double Right { get; set; }
@@ -49,8 +47,6 @@ public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
             RefreshLayerOptions(_documentViewModel, oleObject);
             SourceName = oleObject.SourceName;
             ContentType = oleObject.ContentType;
-            PixelWidth = oleObject.PixelWidth;
-            PixelHeight = oleObject.PixelHeight;
             RefreshGeometryProperties(oleObject.Bounds);
             ZIndex = oleObject.ZIndex;
             IsVisible = oleObject.IsVisible;

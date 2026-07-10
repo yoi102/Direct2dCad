@@ -7,10 +7,6 @@ namespace Direct2dCad.Commands;
 public sealed class AddOleObjectCommand : ICadCommand
 {
     private readonly CadRectD _bounds;
-    private readonly int _pixelWidth;
-    private readonly int _pixelHeight;
-    private readonly int _stride;
-    private readonly byte[] _pixels;
     private readonly byte[] _oleBytes;
     private readonly LayerId? _layerId;
     private readonly string _contentType;
@@ -25,10 +21,6 @@ public sealed class AddOleObjectCommand : ICadCommand
 
     public AddOleObjectCommand(
         CadRectD bounds,
-        int pixelWidth,
-        int pixelHeight,
-        int stride,
-        byte[] pixels,
         byte[] oleBytes,
         LayerId? layerId = null,
         string contentType = "application/x-ole-storage",
@@ -38,10 +30,6 @@ public sealed class AddOleObjectCommand : ICadCommand
         bool isVisible = true)
     {
         _bounds = bounds;
-        _pixelWidth = pixelWidth;
-        _pixelHeight = pixelHeight;
-        _stride = stride;
-        _pixels = pixels is null ? throw new ArgumentNullException(nameof(pixels)) : (byte[])pixels.Clone();
         _oleBytes = oleBytes is null ? throw new ArgumentNullException(nameof(oleBytes)) : (byte[])oleBytes.Clone();
         _layerId = layerId;
         _contentType = contentType;
@@ -71,10 +59,6 @@ public sealed class AddOleObjectCommand : ICadCommand
 
         var oleObject = document.AddOleObject(
             _bounds,
-            _pixelWidth,
-            _pixelHeight,
-            _stride,
-            _pixels,
             _oleBytes,
             _layerId,
             _contentType,

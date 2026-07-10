@@ -191,10 +191,6 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 image.State.Name),
             CadOleObjectClipboardSnapshot oleObject => document.AddOleObject(
                 oleObject.Bounds.Translate(delta),
-                oleObject.PixelWidth,
-                oleObject.PixelHeight,
-                oleObject.Stride,
-                oleObject.Pixels,
                 oleObject.OleBytes,
                 layerId,
                 oleObject.ContentType,

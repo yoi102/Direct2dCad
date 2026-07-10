@@ -286,14 +286,11 @@ internal sealed class CadGripDragPreviewBuilder(
         if (!TryCreateImageGripGeometry(oleObject.Bounds, drag, out var bounds))
             return;
 
-        items.Add(new CadTransientImage(
+        items.Add(new CadTransientOleObject(
             bounds,
-            oleObject.PixelWidth,
-            oleObject.PixelHeight,
-            oleObject.Stride,
-            oleObject.CopyPixels(),
+            oleObject.CopyOleBytes(),
             style,
             oleObject.Id,
-            CadTransientBitmapRowOrder.TopDown));
+            Guid.Empty));
     }
 }

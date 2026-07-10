@@ -104,6 +104,10 @@ internal sealed class CadRenderInvalidationCalculator(
                 image.Bounds,
                 image.Style,
                 minimumPaddingPixels: 4.0),
+            CadTransientOleObject oleObject => CreateTransientBoundsInvalidation(
+                oleObject.Bounds,
+                oleObject.Style,
+                minimumPaddingPixels: 4.0),
             CadTransientText text => CreateTransientBoundsInvalidation(
                 ResolveTransientTextBounds(text),
                 text.Style),

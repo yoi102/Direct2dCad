@@ -186,10 +186,6 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 image.Name),
             CadOleObject oleObject => document.AddOleObject(
                 oleObject.Bounds.Translate(delta),
-                oleObject.PixelWidth,
-                oleObject.PixelHeight,
-                oleObject.Stride,
-                oleObject.CopyPixels(),
                 oleObject.CopyOleBytes(),
                 oleObject.LayerId,
                 oleObject.ContentType,

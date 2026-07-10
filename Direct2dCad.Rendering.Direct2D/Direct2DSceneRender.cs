@@ -23,13 +23,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private const double TwoPi = Math.PI * 2.0;
     private const double FullCircleTolerance = 1e-9;
     private const int OleDrawMaxPixelSide = 2048;
+    private const double OleDrawCacheScale = 1.25;
     private readonly Direct2DResourceCache _resourceCache = new();
     private readonly Dictionary<EntityId, ID2D1Bitmap> _transientEntityImageBitmaps = [];
     private readonly Dictionary<byte[], ID2D1Bitmap> _transientImageBitmaps = new(ReferenceEqualityComparer.Instance);
-    private readonly Dictionary<EntityId, OleBitmapCacheEntry> _oleObjectBitmaps = [];
+    private readonly Dictionary<Direct2DOleRenderKey, OleBitmapCacheEntry> _oleObjectBitmaps = [];
     private bool _disposed;
 
     public Direct2DOleDrawCallback? OleDrawCallback { get; set; }
+
+    public Direct2DOleReleaseCallback? OleReleaseCallback { get; set; }
 
     public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
     {
@@ -75,6 +78,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         ThrowIfDisposed();
         _resourceCache.RemoveEntity(entityId);
+        RemoveOleBitmap(entityId);
+    }
+
+    public void InvalidateOleBitmap(EntityId entityId)
+    {
+        ThrowIfDisposed();
         RemoveOleBitmap(entityId);
     }
 
@@ -550,10 +559,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (scene is null || scene.IsEmpty)
         {
             ClearTransientImageCache();
+            ClearTransientOleBitmapCache();
             return;
         }
 
         ReconcileTransientImageCache(scene);
+        ReconcileTransientOleBitmapCache(scene);
 
         foreach (var item in scene.Items)
         {
@@ -633,6 +644,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
                 case CadTransientImage image when !image.Bounds.IsEmpty:
                     DrawTransientImage(deviceContext, image);
+                    break;
+
+                case CadTransientOleObject oleObject when !oleObject.Bounds.IsEmpty:
+                    DrawTransientOleObject(deviceContext, oleObject);
                     break;
 
                 case CadTransientText text when !string.IsNullOrEmpty(text.Text) && text.Height > 0 && !text.Bounds.IsEmpty:
@@ -1144,13 +1159,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return;
 
         var bounds = image.Bounds;
-        if (image.RowOrder == CadTransientBitmapRowOrder.TopDown)
-        {
-            var destination = TransformWorldBoundsToDeviceRect(bounds, deviceContext.Transform);
-            DrawBitmapInDeviceSpace(deviceContext, bitmap, destination);
-            return;
-        }
-
         deviceContext.DrawBitmap(
             bitmap: bitmap,
             destinationRectangle: new RawRectF(
@@ -1250,6 +1258,39 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
             _transientImageBitmaps[pixels].Dispose();
             _transientImageBitmaps.Remove(pixels);
+        }
+    }
+
+    private void DrawTransientOleObject(
+        ID2D1DeviceContext deviceContext,
+        CadTransientOleObject oleObject)
+    {
+        var renderKey = oleObject.SourceEntityId is { } entityId
+            ? Direct2DOleRenderKey.ForEntity(entityId)
+            : Direct2DOleRenderKey.ForTransient(oleObject.RenderId);
+        DrawOleObject(
+            deviceContext,
+            renderKey,
+            oleObject.Bounds,
+            oleObject.OleBytes,
+            allowOleDraw: true);
+    }
+
+    private void ReconcileTransientOleBitmapCache(CadTransientScene scene)
+    {
+        var activeKeys = scene.Items
+            .OfType<CadTransientOleObject>()
+            .Where(x => x.SourceEntityId is null)
+            .Select(x => Direct2DOleRenderKey.ForTransient(x.RenderId))
+            .ToHashSet();
+
+        foreach (var key in _oleObjectBitmaps.Keys.Where(x => x.IsTransient).ToArray())
+        {
+            if (activeKeys.Contains(key))
+                continue;
+
+            RemoveOleBitmap(key);
+            OleReleaseCallback?.Invoke(key);
         }
     }
 
@@ -2071,10 +2112,25 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadOleObject oleObject,
         bool allowOleDraw = true)
     {
-        if (oleObject.Bounds.IsEmpty)
+        DrawOleObject(
+            deviceContext,
+            Direct2DOleRenderKey.ForEntity(oleObject.Id),
+            oleObject.Bounds,
+            oleObject.CopyOleBytes(),
+            allowOleDraw);
+    }
+
+    private void DrawOleObject(
+        ID2D1DeviceContext deviceContext,
+        Direct2DOleRenderKey renderKey,
+        CadRectD bounds,
+        byte[] oleBytes,
+        bool allowOleDraw)
+    {
+        if (bounds.IsEmpty)
             return;
 
-        var destination = TransformWorldBoundsToDeviceRect(oleObject.Bounds, deviceContext.Transform);
+        var destination = TransformWorldBoundsToDeviceRect(bounds, deviceContext.Transform);
         if (destination.Right <= destination.Left || destination.Bottom <= destination.Top)
             return;
 
@@ -2082,7 +2138,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         var desiredPixelHeight = Math.Max(1, (int)Math.Ceiling(destination.Bottom - destination.Top));
         var bitmap = GetOrCreateOleObjectBitmap(
             deviceContext,
-            oleObject,
+            renderKey,
+            oleBytes,
             desiredPixelWidth,
             desiredPixelHeight,
             allowOleDraw);
@@ -2132,41 +2189,35 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private ID2D1Bitmap? GetOrCreateOleObjectBitmap(
         ID2D1DeviceContext deviceContext,
-        CadOleObject oleObject,
+        Direct2DOleRenderKey renderKey,
+        byte[] oleBytes,
         int desiredPixelWidth,
         int desiredPixelHeight,
         bool allowOleDraw)
     {
-        var requestedSize = ClampOleDrawSize(desiredPixelWidth, desiredPixelHeight);
-        if (_oleObjectBitmaps.TryGetValue(oleObject.Id, out var cached) &&
-            (!allowOleDraw || cached.CanReuseFor(requestedSize.Width, requestedSize.Height)))
+        var requiredSize = ClampOleDrawSize(desiredPixelWidth, desiredPixelHeight);
+        if (_oleObjectBitmaps.TryGetValue(renderKey, out var cached) &&
+            (!allowOleDraw || cached.CanReuseFor(requiredSize.Width, requiredSize.Height)))
         {
             return cached.Bitmap;
         }
 
+        var requestedSize = GrowOleDrawSize(requiredSize.Width, requiredSize.Height);
         Direct2DOleDrawData? drawData = null;
-        var isPreview = true;
         if (allowOleDraw && OleDrawCallback is not null)
         {
             try
             {
                 drawData = OleDrawCallback(new Direct2DOleDrawRequest(
-                    oleObject.Id,
-                    oleObject.CopyOleBytes(),
+                    renderKey,
+                    oleBytes,
                     requestedSize.Width,
                     requestedSize.Height));
-                isPreview = false;
             }
             catch
             {
                 drawData = null;
             }
-        }
-
-        if (!IsValidOleDrawData(drawData))
-        {
-            drawData = CreatePersistedOlePreviewData(oleObject);
-            isPreview = true;
         }
 
         if (!IsValidOleDrawData(drawData))
@@ -2177,14 +2228,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (bitmap is null)
             return null;
 
-        if (_oleObjectBitmaps.Remove(oleObject.Id, out var old))
+        if (_oleObjectBitmaps.Remove(renderKey, out var old))
             old.Bitmap.Dispose();
 
-        _oleObjectBitmaps[oleObject.Id] = new OleBitmapCacheEntry(
+        _oleObjectBitmaps[renderKey] = new OleBitmapCacheEntry(
             bitmap,
             bitmapData.PixelWidth,
-            bitmapData.PixelHeight,
-            isPreview);
+            bitmapData.PixelHeight);
 
         return bitmap;
     }
@@ -2203,13 +2253,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             Math.Max(1, (int)Math.Round(pixelHeight * scale)));
     }
 
-    private static Direct2DOleDrawData? CreatePersistedOlePreviewData(CadOleObject oleObject)
+    private static (int Width, int Height) GrowOleDrawSize(int pixelWidth, int pixelHeight)
     {
-        return new Direct2DOleDrawData(
-            oleObject.PixelWidth,
-            oleObject.PixelHeight,
-            oleObject.Stride,
-            oleObject.CopyPixels());
+        return ClampOleDrawSize(
+            Math.Max(1, (int)Math.Ceiling(pixelWidth * OleDrawCacheScale)),
+            Math.Max(1, (int)Math.Ceiling(pixelHeight * OleDrawCacheScale)));
     }
 
     private static bool IsValidOleDrawData(Direct2DOleDrawData? drawData)
@@ -2912,7 +2960,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private void RemoveOleBitmap(EntityId entityId)
     {
-        if (!_oleObjectBitmaps.Remove(entityId, out var entry))
+        RemoveOleBitmap(Direct2DOleRenderKey.ForEntity(entityId));
+    }
+
+    private void RemoveOleBitmap(Direct2DOleRenderKey renderKey)
+    {
+        if (!_oleObjectBitmaps.Remove(renderKey, out var entry))
             return;
 
         entry.Bitmap.Dispose();
@@ -2924,6 +2977,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             entry.Bitmap.Dispose();
 
         _oleObjectBitmaps.Clear();
+    }
+
+    private void ClearTransientOleBitmapCache()
+    {
+        foreach (var key in _oleObjectBitmaps.Keys.Where(x => x.IsTransient).ToArray())
+        {
+            RemoveOleBitmap(key);
+            OleReleaseCallback?.Invoke(key);
+        }
     }
 
     private void ThrowIfDisposed()
@@ -2941,14 +3003,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private sealed record OleBitmapCacheEntry(
         ID2D1Bitmap Bitmap,
         int PixelWidth,
-        int PixelHeight,
-        bool IsPreview)
+        int PixelHeight)
     {
         public bool CanReuseFor(int requestedPixelWidth, int requestedPixelHeight)
         {
-            if (IsPreview)
-                return false;
-
             return PixelWidth >= requestedPixelWidth &&
                    PixelHeight >= requestedPixelHeight;
         }

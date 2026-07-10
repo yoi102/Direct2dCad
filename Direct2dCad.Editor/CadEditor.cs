@@ -369,10 +369,6 @@ public sealed class CadEditor
 
     public EntityId AddOleObject(
         CadRectD bounds,
-        int pixelWidth,
-        int pixelHeight,
-        int stride,
-        byte[] pixels,
         byte[] oleBytes,
         LayerId? layerId = null,
         string contentType = "application/x-ole-storage",
@@ -383,10 +379,6 @@ public sealed class CadEditor
     {
         var command = new AddOleObjectCommand(
             bounds,
-            pixelWidth,
-            pixelHeight,
-            stride,
-            pixels,
             oleBytes,
             layerId,
             contentType,
@@ -615,20 +607,12 @@ public sealed class CadEditor
 
     public CadDocumentChangeSet SetOleObjectData(
         EntityId entityId,
-        int pixelWidth,
-        int pixelHeight,
-        int stride,
-        byte[] pixels,
         byte[] oleBytes,
         string contentType,
         string sourceName)
     {
         return DocumentCommands.Execute(new SetOleObjectDataCommand(
             entityId,
-            pixelWidth,
-            pixelHeight,
-            stride,
-            pixels,
             oleBytes,
             contentType,
             sourceName));

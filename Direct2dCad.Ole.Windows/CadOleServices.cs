@@ -2,14 +2,14 @@ namespace Direct2dCad.Ole.Windows;
 
 public static class CadOleServices
 {
-    public static CadOleClipboardData? TryCreateFromClipboard(int maxPreviewPixelSide = 1024)
+    public static CadOleClipboardData? TryCreateFromClipboard()
     {
         EnsureStaThread();
         using var initializer = OleInitializationScope.Enter();
         using var oleObject = DrawableOleObjectFactory.CreateFromClipboard();
         return oleObject is null
             ? null
-            : CreateClipboardData(oleObject, maxPreviewPixelSide);
+            : CreateClipboardData(oleObject);
     }
 
     public static CadOleEditSession BeginEdit(
@@ -17,13 +17,12 @@ public static class CadOleServices
         IntPtr parentHwnd,
         string objectName = "",
         string containerName = "Direct2dCad",
-        int maxPreviewPixelSide = 2048,
-        Action<CadOleClipboardData, bool>? previewUpdated = null)
+        Action<CadOleClipboardData?, bool>? objectUpdated = null)
     {
         ArgumentNullException.ThrowIfNull(oleBytes);
         EnsureStaThread();
 
-        var session = new CadOleEditSession(oleBytes, objectName, maxPreviewPixelSide, previewUpdated);
+        var session = new CadOleEditSession(oleBytes, objectName, objectUpdated);
         try
         {
             session.Open(parentHwnd, containerName);
@@ -34,26 +33,6 @@ public static class CadOleServices
             session.Dispose();
             throw;
         }
-    }
-
-    public static CadOleClipboardData CreatePreview(byte[] oleBytes, int maxPreviewPixelSide = 2048)
-    {
-        ArgumentNullException.ThrowIfNull(oleBytes);
-        EnsureStaThread();
-
-        using var initializer = OleInitializationScope.Enter();
-        using var oleObject = DrawableOleObjectFactory.CreateFromBytes(oleBytes);
-        return CreateClipboardData(oleObject, maxPreviewPixelSide, upscaleToTarget: true);
-    }
-
-    public static CadOleDrawData Draw(byte[] oleBytes, int pixelWidth, int pixelHeight)
-    {
-        ArgumentNullException.ThrowIfNull(oleBytes);
-        EnsureStaThread();
-
-        using var initializer = OleInitializationScope.Enter();
-        using var oleObject = DrawableOleObjectFactory.CreateFromBytes(oleBytes);
-        return Draw(oleObject, pixelWidth, pixelHeight);
     }
 
     public static CadOleRenderSession CreateRenderSession(byte[] oleBytes)
@@ -78,23 +57,15 @@ public static class CadOleServices
             pixels);
     }
 
-    internal static CadOleClipboardData CreateClipboardData(
-        DrawableOleObject oleObject,
-        int maxPreviewPixelSide,
-        bool upscaleToTarget = false)
+    internal static CadOleClipboardData CreateClipboardData(DrawableOleObject oleObject)
     {
         ArgumentNullException.ThrowIfNull(oleObject);
 
-        var (previewWidth, previewHeight) = oleObject.ResolvePreviewPixelSize(maxPreviewPixelSide, upscaleToTarget);
-        var pixels = oleObject.Draw(previewWidth, previewHeight);
         return new CadOleClipboardData(
-            previewWidth,
-            previewHeight,
-            checked(previewWidth * 4),
-            pixels,
             oleObject.GetBackingStorageBytes(),
             "application/x-ole-storage",
-            string.IsNullOrWhiteSpace(oleObject.Name) ? "OLE Object" : oleObject.Name);
+            string.IsNullOrWhiteSpace(oleObject.Name) ? "OLE Object" : oleObject.Name,
+            oleObject.ResolveNaturalAspectRatio());
     }
 
     private static void EnsureStaThread()
@@ -107,19 +78,16 @@ public static class CadOleServices
     {
         private readonly OleInitializationScope _initializer;
         private readonly DrawableOleObject _oleObject;
-        private readonly int _maxPreviewPixelSide;
-        private readonly Action<CadOleClipboardData, bool>? _previewUpdated;
+        private readonly Action<CadOleClipboardData?, bool>? _objectUpdated;
         private bool _disposed;
 
         internal CadOleEditSession(
             byte[] oleBytes,
             string objectName,
-            int maxPreviewPixelSide,
-            Action<CadOleClipboardData, bool>? previewUpdated)
+            Action<CadOleClipboardData?, bool>? objectUpdated)
         {
             _initializer = OleInitializationScope.Enter();
-            _maxPreviewPixelSide = maxPreviewPixelSide;
-            _previewUpdated = previewUpdated;
+            _objectUpdated = objectUpdated;
             _oleObject = DrawableOleObjectFactory.CreateFromBytes(oleBytes);
             _oleObject.HostViewChanged += OnHostViewChanged;
             _oleObject.HostClosed += OnHostClosed;
@@ -135,32 +103,28 @@ public static class CadOleServices
             _oleObject.OpenEditor(parentHwnd, containerName);
         }
 
-        public CadOleClipboardData CreatePreview(int maxPreviewPixelSide)
-        {
-            ThrowIfDisposed();
-            return CreateClipboardData(_oleObject, maxPreviewPixelSide, upscaleToTarget: true);
-        }
-
         public CadOleDrawData Draw(int pixelWidth, int pixelHeight)
         {
             ThrowIfDisposed();
             return CadOleServices.Draw(_oleObject, pixelWidth, pixelHeight);
         }
 
-        private void OnHostViewChanged(object? sender, EventArgs e) => PublishUpdatedPreview(isPersisted: false);
-
-        private void OnHostClosed(object? sender, EventArgs e) => PublishUpdatedPreview(isPersisted: true);
-
-        private void OnSaved(object? sender, EventArgs e) => PublishUpdatedPreview(isPersisted: true);
-
-        private void PublishUpdatedPreview(bool isPersisted)
+        private void OnHostViewChanged(object? sender, EventArgs e)
         {
-            if (_disposed || _previewUpdated is null)
+            if (!_disposed)
+                _objectUpdated?.Invoke(null, false);
+        }
+
+        private void OnHostClosed(object? sender, EventArgs e) => PublishPersistedUpdate();
+
+        private void OnSaved(object? sender, EventArgs e) => PublishPersistedUpdate();
+
+        private void PublishPersistedUpdate()
+        {
+            if (_disposed || _objectUpdated is null)
                 return;
 
-            _previewUpdated(
-                CreateClipboardData(_oleObject, _maxPreviewPixelSide, upscaleToTarget: true),
-                isPersisted);
+            _objectUpdated(CreateClipboardData(_oleObject), true);
         }
 
         public void Dispose()

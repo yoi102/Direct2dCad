@@ -760,10 +760,6 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public CadOleObject AddOleObject(
         CadRectD bounds,
-        int pixelWidth,
-        int pixelHeight,
-        int stride,
-        byte[] pixels,
         byte[] oleBytes,
         LayerId? layerId = null,
         string contentType = "application/x-ole-storage",
@@ -775,10 +771,6 @@ public sealed class CadDocument : IEquatable<CadDocument>
             layerId ?? LayerId.Default,
             BlockId.ModelSpace,
             bounds,
-            pixelWidth,
-            pixelHeight,
-            stride,
-            pixels,
             oleBytes,
             contentType,
             sourceName,

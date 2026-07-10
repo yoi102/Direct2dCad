@@ -109,28 +109,17 @@ internal sealed class DrawableOleObject : IDisposable
         hr.ThrowIfFailed("IOleObject.DoVerb failed.");
     }
 
-    public (int Width, int Height) ResolvePreviewPixelSize(int maxPixelSide, bool upscaleToTarget = false)
+    public double ResolveNaturalAspectRatio()
     {
-        var width = 640;
-        var height = 480;
         if (_oleObject is OleObjectInterface ole &&
             ole.GetExtent(DrawAspect, out var size) == HRESULT.S_OK &&
             size.cx > 0 &&
             size.cy > 0)
         {
-            width = Math.Max(1, (int)Math.Round(size.cx * 96.0 / 2540.0));
-            height = Math.Max(1, (int)Math.Round(size.cy * 96.0 / 2540.0));
+            return Math.Clamp(size.cx / (double)size.cy, 1e-6, 1e6);
         }
 
-        var maxSide = Math.Max(Math.Max(width, height), 1);
-        if (maxPixelSide > 0 && (maxSide > maxPixelSide || (upscaleToTarget && maxSide < maxPixelSide)))
-        {
-            var scale = maxPixelSide / (double)maxSide;
-            width = Math.Max(1, (int)Math.Round(width * scale));
-            height = Math.Max(1, (int)Math.Round(height * scale));
-        }
-
-        return (width, height);
+        return 4.0 / 3.0;
     }
 
     public byte[] Draw(int width, int height)

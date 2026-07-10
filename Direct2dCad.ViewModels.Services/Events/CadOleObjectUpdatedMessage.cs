@@ -7,5 +7,5 @@ namespace Direct2dCad.ViewModels.Services.Events;
 public sealed record CadOleObjectUpdatedMessage(
     Guid SessionId,
     EntityId EntityId,
-    CadOleImportData Data,
+    CadOleImportData? Data,
     bool IsPersisted);

@@ -62,12 +62,6 @@ public sealed record CadTransientRectangle(
     double CornerRadiusY = 0)
     : CadTransientItem(Style);
 
-public enum CadTransientBitmapRowOrder
-{
-    BottomUp,
-    TopDown
-}
-
 public sealed record CadTransientImage(
     CadRectD Bounds,
     int PixelWidth,
@@ -75,8 +69,15 @@ public sealed record CadTransientImage(
     int Stride,
     byte[] Pixels,
     CadTransientStyle Style,
-    EntityId? SourceEntityId = null,
-    CadTransientBitmapRowOrder RowOrder = CadTransientBitmapRowOrder.BottomUp)
+    EntityId? SourceEntityId = null)
+    : CadTransientItem(Style);
+
+public sealed record CadTransientOleObject(
+    CadRectD Bounds,
+    byte[] OleBytes,
+    CadTransientStyle Style,
+    EntityId? SourceEntityId,
+    Guid RenderId)
     : CadTransientItem(Style);
 
 public sealed record CadTransientText(

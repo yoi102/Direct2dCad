@@ -4,7 +4,7 @@ using Direct2dCad.Db.Data.Entities;
 
 namespace Direct2dCad.Commands;
 
-/// <summary>Replaces an embedded OLE object's persisted storage and preview bitmap.</summary>
+/// <summary>Replaces an embedded OLE object's persisted storage.</summary>
 public sealed class SetOleObjectDataCommand : ICadCommand
 {
     private readonly EntityId _entityId;
@@ -15,16 +15,12 @@ public sealed class SetOleObjectDataCommand : ICadCommand
 
     public SetOleObjectDataCommand(
         EntityId entityId,
-        int pixelWidth,
-        int pixelHeight,
-        int stride,
-        byte[] pixels,
         byte[] oleBytes,
         string contentType,
         string sourceName)
     {
         _entityId = entityId;
-        _next = new OleObjectData(pixelWidth, pixelHeight, stride, pixels, oleBytes, contentType, sourceName);
+        _next = new OleObjectData(oleBytes, contentType, sourceName);
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -52,28 +48,16 @@ public sealed class SetOleObjectDataCommand : ICadCommand
     }
 
     private sealed record OleObjectData(
-        int PixelWidth,
-        int PixelHeight,
-        int Stride,
-        byte[] Pixels,
         byte[] OleBytes,
         string ContentType,
         string SourceName)
     {
         public static OleObjectData From(CadOleObject oleObject) => new(
-            oleObject.PixelWidth,
-            oleObject.PixelHeight,
-            oleObject.Stride,
-            oleObject.CopyPixels(),
             oleObject.CopyOleBytes(),
             oleObject.ContentType,
             oleObject.SourceName);
 
         public void ApplyTo(CadOleObject oleObject) => oleObject.SetOleData(
-            PixelWidth,
-            PixelHeight,
-            Stride,
-            (byte[])Pixels.Clone(),
             (byte[])OleBytes.Clone(),
             ContentType,
             SourceName);

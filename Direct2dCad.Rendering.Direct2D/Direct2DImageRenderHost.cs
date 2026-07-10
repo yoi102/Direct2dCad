@@ -131,6 +131,18 @@ public sealed class Direct2DImageRenderHost : IDisposable
         _renderer.OleDrawCallback = callback;
     }
 
+    public void SetOleReleaseCallback(Direct2DOleReleaseCallback? callback)
+    {
+        ThrowIfDisposed();
+        _renderer.OleReleaseCallback = callback;
+    }
+
+    public void InvalidateOleBitmap(EntityId entityId)
+    {
+        ThrowIfDisposed();
+        _renderer.InvalidateOleBitmap(entityId);
+    }
+
     public void SetSize(int width, int height)
     {
         ThrowIfDisposed();
