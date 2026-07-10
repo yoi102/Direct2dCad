@@ -22,6 +22,7 @@
   <Project Path="Direct2dCad.HitTesting/Direct2dCad.HitTesting.csproj" Id="09190792-15d8-45d0-b4ad-59f86670bc44" />
   <Project Path="Direct2dCad.Indexing/Direct2dCad.Indexing.csproj" Id="0f7665da-d78f-4509-8ac5-0586c4bba8e5" />
   <Project Path="Direct2dCad.IO/Direct2dCad.IO.csproj" Id="7dbc4bdc-984d-40e1-8d91-1608e5d4063b" />
+  <Project Path="Direct2dCad.Ole.Windows/Direct2dCad.Ole.Windows.csproj" />
   <Project Path="Direct2dCad.Rendering/Direct2dCad.Rendering.csproj" Id="bee77e57-2e2a-4630-ab5f-2992297e8d65" />
   <Project Path="Direct2dCad.Rendering.Handles/Direct2dCad.Rendering.Handles.csproj" Id="47b6f8cb-5b5a-4e3d-b1cf-e363b033d539" />
   <Project Path="Direct2dCad.Rendering.Transient/Direct2dCad.Rendering.Transient.csproj" Id="9e748601-eafc-466f-9bc4-e7ff2a91d0ea" />

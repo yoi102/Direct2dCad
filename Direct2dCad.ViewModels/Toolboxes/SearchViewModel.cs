@@ -277,6 +277,7 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
             CadText => "Text",
             CadShapeText => "ShapeText",
             CadImage => "Image",
+            CadOleObject => "OLE Object",
             CadBlockReference => "BlockReference",
             _ => entity.GetType().Name
         };

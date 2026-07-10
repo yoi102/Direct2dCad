@@ -73,6 +73,7 @@ public partial class App : System.Windows.Application
 
         services.AddTransient<IFileDialogService, FileDialogService>();
         services.AddSingleton<IImageImportService, ImageImportService>();
+        services.AddSingleton<IOleImportService, OleImportService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IUserSettingsService, UserSettingsService>();
         services.AddSingleton<ISnackbarService, SnackbarService>();

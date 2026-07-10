@@ -124,6 +124,17 @@ public sealed record CadImageClipboardSnapshot(
     string ContentType,
     string SourceName) : CadEntityClipboardSnapshot(State);
 
+public sealed record CadOleObjectClipboardSnapshot(
+    CadEntityStateClipboardSnapshot State,
+    CadRectD Bounds,
+    int PixelWidth,
+    int PixelHeight,
+    int Stride,
+    byte[] Pixels,
+    byte[] OleBytes,
+    string ContentType,
+    string SourceName) : CadEntityClipboardSnapshot(State);
+
 public abstract record CadStyleClipboardSnapshot(string Name);
 
 public sealed record CadGraphicStyleClipboardSnapshot(
@@ -298,6 +309,16 @@ public static class CadClipboardSnapshotFactory
                 image.CopyPixels(),
                 image.ContentType,
                 image.SourceName),
+            CadOleObject oleObject => new CadOleObjectClipboardSnapshot(
+                state,
+                oleObject.Bounds,
+                oleObject.PixelWidth,
+                oleObject.PixelHeight,
+                oleObject.Stride,
+                oleObject.CopyPixels(),
+                oleObject.CopyOleBytes(),
+                oleObject.ContentType,
+                oleObject.SourceName),
             _ => null
         };
 

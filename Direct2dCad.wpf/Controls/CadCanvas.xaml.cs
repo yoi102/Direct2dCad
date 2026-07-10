@@ -96,6 +96,15 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
+        if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
+        {
+            ApplyInteractionResult(
+                DocumentViewModel.OpenOleObjectAt(ToCadPoint(e.GetPosition(this))),
+                e);
+            if (e.Handled)
+                return;
+        }
+
         var result = DocumentViewModel.PointerDown(
             ToCadPoint(e.GetPosition(this)),
             ToPointerButton(e.ChangedButton),

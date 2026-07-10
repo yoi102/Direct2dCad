@@ -758,6 +758,36 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return entity;
     }
 
+    public CadOleObject AddOleObject(
+        CadRectD bounds,
+        int pixelWidth,
+        int pixelHeight,
+        int stride,
+        byte[] pixels,
+        byte[] oleBytes,
+        LayerId? layerId = null,
+        string contentType = "application/x-ole-storage",
+        string sourceName = "",
+        string name = "")
+    {
+        var entity = new CadOleObject(
+            _ids.NewEntityId(),
+            layerId ?? LayerId.Default,
+            BlockId.ModelSpace,
+            bounds,
+            pixelWidth,
+            pixelHeight,
+            stride,
+            pixels,
+            oleBytes,
+            contentType,
+            sourceName,
+            name);
+
+        AddEntityCore(entity);
+        return entity;
+    }
+
     public CadBlockReference AddBlockReference(
         BlockId definitionBlockId,
         CadPointD position,

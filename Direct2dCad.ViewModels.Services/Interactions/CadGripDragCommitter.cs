@@ -66,6 +66,10 @@ internal sealed class CadGripDragCommitter(
             case CadImage image:
                 CommitImageGripDrag(image, drag);
                 break;
+
+            case CadOleObject oleObject:
+                CommitOleObjectGripDrag(oleObject, drag);
+                break;
         }
     }
 
@@ -157,5 +161,11 @@ internal sealed class CadGripDragCommitter(
     {
         if (TryCreateImageGripGeometry(image.Bounds, drag, out var bounds))
             editor.SetImageBounds(image.Id, bounds);
+    }
+
+    private void CommitOleObjectGripDrag(CadOleObject oleObject, GripDragState drag)
+    {
+        if (TryCreateImageGripGeometry(oleObject.Bounds, drag, out var bounds))
+            editor.SetOleObjectBounds(oleObject.Id, bounds);
     }
 }

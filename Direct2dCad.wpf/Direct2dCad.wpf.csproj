@@ -37,6 +37,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.wpf.Controls\Direct2dCad.wpf.Controls.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Ole.Windows\Direct2dCad.Ole.Windows.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels.Services\Direct2dCad.ViewModels.Services.csproj" />
   </ItemGroup>

@@ -15,5 +15,6 @@ public enum CadSectionKind : ushort
     Splines = 106,
     Ellipses = 107,
     ShapeTexts = 108,
-    Images = 109
+    Images = 109,
+    OleObjects = 110
 }

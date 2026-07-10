@@ -146,6 +146,17 @@ internal sealed class CadClipboardInteractionService(
                     image.Pixels,
                     style));
                 break;
+
+            case CadOleObjectClipboardSnapshot oleObject:
+                items.Add(new CadTransientImage(
+                    oleObject.Bounds.Translate(delta),
+                    oleObject.PixelWidth,
+                    oleObject.PixelHeight,
+                    oleObject.Stride,
+                    oleObject.Pixels,
+                    style,
+                    RowOrder: CadTransientBitmapRowOrder.TopDown));
+                break;
         }
     }
 

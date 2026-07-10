@@ -125,6 +125,12 @@ public sealed class Direct2DImageRenderHost : IDisposable
         _renderOptions = renderOptions ?? new CadRenderOptions();
     }
 
+    public void SetOleDrawCallback(Direct2DOleDrawCallback? callback)
+    {
+        ThrowIfDisposed();
+        _renderer.OleDrawCallback = callback;
+    }
+
     public void SetSize(int width, int height)
     {
         ThrowIfDisposed();

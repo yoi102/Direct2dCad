@@ -306,6 +306,29 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadOleObjectsSection ToOleObjectsSection(CadDocument document)
+    {
+        return new CadOleObjectsSection
+        {
+            OleObjects = document.Entities.Values
+                .OfType<CadOleObject>()
+                .Select(x => new CadOleObjectData
+                {
+                    Entity = ToEntityData(x),
+                    Min = ToData(new CadPointD(x.Bounds.MinX, x.Bounds.MinY)),
+                    Max = ToData(new CadPointD(x.Bounds.MaxX, x.Bounds.MaxY)),
+                    PixelWidth = x.PixelWidth,
+                    PixelHeight = x.PixelHeight,
+                    Stride = x.Stride,
+                    Pixels = x.CopyPixels(),
+                    OleBytes = x.CopyOleBytes(),
+                    ContentType = x.ContentType,
+                    SourceName = x.SourceName
+                })
+                .ToList()
+        };
+    }
+
     internal static CadDocument FromSections(
         CadDocumentSection documentInfo,
         CadSettingsSection settings,
@@ -320,7 +343,8 @@ internal static class CadDocumentMapper
         CadSplinesSection splines,
         CadTextsSection texts,
         CadShapeTextsSection shapeTexts,
-        CadImagesSection images)
+        CadImagesSection images,
+        CadOleObjectsSection oleObjects)
     {
         var document = new CadDocument(
             new DocumentId(documentInfo.Id),
@@ -330,7 +354,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
-        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts, images);
+        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts, images, oleObjects);
 
         return document;
     }
@@ -475,7 +499,8 @@ internal static class CadDocumentMapper
         CadSplinesSection splines,
         CadTextsSection texts,
         CadShapeTextsSection shapeTexts,
-        CadImagesSection images)
+        CadImagesSection images,
+        CadOleObjectsSection oleObjects)
     {
         foreach (var lineData in lines.Lines)
         {
@@ -666,6 +691,29 @@ internal static class CadDocumentMapper
                 imageData.Entity.Name);
             ApplyEntityState(document, image, imageData.Entity);
             document.AddEntityCore(image);
+        }
+
+        foreach (var oleObjectData in oleObjects.OleObjects)
+        {
+            var oleObject = new CadOleObject(
+                new EntityId(oleObjectData.Entity.Id),
+                new LayerId(oleObjectData.Entity.LayerId),
+                new BlockId(oleObjectData.Entity.OwnerBlockId),
+                CadRectD.FromLTRB(
+                    oleObjectData.Min.X,
+                    oleObjectData.Min.Y,
+                    oleObjectData.Max.X,
+                    oleObjectData.Max.Y),
+                oleObjectData.PixelWidth,
+                oleObjectData.PixelHeight,
+                oleObjectData.Stride,
+                oleObjectData.Pixels,
+                oleObjectData.OleBytes,
+                oleObjectData.ContentType,
+                oleObjectData.SourceName,
+                oleObjectData.Entity.Name);
+            ApplyEntityState(document, oleObject, oleObjectData.Entity);
+            document.AddEntityCore(oleObject);
         }
     }
 

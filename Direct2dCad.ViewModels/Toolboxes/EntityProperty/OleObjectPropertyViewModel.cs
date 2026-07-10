@@ -5,82 +5,55 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class ImagePropertyViewModel : EntityPropertyViewModel
+public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;
     private bool _isUpdatingGeometryProperties;
 
-    public ImagePropertyViewModel(CadDocumentViewModel documentViewModel, EntityId entityId)
+    public OleObjectPropertyViewModel(CadDocumentViewModel documentViewModel, EntityId entityId)
     {
         _documentViewModel = documentViewModel ?? throw new ArgumentNullException(nameof(documentViewModel));
         EntityId = entityId;
         RefreshFromEntity();
     }
 
+    public string Title => "OLE Object";
     public EntityId EntityId { get; }
-    public string Title => "Image";
     public string EntityIdText => EntityId.ToString();
 
-    [ObservableProperty]
-    public partial string SourceName { get; private set; } = string.Empty;
-
-    [ObservableProperty]
-    public partial string ContentType { get; private set; } = string.Empty;
-
-    [ObservableProperty]
-    public partial int PixelWidth { get; private set; }
-
-    [ObservableProperty]
-    public partial int PixelHeight { get; private set; }
-
-    [ObservableProperty]
-    public partial double Left { get; set; }
-
-    [ObservableProperty]
-    public partial double Bottom { get; set; }
-
-    [ObservableProperty]
-    public partial double Right { get; set; }
-
-    [ObservableProperty]
-    public partial double Top { get; set; }
-
-    [ObservableProperty]
-    public partial double CenterX { get; set; }
-
-    [ObservableProperty]
-    public partial double CenterY { get; set; }
-
-    [ObservableProperty]
-    public partial double Width { get; set; }
-
-    [ObservableProperty]
-    public partial double Height { get; set; }
-
-    [ObservableProperty]
-    public partial int ZIndex { get; set; }
-
-    [ObservableProperty]
-    public partial bool IsVisible { get; set; }
+    [ObservableProperty] public partial string SourceName { get; private set; } = string.Empty;
+    [ObservableProperty] public partial string ContentType { get; private set; } = string.Empty;
+    [ObservableProperty] public partial int PixelWidth { get; private set; }
+    [ObservableProperty] public partial int PixelHeight { get; private set; }
+    [ObservableProperty] public partial double Left { get; set; }
+    [ObservableProperty] public partial double Bottom { get; set; }
+    [ObservableProperty] public partial double Right { get; set; }
+    [ObservableProperty] public partial double Top { get; set; }
+    [ObservableProperty] public partial double CenterX { get; set; }
+    [ObservableProperty] public partial double CenterY { get; set; }
+    [ObservableProperty] public partial double Width { get; set; }
+    [ObservableProperty] public partial double Height { get; set; }
+    [ObservableProperty] public partial int ZIndex { get; set; }
+    [ObservableProperty] public partial bool IsVisible { get; set; }
 
     public void RefreshFromEntity()
     {
-        if (!TryGetImage(out var image))
+        if (!TryGetOleObject(out var oleObject))
             return;
 
         _isRefreshing = true;
         try
         {
-            RefreshLayerOptions(_documentViewModel, image);
-            SourceName = image.SourceName;
-            ContentType = image.ContentType;
-            PixelWidth = image.PixelWidth;
-            PixelHeight = image.PixelHeight;
-            RefreshGeometryProperties(image.Bounds);
-            ZIndex = image.ZIndex;
-            IsVisible = image.IsVisible;
+            RefreshLayerOptions(_documentViewModel, oleObject);
+            SourceName = oleObject.SourceName;
+            ContentType = oleObject.ContentType;
+            PixelWidth = oleObject.PixelWidth;
+            PixelHeight = oleObject.PixelHeight;
+            RefreshGeometryProperties(oleObject.Bounds);
+            ZIndex = oleObject.ZIndex;
+            IsVisible = oleObject.IsVisible;
         }
         finally
         {
@@ -99,7 +72,7 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
 
     partial void OnZIndexChanged(int value)
     {
-        if (_isRefreshing || !TryGetImage(out var image) || image.ZIndex == value)
+        if (_isRefreshing || !TryGetOleObject(out var oleObject) || oleObject.ZIndex == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityZIndex(EntityId, value);
@@ -107,7 +80,7 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
 
     partial void OnIsVisibleChanged(bool value)
     {
-        if (_isRefreshing || !TryGetImage(out var image) || image.IsVisible == value)
+        if (_isRefreshing || !TryGetOleObject(out var oleObject) || oleObject.IsVisible == value)
             return;
 
         _documentViewModel.CadEditor.SetEntityVisibility(EntityId, value);
@@ -115,7 +88,7 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
 
     private void CommitEdgeGeometryChange()
     {
-        if (_isRefreshing || _isUpdatingGeometryProperties || !TryGetImage(out _))
+        if (_isRefreshing || _isUpdatingGeometryProperties || !TryGetOleObject(out _))
             return;
 
         if (!TryCreateBoundsFromEdges(out var bounds))
@@ -139,7 +112,7 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
 
     private void CommitCenterSizeGeometryChange()
     {
-        if (_isRefreshing || _isUpdatingGeometryProperties || !TryGetImage(out _))
+        if (_isRefreshing || _isUpdatingGeometryProperties || !TryGetOleObject(out _))
             return;
 
         if (!TryCreateBoundsFromCenterSize(out var bounds))
@@ -163,10 +136,10 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
 
     private void CommitGeometry(CadRectD bounds)
     {
-        if (!TryGetImage(out var image) || image.Bounds.NearEquals(bounds, Epsilon))
+        if (!TryGetOleObject(out var oleObject) || oleObject.Bounds.NearEquals(bounds, Epsilon))
             return;
 
-        _documentViewModel.CadEditor.SetImageBounds(EntityId, bounds);
+        _documentViewModel.CadEditor.SetOleObjectBounds(EntityId, bounds);
     }
 
     private bool TryCreateBoundsFromEdges(out CadRectD bounds)
@@ -211,27 +184,21 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
         Height = bounds.Height;
     }
 
-    private bool TryGetImage(out CadImage image)
+    private bool TryGetOleObject(out CadOleObject oleObject)
     {
         if (_documentViewModel.CadEditor.Document.TryGetEntity(EntityId, out var entity) &&
-            entity is CadImage currentImage &&
-            !currentImage.IsErased)
+            entity is CadOleObject currentOleObject &&
+            !currentOleObject.IsErased)
         {
-            image = currentImage;
+            oleObject = currentOleObject;
             return true;
         }
 
-        image = null!;
+        oleObject = null!;
         return false;
     }
 
-    private static bool IsFinitePositive(double value)
-    {
-        return value > 0 && IsFinite(value);
-    }
+    private static bool IsFinitePositive(double value) => value > 0 && IsFinite(value);
 
-    private static bool IsFinite(double value)
-    {
-        return !double.IsNaN(value) && !double.IsInfinity(value);
-    }
+    private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 }

@@ -73,6 +73,10 @@ internal sealed class CadGripDragPreviewBuilder(
             case CadImage image:
                 AddImageGripPreview(items, image, drag, style);
                 break;
+
+            case CadOleObject oleObject:
+                AddOleObjectGripPreview(items, oleObject, drag, style);
+                break;
         }
     }
 
@@ -271,5 +275,25 @@ internal sealed class CadGripDragPreviewBuilder(
             image.CopyPixels(),
             style,
             image.Id));
+    }
+
+    private static void AddOleObjectGripPreview(
+        List<CadTransientItem> items,
+        CadOleObject oleObject,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        if (!TryCreateImageGripGeometry(oleObject.Bounds, drag, out var bounds))
+            return;
+
+        items.Add(new CadTransientImage(
+            bounds,
+            oleObject.PixelWidth,
+            oleObject.PixelHeight,
+            oleObject.Stride,
+            oleObject.CopyPixels(),
+            style,
+            oleObject.Id,
+            CadTransientBitmapRowOrder.TopDown));
     }
 }

@@ -178,9 +178,9 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         if (entity is CadImage image)
         {
-            bucket.Bitmap = CreateBitmap(image);
+            bucket.Bitmap = CreateBitmap(image.PixelWidth, image.PixelHeight, image.Stride, image.CopyPixels());
             if (bucket.Bitmap is not null)
-                bucket.BitmapBrush = CreateBitmapBrush(image, bucket.Bitmap);
+                bucket.BitmapBrush = CreateBitmapBrush(image.Bounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
         }
 
         return bucket;
@@ -205,19 +205,18 @@ internal sealed class Direct2DResourceCache : IDisposable
         };
     }
 
-    private ID2D1Bitmap? CreateBitmap(CadImage image)
+    private ID2D1Bitmap? CreateBitmap(int pixelWidth, int pixelHeight, int stride, byte[] pixels)
     {
         if (DeviceContext is null)
             return null;
 
-        var pixels = image.CopyPixels();
         var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
         try
         {
             return DeviceContext.CreateBitmap(
-                new SizeI(image.PixelWidth, image.PixelHeight),
+                new SizeI(pixelWidth, pixelHeight),
                 handle.AddrOfPinnedObject(),
-                (uint)image.Stride,
+                (uint)stride,
                 new BitmapProperties1
                 {
                     PixelFormat = new PixelFormat(
@@ -234,18 +233,18 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
     }
 
-    private ID2D1BitmapBrush? CreateBitmapBrush(CadImage image, ID2D1Bitmap bitmap)
+    private ID2D1BitmapBrush? CreateBitmapBrush(CadRectD bounds, int pixelWidth, int pixelHeight, ID2D1Bitmap bitmap)
     {
-        if (DeviceContext is null || image.Bounds.IsEmpty)
+        if (DeviceContext is null || bounds.IsEmpty)
             return null;
 
         var transform =
             Matrix3x2.CreateScale(
-                (float)(image.Bounds.Width / image.PixelWidth),
-                (float)(image.Bounds.Height / image.PixelHeight)) *
+                (float)(bounds.Width / pixelWidth),
+                (float)(bounds.Height / pixelHeight)) *
             Matrix3x2.CreateTranslation(
-                (float)image.Bounds.MinX,
-                (float)image.Bounds.MinY);
+                (float)bounds.MinX,
+                (float)bounds.MinY);
 
         return DeviceContext.CreateBitmapBrush(
             bitmap,

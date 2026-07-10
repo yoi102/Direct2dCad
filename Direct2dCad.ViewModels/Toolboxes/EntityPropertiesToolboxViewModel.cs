@@ -383,6 +383,24 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
             return;
         }
 
+        if (selectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+            entity is CadOleObject oleObject &&
+            !oleObject.IsErased)
+        {
+            if (Entity is OleObjectPropertyViewModel oleObjectViewModel &&
+                oleObjectViewModel.EntityId.Equals(oleObject.Id))
+            {
+                oleObjectViewModel.RefreshFromEntity();
+            }
+            else
+            {
+                Entity = new OleObjectPropertyViewModel(_documentViewModel, oleObject.Id);
+            }
+
+            return;
+        }
+
         Entity = null;
     }
 

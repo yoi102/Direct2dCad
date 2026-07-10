@@ -49,11 +49,18 @@ internal sealed class CadPasteInteractionController
     public IReadOnlyList<EntityId> Commit(
         CadClipboardInteractionService clipboardService,
         CadPointD target,
-        LayerId targetLayerId)
+        LayerId targetLayerId,
+        Func<CadClipboardSnapshot, CadClipboardSnapshot>? prepareSnapshot = null)
     {
         var snapshot = _clipboardStore.Snapshot;
         if (snapshot is null)
             return [];
+
+        if (prepareSnapshot is not null)
+        {
+            snapshot = prepareSnapshot(snapshot);
+            _clipboardStore.Set(snapshot);
+        }
 
         var createdIds = clipboardService.CommitPaste(snapshot, target, targetLayerId);
         IsPreviewActive = false;

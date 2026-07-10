@@ -367,6 +367,37 @@ public sealed class CadEditor
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
+    public EntityId AddOleObject(
+        CadRectD bounds,
+        int pixelWidth,
+        int pixelHeight,
+        int stride,
+        byte[] pixels,
+        byte[] oleBytes,
+        LayerId? layerId = null,
+        string contentType = "application/x-ole-storage",
+        string sourceName = "",
+        string name = "",
+        int zIndex = 0,
+        bool isVisible = true)
+    {
+        var command = new AddOleObjectCommand(
+            bounds,
+            pixelWidth,
+            pixelHeight,
+            stride,
+            pixels,
+            oleBytes,
+            layerId,
+            contentType,
+            sourceName,
+            name,
+            zIndex,
+            isVisible);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
     public EntityId AddPolygon(
         IEnumerable<CadPointD> points,
         LayerId? layerId = null,
@@ -575,6 +606,32 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetImageBounds(EntityId entityId, CadRectD bounds)
     {
         return DocumentCommands.Execute(new SetImageBoundsCommand(entityId, bounds));
+    }
+
+    public CadDocumentChangeSet SetOleObjectBounds(EntityId entityId, CadRectD bounds)
+    {
+        return DocumentCommands.Execute(new SetOleObjectBoundsCommand(entityId, bounds));
+    }
+
+    public CadDocumentChangeSet SetOleObjectData(
+        EntityId entityId,
+        int pixelWidth,
+        int pixelHeight,
+        int stride,
+        byte[] pixels,
+        byte[] oleBytes,
+        string contentType,
+        string sourceName)
+    {
+        return DocumentCommands.Execute(new SetOleObjectDataCommand(
+            entityId,
+            pixelWidth,
+            pixelHeight,
+            stride,
+            pixels,
+            oleBytes,
+            contentType,
+            sourceName));
     }
 
     public CadDocumentChangeSet SetRectangleCornerRadius(EntityId entityId, double radiusX, double radiusY)

@@ -57,7 +57,10 @@ internal static class CadSectionMigrationRegistry
                 .ReadsVersion<CadShapeTextsSection>(1),
 
             Section<CadImagesSection>(CadSectionKind.Images, currentVersion: 1)
-                .ReadsVersion<CadImagesSection>(1)
+                .ReadsVersion<CadImagesSection>(1),
+
+            Section<CadOleObjectsSection>(CadSectionKind.OleObjects, currentVersion: 1)
+                .ReadsVersion<CadOleObjectsSection>(1)
         }
         .ToDictionary(x => x.Kind);
 
