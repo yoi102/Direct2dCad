@@ -8,7 +8,7 @@ namespace Direct2dCad.wpf.Controls;
 
 [TemplatePart(Name = PART_TextBlock, Type = typeof(TextBlock))]
 [TemplatePart(Name = PART_TextBox, Type = typeof(TextBox))]
-public class EditableTextBlock : Control
+public class EditableTextBlock : System.Windows.Controls.Control
 {
     private const string PART_TextBlock = "PART_TextBlock";
     private const string PART_TextBox = "PART_TextBox";

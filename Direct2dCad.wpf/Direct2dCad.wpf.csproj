@@ -14,6 +14,7 @@
     <SelfContained>true</SelfContained>
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishAot>false</PublishAot>
+    <AssemblyName>Direct2dCad</AssemblyName>
   </PropertyGroup>
   
   <ItemGroup>
@@ -34,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Direct2dCad.Control\Direct2dCad.wpf.Control.csproj" />
+    <ProjectReference Include="..\Direct2dCad.wpf.Controls\Direct2dCad.wpf.Controls.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels.Services\Direct2dCad.ViewModels.Services.csproj" />

@@ -29,7 +29,7 @@
                 <!--AvalonDock.Themes.Arc-->
                 <ResourceDictionary Source="/AvalonDock.Themes.Arc;component/DarkTheme.xaml" />
 
-                <ResourceDictionary Source="pack://application:,,,/Direct2dCad.wpf.Control;component/Generic.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Direct2dCad.wpf.Controls;component/Generic.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

@@ -84,7 +84,6 @@
                             Value="0" />
                 </Style>
             </ListBox.ItemContainerStyle>
-
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type toolboxes:LayerItemViewModel}">
                     <Border Margin="0,2"

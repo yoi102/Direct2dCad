@@ -8,8 +8,8 @@
   </Folder>
   <Folder Name="/clients/avalonia/" />
   <Folder Name="/clients/wpf/">
-    <Project Path="Direct2dCad.Control/Direct2dCad.wpf.Control.csproj" />
-    <Project Path="Direct2dCad/Direct2dCad.wpf.csproj" />
+    <Project Path="Direct2dCad.wpf.Controls/Direct2dCad.wpf.Controls.csproj" />
+    <Project Path="Direct2dCad.wpf/Direct2dCad.wpf.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />

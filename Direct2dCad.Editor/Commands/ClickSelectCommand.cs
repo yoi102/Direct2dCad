@@ -54,7 +54,10 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         var hit = context.SpatialIndex.Query(queryArea)
             .Select(entityId => TryHit(context, entityId, options))
             .Where(x => x is not null)
-            .OrderBy(x => x!.Value.Distance)
+            .OrderByDescending(x => x!.Value.LayerPriority)
+            .ThenByDescending(x => x!.Value.ZIndex)
+            .ThenByDescending(x => x!.Value.EntityOrder)
+            .ThenBy(x => x!.Value.Distance)
             .Select(x => x!.Value.TopEntityId)
             .FirstOrDefault();
 
@@ -67,13 +70,34 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         CadHitTestOptions options)
     {
         if (context.HitTesting.HitTestEntityEdge(entityId, _worldPoint, _tolerance, options, out var edgeHit))
-            return new HitCandidate(edgeHit.TopEntityId, edgeHit.Distance);
+            return CreateHitCandidate(context, edgeHit);
 
         if (context.HitTesting.HitTestEntityFill(entityId, _worldPoint, out var fillHit))
-            return new HitCandidate(fillHit.TopEntityId, fillHit.Distance);
+            return CreateHitCandidate(context, fillHit);
 
         return null;
     }
 
-    private readonly record struct HitCandidate(EntityId TopEntityId, double Distance);
+    private static HitCandidate? CreateHitCandidate(
+        CadEditorCommandContext context,
+        CadHitTestResult hit)
+    {
+        var topEntityId = hit.TopEntityId;
+        if (!context.Document.TryGetEntity(topEntityId, out var topEntity) || topEntity is null)
+            return null;
+
+        return new HitCandidate(
+            topEntityId,
+            hit.Distance,
+            context.Document.DocumentSettings.LayerDrawingPriority.GetPriority(topEntity.LayerId),
+            topEntity.ZIndex,
+            topEntity.Id.Value);
+    }
+
+    private readonly record struct HitCandidate(
+        EntityId TopEntityId,
+        double Distance,
+        int LayerPriority,
+        int ZIndex,
+        long EntityOrder);
 }
