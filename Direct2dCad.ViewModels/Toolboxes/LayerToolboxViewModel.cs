@@ -174,7 +174,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
 
         var document = _documentViewModel.CadEditor.Document;
         var name = CreateUniqueLayerName(document);
-        var priority = Layers.Count == 0 ? 0 : Layers.Max(x => x.Priority) + 1;
+        var priority = Layers.Count == 0 ? 0 : Layers.Min(x => x.Priority) - 1;
         var layerId = _documentViewModel.CadEditor.CreateLayer(
             name,
             CadColor.White,
@@ -270,8 +270,8 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
         {
             var document = _documentViewModel.CadEditor.Document;
             foreach (var layer in document.Layers.Values
-                         .OrderBy(x => document.DocumentSettings.LayerDrawingPriority.GetPriority(x.Id))
-                         .ThenBy(x => x.Id.Value))
+                         .OrderByDescending(x => document.DocumentSettings.LayerDrawingPriority.GetPriority(x.Id))
+                         .ThenByDescending(x => x.Id.Value))
             {
                 Layers.Add(new LayerItemViewModel(
                     this,
@@ -298,7 +298,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
             return;
 
         var priorities = orderedLayers
-            .Select((layer, index) => new { layer.LayerId, Priority = index })
+            .Select((layer, index) => new { layer.LayerId, Priority = orderedLayers.Count - index - 1 })
             .ToDictionary(x => x.LayerId, x => x.Priority);
         _documentViewModel.CadEditor.SetLayerDrawingPriorities(priorities);
     }
