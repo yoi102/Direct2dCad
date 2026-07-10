@@ -38,6 +38,7 @@ public sealed record CadEntityStateClipboardSnapshot(
     bool UseLayerLineWeight,
     bool IsVisible,
     bool IsLocked,
+    CadStrokeStyle StrokeStyle,
     int ZIndex);
 
 public abstract record CadEntityClipboardSnapshot(CadEntityStateClipboardSnapshot State);
@@ -222,6 +223,7 @@ public static class CadClipboardSnapshotFactory
             entity.UseLayerLineWeight,
             entity.IsVisible,
             entity.IsLocked,
+            entity.StrokeStyle,
             entity.ZIndex);
 
         snapshot = entity switch

@@ -183,6 +183,7 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
         created.SetLineWeightState(source.LineWeight, source.UseLayerLineWeight);
         created.SetUseLayerColor(source.UseLayerColor);
         created.SetVisible(source.IsVisible);
+        created.SetStrokeStyle(source.StrokeStyle);
         created.SetZIndex(source.ZIndex);
         return true;
     }

@@ -16,4 +16,9 @@ public sealed class CadEntityData
     [Key(8)] public int ZIndex { get; set; }
     [Key(9)] public bool? UseLayerColor { get; set; }
     [Key(10)] public bool? UseLayerLineWeight { get; set; }
+    [Key(11)] public int? StrokeStartCap { get; set; }
+    [Key(12)] public int? StrokeEndCap { get; set; }
+    [Key(13)] public int? StrokeDashCap { get; set; }
+    [Key(14)] public int? StrokeDashStyle { get; set; }
+    [Key(15)] public int? StrokeLineJoin { get; set; }
 }

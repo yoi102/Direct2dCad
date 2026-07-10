@@ -20,6 +20,7 @@ public abstract class CadEntity : IEquatable<CadEntity>
     public CadLineWeight? LineWeight { get; private set; }
     public bool UseLayerColor { get; private set; } = true;
     public bool UseLayerLineWeight { get; private set; } = true;
+    public CadStrokeStyle StrokeStyle { get; private set; } = CadStrokeStyle.Default;
     public int ZIndex { get; private set; }
 
     public abstract CadRectD Bounds { get; }
@@ -59,6 +60,8 @@ public abstract class CadEntity : IEquatable<CadEntity>
     public void SetUseLayerColor(bool useLayerColor) => UseLayerColor = useLayerColor;
 
     public void SetUseLayerLineWeight(bool useLayerLineWeight) => UseLayerLineWeight = useLayerLineWeight;
+
+    public void SetStrokeStyle(CadStrokeStyle strokeStyle) => StrokeStyle = strokeStyle;
 
     public void SetZIndex(int zIndex) => ZIndex = zIndex;
 

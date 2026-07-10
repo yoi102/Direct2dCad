@@ -10,14 +10,29 @@ public abstract class EntityPropertyViewModel : ObservableObject
 {
     private bool _isRefreshingLayerOptions;
     private bool _isRefreshingEntityName;
+    private bool _isRefreshingStrokeStyle;
     private bool _isDrawingLayerSelection;
     private bool _isPasteLayerSelection;
     private CadDocumentViewModel? _layerDocumentViewModel;
     private EntityId? _layerEntityId;
     private EntityLayerOption? _selectedLayerOption;
+    private StrokeCapOption? _selectedStartCapOption;
+    private StrokeCapOption? _selectedEndCapOption;
+    private StrokeCapOption? _selectedDashCapOption;
+    private StrokeDashStyleOption? _selectedDashStyleOption;
+    private StrokeLineJoinOption? _selectedLineJoinOption;
     private string _entityName = string.Empty;
 
     public IReadOnlyList<EntityLayerOption> LayerOptions { get; private set; } = [];
+    public IReadOnlyList<StrokeCapOption> StrokeCapOptions { get; } = Enum.GetValues<CadStrokeCap>()
+        .Select(value => new StrokeCapOption(value, value.ToString()))
+        .ToArray();
+    public IReadOnlyList<StrokeDashStyleOption> StrokeDashStyleOptions { get; } = Enum.GetValues<CadStrokeDashStyle>()
+        .Select(value => new StrokeDashStyleOption(value, value.ToString()))
+        .ToArray();
+    public IReadOnlyList<StrokeLineJoinOption> StrokeLineJoinOptions { get; } = Enum.GetValues<CadStrokeLineJoin>()
+        .Select(value => new StrokeLineJoinOption(value, value.ToString()))
+        .ToArray();
 
     public string EntityName
     {
@@ -39,6 +54,56 @@ public abstract class EntityPropertyViewModel : ObservableObject
         }
     }
 
+    public StrokeCapOption? SelectedStartCapOption
+    {
+        get => _selectedStartCapOption;
+        set
+        {
+            if (SetProperty(ref _selectedStartCapOption, value))
+                CommitStrokeStyleChange();
+        }
+    }
+
+    public StrokeCapOption? SelectedEndCapOption
+    {
+        get => _selectedEndCapOption;
+        set
+        {
+            if (SetProperty(ref _selectedEndCapOption, value))
+                CommitStrokeStyleChange();
+        }
+    }
+
+    public StrokeCapOption? SelectedDashCapOption
+    {
+        get => _selectedDashCapOption;
+        set
+        {
+            if (SetProperty(ref _selectedDashCapOption, value))
+                CommitStrokeStyleChange();
+        }
+    }
+
+    public StrokeDashStyleOption? SelectedDashStyleOption
+    {
+        get => _selectedDashStyleOption;
+        set
+        {
+            if (SetProperty(ref _selectedDashStyleOption, value))
+                CommitStrokeStyleChange();
+        }
+    }
+
+    public StrokeLineJoinOption? SelectedLineJoinOption
+    {
+        get => _selectedLineJoinOption;
+        set
+        {
+            if (SetProperty(ref _selectedLineJoinOption, value))
+                CommitStrokeStyleChange();
+        }
+    }
+
     protected void RefreshLayerOptions(CadDocumentViewModel documentViewModel, CadEntity entity)
     {
         ArgumentNullException.ThrowIfNull(documentViewModel);
@@ -49,6 +114,7 @@ public abstract class EntityPropertyViewModel : ObservableObject
         _isDrawingLayerSelection = false;
         _isPasteLayerSelection = false;
         RefreshEntityName(entity);
+        RefreshStrokeStyle(entity.StrokeStyle);
 
         RefreshLayerOptionsCore(documentViewModel, entity.LayerId);
     }
@@ -224,9 +290,75 @@ public abstract class EntityPropertyViewModel : ObservableObject
 
         documentViewModel.CadEditor.RenameEntity(entityId, normalizedName);
     }
+
+    private void RefreshStrokeStyle(CadStrokeStyle strokeStyle)
+    {
+        _isRefreshingStrokeStyle = true;
+        try
+        {
+            SelectedStartCapOption = FindStrokeCapOption(strokeStyle.StartCap);
+            SelectedEndCapOption = FindStrokeCapOption(strokeStyle.EndCap);
+            SelectedDashCapOption = FindStrokeCapOption(strokeStyle.DashCap);
+            SelectedDashStyleOption = FindDashStyleOption(strokeStyle.DashStyle);
+            SelectedLineJoinOption = FindLineJoinOption(strokeStyle.LineJoin);
+        }
+        finally
+        {
+            _isRefreshingStrokeStyle = false;
+        }
+    }
+
+    private void CommitStrokeStyleChange()
+    {
+        if (_isRefreshingStrokeStyle ||
+            _layerDocumentViewModel is not { } documentViewModel ||
+            _layerEntityId is not { } entityId ||
+            !documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            entity.IsErased)
+        {
+            return;
+        }
+
+        var strokeStyle = new CadStrokeStyle(
+            SelectedStartCapOption?.Value ?? CadStrokeStyle.Default.StartCap,
+            SelectedEndCapOption?.Value ?? CadStrokeStyle.Default.EndCap,
+            SelectedDashCapOption?.Value ?? CadStrokeStyle.Default.DashCap,
+            SelectedDashStyleOption?.Value ?? CadStrokeStyle.Default.DashStyle,
+            SelectedLineJoinOption?.Value ?? CadStrokeStyle.Default.LineJoin);
+
+        if (entity.StrokeStyle == strokeStyle)
+            return;
+
+        documentViewModel.CadEditor.SetEntityStrokeStyle(entityId, strokeStyle);
+    }
+
+    private StrokeCapOption FindStrokeCapOption(CadStrokeCap value)
+    {
+        return StrokeCapOptions.FirstOrDefault(option => option.Value == value) ??
+               StrokeCapOptions.First(option => option.Value == CadStrokeStyle.Default.StartCap);
+    }
+
+    private StrokeDashStyleOption FindDashStyleOption(CadStrokeDashStyle value)
+    {
+        return StrokeDashStyleOptions.FirstOrDefault(option => option.Value == value) ??
+               StrokeDashStyleOptions.First(option => option.Value == CadStrokeStyle.Default.DashStyle);
+    }
+
+    private StrokeLineJoinOption FindLineJoinOption(CadStrokeLineJoin value)
+    {
+        return StrokeLineJoinOptions.FirstOrDefault(option => option.Value == value) ??
+               StrokeLineJoinOptions.First(option => option.Value == CadStrokeStyle.Default.LineJoin);
+    }
 }
 
 public sealed record EntityLayerOption(LayerId LayerId, string Name, CadColor Color)
 {
     public string LayerIdText => LayerId.Value.ToString();
 }
+
+public sealed record StrokeCapOption(CadStrokeCap Value, string Name);
+
+public sealed record StrokeDashStyleOption(CadStrokeDashStyle Value, string Name);
+
+public sealed record StrokeLineJoinOption(CadStrokeLineJoin Value, string Name);

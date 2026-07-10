@@ -441,6 +441,24 @@
   <data name="Name" xml:space="preserve">
     <value>名前</value>
   </data>
+  <data name="StrokeStyle" xml:space="preserve">
+    <value>ストロークスタイル</value>
+  </data>
+  <data name="StartCap" xml:space="preserve">
+    <value>開始キャップ</value>
+  </data>
+  <data name="EndCap" xml:space="preserve">
+    <value>終了キャップ</value>
+  </data>
+  <data name="DashCap" xml:space="preserve">
+    <value>破線キャップ</value>
+  </data>
+  <data name="DashStyle" xml:space="preserve">
+    <value>破線スタイル</value>
+  </data>
+  <data name="LineJoin" xml:space="preserve">
+    <value>線の結合</value>
+  </data>
   <data name="CenterX" xml:space="preserve">
     <value>中心 X</value>
   </data>

@@ -511,11 +511,29 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Dash cap 的本地化字符串。
+        /// </summary>
+        public static string DashCap {
+            get {
+                return ResourceManager.GetString("DashCap", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Dash Dot 的本地化字符串。
         /// </summary>
         public static string DashDot {
             get {
                 return ResourceManager.GetString("DashDot", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Dash style 的本地化字符串。
+        /// </summary>
+        public static string DashStyle {
+            get {
+                return ResourceManager.GetString("DashStyle", resourceCulture);
             }
         }
         
@@ -669,6 +687,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string End {
             get {
                 return ResourceManager.GetString("End", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 End cap 的本地化字符串。
+        /// </summary>
+        public static string EndCap {
+            get {
+                return ResourceManager.GetString("EndCap", resourceCulture);
             }
         }
         
@@ -975,6 +1002,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string LineDrawing {
             get {
                 return ResourceManager.GetString("LineDrawing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Line join 的本地化字符串。
+        /// </summary>
+        public static string LineJoin {
+            get {
+                return ResourceManager.GetString("LineJoin", resourceCulture);
             }
         }
         
@@ -1474,6 +1510,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Start cap 的本地化字符串。
+        /// </summary>
+        public static string StartCap {
+            get {
+                return ResourceManager.GetString("StartCap", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Start X 的本地化字符串。
         /// </summary>
         public static string StartX {
@@ -1497,6 +1542,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Stroke {
             get {
                 return ResourceManager.GetString("Stroke", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Stroke style 的本地化字符串。
+        /// </summary>
+        public static string StrokeStyle {
+            get {
+                return ResourceManager.GetString("StrokeStyle", resourceCulture);
             }
         }
         

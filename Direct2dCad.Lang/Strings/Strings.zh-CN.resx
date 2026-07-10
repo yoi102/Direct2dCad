@@ -441,6 +441,24 @@
   <data name="Name" xml:space="preserve">
     <value>名称</value>
   </data>
+  <data name="StrokeStyle" xml:space="preserve">
+    <value>描边样式</value>
+  </data>
+  <data name="StartCap" xml:space="preserve">
+    <value>起点端帽</value>
+  </data>
+  <data name="EndCap" xml:space="preserve">
+    <value>终点端帽</value>
+  </data>
+  <data name="DashCap" xml:space="preserve">
+    <value>虚线端帽</value>
+  </data>
+  <data name="DashStyle" xml:space="preserve">
+    <value>虚线样式</value>
+  </data>
+  <data name="LineJoin" xml:space="preserve">
+    <value>连接样式</value>
+  </data>
   <data name="CenterX" xml:space="preserve">
     <value>中心 X</value>
   </data>

@@ -788,7 +788,12 @@ internal static class CadDocumentMapper
             LineWeight = entity.LineWeight?.Value,
             ZIndex = entity.ZIndex,
             UseLayerColor = entity.UseLayerColor,
-            UseLayerLineWeight = entity.UseLayerLineWeight
+            UseLayerLineWeight = entity.UseLayerLineWeight,
+            StrokeStartCap = (int)entity.StrokeStyle.StartCap,
+            StrokeEndCap = (int)entity.StrokeStyle.EndCap,
+            StrokeDashCap = (int)entity.StrokeStyle.DashCap,
+            StrokeDashStyle = (int)entity.StrokeStyle.DashStyle,
+            StrokeLineJoin = (int)entity.StrokeStyle.LineJoin
         };
     }
 
@@ -805,12 +810,32 @@ internal static class CadDocumentMapper
 
         entity.SetLineWeightState(storedLineWeight, useLayerLineWeight);
         entity.SetUseLayerColor(data.UseLayerColor ?? (GetGraphicStyleId(entity) is null));
+        entity.SetStrokeStyle(ToStrokeStyle(data));
         entity.SetZIndex(data.ZIndex);
 
         if (data.IsErased)
             entity.Erase();
         else
             entity.Restore();
+    }
+
+    private static CadStrokeStyle ToStrokeStyle(CadEntityData data)
+    {
+        var defaults = CadStrokeStyle.Default;
+        return new CadStrokeStyle(
+            ToEnum(data.StrokeStartCap, defaults.StartCap),
+            ToEnum(data.StrokeEndCap, defaults.EndCap),
+            ToEnum(data.StrokeDashCap, defaults.DashCap),
+            ToEnum(data.StrokeDashStyle, defaults.DashStyle),
+            ToEnum(data.StrokeLineJoin, defaults.LineJoin));
+    }
+
+    private static TEnum ToEnum<TEnum>(int? value, TEnum fallback)
+        where TEnum : struct, Enum
+    {
+        return value is { } raw && Enum.IsDefined(typeof(TEnum), raw)
+            ? (TEnum)Enum.ToObject(typeof(TEnum), raw)
+            : fallback;
     }
 
     private static CadLineWeight? ToStoredLineWeight(double? value)

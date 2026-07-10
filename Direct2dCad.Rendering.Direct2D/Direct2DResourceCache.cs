@@ -145,6 +145,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             graphic?.LineWeight,
             layer.LineWeight);
         bucket.StrokeBrush = CreateBrush(ResolveStrokeColor(document, entity, layer, graphic));
+        bucket.StrokeStyle = CreateStrokeStyle(entity.StrokeStyle);
 
         bucket.Geometry = CreateGeometry(entity);
 
@@ -322,6 +323,21 @@ internal sealed class Direct2DResourceCache : IDisposable
         return DeviceContext!.CreateSolidColorBrush(ToColor4(color));
     }
 
+    private ID2D1StrokeStyle? CreateStrokeStyle(CadStrokeStyle strokeStyle)
+    {
+        if (Factory is null || strokeStyle == CadStrokeStyle.Default)
+            return null;
+
+        return Factory.CreateStrokeStyle(new StrokeStyleProperties
+        {
+            StartCap = ToD2DCapStyle(strokeStyle.StartCap),
+            EndCap = ToD2DCapStyle(strokeStyle.EndCap),
+            DashCap = ToD2DCapStyle(strokeStyle.DashCap),
+            LineJoin = ToD2DLineJoin(strokeStyle.LineJoin),
+            DashStyle = ToD2DDashStyle(strokeStyle.DashStyle)
+        });
+    }
+
     private CadGraphicStyle? ResolveGraphicStyle(
         CadDocument document,
         CadEntity entity,
@@ -467,11 +483,46 @@ internal sealed class Direct2DResourceCache : IDisposable
             color.A / 255.0f);
     }
 
+    private static CapStyle ToD2DCapStyle(CadStrokeCap cap)
+    {
+        return cap switch
+        {
+            CadStrokeCap.Square => CapStyle.Square,
+            CadStrokeCap.Round => CapStyle.Round,
+            CadStrokeCap.Triangle => CapStyle.Triangle,
+            _ => CapStyle.Flat
+        };
+    }
+
+    private static DashStyle ToD2DDashStyle(CadStrokeDashStyle dashStyle)
+    {
+        return dashStyle switch
+        {
+            CadStrokeDashStyle.Dash => DashStyle.Dash,
+            CadStrokeDashStyle.Dot => DashStyle.Dot,
+            CadStrokeDashStyle.DashDot => DashStyle.DashDot,
+            CadStrokeDashStyle.DashDotDot => DashStyle.DashDotDot,
+            _ => DashStyle.Solid
+        };
+    }
+
+    private static LineJoin ToD2DLineJoin(CadStrokeLineJoin lineJoin)
+    {
+        return lineJoin switch
+        {
+            CadStrokeLineJoin.Bevel => LineJoin.Bevel,
+            CadStrokeLineJoin.Round => LineJoin.Round,
+            CadStrokeLineJoin.MiterOrBevel => LineJoin.MiterOrBevel,
+            _ => LineJoin.Miter
+        };
+    }
+
     internal sealed class EntityResourceBucket : IDisposable
     {
         public EntityId EntityId { get; }
         public ID2D1Geometry? Geometry { get; set; }
         public ID2D1Brush? StrokeBrush { get; set; }
+        public ID2D1StrokeStyle? StrokeStyle { get; set; }
         public ID2D1Brush? FillBrush { get; set; }
         public ID2D1Brush? HatchBrush { get; set; }
         public CadHatchFillStyle? HatchFillStyle { get; set; }
@@ -482,6 +533,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         public bool IsEmpty =>
             Geometry is null &&
             StrokeBrush is null &&
+            StrokeStyle is null &&
             FillBrush is null &&
             HatchBrush is null &&
             TextFormat is null;
@@ -495,11 +547,13 @@ internal sealed class Direct2DResourceCache : IDisposable
         {
             Geometry?.Dispose();
             StrokeBrush?.Dispose();
+            StrokeStyle?.Dispose();
             FillBrush?.Dispose();
             HatchBrush?.Dispose();
             TextFormat?.Dispose();
             Geometry = null;
             StrokeBrush = null;
+            StrokeStyle = null;
             FillBrush = null;
             HatchBrush = null;
             HatchFillStyle = null;

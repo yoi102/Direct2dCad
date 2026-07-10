@@ -221,6 +221,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
         entity.SetUseLayerColor(state.UseLayerColor);
         entity.SetVisible(state.IsVisible);
         entity.SetLocked(state.IsLocked);
+        entity.SetStrokeStyle(state.StrokeStyle);
         entity.SetZIndex(state.ZIndex);
     }
 

@@ -549,6 +549,30 @@
     <value>Name</value>
     <comment>Name</comment>
   </data>
+  <data name="StrokeStyle" xml:space="preserve">
+    <value>Stroke style</value>
+    <comment>Stroke style</comment>
+  </data>
+  <data name="StartCap" xml:space="preserve">
+    <value>Start cap</value>
+    <comment>Start cap</comment>
+  </data>
+  <data name="EndCap" xml:space="preserve">
+    <value>End cap</value>
+    <comment>End cap</comment>
+  </data>
+  <data name="DashCap" xml:space="preserve">
+    <value>Dash cap</value>
+    <comment>Dash cap</comment>
+  </data>
+  <data name="DashStyle" xml:space="preserve">
+    <value>Dash style</value>
+    <comment>Dash style</comment>
+  </data>
+  <data name="LineJoin" xml:space="preserve">
+    <value>Line join</value>
+    <comment>Line join</comment>
+  </data>
   <data name="CenterX" xml:space="preserve">
     <value>Center X</value>
     <comment>Center X</comment>

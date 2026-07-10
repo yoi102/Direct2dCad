@@ -1840,7 +1840,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (resources.Geometry is not null && resources.StrokeBrush is not null)
         {
             var strokeWidth = ResolveStrokeWidth(resources.StrokeWidth, viewport, options);
-            deviceContext.DrawGeometry(resources.Geometry, resources.StrokeBrush, strokeWidth);
+            deviceContext.DrawGeometry(resources.Geometry, resources.StrokeBrush, strokeWidth, resources.StrokeStyle);
         }
 
         if (entity is CadText text &&
@@ -1885,7 +1885,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             ToVector2(line.Start),
             ToVector2(line.End),
             resources.StrokeBrush,
-            ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+            ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
+            resources.StrokeStyle);
     }
 
     private void DrawCircleEntity(
@@ -1948,7 +1949,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             deviceContext.DrawEllipse(
                 ellipse,
                 resources.StrokeBrush,
-                ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+                ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
+                resources.StrokeStyle);
         }
     }
 
@@ -1981,10 +1983,19 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
             if (resources.StrokeBrush is not null)
             {
-                deviceContext.DrawRoundedRectangle(
-                    roundedRect,
-                    resources.StrokeBrush,
-                    ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+                var strokeWidth = ResolveStrokeWidth(resources.StrokeWidth, viewport, options);
+                if (resources.StrokeStyle is null)
+                {
+                    deviceContext.DrawRoundedRectangle(roundedRect, resources.StrokeBrush, strokeWidth);
+                }
+                else
+                {
+                    deviceContext.DrawRoundedRectangle(
+                        roundedRect,
+                        resources.StrokeBrush,
+                        strokeWidth,
+                        resources.StrokeStyle);
+                }
             }
 
             return;
@@ -2011,7 +2022,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             deviceContext.DrawRectangle(
                 rect,
                 resources.StrokeBrush,
-                ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+                ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
+                resources.StrokeStyle);
         }
     }
 

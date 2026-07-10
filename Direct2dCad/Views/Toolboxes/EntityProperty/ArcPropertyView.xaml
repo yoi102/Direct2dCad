@@ -31,6 +31,30 @@
                          Text="{Binding EntityName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
             </Grid>
 
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="96" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.StartCap}}" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding StrokeCapOptions, Mode=OneWay}" SelectedItem="{Binding SelectedStartCapOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.EndCap}}" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding StrokeCapOptions, Mode=OneWay}" SelectedItem="{Binding SelectedEndCapOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DashCap}}" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding StrokeCapOptions, Mode=OneWay}" SelectedItem="{Binding SelectedDashCapOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DashStyle}}" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding StrokeDashStyleOptions, Mode=OneWay}" SelectedItem="{Binding SelectedDashStyleOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.LineJoin}}" VerticalAlignment="Center" />
+                <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding StrokeLineJoinOptions, Mode=OneWay}" SelectedItem="{Binding SelectedLineJoinOption, Mode=TwoWay}" DisplayMemberPath="Name" />
+            </Grid>
+
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="96" />

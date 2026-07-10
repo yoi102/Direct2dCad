@@ -681,6 +681,16 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetEntityLineWeightCommand(entityIds, lineWeight));
     }
 
+    public CadDocumentChangeSet SetEntityStrokeStyle(EntityId entityId, CadStrokeStyle strokeStyle)
+    {
+        return SetEntityStrokeStyle([entityId], strokeStyle);
+    }
+
+    public CadDocumentChangeSet SetEntityStrokeStyle(IEnumerable<EntityId> entityIds, CadStrokeStyle strokeStyle)
+    {
+        return DocumentCommands.Execute(new SetEntityStrokeStyleCommand(entityIds, strokeStyle));
+    }
+
     public CadDocumentChangeSet SetEntityZIndex(EntityId entityId, int zIndex)
     {
         return SetEntityZIndex([entityId], zIndex);
