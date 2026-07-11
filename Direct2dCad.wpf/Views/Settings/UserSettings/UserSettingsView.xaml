@@ -1,29 +1,34 @@
-<UserControl x:Class="Direct2dCad.wpf.Views.Settings.DocumentSettings.DocumentSettingsView"
+<UserControl x:Class="Direct2dCad.wpf.Views.Settings.UserSettings.UserSettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:Direct2dCad.wpf.Views.Settings.DocumentSettings"
-             xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Settings;assembly=Direct2dCad.ViewModels"
+             xmlns:local="clr-namespace:Direct2dCad.wpf.Views.Settings.UserSettings"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:Height="400"
              d:Width="600"
-             d:DataContext="{d:DesignInstance Type=vm:DocumentSettingsViewModel}">
+             xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:UserSettingsViewModel}">
     <UserControl.Resources>
-        <DataTemplate DataType="{x:Type vm:DocumentDisplaySettingsViewModel}">
-            <local:DocumentDisplaySettingsView />
+        <DataTemplate DataType="{x:Type vm:GeneralUserSettingsViewModel}">
+            <local:GeneralUserSettingsView />
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:DocumentGridSettingsViewModel}">
-            <local:DocumentGridSettingsView />
+        <DataTemplate DataType="{x:Type vm:RenderingUserSettingsViewModel}">
+            <local:RenderingUserSettingsView />
         </DataTemplate>
-        <DataTemplate DataType="{x:Type vm:DocumentOriginSettingsViewModel}">
-            <local:DocumentOriginSettingsView />
+        <DataTemplate DataType="{x:Type vm:InteractionUserSettingsViewModel}">
+            <local:InteractionUserSettingsView />
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid ColumnDefinitions="176 1 *">
-        <ListBox Grid.Column="0"
-                 Margin="0,0,12,0"
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="176" />
+            <ColumnDefinition Width="1" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <ListBox Margin="0,0,12,0"
                  Padding="0"
                  BorderThickness="0"
                  Background="Transparent"
@@ -32,8 +37,8 @@
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <StackPanel Orientation="Horizontal"
-                                Margin="5">
+                    <StackPanel Orientation="Horizontal" Margin="5">
+                        
                         <Border  x:Name="SelectedBorder"
                                  Visibility="Hidden"
                                  Background="{DynamicResource MaterialDesign.Brush.Primary}"
@@ -41,10 +46,9 @@
                                  Margin="2 0 5 0"
                                  Width="2" />
 
-                        <TextBlock VerticalAlignment="Center"
-                                   Text="{Binding Title}"
-                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock VerticalAlignment="Center" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
+
                     <DataTemplate.Triggers>
                         <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
                                      Value="True">
@@ -57,9 +61,7 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <Border Grid.Column="1"
-                Background="{DynamicResource MaterialDesign.Brush.Divider}" />
-
+        <Border Grid.Column="1" Background="{DynamicResource MaterialDesign.Brush.Divider}" />
         <ContentControl Grid.Column="2"
                         Margin="16,0,0,0"
                         HorizontalContentAlignment="Stretch"

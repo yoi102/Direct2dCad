@@ -1,25 +1,29 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using Direct2dCad.ViewModels.Services.ViewServices;
 
-namespace Direct2dCad.wpf.Views.Settings.UserSettings
+namespace Direct2dCad.wpf.Views.Settings.UserSettings;
+
+public partial class UserSettingsDialog
 {
-    /// <summary>
-    /// UserSettingsDialog.xaml 的交互逻辑
-    /// </summary>
-    public partial class UserSettingsDialog
+    public UserSettingsDialog()
     {
-        public UserSettingsDialog()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+    }
+
+    private void Ok_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is IUserSettingsDialogViewModel viewModel && viewModel.TryApply())
+            DialogResult = true;
+    }
+
+    private void Apply_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is IUserSettingsDialogViewModel viewModel)
+            viewModel.TryApply();
+    }
+
+    private void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
     }
 }

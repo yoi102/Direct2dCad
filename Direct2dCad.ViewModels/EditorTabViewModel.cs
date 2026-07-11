@@ -506,6 +506,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             new CadPointD(ViewModelCadOriginX, ViewModelCadOriginY));
     }
 
+    public void ApplyUserSettings(CadUserSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        _userSettings.CopyFrom(settings);
+        CadDocumentViewModel.ApplyUserSettings(_userSettings);
+        ApplyUserSettingsToToolbar();
+    }
+
     public void ApplyDocumentViewSettings(CadViewSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);

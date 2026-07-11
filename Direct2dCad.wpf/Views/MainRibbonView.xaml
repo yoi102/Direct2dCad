@@ -177,6 +177,28 @@
                      Style="{StaticResource MahApps.Styles.TabItem}">
                 <WrapPanel Margin="10">
 
+                    <Button ToolTip="{I18N {x:Static r:UserSettingsLangKeys.ApplicationSettings}}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
+                            Command="{Binding OpenUserSettingsDialogCommand}">
+                        <Grid RowDefinitions="* auto">
+
+                            <md:PackIcon Kind="AccountCog"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Center"
+                                       Text="{I18N {x:Static r:LangKeys.Settings}}" />
+
+
+                        </Grid>
+                    </Button>
+
+
                     <Button ToolTip="{I18N {x:Static r:LangKeys.New}}"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             Width="80"
@@ -1279,7 +1301,7 @@
                                 Padding="0"
                                 Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                                 Command="{Binding InsertImageFromFileCommand}">
-                          
+
                         </Button>
                         <Button ToolTip="{I18N {x:Static r:LangKeys.Settings}}"
                                 Style="{StaticResource MaterialDesignFlatButton}"
@@ -1290,12 +1312,12 @@
                                 Padding="0"
                                 Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                                 Command="{Binding OpenDocumentSettingsDialogCommand}">
-                          
+
                         </Button>
                     </WrapPanel>
 
 
-                    
+
                 </WrapPanel>
             </TabItem>
         </TabControl>

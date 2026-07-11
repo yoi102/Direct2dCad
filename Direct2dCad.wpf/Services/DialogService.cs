@@ -4,6 +4,7 @@ using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.wpf.Views.Dialogs;
 using Direct2dCad.wpf.Views.Settings.DocumentSettings;
+using Direct2dCad.wpf.Views.Settings.UserSettings;
 using MaterialDesignThemes.Wpf;
 
 namespace Direct2dCad.wpf.Services;
@@ -130,6 +131,20 @@ internal sealed class DialogService : IDialogService
         InvokeOnUi(() =>
         {
             var settingsDialog = new DocumentSettingsDialog
+            {
+                Owner = Application.Current?.MainWindow,
+                DataContext = viewModel
+            };
+            settingsDialog.ShowDialog();
+        });
+    }
+
+    public void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel)
+    {
+        ArgumentNullException.ThrowIfNull(viewModel);
+        InvokeOnUi(() =>
+        {
+            var settingsDialog = new UserSettingsDialog
             {
                 Owner = Application.Current?.MainWindow,
                 DataContext = viewModel

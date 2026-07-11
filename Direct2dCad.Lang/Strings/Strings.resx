@@ -984,4 +984,43 @@
   <data name="DocumentSettingsInvalidValues" xml:space="preserve">
     <value>Enter valid finite values. Sizes, spacing, and line widths must be greater than zero.</value>
   </data>
+  <data name="ApplicationSettings" xml:space="preserve">
+    <value>Application Settings</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Rendering" xml:space="preserve">
+    <value>Rendering</value>
+  </data>
+  <data name="Interaction" xml:space="preserve">
+    <value>Interaction</value>
+  </data>
+  <data name="Antialiasing" xml:space="preserve">
+    <value>Antialiasing</value>
+  </data>
+  <data name="SelectedEntity" xml:space="preserve">
+    <value>Selected entity</value>
+  </data>
+  <data name="Grip" xml:space="preserve">
+    <value>Grip</value>
+  </data>
+  <data name="GripPreview" xml:space="preserve">
+    <value>Grip preview</value>
+  </data>
+  <data name="StrokeColor" xml:space="preserve">
+    <value>Stroke color</value>
+  </data>
+  <data name="StrokeWidth" xml:space="preserve">
+    <value>Stroke width</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="DarkTheme" xml:space="preserve">
+    <value>Dark theme</value>
+  </data>
+  <data name="UserSettingsInvalidValues" xml:space="preserve">
+    <value>Enter valid finite values. Sizes and stroke widths must be greater than zero.</value>
+  </data>
 </root>

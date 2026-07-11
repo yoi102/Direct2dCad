@@ -12,4 +12,5 @@ public interface IDialogService
 
     Task<bool> ShowExitConfirmation(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
     void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel);
+    void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel);
 }

@@ -97,6 +97,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Antialiasing 的本地化字符串。
+        /// </summary>
+        public static string Antialiasing {
+            get {
+                return ResourceManager.GetString("Antialiasing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Application Settings 的本地化字符串。
+        /// </summary>
+        public static string ApplicationSettings {
+            get {
+                return ResourceManager.GetString("ApplicationSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Apply 的本地化字符串。
         /// </summary>
         public static string Apply {
@@ -520,6 +538,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Dark theme 的本地化字符串。
+        /// </summary>
+        public static string DarkTheme {
+            get {
+                return ResourceManager.GetString("DarkTheme", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Dash 的本地化字符串。
         /// </summary>
         public static string Dash {
@@ -925,6 +952,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 General 的本地化字符串。
+        /// </summary>
+        public static string General {
+            get {
+                return ResourceManager.GetString("General", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Grid 的本地化字符串。
         /// </summary>
         public static string Grid {
@@ -948,6 +984,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string GridType {
             get {
                 return ResourceManager.GetString("GridType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Grip 的本地化字符串。
+        /// </summary>
+        public static string Grip {
+            get {
+                return ResourceManager.GetString("Grip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Grip preview 的本地化字符串。
+        /// </summary>
+        public static string GripPreview {
+            get {
+                return ResourceManager.GetString("GripPreview", resourceCulture);
             }
         }
         
@@ -997,6 +1051,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Interaction 的本地化字符串。
+        /// </summary>
+        public static string Interaction {
+            get {
+                return ResourceManager.GetString("Interaction", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Inverted 的本地化字符串。
         /// </summary>
         public static string Inverted {
@@ -1011,6 +1074,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Japanese {
             get {
                 return ResourceManager.GetString("Japanese", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Language 的本地化字符串。
+        /// </summary>
+        public static string Language {
+            get {
+                return ResourceManager.GetString("Language", resourceCulture);
             }
         }
         
@@ -1537,6 +1609,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Rendering 的本地化字符串。
+        /// </summary>
+        public static string Rendering {
+            get {
+                return ResourceManager.GetString("Rendering", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Right 的本地化字符串。
         /// </summary>
         public static string Right {
@@ -1587,6 +1668,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Selected {
             get {
                 return ResourceManager.GetString("Selected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Selected entity 的本地化字符串。
+        /// </summary>
+        public static string SelectedEntity {
+            get {
+                return ResourceManager.GetString("SelectedEntity", resourceCulture);
             }
         }
         
@@ -1852,11 +1942,29 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Stroke color 的本地化字符串。
+        /// </summary>
+        public static string StrokeColor {
+            get {
+                return ResourceManager.GetString("StrokeColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Stroke style 的本地化字符串。
         /// </summary>
         public static string StrokeStyle {
             get {
                 return ResourceManager.GetString("StrokeStyle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Stroke width 的本地化字符串。
+        /// </summary>
+        public static string StrokeWidth {
+            get {
+                return ResourceManager.GetString("StrokeWidth", resourceCulture);
             }
         }
         
@@ -2001,6 +2109,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string User {
             get {
                 return ResourceManager.GetString("User", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Enter valid finite values. Sizes and stroke widths must be greater than zero. 的本地化字符串。
+        /// </summary>
+        public static string UserSettingsInvalidValues {
+            get {
+                return ResourceManager.GetString("UserSettingsInvalidValues", resourceCulture);
             }
         }
         

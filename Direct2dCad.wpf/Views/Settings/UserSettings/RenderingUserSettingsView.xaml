@@ -1,0 +1,20 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Settings.UserSettings.RenderingUserSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:Height="400"
+             d:Width="600"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:usersettings="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels"
+             d:DataContext="{d:DesignInstance Type=usersettings:RenderingUserSettingsViewModel}">
+    <StackPanel>
+        <CheckBox Margin="0,0,0,12"
+                  Content="{I18N {x:Static r:UserSettingsLangKeys.Antialiasing}}"
+                  IsChecked="{Binding IsAntialiasingEnabled}" />
+        <CheckBox Margin="0,0,0,12"
+                  Content="{I18N {x:Static r:LangKeys.TextAntialiasing}}"
+                  IsChecked="{Binding IsTextAntialiasingEnabled}" />
+    </StackPanel>
+</UserControl>

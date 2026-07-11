@@ -7,6 +7,7 @@ public sealed class CadUserSettings
     public const int CurrentVersion = 1;
 
     public int Version { get; set; } = CurrentVersion;
+    public CadGeneralUserSettings General { get; set; } = new();
     public CadRenderingUserSettings Rendering { get; set; } = new();
     public CadInteractionUserSettings Interaction { get; set; } = new();
 
@@ -15,10 +16,68 @@ public sealed class CadUserSettings
     public void Normalize()
     {
         Version = CurrentVersion;
+        General ??= new CadGeneralUserSettings();
         Rendering ??= new CadRenderingUserSettings();
         Interaction ??= new CadInteractionUserSettings();
+        General.Normalize();
         Rendering.Normalize();
         Interaction.Normalize();
+    }
+
+    public CadUserSettings Clone()
+    {
+        var clone = new CadUserSettings();
+        clone.CopyFrom(this);
+        return clone;
+    }
+
+    public void CopyFrom(CadUserSettings source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        source.Normalize();
+
+        Version = CurrentVersion;
+        General = new CadGeneralUserSettings
+        {
+            IsDarkTheme = source.General.IsDarkTheme,
+            CultureLcid = source.General.CultureLcid
+        };
+        Rendering = new CadRenderingUserSettings
+        {
+            IsAntialiasingEnabled = source.Rendering.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = source.Rendering.IsTextAntialiasingEnabled
+        };
+        Interaction = new CadInteractionUserSettings
+        {
+            SelectedEntityStrokeColor = source.Interaction.SelectedEntityStrokeColor,
+            SelectedEntityStrokeWidth = source.Interaction.SelectedEntityStrokeWidth,
+            GripStrokeColor = source.Interaction.GripStrokeColor,
+            GripFillColor = source.Interaction.GripFillColor,
+            GripSize = source.Interaction.GripSize,
+            GripStrokeWidth = source.Interaction.GripStrokeWidth,
+            GripPreviewStrokeColor = source.Interaction.GripPreviewStrokeColor,
+            GripPreviewFillColor = source.Interaction.GripPreviewFillColor,
+            GripPreviewStrokeWidth = source.Interaction.GripPreviewStrokeWidth,
+            SelectionWindowStrokeColor = source.Interaction.SelectionWindowStrokeColor,
+            SelectionWindowFillColor = source.Interaction.SelectionWindowFillColor,
+            SelectionWindowStrokeWidth = source.Interaction.SelectionWindowStrokeWidth,
+            SelectionCrossingStrokeColor = source.Interaction.SelectionCrossingStrokeColor,
+            SelectionCrossingFillColor = source.Interaction.SelectionCrossingFillColor,
+            SelectionCrossingStrokeWidth = source.Interaction.SelectionCrossingStrokeWidth
+        };
+        Normalize();
+    }
+}
+
+public sealed class CadGeneralUserSettings
+{
+    public bool IsDarkTheme { get; set; } = true;
+    public int CultureLcid { get; set; } = 1033;
+
+    internal void Normalize()
+    {
+        if (CultureLcid is not (1033 or 1041 or 2052))
+            CultureLcid = 1033;
     }
 }
 

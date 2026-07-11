@@ -3,10 +3,12 @@ using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
+using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.ViewModels.Settings;
+using Direct2dCad.ViewModels.Settings.UserSettings;
 using Direct2dCad.ViewModels.Toolboxes;
 
 namespace Direct2dCad.ViewModels;
@@ -21,6 +23,8 @@ public partial class MainViewModel : ObservableObject
     private readonly SideToggleManager _sideToggleManager;
     private readonly ICultureSettingService _cultureSettingService;
     private readonly IThemeSettingService _themeSettingService;
+    private readonly IUserSettingsService _userSettingsService;
+    private readonly CadUserSettings _userSettings;
     private readonly CadDocumentStorage _storage = new();
 
     public MainViewModel(IDockLayoutService dockLayoutService, SideToggleManager sideToggleManager,
@@ -29,6 +33,7 @@ public partial class MainViewModel : ObservableObject
         IFileDialogService fileDialogService,
         IImageImportService imageImportService,
         IDialogService dialogService,
+        IUserSettingsService userSettingsService,
         ISnackbarService snackbarService
         )
     {
@@ -41,6 +46,8 @@ public partial class MainViewModel : ObservableObject
         _fileDialogService = fileDialogService;
         _imageImportService = imageImportService;
         _dialogService = dialogService;
+        _userSettingsService = userSettingsService;
+        _userSettings = userSettingsService.Load();
         _snackbarService = snackbarService;
         DocumentExplorer = _dockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DocumentExplorerToolboxViewModel));
         DocumentExplorer.Attach(_dockLayoutService);
@@ -48,8 +55,9 @@ public partial class MainViewModel : ObservableObject
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
         EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
 
-        IsDarkTheme = themeSettingService.IsDarkTheme;
-        CurrentCultureLCID = cultureSettingService.GetCurrentCultureLCID();
+        IsDarkTheme = _userSettings.General.IsDarkTheme;
+        CurrentCultureLCID = _userSettings.General.CultureLcid;
+        cultureSettingService.ChangeCulture(CurrentCultureLCID);
     }
 
     /// <summary>The MVVM layout tree — bind to DockLayout on the DockingManager.</summary>
@@ -175,6 +183,28 @@ public partial class MainViewModel : ObservableObject
 
         _dialogService.ShowDocumentSettingsDialog(
             new DocumentSettingsViewModel(CurrentEditorTabViewModel));
+    }
+
+    [RelayCommand]
+    private void OpenUserSettingsDialog()
+    {
+        _dialogService.ShowUserSettingsDialog(
+            new UserSettingsViewModel(_userSettings, _userSettingsService, ApplyUserSettings));
+    }
+
+    private void ApplyUserSettings(CadUserSettings settings)
+    {
+        _userSettings.CopyFrom(settings);
+        IsDarkTheme = _userSettings.General.IsDarkTheme;
+
+        if (CurrentCultureLCID != _userSettings.General.CultureLcid)
+        {
+            CurrentCultureLCID = _userSettings.General.CultureLcid;
+            _cultureSettingService.ChangeCulture(CurrentCultureLCID);
+        }
+
+        foreach (var editorTab in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
+            editorTab.ApplyUserSettings(_userSettings);
     }
 
     [RelayCommand]
@@ -312,6 +342,11 @@ public partial class MainViewModel : ObservableObject
     partial void OnIsDarkThemeChanged(bool value)
     {
         _themeSettingService.ApplyThemeLightDark(value);
+        if (_userSettings is null)
+            return;
+
+        _userSettings.General.IsDarkTheme = value;
+        SaveUserSettings();
     }
 
     [RelayCommand]
@@ -321,12 +356,26 @@ public partial class MainViewModel : ObservableObject
             return;
         CurrentCultureLCID = lcid;
         _cultureSettingService.ChangeCulture(lcid);
+        _userSettings.General.CultureLcid = lcid;
+        SaveUserSettings();
     }
 
     [RelayCommand]
     private void ChangeTopmost()
     {
         Topmost = !Topmost;
+    }
+
+    private void SaveUserSettings()
+    {
+        try
+        {
+            _userSettingsService.Save(_userSettings);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "User settings save failed");
+        }
     }
 
     #endregion TitleBar

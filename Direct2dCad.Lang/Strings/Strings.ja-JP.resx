@@ -789,4 +789,43 @@
   <data name="DocumentSettingsInvalidValues" xml:space="preserve">
     <value>有効な有限値を入力してください。サイズ、間隔、線幅は 0 より大きい必要があります。</value>
   </data>
+  <data name="ApplicationSettings" xml:space="preserve">
+    <value>アプリケーション設定</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>一般</value>
+  </data>
+  <data name="Rendering" xml:space="preserve">
+    <value>レンダリング</value>
+  </data>
+  <data name="Interaction" xml:space="preserve">
+    <value>操作</value>
+  </data>
+  <data name="Antialiasing" xml:space="preserve">
+    <value>アンチエイリアス</value>
+  </data>
+  <data name="SelectedEntity" xml:space="preserve">
+    <value>選択図形</value>
+  </data>
+  <data name="Grip" xml:space="preserve">
+    <value>グリップ</value>
+  </data>
+  <data name="GripPreview" xml:space="preserve">
+    <value>グリッププレビュー</value>
+  </data>
+  <data name="StrokeColor" xml:space="preserve">
+    <value>線色</value>
+  </data>
+  <data name="StrokeWidth" xml:space="preserve">
+    <value>線幅</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>言語</value>
+  </data>
+  <data name="DarkTheme" xml:space="preserve">
+    <value>ダークテーマ</value>
+  </data>
+  <data name="UserSettingsInvalidValues" xml:space="preserve">
+    <value>有効な有限値を入力してください。サイズと線幅は 0 より大きい必要があります。</value>
+  </data>
 </root>
