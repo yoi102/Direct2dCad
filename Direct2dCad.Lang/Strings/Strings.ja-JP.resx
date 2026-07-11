@@ -858,4 +858,7 @@
   <data name="Coordinates" xml:space="preserve">
     <value>座標とサイズ</value>
   </data>
+  <data name="Font" xml:space="preserve">
+    <value>フォント</value>
+  </data>
 </root>

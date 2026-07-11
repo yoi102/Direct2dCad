@@ -14,11 +14,14 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
 {
 
     private readonly IDisposable _interactionStateChangedSubscription;
+    private readonly ISystemFontCatalog _systemFontCatalog;
 
     public EntityPropertiesToolboxViewModel(
         IToolboxIconProvider toolboxIconProvider,
-        ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
+        ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber,
+        ISystemFontCatalog systemFontCatalog)
     {
+        _systemFontCatalog = systemFontCatalog ?? throw new ArgumentNullException(nameof(systemFontCatalog));
         Title = "Property";
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.LeftBottom;
@@ -213,7 +216,7 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
             }
             else
             {
-                Entity = new TransientTextPropertyViewModel(_documentViewModel);
+                Entity = new TransientTextPropertyViewModel(_documentViewModel, _systemFontCatalog);
             }
 
             return;
@@ -358,7 +361,7 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
             }
             else
             {
-                Entity = new TextPropertyViewModel(_documentViewModel, text.Id);
+                Entity = new TextPropertyViewModel(_documentViewModel, text.Id, _systemFontCatalog);
             }
 
             return;

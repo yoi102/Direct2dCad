@@ -970,6 +970,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Font 的本地化字符串。
+        /// </summary>
+        public static string Font {
+            get {
+                return ResourceManager.GetString("Font", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Frozen 的本地化字符串。
         /// </summary>
         public static string Frozen {

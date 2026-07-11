@@ -4,36 +4,34 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
-
-public sealed record TextStyleOption(StyleId? Id, string Name)
-{
-    public override string ToString() => Name;
-}
 
 public partial class TextPropertyViewModel : EntityPropertyViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
+    private readonly ISystemFontCatalog _systemFontCatalog;
     private bool _isRefreshing;
 
-    public TextPropertyViewModel(CadDocumentViewModel documentViewModel, EntityId entityId)
+    public TextPropertyViewModel(
+        CadDocumentViewModel documentViewModel,
+        EntityId entityId,
+        ISystemFontCatalog systemFontCatalog)
     {
         _documentViewModel = documentViewModel ?? throw new ArgumentNullException(nameof(documentViewModel));
+        _systemFontCatalog = systemFontCatalog ?? throw new ArgumentNullException(nameof(systemFontCatalog));
         EntityId = entityId;
         RefreshFromEntity();
     }
 
     public EntityId EntityId { get; }
     public string EntityIdText => EntityId.ToString();
-    public IReadOnlyList<TextStyleOption> TextStyleOptions { get; private set; } = [];
+    public IReadOnlyList<string> FontFamilyOptions { get; private set; } = [];
     public double BoundsWidth => TryGetText(out var text) ? text.TextBounds.Width : 0;
     public double BoundsHeight => TryGetText(out var text) ? text.TextBounds.Height : 0;
     public string BoundsSizeText => $"{BoundsWidth:F3} x {BoundsHeight:F3}";
-    public string BoundsMeasurementState => TryGetText(out var text) && text.RequiresBoundsMeasurement
-        ? "Pending"
-        : "Measured";
 
     [ObservableProperty]
     public partial string TextContent { get; set; } = string.Empty;
@@ -51,7 +49,7 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
     public partial double RotationDegrees { get; set; }
 
     [ObservableProperty]
-    public partial TextStyleOption? SelectedTextStyleOption { get; set; }
+    public partial string? SelectedFontFamily { get; set; }
 
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
@@ -95,7 +93,7 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
             PositionY = text.Position.Y;
             Height = text.Height;
             RotationDegrees = RadiansToDegrees(text.RotationRadians);
-            RefreshTextStyleOptions(text.TextStyleId);
+            RefreshFontFamilyOptions(ResolveFontFamily(_documentViewModel.CadEditor.Document, text.TextStyleId));
             StrokeColor = ResolveStrokeColor(text);
             UseByLayerColor = text.UseLayerColor;
             UseByLayerLineWeight = text.UseLayerLineWeight;
@@ -129,16 +127,23 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
 
     partial void OnRotationDegreesChanged(double value) => CommitGeometry();
 
-    partial void OnSelectedTextStyleOptionChanged(TextStyleOption? value)
+    partial void OnSelectedFontFamilyChanged(string? value)
     {
-        if (_isRefreshing || !TryGetText(out var text))
+        if (_isRefreshing || string.IsNullOrWhiteSpace(value) || !TryGetText(out var text))
             return;
 
-        var styleId = value?.Id;
-        if (Nullable.Equals(text.TextStyleId, styleId))
+        var fontFamily = value.Trim();
+        if (string.Equals(
+                ResolveFontFamily(_documentViewModel.CadEditor.Document, text.TextStyleId),
+                fontFamily,
+                StringComparison.OrdinalIgnoreCase))
+        {
             return;
+        }
 
+        var styleId = ResolveOrCreateFontStyle(_documentViewModel.CadEditor.Document, fontFamily);
         _documentViewModel.CadEditor.SetTextStyle(EntityId, styleId);
+        RefreshFromEntity();
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -274,11 +279,16 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
         return false;
     }
 
-    private void RefreshTextStyleOptions(StyleId? selectedStyleId)
+    private void RefreshFontFamilyOptions(string selectedFontFamily)
     {
-        TextStyleOptions = BuildTextStyleOptions(_documentViewModel.CadEditor.Document);
-        OnPropertyChanged(nameof(TextStyleOptions));
-        SelectedTextStyleOption = FindTextStyleOption(TextStyleOptions, selectedStyleId);
+        FontFamilyOptions = BuildFontFamilyOptions(
+            _documentViewModel.CadEditor.Document,
+            _systemFontCatalog.FontFamilies,
+            selectedFontFamily);
+        OnPropertyChanged(nameof(FontFamilyOptions));
+        SelectedFontFamily = FontFamilyOptions.FirstOrDefault(fontFamily =>
+                                 string.Equals(fontFamily, selectedFontFamily, StringComparison.OrdinalIgnoreCase))
+                             ?? selectedFontFamily;
     }
 
     private void RaiseBoundsPropertiesChanged()
@@ -286,7 +296,6 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
         OnPropertyChanged(nameof(BoundsWidth));
         OnPropertyChanged(nameof(BoundsHeight));
         OnPropertyChanged(nameof(BoundsSizeText));
-        OnPropertyChanged(nameof(BoundsMeasurementState));
     }
 
     private CadColor ResolveStrokeColor(CadText text)
@@ -299,27 +308,73 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
         return ResolveEntityLineWeight(_documentViewModel.CadEditor.Document, text, text.GraphicStyleId);
     }
 
-    internal static IReadOnlyList<TextStyleOption> BuildTextStyleOptions(CadDocument document)
+    internal static IReadOnlyList<string> BuildFontFamilyOptions(
+        CadDocument document,
+        IReadOnlyList<string> systemFontFamilies,
+        string? selectedFontFamily = null)
     {
-        var options = new List<TextStyleOption>
+        var fontFamilies = new HashSet<string>(systemFontFamilies, StringComparer.OrdinalIgnoreCase)
         {
-            new(null, "Default (Meiryo)")
+            "Meiryo"
         };
 
-        options.AddRange(document.Styles.Values
-            .OfType<CadTextStyle>()
-            .OrderBy(style => style.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(style => new TextStyleOption(style.Id, style.Name)));
+        foreach (var style in document.Styles.Values.OfType<CadTextStyle>())
+            fontFamilies.Add(style.FontFamily);
 
-        return options;
+        if (!string.IsNullOrWhiteSpace(selectedFontFamily))
+            fontFamilies.Add(selectedFontFamily.Trim());
+
+        return fontFamilies.Order(StringComparer.CurrentCultureIgnoreCase).ToArray();
     }
 
-    internal static TextStyleOption? FindTextStyleOption(
-        IReadOnlyList<TextStyleOption> options,
-        StyleId? styleId)
+    internal static string ResolveFontFamily(CadDocument document, StyleId? textStyleId)
     {
-        return options.FirstOrDefault(option => Nullable.Equals(option.Id, styleId)) ??
-               options.FirstOrDefault();
+        return textStyleId is { } styleId &&
+               document.TryGetStyle(styleId, out var style) &&
+               style is CadTextStyle textStyle
+            ? textStyle.FontFamily
+            : "Meiryo";
+    }
+
+    internal static StyleId? ResolveOrCreateFontStyle(CadDocument document, string fontFamily)
+    {
+        var normalizedFontFamily = fontFamily.Trim();
+        if (string.Equals(normalizedFontFamily, "Meiryo", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var existingStyle = document.Styles.Values
+            .OfType<CadTextStyle>()
+            .FirstOrDefault(style =>
+                string.Equals(style.FontFamily, normalizedFontFamily, StringComparison.OrdinalIgnoreCase) &&
+                Math.Abs(style.TextHeight - 1.0) <= Epsilon &&
+                Math.Abs(style.WidthFactor - 1.0) <= Epsilon &&
+                Math.Abs(style.ObliqueAngle) <= Epsilon &&
+                !style.IsBold &&
+                !style.IsItalic);
+        if (existingStyle is not null)
+            return existingStyle.Id;
+
+        return document.CreateTextStyle(
+            CreateFontStyleName(document, normalizedFontFamily),
+            normalizedFontFamily,
+            textHeight: 1.0);
+    }
+
+    private static string CreateFontStyleName(CadDocument document, string fontFamily)
+    {
+        var baseName = $"Font - {fontFamily}";
+        var existingNames = document.Styles.Values
+            .Select(style => style.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!existingNames.Contains(baseName))
+            return baseName;
+
+        for (var suffix = 2; ; suffix++)
+        {
+            var candidate = $"{baseName} ({suffix})";
+            if (!existingNames.Contains(candidate))
+                return candidate;
+        }
     }
 
     private static double ResolveLineWeightValue(double value)
@@ -350,22 +405,26 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
 public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
+    private readonly ISystemFontCatalog _systemFontCatalog;
     private bool _isRefreshing;
 
-    public TransientTextPropertyViewModel(CadDocumentViewModel documentViewModel)
+    public TransientTextPropertyViewModel(
+        CadDocumentViewModel documentViewModel,
+        ISystemFontCatalog systemFontCatalog)
     {
         _documentViewModel = documentViewModel ?? throw new ArgumentNullException(nameof(documentViewModel));
+        _systemFontCatalog = systemFontCatalog ?? throw new ArgumentNullException(nameof(systemFontCatalog));
         RefreshFromDocument();
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
-    public IReadOnlyList<TextStyleOption> TextStyleOptions { get; private set; } = [];
+    public IReadOnlyList<string> FontFamilyOptions { get; private set; } = [];
 
     [ObservableProperty]
     public partial string TextContent { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial TextStyleOption? SelectedTextStyleOption { get; set; }
+    public partial string? SelectedFontFamily { get; set; }
 
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
@@ -392,7 +451,9 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         {
             RefreshDrawingLayerOptions(_documentViewModel);
             TextContent = _documentViewModel.DrawingDefaults.Text;
-            RefreshTextStyleOptions(_documentViewModel.DrawingDefaults.TextStyleId);
+            RefreshFontFamilyOptions(TextPropertyViewModel.ResolveFontFamily(
+                _documentViewModel.CadEditor.Document,
+                _documentViewModel.DrawingDefaults.TextStyleId));
             StrokeColor = _documentViewModel.DrawingDefaults.TextStrokeColor;
             LineWeight = _documentViewModel.DrawingDefaults.TextLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.TextZIndex;
@@ -414,12 +475,24 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         _documentViewModel.DrawingDefaults.Text = value ?? string.Empty;
     }
 
-    partial void OnSelectedTextStyleOptionChanged(TextStyleOption? value)
+    partial void OnSelectedFontFamilyChanged(string? value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || string.IsNullOrWhiteSpace(value))
             return;
 
-        _documentViewModel.DrawingDefaults.TextStyleId = value?.Id;
+        var document = _documentViewModel.CadEditor.Document;
+        var fontFamily = value.Trim();
+        if (string.Equals(
+                TextPropertyViewModel.ResolveFontFamily(document, _documentViewModel.DrawingDefaults.TextStyleId),
+                fontFamily,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _documentViewModel.DrawingDefaults.TextStyleId =
+            TextPropertyViewModel.ResolveOrCreateFontStyle(document, fontFamily);
+        RefreshFromDocument();
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -474,11 +547,16 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
             : CadText.DefaultInvertedMarginFactor;
     }
 
-    private void RefreshTextStyleOptions(StyleId? selectedStyleId)
+    private void RefreshFontFamilyOptions(string selectedFontFamily)
     {
-        TextStyleOptions = TextPropertyViewModel.BuildTextStyleOptions(_documentViewModel.CadEditor.Document);
-        OnPropertyChanged(nameof(TextStyleOptions));
-        SelectedTextStyleOption = TextPropertyViewModel.FindTextStyleOption(TextStyleOptions, selectedStyleId);
+        FontFamilyOptions = TextPropertyViewModel.BuildFontFamilyOptions(
+            _documentViewModel.CadEditor.Document,
+            _systemFontCatalog.FontFamilies,
+            selectedFontFamily);
+        OnPropertyChanged(nameof(FontFamilyOptions));
+        SelectedFontFamily = FontFamilyOptions.FirstOrDefault(fontFamily =>
+                                 string.Equals(fontFamily, selectedFontFamily, StringComparison.OrdinalIgnoreCase))
+                             ?? selectedFontFamily;
     }
 
     private static bool IsFinitePositive(double value)

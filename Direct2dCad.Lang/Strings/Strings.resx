@@ -1053,4 +1053,7 @@
   <data name="Coordinates" xml:space="preserve">
     <value>Coordinates and size</value>
   </data>
+  <data name="Font" xml:space="preserve">
+    <value>Font</value>
+  </data>
 </root>

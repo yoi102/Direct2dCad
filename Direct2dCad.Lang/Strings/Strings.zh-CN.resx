@@ -858,4 +858,7 @@
   <data name="Coordinates" xml:space="preserve">
     <value>坐标与尺寸</value>
   </data>
+  <data name="Font" xml:space="preserve">
+    <value>字体</value>
+  </data>
 </root>
