@@ -21,4 +21,9 @@ public partial class DocumentDisplaySettingsViewModel : DocumentSettingsSectionV
         settings.BackgroundColor = BackgroundColor;
         return true;
     }
+
+    internal override void ResetToDefaults()
+    {
+        BackgroundColor = new CadViewSettings().BackgroundColor;
+    }
 }

@@ -170,8 +170,8 @@
     <comment>Continue Arc</comment>
   </data>
   <data name="Chinese" xml:space="preserve">
-    <value>Chinese</value>
-    <comment>Chinese</comment>
+    <value>中文</value>
+    <comment>中文</comment>
   </data>
   <data name="Circle" xml:space="preserve">
     <value>Circle</value>
@@ -218,8 +218,8 @@
     <comment>Fit</comment>
   </data>
   <data name="Japanese" xml:space="preserve">
-    <value>Japanese</value>
-    <comment>Japanese</comment>
+    <value>日本語</value>
+    <comment>日本語</comment>
   </data>
   <data name="Line" xml:space="preserve">
     <value>Line</value>
@@ -1022,5 +1022,8 @@
   </data>
   <data name="UserSettingsInvalidValues" xml:space="preserve">
     <value>Enter valid finite values. Sizes and stroke widths must be greater than zero.</value>
+  </data>
+  <data name="Reset" xml:space="preserve">
+    <value>Reset</value>
   </data>
 </root>

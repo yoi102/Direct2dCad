@@ -22,6 +22,12 @@ public partial class UserSettingsDialog
             viewModel.TryApply();
     }
 
+    private void Reset_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is IUserSettingsDialogViewModel viewModel)
+            viewModel.ResetToDefaults();
+    }
+
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;

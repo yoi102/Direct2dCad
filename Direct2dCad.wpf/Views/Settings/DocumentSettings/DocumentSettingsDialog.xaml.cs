@@ -22,6 +22,12 @@ public partial class DocumentSettingsDialog
             viewModel.TryApply();
     }
 
+    private void Reset_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is IDocumentSettingsDialogViewModel viewModel)
+            viewModel.ResetToDefaults();
+    }
+
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;

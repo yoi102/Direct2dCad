@@ -10,6 +10,11 @@ public partial class InteractionUserSettingsViewModel : UserSettingsSectionViewM
     public InteractionUserSettingsViewModel(CadInteractionUserSettings settings)
         : base(Localized("Interaction"))
     {
+        Load(settings);
+    }
+
+    private void Load(CadInteractionUserSettings settings)
+    {
         SelectedEntityStrokeColor = settings.SelectedEntityStrokeColor;
         SelectedEntityStrokeWidth = settings.SelectedEntityStrokeWidth;
         GripStrokeColor = settings.GripStrokeColor;
@@ -72,5 +77,10 @@ public partial class InteractionUserSettingsViewModel : UserSettingsSectionViewM
         interaction.SelectionCrossingFillColor = SelectionCrossingFillColor;
         interaction.SelectionCrossingStrokeWidth = SelectionCrossingStrokeWidth;
         return true;
+    }
+
+    internal override void ResetToDefaults()
+    {
+        Load(new CadInteractionUserSettings());
     }
 }

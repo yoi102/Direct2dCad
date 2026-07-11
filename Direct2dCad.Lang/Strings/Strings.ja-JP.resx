@@ -157,7 +157,7 @@
     <value>連続</value>
   </data>
   <data name="Chinese" xml:space="preserve">
-    <value>中国語</value>
+    <value>中文</value>
   </data>
   <data name="Circle" xml:space="preserve">
     <value>円</value>
@@ -187,7 +187,7 @@
     <value>点</value>
   </data>
   <data name="English" xml:space="preserve">
-    <value>英語</value>
+    <value>English</value>
   </data>
   <data name="Fit" xml:space="preserve">
     <value>ウィンドウに合わせ</value>
@@ -827,5 +827,8 @@
   </data>
   <data name="UserSettingsInvalidValues" xml:space="preserve">
     <value>有効な有限値を入力してください。サイズと線幅は 0 より大きい必要があります。</value>
+  </data>
+  <data name="Reset" xml:space="preserve">
+    <value>リセット</value>
   </data>
 </root>

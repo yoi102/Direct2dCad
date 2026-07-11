@@ -11,6 +11,11 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
     public DocumentGridSettingsViewModel(CadGridSettings settings)
         : base(Strings.GridAndSnapping)
     {
+        Load(settings);
+    }
+
+    private void Load(CadGridSettings settings)
+    {
         GridType = (ViewModelCadGridType)settings.Type;
         GridSpacingX = settings.SpacingX;
         GridSpacingY = settings.SpacingY;
@@ -76,5 +81,10 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
         grid.SnapMarkerLength = SnapMarkerLength;
         grid.SnapMarkerStrokeWidth = SnapMarkerStrokeWidth;
         return true;
+    }
+
+    internal override void ResetToDefaults()
+    {
+        Load(new CadGridSettings());
     }
 }

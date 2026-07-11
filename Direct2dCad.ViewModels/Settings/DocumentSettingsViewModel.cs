@@ -55,6 +55,14 @@ public partial class DocumentSettingsViewModel : ObservableObject, IDocumentSett
         return true;
     }
 
+    public void ResetToDefaults()
+    {
+        foreach (var section in Sections)
+            section.ResetToDefaults();
+
+        ValidationError = null;
+    }
+
     private static bool SettingsEqual(CadViewSettings left, CadViewSettings right)
     {
         var leftGrid = left.Grid;

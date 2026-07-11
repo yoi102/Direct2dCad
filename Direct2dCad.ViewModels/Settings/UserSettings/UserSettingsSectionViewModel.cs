@@ -15,6 +15,8 @@ public abstract class UserSettingsSectionViewModel : ObservableObject
 
     internal abstract bool TryApplyTo(CadUserSettings settings);
 
+    internal abstract void ResetToDefaults();
+
     protected static bool IsPositiveFinite(double value) =>
         value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
 

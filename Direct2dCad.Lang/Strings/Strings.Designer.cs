@@ -331,7 +331,7 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Chinese 的本地化字符串。
+        ///   查找类似 中文 的本地化字符串。
         /// </summary>
         public static string Chinese {
             get {
@@ -1069,7 +1069,7 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Japanese 的本地化字符串。
+        ///   查找类似 日本語 的本地化字符串。
         /// </summary>
         public static string Japanese {
             get {
@@ -1614,6 +1614,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Rendering {
             get {
                 return ResourceManager.GetString("Rendering", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Reset 的本地化字符串。
+        /// </summary>
+        public static string Reset {
+            get {
+                return ResourceManager.GetString("Reset", resourceCulture);
             }
         }
         

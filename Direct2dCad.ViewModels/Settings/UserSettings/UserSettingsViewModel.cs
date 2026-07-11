@@ -64,4 +64,12 @@ public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDial
             return false;
         }
     }
+
+    public void ResetToDefaults()
+    {
+        foreach (var section in Sections)
+            section.ResetToDefaults();
+
+        ValidationError = null;
+    }
 }

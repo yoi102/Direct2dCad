@@ -12,6 +12,11 @@ public partial class DocumentOriginSettingsViewModel : DocumentSettingsSectionVi
     public DocumentOriginSettingsViewModel(CadOriginSettings settings)
         : base(Strings.Origin)
     {
+        Load(settings);
+    }
+
+    private void Load(CadOriginSettings settings)
+    {
         OriginDisplayType = (ViewModelCadOriginDisplayType)settings.DisplayType;
         OriginMarkerType = (ViewModelCadOriginMarkerType)settings.MarkerType;
         OriginLinePattern = (ViewModelCadOriginLinePattern)settings.LinePattern;
@@ -48,5 +53,10 @@ public partial class DocumentOriginSettingsViewModel : DocumentSettingsSectionVi
         origin.Size = OriginSize;
         origin.StrokeWidth = OriginStrokeWidth;
         return true;
+    }
+
+    internal override void ResetToDefaults()
+    {
+        Load(new CadOriginSettings());
     }
 }

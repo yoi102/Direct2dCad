@@ -14,6 +14,8 @@ public abstract class DocumentSettingsSectionViewModel : ObservableObject
 
     internal abstract bool TryApplyTo(CadViewSettings settings);
 
+    internal abstract void ResetToDefaults();
+
     protected static bool IsPositiveFinite(double value) => value > 0 && IsFinite(value);
 
     protected static bool IsNonNegativeFinite(double value) => value >= 0 && IsFinite(value);

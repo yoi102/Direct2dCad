@@ -11,13 +11,18 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
     public GeneralUserSettingsViewModel(CadGeneralUserSettings settings)
         : base(Localized("General"))
     {
-        IsDarkTheme = settings.IsDarkTheme;
         CultureOptions =
         [
             new UserCultureOption(1033, Strings.English),
             new UserCultureOption(1041, Strings.Japanese),
             new UserCultureOption(2052, Strings.Chinese)
         ];
+        Load(settings);
+    }
+
+    private void Load(CadGeneralUserSettings settings)
+    {
+        IsDarkTheme = settings.IsDarkTheme;
         SelectedCulture = CultureOptions.FirstOrDefault(x => x.Lcid == settings.CultureLcid) ?? CultureOptions[0];
     }
 
@@ -25,7 +30,7 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
 
     [ObservableProperty] public partial bool IsDarkTheme { get; set; }
 
-    [ObservableProperty] public partial UserCultureOption SelectedCulture { get; set; }
+    [ObservableProperty] public partial UserCultureOption? SelectedCulture { get; set; }
 
     internal override bool TryApplyTo(CadUserSettings settings)
     {
@@ -35,5 +40,10 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
         settings.General.IsDarkTheme = IsDarkTheme;
         settings.General.CultureLcid = SelectedCulture.Lcid;
         return true;
+    }
+
+    internal override void ResetToDefaults()
+    {
+        Load(new CadGeneralUserSettings());
     }
 }

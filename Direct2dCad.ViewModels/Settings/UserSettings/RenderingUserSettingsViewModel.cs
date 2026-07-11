@@ -9,6 +9,11 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     public RenderingUserSettingsViewModel(CadRenderingUserSettings settings)
         : base(Localized("Rendering"))
     {
+        Load(settings);
+    }
+
+    private void Load(CadRenderingUserSettings settings)
+    {
         IsAntialiasingEnabled = settings.IsAntialiasingEnabled;
         IsTextAntialiasingEnabled = settings.IsTextAntialiasingEnabled;
     }
@@ -22,5 +27,10 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
         settings.Rendering.IsTextAntialiasingEnabled = IsTextAntialiasingEnabled;
         return true;
+    }
+
+    internal override void ResetToDefaults()
+    {
+        Load(new CadRenderingUserSettings());
     }
 }
