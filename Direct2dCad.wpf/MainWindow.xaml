@@ -23,9 +23,10 @@
                  mc:Ignorable="d"
                  d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
                  Topmost="{Binding Topmost}"
-                 TitleAlignment="Left"
+                 TitleAlignment="Center"
                  TitleCharacterCasing="Normal"
                  ShowIconOnTitleBar="True"
+                 Title="{I18N {x:Static r:LangKeys.Direct2dCad}}"
                  WindowStartupLocation="CenterScreen"
                  Height="1000"
                  Width="1200">
