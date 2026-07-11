@@ -20,7 +20,8 @@ public sealed class SetOleObjectDataCommand : ICadCommand
         string sourceName)
     {
         _entityId = entityId;
-        _next = new OleObjectData(oleBytes, contentType, sourceName);
+        ArgumentNullException.ThrowIfNull(oleBytes);
+        _next = new OleObjectData((byte[])oleBytes.Clone(), contentType, sourceName);
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -28,7 +29,9 @@ public sealed class SetOleObjectDataCommand : ICadCommand
         var oleObject = GetOleObject(document);
         _previous = OleObjectData.From(oleObject);
         _next.ApplyTo(oleObject);
-        return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Appearance);
+        return CadDocumentChangeSet.ForEntity(
+            _entityId,
+            CadEntityChangeKind.Appearance | CadEntityChangeKind.EmbeddedData);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -37,7 +40,9 @@ public sealed class SetOleObjectDataCommand : ICadCommand
             return CadDocumentChangeSet.Empty;
 
         _previous.ApplyTo(GetOleObject(document));
-        return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Appearance);
+        return CadDocumentChangeSet.ForEntity(
+            _entityId,
+            CadEntityChangeKind.Appearance | CadEntityChangeKind.EmbeddedData);
     }
 
     private CadOleObject GetOleObject(CadDocument document)

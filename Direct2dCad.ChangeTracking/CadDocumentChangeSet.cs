@@ -14,7 +14,8 @@ public enum CadEntityChangeKind
     Deleted = 32,
     DrawOrder = 64,
     Fill = 128,
-    Metadata = 256
+    Metadata = 256,
+    EmbeddedData = 512
 }
 
 public readonly record struct CadEntityChange(

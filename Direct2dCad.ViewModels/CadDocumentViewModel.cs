@@ -33,6 +33,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly IDisposable _oleObjectUpdatedSubscription;
     private readonly Guid _oleEditSessionId = Guid.NewGuid();
     private readonly HashSet<EntityId> _openOleEditEntityIds = [];
+    private bool _isApplyingOleHostUpdate;
     private readonly CadOverlaySceneCoordinator _overlayScenes = new();
     private readonly CadRenderResourceCoordinator _renderResources = new();
     private readonly CadGripDragController _gripDrag = new(new CadHandleHitTester());
@@ -861,11 +862,19 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return;
 
         // Storage changes are a document command; view-only changes are redrawn from the active OLE session.
-        CadEditor.SetOleObjectData(
-            message.EntityId,
-            message.Data.OleBytes,
-            message.Data.ContentType,
-            message.Data.SourceName);
+        _isApplyingOleHostUpdate = true;
+        try
+        {
+            CadEditor.SetOleObjectData(
+                message.EntityId,
+                message.Data.OleBytes,
+                message.Data.ContentType,
+                message.Data.SourceName);
+        }
+        finally
+        {
+            _isApplyingOleHostUpdate = false;
+        }
     }
 
     private Direct2DOleDrawData? DrawOleObjectForRender(Direct2DOleDrawRequest request)
@@ -1446,6 +1455,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
         CloseStaleOleEditSessions();
+        CloseReplacedOleEditSessions(e);
         ReleaseChangedOleRenderSessions(e);
 
         if (!_renderResources.IsApplyingTextMeasurementChanges)
@@ -1456,6 +1466,23 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (e.DocumentChanged)
             RaiseInteractionStateChanged();
+    }
+
+    private void CloseReplacedOleEditSessions(CadDocumentChangeSet changes)
+    {
+        if (_isApplyingOleHostUpdate || _openOleEditEntityIds.Count == 0)
+            return;
+
+        foreach (var change in changes.EntityChanges)
+        {
+            if ((change.Kind & CadEntityChangeKind.EmbeddedData) == 0 ||
+                !_openOleEditEntityIds.Remove(change.EntityId))
+            {
+                continue;
+            }
+
+            _oleImportService.EndEditSession(_oleEditSessionId, change.EntityId);
+        }
     }
 
     private void ReleaseChangedOleRenderSessions(CadDocumentChangeSet changes)
