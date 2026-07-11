@@ -182,47 +182,63 @@ public sealed class Direct2DImageRenderHost : IDisposable
 
         try
         {
-            _target.DrawFrame(context =>
+            if (_document is not null && _viewport is not null)
             {
-                if (!effectiveInvalidation.IsFull)
+                _renderer.PrepareOleTiles(
+                    _document,
+                    _viewport,
+                    _transientScene,
+                    _renderOptions);
+            }
+
+            try
+            {
+                _target.DrawFrame(context =>
                 {
-                    foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
+                    if (!effectiveInvalidation.IsFull)
                     {
-                        var clip = ToRawRectF(dirty);
-                        var previousTransform = context.Transform;
-                        context.Transform = System.Numerics.Matrix3x2.Identity;
-                        context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
-
-                        try
+                        foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
                         {
-                            FillScreenRect(context, clip, background);
+                            var clip = ToRawRectF(dirty);
+                            var previousTransform = context.Transform;
+                            context.Transform = System.Numerics.Matrix3x2.Identity;
+                            context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
 
-                            if (_document is not null && _viewport is not null)
+                            try
                             {
-                                var dirtyWorldBounds = ScreenRectToWorldBounds(dirty, _viewport);
-                                _renderer.Render(
-                                    _document,
-                                    _viewport,
-                                    _transientScene,
-                                    _handleScene,
-                                    CreateRenderOptions(dirtyWorldBounds));
+                                FillScreenRect(context, clip, background);
+
+                                if (_document is not null && _viewport is not null)
+                                {
+                                    var dirtyWorldBounds = ScreenRectToWorldBounds(dirty, _viewport);
+                                    _renderer.Render(
+                                        _document,
+                                        _viewport,
+                                        _transientScene,
+                                        _handleScene,
+                                        CreateRenderOptions(dirtyWorldBounds));
+                                }
+                            }
+                            finally
+                            {
+                                context.PopAxisAlignedClip();
+                                context.Transform = previousTransform;
                             }
                         }
-                        finally
-                        {
-                            context.PopAxisAlignedClip();
-                            context.Transform = previousTransform;
-                        }
+
+                        return;
                     }
 
-                    return;
-                }
+                    context.Clear(background);
 
-                context.Clear(background);
-
-                if (_document is not null && _viewport is not null)
-                    _renderer.Render(_document, _viewport, _transientScene, _handleScene, _renderOptions);
-            }, effectiveInvalidation.IsFull ? null : effectiveInvalidation.DirtyScreenRects);
+                    if (_document is not null && _viewport is not null)
+                        _renderer.Render(_document, _viewport, _transientScene, _handleScene, _renderOptions);
+                }, effectiveInvalidation.IsFull ? null : effectiveInvalidation.DirtyScreenRects);
+            }
+            finally
+            {
+                _renderer.CompleteFrame();
+            }
         }
         catch (Direct2DDeviceResourcesRecreatedException) when (retryAfterDeviceResourceRecreation)
         {

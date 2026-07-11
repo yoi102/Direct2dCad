@@ -122,6 +122,41 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         Invalidate(new[] { dirtyRect });
     }
 
+    public void Present(Action presentAction, IReadOnlyList<IntRect>? dirtyRects = null)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(presentAction);
+
+        if (!_hasBackBuffer || !IsFrontBufferAvailable)
+        {
+            presentAction();
+            return;
+        }
+
+        Lock();
+        try
+        {
+            presentAction();
+            if (dirtyRects is { Count: > 0 })
+            {
+                foreach (var dirtyRect in dirtyRects)
+                {
+                    var clampedRect = ClampDirtyRect(dirtyRect);
+                    if (clampedRect.Width > 0 && clampedRect.Height > 0)
+                        AddDirtyRect(clampedRect);
+                }
+            }
+            else if (_surfaceWidth > 0 && _surfaceHeight > 0)
+            {
+                AddDirtyRect(new Int32Rect(0, 0, _surfaceWidth, _surfaceHeight));
+            }
+        }
+        finally
+        {
+            Unlock();
+        }
+    }
+
     public void Invalidate(Int32Rect dirtyRect)
     {
         if (!_hasBackBuffer)

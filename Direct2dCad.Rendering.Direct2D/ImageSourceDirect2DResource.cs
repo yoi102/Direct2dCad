@@ -29,6 +29,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     private IDirect3DDevice9Ex? _d3d9Device;
 
     private ID3D11Texture2D? _d3d11RenderTarget;
+    private ID3D11Texture2D? _d3d11BackBuffer;
     private IDXGISurface? _dxgiSurface;
     private ID2D1Bitmap1? _targetBitmap;
 
@@ -85,6 +86,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     public bool IsTargetReady =>
         _imageSource != null &&
         _d3d11RenderTarget != null &&
+        _d3d11BackBuffer != null &&
         _targetBitmap != null &&
         _sharedSurface9 != null;
 
@@ -192,15 +194,19 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             }
 
 
-            _d3dContext?.Flush();
+            void PresentBackBuffer()
+            {
+                if (_d3dContext is null || _d3d11RenderTarget is null || _d3d11BackBuffer is null)
+                    return;
+
+                _d3dContext.CopyResource(_d3d11RenderTarget, _d3d11BackBuffer);
+                _d3dContext.Flush();
+            }
 
             if (_imageSource is not null)
-            {
-                if (dirtyRects is { Count: > 0 })
-                    _imageSource.Invalidate(ToIntRects(dirtyRects));
-                else
-                    _imageSource.Invalidate();
-            }
+                _imageSource.Present(PresentBackBuffer, dirtyRects is { Count: > 0 } ? ToIntRects(dirtyRects) : null);
+            else
+                PresentBackBuffer();
         }
         finally
         {
@@ -386,7 +392,11 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             presentParams);
     }
 
-    [MemberNotNull(nameof(_d3dDevice), nameof(_d3d11RenderTarget), nameof(_dxgiSurface))]
+    [MemberNotNull(
+        nameof(_d3dDevice),
+        nameof(_d3d11RenderTarget),
+        nameof(_d3d11BackBuffer),
+        nameof(_dxgiSurface))]
     private void CreateD3D11RenderTargetTexture()
     {
         if (_d3dDevice is null)
@@ -409,7 +419,11 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         };
 
         _d3d11RenderTarget = _d3dDevice.CreateTexture2D(desc);
-        _dxgiSurface = _d3d11RenderTarget.QueryInterface<IDXGISurface>();
+
+        desc.BindFlags = BindFlags.RenderTarget;
+        desc.MiscFlags = ResourceOptionFlags.None;
+        _d3d11BackBuffer = _d3dDevice.CreateTexture2D(desc);
+        _dxgiSurface = _d3d11BackBuffer.QueryInterface<IDXGISurface>();
     }
 
     [MemberNotNull(nameof(_d2dContext), nameof(_dxgiSurface), nameof(_targetBitmap))]
@@ -540,6 +554,9 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         _d3d11RenderTarget?.Dispose();
         _d3d11RenderTarget = null;
+
+        _d3d11BackBuffer?.Dispose();
+        _d3d11BackBuffer = null;
     }
 
     private void ReleaseDeviceResources()
@@ -616,6 +633,8 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     [MemberNotNull(
         nameof(_imageSource),
         nameof(_d2dContext),
+        nameof(_d3d11RenderTarget),
+        nameof(_d3d11BackBuffer),
         nameof(_targetBitmap),
         nameof(_sharedSurface9))]
     private void EnsureTargetReady()
@@ -625,6 +644,12 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         if (_d2dContext == null)
             throw new InvalidOperationException("Direct2D device context is not created.");
+
+        if (_d3d11RenderTarget == null)
+            throw new InvalidOperationException("D3D11 shared render target is not created.");
+
+        if (_d3d11BackBuffer == null)
+            throw new InvalidOperationException("D3D11 back buffer is not created.");
 
         if (_targetBitmap == null)
             throw new InvalidOperationException("Direct2D target bitmap is not created.");

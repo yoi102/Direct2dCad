@@ -42,18 +42,35 @@ public static class CadOleServices
         return new CadOleRenderSession(oleBytes);
     }
 
-    internal static CadOleDrawData Draw(DrawableOleObject oleObject, int pixelWidth, int pixelHeight)
+    internal static CadOleDrawData DrawRegion(
+        DrawableOleObject oleObject,
+        int fullPixelWidth,
+        int fullPixelHeight,
+        int regionX,
+        int regionY,
+        int regionWidth,
+        int regionHeight)
     {
         ArgumentNullException.ThrowIfNull(oleObject);
 
-        pixelWidth = Math.Clamp(pixelWidth, 1, 8192);
-        pixelHeight = Math.Clamp(pixelHeight, 1, 8192);
+        fullPixelWidth = Math.Clamp(fullPixelWidth, 1, 1_048_576);
+        fullPixelHeight = Math.Clamp(fullPixelHeight, 1, 1_048_576);
+        regionWidth = Math.Clamp(regionWidth, 1, 2048);
+        regionHeight = Math.Clamp(regionHeight, 1, 2048);
+        regionX = Math.Clamp(regionX, 0, fullPixelWidth - regionWidth);
+        regionY = Math.Clamp(regionY, 0, fullPixelHeight - regionHeight);
 
-        var pixels = oleObject.Draw(pixelWidth, pixelHeight);
+        var pixels = oleObject.Draw(
+            fullPixelWidth,
+            fullPixelHeight,
+            regionX,
+            regionY,
+            regionWidth,
+            regionHeight);
         return new CadOleDrawData(
-            pixelWidth,
-            pixelHeight,
-            checked(pixelWidth * 4),
+            regionWidth,
+            regionHeight,
+            checked(regionWidth * 4),
             pixels);
     }
 
@@ -103,10 +120,23 @@ public static class CadOleServices
             _oleObject.OpenEditor(parentHwnd, containerName);
         }
 
-        public CadOleDrawData Draw(int pixelWidth, int pixelHeight)
+        public CadOleDrawData DrawRegion(
+            int fullPixelWidth,
+            int fullPixelHeight,
+            int regionX,
+            int regionY,
+            int regionWidth,
+            int regionHeight)
         {
             ThrowIfDisposed();
-            return CadOleServices.Draw(_oleObject, pixelWidth, pixelHeight);
+            return CadOleServices.DrawRegion(
+                _oleObject,
+                fullPixelWidth,
+                fullPixelHeight,
+                regionX,
+                regionY,
+                regionWidth,
+                regionHeight);
         }
 
         private void OnHostViewChanged(object? sender, EventArgs e)
@@ -159,10 +189,23 @@ public static class CadOleServices
             _oleObject = DrawableOleObjectFactory.CreateFromBytes(oleBytes);
         }
 
-        public CadOleDrawData Draw(int pixelWidth, int pixelHeight)
+        public CadOleDrawData DrawRegion(
+            int fullPixelWidth,
+            int fullPixelHeight,
+            int regionX,
+            int regionY,
+            int regionWidth,
+            int regionHeight)
         {
             ThrowIfDisposed();
-            return CadOleServices.Draw(_oleObject, pixelWidth, pixelHeight);
+            return CadOleServices.DrawRegion(
+                _oleObject,
+                fullPixelWidth,
+                fullPixelHeight,
+                regionX,
+                regionY,
+                regionWidth,
+                regionHeight);
         }
 
         public void Dispose()

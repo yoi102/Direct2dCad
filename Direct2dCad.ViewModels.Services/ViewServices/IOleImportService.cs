@@ -5,7 +5,7 @@ namespace Direct2dCad.ViewModels.Services.ViewServices;
 public interface IOleImportService
 {
     CadOleImportData? LoadFromClipboard();
-    CadOleDrawData? DrawOleObject(Guid sessionId, EntityId? entityId, Guid renderId, byte[] oleBytes, int pixelWidth, int pixelHeight);
+    CadOleDrawData? DrawOleObject(Guid sessionId, CadOleDrawRequest request);
     void BeginEdit(Guid sessionId, EntityId entityId, byte[] oleBytes, string objectName);
     void EndEditSession(Guid sessionId, EntityId entityId);
     void EndEditSessions(Guid sessionId);

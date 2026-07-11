@@ -124,17 +124,36 @@ internal sealed class DrawableOleObject : IDisposable
 
     public byte[] Draw(int width, int height)
     {
+        return Draw(width, height, 0, 0, width, height);
+    }
+
+    public byte[] Draw(
+        int fullWidth,
+        int fullHeight,
+        int regionX,
+        int regionY,
+        int regionWidth,
+        int regionHeight)
+    {
         if (_oleObject is null)
             throw new ObjectDisposedException(nameof(DrawableOleObject));
 
-        var stride = checked(width * 4);
+        if (fullWidth <= 0 || fullHeight <= 0)
+            throw new ArgumentOutOfRangeException(nameof(fullWidth));
+        if (regionX < 0 || regionY < 0 || regionWidth <= 0 || regionHeight <= 0 ||
+            regionX > fullWidth - regionWidth || regionY > fullHeight - regionHeight)
+        {
+            throw new ArgumentOutOfRangeException(nameof(regionX));
+        }
+
+        var stride = checked(regionWidth * 4);
         var hdc = CreateCompatibleDC(HDC.NULL);
         if (hdc == HDC.NULL)
             throw new InvalidOperationException("CreateCompatibleDC failed.");
 
-        var bitmapInfo = new BITMAPINFO(width, -height, 32);
+        var bitmapInfo = new BITMAPINFO(regionWidth, -regionHeight, 32);
         bitmapInfo.bmiHeader.biCompression = BitmapCompressionMode.BI_RGB;
-        bitmapInfo.bmiHeader.biSizeImage = checked((uint)(stride * height));
+        bitmapInfo.bmiHeader.biSizeImage = checked((uint)(stride * regionHeight));
 
         var bitmap = CreateDIBSection(
             hdc,
@@ -153,7 +172,7 @@ internal sealed class DrawableOleObject : IDisposable
         var previous = SelectObject(hdc, bitmap);
         try
         {
-            var clear = new byte[checked(stride * height)];
+            var clear = new byte[checked(stride * regionHeight)];
             for (var i = 0; i < clear.Length; i += 4)
             {
                 clear[i] = 255;
@@ -164,7 +183,12 @@ internal sealed class DrawableOleObject : IDisposable
 
             Marshal.Copy(clear, 0, bits, clear.Length);
 
-            var rect = new RECT(0, 0, width, height);
+            // Keep the full-object scale and shift the requested region into the tile DIB.
+            var rect = new RECT(
+                -regionX,
+                -regionY,
+                checked(fullWidth - regionX),
+                checked(fullHeight - regionY));
             OleDraw(_oleObject, DrawAspect, hdc, in rect).ThrowIfFailed("OleDraw failed.");
 
             var pixels = new byte[clear.Length];

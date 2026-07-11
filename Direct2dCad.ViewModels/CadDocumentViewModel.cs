@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Direct2dCad.ChangeTracking;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
@@ -873,11 +872,16 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         var drawData = _oleImportService.DrawOleObject(
             _oleEditSessionId,
-            request.RenderKey.EntityId,
-            request.RenderKey.RenderId,
-            request.OleBytes,
-            request.PixelWidth,
-            request.PixelHeight);
+            new CadOleDrawRequest(
+                request.RenderKey.EntityId,
+                request.RenderKey.RenderId,
+                request.OleBytes,
+                request.FullPixelWidth,
+                request.FullPixelHeight,
+                request.RegionX,
+                request.RegionY,
+                request.PixelWidth,
+                request.PixelHeight));
 
         return drawData is null
             ? null

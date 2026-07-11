@@ -6,6 +6,7 @@ public interface ID3D11ImageSource
     int SurfaceHeight { get; }
     void SetSize(int width, int height);
     void SetSurface(nint surface9Ptr);
+    void Present(Action presentAction, IReadOnlyList<IntRect>? dirtyRects = null);
     void Invalidate();
     void Invalidate(IntRect dirtyRect);
     void Invalidate(IReadOnlyList<IntRect> dirtyRects);

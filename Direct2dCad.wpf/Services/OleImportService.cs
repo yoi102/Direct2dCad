@@ -57,26 +57,34 @@ internal sealed class OleImportService : IOleImportService, IDisposable
 
     public ViewOleDrawData? DrawOleObject(
         Guid sessionId,
-        EntityId? entityId,
-        Guid renderId,
-        byte[] oleBytes,
-        int pixelWidth,
-        int pixelHeight)
+        CadOleDrawRequest request)
     {
-        if (entityId is { } persistedEntityId &&
+        if (request.EntityId is { } persistedEntityId &&
             _editSessions.TryGetValue((sessionId, persistedEntityId), out var session))
         {
-            return ToDrawData(session.Draw(pixelWidth, pixelHeight));
+            return ToDrawData(session.DrawRegion(
+                request.FullPixelWidth,
+                request.FullPixelHeight,
+                request.RegionX,
+                request.RegionY,
+                request.PixelWidth,
+                request.PixelHeight));
         }
 
-        var key = new RenderSessionKey(sessionId, entityId, renderId);
+        var key = new RenderSessionKey(sessionId, request.EntityId, request.RenderId);
         if (!_renderSessions.TryGetValue(key, out var renderSession))
         {
-            renderSession = CadOleServices.CreateRenderSession(oleBytes);
+            renderSession = CadOleServices.CreateRenderSession(request.OleBytes);
             _renderSessions[key] = renderSession;
         }
 
-        return ToDrawData(renderSession.Draw(pixelWidth, pixelHeight));
+        return ToDrawData(renderSession.DrawRegion(
+            request.FullPixelWidth,
+            request.FullPixelHeight,
+            request.RegionX,
+            request.RegionY,
+            request.PixelWidth,
+            request.PixelHeight));
     }
 
     public void EndEditSession(Guid sessionId, EntityId entityId)
