@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db.Cad.Settings;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Settings;
 

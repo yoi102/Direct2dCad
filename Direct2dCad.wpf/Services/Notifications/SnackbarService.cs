@@ -1,9 +1,9 @@
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.wpf.Assists;
 using MaterialDesignThemes.Wpf;
 using System.Windows;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Notifications;
 
 internal sealed class SnackbarService : ISnackbarService
 {
@@ -65,7 +65,7 @@ internal sealed class SnackbarService : ISnackbarService
 
     private static void InvokeOnUi(Action action)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is null || dispatcher.CheckAccess())
         {
             action();

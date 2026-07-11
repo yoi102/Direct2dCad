@@ -4,11 +4,11 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Toolboxes;
 
-internal class ToolboxIconsService : IToolboxIconsService
+internal sealed class ToolboxIconProvider : IToolboxIconProvider
 {
     public object Explorer => CreateExplorerIcon();
     public object Layers => CreateLayersIcon();

@@ -1,8 +1,8 @@
 using Direct2dCad.Db;
 
-namespace Direct2dCad.ViewModels.Services.ViewServices;
+namespace Direct2dCad.ViewModels.Services.Platform;
 
-public interface IOleImportService
+public interface IOleHostService
 {
     CadOleImportData? LoadFromClipboard();
     CadOleDrawData? DrawOleObject(Guid sessionId, CadOleDrawRequest request);

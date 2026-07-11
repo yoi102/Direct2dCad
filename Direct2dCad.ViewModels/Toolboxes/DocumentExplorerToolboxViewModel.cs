@@ -4,7 +4,7 @@ using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.ViewModels.Services.Events;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
@@ -16,13 +16,13 @@ public partial class DocumentExplorerToolboxViewModel : ObservableToolboxBase
     private bool _isSynchronizingSelection;
 
     public DocumentExplorerToolboxViewModel(
-        IToolboxIconsService toolboxIconsService,
+        IToolboxIconProvider toolboxIconProvider,
         ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
     {
         _documentSummaryChangedSubscriber = documentSummaryChangedSubscriber;
         ContentId = Id = Guid.NewGuid().ToString();
         Title = "Documents";
-        Icon = toolboxIconsService.Explorer;
+        Icon = toolboxIconProvider.Explorer;
         Shortcut = "Ctrl+Shift+E";
         IsOpenByDefault = true;
         CanClose = false;

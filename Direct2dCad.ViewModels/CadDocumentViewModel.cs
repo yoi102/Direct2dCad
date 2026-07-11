@@ -22,7 +22,7 @@ using Direct2dCad.ViewModels.Services.Rendering;
 using Direct2dCad.ViewModels.Services.Snapping;
 using Direct2dCad.ViewModels.Services.Styling;
 using Direct2dCad.ViewModels.Services.Text;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
@@ -42,7 +42,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly CadPanInteractionController _pan = new();
     private readonly CadPasteInteractionController _paste;
     private readonly IImageImportService _imageImportService;
-    private readonly IOleImportService _oleImportService;
+    private readonly IOleHostService _oleHostService;
     private readonly CadSelectionDragController _selectionDrag = new();
     private readonly CadDrawingSessionState _drawingState = new();
     private LayerId _drawingLayerId = LayerId.Default;
@@ -113,12 +113,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         ISubscriber<CadOleObjectUpdatedMessage> oleObjectUpdatedSubscriber,
         ICadClipboardStore clipboardStore,
         IImageImportService imageImportService,
-        IOleImportService oleImportService)
+        IOleHostService oleHostService)
     {
         _interactionStateChangedPublisher = interactionStateChangedPublisher;
         _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
         _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
-        _oleImportService = oleImportService ?? throw new ArgumentNullException(nameof(oleImportService));
+        _oleHostService = oleHostService ?? throw new ArgumentNullException(nameof(oleHostService));
         _oleObjectUpdatedSubscription = (oleObjectUpdatedSubscriber ?? throw new ArgumentNullException(nameof(oleObjectUpdatedSubscriber)))
             .Subscribe(OnOleObjectUpdated);
         Direct2DImageRenderHost.SetOleDrawCallback(DrawOleObjectForRender);
@@ -134,8 +134,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (wasAttached)
             DetachRenderResources();
 
-        _oleImportService.EndEditSessions(_oleEditSessionId);
-        _oleImportService.ReleaseRenderSessions(_oleEditSessionId);
+        _oleHostService.EndEditSessions(_oleEditSessionId);
+        _oleHostService.ReleaseRenderSessions(_oleEditSessionId);
         _openOleEditEntityIds.Clear();
         CadEditor.EditorStateChanged -= OnEditorStateChanged;
         CadEditor = editor ?? throw new ArgumentNullException(nameof(editor));
@@ -474,7 +474,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadOleImportData? oleObject;
         try
         {
-            oleObject = _oleImportService.LoadFromClipboard();
+            oleObject = _oleHostService.LoadFromClipboard();
         }
         catch
         {
@@ -524,7 +524,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         try
         {
-            _oleImportService.BeginEdit(
+            _oleHostService.BeginEdit(
                 _oleEditSessionId,
                 oleObject.Id,
                 oleObject.CopyOleBytes(),
@@ -576,7 +576,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private Direct2DOleDrawData? DrawOleObjectForRender(Direct2DOleDrawRequest request)
     {
-        var drawData = _oleImportService.DrawOleObject(
+        var drawData = _oleHostService.DrawOleObject(
             _oleEditSessionId,
             new CadOleDrawRequest(
                 request.RenderKey.EntityId,
@@ -961,9 +961,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void ReleaseOleRenderSession(Direct2DOleRenderKey renderKey)
     {
         if (renderKey.EntityId is { } entityId)
-            _oleImportService.ReleaseRenderSession(_oleEditSessionId, entityId);
+            _oleHostService.ReleaseRenderSession(_oleEditSessionId, entityId);
         else
-            _oleImportService.ReleaseTransientRenderSession(_oleEditSessionId, renderKey.RenderId);
+            _oleHostService.ReleaseTransientRenderSession(_oleEditSessionId, renderKey.RenderId);
     }
 
     private CadHandleSceneBuildOptions CreateHandleSceneBuildOptions()
@@ -1178,7 +1178,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 continue;
             }
 
-            _oleImportService.EndEditSession(_oleEditSessionId, change.EntityId);
+            _oleHostService.EndEditSession(_oleEditSessionId, change.EntityId);
         }
     }
 
@@ -1189,7 +1189,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             if (!ShouldReleaseOleRenderSession(change))
                 continue;
 
-            _oleImportService.ReleaseRenderSession(_oleEditSessionId, change.EntityId);
+            _oleHostService.ReleaseRenderSession(_oleEditSessionId, change.EntityId);
         }
     }
 
@@ -1219,7 +1219,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 continue;
             }
 
-            _oleImportService.EndEditSession(_oleEditSessionId, entityId);
+            _oleHostService.EndEditSession(_oleEditSessionId, entityId);
             _openOleEditEntityIds.Remove(entityId);
         }
     }
@@ -1251,8 +1251,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return;
 
         DetachRenderResources();
-        _oleImportService.EndEditSessions(_oleEditSessionId);
-        _oleImportService.ReleaseRenderSessions(_oleEditSessionId);
+        _oleHostService.EndEditSessions(_oleEditSessionId);
+        _oleHostService.ReleaseRenderSessions(_oleEditSessionId);
         _openOleEditEntityIds.Clear();
         _oleObjectUpdatedSubscription.Dispose();
         CadEditor.EditorStateChanged -= OnEditorStateChanged;

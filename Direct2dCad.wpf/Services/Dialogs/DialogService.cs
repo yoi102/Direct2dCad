@@ -1,13 +1,13 @@
 using System.Windows;
 using Direct2dCad.Client.Common;
 using Direct2dCad.Lang.Strings;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.wpf.Views.Dialogs;
 using Direct2dCad.wpf.Views.Settings.DocumentSettings;
 using Direct2dCad.wpf.Views.Settings.UserSettings;
 using MaterialDesignThemes.Wpf;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Dialogs;
 
 internal sealed class DialogService : IDialogService
 {
@@ -106,7 +106,7 @@ internal sealed class DialogService : IDialogService
 
     private static void InvokeOnUi(Action action)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is null || dispatcher.CheckAccess())
         {
             action();
@@ -118,7 +118,7 @@ internal sealed class DialogService : IDialogService
 
     private static Task<T> InvokeOnUiAsync<T>(Func<Task<T>> action)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher is null || dispatcher.CheckAccess())
             return action();
 
@@ -132,7 +132,7 @@ internal sealed class DialogService : IDialogService
         {
             var settingsDialog = new DocumentSettingsDialog
             {
-                Owner = Application.Current?.MainWindow,
+                Owner = System.Windows.Application.Current?.MainWindow,
                 DataContext = viewModel
             };
             settingsDialog.ShowDialog();
@@ -146,7 +146,7 @@ internal sealed class DialogService : IDialogService
         {
             var settingsDialog = new UserSettingsDialog
             {
-                Owner = Application.Current?.MainWindow,
+                Owner = System.Windows.Application.Current?.MainWindow,
                 DataContext = viewModel
             };
             settingsDialog.ShowDialog();

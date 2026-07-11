@@ -5,11 +5,16 @@ using AvalonDock.DependencyInjection;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 using Direct2dCad.wpf;
-using Direct2dCad.wpf.Services;
+using Direct2dCad.wpf.Services.Application;
+using Direct2dCad.wpf.Services.Dialogs;
+using Direct2dCad.wpf.Services.Importing;
+using Direct2dCad.wpf.Services.Notifications;
+using Direct2dCad.wpf.Services.Ole;
+using Direct2dCad.wpf.Services.Toolboxes;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Direct2dCad;
@@ -49,8 +54,8 @@ public partial class App : System.Windows.Application
     {
         services.AddDirect2dCadEditor()
                 .AddViewModels();
-        services.AddSingleton<ICultureSettingService, CultureSettingService>()
-                .AddSingleton<IThemeSettingService, ThemeSettingService>();
+        services.AddSingleton<IApplicationCultureService, ApplicationCultureService>()
+                .AddSingleton<IApplicationThemeService, ApplicationThemeService>();
         services.AddMessagePipe();
 
 
@@ -73,11 +78,11 @@ public partial class App : System.Windows.Application
 
         services.AddTransient<IFileDialogService, FileDialogService>();
         services.AddSingleton<IImageImportService, ImageImportService>();
-        services.AddSingleton<IOleImportService, OleImportService>();
+        services.AddSingleton<IOleHostService, OleHostService>();
         services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<IUserSettingsService, UserSettingsService>();
+        services.AddSingleton<IUserSettingsStore, JsonUserSettingsStore>();
         services.AddSingleton<ISnackbarService, SnackbarService>();
-        services.AddSingleton<IToolboxIconsService, ToolboxIconsService>();
+        services.AddSingleton<IToolboxIconProvider, ToolboxIconProvider>();
 
         services.AddTransient<MainWindow>();
     }

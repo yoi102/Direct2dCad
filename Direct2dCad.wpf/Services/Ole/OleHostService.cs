@@ -3,20 +3,20 @@ using System.Windows.Interop;
 using Direct2dCad.Ole.Windows;
 using Direct2dCad.Db;
 using Direct2dCad.ViewModels.Services.Events;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
 using OleDrawData = Direct2dCad.Ole.Windows.CadOleDrawData;
-using ViewOleDrawData = Direct2dCad.ViewModels.Services.ViewServices.CadOleDrawData;
+using ViewOleDrawData = Direct2dCad.ViewModels.Services.Platform.CadOleDrawData;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Ole;
 
-internal sealed class OleImportService : IOleImportService, IDisposable
+internal sealed class OleHostService : IOleHostService, IDisposable
 {
     private readonly IPublisher<CadOleObjectUpdatedMessage> _updatedPublisher;
     private readonly Dictionary<(Guid SessionId, EntityId EntityId), CadOleServices.CadOleEditSession> _editSessions = [];
     private readonly Dictionary<RenderSessionKey, CadOleServices.CadOleRenderSession> _renderSessions = [];
 
-    public OleImportService(IPublisher<CadOleObjectUpdatedMessage> updatedPublisher)
+    public OleHostService(IPublisher<CadOleObjectUpdatedMessage> updatedPublisher)
     {
         _updatedPublisher = updatedPublisher;
     }
@@ -43,7 +43,7 @@ internal sealed class OleImportService : IOleImportService, IDisposable
         if (_editSessions.Remove(key, out var priorSession))
             priorSession.Dispose();
 
-        var hwnd = Application.Current?.MainWindow is { } window
+        var hwnd = System.Windows.Application.Current?.MainWindow is { } window
             ? new WindowInteropHelper(window).Handle
             : IntPtr.Zero;
 
@@ -146,7 +146,7 @@ internal sealed class OleImportService : IOleImportService, IDisposable
         bool isPersisted)
     {
         var updated = ToImportData(data);
-        _ = Application.Current?.Dispatcher.BeginInvoke(() =>
+        _ = System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
             _updatedPublisher.Publish(new CadOleObjectUpdatedMessage(sessionId, entityId, updated, isPersisted)));
     }
 

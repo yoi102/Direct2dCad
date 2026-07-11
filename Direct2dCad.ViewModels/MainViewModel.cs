@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Settings;
 using Direct2dCad.ViewModels.Settings.UserSettings;
 using Direct2dCad.ViewModels.Toolboxes;
@@ -21,19 +21,19 @@ public partial class MainViewModel : ObservableObject
     private readonly ISnackbarService _snackbarService;
     private readonly IDockLayoutService _dockLayoutService;
     private readonly SideToggleManager _sideToggleManager;
-    private readonly ICultureSettingService _cultureSettingService;
-    private readonly IThemeSettingService _themeSettingService;
-    private readonly IUserSettingsService _userSettingsService;
+    private readonly IApplicationCultureService _cultureSettingService;
+    private readonly IApplicationThemeService _themeSettingService;
+    private readonly IUserSettingsStore _userSettingsStore;
     private readonly CadUserSettings _userSettings;
     private readonly CadDocumentStorage _storage = new();
 
     public MainViewModel(IDockLayoutService dockLayoutService, SideToggleManager sideToggleManager,
-        ICultureSettingService cultureSettingService,
-        IThemeSettingService themeSettingService,
+        IApplicationCultureService cultureSettingService,
+        IApplicationThemeService themeSettingService,
         IFileDialogService fileDialogService,
         IImageImportService imageImportService,
         IDialogService dialogService,
-        IUserSettingsService userSettingsService,
+        IUserSettingsStore userSettingsStore,
         ISnackbarService snackbarService
         )
     {
@@ -46,8 +46,8 @@ public partial class MainViewModel : ObservableObject
         _fileDialogService = fileDialogService;
         _imageImportService = imageImportService;
         _dialogService = dialogService;
-        _userSettingsService = userSettingsService;
-        _userSettings = userSettingsService.Load();
+        _userSettingsStore = userSettingsStore;
+        _userSettings = userSettingsStore.Load();
         _snackbarService = snackbarService;
         DocumentExplorer = _dockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DocumentExplorerToolboxViewModel));
         DocumentExplorer.Attach(_dockLayoutService);
@@ -193,7 +193,7 @@ public partial class MainViewModel : ObservableObject
     private void OpenUserSettingsDialog()
     {
         _dialogService.ShowUserSettingsDialog(
-            new UserSettingsViewModel(_userSettings, _userSettingsService, ApplyUserSettings));
+            new UserSettingsViewModel(_userSettings, _userSettingsStore, ApplyUserSettings));
     }
 
     private void ApplyUserSettings(CadUserSettings settings)
@@ -378,7 +378,7 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            _userSettingsService.Save(_userSettings);
+            _userSettingsStore.Save(_userSettings);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

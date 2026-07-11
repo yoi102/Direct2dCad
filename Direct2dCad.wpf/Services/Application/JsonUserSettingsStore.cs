@@ -1,11 +1,11 @@
 using System.IO;
 using System.Text.Json;
 using Direct2dCad.Client.Common.Settings;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Application;
 
-internal sealed class UserSettingsService : IUserSettingsService
+internal sealed class JsonUserSettingsStore : IUserSettingsStore
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -14,7 +14,7 @@ internal sealed class UserSettingsService : IUserSettingsService
 
     private readonly string _filePath;
 
-    public UserSettingsService()
+    public JsonUserSettingsStore()
         : this(Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "Direct2dCad",
@@ -22,7 +22,7 @@ internal sealed class UserSettingsService : IUserSettingsService
     {
     }
 
-    internal UserSettingsService(string filePath)
+    internal JsonUserSettingsStore(string filePath)
     {
         _filePath = filePath;
     }

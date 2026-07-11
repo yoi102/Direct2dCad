@@ -1,6 +1,6 @@
 using Direct2dCad.Db;
 
-namespace Direct2dCad.ViewModels.Services.ViewServices;
+namespace Direct2dCad.ViewModels.Services.Platform;
 
 public sealed record CadOleDrawRequest(
     EntityId? EntityId,

@@ -12,7 +12,7 @@ using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Services.Events;
 using MessagePipe;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels;
 
@@ -25,7 +25,7 @@ public abstract class CadObservableDocument : ObservableDocument
 
 public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocumentSummaryMessageSource, IDisposable
 {
-    private readonly IUserSettingsService _userSettingsService;
+    private readonly IUserSettingsStore _userSettingsStore;
 
     private readonly CadUserSettings _userSettings;
     private readonly CadDocumentStorage _storage = new();
@@ -42,7 +42,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private readonly IPublisher<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedPublisher;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
-        IUserSettingsService userSettingsService,
+        IUserSettingsStore userSettingsStore,
         IFileDialogService fileDialogService,
         IDialogService dialogService,
         ISnackbarService snackbarService,
@@ -50,14 +50,13 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         IPublisher<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedPublisher
         )
     {
-        _userSettingsService = userSettingsService;
-        _userSettings = _userSettingsService.Load();
+        _userSettingsStore = userSettingsStore;
+        _userSettings = _userSettingsStore.Load();
         _fileDialogService = fileDialogService;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
         _documentSummaryChangedPublisher = documentSummaryChangedPublisher;
         CadDocumentViewModel = cadDocumentViewModel;
-        _userSettingsService = userSettingsService;
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
         CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
         _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
@@ -446,7 +445,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     {
         try
         {
-            _userSettingsService.Save(_userSettings);
+            _userSettingsStore.Save(_userSettings);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

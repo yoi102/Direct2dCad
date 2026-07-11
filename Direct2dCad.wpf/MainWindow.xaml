@@ -15,7 +15,7 @@
                  xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
                  xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
                  xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
-                 xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services.ViewServices;assembly=Direct2dCad.ViewModels.Services"
+                 xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services.Platform;assembly=Direct2dCad.ViewModels.Services"
                  xmlns:vm_tb="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
                  xmlns:v_tb="clr-namespace:Direct2dCad.wpf.Views.Toolboxes"
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"

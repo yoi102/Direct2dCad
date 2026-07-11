@@ -8,7 +8,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Services.Events;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
@@ -20,13 +20,13 @@ public partial class EntitySearchToolboxViewModel : ObservableToolboxBase, IDisp
     private bool _isRefreshing;
 
     public EntitySearchToolboxViewModel(
-        IToolboxIconsService toolboxIconsService,
+        IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
         Title = "Entity Search";
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.RightTop;
-        Icon = toolboxIconsService.Search;
+        Icon = toolboxIconProvider.Search;
         Shortcut = "Ctrl+Shift+T";
         IsOpenByDefault = false;
         ContentId = Id = Guid.NewGuid().ToString();

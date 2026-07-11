@@ -2,9 +2,9 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Importing;
 
 internal sealed class ImageImportService : IImageImportService
 {

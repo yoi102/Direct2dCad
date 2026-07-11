@@ -8,7 +8,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Lang;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
@@ -20,14 +20,14 @@ public partial class LayersToolboxViewModel : ObservableToolboxBase, IDisposable
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
 
-    public LayersToolboxViewModel(IDialogService dialogService,ISnackbarService snackbarService,
-        IToolboxIconsService toolboxIconsService,
+    public LayersToolboxViewModel(IDialogService dialogService, ISnackbarService snackbarService,
+        IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
         Title = "Layers";
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.BottomLeft;
-        Icon = toolboxIconsService.Layers;
+        Icon = toolboxIconProvider.Layers;
         Shortcut = "Ctrl+Shift+L";
         IsOpenByDefault = true;
         _dialogService = dialogService;

@@ -53,7 +53,7 @@ Direct2dCad.wpf.Control
 Direct2dCad.wpf
 ```
 
-View / ViewModel 之间的服务接口目前放在 `Direct2dCad.ViewModels.Services/ViewServices`，MessagePipe 消息放在 `Direct2dCad.ViewModels.Services/Events`，WPF 实现放在 `Direct2dCad/Services`。`Direct2dCad.ViewModels.Services` 同时承载非 UI 的 ViewModel 业务服务，例如 drawing、interactions、rendering、snapping、styling、text 等。
+ViewModel 所依赖的平台能力接口放在 `Direct2dCad.ViewModels.Services/Platform`，并按 dialogs、importing、OLE、notifications、settings、toolboxes 分组；MessagePipe 消息放在 `Direct2dCad.ViewModels.Services/Events`。WPF 实现位于 `Direct2dCad.wpf/Services`，使用与职责对应的子目录。`Direct2dCad.ViewModels.Services` 同时承载 WPF 无关的 ViewModel 业务协作者，例如 drawing、interactions、rendering、snapping、styling、text 等。
 
 ## 架构分层
 
@@ -290,7 +290,7 @@ WPF / ViewModel 共享的轻量抽象层。
 
 主要职责：
 
-- ViewServices：定义 file dialog、dialog、snackbar、theme、culture、user settings、toolbox icons 等 View / ViewModel 服务接口。
+- Platform：定义 ViewModel 依赖的平台边界，按 Dialogs、Importing、Ole、Notifications、Settings、Toolboxes 分组；其中用户设置使用 Store 语义，工具箱图标使用 Provider 语义，主题和语言明确为 Application 级能力。
 - Events：定义 MessagePipe 消息，例如 document interaction state、view settings、editor tab document summary、theme changed。
 - Drawing：绘制状态、绘制点击处理、绘制实体创建、绘制预览、绘制默认样式。
 - Geometry：绘制预览和 grip drag 相关几何构造。
@@ -331,7 +331,7 @@ WPF 应用层。
 
 - 提供 WPF 启动入口、`MainWindow`、`CadCanvas`。
 - 提供 Ribbon、StatusBar、DocumentExplorerToolbox、LayersToolbox、EntitySearchToolbox、EntityPropertiesToolbox 等 View。
-- 实现 `Direct2dCad.ViewModels.Services/ViewServices` 中定义的对话框、Snackbar、文件选择、主题、语言、用户设置、图标等服务。
+- 实现 `Direct2dCad.ViewModels.Services/Platform` 中定义的平台能力，并在 `Services/Application`、`Dialogs`、`Importing`、`Ole`、`Notifications`、`Toolboxes` 中按职责组织。
 - 承载 `D3D11ImageSource` / `D3DImage`。
 - 通过依赖注入装配 ViewModel 和 WPF 服务。
 

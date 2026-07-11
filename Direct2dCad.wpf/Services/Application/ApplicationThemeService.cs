@@ -1,18 +1,18 @@
 using Direct2dCad.Db.Cad;
 using Direct2dCad.ViewModels.Services.Events;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using MaterialDesignThemes.Wpf;
 using MessagePipe;
 using MediaColor = System.Windows.Media.Color;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Application;
 
-internal sealed class ThemeSettingService : IThemeSettingService
+internal sealed class ApplicationThemeService : IApplicationThemeService
 {
     private readonly PaletteHelper _paletteHelper = new();
     private readonly IPublisher<ThemeChangedEvent> _publisher;
 
-    public ThemeSettingService(IPublisher<ThemeChangedEvent> publisher)
+    public ApplicationThemeService(IPublisher<ThemeChangedEvent> publisher)
     {
         _publisher = publisher;
     }

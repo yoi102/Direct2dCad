@@ -1,22 +1,22 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Client.Common.Settings;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Settings.UserSettings;
 
 public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDialogViewModel
 {
-    private readonly IUserSettingsService _settingsService;
+    private readonly IUserSettingsStore _settingsStore;
     private readonly Action<CadUserSettings> _applySettings;
 
     public UserSettingsViewModel(
         CadUserSettings settings,
-        IUserSettingsService settingsService,
+        IUserSettingsStore settingsStore,
         Action<CadUserSettings> applySettings)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        _settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+        _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
         _applySettings = applySettings ?? throw new ArgumentNullException(nameof(applySettings));
 
         var workingCopy = settings.Clone();
@@ -53,7 +53,7 @@ public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDial
         settings.Normalize();
         try
         {
-            _settingsService.Save(settings);
+            _settingsStore.Save(settings);
             _applySettings(settings);
             ValidationError = null;
             return true;

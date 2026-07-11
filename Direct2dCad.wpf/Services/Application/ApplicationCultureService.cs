@@ -1,9 +1,9 @@
 using Antelcat.I18N.WPF;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Application;
 
-internal class CultureSettingService : ICultureSettingService
+internal sealed class ApplicationCultureService : IApplicationCultureService
 {
     public void ChangeCulture(string language)
     {

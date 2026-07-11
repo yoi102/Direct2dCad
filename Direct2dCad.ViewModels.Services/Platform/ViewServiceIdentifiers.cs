@@ -1,4 +1,4 @@
-namespace Direct2dCad.ViewModels.Services.ViewServices;
+namespace Direct2dCad.ViewModels.Services.Platform;
 
 public static class ViewServiceIdentifiers
 {

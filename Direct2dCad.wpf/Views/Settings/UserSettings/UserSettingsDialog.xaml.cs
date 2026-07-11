@@ -1,5 +1,5 @@
 using System.Windows;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.wpf.Views.Settings.UserSettings;
 

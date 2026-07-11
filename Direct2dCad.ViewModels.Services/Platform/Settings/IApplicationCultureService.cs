@@ -1,6 +1,6 @@
-namespace Direct2dCad.ViewModels.Services.ViewServices;
+namespace Direct2dCad.ViewModels.Services.Platform;
 
-public interface ICultureSettingService
+public interface IApplicationCultureService
 {
     void ChangeCulture(string language);
 

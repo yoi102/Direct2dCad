@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Services.Events;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 using MessagePipe;
 
@@ -16,14 +16,13 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
     private readonly IDisposable _interactionStateChangedSubscription;
 
     public EntityPropertiesToolboxViewModel(
-        IToolboxIconsService toolboxIconsService,
+        IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
         Title = "Property";
-        _toolboxIconsService = toolboxIconsService;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.LeftBottom;
-        Icon = toolboxIconsService.Git;
+        Icon = toolboxIconProvider.Git;
         Shortcut = "Ctrl+Shift+G";
         IsOpenByDefault = true;
         ContentId = Id = Guid.NewGuid().ToString();
@@ -36,8 +35,6 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
     public partial EntityPropertyViewModel? Entity { get; set; }
 
     private CadDocumentViewModel? _documentViewModel;
-    private readonly IToolboxIconsService _toolboxIconsService;
-
     public void Attach(CadDocumentViewModel? documentViewModel)
     {
         if (ReferenceEquals(_documentViewModel, documentViewModel))

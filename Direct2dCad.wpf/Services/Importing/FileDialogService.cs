@@ -1,7 +1,7 @@
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using Microsoft.Win32;
 
-namespace Direct2dCad.wpf.Services;
+namespace Direct2dCad.wpf.Services.Importing;
 
 internal class FileDialogService : IFileDialogService
 {

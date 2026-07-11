@@ -1,6 +1,6 @@
-namespace Direct2dCad.ViewModels.Services.ViewServices;
+namespace Direct2dCad.ViewModels.Services.Platform;
 
-public interface IToolboxIconsService
+public interface IToolboxIconProvider
 {
 
     object Explorer { get; }

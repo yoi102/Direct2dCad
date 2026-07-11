@@ -7,7 +7,7 @@ using AvalonDock.Themes;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Events;
-using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
 
 namespace Direct2dCad.wpf;

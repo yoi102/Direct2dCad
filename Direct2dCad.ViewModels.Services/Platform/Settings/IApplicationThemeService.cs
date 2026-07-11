@@ -1,8 +1,8 @@
 using Direct2dCad.Db.Cad;
 
-namespace Direct2dCad.ViewModels.Services.ViewServices;
+namespace Direct2dCad.ViewModels.Services.Platform;
 
-public interface IThemeSettingService
+public interface IApplicationThemeService
 {
     bool IsDarkTheme { get; }
     CadColor PrimaryColor { get; }
