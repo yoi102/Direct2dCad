@@ -990,6 +990,12 @@
   <data name="General" xml:space="preserve">
     <value>General</value>
   </data>
+  <data name="Geometry" xml:space="preserve">
+    <value>Geometry</value>
+  </data>
+  <data name="ObjectSettings" xml:space="preserve">
+    <value>Object settings</value>
+  </data>
   <data name="Rendering" xml:space="preserve">
     <value>Rendering</value>
   </data>
@@ -1031,5 +1037,14 @@
   </data>
   <data name="SecondaryColor" xml:space="preserve">
     <value>Secondary color</value>
+  </data>
+  <data name="EntitySettings" xml:space="preserve">
+    <value>Entity</value>
+  </data>
+  <data name="Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Coordinates" xml:space="preserve">
+    <value>Coordinates and size</value>
   </data>
 </root>

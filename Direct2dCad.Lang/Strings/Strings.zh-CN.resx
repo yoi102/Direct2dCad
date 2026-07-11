@@ -795,6 +795,12 @@
   <data name="General" xml:space="preserve">
     <value>常规</value>
   </data>
+  <data name="Geometry" xml:space="preserve">
+    <value>几何</value>
+  </data>
+  <data name="ObjectSettings" xml:space="preserve">
+    <value>对象设置</value>
+  </data>
   <data name="Rendering" xml:space="preserve">
     <value>渲染</value>
   </data>
@@ -836,5 +842,14 @@
   </data>
   <data name="SecondaryColor" xml:space="preserve">
     <value>副颜色</value>
+  </data>
+  <data name="EntitySettings" xml:space="preserve">
+    <value>实体设置</value>
+  </data>
+  <data name="Appearance" xml:space="preserve">
+    <value>线条外观</value>
+  </data>
+  <data name="Coordinates" xml:space="preserve">
+    <value>坐标与尺寸</value>
   </data>
 </root>

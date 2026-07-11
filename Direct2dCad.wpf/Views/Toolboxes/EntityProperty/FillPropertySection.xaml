@@ -1,0 +1,44 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.FillPropertySection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters">
+    <Expander Header="{I18N {x:Static r:LangKeys.Fill}}"
+              IsExpanded="True"
+              Margin="0,0,0,8">
+        <Grid Margin="8,6,8,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0"
+                       Text="{I18N {x:Static r:LangKeys.Fill}}"
+                       VerticalAlignment="Center" />
+            <ComboBox Grid.Row="0" Grid.Column="1"
+                      ItemsSource="{Binding FillStyleOptions, Mode=OneWay}"
+                      SelectedItem="{Binding SelectedFillStyleOption, Mode=TwoWay}"
+                      IsEnabled="{Binding FillControlsEnabled, FallbackValue=True}"
+                      DisplayMemberPath="Name"
+                      Margin="0,0,0,8" />
+            <TextBlock Grid.Row="1" Grid.Column="0"
+                       Text="{I18N {x:Static r:LangKeys.FillColor}}"
+                       VerticalAlignment="Center" />
+            <mah:ColorPicker Grid.Row="1" Grid.Column="1"
+                             mah:TextBoxHelper.AutoWatermark="True"
+                             mah:TextBoxHelper.ClearTextButton="True"
+                             AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                             ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                             AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                             RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                             StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                             AddToRecentColorsTrigger="SelectedColorChanged"
+                             IsEnabled="{Binding FillColorControlsEnabled}"
+                             SelectedColor="{Binding FillColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+        </Grid>
+    </Expander>
+</UserControl>

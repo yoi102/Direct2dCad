@@ -1,0 +1,42 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.EntityHeaderPropertySection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang">
+    <Grid Margin="0,0,0,10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="96" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0"
+                   Grid.Column="0"
+                   Text="{I18N {x:Static r:LangKeys.Id}}"
+                   VerticalAlignment="Center" />
+        <TextBox Grid.Row="0"
+                 Grid.Column="1"
+                 Text="{Binding EntityIdText, Mode=OneWay}"
+                 IsReadOnly="True"
+                 Margin="0,0,0,8" />
+        <TextBlock Grid.Row="1"
+                   Grid.Column="0"
+                   Text="{I18N {x:Static r:LangKeys.Name}}"
+                   VerticalAlignment="Center" />
+        <TextBox Grid.Row="1"
+                 Grid.Column="1"
+                 Text="{Binding EntityName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                 Margin="0,0,0,8" />
+        <TextBlock Grid.Row="2"
+                   Grid.Column="0"
+                   Text="{I18N {x:Static r:LangKeys.Layers}}"
+                   VerticalAlignment="Center" />
+        <ComboBox Grid.Row="2"
+                  Grid.Column="1"
+                  ItemsSource="{Binding LayerOptions, Mode=OneWay}"
+                  SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}"
+                  DisplayMemberPath="Name" />
+    </Grid>
+</UserControl>

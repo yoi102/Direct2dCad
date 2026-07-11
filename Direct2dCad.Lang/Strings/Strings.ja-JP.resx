@@ -795,6 +795,12 @@
   <data name="General" xml:space="preserve">
     <value>一般</value>
   </data>
+  <data name="Geometry" xml:space="preserve">
+    <value>ジオメトリ</value>
+  </data>
+  <data name="ObjectSettings" xml:space="preserve">
+    <value>オブジェクト設定</value>
+  </data>
   <data name="Rendering" xml:space="preserve">
     <value>レンダリング</value>
   </data>
@@ -836,5 +842,14 @@
   </data>
   <data name="SecondaryColor" xml:space="preserve">
     <value>セカンダリカラー</value>
+  </data>
+  <data name="EntitySettings" xml:space="preserve">
+    <value>エンティティ設定</value>
+  </data>
+  <data name="Appearance" xml:space="preserve">
+    <value>線の外観</value>
+  </data>
+  <data name="Coordinates" xml:space="preserve">
+    <value>座標とサイズ</value>
   </data>
 </root>

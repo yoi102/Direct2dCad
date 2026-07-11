@@ -6,138 +6,58 @@
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:vm_ep="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
+             xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm_ep:ImagePropertyViewModel}"
-             d:DesignHeight="560"
-             d:DesignWidth="320">
-    <ScrollViewer VerticalScrollBarVisibility="Auto"
-                  HorizontalScrollBarVisibility="Disabled">
+             d:DesignHeight="760" d:DesignWidth="320">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="12">
-            <TextBlock Text="{Binding Title}"
-                       FontSize="16"
-                       FontWeight="SemiBold"
-                       Margin="0,0,0,10" />
-
-            <Grid Margin="0,0,0,8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="96" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="{I18N {x:Static r:LangKeys.Name}}"
-                           VerticalAlignment="Center" />
-                <TextBox Grid.Column="1"
-                         Text="{Binding EntityName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
-            </Grid>
-
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="96" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Id}}" VerticalAlignment="Center" />
-                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding EntityIdText, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Source}}" VerticalAlignment="Center" />
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SourceName, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.ContentType}}" VerticalAlignment="Center" />
-                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ContentType, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Opacity}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="3"
-                                   Grid.Column="1"
-                                   Value="{Binding Opacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                   Minimum="0"
-                                   Maximum="1"
-                                   Interval="0.05"
-                                   StringFormat="F2"
-                                   Margin="0,0,0,8" />
-
-                <Grid Grid.Row="4" Grid.ColumnSpan="2">
-                    <Grid.Style>
-                        <Style TargetType="Grid">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SupportsRotation, Mode=OneWay}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Grid.Style>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="96" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Rotation}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Column="1"
-                                       Value="{Binding RotationDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                       Interval="1"
-                                       StringFormat="F2"
-                                       Margin="0,0,0,8" />
+            <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
+            <ep:EntityHeaderPropertySection />
+            <ep:EntitySettingsPropertySection />
+            <Expander Header="{I18N {x:Static r:LangKeys.ObjectSettings}}" IsExpanded="True" Margin="0,0,0,8">
+                <Grid Margin="8,6,8,8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Source}}" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SourceName, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.ContentType}}" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ContentType, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Opacity}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Opacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" Maximum="1" Interval="0.05" StringFormat="F2" />
                 </Grid>
-
-                <TextBlock Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Left}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding Left, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="6" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Bottom}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="6" Grid.Column="1" Value="{Binding Bottom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="7" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Right}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding Right, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="8" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Top}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="8" Grid.Column="1" Value="{Binding Top, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="9" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterX}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="9" Grid.Column="1" Value="{Binding CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="10" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterY}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="10" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="11" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Width}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="11" Grid.Column="1" Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="12" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Height}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="12" Grid.Column="1" Value="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-
-                <TextBlock Grid.Row="13" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DrawOrder}}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Row="13" Grid.Column="1" Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F0" Interval="1" Margin="0,0,0,8" />
-
-                <CheckBox Grid.Row="14" Grid.ColumnSpan="2" Content="{I18N {x:Static r:LangKeys.Visible}}" IsChecked="{Binding IsVisible}" Margin="0,2,0,0" />
-            </Grid>
-
-            <Grid Margin="0,8,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="96" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0"
-                           Text="{I18N {x:Static r:LangKeys.Layers}}"
-                           VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1"
-                          ItemsSource="{Binding LayerOptions, Mode=OneWay}"
-                          SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}"
-                          DisplayMemberPath="Name" />
-            </Grid>
+            </Expander>
+            <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True" Margin="0,0,0,8">
+                <Grid Margin="8,6,8,8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Grid.ColumnSpan="2">
+                        <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding SupportsRotation, Mode=OneWay}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Grid.Style>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Rotation}}" VerticalAlignment="Center" />
+                        <mah:NumericUpDown Grid.Column="1" Value="{Binding RotationDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Interval="1" StringFormat="F2" Margin="0,0,0,8" />
+                    </Grid>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Left}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Left, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Bottom}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Bottom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Right}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding Right, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Top}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding Top, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterX}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterY}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="6" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Width}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Height}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Row="8" Grid.Column="1" Value="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" />
+                </Grid>
+            </Expander>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -106,6 +106,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Appearance 的本地化字符串。
+        /// </summary>
+        public static string Appearance {
+            get {
+                return ResourceManager.GetString("Appearance", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Application Settings 的本地化字符串。
         /// </summary>
         public static string ApplicationSettings {
@@ -502,6 +511,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Coordinates and size 的本地化字符串。
+        /// </summary>
+        public static string Coordinates {
+            get {
+                return ResourceManager.GetString("Coordinates", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Corner X 的本地化字符串。
         /// </summary>
         public static string CornerX {
@@ -808,6 +826,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Entity 的本地化字符串。
+        /// </summary>
+        public static string EntitySettings {
+            get {
+                return ResourceManager.GetString("EntitySettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 File 的本地化字符串。
         /// </summary>
         public static string File {
@@ -957,6 +984,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string General {
             get {
                 return ResourceManager.GetString("General", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Geometry 的本地化字符串。
+        /// </summary>
+        public static string Geometry {
+            get {
+                return ResourceManager.GetString("Geometry", resourceCulture);
             }
         }
         
@@ -1308,6 +1344,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string None {
             get {
                 return ResourceManager.GetString("None", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Object settings 的本地化字符串。
+        /// </summary>
+        public static string ObjectSettings {
+            get {
+                return ResourceManager.GetString("ObjectSettings", resourceCulture);
             }
         }
         
