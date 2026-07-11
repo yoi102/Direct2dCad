@@ -193,9 +193,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (CadEditor.Document.ViewSettings.BackgroundColor == color)
             return;
 
-        CadEditor.Document.ViewSettings.BackgroundColor = color;
-        PublishViewSettingsChanged();
-        RequestRender();
+        CadEditor.SetBackgroundColor(color);
     }
 
     public void UpdateDrawingDefaultsForLayerAppearance(

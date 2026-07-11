@@ -841,6 +841,30 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetOriginPositionCommand(position));
     }
 
+    public CadDocumentChangeSet SetGridType(CadGridType gridType)
+    {
+        if (Document.ViewSettings.Grid.Type == gridType)
+            return CadDocumentChangeSet.Empty;
+
+        return DocumentCommands.Execute(new SetGridTypeCommand(gridType));
+    }
+
+    public CadDocumentChangeSet SetSnapMarkerType(CadSnapMarkerType markerType)
+    {
+        if (Document.ViewSettings.Grid.SnapMarkerType == markerType)
+            return CadDocumentChangeSet.Empty;
+
+        return DocumentCommands.Execute(new SetSnapMarkerTypeCommand(markerType));
+    }
+
+    public CadDocumentChangeSet SetBackgroundColor(CadColor color)
+    {
+        if (Document.ViewSettings.BackgroundColor == color)
+            return CadDocumentChangeSet.Empty;
+
+        return DocumentCommands.Execute(new SetBackgroundColorCommand(color));
+    }
+
     public CadDocumentChangeSet SetViewSettings(CadViewSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);

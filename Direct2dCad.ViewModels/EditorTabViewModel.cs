@@ -166,9 +166,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.Type == gridType)
             return;
 
-        CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.Type = gridType;
-        MarkDirectDocumentChanged();
-        CadDocumentViewModel.RequestRender();
+        CadDocumentViewModel.CadEditor.SetGridType(gridType);
     }
 
     partial void OnViewModelCadSnapMarkerTypeChanged(ViewModelCadSnapMarkerType value)
@@ -180,9 +178,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.SnapMarkerType == markerType)
             return;
 
-        CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.SnapMarkerType = markerType;
-        MarkDirectDocumentChanged();
-        CadDocumentViewModel.RequestRender();
+        CadDocumentViewModel.CadEditor.SetSnapMarkerType(markerType);
     }
 
     partial void OnViewModelCadOriginDisplayTypeChanged(ViewModelCadOriginDisplayType value)
@@ -522,7 +518,6 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (CadDocumentViewModel.CadEditor.Document.ViewSettings.BackgroundColor == ViewModelCadBackgroundColor)
             return;
 
-        MarkDirectDocumentChanged();
         CadDocumentViewModel.SetBackgroundColor(ViewModelCadBackgroundColor);
     }
 
