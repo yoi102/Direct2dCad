@@ -42,6 +42,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly CadPanInteractionController _pan = new();
     private readonly CadPasteInteractionController _paste;
     private readonly IImageImportService _imageImportService;
+    private readonly IClipboardTextService _clipboardTextService;
     private readonly IOleHostService _oleHostService;
     private readonly CadSelectionDragController _selectionDrag = new();
     private readonly CadDrawingSessionState _drawingState = new();
@@ -113,11 +114,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         ISubscriber<CadOleObjectUpdatedMessage> oleObjectUpdatedSubscriber,
         ICadClipboardStore clipboardStore,
         IImageImportService imageImportService,
+        IClipboardTextService clipboardTextService,
         IOleHostService oleHostService)
     {
         _interactionStateChangedPublisher = interactionStateChangedPublisher;
         _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
         _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
+        _clipboardTextService = clipboardTextService ?? throw new ArgumentNullException(nameof(clipboardTextService));
         _oleHostService = oleHostService ?? throw new ArgumentNullException(nameof(oleHostService));
         _oleObjectUpdatedSubscription = (oleObjectUpdatedSubscriber ?? throw new ArgumentNullException(nameof(oleObjectUpdatedSubscriber)))
             .Subscribe(OnOleObjectUpdated);
@@ -501,6 +504,22 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         {
             _paste.SetSnapshot(CreateImageClipboardSnapshot(image));
             return BeginPastePreviewCore();
+        }
+
+        string? text;
+        try
+        {
+            text = _clipboardTextService.LoadFromClipboard();
+        }
+        catch
+        {
+            text = null;
+        }
+
+        if (text is not null)
+        {
+            DrawingDefaults.Text = text;
+            return SetToolMode(CadCanvasToolMode.Text);
         }
 
         return BeginPastePreview();
