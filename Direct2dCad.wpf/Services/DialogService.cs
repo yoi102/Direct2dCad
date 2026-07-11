@@ -3,7 +3,7 @@ using Direct2dCad.Client.Common;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.wpf.Views.Dialogs;
-using Direct2dCad.wpf.Views.Settings;
+using Direct2dCad.wpf.Views.Settings.DocumentSettings;
 using MaterialDesignThemes.Wpf;
 
 namespace Direct2dCad.wpf.Services;

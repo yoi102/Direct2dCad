@@ -1,7 +1,7 @@
 using System.Windows;
 using Direct2dCad.ViewModels.Services.ViewServices;
 
-namespace Direct2dCad.wpf.Views.Settings;
+namespace Direct2dCad.wpf.Views.Settings.DocumentSettings;
 
 public partial class DocumentSettingsDialog
 {
