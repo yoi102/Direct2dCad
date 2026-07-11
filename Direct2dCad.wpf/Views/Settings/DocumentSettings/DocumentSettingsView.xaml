@@ -10,8 +10,6 @@
              d:Width="600"
              d:DataContext="{d:DesignInstance Type=vm:DocumentSettingsViewModel}">
     <UserControl.Resources>
-        <Style TargetType="ScrollBar"
-               BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
         <DataTemplate DataType="{x:Type vm:DocumentDisplaySettingsViewModel}">
             <local:DocumentDisplaySettingsView />
         </DataTemplate>

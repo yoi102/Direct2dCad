@@ -10,8 +10,6 @@
              xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels"
              d:DataContext="{d:DesignInstance Type=vm:UserSettingsViewModel}">
     <UserControl.Resources>
-        <Style TargetType="ScrollBar"
-               BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
         <DataTemplate DataType="{x:Type vm:GeneralUserSettingsViewModel}">
             <local:GeneralUserSettingsView />
         </DataTemplate>

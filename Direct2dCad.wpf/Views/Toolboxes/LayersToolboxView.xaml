@@ -15,10 +15,6 @@
              d:DesignHeight="450"
              d:DesignWidth="320">
     <Grid Background="Transparent">
-        <Grid.Resources>
-            <Style TargetType="ScrollBar"
-                   BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
-        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
