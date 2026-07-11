@@ -11,6 +11,7 @@
                  Height="620"
                  MinWidth="620"
                  MinHeight="500"
+                 TitleCharacterCasing="Normal"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:settings="clr-namespace:Direct2dCad.ViewModels.Settings;assembly=Direct2dCad.ViewModels"
                  d:DataContext="{d:DesignInstance Type=settings:DocumentSettingsViewModel}"
