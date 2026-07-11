@@ -510,6 +510,13 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             new CadPointD(ViewModelCadOriginX, ViewModelCadOriginY));
     }
 
+    public void ApplyDocumentViewSettings(CadViewSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        CadDocumentViewModel.CadEditor.SetViewSettings(settings);
+        ApplyDocumentViewSettingsToToolbar();
+    }
+
     private void ApplyBackgroundColorFromToolbar()
     {
         if (CadDocumentViewModel.CadEditor.Document.ViewSettings.BackgroundColor == ViewModelCadBackgroundColor)

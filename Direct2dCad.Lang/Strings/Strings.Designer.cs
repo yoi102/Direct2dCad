@@ -97,6 +97,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Apply 的本地化字符串。
+        /// </summary>
+        public static string Apply {
+            get {
+                return ResourceManager.GetString("Apply", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Arc 的本地化字符串。
         /// </summary>
         public static string Arc {
@@ -592,6 +601,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Display 的本地化字符串。
+        /// </summary>
+        public static string Display {
+            get {
+                return ResourceManager.GetString("Display", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Document name cannot be empty. 的本地化字符串。
         /// </summary>
         public static string DocumentNameCannotBeEmpty {
@@ -606,6 +624,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string Documents {
             get {
                 return ResourceManager.GetString("Documents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Document Settings 的本地化字符串。
+        /// </summary>
+        public static string DocumentSettings {
+            get {
+                return ResourceManager.GetString("DocumentSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Enter valid finite values. Sizes, spacing, and line widths must be greater than zero. 的本地化字符串。
+        /// </summary>
+        public static string DocumentSettingsInvalidValues {
+            get {
+                return ResourceManager.GetString("DocumentSettingsInvalidValues", resourceCulture);
             }
         }
         
@@ -898,6 +934,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Grid &amp; Snapping 的本地化字符串。
+        /// </summary>
+        public static string GridAndSnapping {
+            get {
+                return ResourceManager.GetString("GridAndSnapping", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Grid type 的本地化字符串。
+        /// </summary>
+        public static string GridType {
+            get {
+                return ResourceManager.GetString("GridType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Height 的本地化字符串。
         /// </summary>
         public static string Height {
@@ -1069,6 +1123,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Major grid color 的本地化字符串。
+        /// </summary>
+        public static string MajorGridColor {
+            get {
+                return ResourceManager.GetString("MajorGridColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Major grid line width 的本地化字符串。
+        /// </summary>
+        public static string MajorGridLineWidth {
+            get {
+                return ResourceManager.GetString("MajorGridLineWidth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Margin 的本地化字符串。
         /// </summary>
         public static string Margin {
@@ -1092,6 +1164,42 @@ namespace Direct2dCad.Lang.Strings {
         public static string Measure {
             get {
                 return ResourceManager.GetString("Measure", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Minimum screen spacing 的本地化字符串。
+        /// </summary>
+        public static string MinimumScreenSpacing {
+            get {
+                return ResourceManager.GetString("MinimumScreenSpacing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Minimum world spacing 的本地化字符串。
+        /// </summary>
+        public static string MinimumWorldSpacing {
+            get {
+                return ResourceManager.GetString("MinimumWorldSpacing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Minor grid color 的本地化字符串。
+        /// </summary>
+        public static string MinorGridColor {
+            get {
+                return ResourceManager.GetString("MinorGridColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Minor grid line width 的本地化字符串。
+        /// </summary>
+        public static string MinorGridLineWidth {
+            get {
+                return ResourceManager.GetString("MinorGridLineWidth", resourceCulture);
             }
         }
         
@@ -1132,7 +1240,7 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Ok 的本地化字符串。
+        ///   查找类似 OK 的本地化字符串。
         /// </summary>
         public static string Ok {
             get {
@@ -1168,6 +1276,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Origin color 的本地化字符串。
+        /// </summary>
+        public static string OriginColor {
+            get {
+                return ResourceManager.GetString("OriginColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Origin display 的本地化字符串。
+        /// </summary>
+        public static string OriginDisplayType {
+            get {
+                return ResourceManager.GetString("OriginDisplayType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Origin Line 的本地化字符串。
         /// </summary>
         public static string OriginLine {
@@ -1177,11 +1303,47 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Origin line pattern 的本地化字符串。
+        /// </summary>
+        public static string OriginLinePattern {
+            get {
+                return ResourceManager.GetString("OriginLinePattern", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Origin Marker 的本地化字符串。
         /// </summary>
         public static string OriginMarker {
             get {
                 return ResourceManager.GetString("OriginMarker", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Origin marker type 的本地化字符串。
+        /// </summary>
+        public static string OriginMarkerType {
+            get {
+                return ResourceManager.GetString("OriginMarkerType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Origin size 的本地化字符串。
+        /// </summary>
+        public static string OriginSize {
+            get {
+                return ResourceManager.GetString("OriginSize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Origin line width 的本地化字符串。
+        /// </summary>
+        public static string OriginStrokeWidth {
+            get {
+                return ResourceManager.GetString("OriginStrokeWidth", resourceCulture);
             }
         }
         
@@ -1528,6 +1690,60 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Snap marker color 的本地化字符串。
+        /// </summary>
+        public static string SnapMarkerColor {
+            get {
+                return ResourceManager.GetString("SnapMarkerColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Snap marker length 的本地化字符串。
+        /// </summary>
+        public static string SnapMarkerLength {
+            get {
+                return ResourceManager.GetString("SnapMarkerLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Snap marker line width 的本地化字符串。
+        /// </summary>
+        public static string SnapMarkerStrokeWidth {
+            get {
+                return ResourceManager.GetString("SnapMarkerStrokeWidth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Snap marker type 的本地化字符串。
+        /// </summary>
+        public static string SnapMarkerType {
+            get {
+                return ResourceManager.GetString("SnapMarkerType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Snap spacing X (0 = auto) 的本地化字符串。
+        /// </summary>
+        public static string SnapSpacingX {
+            get {
+                return ResourceManager.GetString("SnapSpacingX", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Snap spacing Y (0 = auto) 的本地化字符串。
+        /// </summary>
+        public static string SnapSpacingY {
+            get {
+                return ResourceManager.GetString("SnapSpacingY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Solid 的本地化字符串。
         /// </summary>
         public static string Solid {
@@ -1542,6 +1758,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string Source {
             get {
                 return ResourceManager.GetString("Source", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Spacing X 的本地化字符串。
+        /// </summary>
+        public static string SpacingX {
+            get {
+                return ResourceManager.GetString("SpacingX", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Spacing Y 的本地化字符串。
+        /// </summary>
+        public static string SpacingY {
+            get {
+                return ResourceManager.GetString("SpacingY", resourceCulture);
             }
         }
         
@@ -1632,6 +1866,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Style {
             get {
                 return ResourceManager.GetString("Style", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Subdivisions 的本地化字符串。
+        /// </summary>
+        public static string Subdivision {
+            get {
+                return ResourceManager.GetString("Subdivision", resourceCulture);
             }
         }
         

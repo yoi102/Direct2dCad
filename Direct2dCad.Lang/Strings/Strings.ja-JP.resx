@@ -205,7 +205,7 @@
     <value>なし</value>
   </data>
   <data name="Ok" xml:space="preserve">
-    <value>Ok</value>
+    <value>OK</value>
   </data>
   <data name="Pan" xml:space="preserve">
     <value>パン</value>
@@ -707,5 +707,86 @@
   </data>
   <data name="Settings" xml:space="preserve">
     <value>設定</value>
+  </data>
+  <data name="DocumentSettings" xml:space="preserve">
+    <value>ドキュメント設定</value>
+  </data>
+  <data name="Display" xml:space="preserve">
+    <value>表示</value>
+  </data>
+  <data name="GridAndSnapping" xml:space="preserve">
+    <value>グリッドとスナップ</value>
+  </data>
+  <data name="GridType" xml:space="preserve">
+    <value>グリッド種類</value>
+  </data>
+  <data name="SpacingX" xml:space="preserve">
+    <value>X 間隔</value>
+  </data>
+  <data name="SpacingY" xml:space="preserve">
+    <value>Y 間隔</value>
+  </data>
+  <data name="Subdivision" xml:space="preserve">
+    <value>分割数</value>
+  </data>
+  <data name="MinimumScreenSpacing" xml:space="preserve">
+    <value>最小画面間隔</value>
+  </data>
+  <data name="MinimumWorldSpacing" xml:space="preserve">
+    <value>最小ワールド間隔</value>
+  </data>
+  <data name="MinorGridColor" xml:space="preserve">
+    <value>補助グリッド色</value>
+  </data>
+  <data name="MinorGridLineWidth" xml:space="preserve">
+    <value>補助グリッド線幅</value>
+  </data>
+  <data name="MajorGridColor" xml:space="preserve">
+    <value>主グリッド色</value>
+  </data>
+  <data name="MajorGridLineWidth" xml:space="preserve">
+    <value>主グリッド線幅</value>
+  </data>
+  <data name="SnapSpacingX" xml:space="preserve">
+    <value>X スナップ間隔（0 は自動）</value>
+  </data>
+  <data name="SnapSpacingY" xml:space="preserve">
+    <value>Y スナップ間隔（0 は自動）</value>
+  </data>
+  <data name="SnapMarkerType" xml:space="preserve">
+    <value>スナップマーカー種類</value>
+  </data>
+  <data name="SnapMarkerColor" xml:space="preserve">
+    <value>スナップマーカー色</value>
+  </data>
+  <data name="SnapMarkerLength" xml:space="preserve">
+    <value>スナップマーカー長さ</value>
+  </data>
+  <data name="SnapMarkerStrokeWidth" xml:space="preserve">
+    <value>スナップマーカー線幅</value>
+  </data>
+  <data name="OriginDisplayType" xml:space="preserve">
+    <value>原点表示</value>
+  </data>
+  <data name="OriginMarkerType" xml:space="preserve">
+    <value>原点マーカー種類</value>
+  </data>
+  <data name="OriginLinePattern" xml:space="preserve">
+    <value>原点線種</value>
+  </data>
+  <data name="OriginColor" xml:space="preserve">
+    <value>原点色</value>
+  </data>
+  <data name="OriginSize" xml:space="preserve">
+    <value>原点サイズ</value>
+  </data>
+  <data name="OriginStrokeWidth" xml:space="preserve">
+    <value>原点線幅</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>適用</value>
+  </data>
+  <data name="DocumentSettingsInvalidValues" xml:space="preserve">
+    <value>有効な有限値を入力してください。サイズ、間隔、線幅は 0 より大きい必要があります。</value>
   </data>
 </root>

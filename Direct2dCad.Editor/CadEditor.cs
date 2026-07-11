@@ -841,6 +841,12 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetOriginPositionCommand(position));
     }
 
+    public CadDocumentChangeSet SetViewSettings(CadViewSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        return DocumentCommands.Execute(new SetViewSettingsCommand(settings));
+    }
+
     public void RegisterRenderer(ICadRenderer renderer, bool rebuildExistingResources = true)
     {
         _documentChanges.RegisterRenderer(renderer, rebuildExistingResources);

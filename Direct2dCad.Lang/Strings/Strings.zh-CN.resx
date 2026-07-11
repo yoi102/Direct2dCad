@@ -205,7 +205,7 @@
     <value>无</value>
   </data>
   <data name="Ok" xml:space="preserve">
-    <value>Ok</value>
+    <value>确定</value>
   </data>
   <data name="Pan" xml:space="preserve">
     <value>平移</value>
@@ -707,5 +707,86 @@
   </data>
   <data name="Settings" xml:space="preserve">
     <value>设置</value>
+  </data>
+  <data name="DocumentSettings" xml:space="preserve">
+    <value>文档设置</value>
+  </data>
+  <data name="Display" xml:space="preserve">
+    <value>显示</value>
+  </data>
+  <data name="GridAndSnapping" xml:space="preserve">
+    <value>网格与捕捉</value>
+  </data>
+  <data name="GridType" xml:space="preserve">
+    <value>网格类型</value>
+  </data>
+  <data name="SpacingX" xml:space="preserve">
+    <value>X 间距</value>
+  </data>
+  <data name="SpacingY" xml:space="preserve">
+    <value>Y 间距</value>
+  </data>
+  <data name="Subdivision" xml:space="preserve">
+    <value>细分数</value>
+  </data>
+  <data name="MinimumScreenSpacing" xml:space="preserve">
+    <value>最小屏幕间距</value>
+  </data>
+  <data name="MinimumWorldSpacing" xml:space="preserve">
+    <value>最小世界间距</value>
+  </data>
+  <data name="MinorGridColor" xml:space="preserve">
+    <value>次网格颜色</value>
+  </data>
+  <data name="MinorGridLineWidth" xml:space="preserve">
+    <value>次网格线宽</value>
+  </data>
+  <data name="MajorGridColor" xml:space="preserve">
+    <value>主网格颜色</value>
+  </data>
+  <data name="MajorGridLineWidth" xml:space="preserve">
+    <value>主网格线宽</value>
+  </data>
+  <data name="SnapSpacingX" xml:space="preserve">
+    <value>X 捕捉间距（0 为自动）</value>
+  </data>
+  <data name="SnapSpacingY" xml:space="preserve">
+    <value>Y 捕捉间距（0 为自动）</value>
+  </data>
+  <data name="SnapMarkerType" xml:space="preserve">
+    <value>捕捉标记类型</value>
+  </data>
+  <data name="SnapMarkerColor" xml:space="preserve">
+    <value>捕捉标记颜色</value>
+  </data>
+  <data name="SnapMarkerLength" xml:space="preserve">
+    <value>捕捉标记长度</value>
+  </data>
+  <data name="SnapMarkerStrokeWidth" xml:space="preserve">
+    <value>捕捉标记线宽</value>
+  </data>
+  <data name="OriginDisplayType" xml:space="preserve">
+    <value>原点显示方式</value>
+  </data>
+  <data name="OriginMarkerType" xml:space="preserve">
+    <value>原点标记类型</value>
+  </data>
+  <data name="OriginLinePattern" xml:space="preserve">
+    <value>原点线型</value>
+  </data>
+  <data name="OriginColor" xml:space="preserve">
+    <value>原点颜色</value>
+  </data>
+  <data name="OriginSize" xml:space="preserve">
+    <value>原点大小</value>
+  </data>
+  <data name="OriginStrokeWidth" xml:space="preserve">
+    <value>原点线宽</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>应用</value>
+  </data>
+  <data name="DocumentSettingsInvalidValues" xml:space="preserve">
+    <value>请输入有效的有限数值，大小、间距和线宽必须大于零。</value>
   </data>
 </root>

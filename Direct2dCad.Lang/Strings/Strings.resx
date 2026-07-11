@@ -234,8 +234,7 @@
     <comment>None</comment>
   </data>
   <data name="Ok" xml:space="preserve">
-    <value>Ok</value>
-    <comment>Ok</comment>
+    <value>OK</value>
   </data>
   <data name="Pan" xml:space="preserve">
     <value>Pan</value>
@@ -903,5 +902,86 @@
   <data name="Settings" xml:space="preserve">
     <value>Settings</value>
     <comment>Settings</comment>
+  </data>
+  <data name="DocumentSettings" xml:space="preserve">
+    <value>Document Settings</value>
+  </data>
+  <data name="Display" xml:space="preserve">
+    <value>Display</value>
+  </data>
+  <data name="GridAndSnapping" xml:space="preserve">
+    <value>Grid &amp; Snapping</value>
+  </data>
+  <data name="GridType" xml:space="preserve">
+    <value>Grid type</value>
+  </data>
+  <data name="SpacingX" xml:space="preserve">
+    <value>Spacing X</value>
+  </data>
+  <data name="SpacingY" xml:space="preserve">
+    <value>Spacing Y</value>
+  </data>
+  <data name="Subdivision" xml:space="preserve">
+    <value>Subdivisions</value>
+  </data>
+  <data name="MinimumScreenSpacing" xml:space="preserve">
+    <value>Minimum screen spacing</value>
+  </data>
+  <data name="MinimumWorldSpacing" xml:space="preserve">
+    <value>Minimum world spacing</value>
+  </data>
+  <data name="MinorGridColor" xml:space="preserve">
+    <value>Minor grid color</value>
+  </data>
+  <data name="MinorGridLineWidth" xml:space="preserve">
+    <value>Minor grid line width</value>
+  </data>
+  <data name="MajorGridColor" xml:space="preserve">
+    <value>Major grid color</value>
+  </data>
+  <data name="MajorGridLineWidth" xml:space="preserve">
+    <value>Major grid line width</value>
+  </data>
+  <data name="SnapSpacingX" xml:space="preserve">
+    <value>Snap spacing X (0 = auto)</value>
+  </data>
+  <data name="SnapSpacingY" xml:space="preserve">
+    <value>Snap spacing Y (0 = auto)</value>
+  </data>
+  <data name="SnapMarkerType" xml:space="preserve">
+    <value>Snap marker type</value>
+  </data>
+  <data name="SnapMarkerColor" xml:space="preserve">
+    <value>Snap marker color</value>
+  </data>
+  <data name="SnapMarkerLength" xml:space="preserve">
+    <value>Snap marker length</value>
+  </data>
+  <data name="SnapMarkerStrokeWidth" xml:space="preserve">
+    <value>Snap marker line width</value>
+  </data>
+  <data name="OriginDisplayType" xml:space="preserve">
+    <value>Origin display</value>
+  </data>
+  <data name="OriginMarkerType" xml:space="preserve">
+    <value>Origin marker type</value>
+  </data>
+  <data name="OriginLinePattern" xml:space="preserve">
+    <value>Origin line pattern</value>
+  </data>
+  <data name="OriginColor" xml:space="preserve">
+    <value>Origin color</value>
+  </data>
+  <data name="OriginSize" xml:space="preserve">
+    <value>Origin size</value>
+  </data>
+  <data name="OriginStrokeWidth" xml:space="preserve">
+    <value>Origin line width</value>
+  </data>
+  <data name="Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="DocumentSettingsInvalidValues" xml:space="preserve">
+    <value>Enter valid finite values. Sizes, spacing, and line widths must be greater than zero.</value>
   </data>
 </root>

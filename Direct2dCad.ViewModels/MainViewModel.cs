@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Services.ViewServices;
+using Direct2dCad.ViewModels.Settings;
 using Direct2dCad.ViewModels.Toolboxes;
 
 namespace Direct2dCad.ViewModels;
@@ -169,12 +170,11 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenDocumentSettingsDialog()
     {
+        if (CurrentEditorTabViewModel is null)
+            return;
 
-        //需要输入CurrentEditorTabViewModel 的设置相关内容输入进去。   里面有ok  apply  cancel 进行设置的确认与取消
-        _dialogService.OpenDocumentSettingsDialog();
-
-
-
+        _dialogService.ShowDocumentSettingsDialog(
+            new DocumentSettingsViewModel(CurrentEditorTabViewModel));
     }
 
     [RelayCommand]

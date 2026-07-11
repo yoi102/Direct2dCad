@@ -124,11 +124,17 @@ internal sealed class DialogService : IDialogService
         return dispatcher.InvokeAsync(action).Task.Unwrap();
     }
 
-    public void OpenDocumentSettingsDialog()
+    public void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel)
     {
-        //显示到一个新窗口
-        //打开时候不允许切换到主窗口。
-        SettingsDialog settingsDialog = new();
-        settingsDialog.ShowDialog();
+        ArgumentNullException.ThrowIfNull(viewModel);
+        InvokeOnUi(() =>
+        {
+            var settingsDialog = new DocumentSettingsDialog
+            {
+                Owner = Application.Current?.MainWindow,
+                DataContext = viewModel
+            };
+            settingsDialog.ShowDialog();
+        });
     }
 }
