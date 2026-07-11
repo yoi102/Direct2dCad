@@ -14,6 +14,7 @@ internal sealed class ToolboxIconProvider : IToolboxIconProvider
     public object Layers => CreateLayersIcon();
     public object Terminal => CreateTerminalIcon();
     public object Search => CreateSearchIcon();
+    public object Filter => CreateFilterIcon();
     public object Git => CreateGitIcon();
     public object Problems => CreateProblemsIcon();
 
@@ -22,6 +23,19 @@ internal sealed class ToolboxIconProvider : IToolboxIconProvider
         Path = new PropertyPath(TextElement.ForegroundProperty),
         RelativeSource = new RelativeSource(RelativeSourceMode.Self)
     };
+
+    private static Viewbox CreateFilterIcon()
+    {
+        var path = new Path
+        {
+            Data = Geometry.Parse("M1.5,2 L14.5,2 L9.5,7.8 L9.5,12.2 L6.5,14 L6.5,7.8 Z"),
+            StrokeThickness = 1.1,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent
+        };
+        path.SetBinding(Shape.StrokeProperty, ForegroundBinding());
+        return new Viewbox { Width = 16, Height = 16, Child = path };
+    }
 
     private static Viewbox CreateExplorerIcon()
     {

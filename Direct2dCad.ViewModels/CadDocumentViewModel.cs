@@ -46,6 +46,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly IOleHostService _oleHostService;
     private readonly CadSelectionDragController _selectionDrag = new();
     private readonly CadDrawingSessionState _drawingState = new();
+    private readonly HashSet<Type> _disabledSelectionEntityTypes = [];
     private LayerId _drawingLayerId = LayerId.Default;
     private LayerId _pasteTargetLayerId = LayerId.Default;
     private CadPointD? _currentMousePoint;
@@ -428,7 +429,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var resolvedEntityIds = entityIds
             .Where(entityId =>
                 CadEditor.Document.TryGetEntity(entityId, out var entity) &&
-                entity is { IsErased: false })
+                entity is { IsErased: false } &&
+                CanSelectEntity(entity))
             .Distinct()
             .ToArray();
 
@@ -436,6 +438,51 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         ClearInteractionState(clearClipboard: false, render: false);
         RaiseInteractionStateChanged();
         RequestRender();
+    }
+
+    public bool IsEntityTypeSelectionEnabled(Type entityType)
+    {
+        ArgumentNullException.ThrowIfNull(entityType);
+        return !_disabledSelectionEntityTypes.Contains(entityType);
+    }
+
+    public void SetEntityTypeSelectionEnabled(Type entityType, bool isEnabled)
+    {
+        ArgumentNullException.ThrowIfNull(entityType);
+        if (!typeof(CadEntity).IsAssignableFrom(entityType))
+            throw new ArgumentException("Type must derive from CadEntity.", nameof(entityType));
+
+        var changed = isEnabled
+            ? _disabledSelectionEntityTypes.Remove(entityType)
+            : _disabledSelectionEntityTypes.Add(entityType);
+        if (!changed)
+            return;
+
+        if (!PruneSelectionToFilter())
+            return;
+
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    private bool CanSelectEntity(CadEntity entity)
+    {
+        return !_disabledSelectionEntityTypes.Contains(entity.GetType());
+    }
+
+    private bool PruneSelectionToFilter()
+    {
+        var filteredSelection = CadEditor.Selection.EntityIds
+            .Where(entityId =>
+                CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+                entity is { IsErased: false } &&
+                CanSelectEntity(entity))
+            .ToArray();
+        if (filteredSelection.Length == CadEditor.Selection.EntityIds.Count)
+            return false;
+
+        CadEditor.Selection.Replace(filteredSelection);
+        return true;
     }
 
     public CadCanvasInteractionResult DeleteSelection()
@@ -723,7 +770,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             PasteTargetLayerId);
         if (createdIds.Count > 0)
         {
-            CadEditor.Selection.Replace(createdIds);
+            CadEditor.Selection.Replace(createdIds.Where(entityId =>
+                CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+                entity is not null &&
+                CanSelectEntity(entity)));
             RaiseInteractionStateChanged();
         }
 
@@ -871,7 +921,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private CadSelectionInteractionService CreateSelectionInteractionService()
     {
-        return new CadSelectionInteractionService(CadEditor, CadEditor.Viewport, CreatePreviewStyleService());
+        return new CadSelectionInteractionService(
+            CadEditor,
+            CadEditor.Viewport,
+            CreatePreviewStyleService(),
+            CanSelectEntity);
     }
 
     private CadClipboardSnapshot CreateImageClipboardSnapshot(CadImageImportData image)
@@ -1246,7 +1300,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void OnEditorStateChanged(object? sender, CadEditorCommandResult e)
     {
         if (e.SelectionChanged)
+        {
+            PruneSelectionToFilter();
             RaiseInteractionStateChanged();
+        }
     }
 
     private void RaiseInteractionStateChanged()

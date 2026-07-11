@@ -1,0 +1,53 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.SelectionFilterToolboxView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=toolboxes:SelectionFilterToolboxViewModel}"
+             d:DesignHeight="420"
+             d:DesignWidth="280">
+    <Grid Background="Transparent">
+        <DataGrid ItemsSource="{Binding Types}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserReorderColumns="False"
+                  CanUserResizeRows="False"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  RowHeaderWidth="0"
+                  BorderThickness="0"
+                  Background="Transparent"
+                  Margin="8">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="{I18N {x:Static r:LangKeys.Type}}"
+                                    Binding="{Binding DisplayName, Mode=OneWay}"
+                                    IsReadOnly="True"
+                                    Width="*" />
+                <DataGridTemplateColumn Width="64">
+                    <DataGridTemplateColumn.HeaderTemplate>
+                        <DataTemplate>
+                            <CheckBox HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      IsThreeState="True"
+                                      IsChecked="{Binding DataContext.AreAllTypesEnabled,
+                                                          RelativeSource={RelativeSource AncestorType=DataGrid},
+                                                          Mode=TwoWay,
+                                                          UpdateSourceTrigger=PropertyChanged}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.HeaderTemplate>
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate DataType="{x:Type toolboxes:SelectionFilterTypeItemViewModel}">
+                            <CheckBox HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      IsChecked="{Binding IsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>

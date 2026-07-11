@@ -1041,6 +1041,12 @@
   <data name="EntitySettings" xml:space="preserve">
     <value>Entity</value>
   </data>
+  <data name="SelectionFilter" xml:space="preserve">
+    <value>Selection Filter</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
   <data name="Appearance" xml:space="preserve">
     <value>Appearance</value>
   </data>

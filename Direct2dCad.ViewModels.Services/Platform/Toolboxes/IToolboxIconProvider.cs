@@ -7,6 +7,7 @@ public interface IToolboxIconProvider
     object Layers { get; }
     object Terminal { get; }
     object Search { get; }
+    object Filter { get; }
     object Git { get; }
     object Problems { get; }
 

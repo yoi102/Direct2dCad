@@ -9,13 +9,15 @@ public sealed class BoxSelectCommand : SelectionCommandBase
     private readonly CadRectD _worldArea;
     private readonly CadSelectionMode _mode;
     private readonly bool _requireContained;
+    private readonly Func<CadEntity, bool> _selectionFilter;
 
     public override string Name => "Box Select";
 
     public BoxSelectCommand(
         CadRectD worldArea,
         CadSelectionMode mode = CadSelectionMode.Replace,
-        bool requireContained = false)
+        bool requireContained = false,
+        Func<CadEntity, bool>? selectionFilter = null)
     {
         if (worldArea.IsEmpty)
             throw new ArgumentException("Selection area cannot be empty.", nameof(worldArea));
@@ -23,6 +25,7 @@ public sealed class BoxSelectCommand : SelectionCommandBase
         _worldArea = worldArea;
         _mode = mode;
         _requireContained = requireContained;
+        _selectionFilter = selectionFilter ?? (_ => true);
     }
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
@@ -32,6 +35,7 @@ public sealed class BoxSelectCommand : SelectionCommandBase
         var entityIds = context.SpatialIndex.Query(queryArea)
             .Where(entityId => context.Document.TryGetEntity(entityId, out var entity) &&
                                entity is not null &&
+                               _selectionFilter(entity) &&
                                IsSelectionMatch(context, entity, options))
             .ToArray();
 

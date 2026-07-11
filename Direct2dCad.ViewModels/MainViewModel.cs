@@ -54,6 +54,7 @@ public partial class MainViewModel : ObservableObject
         Layers = _dockLayoutService.GetAnchorable<LayersToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayersToolboxViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
         EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
+        SelectionFilter = _dockLayoutService.GetAnchorable<SelectionFilterToolboxViewModel>() ?? throw new ArgumentNullException(nameof(SelectionFilterToolboxViewModel));
 
         IsDarkTheme = _userSettings.General.IsDarkTheme;
         _themeSettingService.ApplyTheme(
@@ -77,6 +78,7 @@ public partial class MainViewModel : ObservableObject
 
     public EntityPropertiesToolboxViewModel EntityProperties { get; }
     public EntitySearchToolboxViewModel EntitySearch { get; }
+    public SelectionFilterToolboxViewModel SelectionFilter { get; }
 
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
@@ -87,6 +89,7 @@ public partial class MainViewModel : ObservableObject
         Layers.Attach(value?.CadDocumentViewModel);
         EntityProperties.Attach(value?.CadDocumentViewModel);
         EntitySearch.Attach(value?.CadDocumentViewModel);
+        SelectionFilter.Attach(value?.CadDocumentViewModel);
     }
 
     [ObservableProperty]

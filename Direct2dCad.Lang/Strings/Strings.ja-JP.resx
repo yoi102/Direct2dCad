@@ -846,6 +846,12 @@
   <data name="EntitySettings" xml:space="preserve">
     <value>エンティティ設定</value>
   </data>
+  <data name="SelectionFilter" xml:space="preserve">
+    <value>選択フィルター</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>種類</value>
+  </data>
   <data name="Appearance" xml:space="preserve">
     <value>線の外観</value>
   </data>

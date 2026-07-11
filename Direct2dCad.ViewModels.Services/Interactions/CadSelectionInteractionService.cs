@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Rendering;
@@ -10,7 +11,8 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 internal sealed class CadSelectionInteractionService(
     CadEditor editor,
     CadViewport viewport,
-    CadPreviewStyleService styleService)
+    CadPreviewStyleService styleService,
+    Func<CadEntity, bool> selectionFilter)
 {
     public void CompleteSelection(CadPointD startScreen, CadPointD endScreen)
     {
@@ -18,7 +20,8 @@ internal sealed class CadSelectionInteractionService(
         {
             editor.Execute(new ClickSelectCommand(
                 viewport.ScreenToWorld(endScreen),
-                6.0 / viewport.Zoom));
+                6.0 / viewport.Zoom,
+                selectionFilter: selectionFilter));
             return;
         }
 
@@ -27,7 +30,8 @@ internal sealed class CadSelectionInteractionService(
         var area = CadRectD.FromLTRB(p1.X, p1.Y, p2.X, p2.Y);
         editor.Execute(new BoxSelectCommand(
             area,
-            requireContained: IsSelectionWindow(startScreen, endScreen)));
+            requireContained: IsSelectionWindow(startScreen, endScreen),
+            selectionFilter: selectionFilter));
     }
 
     public void AddWindowPreview(

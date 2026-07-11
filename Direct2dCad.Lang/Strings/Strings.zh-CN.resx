@@ -846,6 +846,12 @@
   <data name="EntitySettings" xml:space="preserve">
     <value>实体设置</value>
   </data>
+  <data name="SelectionFilter" xml:space="preserve">
+    <value>选择过滤器</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>类型</value>
+  </data>
   <data name="Appearance" xml:space="preserve">
     <value>线条外观</value>
   </data>

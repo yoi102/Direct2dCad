@@ -1762,6 +1762,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Selection Filter 的本地化字符串。
+        /// </summary>
+        public static string SelectionFilter {
+            get {
+                return ResourceManager.GetString("SelectionFilter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Window 的本地化字符串。
         /// </summary>
         public static string SelectionWindow {
@@ -2136,6 +2145,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Top {
             get {
                 return ResourceManager.GetString("Top", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Type 的本地化字符串。
+        /// </summary>
+        public static string Type {
+            get {
+                return ResourceManager.GetString("Type", resourceCulture);
             }
         }
         

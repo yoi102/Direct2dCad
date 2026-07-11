@@ -1,4 +1,5 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.HitTesting;
 
@@ -10,6 +11,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
     private readonly double _tolerance;
     private readonly CadSelectionMode _mode;
     private readonly bool _clearWhenMiss;
+    private readonly Func<CadEntity, bool> _selectionFilter;
 
     public override string Name => "Click Select";
 
@@ -17,7 +19,8 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         CadPointD worldPoint,
         double tolerance,
         CadSelectionMode mode = CadSelectionMode.Replace,
-        bool clearWhenMiss = true)
+        bool clearWhenMiss = true,
+        Func<CadEntity, bool>? selectionFilter = null)
     {
         if (tolerance < 0 || double.IsNaN(tolerance) || double.IsInfinity(tolerance))
             throw new ArgumentOutOfRangeException(nameof(tolerance));
@@ -26,6 +29,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         _tolerance = tolerance;
         _mode = mode;
         _clearWhenMiss = clearWhenMiss;
+        _selectionFilter = selectionFilter ?? (_ => true);
     }
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
@@ -69,6 +73,13 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         EntityId entityId,
         CadHitTestOptions options)
     {
+        if (!context.Document.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            !_selectionFilter(entity))
+        {
+            return null;
+        }
+
         if (context.HitTesting.HitTestEntityEdge(entityId, _worldPoint, _tolerance, options, out var edgeHit))
             return CreateHitCandidate(context, edgeHit);
 
