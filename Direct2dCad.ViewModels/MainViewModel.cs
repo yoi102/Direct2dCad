@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.ViewModels.Toolboxes;
 
@@ -19,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly SideToggleManager _sideToggleManager;
     private readonly ICultureSettingService _cultureSettingService;
     private readonly IThemeSettingService _themeSettingService;
+    private readonly CadDocumentStorage _storage = new();
 
     public MainViewModel(IDockLayoutService dockLayoutService, SideToggleManager sideToggleManager,
         ICultureSettingService cultureSettingService,
@@ -119,7 +121,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OpenFile()
+    private async Task OpenFileAsync()
     {
         var fileName = _fileDialogService.OpenD2cadFile();
         if (fileName is null)
@@ -127,12 +129,30 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            var existingTab = _dockLayoutService.Documents
+                .OfType<EditorTabViewModel>()
+                .FirstOrDefault(x => string.Equals(
+                    x.CurrentFilePath,
+                    fileName,
+                    StringComparison.OrdinalIgnoreCase));
+            if (existingTab is not null)
+            {
+                _dockLayoutService.ActiveDockable = existingTab;
+                CurrentEditorTabViewModel = existingTab;
+                FolderExplorer.RefreshDocuments();
+                return;
+            }
+
+            Direct2dCad.Db.Cad.CadDocument document;
+            using (_dialogService.ShowProgressBarDialog())
+                document = await _storage.LoadAsync(fileName);
+
             var tab = _dockLayoutService.OpenOrActivateDocument(
             e => e.CurrentFilePath == fileName,
             () =>
             {
                 var newTab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
-                newTab.Load(fileName);
+                newTab.Load(document, fileName);
                 _snackbarService.Enqueue("File opened successfully.");
                 return newTab;
             });
@@ -142,7 +162,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Open failed");
+            await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Open failed");
         }
     }
 

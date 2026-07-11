@@ -27,7 +27,7 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.RightTop;
         Icon = toolboxIconsService.Search;
-        Shortcut = "Ctrl+Shift+S";
+        Shortcut = "Ctrl+Shift+T";
         IsOpenByDefault = false;
         ContentId = Id = Guid.NewGuid().ToString();
     }

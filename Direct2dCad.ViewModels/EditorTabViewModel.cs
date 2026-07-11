@@ -314,19 +314,19 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     }
 
     [RelayCommand]
-    private void SaveFile()
+    private async Task SaveFileAsync()
     {
         if (string.IsNullOrWhiteSpace(CurrentFilePath))
         {
-            SaveAsFile();
+            await SaveAsFileAsync();
             return;
         }
 
-        SaveTo(CurrentFilePath);
+        await SaveToAsync(CurrentFilePath);
     }
 
     [RelayCommand]
-    private void SaveAsFile()
+    private async Task SaveAsFileAsync()
     {
         var fileName = string.IsNullOrWhiteSpace(CadDocumentViewModel.CadEditor.Document.Name)
                   ? "Untitled.d2cad"
@@ -335,22 +335,24 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (selectedFileName is null)
             return;
 
-        if (SaveTo(selectedFileName))
+        if (await SaveToAsync(selectedFileName))
             CurrentFilePath = selectedFileName;
     }
 
-    private bool SaveTo(string filePath)
+    private async Task<bool> SaveToAsync(string filePath)
     {
         try
         {
-            _storage.Save(CadDocumentViewModel.CadEditor.Document, filePath);
+            using (_dialogService.ShowProgressBarDialog())
+                await _storage.SaveAsync(CadDocumentViewModel.CadEditor.Document, filePath);
+
             ResetModificationBaseline(isModified: false);
             _snackbarService.Enqueue("File saved successfully.");
             return true;
         }
         catch (Exception ex)
         {
-            _ = _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Save failed");
+            await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Save failed");
             return false;
         }
     }
@@ -644,9 +646,9 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         PublishDocumentSummaryChanged();
     }
 
-    internal void Load(string fileName)
+    internal void Load(CadDocument document, string fileName)
     {
-        var document = _storage.Load(fileName);
+        ArgumentNullException.ThrowIfNull(document);
         CadDocumentViewModel.ReplaceEditor(new CadEditor(document));
         CurrentFilePath = fileName;
         Title = CadDocumentViewModel.CadEditor.Document.Name;
