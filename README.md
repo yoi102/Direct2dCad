@@ -1,6 +1,12 @@
 # Direct2dCad
 
 https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
+### OLE
+
+https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
+
+
+
 ## 项目简介
 
 Direct2dCad 是一个基于 Direct2D、DirectWrite 和 WPF 的桌面 CAD 编辑器实验项目。项目目标是把 CAD 编辑器常见的文档模型、命令历史、对象选择、图层管理、绘制预览和 GPU 资源管理拆成可维护的模块，并验证 WPF 与 Direct2D / D3D 互操作下的高性能渲染方案。
