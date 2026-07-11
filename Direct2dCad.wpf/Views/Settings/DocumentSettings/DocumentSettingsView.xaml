@@ -10,6 +10,8 @@
              d:Width="600"
              d:DataContext="{d:DesignInstance Type=vm:DocumentSettingsViewModel}">
     <UserControl.Resources>
+        <Style TargetType="ScrollBar"
+               BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
         <DataTemplate DataType="{x:Type vm:DocumentDisplaySettingsViewModel}">
             <local:DocumentDisplaySettingsView />
         </DataTemplate>
@@ -29,6 +31,7 @@
                  Background="Transparent"
                  ItemsSource="{Binding Sections}"
                  SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
+                 Style="{StaticResource MaterialDesignNavigationListBox}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate>
@@ -58,7 +61,7 @@
         </ListBox>
 
         <Border Grid.Column="1"
-                Background="{DynamicResource MaterialDesign.Brush.Divider}" />
+                Background="{DynamicResource MaterialDesign.Brush.Separator.Background}" />
 
         <ContentControl Grid.Column="2"
                         Margin="16,0,0,0"

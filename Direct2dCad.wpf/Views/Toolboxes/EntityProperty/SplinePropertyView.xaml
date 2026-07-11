@@ -14,19 +14,22 @@
         <StackPanel Margin="12">
             <TextBlock Text="{I18N {x:Static r:LangKeys.Spline}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
             <ep:EntityHeaderPropertySection />
+            <CheckBox Content="{I18N {x:Static r:LangKeys.Closed}}"
+                      IsChecked="{Binding IsClosed}"
+                      Margin="0,2,0,8" />
+
             <ep:EntitySettingsPropertySection />
             <ep:FillPropertySection />
             <ep:StrokeAppearancePropertySection />
-            <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True" Margin="0,0,0,8">
+            <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True">
                 <Grid Margin="8,6,8,8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <CheckBox Grid.Row="0" Grid.ColumnSpan="2" Content="{I18N {x:Static r:LangKeys.Closed}}" IsChecked="{Binding IsClosed}" Margin="0,2,0,8" />
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.FitPoints}}" VerticalAlignment="Top" Margin="0,4,0,0" />
-                    <DataGrid Grid.Row="1" Grid.Column="1" ItemsSource="{Binding FitPoints, Mode=OneWay}" SelectedItem="{Binding SelectedFitPoint, Mode=TwoWay}"
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.FitPoints}}" VerticalAlignment="Top" Margin="0,4,0,0" />
+                    <DataGrid Grid.Row="0" Grid.Column="1" ItemsSource="{Binding FitPoints, Mode=OneWay}" SelectedItem="{Binding SelectedFitPoint, Mode=TwoWay}"
                               AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" MaxHeight="180" Margin="0,0,0,8">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="#" Binding="{Binding Index, Mode=OneWay}" IsReadOnly="True" Width="36" />
@@ -38,14 +41,14 @@
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,0,0,8">
                         <Button Content="{I18N {x:Static r:LangKeys.AddAfter}}" Command="{Binding AddFitPointAfterSelectedCommand}" Margin="0,0,8,0" />
                         <Button Content="{I18N {x:Static r:LangKeys.Remove}}" Command="{Binding RemoveSelectedFitPointCommand}" />
                     </StackPanel>
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.PointCount}}" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding FitPointCount, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Length}}" VerticalAlignment="Center" />
-                    <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Length, Mode=OneWay, StringFormat=F3}" IsReadOnly="True" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.PointCount}}" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding FitPointCount, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Length}}" VerticalAlignment="Center" />
+                    <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Length, Mode=OneWay, StringFormat=F3}" IsReadOnly="True" />
                 </Grid>
             </Expander>
             <ep:StrokeStylePropertySection />

@@ -15,6 +15,10 @@
              d:DesignHeight="450"
              d:DesignWidth="320">
     <Grid Background="Transparent">
+        <Grid.Resources>
+            <Style TargetType="ScrollBar"
+                   BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -70,18 +74,20 @@
                  Background="Transparent"
                  BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 Style="{StaticResource MaterialDesignNavigationListBox}"
                  dd:DragDrop.IsDragSource="True"
                  dd:DragDrop.IsDropTarget="True"
                  dd:DragDrop.UseDefaultDragAdorner="True"
                  dd:DragDrop.DropHandler="{Binding RelativeSource={RelativeSource AncestorType=UserControl}}">
             <ListBox.ItemContainerStyle>
-                <Style TargetType="{x:Type ListBoxItem}">
+                <Style TargetType="{x:Type ListBoxItem}"
+                       BasedOn="{StaticResource MaterialDesignNavigationListBoxItem}">
                     <Setter Property="HorizontalContentAlignment"
                             Value="Stretch" />
                     <Setter Property="Padding"
                             Value="0" />
                     <Setter Property="Margin"
-                            Value="0" />
+                            Value="0.5" />
                 </Style>
             </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
@@ -95,7 +101,7 @@
                             ToolTip="{Binding ToolTipText}">
                         <Grid ColumnDefinitions="auto *">
                             <Border  x:Name="SelectedBorder"
-                                     Visibility="Hidden"
+                                     Visibility="Hidden" HorizontalAlignment="Stretch"
                                      Background="{DynamicResource MaterialDesign.Brush.Primary}"
                                      CornerRadius="2"
                                      Width="2" />

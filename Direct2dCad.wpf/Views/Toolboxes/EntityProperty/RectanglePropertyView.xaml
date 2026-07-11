@@ -18,7 +18,7 @@
             <ep:EntitySettingsPropertySection />
             <ep:FillPropertySection />
             <ep:StrokeAppearancePropertySection />
-            <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True" Margin="0,0,0,8">
+            <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True">
                 <Grid Margin="8,6,8,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="96" />

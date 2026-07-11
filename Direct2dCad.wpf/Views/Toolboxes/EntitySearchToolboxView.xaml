@@ -10,6 +10,10 @@
              d:DesignHeight="450"
              d:DesignWidth="320">
     <Grid Background="Transparent">
+        <Grid.Resources>
+            <Style TargetType="ScrollBar"
+                   BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
+        </Grid.Resources>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -77,9 +81,11 @@
                  SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
                  Background="Transparent"
                  BorderThickness="0"
+                 Style="{StaticResource MaterialDesignNavigationListBox}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemContainerStyle>
-                <Style TargetType="{x:Type ListBoxItem}">
+                <Style TargetType="{x:Type ListBoxItem}"
+                       BasedOn="{StaticResource MaterialDesignNavigationListBoxItem}">
                     <Setter Property="HorizontalContentAlignment"
                             Value="Stretch" />
                     <Setter Property="Padding"
@@ -88,7 +94,6 @@
                             Value="0" />
                 </Style>
             </ListBox.ItemContainerStyle>
-
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type toolboxes:EntitySearchResultItemViewModel}">
                     <Border Margin="0,2"
@@ -104,7 +109,6 @@
                                     CornerRadius="2"
                                     Visibility="Hidden"
                                     Background="{DynamicResource MaterialDesign.Brush.Primary}" />
-
                             <Grid Grid.Column="1"
                                   Margin="8,6">
                                 <Grid.RowDefinitions>

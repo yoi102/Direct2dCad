@@ -15,6 +15,8 @@
     <Grid>
 
         <Grid.Resources>
+            <Style TargetType="ScrollBar"
+                   BasedOn="{StaticResource MaterialDesignScrollBarMinimal}" />
             <DataTemplate DataType="{x:Type vm_ep:ArcPropertyViewModel}">
                 <v_ep:ArcPropertyView />
             </DataTemplate>
