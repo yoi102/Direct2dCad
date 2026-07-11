@@ -535,13 +535,13 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            IsClosed = _documentViewModel.DrawingPolylineClosed;
-            RefreshFillStyleOptions(_documentViewModel.DrawingPolylineFillStyleId);
-            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingPolylineFillStyleId);
-            StrokeColor = _documentViewModel.DrawingPolylineStrokeColor;
-            LineWeight = _documentViewModel.DrawingPolylineLineWeight;
-            ZIndex = _documentViewModel.DrawingPolylineZIndex;
-            IsVisible = _documentViewModel.DrawingPolylineIsVisible;
+            IsClosed = _documentViewModel.DrawingDefaults.PolylineClosed;
+            RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.PolylineFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.PolylineFillStyleId);
+            StrokeColor = _documentViewModel.DrawingDefaults.PolylineStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.PolylineLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.PolylineZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.PolylineIsVisible;
         }
         finally
         {
@@ -554,7 +554,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineClosed = value;
+        _documentViewModel.DrawingDefaults.PolylineClosed = value;
     }
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)
@@ -564,7 +564,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        _documentViewModel.DrawingDefaults.PolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
     }
 
     partial void OnFillColorChanged(CadColor value)
@@ -572,7 +572,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
             return;
 
-        _documentViewModel.DrawingPolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+        _documentViewModel.DrawingDefaults.PolylineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
             _documentViewModel.CadEditor.Document,
             SelectedFillStyleOption,
             value);
@@ -583,7 +583,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineStrokeColor = value;
+        _documentViewModel.DrawingDefaults.PolylineStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -591,7 +591,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.PolylineLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -601,7 +601,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineZIndex = value;
+        _documentViewModel.DrawingDefaults.PolylineZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -609,7 +609,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolylineIsVisible = value;
+        _documentViewModel.DrawingDefaults.PolylineIsVisible = value;
     }
 
     private void RefreshFillStyleOptions(StyleId? selectedStyleId)

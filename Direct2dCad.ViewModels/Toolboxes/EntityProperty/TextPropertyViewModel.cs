@@ -391,14 +391,14 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            TextContent = _documentViewModel.DrawingText;
-            RefreshTextStyleOptions(_documentViewModel.DrawingTextStyleId);
-            StrokeColor = _documentViewModel.DrawingTextStrokeColor;
-            LineWeight = _documentViewModel.DrawingTextLineWeight;
-            ZIndex = _documentViewModel.DrawingTextZIndex;
-            IsVisible = _documentViewModel.DrawingTextIsVisible;
-            IsInverted = _documentViewModel.DrawingTextInverted;
-            InvertedMarginFactor = _documentViewModel.DrawingTextInvertedMarginFactor;
+            TextContent = _documentViewModel.DrawingDefaults.Text;
+            RefreshTextStyleOptions(_documentViewModel.DrawingDefaults.TextStyleId);
+            StrokeColor = _documentViewModel.DrawingDefaults.TextStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.TextLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.TextZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.TextIsVisible;
+            IsInverted = _documentViewModel.DrawingDefaults.TextInverted;
+            InvertedMarginFactor = _documentViewModel.DrawingDefaults.TextInvertedMarginFactor;
         }
         finally
         {
@@ -411,7 +411,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingText = value ?? string.Empty;
+        _documentViewModel.DrawingDefaults.Text = value ?? string.Empty;
     }
 
     partial void OnSelectedTextStyleOptionChanged(TextStyleOption? value)
@@ -419,7 +419,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingTextStyleId = value?.Id;
+        _documentViewModel.DrawingDefaults.TextStyleId = value?.Id;
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -427,7 +427,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingTextStrokeColor = value;
+        _documentViewModel.DrawingDefaults.TextStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -435,7 +435,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingTextLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.TextLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -445,7 +445,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingTextZIndex = value;
+        _documentViewModel.DrawingDefaults.TextZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -453,7 +453,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingTextIsVisible = value;
+        _documentViewModel.DrawingDefaults.TextIsVisible = value;
     }
 
     partial void OnIsInvertedChanged(bool value)
@@ -461,7 +461,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingTextInverted = value;
+        _documentViewModel.DrawingDefaults.TextInverted = value;
     }
 
     partial void OnInvertedMarginFactorChanged(double value)
@@ -469,7 +469,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingTextInvertedMarginFactor = IsFiniteNonNegative(value)
+        _documentViewModel.DrawingDefaults.TextInvertedMarginFactor = IsFiniteNonNegative(value)
             ? value
             : CadText.DefaultInvertedMarginFactor;
     }

@@ -1281,6 +1281,17 @@
                                 Command="{Binding InsertImageFromFileCommand}">
                           
                         </Button>
+                        <Button ToolTip="{I18N {x:Static r:LangKeys.Settings}}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Width="33"
+                                Height="33"
+                                Content="{md:PackIcon Kind=Settings, Size=30}"
+                                Margin="5"
+                                Padding="0"
+                                Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                                Command="{Binding OpenDocumentSettingsDialogCommand}">
+                          
+                        </Button>
                     </WrapPanel>
 
 

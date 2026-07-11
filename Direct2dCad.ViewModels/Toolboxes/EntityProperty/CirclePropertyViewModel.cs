@@ -329,12 +329,12 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            RefreshFillStyleOptions(_documentViewModel.DrawingCircleFillStyleId);
-            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingCircleFillStyleId);
-            StrokeColor = _documentViewModel.DrawingCircleStrokeColor;
-            LineWeight = _documentViewModel.DrawingCircleLineWeight;
-            ZIndex = _documentViewModel.DrawingCircleZIndex;
-            IsVisible = _documentViewModel.DrawingCircleIsVisible;
+            RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.CircleFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.CircleFillStyleId);
+            StrokeColor = _documentViewModel.DrawingDefaults.CircleStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.CircleLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.CircleZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.CircleIsVisible;
         }
         finally
         {
@@ -349,7 +349,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingCircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        _documentViewModel.DrawingDefaults.CircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
     }
 
     partial void OnFillColorChanged(CadColor value)
@@ -357,7 +357,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
             return;
 
-        _documentViewModel.DrawingCircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+        _documentViewModel.DrawingDefaults.CircleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
             _documentViewModel.CadEditor.Document,
             SelectedFillStyleOption,
             value);
@@ -368,7 +368,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingCircleStrokeColor = value;
+        _documentViewModel.DrawingDefaults.CircleStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -376,7 +376,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingCircleLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.CircleLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -386,7 +386,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingCircleZIndex = value;
+        _documentViewModel.DrawingDefaults.CircleZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -394,7 +394,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingCircleIsVisible = value;
+        _documentViewModel.DrawingDefaults.CircleIsVisible = value;
     }
 
     private void RefreshFillStyleOptions(StyleId? selectedStyleId)

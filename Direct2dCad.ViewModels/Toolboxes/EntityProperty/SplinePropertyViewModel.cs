@@ -504,13 +504,13 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            IsClosed = _documentViewModel.DrawingSplineClosed;
-            RefreshFillStyleOptions(_documentViewModel.DrawingSplineFillStyleId);
-            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingSplineFillStyleId);
-            StrokeColor = _documentViewModel.DrawingSplineStrokeColor;
-            LineWeight = _documentViewModel.DrawingSplineLineWeight;
-            ZIndex = _documentViewModel.DrawingSplineZIndex;
-            IsVisible = _documentViewModel.DrawingSplineIsVisible;
+            IsClosed = _documentViewModel.DrawingDefaults.SplineClosed;
+            RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.SplineFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.SplineFillStyleId);
+            StrokeColor = _documentViewModel.DrawingDefaults.SplineStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.SplineLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.SplineZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.SplineIsVisible;
         }
         finally
         {
@@ -523,7 +523,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingSplineClosed = value;
+        _documentViewModel.DrawingDefaults.SplineClosed = value;
         OnPropertyChanged(nameof(FillControlsEnabled));
         OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
@@ -535,7 +535,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingSplineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        _documentViewModel.DrawingDefaults.SplineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
     }
 
     partial void OnFillColorChanged(CadColor value)
@@ -543,7 +543,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
             return;
 
-        _documentViewModel.DrawingSplineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+        _documentViewModel.DrawingDefaults.SplineFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
             _documentViewModel.CadEditor.Document,
             SelectedFillStyleOption,
             value);
@@ -554,7 +554,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingSplineStrokeColor = value;
+        _documentViewModel.DrawingDefaults.SplineStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -562,7 +562,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingSplineLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.SplineLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -572,7 +572,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingSplineZIndex = value;
+        _documentViewModel.DrawingDefaults.SplineZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -580,7 +580,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingSplineIsVisible = value;
+        _documentViewModel.DrawingDefaults.SplineIsVisible = value;
     }
 
     private static bool IsFinitePositive(double value)

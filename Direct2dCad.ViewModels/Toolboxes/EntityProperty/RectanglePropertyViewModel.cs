@@ -442,14 +442,14 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            RefreshFillStyleOptions(_documentViewModel.DrawingRectangleFillStyleId);
-            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingRectangleFillStyleId);
-            StrokeColor = _documentViewModel.DrawingRectangleStrokeColor;
-            LineWeight = _documentViewModel.DrawingRectangleLineWeight;
-            CornerRadiusX = _documentViewModel.DrawingRectangleCornerRadiusX;
-            CornerRadiusY = _documentViewModel.DrawingRectangleCornerRadiusY;
-            ZIndex = _documentViewModel.DrawingRectangleZIndex;
-            IsVisible = _documentViewModel.DrawingRectangleIsVisible;
+            RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.RectangleFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.RectangleFillStyleId);
+            StrokeColor = _documentViewModel.DrawingDefaults.RectangleStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.RectangleLineWeight;
+            CornerRadiusX = _documentViewModel.DrawingDefaults.RectangleCornerRadiusX;
+            CornerRadiusY = _documentViewModel.DrawingDefaults.RectangleCornerRadiusY;
+            ZIndex = _documentViewModel.DrawingDefaults.RectangleZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.RectangleIsVisible;
         }
         finally
         {
@@ -464,7 +464,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        _documentViewModel.DrawingDefaults.RectangleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
     }
 
     partial void OnFillColorChanged(CadColor value)
@@ -472,7 +472,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
             return;
 
-        _documentViewModel.DrawingRectangleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+        _documentViewModel.DrawingDefaults.RectangleFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
             _documentViewModel.CadEditor.Document,
             SelectedFillStyleOption,
             value);
@@ -483,7 +483,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleStrokeColor = value;
+        _documentViewModel.DrawingDefaults.RectangleStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -491,7 +491,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.RectangleLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -501,7 +501,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleCornerRadiusX = IsFiniteNonNegative(value)
+        _documentViewModel.DrawingDefaults.RectangleCornerRadiusX = IsFiniteNonNegative(value)
             ? value
             : 0;
     }
@@ -511,7 +511,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleCornerRadiusY = IsFiniteNonNegative(value)
+        _documentViewModel.DrawingDefaults.RectangleCornerRadiusY = IsFiniteNonNegative(value)
             ? value
             : 0;
     }
@@ -521,7 +521,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleZIndex = value;
+        _documentViewModel.DrawingDefaults.RectangleZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -529,7 +529,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingRectangleIsVisible = value;
+        _documentViewModel.DrawingDefaults.RectangleIsVisible = value;
     }
 
     private void RefreshFillStyleOptions(StyleId? selectedStyleId)

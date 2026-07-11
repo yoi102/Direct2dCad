@@ -11,7 +11,7 @@ namespace Direct2dCad.ViewModels.Services.Drawing;
 internal sealed class CadDrawingPreviewDispatcher(
     CadCanvasToolMode toolMode,
     CadDrawingSessionState state,
-    CadDrawingDefaults defaults,
+    ICadDrawingDefaults defaults,
     CadDrawingStyleResolver styleResolver,
     CadPreviewStyleService previewStyleService,
     CadTransientMeasurementBuilder measurementBuilder,

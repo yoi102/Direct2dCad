@@ -62,7 +62,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
         _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
         AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
-        CadDocumentViewModel.DrawingText = TextInput;
+        CadDocumentViewModel.DrawingDefaults.Text = TextInput;
         ApplyDocumentViewSettingsToToolbar();
         ApplyUserSettingsToToolbar();
         CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
@@ -153,7 +153,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     partial void OnTextInputChanged(string value)
     {
-        CadDocumentViewModel.DrawingText = value;
+        CadDocumentViewModel.DrawingDefaults.Text = value;
         CadDocumentViewModel.RequestRender();
     }
 

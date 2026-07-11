@@ -27,6 +27,8 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
         Shortcut = "Ctrl+Shift+G";
         IsOpenByDefault = true;
         ContentId = Id = Guid.NewGuid().ToString();
+        CanClose = false;
+        
     }
     [ObservableProperty]
     public partial string ContentId { get; private set; }

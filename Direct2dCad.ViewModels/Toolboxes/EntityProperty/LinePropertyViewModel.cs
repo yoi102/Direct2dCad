@@ -335,10 +335,10 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            StrokeColor = _documentViewModel.DrawingLineStrokeColor;
-            LineWeight = _documentViewModel.DrawingLineLineWeight;
-            ZIndex = _documentViewModel.DrawingLineZIndex;
-            IsVisible = _documentViewModel.DrawingLineIsVisible;
+            StrokeColor = _documentViewModel.DrawingDefaults.LineStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.LineLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.LineZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.LineIsVisible;
         }
         finally
         {
@@ -351,7 +351,7 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingLineStrokeColor = value;
+        _documentViewModel.DrawingDefaults.LineStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -359,7 +359,7 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingLineLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.LineLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -369,7 +369,7 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingLineZIndex = value;
+        _documentViewModel.DrawingDefaults.LineZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -377,7 +377,7 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingLineIsVisible = value;
+        _documentViewModel.DrawingDefaults.LineIsVisible = value;
     }
 
     private static bool IsFinitePositive(double value)

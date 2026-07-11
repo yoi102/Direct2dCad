@@ -10,7 +10,7 @@ namespace Direct2dCad.ViewModels.Services.Drawing;
 internal sealed class CadDrawingStyleResolver(
     CadDocument document,
     CadLayer layer,
-    CadDrawingDefaults defaults,
+    ICadDrawingDefaults defaults,
     CadPreviewStyleService previewStyleService)
 {
     public CadTransientStyle CreateLineTransientStyle()

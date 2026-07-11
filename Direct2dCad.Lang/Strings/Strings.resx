@@ -900,4 +900,8 @@
   <data name="Opacity" xml:space="preserve">
     <value>Opacity</value>
   </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+    <comment>Settings</comment>
+  </data>
 </root>

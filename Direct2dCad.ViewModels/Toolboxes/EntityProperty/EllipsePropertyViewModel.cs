@@ -323,12 +323,12 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            RefreshFillStyleOptions(_documentViewModel.DrawingEllipseFillStyleId);
-            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingEllipseFillStyleId);
-            StrokeColor = _documentViewModel.DrawingEllipseStrokeColor;
-            LineWeight = _documentViewModel.DrawingEllipseLineWeight;
-            ZIndex = _documentViewModel.DrawingEllipseZIndex;
-            IsVisible = _documentViewModel.DrawingEllipseIsVisible;
+            RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.EllipseFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.EllipseFillStyleId);
+            StrokeColor = _documentViewModel.DrawingDefaults.EllipseStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.EllipseLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.EllipseZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.EllipseIsVisible;
         }
         finally
         {
@@ -343,7 +343,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingEllipseFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        _documentViewModel.DrawingDefaults.EllipseFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
     }
 
     partial void OnFillColorChanged(CadColor value)
@@ -351,7 +351,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
             return;
 
-        _documentViewModel.DrawingEllipseFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+        _documentViewModel.DrawingDefaults.EllipseFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
             _documentViewModel.CadEditor.Document,
             SelectedFillStyleOption,
             value);
@@ -362,7 +362,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingEllipseStrokeColor = value;
+        _documentViewModel.DrawingDefaults.EllipseStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -370,7 +370,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingEllipseLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.EllipseLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -380,7 +380,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingEllipseZIndex = value;
+        _documentViewModel.DrawingDefaults.EllipseZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -388,7 +388,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingEllipseIsVisible = value;
+        _documentViewModel.DrawingDefaults.EllipseIsVisible = value;
     }
 
     private void RefreshFillStyleOptions(StyleId? selectedStyleId)

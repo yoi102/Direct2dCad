@@ -1148,7 +1148,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Opacity", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Open File 的本地化字符串。
         /// </summary>
@@ -1452,6 +1452,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string SetOrigin {
             get {
                 return ResourceManager.GetString("SetOrigin", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Settings 的本地化字符串。
+        /// </summary>
+        public static string Settings {
+            get {
+                return ResourceManager.GetString("Settings", resourceCulture);
             }
         }
         

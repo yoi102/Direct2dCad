@@ -25,6 +25,7 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
         Icon = toolboxIconsService.Explorer;
         Shortcut = "Ctrl+Shift+E";
         IsOpenByDefault = true;
+        CanClose = false;
     }
     [ObservableProperty]
     public partial string ContentId { get; private set; }

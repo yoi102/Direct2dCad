@@ -298,10 +298,10 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            StrokeColor = _documentViewModel.DrawingArcStrokeColor;
-            LineWeight = _documentViewModel.DrawingArcLineWeight;
-            ZIndex = _documentViewModel.DrawingArcZIndex;
-            IsVisible = _documentViewModel.DrawingArcIsVisible;
+            StrokeColor = _documentViewModel.DrawingDefaults.ArcStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.ArcLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.ArcZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.ArcIsVisible;
         }
         finally
         {
@@ -314,7 +314,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcStrokeColor = value;
+        _documentViewModel.DrawingDefaults.ArcStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -322,7 +322,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.ArcLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -332,7 +332,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcZIndex = value;
+        _documentViewModel.DrawingDefaults.ArcZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -340,7 +340,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingArcIsVisible = value;
+        _documentViewModel.DrawingDefaults.ArcIsVisible = value;
     }
 
     private static bool IsFinitePositive(double value)

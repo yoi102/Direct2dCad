@@ -167,6 +167,17 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenDocumentSettingsDialog()
+    {
+
+        //需要输入CurrentEditorTabViewModel 的设置相关内容输入进去。   里面有ok  apply  cancel 进行设置的确认与取消
+        _dialogService.OpenDocumentSettingsDialog();
+
+
+
+    }
+
+    [RelayCommand]
     private void InsertImageFromFile()
     {
         var fileName = _fileDialogService.OpenImageFile();

@@ -3,6 +3,7 @@ using Direct2dCad.Client.Common;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using Direct2dCad.wpf.Views.Dialogs;
+using Direct2dCad.wpf.Views.Settings;
 using MaterialDesignThemes.Wpf;
 
 namespace Direct2dCad.wpf.Services;
@@ -121,5 +122,13 @@ internal sealed class DialogService : IDialogService
             return action();
 
         return dispatcher.InvokeAsync(action).Task.Unwrap();
+    }
+
+    public void OpenDocumentSettingsDialog()
+    {
+        //显示到一个新窗口
+        //打开时候不允许切换到主窗口。
+        SettingsDialog settingsDialog = new();
+        settingsDialog.ShowDialog();
     }
 }

@@ -33,6 +33,7 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
         _dialogService = dialogService;
         _snackbarService = snackbarService;
         ContentId = Id = Guid.NewGuid().ToString();
+        CanClose = false;
     }
     [ObservableProperty]
     public partial string ContentId { get; private set; }

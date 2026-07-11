@@ -3,20 +3,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.ViewModels.Services.Drawing;
 
-namespace Direct2dCad.ViewModels.Services.Drawing;
+namespace Direct2dCad.ViewModels.Drawing;
 
-internal sealed class CadDrawingDefaultChangedEventArgs(
-    string propertyName,
-    bool requestRender)
-    : EventArgs
+public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingDefaults
 {
-    public string PropertyName { get; } = propertyName;
-    public bool RequestRender { get; } = requestRender;
-}
-
-internal sealed class CadDrawingDefaults : ObservableObject
-{
+    private int _updateDepth;
+    private bool _defaultsChanged;
     private CadColor _lineStrokeColor = CadColor.White;
     private double _lineLineWeight = CadLineWeight.Default.Value;
     private int _lineZIndex;
@@ -68,7 +62,7 @@ internal sealed class CadDrawingDefaults : ObservableObject
     private int _arcZIndex;
     private bool _arcIsVisible = true;
 
-    public event EventHandler<CadDrawingDefaultChangedEventArgs>? SettingChanged;
+    public event EventHandler? DefaultsChanged;
 
     public CadColor LineStrokeColor
     {
@@ -289,13 +283,13 @@ internal sealed class CadDrawingDefaults : ObservableObject
     public double RectangleCornerRadiusX
     {
         get => _rectangleCornerRadiusX;
-        set => SetDrawingSetting(ref _rectangleCornerRadiusX, value);
+        set => SetDrawingSetting(ref _rectangleCornerRadiusX, value, IsFiniteNonNegative(value));
     }
 
     public double RectangleCornerRadiusY
     {
         get => _rectangleCornerRadiusY;
-        set => SetDrawingSetting(ref _rectangleCornerRadiusY, value);
+        set => SetDrawingSetting(ref _rectangleCornerRadiusY, value, IsFiniteNonNegative(value));
     }
 
     public string Text
@@ -313,7 +307,7 @@ internal sealed class CadDrawingDefaults : ObservableObject
     public double TextInvertedMarginFactor
     {
         get => _textInvertedMarginFactor;
-        set => SetDrawingSetting(ref _textInvertedMarginFactor, value);
+        set => SetDrawingSetting(ref _textInvertedMarginFactor, value, IsFiniteNonNegative(value));
     }
 
     public CadColor TextStrokeColor
@@ -370,50 +364,110 @@ internal sealed class CadDrawingDefaults : ObservableObject
         set => SetDrawingSetting(ref _arcIsVisible, value);
     }
 
-    public void UpdateStrokeColors(CadColor previousColor, CadColor newColor)
+    private void UpdateStrokeColors(CadColor previousColor, CadColor newColor)
     {
-        if (LineStrokeColor == previousColor) LineStrokeColor = newColor;
-        if (PolylineStrokeColor == previousColor) PolylineStrokeColor = newColor;
-        if (PolygonStrokeColor == previousColor) PolygonStrokeColor = newColor;
-        if (SplineStrokeColor == previousColor) SplineStrokeColor = newColor;
-        if (CircleStrokeColor == previousColor) CircleStrokeColor = newColor;
-        if (EllipseStrokeColor == previousColor) EllipseStrokeColor = newColor;
-        if (RectangleStrokeColor == previousColor) RectangleStrokeColor = newColor;
-        if (TextStrokeColor == previousColor) TextStrokeColor = newColor;
-        if (ArcStrokeColor == previousColor) ArcStrokeColor = newColor;
+        BeginUpdate();
+        try
+        {
+            if (LineStrokeColor == previousColor) LineStrokeColor = newColor;
+            if (PolylineStrokeColor == previousColor) PolylineStrokeColor = newColor;
+            if (PolygonStrokeColor == previousColor) PolygonStrokeColor = newColor;
+            if (SplineStrokeColor == previousColor) SplineStrokeColor = newColor;
+            if (CircleStrokeColor == previousColor) CircleStrokeColor = newColor;
+            if (EllipseStrokeColor == previousColor) EllipseStrokeColor = newColor;
+            if (RectangleStrokeColor == previousColor) RectangleStrokeColor = newColor;
+            if (TextStrokeColor == previousColor) TextStrokeColor = newColor;
+            if (ArcStrokeColor == previousColor) ArcStrokeColor = newColor;
+        }
+        finally
+        {
+            EndUpdate();
+        }
     }
 
-    public void UpdateLineWeights(double previousLineWeight, double newLineWeight)
+    private void UpdateLineWeights(double previousLineWeight, double newLineWeight)
     {
-        if (AreClose(LineLineWeight, previousLineWeight)) LineLineWeight = newLineWeight;
-        if (AreClose(PolylineLineWeight, previousLineWeight)) PolylineLineWeight = newLineWeight;
-        if (AreClose(PolygonLineWeight, previousLineWeight)) PolygonLineWeight = newLineWeight;
-        if (AreClose(SplineLineWeight, previousLineWeight)) SplineLineWeight = newLineWeight;
-        if (AreClose(CircleLineWeight, previousLineWeight)) CircleLineWeight = newLineWeight;
-        if (AreClose(EllipseLineWeight, previousLineWeight)) EllipseLineWeight = newLineWeight;
-        if (AreClose(RectangleLineWeight, previousLineWeight)) RectangleLineWeight = newLineWeight;
-        if (AreClose(TextLineWeight, previousLineWeight)) TextLineWeight = newLineWeight;
-        if (AreClose(ArcLineWeight, previousLineWeight)) ArcLineWeight = newLineWeight;
+        BeginUpdate();
+        try
+        {
+            if (AreClose(LineLineWeight, previousLineWeight)) LineLineWeight = newLineWeight;
+            if (AreClose(PolylineLineWeight, previousLineWeight)) PolylineLineWeight = newLineWeight;
+            if (AreClose(PolygonLineWeight, previousLineWeight)) PolygonLineWeight = newLineWeight;
+            if (AreClose(SplineLineWeight, previousLineWeight)) SplineLineWeight = newLineWeight;
+            if (AreClose(CircleLineWeight, previousLineWeight)) CircleLineWeight = newLineWeight;
+            if (AreClose(EllipseLineWeight, previousLineWeight)) EllipseLineWeight = newLineWeight;
+            if (AreClose(RectangleLineWeight, previousLineWeight)) RectangleLineWeight = newLineWeight;
+            if (AreClose(TextLineWeight, previousLineWeight)) TextLineWeight = newLineWeight;
+            if (AreClose(ArcLineWeight, previousLineWeight)) ArcLineWeight = newLineWeight;
+        }
+        finally
+        {
+            EndUpdate();
+        }
+    }
+
+    public void UpdateLayerDefaults(
+        CadColor previousColor,
+        CadColor newColor,
+        double previousLineWeight,
+        double newLineWeight)
+    {
+        BeginUpdate();
+        try
+        {
+            UpdateStrokeColors(previousColor, newColor);
+            UpdateLineWeights(previousLineWeight, newLineWeight);
+        }
+        finally
+        {
+            EndUpdate();
+        }
     }
 
     private bool SetDrawingSetting<T>(
         ref T field,
         T value,
-        bool requestRender = true,
+        bool isValid = true,
         [CallerMemberName] string? propertyName = null)
     {
+        if (!isValid)
+            return false;
+
         if (!SetProperty(ref field, value, propertyName))
             return false;
 
-        SettingChanged?.Invoke(
-            this,
-            new CadDrawingDefaultChangedEventArgs(propertyName ?? string.Empty, requestRender));
+        _defaultsChanged = true;
+        if (_updateDepth == 0)
+            PublishDefaultsChanged();
         return true;
+    }
+
+    private void BeginUpdate() => _updateDepth++;
+
+    private void EndUpdate()
+    {
+        if (_updateDepth <= 0)
+            throw new InvalidOperationException("Drawing defaults update scope is unbalanced.");
+
+        _updateDepth--;
+        if (_updateDepth == 0 && _defaultsChanged)
+            PublishDefaultsChanged();
+    }
+
+    private void PublishDefaultsChanged()
+    {
+        _defaultsChanged = false;
+        DefaultsChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static bool IsFinitePositive(double value)
     {
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private static bool IsFiniteNonNegative(double value)
+    {
+        return value >= 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
     private static bool AreClose(double left, double right)

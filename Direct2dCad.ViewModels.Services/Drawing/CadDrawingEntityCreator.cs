@@ -10,7 +10,7 @@ namespace Direct2dCad.ViewModels.Services.Drawing;
 internal sealed class CadDrawingEntityCreator(
     CadEditor editor,
     LayerId layerId,
-    CadDrawingDefaults defaults,
+    ICadDrawingDefaults defaults,
     CadDrawingStyleResolver styleResolver,
     CadTextMeasurementService textMeasurementService)
 {

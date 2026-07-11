@@ -11,4 +11,5 @@ public interface IDialogService
     IDisposable ShowProgressBarDialog(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
 
     Task<bool> ShowExitConfirmation(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
+    void OpenDocumentSettingsDialog();
 }

@@ -44,12 +44,12 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         try
         {
             RefreshDrawingLayerOptions(_documentViewModel);
-            RefreshFillStyleOptions(_documentViewModel.DrawingPolygonFillStyleId);
-            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingPolygonFillStyleId);
-            StrokeColor = _documentViewModel.DrawingPolygonStrokeColor;
-            LineWeight = _documentViewModel.DrawingPolygonLineWeight;
-            ZIndex = _documentViewModel.DrawingPolygonZIndex;
-            IsVisible = _documentViewModel.DrawingPolygonIsVisible;
+            RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.PolygonFillStyleId);
+            FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.PolygonFillStyleId);
+            StrokeColor = _documentViewModel.DrawingDefaults.PolygonStrokeColor;
+            LineWeight = _documentViewModel.DrawingDefaults.PolygonLineWeight;
+            ZIndex = _documentViewModel.DrawingDefaults.PolygonZIndex;
+            IsVisible = _documentViewModel.DrawingDefaults.PolygonIsVisible;
         }
         finally
         {
@@ -64,7 +64,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
+        _documentViewModel.DrawingDefaults.PolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(_documentViewModel.CadEditor.Document, value, FillColor);
     }
 
     partial void OnFillColorChanged(CadColor value)
@@ -72,7 +72,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing || !CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption))
             return;
 
-        _documentViewModel.DrawingPolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
+        _documentViewModel.DrawingDefaults.PolygonFillStyleId = CirclePropertyViewModel.ResolveFillStyleId(
             _documentViewModel.CadEditor.Document,
             SelectedFillStyleOption,
             value);
@@ -83,7 +83,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolygonStrokeColor = value;
+        _documentViewModel.DrawingDefaults.PolygonStrokeColor = value;
     }
 
     partial void OnLineWeightChanged(double value)
@@ -91,7 +91,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolygonLineWeight = IsFinitePositive(value)
+        _documentViewModel.DrawingDefaults.PolygonLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
     }
@@ -101,7 +101,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolygonZIndex = value;
+        _documentViewModel.DrawingDefaults.PolygonZIndex = value;
     }
 
     partial void OnIsVisibleChanged(bool value)
@@ -109,7 +109,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
         if (_isRefreshing)
             return;
 
-        _documentViewModel.DrawingPolygonIsVisible = value;
+        _documentViewModel.DrawingDefaults.PolygonIsVisible = value;
     }
 
     private void RefreshFillStyleOptions(StyleId? selectedStyleId)

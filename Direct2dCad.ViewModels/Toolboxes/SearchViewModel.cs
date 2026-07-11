@@ -30,6 +30,7 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
         Shortcut = "Ctrl+Shift+T";
         IsOpenByDefault = false;
         ContentId = Id = Guid.NewGuid().ToString();
+        CanClose = false;
     }
 
     [ObservableProperty]
