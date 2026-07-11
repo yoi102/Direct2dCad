@@ -52,6 +52,7 @@
                          MinWidth="190"
                          Margin="0,0,0,12"
                          HorizontalAlignment="Stretch"
+                         IsAlphaChannelVisible="False"
                          AddToRecentColorsTrigger="SelectedColorChanged"
                          SelectedColor="{Binding PrimaryColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
         <TextBlock Grid.Row="3"
@@ -62,6 +63,7 @@
                          Grid.Column="1"
                          MinWidth="190"
                          Margin="0,0,0,12"
+                         IsAlphaChannelVisible="False"
                          HorizontalAlignment="Stretch"
                          AddToRecentColorsTrigger="SelectedColorChanged"
                          SelectedColor="{Binding SecondaryColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
