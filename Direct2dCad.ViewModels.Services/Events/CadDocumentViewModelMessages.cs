@@ -8,4 +8,6 @@ public sealed record CadDocumentInteractionStateChangedMessage(ICadDocumentViewM
 
 public sealed record CadDocumentViewSettingsChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
 
+public sealed record CadSelectionFilterChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
+
 public sealed record EditorTabDocumentSummaryChangedMessage(IEditorTabDocumentSummaryMessageSource EditorTabViewModel);

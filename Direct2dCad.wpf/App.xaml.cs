@@ -83,6 +83,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IOleHostService, OleHostService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IUserSettingsStore, JsonUserSettingsStore>();
+        services.AddSingleton<IWorkspaceSettingsStore, JsonWorkspaceSettingsStore>();
         services.AddSingleton<ISnackbarService, SnackbarService>();
         services.AddSingleton<IToolboxIconProvider, ToolboxIconProvider>();
 

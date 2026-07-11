@@ -31,6 +31,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 {
     private readonly IPublisher<CadDocumentInteractionStateChangedMessage> _interactionStateChangedPublisher;
     private readonly IPublisher<CadDocumentViewSettingsChangedMessage> _viewSettingsChangedPublisher;
+    private readonly IPublisher<CadSelectionFilterChangedMessage> _selectionFilterChangedPublisher;
     private readonly IDisposable _oleObjectUpdatedSubscription;
     private readonly Guid _oleEditSessionId = Guid.NewGuid();
     private readonly HashSet<EntityId> _openOleEditEntityIds = [];
@@ -112,6 +113,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadDocumentViewModel(
         IPublisher<CadDocumentInteractionStateChangedMessage> interactionStateChangedPublisher,
         IPublisher<CadDocumentViewSettingsChangedMessage> viewSettingsChangedPublisher,
+        IPublisher<CadSelectionFilterChangedMessage> selectionFilterChangedPublisher,
         ISubscriber<CadOleObjectUpdatedMessage> oleObjectUpdatedSubscriber,
         ICadClipboardStore clipboardStore,
         IImageImportService imageImportService,
@@ -120,6 +122,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         _interactionStateChangedPublisher = interactionStateChangedPublisher;
         _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
+        _selectionFilterChangedPublisher = selectionFilterChangedPublisher;
         _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
         _clipboardTextService = clipboardTextService ?? throw new ArgumentNullException(nameof(clipboardTextService));
         _oleHostService = oleHostService ?? throw new ArgumentNullException(nameof(oleHostService));
@@ -458,11 +461,47 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (!changed)
             return;
 
-        if (!PruneSelectionToFilter())
+        if (PruneSelectionToFilter())
+        {
+            RaiseInteractionStateChanged();
+            RequestRender();
+        }
+
+        _selectionFilterChangedPublisher.Publish(new CadSelectionFilterChangedMessage(this));
+    }
+
+    public IReadOnlyCollection<string> GetDisabledSelectionEntityTypeKeys()
+    {
+        return _disabledSelectionEntityTypes
+            .Select(CadSelectionEntityTypeCatalog.GetKey)
+            .Where(key => key is not null)
+            .Cast<string>()
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    public void ApplyDisabledSelectionEntityTypeKeys(IEnumerable<string> keys)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+
+        var disabledTypes = keys
+            .Select(CadSelectionEntityTypeCatalog.GetEntityType)
+            .Where(entityType => entityType is not null)
+            .Cast<Type>()
+            .ToHashSet();
+        if (_disabledSelectionEntityTypes.SetEquals(disabledTypes))
             return;
 
-        RaiseInteractionStateChanged();
-        RequestRender();
+        _disabledSelectionEntityTypes.Clear();
+        _disabledSelectionEntityTypes.UnionWith(disabledTypes);
+
+        if (PruneSelectionToFilter())
+        {
+            RaiseInteractionStateChanged();
+            RequestRender();
+        }
+
+        _selectionFilterChangedPublisher.Publish(new CadSelectionFilterChangedMessage(this));
     }
 
     private bool CanSelectEntity(CadEntity entity)

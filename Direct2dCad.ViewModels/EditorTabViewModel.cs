@@ -26,6 +26,7 @@ public abstract class CadObservableDocument : ObservableDocument
 public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocumentSummaryMessageSource, IDisposable
 {
     private readonly IUserSettingsStore _userSettingsStore;
+    private readonly IWorkspaceSettingsStore _workspaceSettingsStore;
 
     private readonly CadUserSettings _userSettings;
     private readonly CadDocumentStorage _storage = new();
@@ -34,23 +35,28 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private readonly ISnackbarService _snackbarService;
     private bool _isSyncingViewSettings;
     private bool _isSyncingUserSettings;
+    private bool _isRestoringWorkspaceSettings;
     private CadEditor? _trackedEditor;
     private object? _savedDocumentHistorySnapshot;
     private int _directChangeVersion;
     private int _savedDirectChangeVersion;
     private readonly IDisposable _viewSettingsChangedSubscription;
+    private readonly IDisposable _selectionFilterChangedSubscription;
     private readonly IPublisher<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedPublisher;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
         IUserSettingsStore userSettingsStore,
+        IWorkspaceSettingsStore workspaceSettingsStore,
         IFileDialogService fileDialogService,
         IDialogService dialogService,
         ISnackbarService snackbarService,
         ISubscriber<CadDocumentViewSettingsChangedMessage> viewSettingsChangedSubscriber,
+        ISubscriber<CadSelectionFilterChangedMessage> selectionFilterChangedSubscriber,
         IPublisher<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedPublisher
         )
     {
         _userSettingsStore = userSettingsStore;
+        _workspaceSettingsStore = workspaceSettingsStore;
         _userSettings = _userSettingsStore.Load();
         _fileDialogService = fileDialogService;
         _dialogService = dialogService;
@@ -60,6 +66,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
         CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
         _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
+        _selectionFilterChangedSubscription = selectionFilterChangedSubscriber.Subscribe(OnSelectionFilterChanged);
         AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
         CadDocumentViewModel.DrawingDefaults.Text = TextInput;
         ApplyDocumentViewSettingsToToolbar();
@@ -331,7 +338,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
 
         if (await SaveToAsync(selectedFileName))
+        {
             CurrentFilePath = selectedFileName;
+            SaveWorkspaceSettings();
+        }
     }
 
     private async Task<bool> SaveToAsync(string filePath)
@@ -581,10 +591,12 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     public void Dispose()
     {
+        SaveWorkspaceSettings();
         SaveUserSettings();
         DetachDocumentChangeTracking();
         CadDocumentViewModel.PropertyChanged -= OnCadDocumentViewModelPropertyChanged;
         _viewSettingsChangedSubscription.Dispose();
+        _selectionFilterChangedSubscription.Dispose();
         CadDocumentViewModel.Dispose();
     }
 
@@ -594,6 +606,17 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
 
         ApplyDocumentViewSettingsToToolbar();
+    }
+
+    private void OnSelectionFilterChanged(CadSelectionFilterChangedMessage message)
+    {
+        if (!ReferenceEquals(message.DocumentViewModel, CadDocumentViewModel) ||
+            _isRestoringWorkspaceSettings)
+        {
+            return;
+        }
+
+        SaveWorkspaceSettings();
     }
 
     private void OnCadDocumentViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -660,6 +683,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ArgumentNullException.ThrowIfNull(document);
         CadDocumentViewModel.ReplaceEditor(new CadEditor(document));
         CurrentFilePath = fileName;
+        RestoreWorkspaceSettings();
         Title = CadDocumentViewModel.CadEditor.Document.Name;
         ResetModificationBaseline(isModified: false);
         OnPropertyChanged(nameof(DocumentName));
@@ -669,6 +693,48 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private void PublishDocumentSummaryChanged()
     {
         _documentSummaryChangedPublisher.Publish(new EditorTabDocumentSummaryChangedMessage(this));
+    }
+
+    private void RestoreWorkspaceSettings()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentFilePath))
+            return;
+
+        _isRestoringWorkspaceSettings = true;
+        try
+        {
+            var settings = _workspaceSettingsStore.LoadDocument(CurrentFilePath);
+            CadDocumentViewModel.ApplyDisabledSelectionEntityTypeKeys(
+                settings.DisabledSelectionEntityTypes);
+        }
+        finally
+        {
+            _isRestoringWorkspaceSettings = false;
+        }
+    }
+
+    private void SaveWorkspaceSettings()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentFilePath))
+            return;
+
+        try
+        {
+            _workspaceSettingsStore.SaveDocument(
+                CurrentFilePath,
+                new CadDocumentWorkspaceSettings
+                {
+                    DisabledSelectionEntityTypes = new HashSet<string>(
+                        CadDocumentViewModel.GetDisabledSelectionEntityTypeKeys(),
+                        StringComparer.Ordinal)
+                });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _ = _dialogService.ShowOrReplaceMessageDialogAsync(
+                ex.Message,
+                "Workspace settings save failed");
+        }
     }
 
     private static bool TryNormalizeDocumentName(string? name, out string normalizedName)

@@ -2,34 +2,22 @@ using System.Collections.ObjectModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
-using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.ViewModels.Services.Events;
+using Direct2dCad.ViewModels.Services.Interactions;
 using Direct2dCad.ViewModels.Services.Platform;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase
+public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase, IDisposable
 {
-    private static readonly (Type EntityType, string ResourceKey, string FallbackName)[] SupportedTypes =
-    [
-        (typeof(CadLine), "Line", "Line"),
-        (typeof(CadCircle), "Circle", "Circle"),
-        (typeof(CadArc), "Arc", "Arc"),
-        (typeof(CadEllipse), "Ellipse", "Ellipse"),
-        (typeof(CadEllipseArc), "EllipseArc", "Ellipse Arc"),
-        (typeof(CadRectangle), "Rectangle", "Rectangle"),
-        (typeof(CadPolyline), "Polyline", "Polyline"),
-        (typeof(CadSpline), "Spline", "Spline"),
-        (typeof(CadText), "Text", "Text"),
-        (typeof(CadShapeText), "ShapeText", "Shape Text"),
-        (typeof(CadImage), "Image", "Image"),
-        (typeof(CadOleObject), "OleObject", "OLE Object"),
-        (typeof(CadBlockReference), "BlockReference", "Block Reference")
-    ];
-
     private CadDocumentViewModel? _documentViewModel;
+    private readonly IDisposable _selectionFilterChangedSubscription;
     private bool _isSynchronizing;
 
-    public SelectionFilterToolboxViewModel(IToolboxIconProvider toolboxIconProvider)
+    public SelectionFilterToolboxViewModel(
+        IToolboxIconProvider toolboxIconProvider,
+        ISubscriber<CadSelectionFilterChangedMessage> selectionFilterChangedSubscriber)
     {
         Title = GetLocalizedText("SelectionFilter", "Selection Filter");
         Zone = DockZone.RightTop;
@@ -39,13 +27,16 @@ public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase
         ContentId = Id = Guid.NewGuid().ToString();
         CanClose = false;
 
-        foreach (var (entityType, resourceKey, fallbackName) in SupportedTypes)
+        foreach (var descriptor in CadSelectionEntityTypeCatalog.All)
         {
             Types.Add(new SelectionFilterTypeItemViewModel(
-                entityType,
-                GetLocalizedText(resourceKey, fallbackName),
+                descriptor.EntityType,
+                GetLocalizedText(descriptor.ResourceKey, descriptor.FallbackName),
                 OnTypeEnabledChanged));
         }
+
+        _selectionFilterChangedSubscription = selectionFilterChangedSubscriber.Subscribe(
+            OnSelectionFilterChanged);
     }
 
     [ObservableProperty]
@@ -93,10 +84,10 @@ public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase
         }
 
         if (_documentViewModel is not null)
-        {
-            foreach (var item in Types)
-                _documentViewModel.SetEntityTypeSelectionEnabled(item.EntityType, enabled);
-        }
+            _documentViewModel.ApplyDisabledSelectionEntityTypeKeys(
+                enabled
+                    ? []
+                    : CadSelectionEntityTypeCatalog.All.Select(descriptor => descriptor.Key));
 
         RefreshHeaderState();
     }
@@ -108,6 +99,17 @@ public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase
 
         _documentViewModel?.SetEntityTypeSelectionEnabled(item.EntityType, item.IsEnabled);
         RefreshHeaderState();
+    }
+
+    private void OnSelectionFilterChanged(CadSelectionFilterChangedMessage message)
+    {
+        if (ReferenceEquals(message.DocumentViewModel, _documentViewModel))
+            Attach(_documentViewModel);
+    }
+
+    public void Dispose()
+    {
+        _selectionFilterChangedSubscription.Dispose();
     }
 
     private void RefreshHeaderState()
