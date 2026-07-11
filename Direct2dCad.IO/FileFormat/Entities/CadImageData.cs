@@ -15,4 +15,6 @@ public sealed class CadImageData
     [Key(6)] public byte[] Pixels { get; set; } = [];
     [Key(7)] public string ContentType { get; set; } = "image/bgra32";
     [Key(8)] public string SourceName { get; set; } = string.Empty;
+    [Key(9)] public double Opacity { get; set; } = 1.0;
+    [Key(10)] public double RotationRadians { get; set; }
 }

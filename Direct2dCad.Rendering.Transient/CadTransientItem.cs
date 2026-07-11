@@ -69,7 +69,9 @@ public sealed record CadTransientImage(
     int Stride,
     byte[] Pixels,
     CadTransientStyle Style,
-    EntityId? SourceEntityId = null)
+    EntityId? SourceEntityId = null,
+    double Opacity = 1.0,
+    double RotationRadians = 0.0)
     : CadTransientItem(Style);
 
 public sealed record CadTransientOleObject(
@@ -77,7 +79,8 @@ public sealed record CadTransientOleObject(
     byte[] OleBytes,
     CadTransientStyle Style,
     EntityId? SourceEntityId,
-    Guid RenderId)
+    Guid RenderId,
+    double Opacity = 1.0)
     : CadTransientItem(Style);
 
 public sealed record CadTransientText(

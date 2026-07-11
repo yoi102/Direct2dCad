@@ -62,6 +62,39 @@
                 <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.ContentType}}" VerticalAlignment="Center" />
                 <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ContentType, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,8" />
 
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Opacity}}" VerticalAlignment="Center" />
+                <mah:NumericUpDown Grid.Row="3"
+                                   Grid.Column="1"
+                                   Value="{Binding Opacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                   Minimum="0"
+                                   Maximum="1"
+                                   Interval="0.05"
+                                   StringFormat="F2"
+                                   Margin="0,0,0,8" />
+
+                <Grid Grid.Row="4" Grid.ColumnSpan="2">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SupportsRotation, Mode=OneWay}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Rotation}}" VerticalAlignment="Center" />
+                    <mah:NumericUpDown Grid.Column="1"
+                                       Value="{Binding RotationDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                       Interval="1"
+                                       StringFormat="F2"
+                                       Margin="0,0,0,8" />
+                </Grid>
+
                 <TextBlock Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Left}}" VerticalAlignment="Center" />
                 <mah:NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding Left, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
 

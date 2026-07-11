@@ -22,6 +22,7 @@ public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
     public string Title => "OLE Object";
     public EntityId EntityId { get; }
     public string EntityIdText => EntityId.ToString();
+    public bool SupportsRotation => false;
 
     [ObservableProperty] public partial string SourceName { get; private set; } = string.Empty;
     [ObservableProperty] public partial string ContentType { get; private set; } = string.Empty;
@@ -35,6 +36,7 @@ public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
     [ObservableProperty] public partial double Height { get; set; }
     [ObservableProperty] public partial int ZIndex { get; set; }
     [ObservableProperty] public partial bool IsVisible { get; set; }
+    [ObservableProperty] public partial double Opacity { get; set; }
 
     public void RefreshFromEntity()
     {
@@ -50,6 +52,7 @@ public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
             RefreshGeometryProperties(oleObject.Bounds);
             ZIndex = oleObject.ZIndex;
             IsVisible = oleObject.IsVisible;
+            Opacity = oleObject.Opacity;
         }
         finally
         {
@@ -80,6 +83,24 @@ public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
             return;
 
         _documentViewModel.CadEditor.SetEntityVisibility(EntityId, value);
+    }
+
+    partial void OnOpacityChanged(double value)
+    {
+        if (_isRefreshing || !TryGetOleObject(out var oleObject))
+            return;
+
+        if (!IsFinite(value))
+        {
+            RefreshFromEntity();
+            return;
+        }
+
+        var opacity = Math.Clamp(value, 0.0, 1.0);
+        if (Math.Abs(oleObject.Opacity - opacity) <= Epsilon)
+            return;
+
+        _documentViewModel.CadEditor.SetEntityOpacity(EntityId, opacity);
     }
 
     private void CommitEdgeGeometryChange()

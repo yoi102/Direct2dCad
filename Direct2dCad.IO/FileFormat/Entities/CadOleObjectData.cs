@@ -12,4 +12,5 @@ public sealed class CadOleObjectData
     [Key(7)] public byte[] OleBytes { get; set; } = [];
     [Key(8)] public string ContentType { get; set; } = "application/x-ole-storage";
     [Key(9)] public string SourceName { get; set; } = string.Empty;
+    [Key(10)] public double Opacity { get; set; } = 1.0;
 }

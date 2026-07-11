@@ -17,3 +17,9 @@ public sealed record CadGripHandle(
     CadHandleType Type,
     CadHandleStyle Style)
     : CadHandleItem(Style);
+
+public sealed record CadRotationHandleGuide(
+    CadPointD Start,
+    CadPointD End,
+    CadHandleStyle Style)
+    : CadHandleItem(Style);

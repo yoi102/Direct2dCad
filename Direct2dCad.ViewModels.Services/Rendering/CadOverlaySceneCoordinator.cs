@@ -28,13 +28,13 @@ internal sealed class CadOverlaySceneCoordinator
         CadEditor editor,
         IReadOnlyList<CadTransientItem> transientItems,
         bool updateHandleScene,
-        CadGripHandle? activeGripHandle,
+        IReadOnlyList<CadHandleItem>? activeHandleItems,
         CadHandleSceneBuildOptions handleOptions)
     {
         TransientScene.Replace(transientItems);
 
         if (updateHandleScene)
-            UpdateHandleScene(editor, activeGripHandle, handleOptions);
+            UpdateHandleScene(editor, activeHandleItems, handleOptions);
     }
 
     public CadRenderInvalidation UpdateOverlayScenesAndCreateInvalidation(
@@ -43,11 +43,11 @@ internal sealed class CadOverlaySceneCoordinator
         IReadOnlyList<CadTransientItem> transientItems,
         bool includeGripHandles,
         bool updateHandleScene,
-        CadGripHandle? activeGripHandle,
+        IReadOnlyList<CadHandleItem>? activeHandleItems,
         CadHandleSceneBuildOptions handleOptions)
     {
         var previousOverlay = _lastOverlayInvalidation;
-        UpdateOverlayScenes(editor, transientItems, updateHandleScene, activeGripHandle, handleOptions);
+        UpdateOverlayScenes(editor, transientItems, updateHandleScene, activeHandleItems, handleOptions);
         var currentOverlay = CreateOverlayInvalidation(invalidationCalculator, includeGripHandles);
         _lastOverlayInvalidation = currentOverlay;
         return previousOverlay.Union(currentOverlay);
@@ -72,19 +72,23 @@ internal sealed class CadOverlaySceneCoordinator
 
     public void UpdateHandleScene(
         CadEditor editor,
-        CadGripHandle? activeGripHandle,
+        IReadOnlyList<CadHandleItem>? activeHandleItems,
         CadHandleSceneBuildOptions handleOptions)
     {
-        if (activeGripHandle is not null)
+        if (activeHandleItems is { Count: > 0 })
         {
-            HandleScene.Replace([activeGripHandle]);
+            HandleScene.Replace(activeHandleItems);
             return;
         }
 
+        var effectiveOptions = handleOptions with
+        {
+            RotationHandleOffset = 28.0 / Math.Max(editor.Viewport.Zoom, double.Epsilon)
+        };
         var items = _handleSceneBuilder.BuildSelectionHandles(
             editor.Document,
             editor.Selection.EntityIds,
-            handleOptions);
+            effectiveOptions);
         HandleScene.Replace(items);
     }
 }

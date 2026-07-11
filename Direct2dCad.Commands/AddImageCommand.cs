@@ -17,6 +17,8 @@ public sealed class AddImageCommand : ICadCommand
     private readonly string _name;
     private readonly int _zIndex;
     private readonly bool _isVisible;
+    private readonly double _opacity;
+    private readonly double _rotationRadians;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Image";
@@ -33,7 +35,9 @@ public sealed class AddImageCommand : ICadCommand
         string sourceName = "",
         string name = "",
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        double opacity = 1.0,
+        double rotationRadians = 0.0)
     {
         _bounds = bounds;
         _pixelWidth = pixelWidth;
@@ -46,6 +50,8 @@ public sealed class AddImageCommand : ICadCommand
         _name = name;
         _zIndex = zIndex;
         _isVisible = isVisible;
+        _opacity = opacity;
+        _rotationRadians = rotationRadians;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -75,7 +81,9 @@ public sealed class AddImageCommand : ICadCommand
             _layerId,
             _contentType,
             _sourceName,
-            _name);
+            _name,
+            _opacity,
+            _rotationRadians);
         image.SetZIndex(_zIndex);
         image.SetVisible(_isVisible);
 

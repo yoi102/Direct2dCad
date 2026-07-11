@@ -159,7 +159,12 @@ internal sealed class CadGripDragCommitter(
 
     private void CommitImageGripDrag(CadImage image, GripDragState drag)
     {
-        if (TryCreateImageGripGeometry(image.Bounds, drag, out var bounds))
+        if (!TryCreateImageGripGeometry(image, drag, out var bounds, out var rotationRadians))
+            return;
+
+        if (drag.Handle.Type == CadHandleType.Rotation)
+            editor.SetImageRotation(image.Id, rotationRadians);
+        else
             editor.SetImageBounds(image.Id, bounds);
     }
 

@@ -7,6 +7,7 @@ public sealed record CadHandleSceneBuildOptions(
 {
     public CadHandleStyle SelectionOutlineStyle { get; init; } = CadHandleStyle.SelectionOutline;
     public CadHandleStyle GripStyle { get; init; } = CadHandleStyle.Grip;
+    public double RotationHandleOffset { get; init; } = 1.0;
 
     public static CadHandleSceneBuildOptions Default { get; } = new();
 }

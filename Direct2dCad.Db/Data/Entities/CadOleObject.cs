@@ -13,6 +13,8 @@ public sealed class CadOleObject : CadEntity
 
     public string SourceName { get; private set; }
 
+    public double Opacity { get; private set; }
+
     public IReadOnlyList<byte> OleBytes => _oleBytes;
 
     internal CadOleObject(
@@ -23,13 +25,15 @@ public sealed class CadOleObject : CadEntity
         byte[] oleBytes,
         string contentType = "application/x-ole-storage",
         string sourceName = "",
-        string name = "")
+        string name = "",
+        double opacity = 1.0)
         : base(id, layerId, ownerBlockId, name)
     {
         _bounds = GuardBounds(bounds);
         _oleBytes = GuardBytes(oleBytes, 1, nameof(oleBytes));
         ContentType = NormalizeContentType(contentType);
         SourceName = sourceName ?? string.Empty;
+        Opacity = GuardOpacity(opacity);
     }
 
     public void SetBounds(CadRectD bounds)
@@ -50,6 +54,19 @@ public sealed class CadOleObject : CadEntity
     public byte[] CopyOleBytes()
     {
         return (byte[])_oleBytes.Clone();
+    }
+
+    public void SetOpacity(double opacity)
+    {
+        Opacity = GuardOpacity(opacity);
+    }
+
+    private static double GuardOpacity(double opacity)
+    {
+        if (double.IsNaN(opacity) || double.IsInfinity(opacity))
+            throw new ArgumentOutOfRangeException(nameof(opacity));
+
+        return Math.Clamp(opacity, 0.0, 1.0);
     }
 
     private static CadRectD GuardBounds(CadRectD bounds)

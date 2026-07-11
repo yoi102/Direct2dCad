@@ -5,9 +5,12 @@ namespace Direct2dCad.Db.Data.Entities;
 public sealed class CadImage : CadEntity
 {
     private CadRectD _bounds;
+    private CadRectD _rotatedBounds;
     private byte[] _pixels;
 
-    public override CadRectD Bounds => _bounds;
+    public override CadRectD Bounds => _rotatedBounds;
+
+    public CadRectD FrameBounds => _bounds;
 
     public int PixelWidth { get; private set; }
 
@@ -18,6 +21,10 @@ public sealed class CadImage : CadEntity
     public string ContentType { get; private set; }
 
     public string SourceName { get; private set; }
+
+    public double Opacity { get; private set; }
+
+    public double RotationRadians { get; private set; }
 
     public IReadOnlyList<byte> Pixels => _pixels;
 
@@ -32,7 +39,9 @@ public sealed class CadImage : CadEntity
         byte[] pixels,
         string contentType = "image/bgra32",
         string sourceName = "",
-        string name = "")
+        string name = "",
+        double opacity = 1.0,
+        double rotationRadians = 0.0)
         : base(id, layerId, ownerBlockId, name)
     {
         _bounds = GuardBounds(bounds);
@@ -42,11 +51,15 @@ public sealed class CadImage : CadEntity
         _pixels = GuardPixels(pixels, Stride, PixelHeight);
         ContentType = NormalizeContentType(contentType);
         SourceName = sourceName ?? string.Empty;
+        Opacity = GuardOpacity(opacity);
+        RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
+        _rotatedBounds = CalculateRotatedBounds();
     }
 
     public void SetBounds(CadRectD bounds)
     {
         _bounds = GuardBounds(bounds);
+        _rotatedBounds = CalculateRotatedBounds();
     }
 
     public void SetImageData(
@@ -68,6 +81,79 @@ public sealed class CadImage : CadEntity
     public byte[] CopyPixels()
     {
         return (byte[])_pixels.Clone();
+    }
+
+    public void SetOpacity(double opacity)
+    {
+        Opacity = GuardOpacity(opacity);
+    }
+
+    public void SetRotation(double rotationRadians)
+    {
+        RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
+        _rotatedBounds = CalculateRotatedBounds();
+    }
+
+    public CadPointD FrameToWorld(CadPointD point)
+    {
+        return RotateAround(point, _bounds.Center, RotationRadians);
+    }
+
+    public CadPointD WorldToFrame(CadPointD point)
+    {
+        return RotateAround(point, _bounds.Center, -RotationRadians);
+    }
+
+    public IReadOnlyList<CadPointD> GetFrameCorners()
+    {
+        return
+        [
+            FrameToWorld(new CadPointD(_bounds.MinX, _bounds.MinY)),
+            FrameToWorld(new CadPointD(_bounds.MaxX, _bounds.MinY)),
+            FrameToWorld(new CadPointD(_bounds.MaxX, _bounds.MaxY)),
+            FrameToWorld(new CadPointD(_bounds.MinX, _bounds.MaxY))
+        ];
+    }
+
+    private static double GuardOpacity(double opacity)
+    {
+        if (double.IsNaN(opacity) || double.IsInfinity(opacity))
+            throw new ArgumentOutOfRangeException(nameof(opacity));
+
+        return Math.Clamp(opacity, 0.0, 1.0);
+    }
+
+    private CadRectD CalculateRotatedBounds()
+    {
+        if (Math.Abs(RotationRadians) <= 1e-12)
+            return _bounds;
+
+        var bounds = CadRectD.Empty;
+        foreach (var corner in GetFrameCorners())
+            bounds = bounds.ExpandToInclude(corner);
+
+        return bounds;
+    }
+
+    private static CadPointD RotateAround(CadPointD point, CadPointD center, double angleRadians)
+    {
+        if (Math.Abs(angleRadians) <= 1e-12)
+            return point;
+
+        var cos = Math.Cos(angleRadians);
+        var sin = Math.Sin(angleRadians);
+        var dx = point.X - center.X;
+        var dy = point.Y - center.Y;
+        return new CadPointD(
+            center.X + dx * cos - dy * sin,
+            center.Y + dx * sin + dy * cos);
+    }
+
+    private static double GuardFinite(double value, string paramName)
+    {
+        return double.IsNaN(value) || double.IsInfinity(value)
+            ? throw new ArgumentOutOfRangeException(paramName)
+            : value;
     }
 
     private static CadRectD GuardBounds(CadRectD bounds)

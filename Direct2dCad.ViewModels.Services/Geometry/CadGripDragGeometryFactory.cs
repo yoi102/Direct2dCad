@@ -60,6 +60,42 @@ internal static class CadGripDragGeometryFactory
         };
     }
 
+    public static bool TryCreateImageGripGeometry(
+        CadImage image,
+        GripDragState drag,
+        out CadRectD frameBounds,
+        out double rotationRadians)
+    {
+        frameBounds = image.FrameBounds;
+        rotationRadians = image.RotationRadians;
+
+        if (drag.Handle.Type == CadHandleType.Rotation)
+        {
+            var target = drag.DraggedGripPosition;
+            if (image.FrameBounds.Center.DistanceSquaredTo(target) <= double.Epsilon)
+                return false;
+
+            rotationRadians = Math.Atan2(
+                target.Y - image.FrameBounds.Center.Y,
+                target.X - image.FrameBounds.Center.X) - Math.PI * 0.5;
+            return true;
+        }
+
+        var localHandle = drag.Handle with { Position = image.WorldToFrame(drag.Handle.Position) };
+        var localTarget = image.WorldToFrame(drag.DraggedGripPosition);
+        var localDrag = new GripDragState(localHandle, localHandle.Position, drag.PointIndex)
+        {
+            CurrentPointerWorld = localTarget
+        };
+
+        if (!TryCreateImageGripGeometry(image.FrameBounds, localDrag, out var localBounds))
+            return false;
+
+        var worldCenter = image.FrameToWorld(localBounds.Center);
+        frameBounds = CadRectD.FromCenter(worldCenter, localBounds.Width, localBounds.Height);
+        return true;
+    }
+
     private static bool TryCreateAspectBoundsGripGeometry(
         CadRectD oldBounds,
         GripDragState drag,

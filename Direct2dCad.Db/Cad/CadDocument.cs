@@ -739,7 +739,9 @@ public sealed class CadDocument : IEquatable<CadDocument>
         LayerId? layerId = null,
         string contentType = "image/bgra32",
         string sourceName = "",
-        string name = "")
+        string name = "",
+        double opacity = 1.0,
+        double rotationRadians = 0.0)
     {
         var entity = new CadImage(
             _ids.NewEntityId(),
@@ -752,7 +754,9 @@ public sealed class CadDocument : IEquatable<CadDocument>
             pixels,
             contentType,
             sourceName,
-            name);
+            name,
+            opacity,
+            rotationRadians);
 
         AddEntityCore(entity);
         return entity;
@@ -764,7 +768,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
         LayerId? layerId = null,
         string contentType = "application/x-ole-storage",
         string sourceName = "",
-        string name = "")
+        string name = "",
+        double opacity = 1.0)
     {
         var entity = new CadOleObject(
             _ids.NewEntityId(),
@@ -774,7 +779,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             oleBytes,
             contentType,
             sourceName,
-            name);
+            name,
+            opacity);
 
         AddEntityCore(entity);
         return entity;

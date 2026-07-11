@@ -791,6 +791,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                                              IsGripVisibleInViewport(viewport, grip):
                     DrawGripHandle(deviceContext, viewport, grip);
                     break;
+
+                case CadRotationHandleGuide guide when options.DrawGripHandles:
+                    DrawTransientLine(
+                        deviceContext,
+                        viewport,
+                        guide.Start,
+                        guide.End,
+                        ToTransientStyle(guide.Style, includeFill: false));
+                    break;
             }
         }
     }
@@ -913,6 +922,26 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     style,
                     shapeFontId: shapeText.ShapeFontId);
                 break;
+
+            case CadImage image:
+            {
+                var frameBounds = image.FrameBounds.Translate(reference.Offset);
+                var previousTransform = deviceContext.Transform;
+                deviceContext.Transform = CreateWorldRotationTransform(
+                    image.RotationRadians,
+                    frameBounds.Center,
+                    previousTransform);
+                try
+                {
+                    DrawTransientRectangle(deviceContext, viewport, frameBounds, style);
+                }
+                finally
+                {
+                    deviceContext.Transform = previousTransform;
+                }
+
+                break;
+            }
 
             default:
                 DrawTransientRectangle(
@@ -1237,17 +1266,29 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return;
 
         var bounds = image.Bounds;
-        deviceContext.DrawBitmap(
-            bitmap: bitmap,
-            destinationRectangle: new RawRectF(
-                (float)bounds.MinX,
-                (float)bounds.MinY,
-                (float)bounds.MaxX,
-                (float)bounds.MaxY),
-            opacity: 1.0f,
-            interpolationMode: InterpolationMode.Linear,
-            sourceRectangle: null,
-            perspectiveTransform: null);
+        var previousTransform = deviceContext.Transform;
+        deviceContext.Transform = CreateWorldRotationTransform(
+            image.RotationRadians,
+            bounds.Center,
+            previousTransform);
+        try
+        {
+            deviceContext.DrawBitmap(
+                bitmap: bitmap,
+                destinationRectangle: new RawRectF(
+                    (float)bounds.MinX,
+                    (float)bounds.MinY,
+                    (float)bounds.MaxX,
+                    (float)bounds.MaxY),
+                opacity: ToOpacity(image.Opacity),
+                interpolationMode: InterpolationMode.Linear,
+                sourceRectangle: null,
+                perspectiveTransform: null);
+        }
+        finally
+        {
+            deviceContext.Transform = previousTransform;
+        }
     }
 
     private ID2D1Bitmap? GetOrCreateTransientImageBitmap(CadTransientImage image)
@@ -1352,6 +1393,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             renderKey,
             oleObject.Bounds,
             oleObject.OleBytes,
+            oleObject.Opacity,
             viewport,
             allowOleDraw: true);
     }
@@ -2107,7 +2149,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 return;
 
             case CadImage image:
-                DrawImageEntity(deviceContext, image.Bounds, resources);
+                DrawImageEntity(deviceContext, image, resources);
                 return;
 
             case CadOleObject oleObject:
@@ -2172,19 +2214,34 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private static void DrawImageEntity(
         ID2D1DeviceContext deviceContext,
-        CadRectD bounds,
+        CadImage image,
         Direct2DResourceCache.EntityResourceBucket resources)
     {
+        var bounds = image.FrameBounds;
         if (resources.BitmapBrush is null || bounds.IsEmpty)
             return;
 
-        deviceContext.FillRectangle(
-            new RawRectF(
-                (float)bounds.MinX,
-                (float)bounds.MinY,
-                (float)bounds.MaxX,
-                (float)bounds.MaxY),
-            resources.BitmapBrush);
+        resources.BitmapBrush.Opacity = ToOpacity(image.Opacity);
+
+        var previousTransform = deviceContext.Transform;
+        deviceContext.Transform = CreateWorldRotationTransform(
+            image.RotationRadians,
+            bounds.Center,
+            previousTransform);
+        try
+        {
+            deviceContext.FillRectangle(
+                new RawRectF(
+                    (float)bounds.MinX,
+                    (float)bounds.MinY,
+                    (float)bounds.MaxX,
+                    (float)bounds.MaxY),
+                resources.BitmapBrush);
+        }
+        finally
+        {
+            deviceContext.Transform = previousTransform;
+        }
     }
 
     private void DrawOleObjectEntity(
@@ -2198,6 +2255,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             Direct2DOleRenderKey.ForEntity(oleObject.Id),
             oleObject.Bounds,
             oleObject.CopyOleBytes(),
+            oleObject.Opacity,
             viewport,
             allowOleDraw);
     }
@@ -2265,6 +2323,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         Direct2DOleRenderKey renderKey,
         CadRectD bounds,
         byte[] oleBytes,
+        double opacity,
         CadViewport viewport,
         bool allowOleDraw)
     {
@@ -2308,7 +2367,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             }
 
             _oleObjectBitmaps[renderKey] = initialCache;
-            DrawOleTiles(deviceContext, fullDestination, initialCache, initialTiles);
+            DrawOleTiles(deviceContext, fullDestination, initialCache, initialTiles, opacity);
             return;
         }
 
@@ -2317,12 +2376,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             var visibleTiles = ResolveVisibleOleTiles(fullDestination, visibleDestination, activeCache);
             if (visibleTiles.All(activeCache.Tiles.ContainsKey))
             {
-                DrawOleTiles(deviceContext, fullDestination, activeCache, visibleTiles);
+                DrawOleTiles(deviceContext, fullDestination, activeCache, visibleTiles, opacity);
                 activeCache.RetainTiles(visibleTiles);
                 return;
             }
 
-            var drewFallback = DrawOleTiles(deviceContext, fullDestination, activeCache, visibleTiles);
+            var drewFallback = DrawOleTiles(deviceContext, fullDestination, activeCache, visibleTiles, opacity);
             if (!allowOleDraw)
                 return;
 
@@ -2335,13 +2394,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 oleBytes,
                 activeCache,
                 visibleTiles);
-            DrawOleTiles(deviceContext, fullDestination, activeCache, visibleTiles);
+            DrawOleTiles(deviceContext, fullDestination, activeCache, visibleTiles, opacity);
             activeCache.RetainTiles(visibleTiles);
             return;
         }
 
         var fallbackTiles = ResolveVisibleOleTiles(fullDestination, visibleDestination, activeCache);
-        if (DrawOleTiles(deviceContext, fullDestination, activeCache, fallbackTiles))
+        if (DrawOleTiles(deviceContext, fullDestination, activeCache, fallbackTiles, opacity))
             deviceContext.Flush(out _, out _);
 
         if (!allowOleDraw)
@@ -2361,14 +2420,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
 
         _oleObjectBitmaps[renderKey] = replacementCache;
-        DrawOleTiles(deviceContext, fullDestination, replacementCache, replacementTiles);
+        DrawOleTiles(deviceContext, fullDestination, replacementCache, replacementTiles, opacity);
         _retiredOleBitmapCaches.Add(activeCache);
     }
 
     private static void DrawBitmapInDeviceSpace(
         ID2D1DeviceContext deviceContext,
         ID2D1Bitmap bitmap,
-        RawRectF destination)
+        RawRectF destination,
+        double opacity)
     {
         var previousTransform = deviceContext.Transform;
         deviceContext.Transform = Matrix3x2.Identity;
@@ -2377,7 +2437,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             deviceContext.DrawBitmap(
                 bitmap,
                 destination,
-                1.0f,
+                ToOpacity(opacity),
                 InterpolationMode.Linear,
                 null,
                 null);
@@ -2438,7 +2498,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ID2D1DeviceContext deviceContext,
         RawRectF fullDestination,
         OleBitmapCacheEntry cache,
-        IReadOnlySet<OleTileKey> visibleTiles)
+        IReadOnlySet<OleTileKey> visibleTiles,
+        double opacity)
     {
         var drewAny = false;
         foreach (var tileKey in visibleTiles)
@@ -2449,11 +2510,32 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             DrawBitmapInDeviceSpace(
                 deviceContext,
                 bitmap,
-                CreateOleTileDestination(fullDestination, cache, tileKey));
+                CreateOleTileDestination(fullDestination, cache, tileKey),
+                opacity);
             drewAny = true;
         }
 
         return drewAny;
+    }
+
+    private static float ToOpacity(double opacity)
+    {
+        return double.IsFinite(opacity)
+            ? (float)Math.Clamp(opacity, 0.0, 1.0)
+            : 1.0f;
+    }
+
+    private static Matrix3x2 CreateWorldRotationTransform(
+        double rotationRadians,
+        CadPointD center,
+        Matrix3x2 worldTransform)
+    {
+        if (Math.Abs(rotationRadians) <= 1e-12)
+            return worldTransform;
+
+        return Matrix3x2.CreateRotation(
+            (float)rotationRadians,
+            new Vector2((float)center.X, (float)center.Y)) * worldTransform;
     }
 
     private ID2D1Bitmap? CreateOleTileBitmap(

@@ -40,7 +40,7 @@ internal static class CadEntityTransform
                 shapeText.SetPosition(shapeText.Position + delta);
                 break;
             case CadImage image:
-                image.SetBounds(image.Bounds.Translate(delta));
+                image.SetBounds(image.FrameBounds.Translate(delta));
                 break;
             case CadOleObject oleObject:
                 oleObject.SetBounds(oleObject.Bounds.Translate(delta));

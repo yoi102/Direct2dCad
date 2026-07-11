@@ -349,7 +349,9 @@ public sealed class CadEditor
         string sourceName = "",
         string name = "",
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        double opacity = 1.0,
+        double rotationRadians = 0.0)
     {
         var command = new AddImageCommand(
             bounds,
@@ -362,7 +364,9 @@ public sealed class CadEditor
             sourceName,
             name,
             zIndex,
-            isVisible);
+            isVisible,
+            opacity,
+            rotationRadians);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -375,7 +379,8 @@ public sealed class CadEditor
         string sourceName = "",
         string name = "",
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        double opacity = 1.0)
     {
         var command = new AddOleObjectCommand(
             bounds,
@@ -385,7 +390,8 @@ public sealed class CadEditor
             sourceName,
             name,
             zIndex,
-            isVisible);
+            isVisible,
+            opacity);
         DocumentCommands.Execute(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -600,6 +606,11 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetImageBoundsCommand(entityId, bounds));
     }
 
+    public CadDocumentChangeSet SetImageRotation(EntityId entityId, double rotationRadians)
+    {
+        return DocumentCommands.Execute(new SetImageRotationCommand(entityId, rotationRadians));
+    }
+
     public CadDocumentChangeSet SetOleObjectBounds(EntityId entityId, CadRectD bounds)
     {
         return DocumentCommands.Execute(new SetOleObjectBoundsCommand(entityId, bounds));
@@ -784,6 +795,16 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetEntityVisibility(IEnumerable<EntityId> entityIds, bool isVisible)
     {
         return DocumentCommands.Execute(new SetEntityVisibilityCommand(entityIds, isVisible));
+    }
+
+    public CadDocumentChangeSet SetEntityOpacity(EntityId entityId, double opacity)
+    {
+        return SetEntityOpacity([entityId], opacity);
+    }
+
+    public CadDocumentChangeSet SetEntityOpacity(IEnumerable<EntityId> entityIds, double opacity)
+    {
+        return DocumentCommands.Execute(new SetEntityOpacityCommand(entityIds, opacity));
     }
 
     public CadDocumentChangeSet ChangeEntityLayer(EntityId entityId, LayerId layerId)

@@ -144,7 +144,9 @@ internal sealed class CadClipboardInteractionService(
                     image.PixelHeight,
                     image.Stride,
                     image.Pixels,
-                    style));
+                    style,
+                    Opacity: image.Opacity,
+                    RotationRadians: image.RotationRadians));
                 break;
 
             case CadOleObjectClipboardSnapshot oleObject:
@@ -153,7 +155,8 @@ internal sealed class CadClipboardInteractionService(
                     oleObject.OleBytes,
                     style,
                     SourceEntityId: null,
-                    oleObject.RenderId));
+                    oleObject.RenderId,
+                    oleObject.Opacity));
                 break;
         }
     }

@@ -22,6 +22,7 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
     public EntityId EntityId { get; }
     public string Title => "Image";
     public string EntityIdText => EntityId.ToString();
+    public bool SupportsRotation => true;
 
     [ObservableProperty]
     public partial string SourceName { get; private set; } = string.Empty;
@@ -65,6 +66,12 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
 
+    [ObservableProperty]
+    public partial double Opacity { get; set; }
+
+    [ObservableProperty]
+    public partial double RotationDegrees { get; set; }
+
     public void RefreshFromEntity()
     {
         if (!TryGetImage(out var image))
@@ -78,9 +85,11 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
             ContentType = image.ContentType;
             PixelWidth = image.PixelWidth;
             PixelHeight = image.PixelHeight;
-            RefreshGeometryProperties(image.Bounds);
+            RefreshGeometryProperties(image.FrameBounds);
             ZIndex = image.ZIndex;
             IsVisible = image.IsVisible;
+            Opacity = image.Opacity;
+            RotationDegrees = RadiansToDegrees(image.RotationRadians);
         }
         finally
         {
@@ -111,6 +120,42 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
             return;
 
         _documentViewModel.CadEditor.SetEntityVisibility(EntityId, value);
+    }
+
+    partial void OnOpacityChanged(double value)
+    {
+        if (_isRefreshing || !TryGetImage(out var image))
+            return;
+
+        if (!IsFinite(value))
+        {
+            RefreshFromEntity();
+            return;
+        }
+
+        var opacity = Math.Clamp(value, 0.0, 1.0);
+        if (Math.Abs(image.Opacity - opacity) <= Epsilon)
+            return;
+
+        _documentViewModel.CadEditor.SetEntityOpacity(EntityId, opacity);
+    }
+
+    partial void OnRotationDegreesChanged(double value)
+    {
+        if (_isRefreshing || !TryGetImage(out var image))
+            return;
+
+        if (!IsFinite(value))
+        {
+            RefreshFromEntity();
+            return;
+        }
+
+        var rotationRadians = DegreesToRadians(value);
+        if (Math.Abs(image.RotationRadians - rotationRadians) <= Epsilon)
+            return;
+
+        _documentViewModel.CadEditor.SetImageRotation(EntityId, rotationRadians);
     }
 
     private void CommitEdgeGeometryChange()
@@ -163,7 +208,7 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
 
     private void CommitGeometry(CadRectD bounds)
     {
-        if (!TryGetImage(out var image) || image.Bounds.NearEquals(bounds, Epsilon))
+        if (!TryGetImage(out var image) || image.FrameBounds.NearEquals(bounds, Epsilon))
             return;
 
         _documentViewModel.CadEditor.SetImageBounds(EntityId, bounds);
@@ -234,4 +279,8 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel
     {
         return !double.IsNaN(value) && !double.IsInfinity(value);
     }
+
+    private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180.0;
+
+    private static double RadiansToDegrees(double radians) => radians * 180.0 / Math.PI;
 }

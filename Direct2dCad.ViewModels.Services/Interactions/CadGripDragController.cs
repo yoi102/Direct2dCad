@@ -68,11 +68,33 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
             : CadGripDragEntityResolver.ResolveMoveEntityIds(editor, ActiveDrag);
     }
 
-    public CadGripHandle? CreateActiveGripHandle()
+    public IReadOnlyList<CadHandleItem>? CreateActiveHandleItems(
+        CadEditor editor,
+        CadHandleSceneBuildOptions options)
     {
-        return ActiveDrag is { } drag
-            ? drag.Handle with { Position = drag.DraggedGripPosition }
-            : null;
+        ArgumentNullException.ThrowIfNull(editor);
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (ActiveDrag is not { } drag)
+            return null;
+
+        if (editor.Document.TryGetEntity(drag.Handle.EntityId, out var entity) &&
+            entity is CadImage image &&
+            !image.IsErased &&
+            TryCreateImageGripGeometry(image, drag, out var frameBounds, out var rotationRadians))
+        {
+            var effectiveOptions = options with
+            {
+                RotationHandleOffset = 28.0 / Math.Max(editor.Viewport.Zoom, double.Epsilon)
+            };
+            return new CadHandleSceneBuilder().BuildImageGripHandles(
+                image.Id,
+                frameBounds,
+                rotationRadians,
+                effectiveOptions);
+        }
+
+        return [drag.Handle with { Position = drag.DraggedGripPosition }];
     }
 
     public void Clear()

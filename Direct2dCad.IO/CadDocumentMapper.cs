@@ -293,14 +293,16 @@ internal static class CadDocumentMapper
                 .Select(x => new CadImageData
                 {
                     Entity = ToEntityData(x),
-                    Min = ToData(new CadPointD(x.Bounds.MinX, x.Bounds.MinY)),
-                    Max = ToData(new CadPointD(x.Bounds.MaxX, x.Bounds.MaxY)),
+                    Min = ToData(new CadPointD(x.FrameBounds.MinX, x.FrameBounds.MinY)),
+                    Max = ToData(new CadPointD(x.FrameBounds.MaxX, x.FrameBounds.MaxY)),
                     PixelWidth = x.PixelWidth,
                     PixelHeight = x.PixelHeight,
                     Stride = x.Stride,
                     Pixels = x.CopyPixels(),
                     ContentType = x.ContentType,
-                    SourceName = x.SourceName
+                    SourceName = x.SourceName,
+                    Opacity = x.Opacity,
+                    RotationRadians = x.RotationRadians
                 })
                 .ToList()
         };
@@ -319,7 +321,8 @@ internal static class CadDocumentMapper
                     Max = ToData(new CadPointD(x.Bounds.MaxX, x.Bounds.MaxY)),
                     OleBytes = x.CopyOleBytes(),
                     ContentType = x.ContentType,
-                    SourceName = x.SourceName
+                    SourceName = x.SourceName,
+                    Opacity = x.Opacity
                 })
                 .ToList()
         };
@@ -684,7 +687,9 @@ internal static class CadDocumentMapper
                 imageData.Pixels,
                 imageData.ContentType,
                 imageData.SourceName,
-                imageData.Entity.Name);
+                imageData.Entity.Name,
+                imageData.Opacity,
+                imageData.RotationRadians);
             ApplyEntityState(document, image, imageData.Entity);
             document.AddEntityCore(image);
         }
@@ -703,7 +708,8 @@ internal static class CadDocumentMapper
                 oleObjectData.OleBytes,
                 oleObjectData.ContentType,
                 oleObjectData.SourceName,
-                oleObjectData.Entity.Name);
+                oleObjectData.Entity.Name,
+                oleObjectData.Opacity);
             ApplyEntityState(document, oleObject, oleObjectData.Entity);
             document.AddEntityCore(oleObject);
         }

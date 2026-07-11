@@ -1141,6 +1141,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Opacity 的本地化字符串。
+        /// </summary>
+        public static string Opacity {
+            get {
+                return ResourceManager.GetString("Opacity", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Open File 的本地化字符串。
         /// </summary>
         public static string OpenFile {

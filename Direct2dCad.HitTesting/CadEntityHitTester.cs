@@ -129,7 +129,7 @@ public static class CadEntityHitTester
                 return HitShapeTextEdge(shapeText, point, edgeTolerance, out result);
 
             case CadImage image:
-                return HitRectEdge(image.Id, image.Bounds, point, edgeTolerance, out result);
+                return HitImageEdge(image, point, edgeTolerance, out result);
 
             case CadOleObject oleObject:
                 return HitRectEdge(oleObject.Id, oleObject.Bounds, point, edgeTolerance, out result);
@@ -479,7 +479,7 @@ public static class CadEntityHitTester
         CadPointD point,
         out CadHitTestResult result)
     {
-        if (!image.Bounds.Contains(point))
+        if (!image.FrameBounds.Contains(image.WorldToFrame(point)))
         {
             result = default;
             return false;
@@ -490,6 +490,31 @@ public static class CadEntityHitTester
             [image.Id],
             point);
 
+        return true;
+    }
+
+    private static bool HitImageEdge(
+        CadImage image,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        if (!HitRectEdge(
+                image.Id,
+                image.FrameBounds,
+                image.WorldToFrame(point),
+                tolerance,
+                out var localResult))
+        {
+            result = default;
+            return false;
+        }
+
+        result = new CadHitTestResult(
+            CadHitTestKind.Edge,
+            [image.Id],
+            point,
+            localResult.Distance);
         return true;
     }
 

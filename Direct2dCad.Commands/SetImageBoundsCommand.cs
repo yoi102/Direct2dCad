@@ -22,7 +22,7 @@ public sealed class SetImageBoundsCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         var image = GetImage(document);
-        _previousBounds = image.Bounds;
+        _previousBounds = image.FrameBounds;
         image.SetBounds(_bounds);
         return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
     }

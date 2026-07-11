@@ -14,6 +14,7 @@ public sealed class AddOleObjectCommand : ICadCommand
     private readonly string _name;
     private readonly int _zIndex;
     private readonly bool _isVisible;
+    private readonly double _opacity;
     private EntityId? _createdEntityId;
 
     public string Name => "Add OLE Object";
@@ -27,7 +28,8 @@ public sealed class AddOleObjectCommand : ICadCommand
         string sourceName = "",
         string name = "",
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        double opacity = 1.0)
     {
         _bounds = bounds;
         _oleBytes = oleBytes is null ? throw new ArgumentNullException(nameof(oleBytes)) : (byte[])oleBytes.Clone();
@@ -37,6 +39,7 @@ public sealed class AddOleObjectCommand : ICadCommand
         _name = name;
         _zIndex = zIndex;
         _isVisible = isVisible;
+        _opacity = opacity;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -63,7 +66,8 @@ public sealed class AddOleObjectCommand : ICadCommand
             _layerId,
             _contentType,
             _sourceName,
-            _name);
+            _name,
+            _opacity);
         oleObject.SetZIndex(_zIndex);
         oleObject.SetVisible(_isVisible);
 

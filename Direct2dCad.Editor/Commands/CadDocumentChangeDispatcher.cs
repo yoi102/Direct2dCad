@@ -111,6 +111,7 @@ public sealed class CadDocumentChangeDispatcher
             if (entity.IsErased || !entity.IsVisible || change.Kind.HasFlag(CadEntityChangeKind.Deleted))
                 _spatialIndex.Remove(entity.Id);
             else if (change.Kind.HasFlag(CadEntityChangeKind.Geometry) ||
+                     change.Kind.HasFlag(CadEntityChangeKind.Rotation) ||
                      change.Kind.HasFlag(CadEntityChangeKind.Created) ||
                      change.Kind.HasFlag(CadEntityChangeKind.Visibility) ||
                      change.Kind.HasFlag(CadEntityChangeKind.Layer))

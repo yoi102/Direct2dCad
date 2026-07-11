@@ -175,7 +175,7 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 shapeText.InvertedMarginFactor,
                 shapeText.ShapeFontId),
             CadImage image => document.AddImage(
-                image.Bounds.Translate(delta),
+                image.FrameBounds.Translate(delta),
                 image.PixelWidth,
                 image.PixelHeight,
                 image.Stride,
@@ -183,14 +183,17 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
                 image.LayerId,
                 image.ContentType,
                 image.SourceName,
-                image.Name),
+                image.Name,
+                image.Opacity,
+                image.RotationRadians),
             CadOleObject oleObject => document.AddOleObject(
                 oleObject.Bounds.Translate(delta),
                 oleObject.CopyOleBytes(),
                 oleObject.LayerId,
                 oleObject.ContentType,
                 oleObject.SourceName,
-                oleObject.Name),
+                oleObject.Name,
+                oleObject.Opacity),
             _ => null
         };
 

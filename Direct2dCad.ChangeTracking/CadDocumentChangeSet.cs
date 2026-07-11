@@ -15,7 +15,9 @@ public enum CadEntityChangeKind
     DrawOrder = 64,
     Fill = 128,
     Metadata = 256,
-    EmbeddedData = 512
+    EmbeddedData = 512,
+    Opacity = 1024,
+    Rotation = 2048
 }
 
 public readonly record struct CadEntityChange(

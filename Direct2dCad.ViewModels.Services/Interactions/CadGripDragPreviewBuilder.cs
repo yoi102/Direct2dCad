@@ -264,7 +264,7 @@ internal sealed class CadGripDragPreviewBuilder(
         GripDragState drag,
         CadTransientStyle style)
     {
-        if (!TryCreateImageGripGeometry(image.Bounds, drag, out var bounds))
+        if (!TryCreateImageGripGeometry(image, drag, out var bounds, out var rotationRadians))
             return;
 
         items.Add(new CadTransientImage(
@@ -274,7 +274,9 @@ internal sealed class CadGripDragPreviewBuilder(
             image.Stride,
             image.CopyPixels(),
             style,
-            image.Id));
+            image.Id,
+            image.Opacity,
+            rotationRadians));
     }
 
     private static void AddOleObjectGripPreview(
@@ -291,6 +293,7 @@ internal sealed class CadGripDragPreviewBuilder(
             oleObject.CopyOleBytes(),
             style,
             oleObject.Id,
-            Guid.Empty));
+            Guid.Empty,
+            oleObject.Opacity));
     }
 }

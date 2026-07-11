@@ -34,7 +34,7 @@ public sealed class CadHandleSceneBuilder
             if (options.IncludeGripHandles &&
                 (!entity.IsLocked || options.IncludeLockedEntityGripHandles))
             {
-                AddEntityGripHandles(items, entity, options.GripStyle);
+                AddEntityGripHandles(items, entity, options.GripStyle, options.RotationHandleOffset);
             }
         }
 
@@ -72,7 +72,8 @@ public sealed class CadHandleSceneBuilder
     private static void AddEntityGripHandles(
         List<CadHandleItem> items,
         CadEntity entity,
-        CadHandleStyle gripStyle)
+        CadHandleStyle gripStyle,
+        double rotationHandleOffset)
     {
         switch (entity)
         {
@@ -129,12 +130,18 @@ public sealed class CadHandleSceneBuilder
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;
 
-            case CadImage:
-                AddImageGripHandles(items, entity.Id, entity.Bounds, gripStyle);
+            case CadImage image:
+                AddImageGripHandles(
+                    items,
+                    image.Id,
+                    image.FrameBounds,
+                    image.RotationRadians,
+                    gripStyle,
+                    rotationHandleOffset);
                 break;
 
             case CadOleObject:
-                AddImageGripHandles(items, entity.Id, entity.Bounds, gripStyle);
+                AddBoundsAndSideGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;
 
             default:
@@ -184,7 +191,76 @@ public sealed class CadHandleSceneBuilder
         AddGrip(items, entityId, bounds.Center, CadHandleType.Center, gripStyle);
     }
 
+    public IReadOnlyList<CadHandleItem> BuildImageGripHandles(
+        EntityId entityId,
+        CadRectD frameBounds,
+        double rotationRadians,
+        CadHandleSceneBuildOptions? options = null)
+    {
+        options ??= CadHandleSceneBuildOptions.Default;
+        var items = new List<CadHandleItem>();
+        AddImageGripHandles(
+            items,
+            entityId,
+            frameBounds,
+            rotationRadians,
+            options.GripStyle,
+            options.RotationHandleOffset);
+        return items;
+    }
+
     private static void AddImageGripHandles(
+        List<CadHandleItem> items,
+        EntityId entityId,
+        CadRectD bounds,
+        double rotationRadians,
+        CadHandleStyle gripStyle,
+        double rotationHandleOffset)
+    {
+        if (bounds.IsEmpty)
+            return;
+
+        CadPointD ToWorld(CadPointD point) => RotateAround(point, bounds.Center, rotationRadians);
+
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.MinX, bounds.MinY)), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.MaxX, bounds.MinY)), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.MaxX, bounds.MaxY)), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.MinX, bounds.MaxY)), CadHandleType.BoundsCorner, gripStyle);
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.Center.X, bounds.MinY)), CadHandleType.BoundsSide, gripStyle);
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.MaxX, bounds.Center.Y)), CadHandleType.BoundsSide, gripStyle);
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.Center.X, bounds.MaxY)), CadHandleType.BoundsSide, gripStyle);
+        AddGrip(items, entityId, ToWorld(new CadPointD(bounds.MinX, bounds.Center.Y)), CadHandleType.BoundsSide, gripStyle);
+        AddGrip(items, entityId, bounds.Center, CadHandleType.Center, gripStyle);
+
+        var rotationOffset = double.IsFinite(rotationHandleOffset) && rotationHandleOffset > 0
+            ? rotationHandleOffset
+            : Math.Max(bounds.Height * 0.2, Math.Min(bounds.Width, bounds.Height) * 0.15);
+        var rotationGuideStart = ToWorld(new CadPointD(bounds.Center.X, bounds.MaxY));
+        var rotationHandlePosition = ToWorld(new CadPointD(bounds.Center.X, bounds.MaxY + rotationOffset));
+        items.Add(new CadRotationHandleGuide(rotationGuideStart, rotationHandlePosition, gripStyle));
+        AddGrip(
+            items,
+            entityId,
+            rotationHandlePosition,
+            CadHandleType.Rotation,
+            gripStyle);
+    }
+
+    private static CadPointD RotateAround(CadPointD point, CadPointD center, double rotationRadians)
+    {
+        if (Math.Abs(rotationRadians) <= 1e-12)
+            return point;
+
+        var cos = Math.Cos(rotationRadians);
+        var sin = Math.Sin(rotationRadians);
+        var dx = point.X - center.X;
+        var dy = point.Y - center.Y;
+        return new CadPointD(
+            center.X + dx * cos - dy * sin,
+            center.Y + dx * sin + dy * cos);
+    }
+
+    private static void AddBoundsAndSideGripHandles(
         List<CadHandleItem> items,
         EntityId entityId,
         CadRectD bounds,
@@ -220,6 +296,7 @@ public sealed class CadHandleSceneBuilder
         {
             CadHandleType.Center => gripStyle with { Shape = CadHandleShape.Circle },
             CadHandleType.Radius => gripStyle with { Shape = CadHandleShape.Diamond },
+            CadHandleType.Rotation => gripStyle with { Shape = CadHandleShape.Diamond },
             _ => gripStyle
         };
     }

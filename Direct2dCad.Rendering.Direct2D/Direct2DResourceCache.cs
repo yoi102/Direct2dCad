@@ -72,8 +72,12 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         foreach (var change in changes.EntityChanges)
         {
-            if (change.Kind == CadEntityChangeKind.DrawOrder ||
-                change.Kind == CadEntityChangeKind.Metadata)
+            const CadEntityChangeKind resourceIndependentChanges =
+                CadEntityChangeKind.DrawOrder |
+                CadEntityChangeKind.Metadata |
+                CadEntityChangeKind.Opacity |
+                CadEntityChangeKind.Rotation;
+            if ((change.Kind & ~resourceIndependentChanges) == 0)
             {
                 continue;
             }
@@ -180,7 +184,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         {
             bucket.Bitmap = CreateBitmap(image.PixelWidth, image.PixelHeight, image.Stride, image.CopyPixels());
             if (bucket.Bitmap is not null)
-                bucket.BitmapBrush = CreateBitmapBrush(image.Bounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
+                bucket.BitmapBrush = CreateBitmapBrush(image.FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
         }
 
         return bucket;

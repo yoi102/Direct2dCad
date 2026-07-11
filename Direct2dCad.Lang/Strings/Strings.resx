@@ -897,4 +897,7 @@
     <value>Pixel height</value>
     <comment>Pixel height</comment>
   </data>
+  <data name="Opacity" xml:space="preserve">
+    <value>Opacity</value>
+  </data>
 </root>

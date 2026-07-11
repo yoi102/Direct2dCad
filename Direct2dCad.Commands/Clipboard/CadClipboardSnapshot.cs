@@ -122,7 +122,9 @@ public sealed record CadImageClipboardSnapshot(
     int Stride,
     byte[] Pixels,
     string ContentType,
-    string SourceName) : CadEntityClipboardSnapshot(State);
+    string SourceName,
+    double Opacity = 1.0,
+    double RotationRadians = 0.0) : CadEntityClipboardSnapshot(State);
 
 public sealed record CadOleObjectClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
@@ -130,7 +132,8 @@ public sealed record CadOleObjectClipboardSnapshot(
     byte[] OleBytes,
     string ContentType,
     string SourceName,
-    Guid RenderId) : CadEntityClipboardSnapshot(State);
+    Guid RenderId,
+    double Opacity = 1.0) : CadEntityClipboardSnapshot(State);
 
 public abstract record CadStyleClipboardSnapshot(string Name);
 
@@ -299,20 +302,23 @@ public static class CadClipboardSnapshotFactory
                 shapeText.ShapeFontId),
             CadImage image => new CadImageClipboardSnapshot(
                 state,
-                image.Bounds,
+                image.FrameBounds,
                 image.PixelWidth,
                 image.PixelHeight,
                 image.Stride,
                 image.CopyPixels(),
                 image.ContentType,
-                image.SourceName),
+                image.SourceName,
+                image.Opacity,
+                image.RotationRadians),
             CadOleObject oleObject => new CadOleObjectClipboardSnapshot(
                 state,
                 oleObject.Bounds,
                 oleObject.CopyOleBytes(),
                 oleObject.ContentType,
                 oleObject.SourceName,
-                Guid.NewGuid()),
+                Guid.NewGuid(),
+                oleObject.Opacity),
             _ => null
         };
 

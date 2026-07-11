@@ -681,7 +681,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestRender(
             CadRenderInvalidation.Full,
             drawGripHandles: true,
-            updateHandleScene: false);
+            updateHandleScene: true);
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -944,7 +944,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 CadEditor,
                 CreateTransientItems(),
                 updateHandleScene,
-                _gripDrag.CreateActiveGripHandle(),
+                _gripDrag.CreateActiveHandleItems(CadEditor, CreateHandleSceneBuildOptions()),
                 CreateHandleSceneBuildOptions());
             _overlayScenes.RefreshLastOverlayInvalidation(
                 CreateRenderInvalidationCalculator(),
@@ -959,7 +959,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 CreateTransientItems(),
                 drawGripHandles,
                 updateHandleScene,
-                _gripDrag.CreateActiveGripHandle(),
+                _gripDrag.CreateActiveHandleItems(CadEditor, CreateHandleSceneBuildOptions()),
                 CreateHandleSceneBuildOptions());
             effectiveInvalidation = requestedInvalidation.Union(overlayInvalidation);
         }
@@ -1086,7 +1086,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         _overlayScenes.UpdateHandleScene(
             CadEditor,
-            activeGripHandle: null,
+            activeHandleItems: null,
             CreateHandleSceneBuildOptions());
 
         if (!_gripDrag.TryBegin(CadEditor, _overlayScenes.HandleScene, ScreenToSnappedWorld, screen))

@@ -31,7 +31,7 @@ internal sealed class CadRenderInvalidationCalculator(
 
         foreach (var item in handleScene.Items)
         {
-            if (!includeGripHandles && item is CadGripHandle)
+            if (!includeGripHandles && item is CadGripHandle or CadRotationHandleGuide)
                 continue;
 
             invalidation = invalidation.Union(CreateHandleInvalidation(item));
@@ -101,7 +101,7 @@ internal sealed class CadRenderInvalidationCalculator(
                 rectangle.Bounds,
                 rectangle.Style),
             CadTransientImage image => CreateTransientBoundsInvalidation(
-                image.Bounds,
+                RotateBounds(image.Bounds, image.RotationRadians),
                 image.Style,
                 minimumPaddingPixels: 4.0),
             CadTransientOleObject oleObject => CreateTransientBoundsInvalidation(
@@ -155,6 +155,12 @@ internal sealed class CadRenderInvalidationCalculator(
             CadGripHandle grip => CreateScreenPointInvalidation(
                 viewport.WorldToScreen(grip.Position),
                 Math.Max(grip.Style.Size, grip.Style.StrokeWidth) + 4.0),
+            CadRotationHandleGuide guide => CreateTransientBoundsInvalidation(
+                BoundsFromPoints(guide.Start, guide.End),
+                new CadTransientStyle(
+                    guide.Style.StrokeColor,
+                    guide.Style.StrokeWidth,
+                    KeepStrokeWidthScreenConstant: guide.Style.KeepSizeScreenConstant)),
             _ => CadRenderInvalidation.FromScreenRect(default)
         };
     }
@@ -371,6 +377,33 @@ internal sealed class CadRenderInvalidationCalculator(
         return bounds;
     }
 
+    private static CadRectD RotateBounds(CadRectD bounds, double rotationRadians)
+    {
+        if (bounds.IsEmpty || Math.Abs(rotationRadians) <= 1e-12)
+            return bounds;
+
+        var center = bounds.Center;
+        var cos = Math.Cos(rotationRadians);
+        var sin = Math.Sin(rotationRadians);
+        var result = CadRectD.Empty;
+        foreach (var point in new[]
+                 {
+                     new CadPointD(bounds.MinX, bounds.MinY),
+                     new CadPointD(bounds.MaxX, bounds.MinY),
+                     new CadPointD(bounds.MaxX, bounds.MaxY),
+                     new CadPointD(bounds.MinX, bounds.MaxY)
+                 })
+        {
+            var dx = point.X - center.X;
+            var dy = point.Y - center.Y;
+            result = result.ExpandToInclude(new CadPointD(
+                center.X + dx * cos - dy * sin,
+                center.Y + dx * sin + dy * cos));
+        }
+
+        return result;
+    }
+
     private static bool RequiresFullRender(CadEntityChange change)
     {
         var kind = change.Kind;
@@ -386,6 +419,9 @@ internal sealed class CadRenderInvalidationCalculator(
         {
             return true;
         }
+
+        if (kind.HasFlag(CadEntityChangeKind.Rotation))
+            return true;
 
         if (kind.HasFlag(CadEntityChangeKind.Appearance) &&
             !kind.HasFlag(CadEntityChangeKind.Fill) &&

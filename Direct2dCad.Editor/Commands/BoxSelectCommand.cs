@@ -64,8 +64,34 @@ public sealed class BoxSelectCommand : SelectionCommandBase
             CadEllipse ellipse => EllipseIntersectsArea(ellipse, area),
             CadEllipseArc ellipseArc => EllipseArcIntersectsArea(ellipseArc, area),
             CadArc arc => ArcIntersectsArea(arc, area),
+            CadImage image => ImageIntersectsArea(image, area),
             _ => area.Intersects(entity.Bounds)
         };
+    }
+
+    private static bool ImageIntersectsArea(CadImage image, CadRectD area)
+    {
+        var corners = image.GetFrameCorners();
+        if (corners.Any(area.Contains))
+            return true;
+
+        var areaCorners = new[]
+        {
+            new CadPointD(area.MinX, area.MinY),
+            new CadPointD(area.MaxX, area.MinY),
+            new CadPointD(area.MaxX, area.MaxY),
+            new CadPointD(area.MinX, area.MaxY)
+        };
+        if (areaCorners.Any(point => image.FrameBounds.Contains(image.WorldToFrame(point))))
+            return true;
+
+        for (var index = 0; index < corners.Count; index++)
+        {
+            if (SegmentIntersectsArea(corners[index], corners[(index + 1) % corners.Count], area))
+                return true;
+        }
+
+        return false;
     }
 
     private static bool PolylineIntersectsArea(CadPolyline polyline, CadRectD area)
