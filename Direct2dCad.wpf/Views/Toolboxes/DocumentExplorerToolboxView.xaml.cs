@@ -13,11 +13,11 @@ using System.Windows.Shapes;
 
 namespace Direct2dCad.wpf.Views.Toolboxes;
 /// <summary>
-/// FolderExplorerToolboxView.xaml 的交互逻辑
+/// DocumentExplorerToolboxView.xaml 的交互逻辑
 /// </summary>
-public partial class FolderExplorerToolboxView : UserControl
+public partial class DocumentExplorerToolboxView : UserControl
 {
-    public FolderExplorerToolboxView()
+    public DocumentExplorerToolboxView()
     {
         InitializeComponent();
     }

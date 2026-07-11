@@ -19,7 +19,7 @@ Direct2dCad 是一个基于 Direct2D、DirectWrite 和 WPF 的桌面 CAD 编辑�
 - 绘制工具：支持 line、rectangle、polyline、polygon、spline、text、圆的多种模式、AutoCAD 风格圆弧多模式、椭圆 / 椭圆弧、原点设置模式，并提供 transient preview、辅助线、测量文字和 snap marker。
 - 图层与绘制顺序：图层可新增、删除、重命名、调整优先级；当层数量大于 1 时，包括默认层在内都可以删除，删除层会同时删除该层实体并支持 undo / redo。绘制顺序遵循“图层优先级 → 实体 ZIndex → 同 ZIndex 的实体加入顺序”。
 - 渲染与资源：Direct2D 后端负责背景、CAD grid、origin marker、实体、hatch / fill、transient overlay 和 handles overlay 的绘制；实体变更通过 change tracking 更新 geometry / brush / text / hatch 等 GPU 资源，支持 dirty rect 局部刷新和设备资源重建。
-- WPF 应用层：当前 WPF 端已接入 `CadCanvas`、Ribbon 绘制工具、属性面板、FolderExplorer、LayerToolbox、状态栏设置、保存 / 读取 `.d2cad`、多语言资源，以及 MessagePipe 解耦的 ViewModel 通信。
+- WPF 应用层：当前 WPF 端已接入 `CadCanvas`、Ribbon 绘制工具、属性面板、DocumentExplorer、LayersToolbox、EntitySearchToolbox、状态栏设置、保存 / 读取 `.d2cad`、多语言资源，以及 MessagePipe 解耦的 ViewModel 通信。
 
 整体架构上，`Direct2dCad.Db` 负责 CAD 数据模型，`Direct2dCad.Commands` 和 `Direct2dCad.Editor` 负责可撤销编辑流程，`Direct2dCad.Rendering` 定义渲染抽象，`Direct2dCad.Rendering.Direct2D` 提供 Direct2D 实现，`Direct2dCad.Rendering.Transient` 和 `Direct2dCad.Rendering.Handles` 分别描述临时预览与选中控制点场景，`Direct2dCad.ViewModels` / `Direct2dCad.ViewModels.Services` 负责 WPF 交互状态、属性面板和 View 服务抽象。
 
@@ -307,7 +307,7 @@ WPF ViewModel 层。
 主要职责：
 
 - 定义 `MainViewModel`、`EditorTabViewModel`、`CadDocumentViewModel`。
-- 定义 folder explorer、layer toolbox、entity property toolbox 及各实体属性面板 VM。
+- 定义 `DocumentExplorerToolboxViewModel`、`LayersToolboxViewModel`、`EntitySearchToolboxViewModel`、`EntityPropertiesToolboxViewModel` 及各实体属性面板 VM。
 - 绑定绘制模式、选择状态、图层、实体属性、用户设置和文档设置。
 - 协调 transient scene、handle scene 和 `Direct2DImageRenderHost`。
 - 使用 `Direct2dCad.ViewModels.Services` 中定义的服务接口和 MessagePipe 消息。
@@ -330,7 +330,7 @@ WPF 应用层。
 主要职责：
 
 - 提供 WPF 启动入口、`MainWindow`、`CadCanvas`。
-- 提供 Ribbon、StatusBar、FolderExplorer、LayerToolbox、EntityProperties 等 View。
+- 提供 Ribbon、StatusBar、DocumentExplorerToolbox、LayersToolbox、EntitySearchToolbox、EntityPropertiesToolbox 等 View。
 - 实现 `Direct2dCad.ViewModels.Services/ViewServices` 中定义的对话框、Snackbar、文件选择、主题、语言、用户设置、图标等服务。
 - 承载 `D3D11ImageSource` / `D3DImage`。
 - 通过依赖注入装配 ViewModel 和 WPF 服务。

@@ -123,18 +123,18 @@
                             <v_tb:EntityPropertiesToolboxView />
                         </DataTemplate>
                         <!-- DataTemplate: how to render each toolbox VM's content -->
-                        <DataTemplate DataType="{x:Type vm_tb:FolderExplorerToolboxViewModel}">
-                            <v_tb:FolderExplorerToolboxView />
+                        <DataTemplate DataType="{x:Type vm_tb:DocumentExplorerToolboxViewModel}">
+                            <v_tb:DocumentExplorerToolboxView />
                         </DataTemplate>
-                        <DataTemplate DataType="{x:Type vm_tb:LayerToolboxViewModel}">
-                            <v_tb:LayerToolboxView />
+                        <DataTemplate DataType="{x:Type vm_tb:LayersToolboxViewModel}">
+                            <v_tb:LayersToolboxView />
                         </DataTemplate>
-                        <DataTemplate DataType="{x:Type vm_tb:SearchViewModel}">
-                            <v_tb:SearchView />
+                        <DataTemplate DataType="{x:Type vm_tb:EntitySearchToolboxViewModel}">
+                            <v_tb:EntitySearchToolboxView />
                         </DataTemplate>
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm:EditorTabViewModel}">
-                            <views:EditorView />
+                            <views:EditorTabView />
                         </DataTemplate>            
 
 

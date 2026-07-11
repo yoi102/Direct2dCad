@@ -65,10 +65,10 @@ public partial class App : System.Windows.Application
             });
 
             // Register toolboxes — order determines sidebar button order
-            dock.AddToolbox<FolderExplorerToolboxViewModel>();
-            dock.AddToolbox<LayerToolboxViewModel>();
+            dock.AddToolbox<DocumentExplorerToolboxViewModel>();
+            dock.AddToolbox<LayersToolboxViewModel>();
             dock.AddToolbox<EntityPropertiesToolboxViewModel>();
-            dock.AddToolbox<SearchViewModel>();
+            dock.AddToolbox<EntitySearchToolboxViewModel>();
         });
 
         services.AddTransient<IFileDialogService, FileDialogService>();

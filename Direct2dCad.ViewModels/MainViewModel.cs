@@ -41,11 +41,11 @@ public partial class MainViewModel : ObservableObject
         _imageImportService = imageImportService;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
-        FolderExplorer = _dockLayoutService.GetAnchorable<FolderExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(FolderExplorerToolboxViewModel));
-        FolderExplorer.Attach(_dockLayoutService);
-        Layers = _dockLayoutService.GetAnchorable<LayerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayerToolboxViewModel));
+        DocumentExplorer = _dockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DocumentExplorerToolboxViewModel));
+        DocumentExplorer.Attach(_dockLayoutService);
+        Layers = _dockLayoutService.GetAnchorable<LayersToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayersToolboxViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
-        Search = _dockLayoutService.GetAnchorable<SearchViewModel>() ?? throw new ArgumentNullException(nameof(SearchViewModel));
+        EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
 
         IsDarkTheme = themeSettingService.IsDarkTheme;
         CurrentCultureLCID = cultureSettingService.GetCurrentCultureLCID();
@@ -57,23 +57,23 @@ public partial class MainViewModel : ObservableObject
     /// <summary>Exposes the layout service for binding to ToggleDockingManager.LayoutService.</summary>
     public IDockLayoutService LayoutService => _dockLayoutService;
 
-    /// <summary>Provides typed access to the folder explorer VM via the layout service.</summary>
-    public FolderExplorerToolboxViewModel FolderExplorer { get; }
+    /// <summary>Provides typed access to the open-document explorer via the layout service.</summary>
+    public DocumentExplorerToolboxViewModel DocumentExplorer { get; }
 
-    public LayerToolboxViewModel Layers { get; }
+    public LayersToolboxViewModel Layers { get; }
 
     public EntityPropertiesToolboxViewModel EntityProperties { get; }
-    public SearchViewModel Search { get; }
+    public EntitySearchToolboxViewModel EntitySearch { get; }
 
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
 
     partial void OnCurrentEditorTabViewModelChanged(EditorTabViewModel? value)
     {
-        FolderExplorer.SetActiveDocument(value);
+        DocumentExplorer.SetActiveDocument(value);
         Layers.Attach(value?.CadDocumentViewModel);
         EntityProperties.Attach(value?.CadDocumentViewModel);
-        Search.Attach(value?.CadDocumentViewModel);
+        EntitySearch.Attach(value?.CadDocumentViewModel);
     }
 
     [ObservableProperty]
@@ -117,7 +117,7 @@ public partial class MainViewModel : ObservableObject
            });
 
         CurrentEditorTabViewModel = tab;
-        FolderExplorer.RefreshDocuments();
+        DocumentExplorer.RefreshDocuments();
     }
 
     [RelayCommand]
@@ -139,7 +139,7 @@ public partial class MainViewModel : ObservableObject
             {
                 _dockLayoutService.ActiveDockable = existingTab;
                 CurrentEditorTabViewModel = existingTab;
-                FolderExplorer.RefreshDocuments();
+                DocumentExplorer.RefreshDocuments();
                 return;
             }
 
@@ -158,7 +158,7 @@ public partial class MainViewModel : ObservableObject
             });
 
             CurrentEditorTabViewModel = tab;
-            FolderExplorer.RefreshDocuments();
+            DocumentExplorer.RefreshDocuments();
         }
         catch (Exception ex)
         {
@@ -238,7 +238,7 @@ public partial class MainViewModel : ObservableObject
             image.SourceName);
 
         documentViewModel.SelectEntities([entityId]);
-        FolderExplorer.RefreshDocuments();
+        DocumentExplorer.RefreshDocuments();
     }
 
     private static CadRectD CreateImageBounds(
@@ -278,7 +278,7 @@ public partial class MainViewModel : ObservableObject
                 CurrentEditorTabViewModel = null;
             }
             editorTabViewModel.Dispose();
-            FolderExplorer.RefreshDocuments();
+            DocumentExplorer.RefreshDocuments();
         }
         else
         {

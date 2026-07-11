@@ -5,16 +5,16 @@ using GongSolutions.Wpf.DragDrop;
 
 namespace Direct2dCad.wpf.Views.Toolboxes;
 
-public partial class LayerToolboxView : UserControl, IDropTarget
+public partial class LayersToolboxView : UserControl, IDropTarget
 {
-    public LayerToolboxView()
+    public LayersToolboxView()
     {
         InitializeComponent();
     }
 
     void IDropTarget.DragOver(IDropInfo dropInfo)
     {
-        if (DataContext is LayerToolboxViewModel && dropInfo.Data is LayerItemViewModel)
+        if (DataContext is LayersToolboxViewModel && dropInfo.Data is LayerItemViewModel)
         {
             dropInfo.Effects = DragDropEffects.Move;
             dropInfo.DropTargetAdorner = DropTargetAdorners.Insert;
@@ -26,7 +26,7 @@ public partial class LayerToolboxView : UserControl, IDropTarget
 
     void IDropTarget.Drop(IDropInfo dropInfo)
     {
-        if (DataContext is LayerToolboxViewModel viewModel && dropInfo.Data is LayerItemViewModel layer)
+        if (DataContext is LayersToolboxViewModel viewModel && dropInfo.Data is LayerItemViewModel layer)
         {
             viewModel.MoveLayer(layer, dropInfo.InsertIndex);
         }

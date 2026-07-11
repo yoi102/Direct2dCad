@@ -13,14 +13,14 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
+public partial class LayersToolboxViewModel : ObservableToolboxBase, IDisposable
 {
     private CadDocumentViewModel? _documentViewModel;
     private readonly IDisposable _interactionStateChangedSubscription;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
 
-    public LayerToolboxViewModel(IDialogService dialogService,ISnackbarService snackbarService,
+    public LayersToolboxViewModel(IDialogService dialogService,ISnackbarService snackbarService,
         IToolboxIconsService toolboxIconsService,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
@@ -336,11 +336,11 @@ public partial class LayerToolboxViewModel : ObservableToolboxBase, IDisposable
 
 public sealed partial class LayerItemViewModel : ObservableObject
 {
-    private readonly LayerToolboxViewModel _owner;
+    private readonly LayersToolboxViewModel _owner;
     private bool _isRefreshing;
 
     public LayerItemViewModel(
-        LayerToolboxViewModel owner,
+        LayersToolboxViewModel owner,
         CadLayer layer,
         int priority,
         int entityCount)

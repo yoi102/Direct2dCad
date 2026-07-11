@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -13,11 +13,11 @@ using System.Windows.Shapes;
 
 namespace Direct2dCad.wpf.Views;
 /// <summary>
-/// EditorView.xaml 的交互逻辑
+/// EditorTabView.xaml 的交互逻辑
 /// </summary>
-public partial class EditorView : UserControl
+public partial class EditorTabView : UserControl
 {
-    public EditorView()
+    public EditorTabView()
     {
         InitializeComponent();
     }

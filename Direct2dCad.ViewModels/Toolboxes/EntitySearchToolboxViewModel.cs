@@ -13,17 +13,17 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class SearchViewModel : ObservableToolboxBase, IDisposable
+public partial class EntitySearchToolboxViewModel : ObservableToolboxBase, IDisposable
 {
     private readonly IDisposable _interactionStateChangedSubscription;
     private CadDocumentViewModel? _documentViewModel;
     private bool _isRefreshing;
 
-    public SearchViewModel(
+    public EntitySearchToolboxViewModel(
         IToolboxIconsService toolboxIconsService,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
-        Title = "Search";
+        Title = "Entity Search";
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.RightTop;
         Icon = toolboxIconsService.Search;
@@ -40,19 +40,19 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
     public partial string SearchText { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial SearchLayerFilterOption? SelectedLayerFilter { get; set; }
+    public partial EntitySearchLayerFilterOption? SelectedLayerFilter { get; set; }
 
     [ObservableProperty]
-    public partial SearchEntityTypeFilterOption? SelectedTypeFilter { get; set; }
+    public partial EntitySearchTypeFilterOption? SelectedTypeFilter { get; set; }
 
     [ObservableProperty]
-    public partial SearchResultItemViewModel? SelectedResult { get; set; }
+    public partial EntitySearchResultItemViewModel? SelectedResult { get; set; }
 
-    public ObservableCollection<SearchLayerFilterOption> LayerFilters { get; } = [];
+    public ObservableCollection<EntitySearchLayerFilterOption> LayerFilters { get; } = [];
 
-    public ObservableCollection<SearchEntityTypeFilterOption> TypeFilters { get; } = [];
+    public ObservableCollection<EntitySearchTypeFilterOption> TypeFilters { get; } = [];
 
-    public ObservableCollection<SearchResultItemViewModel> Results { get; } = [];
+    public ObservableCollection<EntitySearchResultItemViewModel> Results { get; } = [];
 
     public bool HasDocument => _documentViewModel is not null;
 
@@ -86,19 +86,19 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
             RefreshResults();
     }
 
-    partial void OnSelectedLayerFilterChanged(SearchLayerFilterOption? value)
+    partial void OnSelectedLayerFilterChanged(EntitySearchLayerFilterOption? value)
     {
         if (!_isRefreshing)
             RefreshResults();
     }
 
-    partial void OnSelectedTypeFilterChanged(SearchEntityTypeFilterOption? value)
+    partial void OnSelectedTypeFilterChanged(EntitySearchTypeFilterOption? value)
     {
         if (!_isRefreshing)
             RefreshResults();
     }
 
-    partial void OnSelectedResultChanged(SearchResultItemViewModel? value)
+    partial void OnSelectedResultChanged(EntitySearchResultItemViewModel? value)
     {
         if (_isRefreshing || value is null || _documentViewModel is null)
             return;
@@ -135,7 +135,7 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
     {
         var selectedLayerId = SelectedLayerFilter?.LayerId;
         LayerFilters.Clear();
-        LayerFilters.Add(SearchLayerFilterOption.All);
+        LayerFilters.Add(EntitySearchLayerFilterOption.All);
 
         if (_documentViewModel is not null)
         {
@@ -144,7 +144,7 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
                          .OrderBy(x => document.DocumentSettings.LayerDrawingPriority.GetPriority(x.Id))
                          .ThenBy(x => x.Id.Value))
             {
-                LayerFilters.Add(new SearchLayerFilterOption(
+                LayerFilters.Add(new EntitySearchLayerFilterOption(
                     layer.Id,
                     layer.Name,
                     document.GetEntityIdsOnLayer(layer.Id).Count));
@@ -152,15 +152,15 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
         }
 
         SelectedLayerFilter = selectedLayerId is { } layerId
-            ? LayerFilters.FirstOrDefault(x => x.LayerId.Equals(layerId)) ?? SearchLayerFilterOption.All
-            : SearchLayerFilterOption.All;
+            ? LayerFilters.FirstOrDefault(x => x.LayerId.Equals(layerId)) ?? EntitySearchLayerFilterOption.All
+            : EntitySearchLayerFilterOption.All;
     }
 
     private void RefreshTypeFilters()
     {
         var selectedTypeKey = SelectedTypeFilter?.TypeKey;
         TypeFilters.Clear();
-        TypeFilters.Add(SearchEntityTypeFilterOption.All);
+        TypeFilters.Add(EntitySearchTypeFilterOption.All);
 
         if (_documentViewModel is not null)
         {
@@ -170,13 +170,13 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
                          .Distinct(StringComparer.Ordinal)
                          .OrderBy(x => x, StringComparer.Ordinal))
             {
-                TypeFilters.Add(new SearchEntityTypeFilterOption(type, type));
+                TypeFilters.Add(new EntitySearchTypeFilterOption(type, type));
             }
         }
 
         SelectedTypeFilter = selectedTypeKey is { } typeKey
-            ? TypeFilters.FirstOrDefault(x => string.Equals(x.TypeKey, typeKey, StringComparison.Ordinal)) ?? SearchEntityTypeFilterOption.All
-            : SearchEntityTypeFilterOption.All;
+            ? TypeFilters.FirstOrDefault(x => string.Equals(x.TypeKey, typeKey, StringComparison.Ordinal)) ?? EntitySearchTypeFilterOption.All
+            : EntitySearchTypeFilterOption.All;
     }
 
     private void RefreshResults()
@@ -243,7 +243,7 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
                value.Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static SearchResultItemViewModel CreateResultItem(CadDocument document, CadEntity entity)
+    private static EntitySearchResultItemViewModel CreateResultItem(CadDocument document, CadEntity entity)
     {
         var layerName = document.TryGetLayer(entity.LayerId, out var layer) && layer is not null
             ? layer.Name
@@ -252,7 +252,7 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
             ? $"({GetEntityTypeName(entity)})"
             : entity.Name.Trim();
 
-        return new SearchResultItemViewModel(
+        return new EntitySearchResultItemViewModel(
             entity.Id,
             name,
             GetEntityTypeName(entity),
@@ -284,26 +284,26 @@ public partial class SearchViewModel : ObservableToolboxBase, IDisposable
         };
 }
 
-public sealed record SearchLayerFilterOption(
+public sealed record EntitySearchLayerFilterOption(
     LayerId? LayerId,
     string Name,
     int EntityCount)
 {
-    public static SearchLayerFilterOption All { get; } = new(null, "All layers", 0);
+    public static EntitySearchLayerFilterOption All { get; } = new(null, "All layers", 0);
 
     public string DisplayText => LayerId is null
         ? Name
         : $"{Name} ({EntityCount})";
 }
 
-public sealed record SearchEntityTypeFilterOption(
+public sealed record EntitySearchTypeFilterOption(
     string? TypeKey,
     string DisplayText)
 {
-    public static SearchEntityTypeFilterOption All { get; } = new(null, "All types");
+    public static EntitySearchTypeFilterOption All { get; } = new(null, "All types");
 }
 
-public sealed class SearchResultItemViewModel(
+public sealed class EntitySearchResultItemViewModel(
     EntityId entityId,
     string name,
     string entityType,

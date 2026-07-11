@@ -9,19 +9,19 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
+public partial class DocumentExplorerToolboxViewModel : ObservableToolboxBase
 {
     private IDockLayoutService? _dockLayoutService;
     private readonly ISubscriber<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedSubscriber;
     private bool _isSynchronizingSelection;
 
-    public FolderExplorerToolboxViewModel(
+    public DocumentExplorerToolboxViewModel(
         IToolboxIconsService toolboxIconsService,
         ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
     {
         _documentSummaryChangedSubscriber = documentSummaryChangedSubscriber;
         ContentId = Id = Guid.NewGuid().ToString();
-        Title = "FolderExplorer";
+        Title = "Documents";
         Icon = toolboxIconsService.Explorer;
         Shortcut = "Ctrl+Shift+E";
         IsOpenByDefault = true;
@@ -29,12 +29,12 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
     }
     [ObservableProperty]
     public partial string ContentId { get; private set; }
-    public ObservableCollection<FolderExplorerDocumentItemViewModel> Documents { get; } = [];
+    public ObservableCollection<DocumentExplorerItemViewModel> Documents { get; } = [];
 
     public bool HasDocuments => Documents.Count > 0;
 
     [ObservableProperty]
-    public partial FolderExplorerDocumentItemViewModel? SelectedDocument { get; set; }
+    public partial DocumentExplorerItemViewModel? SelectedDocument { get; set; }
 
     public void Attach(IDockLayoutService dockLayoutService)
     {
@@ -57,7 +57,7 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
         if (_dockLayoutService is not null)
         {
             foreach (var document in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
-                Documents.Add(new FolderExplorerDocumentItemViewModel(document, _documentSummaryChangedSubscriber));
+                Documents.Add(new DocumentExplorerItemViewModel(document, _documentSummaryChangedSubscriber));
         }
 
         OnPropertyChanged(nameof(HasDocuments));
@@ -79,7 +79,7 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
         }
     }
 
-    partial void OnSelectedDocumentChanged(FolderExplorerDocumentItemViewModel? value)
+    partial void OnSelectedDocumentChanged(DocumentExplorerItemViewModel? value)
     {
         if (_isSynchronizingSelection || value is null || _dockLayoutService is null)
             return;
@@ -94,12 +94,12 @@ public partial class FolderExplorerToolboxViewModel : ObservableToolboxBase
     }
 }
 
-public sealed partial class FolderExplorerDocumentItemViewModel : ObservableObject, IDisposable
+public sealed partial class DocumentExplorerItemViewModel : ObservableObject, IDisposable
 {
     private bool _isRefreshing;
     private readonly IDisposable _documentSummaryChangedSubscription;
 
-    public FolderExplorerDocumentItemViewModel(
+    public DocumentExplorerItemViewModel(
         EditorTabViewModel document,
         ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
     {
