@@ -119,7 +119,8 @@ internal sealed class CadClipboardInteractionService(
                     style,
                     text.IsInverted,
                     text.InvertedMarginFactor,
-                    null));
+                    null,
+                    text.RotationRadians));
                 break;
 
             case CadShapeTextClipboardSnapshot shapeText:

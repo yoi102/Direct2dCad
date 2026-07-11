@@ -36,7 +36,9 @@ public sealed class SetTextGeometryCommand : ICadCommand
         _previousHeight = text.Height;
         _previousRotationRadians = text.RotationRadians;
         Apply(text, _position, _height, _rotationRadians);
-        return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
+        return CadDocumentChangeSet.ForEntity(
+            _entityId,
+            CadEntityChangeKind.Geometry | CadEntityChangeKind.Rotation);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -45,7 +47,9 @@ public sealed class SetTextGeometryCommand : ICadCommand
             return CadDocumentChangeSet.Empty;
 
         Apply(GetText(document), _previousPosition.Value, _previousHeight.Value, _previousRotationRadians.Value);
-        return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
+        return CadDocumentChangeSet.ForEntity(
+            _entityId,
+            CadEntityChangeKind.Geometry | CadEntityChangeKind.Rotation);
     }
 
     private static void Apply(CadText text, CadPointD position, double height, double rotationRadians)

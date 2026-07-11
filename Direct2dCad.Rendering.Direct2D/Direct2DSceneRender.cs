@@ -741,7 +741,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                         text.IsInverted,
                         document.ViewSettings.BackgroundColor,
                         text.InvertedMarginFactor,
-                        text.TextStyleId);
+                        text.TextStyleId,
+                        text.RotationRadians);
                     break;
 
                 case CadTransientShapeText text when text.Height > 0:
@@ -1244,7 +1245,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     text.IsInverted,
                     document.ViewSettings.BackgroundColor,
                     text.InvertedMarginFactor,
-                    text.TextStyleId);
+                    text.TextStyleId,
+                    text.RotationRadians);
                 break;
 
             default:
@@ -1861,38 +1863,51 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         bool isInverted = false,
         CadColor? invertedTextColor = null,
         double invertedMarginFactor = CadText.DefaultInvertedMarginFactor,
-        StyleId? textStyleId = null)
+        StyleId? textStyleId = null,
+        double rotationRadians = 0.0)
     {
         if (_resourceCache.WriteFactory is null || bounds.IsEmpty)
             return;
 
-        if (isInverted)
-        {
-            using var invertedFillBrush = CreateTransientBrush(deviceContext, style.StrokeColor);
-            FillBounds(
-                deviceContext,
-                CreateInvertedBackgroundBounds(bounds, height, invertedMarginFactor),
-                invertedFillBrush);
-        }
-
-        using var brush = CreateTransientBrush(
-            deviceContext,
-            isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
-        using var format = Direct2DTextServices.CreateTextFormat(
-            _resourceCache.WriteFactory,
-            document,
-            textStyleId,
-            height);
-        if (format is null)
-            return;
-
-        DrawTextClipped(
-            deviceContext,
-            text,
-            format,
+        var previousTransform = deviceContext.Transform;
+        deviceContext.Transform = CreateWorldRotationTransform(
+            rotationRadians,
             position,
-            bounds,
-            brush);
+            previousTransform);
+        try
+        {
+            if (isInverted)
+            {
+                using var invertedFillBrush = CreateTransientBrush(deviceContext, style.StrokeColor);
+                FillBounds(
+                    deviceContext,
+                    CreateInvertedBackgroundBounds(bounds, height, invertedMarginFactor),
+                    invertedFillBrush);
+            }
+
+            using var brush = CreateTransientBrush(
+                deviceContext,
+                isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
+            using var format = Direct2DTextServices.CreateTextFormat(
+                _resourceCache.WriteFactory,
+                document,
+                textStyleId,
+                height);
+            if (format is null)
+                return;
+
+            DrawTextClipped(
+                deviceContext,
+                text,
+                format,
+                position,
+                bounds,
+                brush);
+        }
+        finally
+        {
+            deviceContext.Transform = previousTransform;
+        }
     }
 
     private void DrawTransientShapeText(
@@ -2170,27 +2185,39 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             resources.TextFormat is not null &&
             resources.StrokeBrush is not null)
         {
-            if (text.IsInverted)
+            var previousTransform = deviceContext.Transform;
+            deviceContext.Transform = CreateWorldRotationTransform(
+                text.RotationRadians,
+                text.Position,
+                previousTransform);
+            try
             {
-                FillBounds(deviceContext, text.InvertedBackgroundBounds, resources.StrokeBrush);
-                using var invertedBrush = CreateTransientBrush(deviceContext, document.ViewSettings.BackgroundColor);
+                if (text.IsInverted)
+                {
+                    FillBounds(deviceContext, text.InvertedBackgroundBounds, resources.StrokeBrush);
+                    using var invertedBrush = CreateTransientBrush(deviceContext, document.ViewSettings.BackgroundColor);
+                    DrawTextClipped(
+                        deviceContext,
+                        text.Text,
+                        resources.TextFormat,
+                        text.Position,
+                        text.TextBounds,
+                        invertedBrush);
+                    return;
+                }
+
                 DrawTextClipped(
                     deviceContext,
                     text.Text,
                     resources.TextFormat,
                     text.Position,
                     text.TextBounds,
-                    invertedBrush);
-                return;
+                    resources.StrokeBrush);
             }
-
-            DrawTextClipped(
-                deviceContext,
-                text.Text,
-                resources.TextFormat,
-                text.Position,
-                text.TextBounds,
-                resources.StrokeBrush);
+            finally
+            {
+                deviceContext.Transform = previousTransform;
+            }
         }
     }
 

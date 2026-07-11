@@ -460,7 +460,7 @@ public static class CadEntityHitTester
         CadPointD point,
         out CadHitTestResult result)
     {
-        if (!text.Bounds.Contains(point))
+        if (!text.TextBounds.Contains(text.WorldToTextSpace(point)))
         {
             result = default;
             return false;

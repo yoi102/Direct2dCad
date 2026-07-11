@@ -215,7 +215,8 @@ internal sealed class CadGripDragPreviewBuilder(
             style,
             text.IsInverted,
             text.InvertedMarginFactor,
-            text.TextStyleId));
+            text.TextStyleId,
+            text.RotationRadians));
         items.Add(new CadTransientRectangle(
             text.IsInverted ? bounds.Inflate(height * text.InvertedMarginFactor) : bounds,
             auxiliaryStyle));

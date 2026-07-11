@@ -24,7 +24,8 @@ public sealed class CadText : CadEntity
     public CadRectD InvertedBackgroundBounds => TextBounds.Inflate(GetInvertedMargin());
     public bool RequiresBoundsMeasurement => _requiresBoundsMeasurement;
 
-    public override CadRectD Bounds => IsInverted ? InvertedBackgroundBounds : TextBounds;
+    public override CadRectD Bounds => CalculateRotatedBounds(
+        IsInverted ? InvertedBackgroundBounds : TextBounds);
 
     internal CadText(
         EntityId id,
@@ -43,7 +44,7 @@ public sealed class CadText : CadEntity
         Text = text ?? string.Empty;
         Position = position;
         Height = GuardPositive(height, nameof(height));
-        RotationRadians = rotationRadians;
+        RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
         TextStyleId = textStyleId;
         IsInverted = isInverted;
         InvertedMarginFactor = GuardNonNegative(invertedMarginFactor, nameof(invertedMarginFactor));
@@ -64,7 +65,12 @@ public sealed class CadText : CadEntity
         MarkBoundsForMeasurement();
     }
 
-    public void SetRotation(double rotationRadians) => RotationRadians = rotationRadians;
+    public void SetRotation(double rotationRadians) => RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
+
+    public CadPointD WorldToTextSpace(CadPointD point)
+    {
+        return RotateAround(point, Position, -RotationRadians);
+    }
 
     public void SetInverted(bool isInverted) => IsInverted = isInverted;
 
@@ -130,6 +136,40 @@ public sealed class CadText : CadEntity
         return value < 0 || double.IsNaN(value) || double.IsInfinity(value)
             ? throw new ArgumentOutOfRangeException(paramName)
             : value;
+    }
+
+    private static double GuardFinite(double value, string paramName)
+    {
+        return double.IsNaN(value) || double.IsInfinity(value)
+            ? throw new ArgumentOutOfRangeException(paramName)
+            : value;
+    }
+
+    private CadRectD CalculateRotatedBounds(CadRectD bounds)
+    {
+        if (bounds.IsEmpty || Math.Abs(RotationRadians) <= 1e-12)
+            return bounds;
+
+        var rotatedBounds = CadRectD.Empty;
+        rotatedBounds = rotatedBounds.ExpandToInclude(RotateAround(new CadPointD(bounds.MinX, bounds.MinY), Position, RotationRadians));
+        rotatedBounds = rotatedBounds.ExpandToInclude(RotateAround(new CadPointD(bounds.MaxX, bounds.MinY), Position, RotationRadians));
+        rotatedBounds = rotatedBounds.ExpandToInclude(RotateAround(new CadPointD(bounds.MaxX, bounds.MaxY), Position, RotationRadians));
+        rotatedBounds = rotatedBounds.ExpandToInclude(RotateAround(new CadPointD(bounds.MinX, bounds.MaxY), Position, RotationRadians));
+        return rotatedBounds;
+    }
+
+    private static CadPointD RotateAround(CadPointD point, CadPointD center, double angleRadians)
+    {
+        if (Math.Abs(angleRadians) <= 1e-12)
+            return point;
+
+        var cos = Math.Cos(angleRadians);
+        var sin = Math.Sin(angleRadians);
+        var dx = point.X - center.X;
+        var dy = point.Y - center.Y;
+        return new CadPointD(
+            center.X + dx * cos - dy * sin,
+            center.Y + dx * sin + dy * cos);
     }
 
     private static CadRectD CreateUnmeasuredLocalBounds(double height)

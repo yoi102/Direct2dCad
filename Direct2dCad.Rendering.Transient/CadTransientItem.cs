@@ -91,7 +91,8 @@ public sealed record CadTransientText(
     CadTransientStyle Style,
     bool IsInverted = false,
     double InvertedMarginFactor = CadText.DefaultInvertedMarginFactor,
-    StyleId? TextStyleId = null)
+    StyleId? TextStyleId = null,
+    double RotationRadians = 0.0)
     : CadTransientItem(Style);
 
 public sealed record CadTransientShapeText(
