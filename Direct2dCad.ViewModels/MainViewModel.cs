@@ -56,6 +56,10 @@ public partial class MainViewModel : ObservableObject
         EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
 
         IsDarkTheme = _userSettings.General.IsDarkTheme;
+        _themeSettingService.ApplyTheme(
+            _userSettings.General.IsDarkTheme,
+            _userSettings.General.PrimaryColor,
+            _userSettings.General.SecondaryColor);
         CurrentCultureLCID = _userSettings.General.CultureLcid;
         cultureSettingService.ChangeCulture(CurrentCultureLCID);
     }
@@ -196,6 +200,10 @@ public partial class MainViewModel : ObservableObject
     {
         _userSettings.CopyFrom(settings);
         IsDarkTheme = _userSettings.General.IsDarkTheme;
+        _themeSettingService.ApplyTheme(
+            _userSettings.General.IsDarkTheme,
+            _userSettings.General.PrimaryColor,
+            _userSettings.General.SecondaryColor);
 
         if (CurrentCultureLCID != _userSettings.General.CultureLcid)
         {

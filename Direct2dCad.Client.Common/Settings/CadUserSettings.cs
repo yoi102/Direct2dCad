@@ -40,7 +40,9 @@ public sealed class CadUserSettings
         General = new CadGeneralUserSettings
         {
             IsDarkTheme = source.General.IsDarkTheme,
-            CultureLcid = source.General.CultureLcid
+            CultureLcid = source.General.CultureLcid,
+            PrimaryColor = source.General.PrimaryColor,
+            SecondaryColor = source.General.SecondaryColor
         };
         Rendering = new CadRenderingUserSettings
         {
@@ -73,11 +75,16 @@ public sealed class CadGeneralUserSettings
 {
     public bool IsDarkTheme { get; set; } = true;
     public int CultureLcid { get; set; } = 1033;
+    public CadColor PrimaryColor { get; set; } = CadColor.FromRgb(103, 58, 183);
+    public CadColor SecondaryColor { get; set; } = CadColor.FromRgb(156, 39, 176);
 
     internal void Normalize()
     {
         if (CultureLcid is not (1033 or 1041 or 2052))
             CultureLcid = 1033;
+
+        PrimaryColor = CadColor.FromRgb(PrimaryColor.R, PrimaryColor.G, PrimaryColor.B);
+        SecondaryColor = CadColor.FromRgb(SecondaryColor.R, SecondaryColor.G, SecondaryColor.B);
     }
 }
 

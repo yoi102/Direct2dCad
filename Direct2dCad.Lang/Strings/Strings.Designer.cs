@@ -1528,6 +1528,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Primary color 的本地化字符串。
+        /// </summary>
+        public static string PrimaryColor {
+            get {
+                return ResourceManager.GetString("PrimaryColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Priority 的本地化字符串。
         /// </summary>
         public static string Priority {
@@ -1659,6 +1668,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string SaveAs {
             get {
                 return ResourceManager.GetString("SaveAs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Secondary color 的本地化字符串。
+        /// </summary>
+        public static string SecondaryColor {
+            get {
+                return ResourceManager.GetString("SecondaryColor", resourceCulture);
             }
         }
         

@@ -1,58 +1,76 @@
+using Direct2dCad.Db.Cad;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.ViewServices;
 using MaterialDesignThemes.Wpf;
 using MessagePipe;
+using MediaColor = System.Windows.Media.Color;
 
 namespace Direct2dCad.wpf.Services;
 
-
-internal class ThemeSettingService : IThemeSettingService
+internal sealed class ThemeSettingService : IThemeSettingService
 {
-    private readonly PaletteHelper _paletteHelper;
-    private readonly Theme _theme;
+    private readonly PaletteHelper _paletteHelper = new();
     private readonly IPublisher<ThemeChangedEvent> _publisher;
 
     public ThemeSettingService(IPublisher<ThemeChangedEvent> publisher)
     {
-        _paletteHelper = new PaletteHelper();
-        _theme = _paletteHelper.GetTheme();
         _publisher = publisher;
     }
 
-    public bool IsDarkTheme
-    {
-        get
-        {
-            var currentBaseTheme = _theme.GetBaseTheme();
-            return currentBaseTheme == BaseTheme.Dark;
-        }
-    }
+    public bool IsDarkTheme => CurrentTheme.GetBaseTheme() == BaseTheme.Dark;
+
+    public CadColor PrimaryColor => ToCadColor(CurrentTheme.PrimaryMid.Color);
+
+    public CadColor SecondaryColor => ToCadColor(CurrentTheme.SecondaryMid.Color);
+
+    private Theme CurrentTheme => _paletteHelper.GetTheme();
 
     public void ApplyThemeLightDark(bool isDarkTheme)
     {
-        if (isDarkTheme)
-        {
-            _theme.SetDarkTheme();
-        }
-        else
-        {
-            _theme.SetLightTheme();
-        }
-        _paletteHelper.SetTheme(_theme);
-        _publisher.Publish(new ThemeChangedEvent(isDarkTheme));
+        var theme = CurrentTheme;
+        SetBaseTheme(theme, isDarkTheme);
+        Commit(theme, isDarkTheme);
+    }
+
+    public void ApplyThemeColors(CadColor primaryColor, CadColor secondaryColor)
+    {
+        var theme = CurrentTheme;
+        theme.SetPrimaryColor(ToMediaColor(primaryColor));
+        theme.SetSecondaryColor(ToMediaColor(secondaryColor));
+        Commit(theme, theme.GetBaseTheme() == BaseTheme.Dark);
+    }
+
+    public void ApplyTheme(bool isDarkTheme, CadColor primaryColor, CadColor secondaryColor)
+    {
+        var theme = CurrentTheme;
+        SetBaseTheme(theme, isDarkTheme);
+        theme.SetPrimaryColor(ToMediaColor(primaryColor));
+        theme.SetSecondaryColor(ToMediaColor(secondaryColor));
+        Commit(theme, isDarkTheme);
     }
 
     public void ToggleThemeLightDark()
     {
-        var currentBaseTheme = _theme.GetBaseTheme();
-        if (currentBaseTheme != BaseTheme.Dark)
-        {
-            _theme.SetDarkTheme();
-        }
-        else
-        {
-            _theme.SetLightTheme();
-        }
-        _paletteHelper.SetTheme(_theme);
+        ApplyThemeLightDark(!IsDarkTheme);
     }
+
+    private void Commit(Theme theme, bool isDarkTheme)
+    {
+        _paletteHelper.SetTheme(theme);
+        _publisher.Publish(new ThemeChangedEvent(isDarkTheme));
+    }
+
+    private static void SetBaseTheme(Theme theme, bool isDarkTheme)
+    {
+        if (isDarkTheme)
+            theme.SetDarkTheme();
+        else
+            theme.SetLightTheme();
+    }
+
+    private static MediaColor ToMediaColor(CadColor color) =>
+        MediaColor.FromArgb(color.A, color.R, color.G, color.B);
+
+    private static CadColor ToCadColor(MediaColor color) =>
+        CadColor.FromArgb(color.A, color.R, color.G, color.B);
 }

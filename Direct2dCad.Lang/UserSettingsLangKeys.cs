@@ -14,5 +14,7 @@ public static class UserSettingsLangKeys
     public const string StrokeWidth = nameof(StrokeWidth);
     public const string Language = nameof(Language);
     public const string DarkTheme = nameof(DarkTheme);
+    public const string PrimaryColor = nameof(PrimaryColor);
+    public const string SecondaryColor = nameof(SecondaryColor);
     public const string Reset = nameof(Reset);
 }

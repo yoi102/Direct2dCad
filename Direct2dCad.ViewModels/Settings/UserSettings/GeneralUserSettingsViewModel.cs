@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Lang.Strings;
 
 namespace Direct2dCad.ViewModels.Settings.UserSettings;
@@ -23,12 +24,18 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
     private void Load(CadGeneralUserSettings settings)
     {
         IsDarkTheme = settings.IsDarkTheme;
+        PrimaryColor = settings.PrimaryColor;
+        SecondaryColor = settings.SecondaryColor;
         SelectedCulture = CultureOptions.FirstOrDefault(x => x.Lcid == settings.CultureLcid) ?? CultureOptions[0];
     }
 
     public IReadOnlyList<UserCultureOption> CultureOptions { get; }
 
     [ObservableProperty] public partial bool IsDarkTheme { get; set; }
+
+    [ObservableProperty] public partial CadColor PrimaryColor { get; set; }
+
+    [ObservableProperty] public partial CadColor SecondaryColor { get; set; }
 
     [ObservableProperty] public partial UserCultureOption? SelectedCulture { get; set; }
 
@@ -39,6 +46,8 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
 
         settings.General.IsDarkTheme = IsDarkTheme;
         settings.General.CultureLcid = SelectedCulture.Lcid;
+        settings.General.PrimaryColor = PrimaryColor;
+        settings.General.SecondaryColor = SecondaryColor;
         return true;
     }
 
