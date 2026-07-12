@@ -3,7 +3,7 @@ namespace Direct2dCad.Db.Cad;
 public readonly record struct CadLineWeight
 {
     public static readonly CadLineWeight ByLayer = new(-1);
-    public static readonly CadLineWeight Default = new(0.25);
+    public static readonly CadLineWeight Default = new(1);
 
     public bool IsByLayer => Value < 0;
     public double Value { get; }
