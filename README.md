@@ -1,65 +1,36 @@
 # Direct2dCad
 
-https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
-### OLE
-
-https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
-
-### Terminal
-https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761
-
-
-
-
-
 ## 项目简介
 
-Direct2dCad 是一个基于 Direct2D、DirectWrite 和 WPF 的桌面 CAD 编辑器实验项目。项目目标是把 CAD 编辑器常见的文档模型、命令历史、对象选择、图层管理、绘制预览和 GPU 资源管理拆成可维护的模块，并验证 WPF 与 Direct2D / D3D 互操作下的高性能渲染方案。
+Direct2dCad 是一个基于 WPF、Direct2D 和 DirectWrite 的桌面 CAD 编辑器项目，用于实现并验证可维护的 CAD 编辑架构与高性能渲染方案。
 
-当前项目已经形成一套可操作的 CAD 编辑闭环：
+主要功能：
 
-- 文档与实体：支持图层、块、样式、填充 / hatch 图案、视图设置，以及直线、圆、圆弧、椭圆、椭圆弧、矩形、多段线、多边形、样条、TrueType 文本、ShapeText 等实体。
-- 命令与历史：实体 CRUD、图层创建 / 删除 / 改名 / 排序、属性修改、原点设置、视口操作等通过命令执行，支持 undo / redo；批量命令可根据设置成组撤销或逐条撤销。
-- 选择与编辑：支持点击选中、正选 / 反选框选、Delete 删除选中实体、copy / paste 预览、handle / grip 命中与拖拽，多个实体可一起移动；Esc 可从绘制、拖拽或缩放状态回到 Select。
-- 绘制工具：支持 line、rectangle、polyline、polygon、spline、text、圆的多种模式、AutoCAD 风格圆弧多模式、椭圆 / 椭圆弧、原点设置模式，并提供 transient preview、辅助线、测量文字和 snap marker。
-- 图层与绘制顺序：图层可新增、删除、重命名、调整优先级；当层数量大于 1 时，包括默认层在内都可以删除，删除层会同时删除该层实体并支持 undo / redo。绘制顺序遵循“图层优先级 → 实体 ZIndex → 同 ZIndex 的实体加入顺序”。
-- 渲染与资源：Direct2D 后端负责背景、CAD grid、origin marker、实体、hatch / fill、transient overlay 和 handles overlay 的绘制；实体变更通过 change tracking 更新 geometry / brush / text / hatch 等 GPU 资源，支持 dirty rect 局部刷新和设备资源重建。
-- WPF 应用层：当前 WPF 端已接入 `CadCanvas`、Ribbon 绘制工具、属性面板、DocumentExplorer、LayersToolbox、EntitySearchToolbox、CAD Terminal、状态栏设置、保存 / 读取 `.d2cad`、多语言资源，以及 MessagePipe 解耦的 ViewModel 通信。
+- 绘制和编辑常见 CAD 实体，支持图层、样式、填充、文字与图像。
+- 提供选择、框选、grip / handle 拖拽、复制粘贴和多实体编辑。
+- 使用命令系统管理文档与视口操作，支持单条或批量 undo / redo。
+- 通过 Direct2D 资源缓存、局部刷新和变更跟踪提高渲染效率。
+- 提供 WPF 工具面板、属性设置、文件读写、CAD Terminal 和多语言界面。
 
-整体架构上，`Direct2dCad.Db` 负责 CAD 数据模型，`Direct2dCad.Commands` 和 `Direct2dCad.Editor` 负责可撤销编辑流程，`Direct2dCad.CommandLine` 提供与 UI 无关的命令行语法、别名和分发，`Direct2dCad.Rendering` 定义渲染抽象，`Direct2dCad.Rendering.Direct2D` 提供 Direct2D 实现，`Direct2dCad.Rendering.Transient` 和 `Direct2dCad.Rendering.Handles` 分别描述临时预览与选中控制点场景，`Direct2dCad.ViewModels` / `Direct2dCad.ViewModels.Services` 负责 WPF 交互状态、属性面板和 View 服务抽象。
+## 演示与设计
 
-Figma:
+- [基本操作演示](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)
+- [OLE 对象演示](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
+- [Terminal 演示](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
+- [Figma 设计稿](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
-https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4
+## 项目组成
 
+| 分层 | 项目 |
+|---|---|
+| 核心编辑 | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
+| 查询与存储 | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
+| 渲染 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
+| 客户端公共能力 | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
+| ViewModel | `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services`, `Direct2dCad.ViewModels` |
+| WPF | `Direct2dCad.wpf.Controls`, `Direct2dCad.wpf` |
 
-## 当前项目
-
-当前 `Direct2dCad.slnx` 中的项目如下：
-
-```text
-Direct2dCad.Db
-Direct2dCad.ChangeTracking
-Direct2dCad.Commands
-Direct2dCad.CommandLine
-Direct2dCad.Editor
-Direct2dCad.HitTesting
-Direct2dCad.Indexing
-Direct2dCad.IO
-Direct2dCad.Rendering
-Direct2dCad.Rendering.Transient
-Direct2dCad.Rendering.Handles
-Direct2dCad.Rendering.Direct2D
-Direct2dCad.Client.Common
-Direct2dCad.Lang
-Direct2dCad.ViewModels.Abstractions
-Direct2dCad.ViewModels.Services
-Direct2dCad.ViewModels
-Direct2dCad.wpf.Controls
-Direct2dCad.wpf
-```
-
-ViewModel 所依赖的平台能力接口放在 `Direct2dCad.ViewModels.Services/Platform`，并按 dialogs、importing、OLE、notifications、settings、toolboxes 分组；MessagePipe 消息放在 `Direct2dCad.ViewModels.Services/Events`。WPF 实现位于 `Direct2dCad.wpf/Services`，使用与职责对应的子目录。`Direct2dCad.ViewModels.Services` 同时承载 WPF 无关的 ViewModel 业务协作者，例如 drawing、interactions、rendering、snapping、styling、text 等。
+`Direct2dCad.ViewModels.Services` 保存平台接口和 UI 无关的交互协作者；WPF 实现位于 `Direct2dCad.wpf/Services`，跨 ViewModel 通信使用 MessagePipe。
 
 ## 架构分层
 
@@ -331,16 +302,16 @@ WPF ViewModel 层。
 主要职责：
 
 - 定义 `MainViewModel`、`EditorTabViewModel`、`CadDocumentViewModel`。
-- 定义 `DocumentExplorerToolboxViewModel`、`LayersToolboxViewModel`、`EntitySearchToolboxViewModel`、`EntityPropertiesToolboxViewModel` 及各实体属性面板 VM。
+- 定义文档、图层、属性、搜索、选择过滤和命令行等 Toolbox ViewModel。
 - 绑定绘制模式、选择状态、图层、实体属性、用户设置和文档设置。
 - 协调 transient scene、handle scene 和 `Direct2DImageRenderHost`。
 - 使用 `Direct2dCad.ViewModels.Services` 中定义的服务接口和 MessagePipe 消息。
 
 `CadDocumentViewModel` 的方向：只保留画布输入协调、命令入口和状态聚合。绘制预览、grip drag、snapping、render invalidation、文本测量等细分逻辑应继续放到 `Direct2dCad.ViewModels.Services`。
 
-### Direct2dCad.wpf.Control
+### Direct2dCad.wpf.Controls
 
-WPF 控件库项目。当前项目文件路径是 `Direct2dCad.Control/Direct2dCad.wpf.Control.csproj`。
+WPF 控件库项目，项目文件为 `Direct2dCad.wpf.Controls/Direct2dCad.wpf.Controls.csproj`。
 
 主要职责：
 
@@ -354,7 +325,7 @@ WPF 应用层。
 主要职责：
 
 - 提供 WPF 启动入口、`MainWindow`、`CadCanvas`。
-- 提供 Ribbon、StatusBar、DocumentExplorerToolbox、LayersToolbox、EntitySearchToolbox、EntityPropertiesToolbox 等 View。
+- 提供 Ribbon、StatusBar、文档、图层、属性、搜索、选择过滤和 Terminal 等 View。
 - 实现 `Direct2dCad.ViewModels.Services/Platform` 中定义的平台能力，并在 `Services/Application`、`Dialogs`、`Importing`、`Ole`、`Notifications`、`Toolboxes` 中按职责组织。
 - 承载 `D3D11ImageSource` / `D3DImage`。
 - 通过依赖注入装配 ViewModel 和 WPF 服务。
