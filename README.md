@@ -14,9 +14,18 @@ Direct2dCad 是一个基于 WPF、Direct2D 和 DirectWrite 的桌面 CAD 编辑�
 
 ## 演示与设计
 
-- [基本操作演示](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)
-- [OLE 对象演示](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
-- [Terminal 演示](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
+- [基本操作演示]
+  
+https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
+
+
+- [OLE 对象演示]
+
+https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
+
+- [Terminal 演示]
+
+https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761
 - [Figma 设计稿](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
 ## 项目组成
