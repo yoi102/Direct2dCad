@@ -2,137 +2,167 @@ namespace Direct2dCad.CommandLine;
 
 public sealed class CadCommandLineService : ICadCommandLineService
 {
-    private static readonly IReadOnlyList<CadCommandLineDescriptor> CommandDescriptors =
-    [
-        new("HELP", "?", "HELP [command]", "List commands or show command help."),
-        new("CLEAR", "CLS", "CLEAR", "Clear terminal output."),
-        new("STATUS", "ST", "STATUS", "Show document and interaction status."),
-        new("UNDO", "U", "UNDO", "Undo the last document command."),
-        new("REDO", "", "REDO", "Redo the last undone document command."),
-        new("FIT", "ZE", "FIT", "Fit visible content to the viewport."),
-        new("ZOOM", "Z", "ZOOM EXTENTS", "Zoom to drawing extents."),
-        new("SELECT", "S", "SELECT", "Enter selection mode."),
-        new("SELECTALL", "ALL", "SELECTALL", "Select all selectable entities."),
-        new("ERASE", "DELETE, E", "ERASE", "Delete selected entities."),
-        new("COPY", "CO", "COPY", "Copy selected entities."),
-        new("PASTE", "V", "PASTE", "Start a movable paste preview."),
-        new("LINE", "L", "LINE", "Enter line drawing mode."),
-        new("CIRCLE", "C", "CIRCLE [RADIUS|DIAMETER|2P|3P]", "Enter a circle drawing mode."),
-        new("ARC", "A", "ARC [3P|SCE|SCA|SCL|SEA|SED|SER|CSE|CSA|CSL|CONTINUE]", "Enter an arc drawing mode."),
-        new("ELLIPSE", "EL", "ELLIPSE [CENTER|AXIS|ARC]", "Enter an ellipse drawing mode."),
-        new("RECTANGLE", "REC", "RECTANGLE", "Enter rectangle drawing mode."),
-        new("POLYLINE", "PL", "POLYLINE", "Enter polyline drawing mode."),
-        new("POLYGON", "POL", "POLYGON", "Enter polygon drawing mode."),
-        new("SPLINE", "SPL", "SPLINE", "Enter spline drawing mode."),
-        new("TEXT", "T", "TEXT", "Enter text drawing mode."),
-        new("ORIGIN", "OR", "ORIGIN", "Enter origin placement mode."),
-        new("CANCEL", "ESC", "CANCEL", "Cancel the current interaction and select."),
-    ];
+    private readonly CadCommandLineRegistry _registry = new();
 
-    private static readonly IReadOnlyDictionary<string, string> Aliases = BuildAliases();
+    public CadCommandLineService(IEnumerable<ICadCommandLineHandler>? handlers = null)
+    {
+        RegisterBuiltInHandlers();
+        if (handlers is null)
+            return;
 
-    public IReadOnlyList<CadCommandLineDescriptor> Commands => CommandDescriptors;
+        foreach (var handler in handlers)
+            _registry.Register(handler);
+    }
+
+    public IReadOnlyList<CadCommandLineDescriptor> Commands =>
+        _registry.Handlers.Select(handler => handler.Descriptor).ToArray();
 
     public CadCommandLineResult Execute(string commandLine, ICadCommandLineContext? context)
     {
-        var tokens = Tokenize(commandLine);
+        if (context is not null && CadCommandLinePointParser.LooksLikePoint(commandLine))
+            return ExecutePoint(commandLine, context);
+
+        var tokens = CadCommandLineSyntax.Tokenize(commandLine);
         if (tokens.Length == 0)
             return Failure("Enter a command. Type HELP to list available commands.");
 
-        var requestedName = NormalizeCommandName(tokens[0]);
-        var commandName = Aliases.TryGetValue(requestedName, out var resolvedName)
-            ? resolvedName
-            : requestedName;
-        var arguments = tokens.Skip(1).ToArray();
+        if (!_registry.TryResolve(tokens[0], out var handler) || handler is null)
+            return Failure($"Unknown command '{tokens[0]}'. Type HELP to list available commands.");
 
-        if (commandName == "HELP")
-            return ShowHelp(arguments);
-
-        if (commandName == "CLEAR")
-            return new CadCommandLineResult(true, string.Empty, ClearOutput: true);
-
-        if (context is null)
+        if (context is null && handler.Descriptor.Name is not ("HELP" or "CLEAR"))
             return Failure("No active document.");
 
-        return commandName switch
-        {
-            "STATUS" => Success(
-                $"Document: {context.DocumentName} | Entities: {context.EntityCount} | " +
-                $"Selected: {context.SelectionCount} | Mode: {context.ToolMode}"),
-            "UNDO" => ExecuteUndo(context),
-            "REDO" => ExecuteRedo(context),
-            "FIT" => ExecuteFit(context),
-            "ZOOM" => ExecuteZoom(context, arguments),
-            "SELECT" => ActivateMode(context, CadCommandLineDrawingMode.Select),
-            "SELECTALL" => Success($"Selected {context.SelectAll()} entities."),
-            "ERASE" => ExecuteErase(context),
-            "COPY" => context.CopySelection()
-                ? Success($"Copied {context.SelectionCount} entities.")
-                : Failure("Nothing is selected."),
-            "PASTE" => context.BeginPaste()
-                ? Success("Paste preview active. Move it and click to place.")
-                : Failure("The clipboard does not contain supported CAD content."),
-            "LINE" => ActivateMode(context, CadCommandLineDrawingMode.Line),
-            "CIRCLE" => ActivateMode(context, ParseCircleMode(arguments)),
-            "ARC" => ActivateMode(context, ParseArcMode(arguments)),
-            "ELLIPSE" => ActivateMode(context, ParseEllipseMode(arguments)),
-            "RECTANGLE" => ActivateMode(context, CadCommandLineDrawingMode.Rectangle),
-            "POLYLINE" => ActivateMode(context, CadCommandLineDrawingMode.Polyline),
-            "POLYGON" => ActivateMode(context, CadCommandLineDrawingMode.Polygon),
-            "SPLINE" => ActivateMode(context, CadCommandLineDrawingMode.Spline),
-            "TEXT" => ActivateMode(context, CadCommandLineDrawingMode.Text),
-            "ORIGIN" => ActivateMode(context, CadCommandLineDrawingMode.SetOrigin),
-            "CANCEL" => ExecuteCancel(context),
-            _ => Failure($"Unknown command '{tokens[0]}'. Type HELP to list available commands.")
-        };
+        return handler.Execute(new CadCommandLineRequest(
+            context ?? NullCadCommandLineContext.Instance,
+            tokens.Skip(1).ToArray()));
     }
 
-    private static CadCommandLineResult ExecuteUndo(ICadCommandLineContext context)
+    public IReadOnlyList<string> Complete(string commandPrefix, int maximumCount = 12) =>
+        _registry.Complete(commandPrefix, maximumCount);
+
+    private void RegisterBuiltInHandlers()
     {
-        if (!context.CanUndo)
+        Register("HELP", "?", "HELP [command]", "List commands or show command help.", ExecuteHelp);
+        Register("CLEAR", "CLS", "CLEAR", "Clear terminal output.", _ => new(true, string.Empty, ClearOutput: true));
+        Register("STATUS", "ST", "STATUS", "Show document and interaction status.", request => Success(
+            $"Document: {request.Context.DocumentName} | Entities: {request.Context.EntityCount} | " +
+            $"Selected: {request.Context.SelectionCount} | Mode: {request.Context.ToolMode}"));
+        Register("UNDO", "U", "UNDO", "Undo the last document command.", ExecuteUndo);
+        Register("REDO", "", "REDO", "Redo the last undone document command.", ExecuteRedo);
+        Register("FIT", "ZE", "FIT", "Fit visible content to the viewport.", ExecuteFit);
+        Register("ZOOM", "Z", "ZOOM EXTENTS", "Zoom to drawing extents.", ExecuteZoom);
+        RegisterMode("SELECT", "S", "SELECT", "Enter selection mode.", CadCommandLineDrawingMode.Select);
+        Register("SELECTALL", "ALL", "SELECTALL", "Select all selectable entities.", request =>
+            Success($"Selected {request.Context.SelectAll()} entities."));
+        Register("ERASE", "DELETE, E", "ERASE", "Delete selected entities.", ExecuteErase);
+        Register("COPY", "CO", "COPY", "Copy selected entities.", request => request.Context.CopySelection()
+            ? Success($"Copied {request.Context.SelectionCount} entities.")
+            : Failure("Nothing is selected."));
+        Register("PASTE", "V", "PASTE", "Start a movable paste preview.", request => request.Context.BeginPaste()
+            ? Success("Paste preview active. Move it and click to place.")
+            : Failure("The clipboard does not contain supported CAD content."));
+        RegisterMode("LINE", "L", "LINE", "Enter line drawing mode.", CadCommandLineDrawingMode.Line);
+        Register("CIRCLE", "C", "CIRCLE [RADIUS|DIAMETER|2P|3P]", "Enter a circle drawing mode.", request =>
+            ActivateMode(request.Context, ParseCircleMode(request.Arguments)));
+        Register("ARC", "A", "ARC [3P|SCE|SCA|SCL|SEA|SED|SER|CSE|CSA|CSL|CONTINUE]", "Enter an arc drawing mode.", request =>
+            ActivateMode(request.Context, ParseArcMode(request.Arguments)));
+        Register("ELLIPSE", "EL", "ELLIPSE [CENTER|AXIS|ARC]", "Enter an ellipse drawing mode.", request =>
+            ActivateMode(request.Context, ParseEllipseMode(request.Arguments)));
+        RegisterMode("RECTANGLE", "REC", "RECTANGLE", "Enter rectangle drawing mode.", CadCommandLineDrawingMode.Rectangle);
+        RegisterMode("POLYLINE", "PL", "POLYLINE", "Enter polyline drawing mode.", CadCommandLineDrawingMode.Polyline);
+        RegisterMode("POLYGON", "POL", "POLYGON", "Enter polygon drawing mode.", CadCommandLineDrawingMode.Polygon);
+        RegisterMode("SPLINE", "SPL", "SPLINE", "Enter spline drawing mode.", CadCommandLineDrawingMode.Spline);
+        RegisterMode("TEXT", "T", "TEXT", "Enter text drawing mode.", CadCommandLineDrawingMode.Text);
+        RegisterMode("ORIGIN", "OR", "ORIGIN", "Enter origin placement mode.", CadCommandLineDrawingMode.SetOrigin);
+        Register("DONE", "D", "DONE", "Complete the current multi-point drawing.", request =>
+            request.Context.CompleteCurrentDrawing()
+                ? Success("Current drawing completed.")
+                : Failure("The current drawing cannot be completed yet."));
+        Register("CANCEL", "ESC", "CANCEL", "Cancel the current interaction and select.", request =>
+        {
+            request.Context.Cancel();
+            return Success("Current interaction cancelled. Select mode active.");
+        });
+    }
+
+    private void Register(
+        string name,
+        string aliases,
+        string syntax,
+        string description,
+        Func<CadCommandLineRequest, CadCommandLineResult> execute)
+    {
+        _registry.Register(new DelegateCommandLineHandler(
+            new CadCommandLineDescriptor(name, aliases, syntax, description),
+            execute));
+    }
+
+    private void RegisterMode(
+        string name,
+        string aliases,
+        string syntax,
+        string description,
+        CadCommandLineDrawingMode mode)
+    {
+        Register(name, aliases, syntax, description, request => ActivateMode(request.Context, mode));
+    }
+
+    private CadCommandLineResult ExecuteHelp(CadCommandLineRequest request)
+    {
+        if (request.Arguments.Count > 0)
+        {
+            if (!_registry.TryResolve(request.Arguments[0], out var handler) || handler is null)
+                return Failure($"Unknown command '{request.Arguments[0]}'.");
+
+            return Success(FormatHelp(handler.Descriptor));
+        }
+
+        return Success(
+            "Available commands:" + Environment.NewLine +
+            string.Join(Environment.NewLine, Commands.Select(FormatHelp)));
+    }
+
+    private static CadCommandLineResult ExecuteUndo(CadCommandLineRequest request)
+    {
+        if (!request.Context.CanUndo)
             return Failure("Nothing to undo.");
 
-        context.Undo();
+        request.Context.Undo();
         return Success("Undo completed.");
     }
 
-    private static CadCommandLineResult ExecuteRedo(ICadCommandLineContext context)
+    private static CadCommandLineResult ExecuteRedo(CadCommandLineRequest request)
     {
-        if (!context.CanRedo)
+        if (!request.Context.CanRedo)
             return Failure("Nothing to redo.");
 
-        context.Redo();
+        request.Context.Redo();
         return Success("Redo completed.");
     }
 
-    private static CadCommandLineResult ExecuteFit(ICadCommandLineContext context)
+    private static CadCommandLineResult ExecuteFit(CadCommandLineRequest request)
     {
-        context.FitToWindow();
+        request.Context.FitToWindow();
         return Success("View fitted to visible content.");
     }
 
-    private static CadCommandLineResult ExecuteZoom(
-        ICadCommandLineContext context,
-        IReadOnlyList<string> arguments)
+    private static CadCommandLineResult ExecuteZoom(CadCommandLineRequest request)
     {
-        if (arguments.Count == 0 || NormalizeCommandName(arguments[0]) is "E" or "EXTENTS")
-            return ExecuteFit(context);
+        if (request.Arguments.Count == 0 ||
+            CadCommandLineSyntax.NormalizeCommandName(request.Arguments[0]) is "E" or "EXTENTS")
+        {
+            return ExecuteFit(request);
+        }
 
         return Failure("Usage: ZOOM EXTENTS");
     }
 
-    private static CadCommandLineResult ExecuteErase(ICadCommandLineContext context)
+    private static CadCommandLineResult ExecuteErase(CadCommandLineRequest request)
     {
-        var count = context.DeleteSelection();
+        var count = request.Context.DeleteSelection();
         return count > 0
             ? Success($"Deleted {count} entities.")
             : Failure("Nothing is selected.");
-    }
-
-    private static CadCommandLineResult ExecuteCancel(ICadCommandLineContext context)
-    {
-        context.Cancel();
-        return Success("Current interaction cancelled. Select mode active.");
     }
 
     private static CadCommandLineResult ActivateMode(
@@ -140,7 +170,26 @@ public sealed class CadCommandLineService : ICadCommandLineService
         CadCommandLineDrawingMode mode)
     {
         context.SetToolMode(mode);
-        return Success($"{mode} mode active.");
+        return Success($"{mode} mode active. Specify a point on the canvas or enter X,Y.");
+    }
+
+    private static CadCommandLineResult ExecutePoint(string commandLine, ICadCommandLineContext context)
+    {
+        if (context.ToolMode == CadCommandLineDrawingMode.Select)
+            return Failure("Start a drawing command before entering a point.");
+
+        if (!CadCommandLinePointParser.TryParse(
+                commandLine,
+                context.LastInputPoint,
+                out var point,
+                out var error))
+        {
+            return Failure(error ?? "Invalid point.");
+        }
+
+        return context.SubmitDrawingPoint(point)
+            ? Success($"Point accepted: {point.X:G10},{point.Y:G10}")
+            : Failure("The current tool does not accept point input.");
     }
 
     private static CadCommandLineDrawingMode ParseCircleMode(IReadOnlyList<string> arguments)
@@ -148,7 +197,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
         if (arguments.Count == 0)
             return CadCommandLineDrawingMode.CircleCenterRadius;
 
-        return NormalizeCommandName(arguments[0]) switch
+        return CadCommandLineSyntax.NormalizeCommandName(arguments[0]) switch
         {
             "D" or "DIAMETER" => CadCommandLineDrawingMode.CircleCenterDiameter,
             "2P" or "TWOPOINT" => CadCommandLineDrawingMode.CircleTwoPoint,
@@ -162,7 +211,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
         if (arguments.Count == 0)
             return CadCommandLineDrawingMode.EllipseCenter;
 
-        return NormalizeCommandName(arguments[0]) switch
+        return CadCommandLineSyntax.NormalizeCommandName(arguments[0]) switch
         {
             "AXIS" or "END" => CadCommandLineDrawingMode.EllipseAxisEnd,
             "ARC" => CadCommandLineDrawingMode.EllipseArc,
@@ -175,7 +224,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
         if (arguments.Count == 0)
             return CadCommandLineDrawingMode.ArcThreePoint;
 
-        return NormalizeCommandName(arguments[0]) switch
+        return CadCommandLineSyntax.NormalizeCommandName(arguments[0]) switch
         {
             "SCE" => CadCommandLineDrawingMode.ArcStartCenterEnd,
             "SCA" => CadCommandLineDrawingMode.ArcStartCenterAngle,
@@ -191,22 +240,6 @@ public sealed class CadCommandLineService : ICadCommandLineService
         };
     }
 
-    private static CadCommandLineResult ShowHelp(IReadOnlyList<string> arguments)
-    {
-        if (arguments.Count > 0)
-        {
-            var name = NormalizeCommandName(arguments[0]);
-            var resolvedName = Aliases.TryGetValue(name, out var alias) ? alias : name;
-            var descriptor = CommandDescriptors.FirstOrDefault(command => command.Name == resolvedName);
-            return descriptor is null
-                ? Failure($"Unknown command '{arguments[0]}'.")
-                : Success(FormatHelp(descriptor));
-        }
-
-        var lines = CommandDescriptors.Select(FormatHelp);
-        return Success("Available commands:" + Environment.NewLine + string.Join(Environment.NewLine, lines));
-    }
-
     private static string FormatHelp(CadCommandLineDescriptor command)
     {
         var aliases = string.IsNullOrWhiteSpace(command.Aliases)
@@ -215,27 +248,39 @@ public sealed class CadCommandLineService : ICadCommandLineService
         return $"  {command.Syntax}{aliases} - {command.Description}";
     }
 
-    private static IReadOnlyDictionary<string, string> BuildAliases()
-    {
-        var aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var command in CommandDescriptors)
-        {
-            aliases[command.Name] = command.Name;
-            foreach (var alias in command.Aliases.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                aliases[alias] = command.Name;
-        }
-
-        return aliases;
-    }
-
-    private static string[] Tokenize(string commandLine) =>
-        (commandLine ?? string.Empty)
-        .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    private static string NormalizeCommandName(string value) =>
-        value.Trim().TrimStart('_', '.').ToUpperInvariant();
-
     private static CadCommandLineResult Success(string message) => new(true, message);
 
     private static CadCommandLineResult Failure(string message) => new(false, message);
+
+    private sealed class DelegateCommandLineHandler(
+        CadCommandLineDescriptor descriptor,
+        Func<CadCommandLineRequest, CadCommandLineResult> execute) : ICadCommandLineHandler
+    {
+        public CadCommandLineDescriptor Descriptor { get; } = descriptor;
+
+        public CadCommandLineResult Execute(CadCommandLineRequest request) => execute(request);
+    }
+
+    private sealed class NullCadCommandLineContext : ICadCommandLineContext
+    {
+        public static NullCadCommandLineContext Instance { get; } = new();
+        public string DocumentName => string.Empty;
+        public int EntityCount => 0;
+        public int SelectionCount => 0;
+        public CadCommandLineDrawingMode ToolMode => CadCommandLineDrawingMode.Select;
+        public bool CanUndo => false;
+        public bool CanRedo => false;
+        public CadCommandLinePoint? LastInputPoint => null;
+        public void SetToolMode(CadCommandLineDrawingMode mode) { }
+        public void Cancel() { }
+        public void Undo() { }
+        public void Redo() { }
+        public void FitToWindow() { }
+        public int SelectAll() => 0;
+        public int DeleteSelection() => 0;
+        public bool CopySelection() => false;
+        public bool BeginPaste() => false;
+        public bool SubmitDrawingPoint(CadCommandLinePoint point) => false;
+        public bool CompleteCurrentDrawing() => false;
+    }
 }

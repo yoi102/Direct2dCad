@@ -54,6 +54,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private LayerId _drawingLayerId = LayerId.Default;
     private LayerId _pasteTargetLayerId = LayerId.Default;
     private CadPointD? _currentMousePoint;
+    private CadCommandLinePoint? _lastCommandLineInputPoint;
     private bool _disposed;
 
     [ObservableProperty]
@@ -285,6 +286,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         var modeChanged = CadCanvasToolMode != toolMode;
         CadCanvasToolMode = toolMode;
+        _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
         RaiseInteractionStateChanged();
         if (modeChanged)
@@ -405,6 +407,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadCanvasInteractionResult Escape()
     {
         CadCanvasToolMode = CadCanvasToolMode.Select;
+        _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
         EndPan();
         RaiseInteractionStateChanged();
@@ -807,8 +810,17 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void HandleDrawingClick(CadPointD screen)
     {
         var world = ScreenToWorld(screen, snapToGrid: true);
-        if (CreateDrawingClickHandler().HandleClick(world))
-            RequestRender();
+        HandleDrawingWorldPoint(world);
+    }
+
+    private bool HandleDrawingWorldPoint(CadPointD world)
+    {
+        if (!CreateDrawingClickHandler().HandleClick(world))
+            return false;
+
+        _lastCommandLineInputPoint = new CadCommandLinePoint(world.X, world.Y);
+        RequestRender();
+        return true;
     }
 
     private void CompleteSelection(CadPointD endScreen)
@@ -1392,6 +1404,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     bool ICadCommandLineContext.CanRedo => CadEditor.DocumentCommands.CanRedo;
 
+    CadCommandLinePoint? ICadCommandLineContext.LastInputPoint => _lastCommandLineInputPoint;
+
     void ICadCommandLineContext.SetToolMode(CadCommandLineDrawingMode mode)
     {
         SetToolMode(Enum.Parse<CadCanvasToolMode>(mode.ToString()));
@@ -1431,6 +1445,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     }
 
     bool ICadCommandLineContext.BeginPaste() => BeginClipboardPastePreview().Handled;
+
+    bool ICadCommandLineContext.SubmitDrawingPoint(CadCommandLinePoint point) =>
+        HandleDrawingWorldPoint(SnapWorld(new CadPointD(point.X, point.Y)));
+
+    bool ICadCommandLineContext.CompleteCurrentDrawing() => CompleteCurrentDrawing().Handled;
 
     private void RaiseInteractionStateChanged()
     {

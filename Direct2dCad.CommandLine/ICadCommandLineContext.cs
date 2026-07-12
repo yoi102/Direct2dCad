@@ -8,6 +8,7 @@ public interface ICadCommandLineContext
     CadCommandLineDrawingMode ToolMode { get; }
     bool CanUndo { get; }
     bool CanRedo { get; }
+    CadCommandLinePoint? LastInputPoint { get; }
 
     void SetToolMode(CadCommandLineDrawingMode mode);
     void Cancel();
@@ -18,4 +19,6 @@ public interface ICadCommandLineContext
     int DeleteSelection();
     bool CopySelection();
     bool BeginPaste();
+    bool SubmitDrawingPoint(CadCommandLinePoint point);
+    bool CompleteCurrentDrawing();
 }

@@ -5,6 +5,8 @@ public interface ICadCommandLineService
     IReadOnlyList<CadCommandLineDescriptor> Commands { get; }
 
     CadCommandLineResult Execute(string commandLine, ICadCommandLineContext? context);
+
+    IReadOnlyList<string> Complete(string commandPrefix, int maximumCount = 12);
 }
 
 public sealed record CadCommandLineDescriptor(

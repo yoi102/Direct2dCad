@@ -21,6 +21,7 @@
                  Background="Transparent"
                  BorderThickness="0"
                  ItemsSource="{Binding Entries}"
+                 SelectionMode="Extended"
                  ScrollViewer.CanContentScroll="False"
                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
                  ScrollViewer.PanningMode="VerticalOnly"
@@ -82,6 +83,18 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
+        <Button x:Name="NewOutputButton"
+                Grid.Row="0"
+                Width="28"
+                Height="28"
+                Margin="0,0,18,8"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                ToolTip="Scroll to latest output"
+                Visibility="Collapsed">
+            <TextBlock FontSize="16" Text="↓" />
+        </Button>
+
         <Border Grid.Row="1"
                 Margin="6"
                 Padding="8,4"
@@ -112,5 +125,31 @@
                          Text="{Binding CommandText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             </Grid>
         </Border>
+
+        <Popup Grid.Row="1"
+               AllowsTransparency="True"
+               IsOpen="{Binding HasSuggestions, Mode=OneWay}"
+               Placement="Top"
+               PlacementTarget="{Binding ElementName=CommandInput}"
+               StaysOpen="False">
+            <Border Width="{Binding ActualWidth, ElementName=CommandInput}"
+                    MaxHeight="180"
+                    Padding="4"
+                    Background="{DynamicResource MahApps.Brushes.Control.Background}"
+                    BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}"
+                    BorderThickness="1"
+                    CornerRadius="2">
+                <ItemsControl ItemsSource="{Binding Suggestions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Padding="6,3"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                       Text="{Binding}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </Popup>
     </Grid>
 </UserControl>

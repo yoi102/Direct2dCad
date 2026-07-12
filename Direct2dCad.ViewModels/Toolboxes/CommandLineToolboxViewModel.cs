@@ -50,8 +50,10 @@ public partial class CommandLineToolboxViewModel : ObservableToolboxBase, IDispo
     public partial string CommandText { get; set; } = string.Empty;
 
     public ObservableCollection<CadCommandLineEntryViewModel> Entries { get; } = [];
+    public ObservableCollection<string> Suggestions { get; } = [];
 
     public bool HasDocument => _documentViewModel is not null;
+    public bool HasSuggestions => Suggestions.Count > 0;
 
     public void Attach(CadDocumentViewModel? documentViewModel)
     {
@@ -72,7 +74,12 @@ public partial class CommandLineToolboxViewModel : ObservableToolboxBase, IDispo
     {
         var commandLine = CommandText.Trim();
         if (commandLine.Length == 0)
-            return;
+        {
+            if (_commandHistory.Count == 0)
+                return;
+
+            commandLine = _commandHistory[^1];
+        }
 
         AddEntry(CadCommandLineEntryKind.Input, $"> {commandLine}");
         AddToHistory(commandLine);
@@ -121,6 +128,38 @@ public partial class CommandLineToolboxViewModel : ObservableToolboxBase, IDispo
         CommandText = _historyIndex < _commandHistory.Count
             ? _commandHistory[_historyIndex]
             : string.Empty;
+    }
+
+    public void CompleteCommand()
+    {
+        var prefix = CommandText.Trim();
+        if (prefix.Length == 0 || prefix.Any(char.IsWhiteSpace))
+            return;
+
+        var matches = _commandLineService.Complete(prefix);
+        if (matches.Count == 0)
+            return;
+
+        CommandText = matches[0] + (matches.Count == 1 ? " " : string.Empty);
+    }
+
+    public void CancelCurrentCommand()
+    {
+        CommandText = "CANCEL";
+        ExecuteCommand();
+    }
+
+    partial void OnCommandTextChanged(string value)
+    {
+        Suggestions.Clear();
+        var prefix = value.Trim();
+        if (prefix.Length > 0 && !prefix.Any(char.IsWhiteSpace))
+        {
+            foreach (var suggestion in _commandLineService.Complete(prefix))
+                Suggestions.Add(suggestion);
+        }
+
+        OnPropertyChanged(nameof(HasSuggestions));
     }
 
     public void Dispose()

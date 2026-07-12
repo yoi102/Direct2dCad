@@ -160,7 +160,9 @@ CAD 文档命令层。
 主要职责：
 
 - 定义命令目录、语法、别名、执行上下文和执行结果。
+- 通过 `ICadCommandLineHandler` 和 `CadCommandLineRegistry` 注册内置、插件或 AI 命令，无需修改中心 switch。
 - 支持 `HELP`、undo / redo、fit、选择、删除、复制粘贴以及实体绘制模式命令。
+- 支持 Tab 补全、命令历史、空 Enter 重复命令，以及 `X,Y`、`@dX,dY`、`@距离<角度` 坐标输入。
 - 将圆、圆弧、椭圆等命令的子模式转换为稳定的语义枚举。
 - 不依赖 WPF、ViewModels、Editor 或 Db，可供桌面 UI、脚本、插件和后续 AI 功能复用。
 

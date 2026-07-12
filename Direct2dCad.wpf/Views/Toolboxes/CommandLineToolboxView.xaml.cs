@@ -12,6 +12,9 @@ public partial class CommandLineToolboxView : UserControl
 {
     private INotifyCollectionChanged? _entries;
     private bool _scrollToEndPending;
+    private bool _isFollowingOutput = true;
+    private bool _isProgrammaticScroll;
+    private ScrollViewer? _outputScrollViewer;
 
     public CommandLineToolboxView()
     {
@@ -20,9 +23,12 @@ public partial class CommandLineToolboxView : UserControl
         Loaded += (_, _) =>
         {
             CommandInput.Focus();
+            AttachOutputScrollViewer();
             ScheduleScrollToEnd();
         };
         CommandInput.KeyDown += OnCommandInputKeyDown;
+        OutputList.KeyDown += OnOutputListKeyDown;
+        NewOutputButton.Click += (_, _) => FollowLatestOutput();
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -39,7 +45,10 @@ public partial class CommandLineToolboxView : UserControl
 
     private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        ScheduleScrollToEnd();
+        if (_isFollowingOutput)
+            ScheduleScrollToEnd();
+        else
+            NewOutputButton.Visibility = Visibility.Visible;
     }
 
     private void ScheduleScrollToEnd()
@@ -52,8 +61,42 @@ public partial class CommandLineToolboxView : UserControl
         {
             _scrollToEndPending = false;
             OutputList.UpdateLayout();
-            FindVisualChild<ScrollViewer>(OutputList)?.ScrollToEnd();
+            AttachOutputScrollViewer();
+            _isProgrammaticScroll = true;
+            _outputScrollViewer?.ScrollToEnd();
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () => _isProgrammaticScroll = false);
         });
+    }
+
+    private void AttachOutputScrollViewer()
+    {
+        var scrollViewer = FindVisualChild<ScrollViewer>(OutputList);
+        if (ReferenceEquals(_outputScrollViewer, scrollViewer))
+            return;
+
+        if (_outputScrollViewer is not null)
+            _outputScrollViewer.ScrollChanged -= OnOutputScrollChanged;
+
+        _outputScrollViewer = scrollViewer;
+        if (_outputScrollViewer is not null)
+            _outputScrollViewer.ScrollChanged += OnOutputScrollChanged;
+    }
+
+    private void OnOutputScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (_isProgrammaticScroll || _outputScrollViewer is null)
+            return;
+
+        _isFollowingOutput = _outputScrollViewer.ScrollableHeight - _outputScrollViewer.VerticalOffset <= 2;
+        if (_isFollowingOutput)
+            NewOutputButton.Visibility = Visibility.Collapsed;
+    }
+
+    private void FollowLatestOutput()
+    {
+        _isFollowingOutput = true;
+        NewOutputButton.Visibility = Visibility.Collapsed;
+        ScheduleScrollToEnd();
     }
 
     private static T? FindVisualChild<T>(DependencyObject parent)
@@ -95,6 +138,32 @@ public partial class CommandLineToolboxView : UserControl
                 CommandInput.CaretIndex = CommandInput.Text.Length;
                 e.Handled = true;
                 break;
+            case Key.Tab:
+                viewModel.CompleteCommand();
+                CommandInput.CaretIndex = CommandInput.Text.Length;
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                viewModel.CancelCurrentCommand();
+                e.Handled = true;
+                break;
         }
+    }
+
+    private void OnOutputListKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.C || Keyboard.Modifiers != ModifierKeys.Control)
+            return;
+
+        var text = string.Join(
+            Environment.NewLine,
+            OutputList.SelectedItems
+                .OfType<CadCommandLineEntryViewModel>()
+                .Select(entry => $"{entry.Timestamp:HH:mm:ss} {entry.Text}"));
+        if (text.Length == 0)
+            return;
+
+        Clipboard.SetText(text);
+        e.Handled = true;
     }
 }
