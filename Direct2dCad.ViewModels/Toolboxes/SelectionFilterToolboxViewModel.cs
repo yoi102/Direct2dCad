@@ -10,22 +10,21 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase, IDisposable
+public partial class SelectionFilterToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
     private CadDocumentViewModel? _documentViewModel;
     private readonly IDisposable _selectionFilterChangedSubscription;
     private bool _isSynchronizing;
 
     public SelectionFilterToolboxViewModel(
+        IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadSelectionFilterChangedMessage> selectionFilterChangedSubscriber)
+        : base(toolboxLayoutSettingsStore, "toolbox.selection-filter", DockZone.RightTop, isOpenByDefault: false)
     {
         Title = Strings.SelectionFilter;
-        Zone = DockZone.RightTop;
         Icon = toolboxIconProvider.Filter;
         Shortcut = "Ctrl+Shift+F";
-        IsOpenByDefault = false;
-        ContentId = Id = Guid.NewGuid().ToString();
         CanClose = false;
 
         foreach (var descriptor in CadSelectionEntityTypeCatalog.All)
@@ -40,8 +39,6 @@ public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase, ID
             OnSelectionFilterChanged);
     }
 
-    [ObservableProperty]
-    public partial string ContentId { get; private set; }
 
     [ObservableProperty]
     public partial bool? AreAllTypesEnabled { get; set; } = true;

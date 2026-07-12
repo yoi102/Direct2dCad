@@ -14,28 +14,24 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class EntitySearchToolboxViewModel : ObservableToolboxBase, IDisposable
+public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
     private readonly IDisposable _interactionStateChangedSubscription;
     private CadDocumentViewModel? _documentViewModel;
     private bool _isRefreshing;
 
     public EntitySearchToolboxViewModel(
+        IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
+        : base(toolboxLayoutSettingsStore, "toolbox.entity-search", DockZone.RightTop, isOpenByDefault: false)
     {
         Title = Strings.EntitySearch;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
-        Zone = DockZone.RightTop;
         Icon = toolboxIconProvider.Search;
         Shortcut = "Ctrl+Shift+T";
-        IsOpenByDefault = false;
-        ContentId = Id = Guid.NewGuid().ToString();
         CanClose = false;
     }
-
-    [ObservableProperty]
-    public partial string ContentId { get; private set; }
 
     [ObservableProperty]
     public partial string SearchText { get; set; } = string.Empty;

@@ -8,19 +8,23 @@ using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.wpf.Services.Application;
 using MessagePipe;
 
 namespace Direct2dCad.wpf;
 
 public partial class MainWindow
 {
-    private MainViewModel _viewModel;
+    private readonly MainViewModel _viewModel;
+    private readonly ToolboxLayoutPersistenceService _toolboxLayoutPersistence;
 
     public MainWindow(MainViewModel viewModel, ISubscriber<ThemeChangedEvent> subscriber, IApplicationThemeService applicationThemeService,
-        ToggleDockOptions dockOptions)
+        ToggleDockOptions dockOptions,
+        ToolboxLayoutPersistenceService toolboxLayoutPersistence)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _toolboxLayoutPersistence = toolboxLayoutPersistence;
         DataContext = _viewModel;
 
         dockManager.ButtonSize = dockOptions.ButtonSize;
@@ -72,6 +76,10 @@ public partial class MainWindow
 
         if (confirm)
         {
+            _toolboxLayoutPersistence.Save(
+                dockManager,
+                _viewModel.LayoutService.Anchorables);
+
             // 手动移除关闭事件，避免递归触发
             Closing -= OnWindowClosing;
 

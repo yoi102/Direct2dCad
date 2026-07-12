@@ -10,26 +10,24 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class DocumentExplorerToolboxViewModel : ObservableToolboxBase
+public partial class DocumentExplorerToolboxViewModel : CadToolboxViewModelBase
 {
     private IDockLayoutService? _dockLayoutService;
     private readonly ISubscriber<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedSubscriber;
     private bool _isSynchronizingSelection;
 
     public DocumentExplorerToolboxViewModel(
+        IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
+        : base(toolboxLayoutSettingsStore, "toolbox.documents", DockZone.LeftTop, isOpenByDefault: true)
     {
         _documentSummaryChangedSubscriber = documentSummaryChangedSubscriber;
-        ContentId = Id = Guid.NewGuid().ToString();
         Title = Strings.Documents;
         Icon = toolboxIconProvider.Explorer;
         Shortcut = "Ctrl+Shift+E";
-        IsOpenByDefault = true;
         CanClose = false;
     }
-    [ObservableProperty]
-    public partial string ContentId { get; private set; }
     public ObservableCollection<DocumentExplorerItemViewModel> Documents { get; } = [];
 
     public bool HasDocuments => Documents.Count > 0;

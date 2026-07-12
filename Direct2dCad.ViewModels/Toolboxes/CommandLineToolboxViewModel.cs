@@ -12,7 +12,7 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class CommandLineToolboxViewModel : ObservableToolboxBase, IDisposable
+public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
     private const int MaximumEntryCount = 1000;
     private readonly ICadCommandLineService _commandLineService;
@@ -23,28 +23,24 @@ public partial class CommandLineToolboxViewModel : ObservableToolboxBase, IDispo
     private int _historyIndex;
 
     public CommandLineToolboxViewModel(
+        IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ICadCommandLineService commandLineService,
         ISubscriber<CadCommandActivityMessage> commandActivitySubscriber,
         ISubscriber<CadInteractionActivityMessage> interactionActivitySubscriber)
+        : base(toolboxLayoutSettingsStore, "toolbox.command-line", DockZone.BottomRight, isOpenByDefault: true)
     {
         _commandLineService = commandLineService;
         _commandActivitySubscription = commandActivitySubscriber.Subscribe(OnCommandActivity);
         _interactionActivitySubscription = interactionActivitySubscriber.Subscribe(OnInteractionActivity);
         
         Title = Strings.Terminal;
-        Zone = DockZone.BottomRight;
         Icon = toolboxIconProvider.Terminal;
         Shortcut = "Ctrl+Oem3";
-        IsOpenByDefault = true;
-        ContentId = Id = Guid.NewGuid().ToString();
         CanClose = false;
 
         AddEntry(CadCommandLineEntryKind.Information, "Direct2dCad command line ready. Type HELP for commands.");
     }
-
-    [ObservableProperty]
-    public partial string ContentId { get; private set; }
 
     [ObservableProperty]
     public partial string CommandText { get; set; } = string.Empty;

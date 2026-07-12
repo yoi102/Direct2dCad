@@ -11,30 +11,27 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, IDisposable
+public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
 
     private readonly IDisposable _interactionStateChangedSubscription;
     private readonly ISystemFontCatalog _systemFontCatalog;
 
     public EntityPropertiesToolboxViewModel(
+        IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber,
         ISystemFontCatalog systemFontCatalog)
+        : base(toolboxLayoutSettingsStore, "toolbox.entity-properties", DockZone.LeftBottom, isOpenByDefault: true)
     {
         _systemFontCatalog = systemFontCatalog ?? throw new ArgumentNullException(nameof(systemFontCatalog));
         Title = Strings.Property;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
-        Zone = DockZone.LeftBottom;
         Icon = toolboxIconProvider.Git;
         Shortcut = "Ctrl+Shift+G";
-        IsOpenByDefault = true;
-        ContentId = Id = Guid.NewGuid().ToString();
         CanClose = false;
         
     }
-    [ObservableProperty]
-    public partial string ContentId { get; private set; }
     [ObservableProperty]
     public partial ObservableObject? Entity { get; set; }
 

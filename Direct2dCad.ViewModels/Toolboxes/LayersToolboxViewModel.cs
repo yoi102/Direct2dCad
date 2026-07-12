@@ -13,30 +13,29 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
-public partial class LayersToolboxViewModel : ObservableToolboxBase, IDisposable
+public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
     private CadDocumentViewModel? _documentViewModel;
     private readonly IDisposable _interactionStateChangedSubscription;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
 
-    public LayersToolboxViewModel(IDialogService dialogService, ISnackbarService snackbarService,
+    public LayersToolboxViewModel(
+        IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
+        IDialogService dialogService,
+        ISnackbarService snackbarService,
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
+        : base(toolboxLayoutSettingsStore, "toolbox.layers", DockZone.BottomLeft, isOpenByDefault: true)
     {
         Title = Strings.Layers;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
-        Zone = DockZone.BottomLeft;
         Icon = toolboxIconProvider.Layers;
         Shortcut = "Ctrl+Shift+L";
-        IsOpenByDefault = true;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
-        ContentId = Id = Guid.NewGuid().ToString();
         CanClose = false;
     }
-    [ObservableProperty]
-    public partial string ContentId { get; private set; }
     public ObservableCollection<LayerItemViewModel> Layers { get; } = [];
 
     public bool HasDocument => _documentViewModel is not null;
