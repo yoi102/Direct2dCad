@@ -44,6 +44,19 @@ public sealed class CadDocumentCommandManager
         return result;
     }
 
+    public CadDocumentChangeSet ExecuteInBatch(ICadCommand command, Guid batchId)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (batchId == Guid.Empty)
+            throw new ArgumentException("Batch id cannot be empty.", nameof(batchId));
+
+        var result = command.Execute(_document);
+        _history.PushExecuted(command, batchId);
+        _changes.Publish(result);
+        PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.DocumentChanged);
+        return result;
+    }
+
     public CadDocumentChangeSet ExecuteRange(IEnumerable<ICadCommand> commands, string name = "Command Batch")
     {
         ArgumentNullException.ThrowIfNull(commands);
@@ -88,6 +101,26 @@ public sealed class CadDocumentCommandManager
 
         var combined = Combine(results);
         PublishActivity(GetActivityName(entries), CadCommandActivityKind.Undo, entries.Count, combined.DocumentChanged);
+        return combined;
+    }
+
+    public CadDocumentChangeSet UndoBatch(Guid batchId)
+    {
+        var entries = _history.PopUndoBatch(batchId);
+        if (entries.Count == 0)
+            return CadDocumentChangeSet.Empty;
+
+        var results = new List<CadDocumentChangeSet>(entries.Count);
+        foreach (var entry in entries)
+        {
+            var result = entry.Command.Undo(_document);
+            _history.PushUndone(entry);
+            _changes.Publish(result);
+            results.Add(result);
+        }
+
+        var combined = Combine(results);
+        PublishActivity("Cancel Command Batch", CadCommandActivityKind.Undo, entries.Count, combined.DocumentChanged);
         return combined;
     }
 

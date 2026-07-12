@@ -951,4 +951,10 @@
   <data name="TogglePaperModelSpace" xml:space="preserve">
     <value>切换图纸空间与视口内模型编辑</value>
   </data>
+  <data name="LayoutViewportMode" xml:space="preserve">
+    <value>布局视口</value>
+  </data>
+  <data name="CreateViewportMode" xml:space="preserve">
+    <value>创建并调整布局视口</value>
+  </data>
 </root>

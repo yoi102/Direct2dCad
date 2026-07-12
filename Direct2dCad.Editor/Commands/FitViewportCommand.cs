@@ -1,3 +1,4 @@
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
@@ -7,6 +8,7 @@ namespace Direct2dCad.Editor.Commands;
 public sealed class FitViewportCommand : ICadEditorCommand
 {
     private readonly double _padding;
+    private readonly BlockId _ownerBlockId;
     private double? _previousZoom;
     private CadPointD _previousOffset;
     private double? _targetZoom;
@@ -14,12 +16,15 @@ public sealed class FitViewportCommand : ICadEditorCommand
 
     public string Name => "Fit View";
 
-    public FitViewportCommand(double padding = 32.0)
+    public FitViewportCommand(
+        double padding = 32.0,
+        BlockId? ownerBlockId = null)
     {
         if (padding < 0 || double.IsNaN(padding) || double.IsInfinity(padding))
             throw new ArgumentOutOfRangeException(nameof(padding));
 
         _padding = padding;
+        _ownerBlockId = ownerBlockId ?? BlockId.ModelSpace;
     }
 
     public CadEditorCommandResult Execute(CadEditorCommandContext context)
@@ -56,7 +61,7 @@ public sealed class FitViewportCommand : ICadEditorCommand
         var viewport = context.Viewport;
         var viewWidth = Math.Max(1.0, viewport.ViewWidth);
         var viewHeight = Math.Max(1.0, viewport.ViewHeight);
-        var contentBounds = GetVisibleEntityBounds(context.Document);
+        var contentBounds = GetVisibleEntityBounds(context.Document, _ownerBlockId);
 
         if (contentBounds.IsEmpty)
         {
@@ -81,13 +86,17 @@ public sealed class FitViewportCommand : ICadEditorCommand
         return new FitView(zoom, offset);
     }
 
-    private static CadRectD GetVisibleEntityBounds(CadDocument document)
+    private static CadRectD GetVisibleEntityBounds(
+        CadDocument document,
+        BlockId ownerBlockId)
     {
         var bounds = CadRectD.Empty;
 
         foreach (var entity in document.Entities.Values)
         {
-            if (!CanFitEntity(document, entity) || entity.Bounds.IsEmpty)
+            if (!entity.OwnerBlockId.Equals(ownerBlockId) ||
+                !CanFitEntity(document, entity) ||
+                entity.Bounds.IsEmpty)
                 continue;
 
             bounds = bounds.Union(entity.Bounds);

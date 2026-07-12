@@ -1153,4 +1153,10 @@
   <data name="TogglePaperModelSpace" xml:space="preserve">
     <value>Switch between paper space and model editing through the viewport</value>
   </data>
+  <data name="LayoutViewportMode" xml:space="preserve">
+    <value>Layout viewport</value>
+  </data>
+  <data name="CreateViewportMode" xml:space="preserve">
+    <value>Create and adjust a layout viewport</value>
+  </data>
 </root>

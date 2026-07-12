@@ -74,6 +74,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
         RegisterMode("SPLINE", "SPL", "SPLINE", "Enter spline drawing mode.", CadCommandLineDrawingMode.Spline);
         RegisterMode("TEXT", "T", "TEXT", "Enter text drawing mode.", CadCommandLineDrawingMode.Text);
         RegisterMode("ORIGIN", "OR", "ORIGIN", "Enter origin placement mode.", CadCommandLineDrawingMode.SetOrigin);
+        RegisterMode("MVIEW", "MV", "MVIEW", "Create and adjust a paper-space model viewport.", CadCommandLineDrawingMode.LayoutViewport);
         Register("DONE", "D", "DONE", "Complete the current multi-point drawing.", request =>
             request.Context.CompleteCurrentDrawing()
                 ? Success("Current drawing completed.")

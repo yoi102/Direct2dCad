@@ -86,6 +86,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     }
     public CadDocumentViewModel CadDocumentViewModel { get; }
     public LayoutWorkspaceViewModel LayoutWorkspace { get; }
+    public string LayoutSpaceGroupName { get; } = $"LayoutSpaceMode_{Guid.NewGuid():N}";
 
     public string DocumentName => CadDocumentViewModel.CadEditor.Document.Name;
 
@@ -629,6 +630,12 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
         {
             CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
+            return;
+        }
+
+        if (e.PropertyName == nameof(CadDocumentViewModel.ActiveLayoutViewportId))
+        {
+            LayoutWorkspace.RefreshDocumentStructure();
             return;
         }
 

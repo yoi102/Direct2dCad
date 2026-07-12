@@ -951,4 +951,10 @@
   <data name="TogglePaperModelSpace" xml:space="preserve">
     <value>ペーパー空間とビューポート内モデル編集を切り替え</value>
   </data>
+  <data name="LayoutViewportMode" xml:space="preserve">
+    <value>レイアウトビューポート</value>
+  </data>
+  <data name="CreateViewportMode" xml:space="preserve">
+    <value>レイアウトビューポートを作成して調整</value>
+  </data>
 </root>

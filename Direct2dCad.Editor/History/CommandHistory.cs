@@ -58,6 +58,21 @@ public sealed class CommandHistory<TCommand>
         return Pop(_redoStack, mode);
     }
 
+    public IReadOnlyList<CommandHistoryEntry<TCommand>> PopUndoBatch(Guid batchId)
+    {
+        if (batchId == Guid.Empty ||
+            !_undoStack.TryPeek(out var first) ||
+            first.BatchId != batchId)
+        {
+            return [];
+        }
+
+        var entries = new List<CommandHistoryEntry<TCommand>>();
+        while (_undoStack.TryPeek(out var next) && next.BatchId == batchId)
+            entries.Add(_undoStack.Pop());
+        return entries;
+    }
+
     public void PushUndone(CommandHistoryEntry<TCommand> entry)
     {
         _redoStack.Push(entry);

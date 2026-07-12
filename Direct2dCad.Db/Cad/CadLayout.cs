@@ -99,7 +99,7 @@ public sealed class CadLayoutViewport
     public double Scale { get; private set; }
     public double RotationRadians { get; private set; }
     public bool IsVisible { get; private set; } = true;
-    public bool IsLocked { get; private set; } = true;
+    public bool IsLocked { get; private set; }
 
     internal CadLayoutViewport(
         LayoutViewportId id,

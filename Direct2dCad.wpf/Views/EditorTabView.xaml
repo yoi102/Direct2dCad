@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:views="clr-namespace:Direct2dCad.wpf.Views"
              xmlns:viewmodels="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+             xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels.Abstractions"
              xmlns:layoutvm="clr-namespace:Direct2dCad.ViewModels.Layouts;assembly=Direct2dCad.ViewModels"
              xmlns:yr="https://github.com/yoi102/xaml/controls"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
@@ -209,15 +210,39 @@
                 BorderThickness="0,1,0,0">
             <DockPanel DataContext="{Binding LayoutWorkspace}" LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="4,0,6,0">
-                    <ToggleButton MinWidth="62"
-                                  Height="28"
-                                  Margin="2,2,6,2"
-                                  Padding="8,0"
-                                  IsChecked="{Binding DataContext.CadDocumentViewModel.IsLayoutViewportActive, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Mode=OneWay}"
-                                  Command="{Binding DataContext.CadDocumentViewModel.ToggleLayoutViewportSpaceCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
-                                  Content="{Binding DataContext.CadDocumentViewModel.ActiveSpaceName, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
-                                  Visibility="{Binding HasActiveLayout, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                  ToolTip="{I18N {x:Static r:LangKeys.TogglePaperModelSpace}}" />
+                    <Button Width="32"
+                            Height="32"
+                            Padding="0"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding DataContext.CadDocumentViewModel.BeginLayoutViewportCreationCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
+                            Visibility="{Binding HasActiveLayout, Converter={StaticResource BooleanToVisibilityConverter}}"
+                            ToolTip="{I18N {x:Static r:LangKeys.CreateViewportMode}}">
+                        <md:PackIcon Kind="ViewDashboardOutline" Width="18" Height="18" />
+                    </Button>
+                    <StackPanel Margin="2,0,6,0"
+                                Orientation="Horizontal"
+                                Visibility="{Binding HasActiveLayout, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <RadioButton MinWidth="62"
+                                     Height="28"
+                                     Margin="2,4"
+                                     Padding="8,0"
+                                     GroupName="{Binding DataContext.LayoutSpaceGroupName, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
+                                     BorderBrush="{DynamicResource MaterialDesign.Brush.Primary}"
+                                     Content="PAPER"
+                                     IsChecked="{Binding DataContext.CadDocumentViewModel.ActiveLayoutSpaceMode, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Mode=TwoWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadLayoutSpaceMode.Paper}}"
+                                     Style="{StaticResource MaterialDesignTabRadioButtonTop}"
+                                     ToolTip="{I18N {x:Static r:LangKeys.Paper}}" />
+                        <RadioButton MinWidth="62"
+                                     Height="28"
+                                     Margin="2,4"
+                                     Padding="8,0"
+                                     GroupName="{Binding DataContext.LayoutSpaceGroupName, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
+                                     BorderBrush="{DynamicResource MaterialDesign.Brush.Primary}"
+                                     Content="MODEL"
+                                     IsChecked="{Binding DataContext.CadDocumentViewModel.ActiveLayoutSpaceMode, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Mode=TwoWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadLayoutSpaceMode.Model}}"
+                                     Style="{StaticResource MaterialDesignTabRadioButtonTop}"
+                                     ToolTip="{I18N {x:Static r:LangKeys.Model}}" />
+                    </StackPanel>
                     <Button Width="32" Height="32" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
                             Command="{Binding AddLayoutCommand}" ToolTip="{I18N {x:Static r:LangKeys.AddLayout}}">
                         <md:PackIcon Kind="Plus" Width="18" Height="18" />

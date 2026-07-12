@@ -583,6 +583,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Create and adjust a layout viewport 的本地化字符串。
+        /// </summary>
+        public static string CreateViewportMode {
+            get {
+                return ResourceManager.GetString("CreateViewportMode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Cross 的本地化字符串。
         /// </summary>
         public static string Cross {
@@ -1245,6 +1254,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string LayoutSettings {
             get {
                 return ResourceManager.GetString("LayoutSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Layout viewport 的本地化字符串。
+        /// </summary>
+        public static string LayoutViewportMode {
+            get {
+                return ResourceManager.GetString("LayoutViewportMode", resourceCulture);
             }
         }
         

@@ -27,5 +27,6 @@ public enum CadCommandLineDrawingMode
     Polygon,
     Spline,
     Text,
-    SetOrigin
+    SetOrigin,
+    LayoutViewport
 }

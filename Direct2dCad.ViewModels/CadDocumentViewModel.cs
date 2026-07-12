@@ -51,6 +51,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly IOleHostService _oleHostService;
     private readonly CadSelectionDragController _selectionDrag = new();
     private readonly CadDrawingSessionState _drawingState = new();
+    private readonly CadLayoutViewportCreationState _layoutViewportCreation = new();
     private readonly HashSet<Type> _disabledSelectionEntityTypes = [];
     private LayerId _drawingLayerId = LayerId.Default;
     private LayerId _pasteTargetLayerId = LayerId.Default;
@@ -59,6 +60,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadPointD? _layoutPanLastScreen;
     private CadLayoutViewportSnapshot? _layoutPanInitialSnapshot;
     private bool _layoutPanHasMoved;
+    private bool _fitToWindowPending;
     private bool _disposed;
 
     [ObservableProperty]
@@ -84,7 +86,26 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public bool IsModelSpaceActive => ActiveLayoutId is null;
     public bool IsLayoutViewportActive => ActiveLayoutId is not null && ActiveLayoutViewportId is not null;
     public bool IsPaperSpaceActive => ActiveLayoutId is not null && ActiveLayoutViewportId is null;
-    public string ActiveSpaceName => IsPaperSpaceActive ? "PAPER" : "MODEL";
+    public CadLayoutSpaceMode ActiveLayoutSpaceMode
+    {
+        get => IsLayoutViewportActive ? CadLayoutSpaceMode.Model : CadLayoutSpaceMode.Paper;
+        set
+        {
+            if (ActiveLayoutId is null || value == ActiveLayoutSpaceMode)
+                return;
+
+            if (value == CadLayoutSpaceMode.Paper)
+            {
+                ExitLayoutViewport();
+                return;
+            }
+
+            var viewport = CadEditor.Document.GetLayout(ActiveLayoutId.Value).Viewports
+                .FirstOrDefault(item => item.IsVisible);
+            if (viewport is not null)
+                ActivateLayoutViewport(viewport.Id);
+        }
+    }
 
     public LayerId DrawingLayerId
     {
@@ -207,6 +228,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         _viewportInitialization.SetViewportSize(CadEditor, width, height);
         RefreshPointerWorldStatus();
+        if (_fitToWindowPending && width > 1 && height > 1)
+            FitToWindow();
     }
 
     public void SetRenderSize(int width, int height)
@@ -300,6 +323,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
     {
         var modeChanged = CadCanvasToolMode != toolMode;
+        if (toolMode != CadCanvasToolMode.LayoutViewport)
+            _layoutViewportCreation.Clear();
         CadCanvasToolMode = toolMode;
         _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
@@ -329,6 +354,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (button != CadCanvasPointerButton.Left)
             return CadCanvasInteractionResult.NotHandled;
+
+        if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+        {
+            if (_layoutViewportCreation.IsAdjustingView)
+            {
+                CompleteLayoutViewportCreation();
+                return CadCanvasInteractionResult.HandledOnly;
+            }
+
+            HandleLayoutViewportCreationClick(screen);
+            return CadCanvasInteractionResult.HandledOnly;
+        }
 
         if (_gripDrag.IsActive)
             return CommitActiveGripDrag(screen);
@@ -431,7 +468,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 ModelCenter = center,
                 Scale = targetScale
             };
-            CadEditor.SetLayoutViewport(layout.Id, layoutViewport.Id, target);
+            if (_layoutViewportCreation.IsAdjustingView)
+            {
+                CadEditor.SetLayoutViewport(
+                    layout.Id,
+                    layoutViewport.Id,
+                    target,
+                    _layoutViewportCreation.BatchId);
+            }
+            else
+            {
+                CadEditor.SetLayoutViewport(layout.Id, layoutViewport.Id, target);
+            }
             UpdatePointerWorldStatus(screen);
             RequestRender();
             return CadCanvasInteractionResult.HandledOnly;
@@ -448,6 +496,17 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult Escape()
     {
+        if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+        {
+            var cancelledBatchId = _layoutViewportCreation.IsAdjustingView
+                ? _layoutViewportCreation.BatchId
+                : Guid.Empty;
+            _layoutViewportCreation.Clear();
+            if (cancelledBatchId != Guid.Empty)
+                CadEditor.UndoBatch(cancelledBatchId);
+            else if (IsLayoutViewportActive)
+                ExitLayoutViewport();
+        }
         CadCanvasToolMode = CadCanvasToolMode.Select;
         _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
@@ -475,6 +534,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     [RelayCommand]
     public void FitToWindow()
     {
+        if (CadEditor.Viewport.ViewWidth <= 1 || CadEditor.Viewport.ViewHeight <= 1)
+        {
+            _fitToWindowPending = true;
+            return;
+        }
+
+        _fitToWindowPending = false;
         if (TryGetActiveLayoutViewport(out var activeLayout, out var activeViewport))
         {
             if (activeViewport.IsLocked)
@@ -516,12 +582,15 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return;
         }
 
-        CadEditor.Execute(new FitViewportCommand());
+        CadEditor.Execute(new FitViewportCommand(ownerBlockId: BlockId.ModelSpace));
         RequestRender();
     }
 
     public void ActivateModelSpace()
     {
+        _layoutViewportCreation.Clear();
+        if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+            CadCanvasToolMode = CadCanvasToolMode.Select;
         ActiveLayoutViewportId = null;
         ActiveLayoutId = null;
         CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
@@ -535,6 +604,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void ActivateLayout(LayoutId layoutId)
     {
+        _layoutViewportCreation.Clear();
+        if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+            CadCanvasToolMode = CadCanvasToolMode.Select;
         var layout = CadEditor.Document.GetLayout(layoutId);
         ActiveLayoutViewportId = null;
         ActiveLayoutId = layout.Id;
@@ -543,8 +615,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         OnPropertyChanged(nameof(IsModelSpaceActive));
         RaiseActiveSpacePropertiesChanged();
         ClearInteractionState(clearClipboard: false, render: false);
-        FitBounds(layout.PaperBounds, 36);
-        RequestRender();
+        FitToWindow();
         RaiseInteractionStateChanged();
     }
 
@@ -585,23 +656,73 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     }
 
     [RelayCommand]
-    public void ToggleLayoutViewportSpace()
+    public void BeginLayoutViewportCreation()
     {
+        if (ActiveLayoutId is null)
+            return;
+
         if (IsLayoutViewportActive)
-        {
             ExitLayoutViewport();
+        SetToolMode(CadCanvasToolMode.LayoutViewport);
+        _layoutViewportCreation.Begin();
+        PublishInteractionActivity("MVIEW: specify the first corner");
+        RequestRender();
+    }
+
+    private void HandleLayoutViewportCreationClick(CadPointD screen)
+    {
+        if (!_layoutViewportCreation.IsActive ||
+            ActiveLayoutId is not { } layoutId ||
+            IsLayoutViewportActive)
+            return;
+
+        var layout = CadEditor.Document.GetLayout(layoutId);
+        var raw = SnapWorld(CadEditor.Viewport.ScreenToWorld(screen));
+        var point = new CadPointD(
+            Math.Clamp(raw.X, layout.PaperBounds.Left, layout.PaperBounds.Right),
+            Math.Clamp(raw.Y, layout.PaperBounds.Bottom, layout.PaperBounds.Top));
+        if (_layoutViewportCreation.FirstCorner is null)
+        {
+            _layoutViewportCreation.SetFirstCorner(point);
+            PublishInteractionActivity("MVIEW: specify the opposite corner");
+            RequestOverlayRender();
             return;
         }
 
-        if (ActiveLayoutId is not { } layoutId)
+        var bounds = _layoutViewportCreation.CreateBounds(point);
+        var minimumPaperSize = 8.0 / Math.Max(CadEditor.Viewport.Zoom, 1e-6);
+        if (bounds.Width < minimumPaperSize || bounds.Height < minimumPaperSize)
             return;
-        var viewport = CadEditor.Document.GetLayout(layoutId).Viewports.FirstOrDefault(item => item.IsVisible);
-        if (viewport is not null)
-            ActivateLayoutViewport(viewport.Id);
+
+        ResolveModelFit(bounds, out var modelCenter, out var scale);
+        var viewportId = CadEditor.AddLayoutViewport(
+            layoutId,
+            bounds,
+            modelCenter,
+            scale,
+            rotationRadians: 0,
+            batchId: _layoutViewportCreation.BatchId);
+        _layoutViewportCreation.BeginAdjusting(viewportId);
+        ActivateLayoutViewport(viewportId);
+        PublishInteractionActivity("MVIEW: use the wheel and right-drag to adjust; click to finish");
+    }
+
+    private void CompleteLayoutViewportCreation()
+    {
+        if (!_layoutViewportCreation.IsActive)
+            return;
+
+        _layoutViewportCreation.Clear();
+        if (IsLayoutViewportActive)
+            ExitLayoutViewport();
+        SetToolMode(CadCanvasToolMode.Select);
+        PublishInteractionActivity("MVIEW complete");
     }
 
     public CadCanvasInteractionResult HandleDoubleClick(CadPointD screen)
     {
+        if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+            return CadCanvasInteractionResult.NotHandled;
         if (ActiveLayoutId is not { } layoutId)
             return CadCanvasInteractionResult.NotHandled;
 
@@ -925,6 +1046,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult CompleteCurrentDrawing()
     {
+        if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+        {
+            CompleteLayoutViewportCreation();
+            return CadCanvasInteractionResult.HandledOnly;
+        }
+
         if (CreateDrawingClickHandler().CompleteCurrentDrawing())
         {
             RequestRender();
@@ -1024,7 +1151,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             {
                 var target = CadLayoutViewportSnapshot.From(viewport);
                 initial.ApplyTo(viewport);
-                CadEditor.SetLayoutViewport(layout.Id, viewport.Id, target);
+                if (_layoutViewportCreation.IsAdjustingView)
+                {
+                    CadEditor.SetLayoutViewport(
+                        layout.Id,
+                        viewport.Id,
+                        target,
+                        _layoutViewportCreation.BatchId);
+                }
+                else
+                {
+                    CadEditor.SetLayoutViewport(layout.Id, viewport.Id, target);
+                }
             }
         }
         _layoutPanLastScreen = null;
@@ -1172,6 +1310,30 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 viewport.ViewHeight * 0.5 + bounds.Center.Y * zoom));
     }
 
+    private void ResolveModelFit(
+        CadRectD viewportBounds,
+        out CadPointD modelCenter,
+        out double scale)
+    {
+        var modelBounds = CadEditor.Document.Entities.Values
+            .Where(entity =>
+                !entity.IsErased &&
+                entity.IsVisible &&
+                entity.OwnerBlockId.Equals(BlockId.ModelSpace))
+            .Aggregate(CadRectD.Empty, static (bounds, entity) => bounds.Union(entity.Bounds));
+        if (modelBounds.IsEmpty)
+        {
+            modelCenter = CadPointD.Origin;
+            scale = 1;
+            return;
+        }
+
+        modelCenter = modelBounds.Center;
+        scale = Math.Clamp(Math.Min(
+            viewportBounds.Width * 0.9 / Math.Max(modelBounds.Width, 1e-9),
+            viewportBounds.Height * 0.9 / Math.Max(modelBounds.Height, 1e-9)), 1e-6, 1e6);
+    }
+
     private IReadOnlyList<CadTransientItem> CreateTransientItems()
     {
         var items = new List<CadTransientItem>();
@@ -1185,9 +1347,33 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             AddGripDragPreview(items);
             AddDrawingPreview(items, snappedMouseWorld);
             AddSnapMarker(items, rawMouseWorld, snappedMouseWorld);
+            AddLayoutViewportCreationPreview(items, mousePoint);
         }
 
         return items;
+    }
+
+    private void AddLayoutViewportCreationPreview(
+        List<CadTransientItem> items,
+        CadPointD mouseScreen)
+    {
+        if (CadCanvasToolMode != CadCanvasToolMode.LayoutViewport ||
+            !_layoutViewportCreation.IsDefiningBounds ||
+            ActiveLayoutId is not { } layoutId)
+        {
+            return;
+        }
+
+        var layout = CadEditor.Document.GetLayout(layoutId);
+        var raw = SnapWorld(CadEditor.Viewport.ScreenToWorld(mouseScreen));
+        var point = new CadPointD(
+            Math.Clamp(raw.X, layout.PaperBounds.Left, layout.PaperBounds.Right),
+            Math.Clamp(raw.Y, layout.PaperBounds.Bottom, layout.PaperBounds.Top));
+        var bounds = _layoutViewportCreation.CreateBounds(point);
+        if (!bounds.IsEmpty)
+            items.Add(new CadTransientRectangle(
+                bounds,
+                CreatePreviewStyleService().CreateSelectionWindowStyle()));
     }
 
     private CadRenderInvalidationCalculator CreateRenderInvalidationCalculator()
@@ -1542,8 +1728,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return false;
         }
 
+        var resolvedViewport = resolvedLayout.Viewports.FirstOrDefault(item => item.Id == viewportId);
+        if (resolvedViewport is null)
+            return false;
+
         layout = resolvedLayout;
-        viewport = layout.GetViewport(viewportId);
+        viewport = resolvedViewport;
         return true;
     }
 
@@ -1551,7 +1741,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         OnPropertyChanged(nameof(IsLayoutViewportActive));
         OnPropertyChanged(nameof(IsPaperSpaceActive));
-        OnPropertyChanged(nameof(ActiveSpaceName));
+        OnPropertyChanged(nameof(ActiveLayoutSpaceMode));
     }
 
     private CadPointD ScreenToWorld(CadPointD screen)
@@ -1640,6 +1830,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
+        EnsureActiveLayoutViewportStillExists();
         CloseStaleOleEditSessions();
         CloseReplacedOleEditSessions(e);
         ReleaseChangedOleRenderSessions(e);
@@ -1652,6 +1843,31 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (e.DocumentChanged)
             RaiseInteractionStateChanged();
+    }
+
+    private void EnsureActiveLayoutViewportStillExists()
+    {
+        if (ActiveLayoutId is not { } layoutId || ActiveLayoutViewportId is not { } viewportId)
+            return;
+
+        if (!CadEditor.Document.TryGetLayout(layoutId, out var layout) || layout is null)
+        {
+            ActiveLayoutViewportId = null;
+            ActiveLayoutId = null;
+            CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
+            CadEditor.Selection.Clear();
+            OnPropertyChanged(nameof(IsModelSpaceActive));
+            RaiseActiveSpacePropertiesChanged();
+            return;
+        }
+
+        if (layout.Viewports.Any(item => item.Id == viewportId && item.IsVisible))
+            return;
+
+        ActiveLayoutViewportId = null;
+        CadEditor.ActiveOwnerBlockId = layout.PaperSpaceBlockId;
+        CadEditor.Selection.Clear();
+        RaiseActiveSpacePropertiesChanged();
     }
 
     private void CloseReplacedOleEditSessions(CadDocumentChangeSet changes)
@@ -1755,6 +1971,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     void ICadCommandLineContext.SetToolMode(CadCommandLineDrawingMode mode)
     {
+        if (mode == CadCommandLineDrawingMode.LayoutViewport)
+        {
+            BeginLayoutViewportCreation();
+            return;
+        }
         SetToolMode(Enum.Parse<CadCanvasToolMode>(mode.ToString()));
     }
 

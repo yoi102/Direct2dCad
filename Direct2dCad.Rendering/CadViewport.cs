@@ -4,10 +4,11 @@ namespace Direct2dCad.Rendering;
 
 public sealed class CadViewport
 {
+    public const double DefaultZoom = 0.7;
     private const double MinZoom = 1e-6;
     private const double MaxZoom = 1e6;
 
-    public double Zoom { get; private set; } = 1.0;
+    public double Zoom { get; private set; } = DefaultZoom;
 
     public CadPointD Offset { get; private set; } = CadPointD.Origin;
 

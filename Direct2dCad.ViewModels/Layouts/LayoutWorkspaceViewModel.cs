@@ -86,7 +86,7 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
     [ObservableProperty] public partial double ViewportScale { get; set; } = 1;
     [ObservableProperty] public partial double ViewportRotationDegrees { get; set; }
     [ObservableProperty] public partial bool IsViewportVisible { get; set; } = true;
-    [ObservableProperty] public partial bool IsViewportLocked { get; set; } = true;
+    [ObservableProperty] public partial bool IsViewportLocked { get; set; }
     [ObservableProperty] public partial string ValidationError { get; private set; } = string.Empty;
 
     private CadDocument Document => _documentViewModel.CadEditor.Document;
@@ -231,21 +231,10 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
     [RelayCommand]
     private void AddViewport()
     {
-        if (SelectedTab?.LayoutId is not { } layoutId)
+        if (SelectedTab?.LayoutId is null)
             return;
-
-        var layout = Document.GetLayout(layoutId);
-        var bounds = layout.PrintableBounds;
-        var insetX = bounds.Width * 0.08;
-        var insetY = bounds.Height * 0.08;
-        bounds = bounds.Inflate(-insetX, -insetY);
-        var viewportId = _documentViewModel.CadEditor.AddLayoutViewport(
-            layoutId,
-            bounds,
-            CadPointD.Origin,
-            1);
-        RefreshDocumentStructure();
-        SelectedViewport = Viewports.First(item => item.Id == viewportId);
+        IsSettingsOpen = false;
+        _documentViewModel.BeginLayoutViewportCreation();
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteViewport))]
@@ -305,7 +294,9 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
                 Viewports.Add(new LayoutViewportItemViewModel(viewport.Id, $"Viewport {index + 1}"));
             }
 
-            SelectedViewport = Viewports.FirstOrDefault();
+            SelectedViewport = _documentViewModel.ActiveLayoutViewportId is { } activeViewportId
+                ? Viewports.FirstOrDefault(item => item.Id == activeViewportId) ?? Viewports.FirstOrDefault()
+                : Viewports.FirstOrDefault();
         }
         finally
         {

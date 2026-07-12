@@ -63,5 +63,7 @@ public enum CadCanvasToolMode
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
     [LocalizedDescription("SetOrigin", typeof(Strings))]
-    SetOrigin
+    SetOrigin,
+    [LocalizedDescription("LayoutViewportMode", typeof(Strings))]
+    LayoutViewport
 }

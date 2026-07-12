@@ -71,6 +71,9 @@ public sealed class CadEditor
 
     public CadDocumentChangeSet Execute(ICadCommand command) => DocumentCommands.Execute(command);
 
+    public CadDocumentChangeSet ExecuteInBatch(ICadCommand command, Guid batchId) =>
+        DocumentCommands.ExecuteInBatch(command, batchId);
+
     public CadEditorCommandResult Execute(ICadEditorCommand command) => EditorCommands.Execute(command);
 
     public CadEditorCommandResult ExecuteRange(
@@ -88,6 +91,8 @@ public sealed class CadEditor
     }
 
     public CadDocumentChangeSet Undo() => DocumentCommands.Undo();
+
+    public CadDocumentChangeSet UndoBatch(Guid batchId) => DocumentCommands.UndoBatch(batchId);
 
     public CadDocumentChangeSet Redo() => DocumentCommands.Redo();
 
@@ -142,6 +147,25 @@ public sealed class CadEditor
                throw new InvalidOperationException("Add Layout Viewport did not create a viewport.");
     }
 
+    public LayoutViewportId AddLayoutViewport(
+        LayoutId layoutId,
+        CadRectD bounds,
+        CadPointD modelCenter,
+        double scale,
+        double rotationRadians,
+        Guid batchId)
+    {
+        var command = new AddLayoutViewportCommand(
+            layoutId,
+            bounds,
+            modelCenter,
+            scale,
+            rotationRadians);
+        DocumentCommands.ExecuteInBatch(command, batchId);
+        return command.CreatedViewportId ??
+               throw new InvalidOperationException("Add Layout Viewport did not create a viewport.");
+    }
+
     public CadDocumentChangeSet RemoveLayoutViewport(
         LayoutId layoutId,
         LayoutViewportId viewportId) =>
@@ -152,6 +176,15 @@ public sealed class CadEditor
         LayoutViewportId viewportId,
         CadLayoutViewportSnapshot settings) =>
         DocumentCommands.Execute(new SetLayoutViewportCommand(layoutId, viewportId, settings));
+
+    public CadDocumentChangeSet SetLayoutViewport(
+        LayoutId layoutId,
+        LayoutViewportId viewportId,
+        CadLayoutViewportSnapshot settings,
+        Guid batchId) =>
+        DocumentCommands.ExecuteInBatch(
+            new SetLayoutViewportCommand(layoutId, viewportId, settings),
+            batchId);
 
     public CadDocumentChangeSet SetLayoutPaperColor(LayoutId layoutId, CadColor color) =>
         DocumentCommands.Execute(new SetLayoutPaperColorCommand(layoutId, color));
