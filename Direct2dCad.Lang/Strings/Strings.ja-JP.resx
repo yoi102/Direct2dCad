@@ -870,4 +870,16 @@
   <data name="EntitySearch" xml:space="preserve">
     <value>エンタティ検索</value>
   </data>
+  <data name="SelectedEntities" xml:space="preserve">
+    <value>選択したエンティティ</value>
+  </data>
+  <data name="MultipleEntityTypes" xml:space="preserve">
+    <value>複数のエンティティタイプ</value>
+  </data>
+  <data name="MultipleValues" xml:space="preserve">
+    <value>複数の値</value>
+  </data>
+  <data name="CommonProperties" xml:space="preserve">
+    <value>共通プロパティ</value>
+  </data>
 </root>

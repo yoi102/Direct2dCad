@@ -1,0 +1,204 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.MultiEntityPropertyView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:property="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty"
+             xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
+             d:DataContext="{d:DesignInstance Type=vm:MultiEntityPropertyViewModel}"
+             d:DesignHeight="520"
+             d:DesignWidth="300"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="10,8">
+            <TextBlock FontSize="15"
+                       FontWeight="SemiBold"
+                       Text="{Binding SelectionCountText}" />
+            <TextBlock Margin="0,3,0,10"
+                       Opacity="0.7"
+                       Text="{Binding EntityTypeName}" />
+
+            <TextBlock Margin="0,8"
+                       HorizontalAlignment="Center"
+                       Opacity="0.7"
+                       Text="{I18N {x:Static r:LangKeys.MultipleEntityTypes}}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSameType}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <StackPanel Visibility="{Binding IsSameType, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Expander Margin="0,0,0,8"
+                          Header="{I18N {x:Static r:LangKeys.CommonProperties}}"
+                          IsExpanded="True">
+                    <Grid Margin="8,6,8,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.Type}}" />
+                        <TextBox Grid.Row="0" Grid.Column="1" Margin="0,0,0,8"
+                                 IsReadOnly="True" Text="{Binding EntityTypeName, Mode=OneWay}" />
+
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.Layers}}" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,0,0,8"
+                                  DisplayMemberPath="Name"
+                                  ItemsSource="{Binding LayerOptions}"
+                                  SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}" />
+
+                        <TextBlock Grid.Row="2" VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.DrawOrder}}" />
+                        <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Margin="0,0,0,8"
+                                           Interval="1" StringFormat="F0"
+                                           Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <CheckBox Grid.Row="3" Grid.ColumnSpan="2"
+                                  Content="{I18N {x:Static r:LangKeys.Visible}}"
+                                  IsChecked="{Binding IsVisible, Mode=TwoWay}"
+                                  IsThreeState="True" />
+                    </Grid>
+                </Expander>
+
+                <Expander Margin="0,0,0,8"
+                          Header="{I18N {x:Static r:LangKeys.Appearance}}"
+                          IsExpanded="True"
+                          Visibility="{Binding SupportsStrokeAppearance, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid Margin="8,6,8,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.Color}}" />
+                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
+                            <TextBlock Margin="0,0,0,3"
+                                       FontStyle="Italic"
+                                       Opacity="0.7"
+                                       Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
+                                       Visibility="{Binding HasMixedStrokeColor, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <mah:ColorPicker IsEnabled="{Binding ColorControlsEnabled}"
+                                             SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                            <CheckBox Margin="0,4,0,0"
+                                      Content="{I18N {x:Static r:LangKeys.ByLayer}}"
+                                      IsChecked="{Binding UseByLayerColor, Mode=TwoWay}"
+                                      IsThreeState="True" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.LineWeight}}" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                            <mah:NumericUpDown Width="112"
+                                               IsEnabled="{Binding LineWeightControlsEnabled}"
+                                               Minimum="0.01"
+                                               Interval="0.05"
+                                               StringFormat="F3"
+                                               Value="{Binding LineWeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <CheckBox Margin="10,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Content="{I18N {x:Static r:LangKeys.ByLayer}}"
+                                      IsChecked="{Binding UseByLayerLineWeight, Mode=TwoWay}"
+                                      IsThreeState="True" />
+                        </StackPanel>
+                    </Grid>
+                </Expander>
+
+                <Expander Margin="0,0,0,8"
+                          Header="{I18N {x:Static r:LangKeys.Fill}}"
+                          IsExpanded="True"
+                          Visibility="{Binding SupportsFill, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid Margin="8,6,8,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.Fill}}" />
+                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
+                            <TextBlock Margin="0,0,0,3"
+                                       FontStyle="Italic"
+                                       Opacity="0.7"
+                                       Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
+                                       Visibility="{Binding HasMixedFillStyle, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <ComboBox DisplayMemberPath="Name"
+                                      ItemsSource="{Binding FillStyleOptions, Mode=OneWay}"
+                                      SelectedItem="{Binding SelectedFillStyleOption, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <TextBlock Grid.Row="1" VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.FillColor}}" />
+                        <StackPanel Grid.Row="1" Grid.Column="1">
+                            <TextBlock Margin="0,0,0,3"
+                                       FontStyle="Italic"
+                                       Opacity="0.7"
+                                       Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
+                                       Visibility="{Binding HasMixedFillColor, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <mah:ColorPicker mah:TextBoxHelper.AutoWatermark="True"
+                                             mah:TextBoxHelper.ClearTextButton="True"
+                                             AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                             ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                             AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                             RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                             StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                             AddToRecentColorsTrigger="SelectedColorChanged"
+                                             IsEnabled="{Binding FillColorControlsEnabled}"
+                                             SelectedColor="{Binding FillColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                        </StackPanel>
+                    </Grid>
+                </Expander>
+
+                <property:StrokeStylePropertySection
+                    Visibility="{Binding SupportsStrokeAppearance, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <Expander Header="{I18N {x:Static r:LangKeys.Appearance}}"
+                          IsExpanded="True"
+                          Visibility="{Binding SupportsOpacity, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid Margin="8,6,8,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{I18N {x:Static r:LangKeys.Opacity}}" />
+                        <mah:NumericUpDown Grid.Column="1"
+                                           Minimum="0" Maximum="1" Interval="0.05" StringFormat="F2"
+                                           Value="{Binding Opacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+                </Expander>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -75,6 +75,9 @@
             <DataTemplate DataType="{x:Type vm_ep:TransientPastePropertyViewModel}">
                 <v_ep:TransientPastePropertyView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:MultiEntityPropertyViewModel}">
+                <v_ep:MultiEntityPropertyView />
+            </DataTemplate>
         </Grid.Resources>
         <ContentControl Content="{Binding Entity}"
                         HorizontalContentAlignment="Stretch"

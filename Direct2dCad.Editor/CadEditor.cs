@@ -780,6 +780,39 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetEntityStrokeStyleCommand(entityIds, strokeStyle));
     }
 
+    public CadDocumentChangeSet UpdateEntityStrokeStyles(
+        IEnumerable<EntityId> entityIds,
+        CadStrokeCap? startCap = null,
+        CadStrokeCap? endCap = null,
+        CadStrokeCap? dashCap = null,
+        CadStrokeDashStyle? dashStyle = null,
+        CadStrokeLineJoin? lineJoin = null)
+    {
+        ArgumentNullException.ThrowIfNull(entityIds);
+
+        var commands = entityIds
+            .Distinct()
+            .Select(entityId =>
+            {
+                var current = Document.GetEntity(entityId).StrokeStyle;
+                var updated = new CadStrokeStyle(
+                    startCap ?? current.StartCap,
+                    endCap ?? current.EndCap,
+                    dashCap ?? current.DashCap,
+                    dashStyle ?? current.DashStyle,
+                    lineJoin ?? current.LineJoin);
+
+                return current == updated
+                    ? null
+                    : new SetEntityStrokeStyleCommand([entityId], updated);
+            })
+            .Where(command => command is not null)
+            .Cast<ICadCommand>()
+            .ToArray();
+
+        return DocumentCommands.ExecuteRange(commands, "Set Entity Stroke Style");
+    }
+
     public CadDocumentChangeSet SetEntityZIndex(EntityId entityId, int zIndex)
     {
         return SetEntityZIndex([entityId], zIndex);

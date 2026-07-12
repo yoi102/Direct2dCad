@@ -36,7 +36,7 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
     [ObservableProperty]
     public partial string ContentId { get; private set; }
     [ObservableProperty]
-    public partial EntityPropertyViewModel? Entity { get; set; }
+    public partial ObservableObject? Entity { get; set; }
 
     private CadDocumentViewModel? _documentViewModel;
     public void Attach(CadDocumentViewModel? documentViewModel)
@@ -224,6 +224,26 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
         }
 
         var selectedEntityIds = _documentViewModel.CadEditor.Selection.EntityIds.ToArray();
+        var validSelectedEntityIds = selectedEntityIds
+            .Where(entityId =>
+                _documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var selectedEntity) &&
+                selectedEntity is { IsErased: false })
+            .ToArray();
+        if (validSelectedEntityIds.Length > 1)
+        {
+            if (Entity is MultiEntityPropertyViewModel multiEntityViewModel &&
+                multiEntityViewModel.Matches(validSelectedEntityIds))
+            {
+                multiEntityViewModel.RefreshFromEntities();
+            }
+            else
+            {
+                Entity = new MultiEntityPropertyViewModel(_documentViewModel, validSelectedEntityIds);
+            }
+
+            return;
+        }
+
         if (selectedEntityIds.Length == 1 &&
             _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out var entity) &&
             entity is CadArc arc &&

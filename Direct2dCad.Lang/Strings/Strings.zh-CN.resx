@@ -870,4 +870,16 @@
   <data name="EntitySearch" xml:space="preserve">
     <value>实体检索</value>
   </data>
+  <data name="SelectedEntities" xml:space="preserve">
+    <value>已选择实体</value>
+  </data>
+  <data name="MultipleEntityTypes" xml:space="preserve">
+    <value>选择了多种实体类型</value>
+  </data>
+  <data name="MultipleValues" xml:space="preserve">
+    <value>多个值</value>
+  </data>
+  <data name="CommonProperties" xml:space="preserve">
+    <value>公共属性</value>
+  </data>
 </root>

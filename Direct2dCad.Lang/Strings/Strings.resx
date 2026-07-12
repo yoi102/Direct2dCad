@@ -1072,4 +1072,16 @@
     <value>Entity Search</value>
     <comment>Entity Search</comment>
   </data>
+  <data name="SelectedEntities" xml:space="preserve">
+    <value>Selected entities</value>
+  </data>
+  <data name="MultipleEntityTypes" xml:space="preserve">
+    <value>Multiple entity types</value>
+  </data>
+  <data name="MultipleValues" xml:space="preserve">
+    <value>Multiple values</value>
+  </data>
+  <data name="CommonProperties" xml:space="preserve">
+    <value>Common properties</value>
+  </data>
 </root>

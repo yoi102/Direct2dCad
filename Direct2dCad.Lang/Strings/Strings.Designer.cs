@@ -466,6 +466,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Common properties 的本地化字符串。
+        /// </summary>
+        public static string CommonProperties {
+            get {
+                return ResourceManager.GetString("CommonProperties", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Confirm 的本地化字符串。
         /// </summary>
         public static string Confirm {
@@ -1339,6 +1348,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Multiple entity types 的本地化字符串。
+        /// </summary>
+        public static string MultipleEntityTypes {
+            get {
+                return ResourceManager.GetString("MultipleEntityTypes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multiple values 的本地化字符串。
+        /// </summary>
+        public static string MultipleValues {
+            get {
+                return ResourceManager.GetString("MultipleValues", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Name 的本地化字符串。
         /// </summary>
         public static string Name {
@@ -1767,6 +1794,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Selected {
             get {
                 return ResourceManager.GetString("Selected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Selected entities 的本地化字符串。
+        /// </summary>
+        public static string SelectedEntities {
+            get {
+                return ResourceManager.GetString("SelectedEntities", resourceCulture);
             }
         }
         
@@ -2318,5 +2354,6 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Y", resourceCulture);
             }
         }
+
     }
 }
