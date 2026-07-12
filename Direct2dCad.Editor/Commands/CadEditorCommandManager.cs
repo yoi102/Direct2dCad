@@ -15,6 +15,7 @@ public sealed class CadEditorCommandManager
 
     public event EventHandler<CadEditorCommandResult>? Changed;
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
+    public event EventHandler<CadCommandActivity>? Activity;
 
     public bool CanUndo => _history.CanUndo;
     public bool CanRedo => _history.CanRedo;
@@ -47,6 +48,7 @@ public sealed class CadEditorCommandManager
         var result = command.Execute(_context);
         _history.PushExecuted(command);
         Publish(result);
+        PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.HasChanges);
         return result;
     }
 
@@ -71,7 +73,9 @@ public sealed class CadEditorCommandManager
             results.Add(result);
         }
 
-        return CadEditorCommandResult.Combine(results);
+        var combined = CadEditorCommandResult.Combine(results);
+        PublishActivity(name, CadCommandActivityKind.Execute, commandArray.Length, combined.HasChanges);
+        return combined;
     }
 
 
@@ -80,7 +84,10 @@ public sealed class CadEditorCommandManager
     {
         var entries = _history.PopUndo(_settings.UndoMode);
         if (entries.Count == 0)
+        {
+            PublishActivity("Undo", CadCommandActivityKind.Undo, 0, false);
             return CadEditorCommandResult.Empty;
+        }
 
         var results = new List<CadEditorCommandResult>(entries.Count);
         foreach (var entry in entries)
@@ -91,14 +98,19 @@ public sealed class CadEditorCommandManager
             results.Add(result);
         }
 
-        return CadEditorCommandResult.Combine(results);
+        var combined = CadEditorCommandResult.Combine(results);
+        PublishActivity(GetActivityName(entries), CadCommandActivityKind.Undo, entries.Count, combined.HasChanges);
+        return combined;
     }
 
     public CadEditorCommandResult Redo()
     {
         var entries = _history.PopRedo(_settings.RedoMode);
         if (entries.Count == 0)
+        {
+            PublishActivity("Redo", CadCommandActivityKind.Redo, 0, false);
             return CadEditorCommandResult.Empty;
+        }
 
         var results = new List<CadEditorCommandResult>(entries.Count);
         foreach (var entry in entries)
@@ -109,8 +121,27 @@ public sealed class CadEditorCommandManager
             results.Add(result);
         }
 
-        return CadEditorCommandResult.Combine(results);
+        var combined = CadEditorCommandResult.Combine(results);
+        PublishActivity(GetActivityName(entries), CadCommandActivityKind.Redo, entries.Count, combined.HasChanges);
+        return combined;
     }
+
+    private void PublishActivity(
+        string name,
+        CadCommandActivityKind kind,
+        int commandCount,
+        bool hasChanges)
+    {
+        Activity?.Invoke(this, new CadCommandActivity(
+            name,
+            kind,
+            CadCommandActivityScope.Editor,
+            commandCount,
+            hasChanges));
+    }
+
+    private static string GetActivityName(IReadOnlyList<CommandHistoryEntry<ICadEditorCommand>> entries) =>
+        entries.Count == 1 ? entries[0].Command.Name : "Command Batch";
 
     private void Publish(CadEditorCommandResult result)
     {

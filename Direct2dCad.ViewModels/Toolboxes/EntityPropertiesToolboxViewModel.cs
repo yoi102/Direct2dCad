@@ -2,6 +2,7 @@ using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -22,7 +23,7 @@ public partial class EntityPropertiesToolboxViewModel : ObservableToolboxBase, I
         ISystemFontCatalog systemFontCatalog)
     {
         _systemFontCatalog = systemFontCatalog ?? throw new ArgumentNullException(nameof(systemFontCatalog));
-        Title = "Property";
+        Title = Strings.Property;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.LeftBottom;
         Icon = toolboxIconProvider.Git;

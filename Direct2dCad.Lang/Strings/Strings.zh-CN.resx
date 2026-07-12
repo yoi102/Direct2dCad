@@ -861,4 +861,13 @@
   <data name="Font" xml:space="preserve">
     <value>字体</value>
   </data>
+  <data name="Terminal" xml:space="preserve">
+    <value>命令行</value>
+  </data>
+  <data name="Property" xml:space="preserve">
+    <value>属性</value>
+  </data>
+  <data name="EntitySearch" xml:space="preserve">
+    <value>实体检索</value>
+  </data>
 </root>

@@ -7,6 +7,7 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 internal sealed class CadPanInteractionController
 {
     private CadPointD? _lastPanPoint;
+    private bool _hasMoved;
 
     public bool IsPanning { get; private set; }
 
@@ -14,12 +15,16 @@ internal sealed class CadPanInteractionController
     {
         IsPanning = true;
         _lastPanPoint = screen;
+        _hasMoved = false;
     }
 
-    public void End()
+    public bool End()
     {
+        var hasMoved = IsPanning && _hasMoved;
         IsPanning = false;
         _lastPanPoint = null;
+        _hasMoved = false;
+        return hasMoved;
     }
 
     public bool Move(CadEditor editor, CadPointD screen)
@@ -29,7 +34,11 @@ internal sealed class CadPanInteractionController
 
         var delta = screen - _lastPanPoint.Value;
         _lastPanPoint = screen;
+        if (delta.LengthSquared <= double.Epsilon)
+            return false;
+
         editor.Execute(new PanViewportCommand(delta));
+        _hasMoved = true;
         return true;
     }
 }

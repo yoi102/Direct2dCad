@@ -19,9 +19,9 @@ Direct2dCad 是一个基于 Direct2D、DirectWrite 和 WPF 的桌面 CAD 编辑�
 - 绘制工具：支持 line、rectangle、polyline、polygon、spline、text、圆的多种模式、AutoCAD 风格圆弧多模式、椭圆 / 椭圆弧、原点设置模式，并提供 transient preview、辅助线、测量文字和 snap marker。
 - 图层与绘制顺序：图层可新增、删除、重命名、调整优先级；当层数量大于 1 时，包括默认层在内都可以删除，删除层会同时删除该层实体并支持 undo / redo。绘制顺序遵循“图层优先级 → 实体 ZIndex → 同 ZIndex 的实体加入顺序”。
 - 渲染与资源：Direct2D 后端负责背景、CAD grid、origin marker、实体、hatch / fill、transient overlay 和 handles overlay 的绘制；实体变更通过 change tracking 更新 geometry / brush / text / hatch 等 GPU 资源，支持 dirty rect 局部刷新和设备资源重建。
-- WPF 应用层：当前 WPF 端已接入 `CadCanvas`、Ribbon 绘制工具、属性面板、DocumentExplorer、LayersToolbox、EntitySearchToolbox、状态栏设置、保存 / 读取 `.d2cad`、多语言资源，以及 MessagePipe 解耦的 ViewModel 通信。
+- WPF 应用层：当前 WPF 端已接入 `CadCanvas`、Ribbon 绘制工具、属性面板、DocumentExplorer、LayersToolbox、EntitySearchToolbox、CAD Terminal、状态栏设置、保存 / 读取 `.d2cad`、多语言资源，以及 MessagePipe 解耦的 ViewModel 通信。
 
-整体架构上，`Direct2dCad.Db` 负责 CAD 数据模型，`Direct2dCad.Commands` 和 `Direct2dCad.Editor` 负责可撤销编辑流程，`Direct2dCad.Rendering` 定义渲染抽象，`Direct2dCad.Rendering.Direct2D` 提供 Direct2D 实现，`Direct2dCad.Rendering.Transient` 和 `Direct2dCad.Rendering.Handles` 分别描述临时预览与选中控制点场景，`Direct2dCad.ViewModels` / `Direct2dCad.ViewModels.Services` 负责 WPF 交互状态、属性面板和 View 服务抽象。
+整体架构上，`Direct2dCad.Db` 负责 CAD 数据模型，`Direct2dCad.Commands` 和 `Direct2dCad.Editor` 负责可撤销编辑流程，`Direct2dCad.CommandLine` 提供与 UI 无关的命令行语法、别名和分发，`Direct2dCad.Rendering` 定义渲染抽象，`Direct2dCad.Rendering.Direct2D` 提供 Direct2D 实现，`Direct2dCad.Rendering.Transient` 和 `Direct2dCad.Rendering.Handles` 分别描述临时预览与选中控制点场景，`Direct2dCad.ViewModels` / `Direct2dCad.ViewModels.Services` 负责 WPF 交互状态、属性面板和 View 服务抽象。
 
 Figma:
 
@@ -36,6 +36,7 @@ https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=
 Direct2dCad.Db
 Direct2dCad.ChangeTracking
 Direct2dCad.Commands
+Direct2dCad.CommandLine
 Direct2dCad.Editor
 Direct2dCad.HitTesting
 Direct2dCad.Indexing
@@ -49,7 +50,7 @@ Direct2dCad.Lang
 Direct2dCad.ViewModels.Abstractions
 Direct2dCad.ViewModels.Services
 Direct2dCad.ViewModels
-Direct2dCad.wpf.Control
+Direct2dCad.wpf.Controls
 Direct2dCad.wpf
 ```
 
@@ -59,13 +60,14 @@ ViewModel 所依赖的平台能力接口放在 `Direct2dCad.ViewModels.Services/
 
 ```mermaid
 flowchart TD
-    UI["WPF UI<br/>Direct2dCad.wpf<br/>Direct2dCad.wpf.Control"]
+    UI["WPF UI<br/>Direct2dCad.wpf<br/>Direct2dCad.wpf.Controls"]
     VMAbs["VM Abstractions<br/>Direct2dCad.ViewModels.Abstractions"]
     VMServices["VM Services<br/>Direct2dCad.ViewModels.Services"]
     VM["ViewModels<br/>Direct2dCad.ViewModels"]
     Client["Client Common / Lang<br/>Direct2dCad.Client.Common<br/>Direct2dCad.Lang"]
     Editor["Editor<br/>Direct2dCad.Editor"]
     Commands["Commands<br/>Direct2dCad.Commands"]
+    CommandLine["Command Line<br/>Direct2dCad.CommandLine"]
     ChangeTracking["Change Tracking<br/>Direct2dCad.ChangeTracking"]
     Db["CAD Data Model<br/>Direct2dCad.Db"]
     Query["HitTesting / Indexing<br/>Direct2dCad.HitTesting<br/>Direct2dCad.Indexing"]
@@ -77,7 +79,9 @@ flowchart TD
 
     UI --> VM
     UI --> VMAbs
+    UI --> CommandLine
     VM --> VMAbs
+    VM --> CommandLine
     VM --> VMServices
     VM --> Client
     VM --> Editor
@@ -148,6 +152,19 @@ CAD 文档命令层。
 - 支持单条命令和批量命令。
 - 批量命令是否按组 undo / redo，应该由命令管理设置决定，而不是由渲染层决定。
 - 命令执行后返回 `CadDocumentChangeSet`，用于索引、缓存和 Direct2D 资源更新。
+
+### Direct2dCad.CommandLine
+
+与 UI 无关的 CAD 命令行协议与解析层。
+
+主要职责：
+
+- 定义命令目录、语法、别名、执行上下文和执行结果。
+- 支持 `HELP`、undo / redo、fit、选择、删除、复制粘贴以及实体绘制模式命令。
+- 将圆、圆弧、椭圆等命令的子模式转换为稳定的语义枚举。
+- 不依赖 WPF、ViewModels、Editor 或 Db，可供桌面 UI、脚本、插件和后续 AI 功能复用。
+
+WPF Terminal 的日志、输入历史和当前文档适配仍由 ViewModel 层负责；真实的文档和视口操作继续进入 Editor 命令系统。
 
 ### Direct2dCad.Editor
 
@@ -398,6 +415,7 @@ SetOrigin
 | `Direct2dCad.Db` | 无 |
 | `Direct2dCad.ChangeTracking` | `Direct2dCad.Db` |
 | `Direct2dCad.Commands` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
+| `Direct2dCad.CommandLine` | 无 |
 | `Direct2dCad.Editor` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Db`, `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.Rendering` |
 | `Direct2dCad.HitTesting` | `Direct2dCad.Db` |
 | `Direct2dCad.Indexing` | `Direct2dCad.Db` |
@@ -410,9 +428,9 @@ SetOrigin
 | `Direct2dCad.Lang` | 无 |
 | `Direct2dCad.ViewModels.Abstractions` | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
 | `Direct2dCad.ViewModels.Services` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions` |
-| `Direct2dCad.ViewModels` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
-| `Direct2dCad.wpf.Control` | 无 |
-| `Direct2dCad.wpf` | `Direct2dCad.wpf.Control`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.ViewModels` | `Direct2dCad.CommandLine`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.wpf.Controls` | 无 |
+| `Direct2dCad.wpf` | `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
 
 ## NuGet 依赖
 

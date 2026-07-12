@@ -3,6 +3,7 @@ using Antelcat.I18N.WPF;
 using AvalonDock;
 using AvalonDock.DependencyInjection;
 using CommunityToolkit.Mvvm.DependencyInjection;
+using Direct2dCad.CommandLine;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -75,6 +76,7 @@ public partial class App : System.Windows.Application
             dock.AddToolbox<EntityPropertiesToolboxViewModel>();
             dock.AddToolbox<EntitySearchToolboxViewModel>();
             dock.AddToolbox<SelectionFilterToolboxViewModel>();
+            dock.AddToolbox<CommandLineToolboxViewModel>();
         });
 
         services.AddTransient<IFileDialogService, FileDialogService>();
@@ -87,6 +89,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ISystemFontCatalog, WpfSystemFontCatalog>();
         services.AddSingleton<ISnackbarService, SnackbarService>();
         services.AddSingleton<IToolboxIconProvider, ToolboxIconProvider>();
+        services.AddSingleton<ICadCommandLineService, CadCommandLineService>();
 
         services.AddTransient<MainWindow>();
     }

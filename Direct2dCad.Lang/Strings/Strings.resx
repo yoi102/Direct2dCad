@@ -923,6 +923,7 @@
   </data>
   <data name="Subdivision" xml:space="preserve">
     <value>Subdivisions</value>
+    <comment>Subdivisions</comment>
   </data>
   <data name="MinimumScreenSpacing" xml:space="preserve">
     <value>Minimum screen spacing</value>
@@ -1016,9 +1017,11 @@
   </data>
   <data name="StrokeColor" xml:space="preserve">
     <value>Stroke color</value>
+    <comment>Stroke color</comment>
   </data>
   <data name="StrokeWidth" xml:space="preserve">
     <value>Stroke width</value>
+    <comment>Stroke width</comment>
   </data>
   <data name="Language" xml:space="preserve">
     <value>Language</value>
@@ -1046,6 +1049,7 @@
   </data>
   <data name="Type" xml:space="preserve">
     <value>Type</value>
+    <comment>Type</comment>
   </data>
   <data name="Appearance" xml:space="preserve">
     <value>Appearance</value>
@@ -1055,5 +1059,17 @@
   </data>
   <data name="Font" xml:space="preserve">
     <value>Font</value>
+  </data>
+  <data name="Terminal" xml:space="preserve">
+    <value>Terminal</value>
+    <comment>Terminal</comment>
+  </data>
+  <data name="Property" xml:space="preserve">
+    <value>Property</value>
+    <comment>Property</comment>
+  </data>
+  <data name="EntitySearch" xml:space="preserve">
+    <value>Entity Search</value>
+    <comment>Entity Search</comment>
   </data>
 </root>

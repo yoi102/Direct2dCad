@@ -1,0 +1,116 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.CommandLineToolboxView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+             d:DataContext="{d:DesignInstance Type=toolboxes:CommandLineToolboxViewModel}"
+             d:DesignHeight="240"
+             d:DesignWidth="900"
+             mc:Ignorable="d">
+    <Grid Background="{DynamicResource MaterialDesign.Brush.Background}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ListBox x:Name="OutputList"
+                 Margin="6,4,6,0"
+                 Padding="0"
+                 HorizontalContentAlignment="Stretch"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 ItemsSource="{Binding Entries}"
+                 ScrollViewer.CanContentScroll="False"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ScrollViewer.PanningMode="VerticalOnly"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="2,1" />
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <ContentPresenter />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type toolboxes:CadCommandLineEntryViewModel}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="70" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Margin="0,0,8,0"
+                                   FontFamily="Cascadia Mono, Consolas"
+                                   FontSize="11"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Opacity="0.55"
+                                   Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
+                        <TextBlock x:Name="EntryText"
+                                   Grid.Column="1"
+                                   FontFamily="Cascadia Mono, Consolas"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Text="{Binding Text}"
+                                   TextWrapping="Wrap" />
+                    </Grid>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Kind}" Value="Input">
+                            <Setter TargetName="EntryText" Property="Foreground" Value="{DynamicResource MahApps.Brushes.Accent}" />
+                            <Setter TargetName="EntryText" Property="FontWeight" Value="SemiBold" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Kind}" Value="Activity">
+                            <Setter TargetName="EntryText" Property="Foreground" Value="#FF64B5F6" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Kind}" Value="Warning">
+                            <Setter TargetName="EntryText" Property="Foreground" Value="#FFFFC857" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Kind}" Value="Error">
+                            <Setter TargetName="EntryText" Property="Foreground" Value="#FFFF6B6B" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Border Grid.Row="1"
+                Margin="6"
+                Padding="8,4"
+                Background="{DynamicResource MahApps.Brushes.Control.Background}"
+                BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}"
+                BorderThickness="1"
+                CornerRadius="2">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Margin="0,0,8,0"
+                           VerticalAlignment="Center"
+                           FontFamily="Cascadia Mono, Consolas"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource MahApps.Brushes.Accent}"
+                           Text=">" />
+                <TextBox x:Name="CommandInput"
+                         Grid.Column="1"
+                         Padding="0"
+                         VerticalContentAlignment="Center"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         FontFamily="Cascadia Mono, Consolas"
+                         FontSize="13"
+                         Text="{Binding CommandText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

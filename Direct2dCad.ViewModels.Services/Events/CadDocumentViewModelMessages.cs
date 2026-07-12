@@ -1,3 +1,5 @@
+using Direct2dCad.Editor.Commands;
+
 namespace Direct2dCad.ViewModels.Services.Events;
 
 public interface ICadDocumentViewModelMessageSource;
@@ -9,5 +11,15 @@ public sealed record CadDocumentInteractionStateChangedMessage(ICadDocumentViewM
 public sealed record CadDocumentViewSettingsChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
 
 public sealed record CadSelectionFilterChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
+
+public sealed record CadCommandActivityMessage(
+    ICadDocumentViewModelMessageSource DocumentViewModel,
+    string DocumentName,
+    CadCommandActivity Activity);
+
+public sealed record CadInteractionActivityMessage(
+    ICadDocumentViewModelMessageSource DocumentViewModel,
+    string DocumentName,
+    string Name);
 
 public sealed record EditorTabDocumentSummaryChangedMessage(IEditorTabDocumentSummaryMessageSource EditorTabViewModel);

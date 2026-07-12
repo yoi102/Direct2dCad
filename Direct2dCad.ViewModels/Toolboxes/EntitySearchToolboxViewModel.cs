@@ -7,6 +7,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
@@ -23,7 +24,7 @@ public partial class EntitySearchToolboxViewModel : ObservableToolboxBase, IDisp
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
-        Title = "Entity Search";
+        Title = Strings.EntitySearch;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.RightTop;
         Icon = toolboxIconProvider.Search;

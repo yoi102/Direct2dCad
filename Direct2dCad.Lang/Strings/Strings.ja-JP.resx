@@ -861,4 +861,13 @@
   <data name="Font" xml:space="preserve">
     <value>フォント</value>
   </data>
+  <data name="Terminal" xml:space="preserve">
+    <value>コマンドライン</value>
+  </data>
+  <data name="Property" xml:space="preserve">
+    <value>プロパティ</value>
+  </data>
+  <data name="EntitySearch" xml:space="preserve">
+    <value>エンタティ検索</value>
+  </data>
 </root>

@@ -29,6 +29,7 @@ public sealed class CadEditor
 
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
     public event EventHandler<CadEditorCommandResult>? EditorStateChanged;
+    public event EventHandler<CadCommandActivity>? CommandActivity;
 
     public CadEditor(CadDocument document)
         : this(document, new CadViewport(), new CadSelectionSet(), new CadSpatialIndex())
@@ -62,6 +63,8 @@ public sealed class CadEditor
 
         _documentChanges.DocumentChanged += (_, result) => DocumentChanged?.Invoke(this, result);
         EditorCommands.Changed += (_, result) => EditorStateChanged?.Invoke(this, result);
+        DocumentCommands.Activity += (_, activity) => CommandActivity?.Invoke(this, activity);
+        EditorCommands.Activity += (_, activity) => CommandActivity?.Invoke(this, activity);
         RebuildSpatialIndex();
     }
 

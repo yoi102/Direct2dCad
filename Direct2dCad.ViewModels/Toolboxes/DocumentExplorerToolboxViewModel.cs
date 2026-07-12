@@ -3,6 +3,7 @@ using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
@@ -21,7 +22,7 @@ public partial class DocumentExplorerToolboxViewModel : ObservableToolboxBase
     {
         _documentSummaryChangedSubscriber = documentSummaryChangedSubscriber;
         ContentId = Id = Guid.NewGuid().ToString();
-        Title = "Documents";
+        Title = Strings.Documents;
         Icon = toolboxIconProvider.Explorer;
         Shortcut = "Ctrl+Shift+E";
         IsOpenByDefault = true;

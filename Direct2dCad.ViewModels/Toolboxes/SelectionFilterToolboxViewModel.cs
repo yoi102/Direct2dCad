@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Interactions;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -19,7 +20,7 @@ public partial class SelectionFilterToolboxViewModel : ObservableToolboxBase, ID
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadSelectionFilterChangedMessage> selectionFilterChangedSubscriber)
     {
-        Title = GetLocalizedText("SelectionFilter", "Selection Filter");
+        Title = Strings.SelectionFilter;
         Zone = DockZone.RightTop;
         Icon = toolboxIconProvider.Filter;
         Shortcut = "Ctrl+Shift+F";

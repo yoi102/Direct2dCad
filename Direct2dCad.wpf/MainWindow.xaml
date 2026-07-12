@@ -136,6 +136,9 @@
                         <DataTemplate DataType="{x:Type vm_tb:SelectionFilterToolboxViewModel}">
                             <v_tb:SelectionFilterToolboxView />
                         </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm_tb:CommandLineToolboxViewModel}">
+                            <v_tb:CommandLineToolboxView />
+                        </DataTemplate>
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm:EditorTabViewModel}">
                             <views:EditorTabView />

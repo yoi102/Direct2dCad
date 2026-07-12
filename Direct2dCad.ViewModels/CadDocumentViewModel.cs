@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.CommandLine;
 using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
@@ -27,11 +28,13 @@ using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
 
-public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewModelMessageSource, IDisposable
+public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewModelMessageSource, ICadCommandLineContext, IDisposable
 {
     private readonly IPublisher<CadDocumentInteractionStateChangedMessage> _interactionStateChangedPublisher;
     private readonly IPublisher<CadDocumentViewSettingsChangedMessage> _viewSettingsChangedPublisher;
     private readonly IPublisher<CadSelectionFilterChangedMessage> _selectionFilterChangedPublisher;
+    private readonly IPublisher<CadCommandActivityMessage> _commandActivityPublisher;
+    private readonly IPublisher<CadInteractionActivityMessage> _interactionActivityPublisher;
     private readonly IDisposable _oleObjectUpdatedSubscription;
     private readonly Guid _oleEditSessionId = Guid.NewGuid();
     private readonly HashSet<EntityId> _openOleEditEntityIds = [];
@@ -114,6 +117,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         IPublisher<CadDocumentInteractionStateChangedMessage> interactionStateChangedPublisher,
         IPublisher<CadDocumentViewSettingsChangedMessage> viewSettingsChangedPublisher,
         IPublisher<CadSelectionFilterChangedMessage> selectionFilterChangedPublisher,
+        IPublisher<CadCommandActivityMessage> commandActivityPublisher,
+        IPublisher<CadInteractionActivityMessage> interactionActivityPublisher,
         ISubscriber<CadOleObjectUpdatedMessage> oleObjectUpdatedSubscriber,
         ICadClipboardStore clipboardStore,
         IImageImportService imageImportService,
@@ -123,6 +128,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _interactionStateChangedPublisher = interactionStateChangedPublisher;
         _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
         _selectionFilterChangedPublisher = selectionFilterChangedPublisher;
+        _commandActivityPublisher = commandActivityPublisher;
+        _interactionActivityPublisher = interactionActivityPublisher;
         _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
         _clipboardTextService = clipboardTextService ?? throw new ArgumentNullException(nameof(clipboardTextService));
         _oleHostService = oleHostService ?? throw new ArgumentNullException(nameof(oleHostService));
@@ -133,6 +140,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _paste = new CadPasteInteractionController(clipboardStore);
         DrawingDefaults.DefaultsChanged += OnDrawingDefaultsChanged;
         CadEditor.EditorStateChanged += OnEditorStateChanged;
+        CadEditor.CommandActivity += OnCommandActivity;
     }
 
     internal void ReplaceEditor(CadEditor editor)
@@ -145,8 +153,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _oleHostService.ReleaseRenderSessions(_oleEditSessionId);
         _openOleEditEntityIds.Clear();
         CadEditor.EditorStateChanged -= OnEditorStateChanged;
+        CadEditor.CommandActivity -= OnCommandActivity;
         CadEditor = editor ?? throw new ArgumentNullException(nameof(editor));
         CadEditor.EditorStateChanged += OnEditorStateChanged;
+        CadEditor.CommandActivity += OnCommandActivity;
         _viewportInitialization.ResetInitialView();
         _viewportInitialization.ApplyCurrentSize(CadEditor);
         RefreshPointerWorldStatus();
@@ -273,9 +283,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
     {
+        var modeChanged = CadCanvasToolMode != toolMode;
         CadCanvasToolMode = toolMode;
         ClearInteractionState(clearClipboard: false);
         RaiseInteractionStateChanged();
+        if (modeChanged)
+            PublishInteractionActivity($"Tool mode: {toolMode}");
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
@@ -395,6 +408,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         ClearInteractionState(clearClipboard: false);
         EndPan();
         RaiseInteractionStateChanged();
+        PublishInteractionActivity("Cancel current interaction");
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
@@ -423,6 +437,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public void CopySelection()
     {
         _paste.Copy(CreateClipboardInteractionService());
+        PublishInteractionActivity($"Copy selection ({CadEditor.Selection.EntityIds.Count})");
     }
 
     public void SelectEntities(IEnumerable<EntityId> entityIds)
@@ -783,8 +798,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void EndPan()
     {
-        _pan.End();
+        var hasMoved = _pan.End();
         OnPropertyChanged(nameof(IsPanning));
+        if (hasMoved)
+            PublishInteractionActivity("Pan View");
     }
 
     private void HandleDrawingClick(CadPointD screen)
@@ -828,6 +845,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         OnPropertyChanged(nameof(PasteTargetLayerId));
         OnPropertyChanged(nameof(IsPastePreviewActive));
         RaiseInteractionStateChanged();
+        PublishInteractionActivity("Begin paste preview");
         RequestRender();
         return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
     }
@@ -1345,6 +1363,75 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         }
     }
 
+    private void OnCommandActivity(object? sender, CadCommandActivity activity)
+    {
+        _commandActivityPublisher.Publish(new CadCommandActivityMessage(
+            this,
+            CadEditor.Document.Name,
+            activity));
+    }
+
+    private void PublishInteractionActivity(string name)
+    {
+        _interactionActivityPublisher.Publish(new CadInteractionActivityMessage(
+            this,
+            CadEditor.Document.Name,
+            name));
+    }
+
+    string ICadCommandLineContext.DocumentName => CadEditor.Document.Name;
+
+    int ICadCommandLineContext.EntityCount => CadEditor.Document.Entities.Values.Count(entity => !entity.IsErased);
+
+    int ICadCommandLineContext.SelectionCount => CadEditor.Selection.EntityIds.Count;
+
+    CadCommandLineDrawingMode ICadCommandLineContext.ToolMode =>
+        Enum.Parse<CadCommandLineDrawingMode>(CadCanvasToolMode.ToString());
+
+    bool ICadCommandLineContext.CanUndo => CadEditor.DocumentCommands.CanUndo;
+
+    bool ICadCommandLineContext.CanRedo => CadEditor.DocumentCommands.CanRedo;
+
+    void ICadCommandLineContext.SetToolMode(CadCommandLineDrawingMode mode)
+    {
+        SetToolMode(Enum.Parse<CadCanvasToolMode>(mode.ToString()));
+    }
+
+    void ICadCommandLineContext.Cancel() => Escape();
+
+    void ICadCommandLineContext.Undo() => Undo();
+
+    void ICadCommandLineContext.Redo() => Redo();
+
+    void ICadCommandLineContext.FitToWindow() => FitToWindow();
+
+    int ICadCommandLineContext.SelectAll()
+    {
+        var entityIds = CadEditor.Document.Entities.Values
+            .Where(entity => !entity.IsErased && CanSelectEntity(entity))
+            .Select(entity => entity.Id)
+            .ToArray();
+        SelectEntities(entityIds);
+        return entityIds.Length;
+    }
+
+    int ICadCommandLineContext.DeleteSelection()
+    {
+        var count = CadEditor.Selection.EntityIds.Count;
+        return DeleteSelection().Handled ? count : 0;
+    }
+
+    bool ICadCommandLineContext.CopySelection()
+    {
+        if (CadEditor.Selection.EntityIds.Count == 0)
+            return false;
+
+        CopySelection();
+        return true;
+    }
+
+    bool ICadCommandLineContext.BeginPaste() => BeginClipboardPastePreview().Handled;
+
     private void RaiseInteractionStateChanged()
     {
         _interactionStateChangedPublisher.Publish(new CadDocumentInteractionStateChangedMessage(this));
@@ -1371,6 +1458,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _openOleEditEntityIds.Clear();
         _oleObjectUpdatedSubscription.Dispose();
         CadEditor.EditorStateChanged -= OnEditorStateChanged;
+        CadEditor.CommandActivity -= OnCommandActivity;
         DrawingDefaults.DefaultsChanged -= OnDrawingDefaultsChanged;
         Direct2DImageRenderHost.Dispose();
         _disposed = true;

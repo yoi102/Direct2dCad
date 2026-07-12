@@ -826,6 +826,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Entity Search 的本地化字符串。
+        /// </summary>
+        public static string EntitySearch {
+            get {
+                return ResourceManager.GetString("EntitySearch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Entity 的本地化字符串。
         /// </summary>
         public static string EntitySettings {
@@ -977,7 +986,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Font", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Frozen 的本地化字符串。
         /// </summary>
@@ -1600,6 +1609,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Property 的本地化字符串。
+        /// </summary>
+        public static string Property {
+            get {
+                return ResourceManager.GetString("Property", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Radius 的本地化字符串。
         /// </summary>
         public static string Radius {
@@ -2091,6 +2109,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string TargetLayer {
             get {
                 return ResourceManager.GetString("TargetLayer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Terminal 的本地化字符串。
+        /// </summary>
+        public static string Terminal {
+            get {
+                return ResourceManager.GetString("Terminal", resourceCulture);
             }
         }
         

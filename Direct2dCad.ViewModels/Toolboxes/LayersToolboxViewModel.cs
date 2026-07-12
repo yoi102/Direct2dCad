@@ -24,7 +24,7 @@ public partial class LayersToolboxViewModel : ObservableToolboxBase, IDisposable
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber)
     {
-        Title = "Layers";
+        Title = Strings.Layers;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         Zone = DockZone.BottomLeft;
         Icon = toolboxIconProvider.Layers;
