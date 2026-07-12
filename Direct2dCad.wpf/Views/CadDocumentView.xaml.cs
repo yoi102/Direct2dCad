@@ -17,9 +17,22 @@ namespace Direct2dCad.wpf.Views;
 /// </summary>
 public partial class CadDocumentView : IDisposable
 {
+    public static readonly DependencyProperty SaveCommandProperty =
+        DependencyProperty.Register(
+            nameof(SaveCommand),
+            typeof(ICommand),
+            typeof(CadDocumentView),
+            new PropertyMetadata(null));
+
     public CadDocumentView()
     {
         InitializeComponent();
+    }
+
+    public ICommand? SaveCommand
+    {
+        get => (ICommand?)GetValue(SaveCommandProperty);
+        set => SetValue(SaveCommandProperty, value);
     }
 
     public void Dispose()

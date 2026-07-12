@@ -15,7 +15,8 @@
 
     <Grid>
         <views:CadDocumentView x:Name="cadDocumentView"
-                               DataContext="{Binding CadDocumentViewModel}" />
+                               DataContext="{Binding CadDocumentViewModel}"
+                               SaveCommand="{Binding DataContext.SaveFileCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}" />
         <Button HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Style="{StaticResource MaterialDesignFlatButton}"

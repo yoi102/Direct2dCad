@@ -36,6 +36,19 @@ public partial class CadCanvas : IDisposable
             typeof(CadCanvas),
             new PropertyMetadata(null, OnDocumentViewModelChanged));
 
+    public ICommand? SaveCommand
+    {
+        get => (ICommand?)GetValue(SaveCommandProperty);
+        set => SetValue(SaveCommandProperty, value);
+    }
+
+    public static readonly DependencyProperty SaveCommandProperty =
+        DependencyProperty.Register(
+            nameof(SaveCommand),
+            typeof(ICommand),
+            typeof(CadCanvas),
+            new PropertyMetadata(null));
+
     public void RefreshView()
     {
         DocumentViewModel?.RequestRender();
@@ -182,7 +195,12 @@ public partial class CadCanvas : IDisposable
                 break;
 
             case Key.S:
-                //Save
+                if (Keyboard.Modifiers != ModifierKeys.Control)
+                    break;
+
+                if (SaveCommand?.CanExecute(null) == true)
+                    SaveCommand.Execute(null);
+
                 e.Handled = true;
                 break;
             case Key.C:

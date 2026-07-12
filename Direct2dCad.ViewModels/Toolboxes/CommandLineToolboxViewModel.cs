@@ -31,7 +31,7 @@ public partial class CommandLineToolboxViewModel : ObservableToolboxBase, IDispo
         _commandLineService = commandLineService;
         _commandActivitySubscription = commandActivitySubscriber.Subscribe(OnCommandActivity);
         _interactionActivitySubscription = interactionActivitySubscriber.Subscribe(OnInteractionActivity);
-
+        
         Title = Strings.Terminal;
         Zone = DockZone.BottomRight;
         Icon = toolboxIconProvider.Terminal;
