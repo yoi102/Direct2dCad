@@ -10,6 +10,7 @@ public sealed class BoxSelectCommand : SelectionCommandBase
     private readonly CadSelectionMode _mode;
     private readonly bool _requireContained;
     private readonly Func<CadEntity, bool> _selectionFilter;
+    private readonly double? _viewportZoom;
 
     public override string Name => "Box Select";
 
@@ -17,7 +18,8 @@ public sealed class BoxSelectCommand : SelectionCommandBase
         CadRectD worldArea,
         CadSelectionMode mode = CadSelectionMode.Replace,
         bool requireContained = false,
-        Func<CadEntity, bool>? selectionFilter = null)
+        Func<CadEntity, bool>? selectionFilter = null,
+        double? viewportZoom = null)
     {
         if (worldArea.IsEmpty)
             throw new ArgumentException("Selection area cannot be empty.", nameof(worldArea));
@@ -26,11 +28,14 @@ public sealed class BoxSelectCommand : SelectionCommandBase
         _mode = mode;
         _requireContained = requireContained;
         _selectionFilter = selectionFilter ?? (_ => true);
+        _viewportZoom = viewportZoom is > 0 && double.IsFinite(viewportZoom.Value)
+            ? viewportZoom
+            : null;
     }
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
     {
-        var options = new CadHitTestOptions(context.Viewport.Zoom);
+        var options = new CadHitTestOptions(_viewportZoom ?? context.Viewport.Zoom);
         var queryArea = _worldArea.Inflate(context.HitTesting.GetMaxStrokeHitPadding(options));
         var entityIds = context.SpatialIndex.Query(queryArea)
             .Where(entityId => context.Document.TryGetEntity(entityId, out var entity) &&

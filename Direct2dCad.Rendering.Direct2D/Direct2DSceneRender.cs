@@ -1,11 +1,14 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
+using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
+using Vortice.Mathematics;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
@@ -124,7 +127,42 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(viewport);
         ThrowIfDisposed();
-        _oleRenderer.PrepareTiles(document, viewport, transientScene, options ?? new CadRenderOptions());
+        options ??= new CadRenderOptions();
+        if (options.ActiveLayoutId is not { } layoutId ||
+            !document.TryGetLayout(layoutId, out var layout) ||
+            layout is null)
+        {
+            _oleRenderer.PrepareTiles(document, viewport, transientScene, options);
+            return;
+        }
+
+        _oleRenderer.PrepareTiles(
+            document,
+            viewport,
+            options.ActiveLayoutViewportId is null ? transientScene : null,
+            CreatePaperSpaceOptions(layout, options));
+        if (_resourceCache.DeviceContext is not { } context)
+            return;
+
+        var paperTransform = CreateViewportTransform(viewport);
+        foreach (var layoutViewport in layout.Viewports.Where(item => item.IsVisible))
+        {
+            var modelViewport = CreateModelViewport(viewport, layoutViewport);
+            var modelOptions = CreateModelViewportOptions(options);
+            var modelToScreen = CreateModelToPaperTransform(layoutViewport) * paperTransform;
+            foreach (var ole in Direct2DEntityVisibility
+                         .Enumerate(document, modelViewport, modelOptions, _resourceCache)
+                         .OfType<CadOleObject>())
+            {
+                _oleRenderer.PrepareEntityTiles(context, ole, viewport, modelToScreen);
+            }
+
+            if (options.ActiveLayoutViewportId == layoutViewport.Id && transientScene is not null)
+            {
+                foreach (var transientOle in transientScene.Items.OfType<CadTransientOleObject>())
+                    _oleRenderer.PrepareTransientTiles(context, transientOle, viewport, modelToScreen);
+            }
+        }
     }
 
     public override void Render(CadDocument document, CadViewport viewport, CadRenderOptions? options = null)
@@ -164,10 +202,32 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
         try
         {
-            if (options.DrawGrid)
+            var activeLayout = options.ActiveLayoutId is { } layoutId &&
+                               document.TryGetLayout(layoutId, out var resolvedLayout)
+                ? resolvedLayout
+                : null;
+
+            if (activeLayout is not null)
+            {
+                DrawPaper(deviceContext, activeLayout);
+                DrawLayoutViewports(
+                    deviceContext,
+                    document,
+                    viewport,
+                    activeLayout,
+                    transientScene,
+                    handleScene,
+                    options);
+                DrawEntities(
+                    deviceContext,
+                    document,
+                    viewport,
+                    CreatePaperSpaceOptions(activeLayout, options));
+            }
+            else if (options.DrawGrid)
                 _backgroundRenderer.DrawGrid(deviceContext, document, viewport, options.DirtyWorldBounds);
 
-            if (options.DrawOrigin)
+            if (activeLayout is null && options.DrawOrigin)
             {
                 _backgroundRenderer.DrawOrigin(
                     deviceContext,
@@ -177,22 +237,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     options.DirtyWorldBounds);
             }
 
-            foreach (var entity in Direct2DEntityVisibility.Enumerate(document, viewport, options, _resourceCache))
+            if (activeLayout is null)
+                DrawEntities(deviceContext, document, viewport, options);
+
+            if (activeLayout is null || options.ActiveLayoutViewportId is null)
             {
-                if (entity is CadOleObject oleObject)
-                {
-                    _oleRenderer.DrawEntity(deviceContext, oleObject, viewport);
-                    continue;
-                }
-
-                if (!_resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
-                    continue;
-
-                _entityRenderer.Draw(deviceContext, document, entity, resources, viewport, options);
+                DrawTransients(deviceContext, document, viewport, transientScene, options);
+                _selectionRenderer.Draw(deviceContext, document, viewport, handleScene, options);
             }
-
-            DrawTransients(deviceContext, document, viewport, transientScene, options);
-            _selectionRenderer.Draw(deviceContext, document, viewport, handleScene, options);
         }
         finally
         {
@@ -201,6 +253,183 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             deviceContext.AntialiasMode = previousAntialiasMode;
             deviceContext.Transform = previousTransform;
         }
+    }
+
+    private void DrawPaper(ID2D1DeviceContext context, CadLayout layout)
+    {
+        var bounds = ToRawRect(layout.PaperBounds);
+        using var paperBrush = context.CreateSolidColorBrush(ToColor4(layout.PaperColor));
+        using var edgeBrush = context.CreateSolidColorBrush(new Color4(0.25f, 0.25f, 0.25f, 1f));
+        using var marginBrush = context.CreateSolidColorBrush(new Color4(0.45f, 0.45f, 0.45f, 0.85f));
+        context.FillRectangle(bounds, paperBrush);
+        context.DrawRectangle(bounds, edgeBrush, 1f / Math.Max((float)CadEditorZoom(context), 1e-6f));
+        context.DrawRectangle(
+            ToRawRect(layout.PrintableBounds),
+            marginBrush,
+            0.75f / Math.Max((float)CadEditorZoom(context), 1e-6f));
+    }
+
+    private void DrawLayoutViewports(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport paperViewport,
+        CadLayout layout,
+        CadTransientScene? transientScene,
+        CadHandleScene? handleScene,
+        CadRenderOptions options)
+    {
+        var paperTransform = context.Transform;
+        using var borderBrush = context.CreateSolidColorBrush(new Color4(0.2f, 0.45f, 0.8f, 0.9f));
+
+        foreach (var layoutViewport in layout.Viewports.Where(item => item.IsVisible))
+        {
+            context.Transform = paperTransform;
+            context.PushAxisAlignedClip(ToRawRect(layoutViewport.Bounds), AntialiasMode.PerPrimitive);
+            try
+            {
+                var modelToPaper = CreateModelToPaperTransform(layoutViewport);
+                context.Transform = modelToPaper * paperTransform;
+
+                var modelViewport = CreateModelViewport(paperViewport, layoutViewport);
+                var isActiveViewport = options.ActiveLayoutViewportId == layoutViewport.Id;
+                var modelOptions = CreateModelViewportOptions(
+                    options,
+                    includeHiddenEntities: isActiveViewport);
+
+                foreach (var entity in Direct2DEntityVisibility.Enumerate(
+                             document,
+                             modelViewport,
+                             modelOptions,
+                             _resourceCache))
+                {
+                    if (entity is CadOleObject ole)
+                    {
+                        _oleRenderer.DrawEntity(context, ole, paperViewport);
+                        continue;
+                    }
+                    if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) && resources is not null)
+                        _entityRenderer.Draw(context, document, entity, resources, modelViewport, modelOptions);
+                }
+
+                if (isActiveViewport)
+                {
+                    var activeModelOptions = CreateModelViewportOptions(options, drawGripHandles: true);
+                    DrawTransients(context, document, modelViewport, transientScene, activeModelOptions);
+                    _selectionRenderer.Draw(
+                        context,
+                        document,
+                        modelViewport,
+                        handleScene,
+                        activeModelOptions);
+                }
+            }
+            finally
+            {
+                context.PopAxisAlignedClip();
+                context.Transform = paperTransform;
+            }
+
+            context.DrawRectangle(
+                ToRawRect(layoutViewport.Bounds),
+                borderBrush,
+                (options.ActiveLayoutViewportId == layoutViewport.Id ? 2f : 1f) /
+                Math.Max((float)paperViewport.Zoom, 1e-6f));
+        }
+    }
+
+    private void DrawEntities(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        foreach (var entity in Direct2DEntityVisibility.Enumerate(document, viewport, options, _resourceCache))
+        {
+            if (entity is CadOleObject oleObject)
+            {
+                _oleRenderer.DrawEntity(context, oleObject, viewport);
+                continue;
+            }
+
+            if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) && resources is not null)
+                _entityRenderer.Draw(context, document, entity, resources, viewport, options);
+        }
+    }
+
+    private static System.Numerics.Matrix3x2 CreateModelToPaperTransform(
+        CadLayoutViewport viewport) =>
+        System.Numerics.Matrix3x2.CreateTranslation(
+            (float)-viewport.ModelCenter.X,
+            (float)-viewport.ModelCenter.Y) *
+        System.Numerics.Matrix3x2.CreateRotation((float)viewport.RotationRadians) *
+        System.Numerics.Matrix3x2.CreateScale((float)viewport.Scale) *
+        System.Numerics.Matrix3x2.CreateTranslation(
+            (float)viewport.Bounds.Center.X,
+            (float)viewport.Bounds.Center.Y);
+
+    private static CadViewport CreateModelViewport(
+        CadViewport paperViewport,
+        CadLayoutViewport layoutViewport)
+    {
+        var viewport = new CadViewport();
+        viewport.SetSize(paperViewport.ViewWidth, paperViewport.ViewHeight);
+        var zoom = Math.Max(paperViewport.Zoom * layoutViewport.Scale, 1e-6);
+        var screenCenter = paperViewport.WorldToScreen(layoutViewport.Bounds.Center);
+        viewport.SetView(zoom, new CadPointD(
+            screenCenter.X - layoutViewport.ModelCenter.X * zoom,
+            screenCenter.Y + layoutViewport.ModelCenter.Y * zoom));
+        return viewport;
+    }
+
+    private static CadRenderOptions CreateModelViewportOptions(
+        CadRenderOptions options,
+        bool drawGripHandles = false,
+        bool includeHiddenEntities = true) => new()
+    {
+        ActiveOwnerBlockId = BlockId.ModelSpace,
+        DrawGrid = false,
+        DrawOrigin = false,
+        DrawGripHandles = drawGripHandles,
+        IsAntialiasingEnabled = options.IsAntialiasingEnabled,
+        IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
+        KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
+        MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
+        HiddenEntityIds = includeHiddenEntities ? options.HiddenEntityIds : new HashSet<EntityId>()
+    };
+
+    private static CadRenderOptions CreatePaperSpaceOptions(
+        CadLayout layout,
+        CadRenderOptions options) => new()
+    {
+        ActiveOwnerBlockId = layout.PaperSpaceBlockId,
+        ActiveLayoutId = layout.Id,
+        DrawGrid = false,
+        DrawOrigin = false,
+        DrawGripHandles = options.DrawGripHandles,
+        IsAntialiasingEnabled = options.IsAntialiasingEnabled,
+        IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
+        KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
+        MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
+        HiddenEntityIds = options.HiddenEntityIds,
+        DirtyWorldBounds = options.DirtyWorldBounds
+    };
+
+    private static RawRectF ToRawRect(CadRectD bounds) => new(
+        (float)bounds.MinX,
+        (float)bounds.MinY,
+        (float)bounds.MaxX,
+        (float)bounds.MaxY);
+
+    private static Color4 ToColor4(CadColor color) => new(
+        color.R / 255f,
+        color.G / 255f,
+        color.B / 255f,
+        color.A / 255f);
+
+    private static double CadEditorZoom(ID2D1DeviceContext context)
+    {
+        var transform = context.Transform;
+        return Math.Sqrt(transform.M11 * transform.M11 + transform.M12 * transform.M12);
     }
 
     private void DrawTransients(

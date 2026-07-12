@@ -291,6 +291,9 @@ public sealed class Direct2DImageRenderHost : IDisposable
     {
         return new CadRenderOptions
         {
+            ActiveOwnerBlockId = _renderOptions.ActiveOwnerBlockId,
+            ActiveLayoutId = _renderOptions.ActiveLayoutId,
+            ActiveLayoutViewportId = _renderOptions.ActiveLayoutViewportId,
             DrawGrid = _renderOptions.DrawGrid,
             DrawOrigin = _renderOptions.DrawOrigin,
             DrawGripHandles = _renderOptions.DrawGripHandles,

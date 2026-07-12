@@ -882,4 +882,73 @@
   <data name="CommonProperties" xml:space="preserve">
     <value>公共属性</value>
   </data>
+  <data name="Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Model" xml:space="preserve">
+    <value>模型</value>
+  </data>
+  <data name="LayoutSettings" xml:space="preserve">
+    <value>布局设置</value>
+  </data>
+  <data name="AddLayout" xml:space="preserve">
+    <value>添加布局</value>
+  </data>
+  <data name="DeleteLayout" xml:space="preserve">
+    <value>删除布局</value>
+  </data>
+  <data name="LayoutNameCannotBeEmpty" xml:space="preserve">
+    <value>布局名称不能为空。</value>
+  </data>
+  <data name="Paper" xml:space="preserve">
+    <value>图纸</value>
+  </data>
+  <data name="PaperWidth" xml:space="preserve">
+    <value>图纸宽度</value>
+  </data>
+  <data name="PaperHeight" xml:space="preserve">
+    <value>图纸高度</value>
+  </data>
+  <data name="PaperColor" xml:space="preserve">
+    <value>图纸颜色</value>
+  </data>
+  <data name="MarginLeft" xml:space="preserve">
+    <value>左边距</value>
+  </data>
+  <data name="MarginTop" xml:space="preserve">
+    <value>上边距</value>
+  </data>
+  <data name="MarginRight" xml:space="preserve">
+    <value>右边距</value>
+  </data>
+  <data name="MarginBottom" xml:space="preserve">
+    <value>下边距</value>
+  </data>
+  <data name="SwapOrientation" xml:space="preserve">
+    <value>交换横纵方向</value>
+  </data>
+  <data name="Viewport" xml:space="preserve">
+    <value>视口</value>
+  </data>
+  <data name="AddViewport" xml:space="preserve">
+    <value>添加视口</value>
+  </data>
+  <data name="DeleteViewport" xml:space="preserve">
+    <value>删除视口</value>
+  </data>
+  <data name="ModelCenterX" xml:space="preserve">
+    <value>模型中心 X</value>
+  </data>
+  <data name="ModelCenterY" xml:space="preserve">
+    <value>模型中心 Y</value>
+  </data>
+  <data name="ViewportScale" xml:space="preserve">
+    <value>视口比例</value>
+  </data>
+  <data name="RotationDegrees" xml:space="preserve">
+    <value>旋转角度</value>
+  </data>
+  <data name="TogglePaperModelSpace" xml:space="preserve">
+    <value>切换图纸空间与视口内模型编辑</value>
+  </data>
 </root>

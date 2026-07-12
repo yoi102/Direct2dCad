@@ -3,28 +3,287 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
-             mc:Ignorable="d"
              xmlns:views="clr-namespace:Direct2dCad.wpf.Views"
              xmlns:viewmodels="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+             xmlns:layoutvm="clr-namespace:Direct2dCad.ViewModels.Layouts;assembly=Direct2dCad.ViewModels"
+             xmlns:yr="https://github.com/yoi102/xaml/controls"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=viewmodels:EditorTabViewModel}"
-             d:DesignHeight="450"
-             d:DesignWidth="800">
+             d:DesignHeight="720"
+             d:DesignWidth="1100">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <Style x:Key="LayoutFieldLabel" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground.Secondary}" />
+        </Style>
+        <Style x:Key="LayoutNumberBox" TargetType="TextBox">
+            <Setter Property="MinWidth" Value="76" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="36" />
+        </Grid.RowDefinitions>
+
         <views:CadDocumentView x:Name="cadDocumentView"
+                               Grid.Row="0"
                                DataContext="{Binding CadDocumentViewModel}"
                                SaveCommand="{Binding DataContext.SaveFileCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}" />
-        <Button HorizontalAlignment="Left"
+
+        <Button Grid.Row="0"
+                HorizontalAlignment="Left"
                 VerticalAlignment="Top"
                 Style="{StaticResource MaterialDesignFlatButton}"
-                Content="{md:PackIcon Kind=FitToScreen,  Size=25}"
-                Background="Transparent"
+                Background="#66000000"
                 Foreground="White"
                 Margin="12"
+                Width="42"
+                Height="42"
+                Padding="0"
                 ToolTip="{I18N {x:Static r:LangKeys.Fit}}"
-                Command="{Binding FitToWindowCommand}" />
+                Command="{Binding FitToWindowCommand}">
+            <md:PackIcon Kind="FitToScreen" Width="24" Height="24" />
+        </Button>
+
+        <Border Grid.Row="0"
+                Width="350"
+                MaxHeight="590"
+                Margin="0,12,12,12"
+                Padding="14,10"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Background="{DynamicResource MaterialDesign.Brush.Background}"
+                BorderBrush="{DynamicResource MaterialDesign.Brush.Foreground.Hint}"
+                BorderThickness="1"
+                Visibility="{Binding LayoutWorkspace.SettingsVisibility, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          CanContentScroll="True">
+                <StackPanel DataContext="{Binding LayoutWorkspace}">
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="{I18N {x:Static r:LangKeys.LayoutSettings}}"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center" />
+                        <Button DockPanel.Dock="Right"
+                                Width="30"
+                                Height="30"
+                                Padding="0"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding ToggleSettingsCommand}"
+                                ToolTip="{I18N {x:Static r:LangKeys.Close}}">
+                            <md:PackIcon Kind="Close" Width="18" Height="18" />
+                        </Button>
+                    </DockPanel>
+
+                    <Expander Header="{I18N {x:Static r:LangKeys.Paper}}"
+                              IsExpanded="True"
+                              Margin="0,0,0,6">
+                        <Grid Margin="10,8,4,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="92" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.PaperWidth}}" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding PaperWidth, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="1" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.PaperHeight}}" />
+                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding PaperHeight, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="2" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginLeft}}" />
+                            <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="3" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginTop}}" />
+                            <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="4" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginRight}}" />
+                            <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="5" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginBottom}}" />
+                            <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Grid.Row="6" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.PaperColor}}" />
+                            <mah:ColorPicker Grid.Row="6"
+                                             Grid.Column="1"
+                                             Height="30"
+                                             SelectedColor="{Binding PaperColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
+                                             AddToRecentColorsTrigger="SelectedColorChanged" />
+                            <Button Grid.Row="7"
+                                    Grid.ColumnSpan="2"
+                                    Margin="0,8,0,0"
+                                    HorizontalAlignment="Left"
+                                    Command="{Binding SwapPaperOrientationCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <md:PackIcon Kind="PhoneRotateLandscape" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <TextBlock Text="{I18N {x:Static r:LangKeys.SwapOrientation}}" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Expander>
+
+                    <Expander Header="{I18N {x:Static r:LangKeys.Viewport}}"
+                              IsExpanded="True">
+                        <StackPanel Margin="10,8,4,10">
+                            <DockPanel Margin="0,0,0,8">
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Width="30" Height="30" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
+                                            Command="{Binding AddViewportCommand}" ToolTip="{I18N {x:Static r:LangKeys.AddViewport}}">
+                                        <md:PackIcon Kind="Plus" Width="18" Height="18" />
+                                    </Button>
+                                    <Button Width="30" Height="30" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
+                                            Command="{Binding RemoveViewportCommand}" ToolTip="{I18N {x:Static r:LangKeys.DeleteViewport}}">
+                                        <md:PackIcon Kind="DeleteOutline" Width="18" Height="18" />
+                                    </Button>
+                                </StackPanel>
+                                <ComboBox ItemsSource="{Binding Viewports}"
+                                          SelectedItem="{Binding SelectedViewport}"
+                                          DisplayMemberPath="Name"
+                                          Height="30" />
+                            </DockPanel>
+
+                            <Grid IsEnabled="{Binding CanDeleteViewport}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="92" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Left}}" />
+                                <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportLeft, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="1" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Bottom}}" />
+                                <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportBottom, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="2" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Width}}" />
+                                <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportWidth, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="3" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Height}}" />
+                                <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportHeight, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="4" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.ModelCenterX}}" />
+                                <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ModelCenterX, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="5" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.ModelCenterY}}" />
+                                <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ModelCenterY, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="6" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.ViewportScale}}" />
+                                <TextBox Grid.Row="6" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportScale, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Row="7" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.RotationDegrees}}" />
+                                <TextBox Grid.Row="7" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportRotationDegrees, UpdateSourceTrigger=PropertyChanged}" />
+                                <CheckBox Grid.Row="8" Grid.ColumnSpan="2" Margin="0,6,0,2" Content="{I18N {x:Static r:LangKeys.Visible}}" IsChecked="{Binding IsViewportVisible}" />
+                                <CheckBox Grid.Row="9" Grid.ColumnSpan="2" Margin="0,2" Content="{I18N {x:Static r:LangKeys.Locked}}" IsChecked="{Binding IsViewportLocked}" />
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+
+                    <TextBlock Margin="0,4,0,0"
+                               Foreground="{DynamicResource MaterialDesign.Brush.Error}"
+                               Text="{Binding ValidationError}"
+                               TextWrapping="Wrap" />
+                    <Button Margin="0,10,0,0"
+                            MinWidth="88"
+                            HorizontalAlignment="Right"
+                            Command="{Binding ApplyLayoutSettingsCommand}"
+                            Content="{I18N {x:Static r:LangKeys.Apply}}" />
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource MaterialDesign.Brush.Background}"
+                BorderBrush="{DynamicResource MaterialDesign.Brush.Foreground.Hint}"
+                BorderThickness="0,1,0,0">
+            <DockPanel DataContext="{Binding LayoutWorkspace}" LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="4,0,6,0">
+                    <ToggleButton MinWidth="62"
+                                  Height="28"
+                                  Margin="2,2,6,2"
+                                  Padding="8,0"
+                                  IsChecked="{Binding DataContext.CadDocumentViewModel.IsLayoutViewportActive, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Mode=OneWay}"
+                                  Command="{Binding DataContext.CadDocumentViewModel.ToggleLayoutViewportSpaceCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
+                                  Content="{Binding DataContext.CadDocumentViewModel.ActiveSpaceName, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
+                                  Visibility="{Binding HasActiveLayout, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  ToolTip="{I18N {x:Static r:LangKeys.TogglePaperModelSpace}}" />
+                    <Button Width="32" Height="32" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding AddLayoutCommand}" ToolTip="{I18N {x:Static r:LangKeys.AddLayout}}">
+                        <md:PackIcon Kind="Plus" Width="18" Height="18" />
+                    </Button>
+                    <Button Width="32" Height="32" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding DeleteLayoutCommand}" ToolTip="{I18N {x:Static r:LangKeys.DeleteLayout}}">
+                        <md:PackIcon Kind="DeleteOutline" Width="18" Height="18" />
+                    </Button>
+                    <Button Width="32" Height="32" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding ToggleSettingsCommand}" ToolTip="{I18N {x:Static r:LangKeys.LayoutSettings}}">
+                        <md:PackIcon Kind="CogOutline" Width="18" Height="18" />
+                    </Button>
+                </StackPanel>
+
+                <ListBox ItemsSource="{Binding Tabs}"
+                         SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                         ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="12,0" />
+                            <Setter Property="MinWidth" Value="70" />
+                            <Setter Property="Height" Value="35" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
+                            <Setter Property="BorderThickness" Value="0,2,0,0" />
+                            <Setter Property="BorderBrush" Value="Transparent" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                    <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Primary.Light}" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="{x:Type layoutvm:LayoutTabItemViewModel}">
+                            <Grid>
+                                <TextBlock x:Name="ModelLabel"
+                                           Text="{I18N {x:Static r:LangKeys.Model}}"
+                                           VerticalAlignment="Center"
+                                           Visibility="Collapsed" />
+                                <yr:EditableTextBlock x:Name="LayoutName"
+                                                      Text="{Binding Name, Mode=TwoWay}"
+                                                      VerticalAlignment="Center"
+                                                      FontSize="12"
+                                                      EmptyTextErrorMessage="{I18N {x:Static r:LangKeys.LayoutNameCannotBeEmpty}}" />
+                            </Grid>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsModelSpace}" Value="True">
+                                    <Setter TargetName="ModelLabel" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="LayoutName" Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
     </Grid>
 </UserControl>

@@ -19,6 +19,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     private readonly Dictionary<EntityId, CadEntity> _entities = [];
     private readonly Dictionary<StyleId, CadStyle> _styles = [];
     private readonly Dictionary<HatchPatternId, CadHatchPatternDefinition> _hatchPatterns = [];
+    private readonly Dictionary<LayoutId, CadLayout> _layouts = [];
     public CadDocumentSettings DocumentSettings { get; }
     public CadViewSettings ViewSettings { get; } = new();
 
@@ -30,6 +31,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     public IReadOnlyDictionary<EntityId, CadEntity> Entities => _entities;
     public IReadOnlyDictionary<StyleId, CadStyle> Styles => _styles;
     public IReadOnlyDictionary<HatchPatternId, CadHatchPatternDefinition> HatchPatterns => _hatchPatterns;
+    public IReadOnlyDictionary<LayoutId, CadLayout> Layouts => _layouts;
 
     public static CadDocument Create(string name)
     {
@@ -75,6 +77,19 @@ public sealed class CadDocument : IEquatable<CadDocument>
             BlockId.PaperSpace,
             "*PaperSpace",
             CadPointD.Origin));
+
+        var defaultLayout = new CadLayout(
+            LayoutId.Default,
+            "Layout1",
+            BlockId.PaperSpace,
+            paperWidth: 420,
+            paperHeight: 297);
+        defaultLayout.AddViewport(new CadLayoutViewport(
+            _ids.NewLayoutViewportId(),
+            defaultLayout.PrintableBounds,
+            CadPointD.Origin,
+            scale: 1));
+        AddLayoutCore(defaultLayout);
     }
 
     private static string NormalizeName(string name)
@@ -312,6 +327,151 @@ public sealed class CadDocument : IEquatable<CadDocument>
     }
 
     #endregion Block
+
+    #region Layout
+
+    public LayoutId CreateLayout(
+        string name,
+        double paperWidth = 420,
+        double paperHeight = 297,
+        bool createDefaultViewport = true)
+    {
+        ValidateUniqueLayoutName(name);
+        var layoutId = _ids.NewLayoutId();
+        var paperSpaceBlockId = CreateBlockDefinition($"*PaperSpace_{layoutId.Value}", CadPointD.Origin);
+        var layout = new CadLayout(layoutId, name, paperSpaceBlockId, paperWidth, paperHeight);
+        if (createDefaultViewport)
+        {
+            layout.AddViewport(new CadLayoutViewport(
+                _ids.NewLayoutViewportId(),
+                layout.PrintableBounds,
+                CadPointD.Origin,
+                scale: 1));
+        }
+
+        AddLayoutCore(layout);
+        return layout.Id;
+    }
+
+    public void RenameLayout(LayoutId layoutId, string name)
+    {
+        ValidateUniqueLayoutName(name, layoutId);
+        GetLayout(layoutId).Rename(name);
+    }
+
+    public CadLayout DetachLayout(LayoutId layoutId)
+    {
+        if (_layouts.Count <= 1)
+            throw new InvalidOperationException("Document must contain at least one paper layout.");
+        if (!_layouts.Remove(layoutId, out var layout))
+            throw new KeyNotFoundException($"Layout not found: {layoutId}");
+        return layout;
+    }
+
+    public void RestoreLayout(CadLayout layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        ValidateUniqueLayoutName(layout.Name);
+        if (!_blocks.ContainsKey(layout.PaperSpaceBlockId))
+            AddBlockCore(new CadBlockDefinition(layout.PaperSpaceBlockId, $"*PaperSpace_{layout.Id.Value}", CadPointD.Origin));
+        AddLayoutCore(layout);
+    }
+
+    public void SetLayoutPaper(
+        LayoutId layoutId,
+        double width,
+        double height,
+        double marginLeft,
+        double marginTop,
+        double marginRight,
+        double marginBottom)
+    {
+        GetLayout(layoutId).SetPaper(
+            width,
+            height,
+            marginLeft,
+            marginTop,
+            marginRight,
+            marginBottom);
+    }
+
+    public LayoutViewportId AddLayoutViewport(
+        LayoutId layoutId,
+        CadRectD bounds,
+        CadPointD modelCenter,
+        double scale,
+        double rotationRadians = 0)
+    {
+        var viewport = new CadLayoutViewport(
+            _ids.NewLayoutViewportId(),
+            bounds,
+            modelCenter,
+            scale,
+            rotationRadians);
+        GetLayout(layoutId).AddViewport(viewport);
+        return viewport.Id;
+    }
+
+    public void RemoveLayoutViewport(LayoutId layoutId, LayoutViewportId viewportId)
+    {
+        if (!GetLayout(layoutId).RemoveViewport(viewportId))
+            throw new KeyNotFoundException($"Layout viewport not found: {viewportId}");
+    }
+
+    public void RestoreLayoutViewport(LayoutId layoutId, CadLayoutViewport viewport)
+    {
+        ArgumentNullException.ThrowIfNull(viewport);
+        GetLayout(layoutId).AddViewport(viewport);
+        _ids.RegisterExisting(viewport.Id);
+    }
+
+    public CadLayout GetLayout(LayoutId layoutId) =>
+        _layouts.TryGetValue(layoutId, out var layout)
+            ? layout
+            : throw new KeyNotFoundException($"Layout not found: {layoutId}");
+
+    public bool TryGetLayout(LayoutId layoutId, out CadLayout? layout) =>
+        _layouts.TryGetValue(layoutId, out layout);
+
+    internal void AddLayoutCore(CadLayout layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        if (_layouts.ContainsKey(layout.Id))
+            throw new InvalidOperationException($"Layout already exists: {layout.Id}");
+        if (!_blocks.ContainsKey(layout.PaperSpaceBlockId))
+            throw new InvalidOperationException($"Layout paper-space block does not exist: {layout.PaperSpaceBlockId}");
+        ValidateUniqueLayoutName(layout.Name);
+        _layouts.Add(layout.Id, layout);
+        _ids.RegisterExisting(layout.Id);
+        foreach (var viewport in layout.Viewports)
+            _ids.RegisterExisting(viewport.Id);
+    }
+
+    internal void ResetLayoutsForStorage()
+    {
+        _layouts.Clear();
+    }
+
+    internal void EnsurePaperSpaceBlockForStorage(BlockId blockId, string name)
+    {
+        if (!_blocks.ContainsKey(blockId))
+            AddBlockCore(new CadBlockDefinition(blockId, name, CadPointD.Origin));
+    }
+
+    private void ValidateUniqueLayoutName(string name, LayoutId? excludedLayoutId = null)
+    {
+        var normalized = string.IsNullOrWhiteSpace(name)
+            ? throw new ArgumentException("Layout name cannot be empty.", nameof(name))
+            : name.Trim();
+        if (_layouts.Values.Any(layout =>
+                (excludedLayoutId is null || !layout.Id.Equals(excludedLayoutId.Value)) &&
+                string.Equals(layout.Name, normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Layout name already exists: {normalized}");
+        }
+    }
+
+    #endregion Layout
 
     #region Styles
 

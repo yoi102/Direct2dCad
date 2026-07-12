@@ -29,12 +29,13 @@ internal sealed class CadOverlaySceneCoordinator
         IReadOnlyList<CadTransientItem> transientItems,
         bool updateHandleScene,
         IReadOnlyList<CadHandleItem>? activeHandleItems,
-        CadHandleSceneBuildOptions handleOptions)
+        CadHandleSceneBuildOptions handleOptions,
+        double interactionZoom)
     {
         TransientScene.Replace(transientItems);
 
         if (updateHandleScene)
-            UpdateHandleScene(editor, activeHandleItems, handleOptions);
+            UpdateHandleScene(editor, activeHandleItems, handleOptions, interactionZoom);
     }
 
     public CadRenderInvalidation UpdateOverlayScenesAndCreateInvalidation(
@@ -44,10 +45,11 @@ internal sealed class CadOverlaySceneCoordinator
         bool includeGripHandles,
         bool updateHandleScene,
         IReadOnlyList<CadHandleItem>? activeHandleItems,
-        CadHandleSceneBuildOptions handleOptions)
+        CadHandleSceneBuildOptions handleOptions,
+        double interactionZoom)
     {
         var previousOverlay = _lastOverlayInvalidation;
-        UpdateOverlayScenes(editor, transientItems, updateHandleScene, activeHandleItems, handleOptions);
+        UpdateOverlayScenes(editor, transientItems, updateHandleScene, activeHandleItems, handleOptions, interactionZoom);
         var currentOverlay = CreateOverlayInvalidation(invalidationCalculator, includeGripHandles);
         _lastOverlayInvalidation = currentOverlay;
         return previousOverlay.Union(currentOverlay);
@@ -73,7 +75,8 @@ internal sealed class CadOverlaySceneCoordinator
     public void UpdateHandleScene(
         CadEditor editor,
         IReadOnlyList<CadHandleItem>? activeHandleItems,
-        CadHandleSceneBuildOptions handleOptions)
+        CadHandleSceneBuildOptions handleOptions,
+        double interactionZoom)
     {
         if (activeHandleItems is { Count: > 0 })
         {
@@ -83,7 +86,7 @@ internal sealed class CadOverlaySceneCoordinator
 
         var effectiveOptions = handleOptions with
         {
-            RotationHandleOffset = 28.0 / Math.Max(editor.Viewport.Zoom, double.Epsilon)
+            RotationHandleOffset = 28.0 / Math.Max(interactionZoom, double.Epsilon)
         };
         var items = _handleSceneBuilder.BuildSelectionHandles(
             editor.Document,

@@ -10,7 +10,8 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadSelectionInteractionService(
     CadEditor editor,
-    CadViewport viewport,
+    Func<CadPointD, CadPointD> screenToWorld,
+    double zoom,
     CadPreviewStyleService styleService,
     Func<CadEntity, bool> selectionFilter)
 {
@@ -19,19 +20,18 @@ internal sealed class CadSelectionInteractionService(
         if ((endScreen - startScreen).Length < 4)
         {
             editor.Execute(new ClickSelectCommand(
-                viewport.ScreenToWorld(endScreen),
-                6.0 / viewport.Zoom,
+                screenToWorld(endScreen),
+                6.0 / Math.Max(zoom, double.Epsilon),
                 selectionFilter: selectionFilter));
             return;
         }
 
-        var p1 = viewport.ScreenToWorld(startScreen);
-        var p2 = viewport.ScreenToWorld(endScreen);
-        var area = CadRectD.FromLTRB(p1.X, p1.Y, p2.X, p2.Y);
+        var area = ToWorldRect(startScreen, endScreen);
         editor.Execute(new BoxSelectCommand(
             area,
             requireContained: IsSelectionWindow(startScreen, endScreen),
-            selectionFilter: selectionFilter));
+            selectionFilter: selectionFilter,
+            viewportZoom: zoom));
     }
 
     public void AddWindowPreview(
@@ -42,8 +42,18 @@ internal sealed class CadSelectionInteractionService(
         if (startScreen is null || (mousePoint - startScreen.Value).Length < 4)
             return;
 
-        items.Add(new CadTransientRectangle(
-            ToWorldRect(startScreen.Value, mousePoint),
+        var left = Math.Min(startScreen.Value.X, mousePoint.X);
+        var right = Math.Max(startScreen.Value.X, mousePoint.X);
+        var top = Math.Min(startScreen.Value.Y, mousePoint.Y);
+        var bottom = Math.Max(startScreen.Value.Y, mousePoint.Y);
+        items.Add(new CadTransientPolyline(
+            [
+                screenToWorld(new CadPointD(left, top)),
+                screenToWorld(new CadPointD(right, top)),
+                screenToWorld(new CadPointD(right, bottom)),
+                screenToWorld(new CadPointD(left, bottom))
+            ],
+            true,
             IsSelectionWindow(startScreen.Value, mousePoint)
                 ? styleService.CreateSelectionWindowStyle()
                 : styleService.CreateSelectionCrossingStyle()));
@@ -51,9 +61,15 @@ internal sealed class CadSelectionInteractionService(
 
     private CadRectD ToWorldRect(CadPointD startScreen, CadPointD endScreen)
     {
-        var p1 = viewport.ScreenToWorld(startScreen);
-        var p2 = viewport.ScreenToWorld(endScreen);
-        return CadRectD.FromLTRB(p1.X, p1.Y, p2.X, p2.Y);
+        var left = Math.Min(startScreen.X, endScreen.X);
+        var right = Math.Max(startScreen.X, endScreen.X);
+        var top = Math.Min(startScreen.Y, endScreen.Y);
+        var bottom = Math.Max(startScreen.Y, endScreen.Y);
+        return CadRectD.Empty
+            .ExpandToInclude(screenToWorld(new CadPointD(left, top)))
+            .ExpandToInclude(screenToWorld(new CadPointD(right, top)))
+            .ExpandToInclude(screenToWorld(new CadPointD(right, bottom)))
+            .ExpandToInclude(screenToWorld(new CadPointD(left, bottom)));
     }
 
     private static bool IsSelectionWindow(CadPointD startScreen, CadPointD endScreen)

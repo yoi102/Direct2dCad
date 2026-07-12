@@ -79,6 +79,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Add layout 的本地化字符串。
+        /// </summary>
+        public static string AddLayout {
+            get {
+                return ResourceManager.GetString("AddLayout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Add viewport 的本地化字符串。
+        /// </summary>
+        public static string AddViewport {
+            get {
+                return ResourceManager.GetString("AddViewport", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Angle 的本地化字符串。
         /// </summary>
         public static string Angle {
@@ -403,6 +421,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Close 的本地化字符串。
+        /// </summary>
+        public static string Close {
+            get {
+                return ResourceManager.GetString("Close", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Closed 的本地化字符串。
         /// </summary>
         public static string Closed {
@@ -615,6 +642,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string DeleteLayer {
             get {
                 return ResourceManager.GetString("DeleteLayer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Delete layout 的本地化字符串。
+        /// </summary>
+        public static string DeleteLayout {
+            get {
+                return ResourceManager.GetString("DeleteLayout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Delete viewport 的本地化字符串。
+        /// </summary>
+        public static string DeleteViewport {
+            get {
+                return ResourceManager.GetString("DeleteViewport", resourceCulture);
             }
         }
         
@@ -1186,6 +1231,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Layout name cannot be empty. 的本地化字符串。
+        /// </summary>
+        public static string LayoutNameCannotBeEmpty {
+            get {
+                return ResourceManager.GetString("LayoutNameCannotBeEmpty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Layout settings 的本地化字符串。
+        /// </summary>
+        public static string LayoutSettings {
+            get {
+                return ResourceManager.GetString("LayoutSettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Left 的本地化字符串。
         /// </summary>
         public static string Left {
@@ -1285,6 +1348,42 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Bottom margin 的本地化字符串。
+        /// </summary>
+        public static string MarginBottom {
+            get {
+                return ResourceManager.GetString("MarginBottom", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Left margin 的本地化字符串。
+        /// </summary>
+        public static string MarginLeft {
+            get {
+                return ResourceManager.GetString("MarginLeft", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Right margin 的本地化字符串。
+        /// </summary>
+        public static string MarginRight {
+            get {
+                return ResourceManager.GetString("MarginRight", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Top margin 的本地化字符串。
+        /// </summary>
+        public static string MarginTop {
+            get {
+                return ResourceManager.GetString("MarginTop", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Marker 的本地化字符串。
         /// </summary>
         public static string Marker {
@@ -1335,6 +1434,33 @@ namespace Direct2dCad.Lang.Strings {
         public static string MinorGridLineWidth {
             get {
                 return ResourceManager.GetString("MinorGridLineWidth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Model 的本地化字符串。
+        /// </summary>
+        public static string Model {
+            get {
+                return ResourceManager.GetString("Model", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Model center X 的本地化字符串。
+        /// </summary>
+        public static string ModelCenterX {
+            get {
+                return ResourceManager.GetString("ModelCenterX", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Model center Y 的本地化字符串。
+        /// </summary>
+        public static string ModelCenterY {
+            get {
+                return ResourceManager.GetString("ModelCenterY", resourceCulture);
             }
         }
         
@@ -1515,6 +1641,42 @@ namespace Direct2dCad.Lang.Strings {
         public static string Pan {
             get {
                 return ResourceManager.GetString("Pan", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Paper 的本地化字符串。
+        /// </summary>
+        public static string Paper {
+            get {
+                return ResourceManager.GetString("Paper", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Paper color 的本地化字符串。
+        /// </summary>
+        public static string PaperColor {
+            get {
+                return ResourceManager.GetString("PaperColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Paper height 的本地化字符串。
+        /// </summary>
+        public static string PaperHeight {
+            get {
+                return ResourceManager.GetString("PaperHeight", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Paper width 的本地化字符串。
+        /// </summary>
+        public static string PaperWidth {
+            get {
+                return ResourceManager.GetString("PaperWidth", resourceCulture);
             }
         }
         
@@ -1749,6 +1911,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Rotation {
             get {
                 return ResourceManager.GetString("Rotation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Rotation (deg) 的本地化字符串。
+        /// </summary>
+        public static string RotationDegrees {
+            get {
+                return ResourceManager.GetString("RotationDegrees", resourceCulture);
             }
         }
         
@@ -2131,6 +2302,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Swap orientation 的本地化字符串。
+        /// </summary>
+        public static string SwapOrientation {
+            get {
+                return ResourceManager.GetString("SwapOrientation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Sweep 的本地化字符串。
         /// </summary>
         public static string Sweep {
@@ -2190,6 +2370,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string TogglePanel {
             get {
                 return ResourceManager.GetString("TogglePanel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Switch between paper space and model editing through the viewport 的本地化字符串。
+        /// </summary>
+        public static string TogglePaperModelSpace {
+            get {
+                return ResourceManager.GetString("TogglePaperModelSpace", resourceCulture);
             }
         }
         
@@ -2302,6 +2491,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Viewport 的本地化字符串。
+        /// </summary>
+        public static string Viewport {
+            get {
+                return ResourceManager.GetString("Viewport", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Viewport scale 的本地化字符串。
+        /// </summary>
+        public static string ViewportScale {
+            get {
+                return ResourceManager.GetString("ViewportScale", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Visible 的本地化字符串。
         /// </summary>
         public static string Visible {
@@ -2354,6 +2561,5 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Y", resourceCulture);
             }
         }
-
     }
 }

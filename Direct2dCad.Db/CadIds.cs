@@ -26,6 +26,17 @@ public partial struct BlockId
 }
 
 [StronglyTypedId(Template.Long)]
+public partial struct LayoutId
+{
+    public static readonly LayoutId Default = new(1);
+}
+
+[StronglyTypedId(Template.Long)]
+public partial struct LayoutViewportId
+{
+}
+
+[StronglyTypedId(Template.Long)]
 public partial struct StyleId
 {
     public static readonly StyleId DefaultGraphic = new(1);

@@ -92,6 +92,42 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
             allowDraw);
     }
 
+    public void PrepareEntityTiles(
+        ID2D1DeviceContext context,
+        CadOleObject ole,
+        CadViewport viewport,
+        Matrix3x2 transform)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(ole);
+        PrepareTiles(
+            context,
+            Direct2DOleRenderKey.ForEntity(ole.Id),
+            ole.Bounds,
+            ole.CopyOleBytes(),
+            viewport,
+            transform);
+    }
+
+    public void PrepareTransientTiles(
+        ID2D1DeviceContext context,
+        CadTransientOleObject ole,
+        CadViewport viewport,
+        Matrix3x2 transform)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(ole);
+        PrepareTiles(
+            context,
+            ole.SourceEntityId is { } sourceId
+                ? Direct2DOleRenderKey.ForEntity(sourceId)
+                : Direct2DOleRenderKey.ForTransient(ole.RenderId),
+            ole.Bounds,
+            ole.OleBytes,
+            viewport,
+            transform);
+    }
+
     public void DrawTransient(
         ID2D1DeviceContext context,
         CadTransientOleObject ole,

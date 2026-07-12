@@ -16,6 +16,7 @@ internal static class Direct2DEntityVisibility
         return document.Entities.Values
             .Where(entity =>
                 !entity.IsErased &&
+                entity.OwnerBlockId.Equals(options.ActiveOwnerBlockId) &&
                 entity.IsVisible &&
                 !options.HiddenEntityIds.Contains(entity.Id) &&
                 (dirtyWorldBounds is null || IntersectsDirtyBounds(

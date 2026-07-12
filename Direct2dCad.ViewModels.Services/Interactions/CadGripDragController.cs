@@ -16,10 +16,11 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
     public bool TryBegin(
         CadEditor editor,
         CadHandleScene handleScene,
+        Func<CadPointD, CadPointD> worldToScreen,
         Func<CadPointD, CadPointD> screenToWorld,
         CadPointD screen)
     {
-        if (!hitTester.TryHitGrip(handleScene, editor.Viewport.WorldToScreen, screen, out var grip))
+        if (!hitTester.TryHitGrip(handleScene, worldToScreen, screen, out var grip))
             return false;
 
         ActiveDrag = new GripDragState(
@@ -70,7 +71,8 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
 
     public IReadOnlyList<CadHandleItem>? CreateActiveHandleItems(
         CadEditor editor,
-        CadHandleSceneBuildOptions options)
+        CadHandleSceneBuildOptions options,
+        double interactionZoom)
     {
         ArgumentNullException.ThrowIfNull(editor);
         ArgumentNullException.ThrowIfNull(options);
@@ -85,7 +87,7 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
         {
             var effectiveOptions = options with
             {
-                RotationHandleOffset = 28.0 / Math.Max(editor.Viewport.Zoom, double.Epsilon)
+                RotationHandleOffset = 28.0 / Math.Max(interactionZoom, double.Epsilon)
             };
             return new CadHandleSceneBuilder().BuildImageGripHandles(
                 image.Id,

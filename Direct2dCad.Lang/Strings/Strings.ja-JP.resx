@@ -882,4 +882,73 @@
   <data name="CommonProperties" xml:space="preserve">
     <value>共通プロパティ</value>
   </data>
+  <data name="Close" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
+  <data name="Model" xml:space="preserve">
+    <value>モデル</value>
+  </data>
+  <data name="LayoutSettings" xml:space="preserve">
+    <value>レイアウト設定</value>
+  </data>
+  <data name="AddLayout" xml:space="preserve">
+    <value>レイアウトを追加</value>
+  </data>
+  <data name="DeleteLayout" xml:space="preserve">
+    <value>レイアウトを削除</value>
+  </data>
+  <data name="LayoutNameCannotBeEmpty" xml:space="preserve">
+    <value>レイアウト名を空にできません。</value>
+  </data>
+  <data name="Paper" xml:space="preserve">
+    <value>用紙</value>
+  </data>
+  <data name="PaperWidth" xml:space="preserve">
+    <value>用紙の幅</value>
+  </data>
+  <data name="PaperHeight" xml:space="preserve">
+    <value>用紙の高さ</value>
+  </data>
+  <data name="PaperColor" xml:space="preserve">
+    <value>用紙の色</value>
+  </data>
+  <data name="MarginLeft" xml:space="preserve">
+    <value>左余白</value>
+  </data>
+  <data name="MarginTop" xml:space="preserve">
+    <value>上余白</value>
+  </data>
+  <data name="MarginRight" xml:space="preserve">
+    <value>右余白</value>
+  </data>
+  <data name="MarginBottom" xml:space="preserve">
+    <value>下余白</value>
+  </data>
+  <data name="SwapOrientation" xml:space="preserve">
+    <value>縦横を入れ替え</value>
+  </data>
+  <data name="Viewport" xml:space="preserve">
+    <value>ビューポート</value>
+  </data>
+  <data name="AddViewport" xml:space="preserve">
+    <value>ビューポートを追加</value>
+  </data>
+  <data name="DeleteViewport" xml:space="preserve">
+    <value>ビューポートを削除</value>
+  </data>
+  <data name="ModelCenterX" xml:space="preserve">
+    <value>モデル中心 X</value>
+  </data>
+  <data name="ModelCenterY" xml:space="preserve">
+    <value>モデル中心 Y</value>
+  </data>
+  <data name="ViewportScale" xml:space="preserve">
+    <value>ビューポート尺度</value>
+  </data>
+  <data name="RotationDegrees" xml:space="preserve">
+    <value>回転角度</value>
+  </data>
+  <data name="TogglePaperModelSpace" xml:space="preserve">
+    <value>ペーパー空間とビューポート内モデル編集を切り替え</value>
+  </data>
 </root>

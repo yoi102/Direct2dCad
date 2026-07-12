@@ -29,6 +29,9 @@ internal static class CadSectionMigrationRegistry
             Section<CadStylesSection>(CadSectionKind.Styles, currentVersion: 1)
                 .ReadsVersion<CadStylesSection>(1),
 
+            Section<CadLayoutsSection>(CadSectionKind.Layouts, currentVersion: 1)
+                .ReadsVersion<CadLayoutsSection>(1),
+
             Section<CadLinesSection>(CadSectionKind.Lines, currentVersion: 1)
                 .ReadsVersion<CadLinesSection>(1),
 

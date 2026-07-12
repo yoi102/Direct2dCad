@@ -13,6 +13,7 @@ using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Services.Events;
 using MessagePipe;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Layouts;
 
 namespace Direct2dCad.ViewModels;
 
@@ -63,6 +64,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         _snackbarService = snackbarService;
         _documentSummaryChangedPublisher = documentSummaryChangedPublisher;
         CadDocumentViewModel = cadDocumentViewModel;
+        LayoutWorkspace = new LayoutWorkspaceViewModel(CadDocumentViewModel);
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
         CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
         _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
@@ -83,6 +85,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         return base.OnClose();
     }
     public CadDocumentViewModel CadDocumentViewModel { get; }
+    public LayoutWorkspaceViewModel LayoutWorkspace { get; }
 
     public string DocumentName => CadDocumentViewModel.CadEditor.Document.Name;
 
@@ -367,6 +370,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     {
         CadDocumentViewModel.Undo();
         ApplyDocumentViewSettingsToToolbar();
+        LayoutWorkspace.RefreshDocumentStructure();
     }
 
     [RelayCommand]
@@ -528,6 +532,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ArgumentNullException.ThrowIfNull(settings);
         CadDocumentViewModel.CadEditor.SetViewSettings(settings);
         ApplyDocumentViewSettingsToToolbar();
+        LayoutWorkspace.RefreshDocumentStructure();
     }
 
     private void ApplyBackgroundColorFromToolbar()
@@ -652,6 +657,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private void OnEditorDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
+        if (e.AffectsDocumentStructure)
+            LayoutWorkspace.RefreshDocumentStructure();
         RefreshModifiedState();
     }
 
@@ -682,6 +689,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     {
         ArgumentNullException.ThrowIfNull(document);
         CadDocumentViewModel.ReplaceEditor(new CadEditor(document));
+        CadDocumentViewModel.ActivateModelSpace();
+        LayoutWorkspace.RefreshDocumentStructure();
         CurrentFilePath = fileName;
         RestoreWorkspaceSettings();
         Title = CadDocumentViewModel.CadEditor.Document.Name;

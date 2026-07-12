@@ -1084,4 +1084,73 @@
   <data name="CommonProperties" xml:space="preserve">
     <value>Common properties</value>
   </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="LayoutSettings" xml:space="preserve">
+    <value>Layout settings</value>
+  </data>
+  <data name="AddLayout" xml:space="preserve">
+    <value>Add layout</value>
+  </data>
+  <data name="DeleteLayout" xml:space="preserve">
+    <value>Delete layout</value>
+  </data>
+  <data name="LayoutNameCannotBeEmpty" xml:space="preserve">
+    <value>Layout name cannot be empty.</value>
+  </data>
+  <data name="Paper" xml:space="preserve">
+    <value>Paper</value>
+  </data>
+  <data name="PaperWidth" xml:space="preserve">
+    <value>Paper width</value>
+  </data>
+  <data name="PaperHeight" xml:space="preserve">
+    <value>Paper height</value>
+  </data>
+  <data name="PaperColor" xml:space="preserve">
+    <value>Paper color</value>
+  </data>
+  <data name="MarginLeft" xml:space="preserve">
+    <value>Left margin</value>
+  </data>
+  <data name="MarginTop" xml:space="preserve">
+    <value>Top margin</value>
+  </data>
+  <data name="MarginRight" xml:space="preserve">
+    <value>Right margin</value>
+  </data>
+  <data name="MarginBottom" xml:space="preserve">
+    <value>Bottom margin</value>
+  </data>
+  <data name="SwapOrientation" xml:space="preserve">
+    <value>Swap orientation</value>
+  </data>
+  <data name="Viewport" xml:space="preserve">
+    <value>Viewport</value>
+  </data>
+  <data name="AddViewport" xml:space="preserve">
+    <value>Add viewport</value>
+  </data>
+  <data name="DeleteViewport" xml:space="preserve">
+    <value>Delete viewport</value>
+  </data>
+  <data name="ModelCenterX" xml:space="preserve">
+    <value>Model center X</value>
+  </data>
+  <data name="ModelCenterY" xml:space="preserve">
+    <value>Model center Y</value>
+  </data>
+  <data name="ViewportScale" xml:space="preserve">
+    <value>Viewport scale</value>
+  </data>
+  <data name="RotationDegrees" xml:space="preserve">
+    <value>Rotation (deg)</value>
+  </data>
+  <data name="TogglePaperModelSpace" xml:space="preserve">
+    <value>Switch between paper space and model editing through the viewport</value>
+  </data>
 </root>

@@ -118,6 +118,7 @@ public sealed class CadDocumentStorage
         var settings = ReadSection<CadSettingsSection>(filePath, CadSectionKind.Settings);
         var layers = ReadSection<CadLayerSection>(filePath, CadSectionKind.Layers);
         var styles = ReadSection<CadStylesSection>(filePath, CadSectionKind.Styles);
+        var layouts = ReadOptionalSection(filePath, CadSectionKind.Layouts, new CadLayoutsSection());
         var lines = ReadSection<CadLinesSection>(filePath, CadSectionKind.Lines);
         var circles = ReadSection<CadCirclesSection>(filePath, CadSectionKind.Circles);
         var ellipses = ReadOptionalSection(filePath, CadSectionKind.Ellipses, new CadEllipsesSection());
@@ -135,6 +136,7 @@ public sealed class CadDocumentStorage
             settings,
             layers,
             styles,
+            layouts,
             lines,
             circles,
             ellipses,
@@ -256,6 +258,7 @@ public sealed class CadDocumentStorage
         var settings = ReadRequiredSection<CadSettingsSection>(payloads, CadSectionKind.Settings);
         var layers = ReadRequiredSection<CadLayerSection>(payloads, CadSectionKind.Layers);
         var styles = ReadRequiredSection<CadStylesSection>(payloads, CadSectionKind.Styles);
+        var layouts = ReadOptionalSection(payloads, CadSectionKind.Layouts, new CadLayoutsSection());
         var lines = ReadRequiredSection<CadLinesSection>(payloads, CadSectionKind.Lines);
         var circles = ReadRequiredSection<CadCirclesSection>(payloads, CadSectionKind.Circles);
         var ellipses = ReadOptionalSection(payloads, CadSectionKind.Ellipses, new CadEllipsesSection());
@@ -273,6 +276,7 @@ public sealed class CadDocumentStorage
             settings,
             layers,
             styles,
+            layouts,
             lines,
             circles,
             ellipses,
@@ -357,6 +361,7 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Settings, CadDocumentMapper.ToSettingsSection(document)),
             Serialize(CadSectionKind.Layers, CadDocumentMapper.ToLayerSection(document)),
             Serialize(CadSectionKind.Styles, CadDocumentMapper.ToStylesSection(document)),
+            Serialize(CadSectionKind.Layouts, CadDocumentMapper.ToLayoutsSection(document)),
             Serialize(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(document)),
             Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(document)),
             Serialize(CadSectionKind.Ellipses, CadDocumentMapper.ToEllipsesSection(document)),

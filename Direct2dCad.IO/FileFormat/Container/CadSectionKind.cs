@@ -6,6 +6,7 @@ public enum CadSectionKind : ushort
     Settings = 2,
     Layers = 10,
     Styles = 11,
+    Layouts = 12,
     Lines = 100,
     Circles = 101,
     Arcs = 102,

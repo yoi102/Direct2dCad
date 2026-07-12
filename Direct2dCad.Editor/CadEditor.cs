@@ -26,6 +26,7 @@ public sealed class CadEditor
     public CadEditorCommandManager EditorCommands { get; }
     public CommandHistorySettings DocumentHistorySettings => DocumentCommands.Settings;
     public CommandHistorySettings EditorHistorySettings => EditorCommands.Settings;
+    public BlockId ActiveOwnerBlockId { get; set; } = BlockId.ModelSpace;
 
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
     public event EventHandler<CadEditorCommandResult>? EditorStateChanged;
@@ -103,6 +104,57 @@ public sealed class CadEditor
     public bool DocumentHistoryEquals(object? snapshot) => DocumentCommands.UndoHistoryEquals(snapshot);
 
     public CadDocumentChangeSet DrainDirtyChanges() => DirtySet.Drain();
+
+    public LayoutId CreateLayout(string name, double paperWidth = 420, double paperHeight = 297)
+    {
+        var command = new CreateLayoutCommand(name, paperWidth, paperHeight);
+        DocumentCommands.Execute(command);
+        return command.CreatedLayoutId ??
+               throw new InvalidOperationException("Create Layout did not create a layout.");
+    }
+
+    public CadDocumentChangeSet DeleteLayout(LayoutId layoutId) =>
+        DocumentCommands.Execute(new DeleteLayoutCommand(layoutId));
+
+    public CadDocumentChangeSet RenameLayout(LayoutId layoutId, string name) =>
+        DocumentCommands.Execute(new RenameLayoutCommand(layoutId, name));
+
+    public CadDocumentChangeSet SetLayoutPaper(
+        LayoutId layoutId,
+        CadLayoutPaperSnapshot settings) =>
+        DocumentCommands.Execute(new SetLayoutPaperCommand(layoutId, settings));
+
+    public LayoutViewportId AddLayoutViewport(
+        LayoutId layoutId,
+        CadRectD bounds,
+        CadPointD modelCenter,
+        double scale,
+        double rotationRadians = 0)
+    {
+        var command = new AddLayoutViewportCommand(
+            layoutId,
+            bounds,
+            modelCenter,
+            scale,
+            rotationRadians);
+        DocumentCommands.Execute(command);
+        return command.CreatedViewportId ??
+               throw new InvalidOperationException("Add Layout Viewport did not create a viewport.");
+    }
+
+    public CadDocumentChangeSet RemoveLayoutViewport(
+        LayoutId layoutId,
+        LayoutViewportId viewportId) =>
+        DocumentCommands.Execute(new RemoveLayoutViewportCommand(layoutId, viewportId));
+
+    public CadDocumentChangeSet SetLayoutViewport(
+        LayoutId layoutId,
+        LayoutViewportId viewportId,
+        CadLayoutViewportSnapshot settings) =>
+        DocumentCommands.Execute(new SetLayoutViewportCommand(layoutId, viewportId, settings));
+
+    public CadDocumentChangeSet SetLayoutPaperColor(LayoutId layoutId, CadColor color) =>
+        DocumentCommands.Execute(new SetLayoutPaperColorCommand(layoutId, color));
 
     public CadDocumentChangeSet PublishDocumentChanges(CadDocumentChangeSet changes)
     {
@@ -940,8 +992,12 @@ public sealed class CadEditor
         }
     }
 
-    private static EntityId GetCreatedEntityId(EntityId? entityId, string commandName)
+    private EntityId GetCreatedEntityId(EntityId? entityId, string commandName)
     {
-        return entityId ?? throw new InvalidOperationException($"{commandName} did not create an entity.");
+        var createdEntityId = entityId ??
+                              throw new InvalidOperationException($"{commandName} did not create an entity.");
+        if (!ActiveOwnerBlockId.Equals(BlockId.ModelSpace))
+            Document.MoveEntityToBlock(createdEntityId, ActiveOwnerBlockId);
+        return createdEntityId;
     }
 }

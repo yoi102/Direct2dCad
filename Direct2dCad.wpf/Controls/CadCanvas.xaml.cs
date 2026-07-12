@@ -112,6 +112,12 @@ public partial class CadCanvas : IDisposable
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
         {
             ApplyInteractionResult(
+                DocumentViewModel.HandleDoubleClick(ToCadPoint(e.GetPosition(this))),
+                e);
+            if (e.Handled)
+                return;
+
+            ApplyInteractionResult(
                 DocumentViewModel.OpenOleObjectAt(ToCadPoint(e.GetPosition(this))),
                 e);
             if (e.Handled)

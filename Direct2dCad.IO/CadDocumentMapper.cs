@@ -95,6 +95,43 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadLayoutsSection ToLayoutsSection(CadDocument document)
+    {
+        return new CadLayoutsSection
+        {
+            Layouts = document.Layouts.Values
+                .OrderBy(layout => layout.Id.Value)
+                .Select(layout => new CadLayoutData
+                {
+                    Id = layout.Id.Value,
+                    Name = layout.Name,
+                    PaperSpaceBlockId = layout.PaperSpaceBlockId.Value,
+                    PaperWidth = layout.PaperWidth,
+                    PaperHeight = layout.PaperHeight,
+                    MarginLeft = layout.MarginLeft,
+                    MarginTop = layout.MarginTop,
+                    MarginRight = layout.MarginRight,
+                    MarginBottom = layout.MarginBottom,
+                    PaperColorArgb = PackColor(layout.PaperColor),
+                    Viewports = layout.Viewports.Select(viewport => new CadLayoutViewportData
+                    {
+                        Id = viewport.Id.Value,
+                        MinX = viewport.Bounds.MinX,
+                        MinY = viewport.Bounds.MinY,
+                        MaxX = viewport.Bounds.MaxX,
+                        MaxY = viewport.Bounds.MaxY,
+                        ModelCenterX = viewport.ModelCenter.X,
+                        ModelCenterY = viewport.ModelCenter.Y,
+                        Scale = viewport.Scale,
+                        RotationRadians = viewport.RotationRadians,
+                        IsVisible = viewport.IsVisible,
+                        IsLocked = viewport.IsLocked
+                    }).ToList()
+                })
+                .ToList()
+        };
+    }
+
     internal static CadLinesSection ToLinesSection(CadDocument document)
     {
         return new CadLinesSection
@@ -333,6 +370,7 @@ internal static class CadDocumentMapper
         CadSettingsSection settings,
         CadLayerSection layers,
         CadStylesSection styles,
+        CadLayoutsSection layouts,
         CadLinesSection lines,
         CadCirclesSection circles,
         CadEllipsesSection ellipses,
@@ -353,6 +391,7 @@ internal static class CadDocumentMapper
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
+        ApplyLayouts(document, layouts);
         ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts, images, oleObjects);
 
         return document;
@@ -714,6 +753,62 @@ internal static class CadDocumentMapper
             document.AddEntityCore(oleObject);
         }
     }
+
+    private static void ApplyLayouts(CadDocument document, CadLayoutsSection section)
+    {
+        if (section.Layouts.Count == 0)
+            return;
+
+        document.ResetLayoutsForStorage();
+        foreach (var data in section.Layouts)
+        {
+            var layoutId = new LayoutId(data.Id);
+            var paperSpaceBlockId = new BlockId(data.PaperSpaceBlockId);
+            document.EnsurePaperSpaceBlockForStorage(
+                paperSpaceBlockId,
+                $"*PaperSpace_{layoutId.Value}");
+            var layout = new CadLayout(
+                layoutId,
+                data.Name,
+                paperSpaceBlockId,
+                data.PaperWidth,
+                data.PaperHeight);
+            layout.SetPaper(
+                data.PaperWidth,
+                data.PaperHeight,
+                data.MarginLeft,
+                data.MarginTop,
+                data.MarginRight,
+                data.MarginBottom);
+            layout.SetPaperColor(UnpackColor(data.PaperColorArgb));
+            foreach (var viewportData in data.Viewports)
+            {
+                var viewport = new CadLayoutViewport(
+                    new LayoutViewportId(viewportData.Id),
+                    CadRectD.FromLTRB(
+                        viewportData.MinX,
+                        viewportData.MinY,
+                        viewportData.MaxX,
+                        viewportData.MaxY),
+                    new CadPointD(viewportData.ModelCenterX, viewportData.ModelCenterY),
+                    viewportData.Scale,
+                    viewportData.RotationRadians);
+                viewport.SetVisible(viewportData.IsVisible);
+                viewport.SetLocked(viewportData.IsLocked);
+                layout.AddViewport(viewport);
+            }
+            document.AddLayoutCore(layout);
+        }
+    }
+
+    private static uint PackColor(CadColor color) =>
+        ((uint)color.A << 24) | ((uint)color.R << 16) | ((uint)color.G << 8) | color.B;
+
+    private static CadColor UnpackColor(uint value) => CadColor.FromArgb(
+        (byte)(value >> 24),
+        (byte)(value >> 16),
+        (byte)(value >> 8),
+        (byte)value);
 
     private static CadStyleData ToData(CadStyle style)
     {
