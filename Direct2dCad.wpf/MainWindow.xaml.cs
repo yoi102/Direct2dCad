@@ -16,7 +16,7 @@ public partial class MainWindow
 {
     private MainViewModel _viewModel;
 
-    public MainWindow(MainViewModel viewModel, ISubscriber<ThemeChangedEvent> subscriber,
+    public MainWindow(MainViewModel viewModel, ISubscriber<ThemeChangedEvent> subscriber, IApplicationThemeService applicationThemeService,
         ToggleDockOptions dockOptions)
     {
         InitializeComponent();
@@ -29,7 +29,7 @@ public partial class MainWindow
         dockManager.ShowHeaderMinimizeButton = dockOptions.ShowHeaderMinimizeButton;
         dockManager.ShowHeaderOptionsButton = dockOptions.ShowHeaderOptionsButton;
 
-        if (Enum.TryParse<DockLayoutPriority>(dockOptions.LayoutPriority, out var priority))
+        if (Enum.TryParse<DockLayoutPriority>(dockOptions.LayoutPriority, out DockLayoutPriority priority))
         {
             dockManager.LayoutPriority = priority;
         }
@@ -46,8 +46,16 @@ public partial class MainWindow
             }
         });
         Closing += OnWindowClosing;
-
+        Loaded += (s, e) =>
+        {
+            if (!applicationThemeService.IsDarkTheme)
+            {
+                dockManager.Theme = new ArcLightTheme();
+            }
+        };
     }
+
+
     private void OnWindowClosing(object? sender, CancelEventArgs e)
     {
         e.Cancel = true; // 临时取消关闭

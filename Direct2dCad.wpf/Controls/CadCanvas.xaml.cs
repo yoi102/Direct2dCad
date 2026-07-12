@@ -181,6 +181,10 @@ public partial class CadCanvas : IDisposable
                 e.Handled = true;
                 break;
 
+            case Key.S:
+                //Save
+                e.Handled = true;
+                break;
             case Key.C:
                 DocumentViewModel.CopySelection();
                 e.Handled = true;
