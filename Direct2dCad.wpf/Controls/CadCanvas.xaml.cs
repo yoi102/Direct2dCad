@@ -201,6 +201,13 @@ public partial class CadCanvas : IDisposable
 
         switch (e.Key)
         {
+            case Key.A:
+                if (Keyboard.Modifiers != ModifierKeys.Control)
+                    break;
+
+                ApplyInteractionResult(DocumentViewModel.SelectAllEntities(), e);
+                break;
+
             case Key.Z:
                 DocumentViewModel.Undo();
                 e.Handled = true;

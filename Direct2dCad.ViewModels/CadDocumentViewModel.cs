@@ -859,6 +859,26 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestRender();
     }
 
+    public CadCanvasInteractionResult SelectAllEntities()
+    {
+        var entityIds = GetSelectableEntityIds();
+        if (!CadEditor.Selection.EntityIds.ToHashSet().SetEquals(entityIds))
+            CadEditor.Execute(new SetSelectionCommand(entityIds, "Select All"));
+
+        ClearInteractionState(clearClipboard: false, render: false);
+        RaiseInteractionStateChanged();
+        RequestRender();
+        return CadCanvasInteractionResult.HandledOnly;
+    }
+
+    private EntityId[] GetSelectableEntityIds()
+    {
+        return CadEditor.Document.Entities.Values
+            .Where(entity => !entity.IsErased && CanSelectEntity(entity))
+            .Select(entity => entity.Id)
+            .ToArray();
+    }
+
     public bool IsEntityTypeSelectionEnabled(Type entityType)
     {
         ArgumentNullException.ThrowIfNull(entityType);
@@ -2107,11 +2127,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     int ICadCommandLineContext.SelectAll()
     {
-        var entityIds = CadEditor.Document.Entities.Values
-            .Where(entity => !entity.IsErased && CanSelectEntity(entity))
-            .Select(entity => entity.Id)
-            .ToArray();
-        SelectEntities(entityIds);
+        var entityIds = GetSelectableEntityIds();
+        SelectAllEntities();
         return entityIds.Length;
     }
 
