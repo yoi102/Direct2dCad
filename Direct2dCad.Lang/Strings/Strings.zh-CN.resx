@@ -984,4 +984,34 @@
   <data name="SaveAll" xml:space="preserve">
     <value>全部保存</value>
   </data>
+  <data name="EntitySearchScope" xml:space="preserve">
+    <value>范围</value>
+  </data>
+  <data name="EntitySearchCurrentSpace" xml:space="preserve">
+    <value>当前空间</value>
+  </data>
+  <data name="EntitySearchEntireDocument" xml:space="preserve">
+    <value>整个文档</value>
+  </data>
+  <data name="EntitySearchHint" xml:space="preserve">
+    <value>实体名称、ID、图层或类型</value>
+  </data>
+  <data name="EntitySearchLayerHint" xml:space="preserve">
+    <value>图层</value>
+  </data>
+  <data name="EntitySearchTypeHint" xml:space="preserve">
+    <value>类型</value>
+  </data>
+  <data name="EntitySearchAllLayers" xml:space="preserve">
+    <value>全部图层</value>
+  </data>
+  <data name="EntitySearchAllTypes" xml:space="preserve">
+    <value>全部类型</value>
+  </data>
+  <data name="EntitySearchNoDocument" xml:space="preserve">
+    <value>没有活动文档</value>
+  </data>
+  <data name="EntitySearchResultCountFormat" xml:space="preserve">
+    <value>共 {0} 个实体</value>
+  </data>
 </root>

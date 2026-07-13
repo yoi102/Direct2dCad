@@ -4,6 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d"
@@ -22,7 +24,7 @@
                    Margin="10,8,10,6"
                    LastChildFill="False">
             <TextBlock DockPanel.Dock="Left"
-                       Text="Search"
+                       Text="{I18N {x:Static r:LangKeys.EntitySearch}}"
                        FontSize="13"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center" />
@@ -33,7 +35,7 @@
                     Padding="0"
                     Command="{Binding RefreshCommand}"
                     Style="{StaticResource MaterialDesignFlatButton}"
-                    ToolTip="Refresh">
+                    ToolTip="{I18N {x:Static r:LangKeys.Refresh}}">
                 <md:PackIcon Kind="Refresh"
                              Width="16"
                              Height="16" />
@@ -45,6 +47,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -52,25 +55,52 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <TextBox Grid.Row="0"
+            <DockPanel Grid.Row="0"
+                       Grid.ColumnSpan="3"
+                       Margin="0,0,0,8">
+                <TextBlock DockPanel.Dock="Left"
+                           Text="{Binding ScopeText}"
+                           VerticalAlignment="Center"
+                           Margin="0,0,8,0" />
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton MinWidth="88"
+                                 Height="28"
+                                 Padding="8,0"
+                                 GroupName="EntitySearchScope"
+                                 BorderBrush="{DynamicResource MaterialDesign.Brush.Primary}"
+                                 Content="{Binding CurrentSpaceText}"
+                                 IsChecked="{Binding SearchScope, Mode=TwoWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static toolboxes:CadEntitySearchScope.CurrentSpace}}"
+                                 Style="{StaticResource MaterialDesignTabRadioButtonTop}" />
+                    <RadioButton MinWidth="88"
+                                 Height="28"
+                                 Padding="8,0"
+                                 GroupName="EntitySearchScope"
+                                 BorderBrush="{DynamicResource MaterialDesign.Brush.Primary}"
+                                 Content="{Binding EntireDocumentText}"
+                                 IsChecked="{Binding SearchScope, Mode=TwoWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static toolboxes:CadEntitySearchScope.EntireDocument}}"
+                                 Style="{StaticResource MaterialDesignTabRadioButtonTop}" />
+                </StackPanel>
+            </DockPanel>
+
+            <TextBox Grid.Row="1"
                      Grid.ColumnSpan="3"
                      Margin="0,0,0,8"
                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     md:HintAssist.Hint="Entity name, id, layer, type" />
+                     md:HintAssist.Hint="{Binding SearchHintText}" />
 
-            <ComboBox Grid.Row="1"
+            <ComboBox Grid.Row="2"
                       Grid.Column="0"
                       ItemsSource="{Binding LayerFilters}"
                       SelectedItem="{Binding SelectedLayerFilter, Mode=TwoWay}"
                       DisplayMemberPath="DisplayText"
-                      md:HintAssist.Hint="Layer" />
+                      md:HintAssist.Hint="{Binding LayerHintText}" />
 
-            <ComboBox Grid.Row="1"
+            <ComboBox Grid.Row="2"
                       Grid.Column="2"
                       ItemsSource="{Binding TypeFilters}"
                       SelectedItem="{Binding SelectedTypeFilter, Mode=TwoWay}"
                       DisplayMemberPath="DisplayText"
-                      md:HintAssist.Hint="Type" />
+                      md:HintAssist.Hint="{Binding TypeHintText}" />
         </Grid>
 
         <ListBox Grid.Row="2"

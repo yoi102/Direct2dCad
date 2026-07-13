@@ -907,6 +907,96 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 All layers 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchAllLayers {
+            get {
+                return ResourceManager.GetString("EntitySearchAllLayers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 All types 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchAllTypes {
+            get {
+                return ResourceManager.GetString("EntitySearchAllTypes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Current space 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchCurrentSpace {
+            get {
+                return ResourceManager.GetString("EntitySearchCurrentSpace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Entire document 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchEntireDocument {
+            get {
+                return ResourceManager.GetString("EntitySearchEntireDocument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Entity name, ID, layer, or type 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchHint {
+            get {
+                return ResourceManager.GetString("EntitySearchHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Layer 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchLayerHint {
+            get {
+                return ResourceManager.GetString("EntitySearchLayerHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 No document 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchNoDocument {
+            get {
+                return ResourceManager.GetString("EntitySearchNoDocument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 {0} entities 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchResultCountFormat {
+            get {
+                return ResourceManager.GetString("EntitySearchResultCountFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Scope 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchScope {
+            get {
+                return ResourceManager.GetString("EntitySearchScope", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Type 的本地化字符串。
+        /// </summary>
+        public static string EntitySearchTypeHint {
+            get {
+                return ResourceManager.GetString("EntitySearchTypeHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Entity 的本地化字符串。
         /// </summary>
         public static string EntitySettings {

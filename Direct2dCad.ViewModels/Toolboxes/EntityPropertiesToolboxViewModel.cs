@@ -1,5 +1,4 @@
 using AvalonDock.Core;
-using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Lang.Strings;
@@ -30,7 +29,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
         Icon = toolboxIconProvider.Git;
         Shortcut = "Ctrl+Shift+G";
         CanClose = false;
-        
+
     }
     [ObservableProperty]
     public partial ObservableObject? Entity { get; set; }
@@ -224,8 +223,10 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
         var validSelectedEntityIds = selectedEntityIds
             .Where(entityId =>
                 _documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var selectedEntity) &&
-                selectedEntity is { IsErased: false })
+                selectedEntity is { IsErased: false } &&
+                selectedEntity.OwnerBlockId.Equals(_documentViewModel.CadEditor.ActiveOwnerBlockId))
             .ToArray();
+        selectedEntityIds = validSelectedEntityIds;
         if (validSelectedEntityIds.Length > 1)
         {
             if (Entity is MultiEntityPropertyViewModel multiEntityViewModel &&
