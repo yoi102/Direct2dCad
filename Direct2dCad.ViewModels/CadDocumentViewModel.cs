@@ -44,6 +44,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly CadRenderResourceCoordinator _renderResources = new();
     private readonly CadGripDragController _gripDrag = new(new CadHandleHitTester());
     private readonly CadViewportInitializationState _viewportInitialization = new();
+    private readonly CadSpaceViewportState _spaceViewportState = new();
     private readonly CadPanInteractionController _pan = new();
     private readonly CadPasteInteractionController _paste;
     private readonly IImageImportService _imageImportService;
@@ -196,6 +197,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.EditorStateChanged += OnEditorStateChanged;
         CadEditor.CommandActivity += OnCommandActivity;
         _viewportInitialization.ResetInitialView();
+        _spaceViewportState.Reset();
+        ActiveLayoutViewportId = null;
+        ActiveLayoutId = null;
+        CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
         _viewportInitialization.ApplyCurrentSize(CadEditor);
         RefreshPointerWorldStatus();
         _pasteTargetLayerId = ResolveExistingDrawingLayerId(_pasteTargetLayerId);
@@ -607,6 +612,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void ActivateModelSpace()
     {
+        _fitToWindowPending = false;
+        if (ActiveLayoutId is { } previousLayoutId)
+            _spaceViewportState.Capture(CadEditor.Viewport, previousLayoutId);
+
         _layoutViewportCreation.Clear();
         if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
             CadCanvasToolMode = CadCanvasToolMode.Select;
@@ -617,12 +626,20 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         OnPropertyChanged(nameof(IsModelSpaceActive));
         RaiseActiveSpacePropertiesChanged();
         ClearInteractionState(clearClipboard: false, render: false);
-        FitToWindow();
+        _spaceViewportState.TryRestore(CadEditor.Viewport, layoutId: null);
+        RefreshPointerWorldStatus();
+        RequestRender();
         RaiseInteractionStateChanged();
     }
 
     public void ActivateLayout(LayoutId layoutId)
     {
+        _fitToWindowPending = false;
+        if (ActiveLayoutId is { } previousLayoutId)
+            _spaceViewportState.Capture(CadEditor.Viewport, previousLayoutId);
+        else
+            _spaceViewportState.Capture(CadEditor.Viewport, layoutId: null);
+
         _layoutViewportCreation.Clear();
         if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
             CadCanvasToolMode = CadCanvasToolMode.Select;
@@ -634,7 +651,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         OnPropertyChanged(nameof(IsModelSpaceActive));
         RaiseActiveSpacePropertiesChanged();
         ClearInteractionState(clearClipboard: false, render: false);
-        FitToWindow();
+        if (!_spaceViewportState.TryRestore(CadEditor.Viewport, layout.Id))
+            FitToWindow();
+        else
+        {
+            RefreshPointerWorldStatus();
+            RequestRender();
+        }
         RaiseInteractionStateChanged();
     }
 

@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
              d:DataContext="{d:DesignInstance Type=toolboxes:CommandLineToolboxViewModel}"
              d:DesignHeight="240"
@@ -84,15 +85,20 @@
         </ListBox>
 
         <Button x:Name="NewOutputButton"
-                Grid.Row="0"
+                Grid.Row="0"s
                 Width="28"
                 Height="28"
+                Style="{StaticResource MaterialDesignFlatButton}"
+                Foreground="{DynamicResource MahApps.Brushes.Text}"
                 Margin="0,0,18,8"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"
+                Padding="0"
                 ToolTip="Scroll to latest output"
                 Visibility="Collapsed">
-            <TextBlock FontSize="16" Text="↓" />
+            <md:PackIcon Kind="ArrowBottomBold"
+                         Width="24"
+                         Height="24" />
         </Button>
 
         <Border Grid.Row="1"

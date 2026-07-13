@@ -731,6 +731,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ArgumentNullException.ThrowIfNull(document);
         CadDocumentViewModel.ReplaceEditor(new CadEditor(document));
         CadDocumentViewModel.ActivateModelSpace();
+        CadDocumentViewModel.FitToWindow();
         LayoutWorkspace.RefreshDocumentStructure();
         CurrentFilePath = fileName;
         RestoreWorkspaceSettings();
