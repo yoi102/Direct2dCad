@@ -14,6 +14,8 @@ internal sealed class Direct2DSelectionRenderer(
     Direct2DStyleResourceFactory styleFactory,
     Direct2DHandleRenderer handleRenderer)
 {
+    private const byte SelectedSolidFillMaximumAlpha = 64;
+
     public void Draw(
         ID2D1DeviceContext context,
         CadDocument document,
@@ -52,11 +54,12 @@ internal sealed class Direct2DSelectionRenderer(
         CadViewport viewport,
         CadSelectionEntityReference reference)
     {
-        var style = ToTransientStyle(reference.Style);
         if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
             return;
 
-        if (TryDrawCachedGeometry(context, entity, viewport, reference, style))
+        resourceCache.TryGetEntityResources(entity.Id, out var resources);
+        var style = ToTransientStyle(reference.Style, resources);
+        if (TryDrawCachedGeometry(context, entity, resources, viewport, reference, style))
             return;
 
         switch (entity)
@@ -142,11 +145,12 @@ internal sealed class Direct2DSelectionRenderer(
     private bool TryDrawCachedGeometry(
         ID2D1DeviceContext context,
         CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket? resources,
         CadViewport viewport,
         CadSelectionEntityReference reference,
         CadTransientStyle style)
     {
-        if (!resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources?.Geometry is null)
+        if (resources?.Geometry is null)
             return false;
 
         using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
@@ -154,6 +158,7 @@ internal sealed class Direct2DSelectionRenderer(
         var strokeWidth = styleFactory.ResolveStrokeWidth(style, viewport);
         if (reference.Offset == CadVectorD.Zero)
         {
+            DrawCachedFill(context, resources.Geometry, entity.Bounds, style, viewport);
             context.DrawGeometry(resources.Geometry, brush, strokeWidth, strokeStyle);
             return true;
         }
@@ -164,6 +169,7 @@ internal sealed class Direct2DSelectionRenderer(
             (float)reference.Offset.Y) * previousTransform;
         try
         {
+            DrawCachedFill(context, resources.Geometry, entity.Bounds, style, viewport);
             context.DrawGeometry(resources.Geometry, brush, strokeWidth, strokeStyle);
         }
         finally
@@ -172,6 +178,26 @@ internal sealed class Direct2DSelectionRenderer(
         }
 
         return true;
+    }
+
+    private void DrawCachedFill(
+        ID2D1DeviceContext context,
+        ID2D1Geometry geometry,
+        CadRectD bounds,
+        CadTransientStyle style,
+        CadViewport viewport)
+    {
+        if (style.FillColor is { IsTransparent: false } fillColor)
+        {
+            using var fillBrush = styleFactory.CreateBrush(context, fillColor);
+            context.FillGeometry(geometry, fillBrush);
+        }
+
+        if (style.HatchFill is not { ForegroundColor.IsTransparent: false } hatchFill || bounds.IsEmpty)
+            return;
+
+        using var hatchBrush = styleFactory.CreateBrush(context, hatchFill.ForegroundColor);
+        Direct2DHatchRenderer.Draw(context, geometry, bounds, hatchFill, hatchBrush, viewport);
     }
 
     private void DrawImageFrame(
@@ -206,13 +232,42 @@ internal sealed class Direct2DSelectionRenderer(
                screen.Y <= viewport.ViewHeight + margin;
     }
 
-    private static CadTransientStyle ToTransientStyle(CadHandleStyle style)
+    private static CadTransientStyle ToTransientStyle(
+        CadHandleStyle style,
+        Direct2DResourceCache.EntityResourceBucket? resources = null)
     {
+        CadColor? fillColor = resources?.FillBrush is not null
+            ? WithMaximumAlpha(style.StrokeColor, SelectedSolidFillMaximumAlpha)
+            : null;
+        var hatchFill = resources is
+        {
+            HatchFillStyle: { } hatchStyle,
+            HatchPattern: { } hatchPattern,
+            HatchBrush: not null
+        }
+            ? new CadTransientHatchFill(
+                style.StrokeColor,
+                hatchStyle.HatchScale,
+                hatchStyle.HatchAngle,
+                hatchStyle.HatchOrigin,
+                hatchPattern.Lines)
+            : null;
+
         return new CadTransientStyle(
             style.StrokeColor,
             style.StrokeWidth,
             CadTransientLinePattern.Solid,
-            null,
-            style.KeepSizeScreenConstant);
+            fillColor,
+            style.KeepSizeScreenConstant,
+            HatchFill: hatchFill);
+    }
+
+    private static CadColor WithMaximumAlpha(CadColor color, byte maximumAlpha)
+    {
+        return CadColor.FromArgb(
+            Math.Min(color.A, maximumAlpha),
+            color.R,
+            color.G,
+            color.B);
     }
 }
