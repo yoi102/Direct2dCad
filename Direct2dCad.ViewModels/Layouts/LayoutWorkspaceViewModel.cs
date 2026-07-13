@@ -49,7 +49,10 @@ public sealed class LayoutViewportItemViewModel(LayoutViewportId id, string name
 public partial class LayoutWorkspaceViewModel : ObservableObject
 {
     private readonly CadDocumentViewModel _documentViewModel;
+    private readonly Dictionary<string, LiveSettingBatch> _liveSettingBatches = [];
     private bool _isRefreshing;
+    private bool _isApplyingLiveSetting;
+    private static readonly TimeSpan LiveSettingBatchTimeout = TimeSpan.FromSeconds(1);
 
     public ObservableCollection<LayoutTabItemViewModel> Tabs { get; } = [];
     public ObservableCollection<LayoutViewportItemViewModel> Viewports { get; } = [];
@@ -114,12 +117,35 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
     partial void OnSelectedViewportChanged(LayoutViewportItemViewModel? value)
     {
         if (!_isRefreshing)
+        {
+            if (value is not null)
+                _documentViewModel.SetPreferredLayoutViewport(value.Id);
             LoadSelectedViewport();
+        }
         OnPropertyChanged(nameof(CanDeleteViewport));
         RemoveViewportCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnIsSettingsOpenChanged(bool value) => OnPropertyChanged(nameof(SettingsVisibility));
+
+    partial void OnPaperWidthChanged(double value) => ApplyPaperSettings(nameof(PaperWidth));
+    partial void OnPaperHeightChanged(double value) => ApplyPaperSettings(nameof(PaperHeight));
+    partial void OnMarginLeftChanged(double value) => ApplyPaperSettings(nameof(MarginLeft));
+    partial void OnMarginTopChanged(double value) => ApplyPaperSettings(nameof(MarginTop));
+    partial void OnMarginRightChanged(double value) => ApplyPaperSettings(nameof(MarginRight));
+    partial void OnMarginBottomChanged(double value) => ApplyPaperSettings(nameof(MarginBottom));
+    partial void OnPaperColorChanged(CadColor value) => ApplyPaperColor(nameof(PaperColor));
+
+    partial void OnViewportLeftChanged(double value) => ApplyViewportSettings(nameof(ViewportLeft));
+    partial void OnViewportBottomChanged(double value) => ApplyViewportSettings(nameof(ViewportBottom));
+    partial void OnViewportWidthChanged(double value) => ApplyViewportSettings(nameof(ViewportWidth));
+    partial void OnViewportHeightChanged(double value) => ApplyViewportSettings(nameof(ViewportHeight));
+    partial void OnModelCenterXChanged(double value) => ApplyViewportSettings(nameof(ModelCenterX));
+    partial void OnModelCenterYChanged(double value) => ApplyViewportSettings(nameof(ModelCenterY));
+    partial void OnViewportScaleChanged(double value) => ApplyViewportSettings(nameof(ViewportScale));
+    partial void OnViewportRotationDegreesChanged(double value) => ApplyViewportSettings(nameof(ViewportRotationDegrees));
+    partial void OnIsViewportVisibleChanged(bool value) => ApplyViewportSettings(nameof(IsViewportVisible));
+    partial void OnIsViewportLockedChanged(bool value) => ApplyViewportSettings(nameof(IsViewportLocked));
 
     public void RefreshDocumentStructure()
     {
@@ -156,11 +182,33 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         NotifyCapabilitiesChanged();
     }
 
+    public void HandleDocumentStructureChanged()
+    {
+        if (!_isApplyingLiveSetting)
+            RefreshDocumentStructure();
+    }
+
+    public void HandleLayoutSettingsChanged()
+    {
+        if (_isApplyingLiveSetting || SelectedTab?.LayoutId is not { } layoutId)
+            return;
+
+        if (!Document.TryGetLayout(layoutId, out var layout) || layout is null)
+        {
+            RefreshDocumentStructure();
+            return;
+        }
+
+        LoadPaperSettings(layout);
+        if (SelectedViewport is { } selected && layout.Viewports.Any(item => item.Id == selected.Id))
+            LoadSelectedViewport();
+        ValidationError = string.Empty;
+    }
+
     [RelayCommand]
     private void AddLayout()
     {
         var layoutId = _documentViewModel.CadEditor.CreateLayout(CreateUniqueLayoutName());
-        RefreshDocumentStructure();
         SelectedTab = Tabs.First(item => item.LayoutId == layoutId);
         IsSettingsOpen = true;
     }
@@ -172,8 +220,6 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
             return;
 
         _documentViewModel.CadEditor.DeleteLayout(layoutId);
-        _documentViewModel.ActivateModelSpace();
-        RefreshDocumentStructure();
     }
 
     [RelayCommand]
@@ -185,47 +231,19 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
     [RelayCommand]
     private void SwapPaperOrientation()
     {
-        (PaperWidth, PaperHeight) = (PaperHeight, PaperWidth);
-        (MarginLeft, MarginBottom, MarginRight, MarginTop) =
-            (MarginBottom, MarginRight, MarginTop, MarginLeft);
-    }
-
-    [RelayCommand]
-    private void ApplyLayoutSettings()
-    {
-        if (SelectedTab?.LayoutId is not { } layoutId)
-            return;
-
+        _isRefreshing = true;
         try
         {
-            var commands = new List<ICadCommand>
-            {
-                new SetLayoutPaperCommand(layoutId, new CadLayoutPaperSnapshot(
-                    PaperWidth, PaperHeight, MarginLeft, MarginTop, MarginRight, MarginBottom)),
-                new SetLayoutPaperColorCommand(layoutId, PaperColor)
-            };
-
-            if (SelectedViewport is { } selectedViewport)
-                commands.Add(new SetLayoutViewportCommand(
-                    layoutId,
-                    selectedViewport.Id,
-                    CreateViewportSnapshot()));
-
-            _documentViewModel.CadEditor.ExecuteRange(commands, "Set Layout Properties");
-            if (!IsViewportVisible &&
-                SelectedViewport is { } hiddenViewport &&
-                _documentViewModel.ActiveLayoutViewportId == hiddenViewport.Id)
-            {
-                _documentViewModel.ExitLayoutViewport();
-            }
-            ValidationError = string.Empty;
-            _documentViewModel.FitToWindow();
-            RefreshDocumentStructure();
+            (PaperWidth, PaperHeight) = (PaperHeight, PaperWidth);
+            (MarginLeft, MarginBottom, MarginRight, MarginTop) =
+                (MarginBottom, MarginRight, MarginTop, MarginLeft);
         }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        finally
         {
-            ValidationError = ex.Message;
+            _isRefreshing = false;
         }
+
+        ApplyPaperSettings(nameof(SwapPaperOrientation));
     }
 
     [RelayCommand]
@@ -246,7 +264,6 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         if (_documentViewModel.ActiveLayoutViewportId == viewport.Id)
             _documentViewModel.ExitLayoutViewport();
         _documentViewModel.CadEditor.RemoveLayoutViewport(layoutId, viewport.Id);
-        RefreshDocumentStructure();
     }
 
     private bool TryRenameLayout(LayoutTabItemViewModel item, string name)
@@ -280,13 +297,7 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
             }
 
             var layout = Document.GetLayout(layoutId);
-            PaperWidth = layout.PaperWidth;
-            PaperHeight = layout.PaperHeight;
-            MarginLeft = layout.MarginLeft;
-            MarginTop = layout.MarginTop;
-            MarginRight = layout.MarginRight;
-            MarginBottom = layout.MarginBottom;
-            PaperColor = layout.PaperColor;
+            LoadPaperSettings(layout);
 
             for (var index = 0; index < layout.Viewports.Count; index++)
             {
@@ -294,8 +305,10 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
                 Viewports.Add(new LayoutViewportItemViewModel(viewport.Id, $"Viewport {index + 1}"));
             }
 
-            SelectedViewport = _documentViewModel.ActiveLayoutViewportId is { } activeViewportId
-                ? Viewports.FirstOrDefault(item => item.Id == activeViewportId) ?? Viewports.FirstOrDefault()
+            var preferredViewportId = _documentViewModel.ActiveLayoutViewportId ??
+                                      _documentViewModel.GetPreferredLayoutViewportId(layoutId);
+            SelectedViewport = preferredViewportId is { } viewportId
+                ? Viewports.FirstOrDefault(item => item.Id == viewportId) ?? Viewports.FirstOrDefault()
                 : Viewports.FirstOrDefault();
         }
         finally
@@ -306,27 +319,146 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         LoadSelectedViewport();
     }
 
+    private void LoadPaperSettings(CadLayout layout)
+    {
+        var wasRefreshing = _isRefreshing;
+        _isRefreshing = true;
+        try
+        {
+            PaperWidth = layout.PaperWidth;
+            PaperHeight = layout.PaperHeight;
+            MarginLeft = layout.MarginLeft;
+            MarginTop = layout.MarginTop;
+            MarginRight = layout.MarginRight;
+            MarginBottom = layout.MarginBottom;
+            PaperColor = layout.PaperColor;
+        }
+        finally
+        {
+            _isRefreshing = wasRefreshing;
+        }
+    }
+
     private void LoadSelectedViewport()
     {
         if (SelectedTab?.LayoutId is not { } layoutId || SelectedViewport is not { } selected)
             return;
 
         var viewport = Document.GetLayout(layoutId).GetViewport(selected.Id);
-        ViewportLeft = viewport.Bounds.Left;
-        ViewportBottom = viewport.Bounds.Bottom;
-        ViewportWidth = viewport.Bounds.Width;
-        ViewportHeight = viewport.Bounds.Height;
-        ModelCenterX = viewport.ModelCenter.X;
-        ModelCenterY = viewport.ModelCenter.Y;
-        ViewportScale = viewport.Scale;
-        ViewportRotationDegrees = viewport.RotationRadians * 180 / Math.PI;
-        IsViewportVisible = viewport.IsVisible;
-        IsViewportLocked = viewport.IsLocked;
+        var wasRefreshing = _isRefreshing;
+        _isRefreshing = true;
+        try
+        {
+            ViewportLeft = viewport.Bounds.Left;
+            ViewportBottom = viewport.Bounds.Bottom;
+            ViewportWidth = viewport.Bounds.Width;
+            ViewportHeight = viewport.Bounds.Height;
+            ModelCenterX = viewport.ModelCenter.X;
+            ModelCenterY = viewport.ModelCenter.Y;
+            ViewportScale = viewport.Scale;
+            ViewportRotationDegrees = viewport.RotationRadians * 180 / Math.PI;
+            IsViewportVisible = viewport.IsVisible;
+            IsViewportLocked = viewport.IsLocked;
+        }
+        finally
+        {
+            _isRefreshing = wasRefreshing;
+        }
+    }
+
+    private void ApplyPaperSettings(string propertyName)
+    {
+        if (_isRefreshing || SelectedTab?.LayoutId is not { } layoutId)
+            return;
+
+        var target = new CadLayoutPaperSnapshot(
+            PaperWidth,
+            PaperHeight,
+            MarginLeft,
+            MarginTop,
+            MarginRight,
+            MarginBottom);
+        if (target == CadLayoutPaperSnapshot.From(Document.GetLayout(layoutId)))
+            return;
+
+        if (!ExecuteLiveSetting(
+                new SetLayoutPaperCommand(layoutId, target),
+                $"paper:{layoutId.Value}:{propertyName}"))
+            LoadPaperSettings(Document.GetLayout(layoutId));
+    }
+
+    private void ApplyPaperColor(string propertyName)
+    {
+        if (_isRefreshing || SelectedTab?.LayoutId is not { } layoutId)
+            return;
+
+        if (Document.GetLayout(layoutId).PaperColor == PaperColor)
+            return;
+
+        ExecuteLiveSetting(
+            new SetLayoutPaperColorCommand(layoutId, PaperColor),
+            $"paper:{layoutId.Value}:{propertyName}");
+    }
+
+    private void ApplyViewportSettings(string propertyName)
+    {
+        if (_isRefreshing ||
+            SelectedTab?.LayoutId is not { } layoutId ||
+            SelectedViewport is not { } selectedViewport)
+        {
+            return;
+        }
+
+        var target = CreateViewportSnapshot();
+        var viewport = Document.GetLayout(layoutId).GetViewport(selectedViewport.Id);
+        if (target == CadLayoutViewportSnapshot.From(viewport))
+            return;
+
+        if (!ExecuteLiveSetting(
+                new SetLayoutViewportCommand(layoutId, selectedViewport.Id, target),
+                $"viewport:{layoutId.Value}:{selectedViewport.Id.Value}:{propertyName}"))
+        {
+            LoadSelectedViewport();
+            return;
+        }
+
+        if (!IsViewportVisible && _documentViewModel.ActiveLayoutViewportId == selectedViewport.Id)
+            _documentViewModel.ExitLayoutViewport();
+    }
+
+    private bool ExecuteLiveSetting(ICadCommand command, string batchKey)
+    {
+        _isApplyingLiveSetting = true;
+        try
+        {
+            var now = DateTime.UtcNow;
+            var batchId = _liveSettingBatches.TryGetValue(batchKey, out var batch) &&
+                          now - batch.LastUpdated <= LiveSettingBatchTimeout
+                ? batch.Id
+                : Guid.NewGuid();
+            _documentViewModel.CadEditor.ExecuteInBatch(command, batchId);
+            _liveSettingBatches[batchKey] = new LiveSettingBatch(batchId, now);
+            ValidationError = string.Empty;
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            ValidationError = ex.Message;
+            return false;
+        }
+        finally
+        {
+            _isApplyingLiveSetting = false;
+        }
     }
 
     private CadLayoutViewportSnapshot CreateViewportSnapshot()
     {
-        var bounds = CadRectD.FromXYWH(ViewportLeft, ViewportBottom, ViewportWidth, ViewportHeight);
+        var bounds = new CadRectD(
+            ViewportLeft,
+            ViewportBottom,
+            ViewportLeft + ViewportWidth,
+            ViewportBottom + ViewportHeight);
         return new CadLayoutViewportSnapshot(
             bounds,
             new CadPointD(ModelCenterX, ModelCenterY),
@@ -358,4 +490,6 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         DeleteLayoutCommand.NotifyCanExecuteChanged();
         RemoveViewportCommand.NotifyCanExecuteChanged();
     }
+
+    private readonly record struct LiveSettingBatch(Guid Id, DateTime LastUpdated);
 }

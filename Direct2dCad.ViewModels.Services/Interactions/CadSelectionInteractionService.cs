@@ -38,13 +38,26 @@ internal sealed class CadSelectionInteractionService(
                     selectionMode);
         }
 
-        var area = ToWorldRect(startScreen, endScreen);
-        editor.Execute(new BoxSelectCommand(
-            area,
-            selectionMode,
-            requireContained: IsSelectionWindow(startScreen, endScreen),
-            selectionFilter: selectionFilter,
-            viewportZoom: zoom));
+        var corners = ToWorldPolygon(startScreen, endScreen);
+        var requireContained = IsSelectionWindow(startScreen, endScreen);
+        if (IsAxisAligned(corners))
+        {
+            editor.Execute(new BoxSelectCommand(
+                corners.Aggregate(CadRectD.Empty, static (bounds, point) => bounds.ExpandToInclude(point)),
+                selectionMode,
+                requireContained,
+                selectionFilter,
+                zoom));
+        }
+        else
+        {
+            editor.Execute(new PolygonSelectCommand(
+                corners,
+                selectionMode,
+                requireContained,
+                selectionFilter,
+                zoom));
+        }
         return null;
     }
 
@@ -73,17 +86,28 @@ internal sealed class CadSelectionInteractionService(
                 : styleService.CreateSelectionCrossingStyle()));
     }
 
-    private CadRectD ToWorldRect(CadPointD startScreen, CadPointD endScreen)
+    private CadPointD[] ToWorldPolygon(CadPointD startScreen, CadPointD endScreen)
     {
         var left = Math.Min(startScreen.X, endScreen.X);
         var right = Math.Max(startScreen.X, endScreen.X);
         var top = Math.Min(startScreen.Y, endScreen.Y);
         var bottom = Math.Max(startScreen.Y, endScreen.Y);
-        return CadRectD.Empty
-            .ExpandToInclude(screenToWorld(new CadPointD(left, top)))
-            .ExpandToInclude(screenToWorld(new CadPointD(right, top)))
-            .ExpandToInclude(screenToWorld(new CadPointD(right, bottom)))
-            .ExpandToInclude(screenToWorld(new CadPointD(left, bottom)));
+        return
+        [
+            screenToWorld(new CadPointD(left, top)),
+            screenToWorld(new CadPointD(right, top)),
+            screenToWorld(new CadPointD(right, bottom)),
+            screenToWorld(new CadPointD(left, bottom))
+        ];
+    }
+
+    private static bool IsAxisAligned(IReadOnlyList<CadPointD> corners)
+    {
+        const double tolerance = 1e-9;
+        return Math.Abs(corners[0].Y - corners[1].Y) <= tolerance &&
+               Math.Abs(corners[1].X - corners[2].X) <= tolerance &&
+               Math.Abs(corners[2].Y - corners[3].Y) <= tolerance &&
+               Math.Abs(corners[3].X - corners[0].X) <= tolerance;
     }
 
     private static bool IsSelectionWindow(CadPointD startScreen, CadPointD endScreen)

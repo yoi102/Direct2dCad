@@ -42,7 +42,7 @@ internal sealed class CadRenderInvalidationCalculator(
 
     public CadRenderInvalidation CreateDocumentInvalidation(CadDocumentChangeSet changes)
     {
-        if (changes.AffectsDocumentStructure || changes.AffectsViewSettings)
+        if (changes.AffectsDocumentStructure || changes.AffectsLayouts || changes.AffectsViewSettings)
             return CadRenderInvalidation.Full;
 
         var bounds = CadRectD.Empty;

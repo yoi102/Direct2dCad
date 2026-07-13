@@ -26,7 +26,7 @@ public sealed class CreateLayoutCommand(
             document.RestoreLayout(_layout);
         }
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -34,7 +34,7 @@ public sealed class CreateLayoutCommand(
         if (_layout is null)
             return CadDocumentChangeSet.Empty;
         document.DetachLayout(_layout.Id);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 }
 
@@ -52,7 +52,7 @@ public sealed class DeleteLayoutCommand(LayoutId layoutId) : ICadCommand
         return CadDocumentChangeSet.ForEntities(
                 entityIds,
                 CadEntityChangeKind.Deleted | CadEntityChangeKind.Visibility)
-            .WithDocumentStructureChanged();
+            .WithLayoutStructureChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -66,7 +66,7 @@ public sealed class DeleteLayoutCommand(LayoutId layoutId) : ICadCommand
         return CadDocumentChangeSet.ForEntities(
                 entityIds,
                 CadEntityChangeKind.Created | CadEntityChangeKind.Visibility)
-            .WithDocumentStructureChanged();
+            .WithLayoutStructureChanged();
     }
 }
 
@@ -79,7 +79,7 @@ public sealed class RenameLayoutCommand(LayoutId layoutId, string name) : ICadCo
     {
         _previousName = document.GetLayout(layoutId).Name;
         document.RenameLayout(layoutId, name);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -87,7 +87,7 @@ public sealed class RenameLayoutCommand(LayoutId layoutId, string name) : ICadCo
         if (_previousName is null)
             return CadDocumentChangeSet.Empty;
         document.RenameLayout(layoutId, _previousName);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 }
 
@@ -119,7 +119,7 @@ public sealed class SetLayoutPaperCommand(
     {
         _previous = CadLayoutPaperSnapshot.From(document.GetLayout(layoutId));
         Apply(document, target);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutsChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -127,7 +127,7 @@ public sealed class SetLayoutPaperCommand(
         if (_previous is null)
             return CadDocumentChangeSet.Empty;
         Apply(document, _previous.Value);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutsChanged();
     }
 
     private void Apply(CadDocument document, CadLayoutPaperSnapshot value) =>
@@ -168,7 +168,7 @@ public sealed class AddLayoutViewportCommand(
         {
             document.RestoreLayoutViewport(layoutId, _viewport);
         }
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -176,7 +176,7 @@ public sealed class AddLayoutViewportCommand(
         if (_viewport is null)
             return CadDocumentChangeSet.Empty;
         document.RemoveLayoutViewport(layoutId, _viewport.Id);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 }
 
@@ -192,7 +192,7 @@ public sealed class RemoveLayoutViewportCommand(
         var layout = document.GetLayout(layoutId);
         _viewport = layout.GetViewport(viewportId);
         document.RemoveLayoutViewport(layoutId, viewportId);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -201,7 +201,7 @@ public sealed class RemoveLayoutViewportCommand(
             return CadDocumentChangeSet.Empty;
 
         document.RestoreLayoutViewport(layoutId, _viewport);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutStructureChanged();
     }
 }
 
@@ -242,7 +242,7 @@ public sealed class SetLayoutViewportCommand(
         var viewport = document.GetLayout(layoutId).GetViewport(viewportId);
         _previous = CadLayoutViewportSnapshot.From(viewport);
         target.ApplyTo(viewport);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutsChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -250,7 +250,7 @@ public sealed class SetLayoutViewportCommand(
         if (_previous is null)
             return CadDocumentChangeSet.Empty;
         _previous.Value.ApplyTo(document.GetLayout(layoutId).GetViewport(viewportId));
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutsChanged();
     }
 }
 
@@ -264,7 +264,7 @@ public sealed class SetLayoutPaperColorCommand(LayoutId layoutId, CadColor color
         var layout = document.GetLayout(layoutId);
         _previous = layout.PaperColor;
         layout.SetPaperColor(color);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutsChanged();
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -272,6 +272,6 @@ public sealed class SetLayoutPaperColorCommand(LayoutId layoutId, CadColor color
         if (_previous is null)
             return CadDocumentChangeSet.Empty;
         document.GetLayout(layoutId).SetPaperColor(_previous.Value);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithLayoutsChanged();
     }
 }

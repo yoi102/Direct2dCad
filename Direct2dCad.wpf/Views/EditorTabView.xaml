@@ -18,16 +18,25 @@
              d:DesignWidth="1100">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <Style x:Key="LayoutFieldLabel" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground.Secondary}" />
+        <Style x:Key="LayoutFieldLabel"
+               TargetType="TextBlock">
+            <Setter Property="Margin"
+                    Value="0,0,8,0" />
+            <Setter Property="VerticalAlignment"
+                    Value="Center" />
+            <Setter Property="Foreground"
+                    Value="{DynamicResource MaterialDesign.Brush.Foreground.Secondary}" />
         </Style>
-        <Style x:Key="LayoutNumberBox" TargetType="TextBox">
-            <Setter Property="MinWidth" Value="76" />
-            <Setter Property="Height" Value="30" />
-            <Setter Property="Margin" Value="0,2" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Style x:Key="LayoutNumberBox"
+               TargetType="TextBox">
+            <Setter Property="MinWidth"
+                    Value="76" />
+            <Setter Property="Height"
+                    Value="30" />
+            <Setter Property="Margin"
+                    Value="0,2" />
+            <Setter Property="VerticalContentAlignment"
+                    Value="Center" />
         </Style>
     </UserControl.Resources>
 
@@ -54,7 +63,9 @@
                 Padding="0"
                 ToolTip="{I18N {x:Static r:LangKeys.Fit}}"
                 Command="{Binding FitToWindowCommand}">
-            <md:PackIcon Kind="FitToScreen" Width="24" Height="24" />
+            <md:PackIcon Kind="FitToScreen"
+                         Width="24"
+                         Height="24" />
         </Button>
 
         <Border Grid.Row="0"
@@ -68,9 +79,7 @@
                 BorderBrush="{DynamicResource MaterialDesign.Brush.Foreground.Hint}"
                 BorderThickness="1"
                 Visibility="{Binding LayoutWorkspace.SettingsVisibility, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <ScrollViewer VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled"
-                          CanContentScroll="True">
+            <ScrollViewer>
                 <StackPanel DataContext="{Binding LayoutWorkspace}">
                     <DockPanel Margin="0,0,0,8">
                         <TextBlock Text="{I18N {x:Static r:LangKeys.LayoutSettings}}"
@@ -84,12 +93,13 @@
                                 Style="{StaticResource MaterialDesignFlatButton}"
                                 Command="{Binding ToggleSettingsCommand}"
                                 ToolTip="{I18N {x:Static r:LangKeys.Close}}">
-                            <md:PackIcon Kind="Close" Width="18" Height="18" />
+                            <md:PackIcon Kind="Close"
+                                         Width="18"
+                                         Height="18" />
                         </Button>
                     </DockPanel>
 
-                    <Expander Header="{I18N {x:Static r:LangKeys.Paper}}"
-                              IsExpanded="True"
+                    <GroupBox Header="{I18N {x:Static r:LangKeys.Paper}}"
                               Margin="0,0,0,6">
                         <Grid Margin="10,8,4,10">
                             <Grid.ColumnDefinitions>
@@ -106,23 +116,55 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.PaperWidth}}" />
-                            <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding PaperWidth, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="1" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.PaperHeight}}" />
-                            <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding PaperHeight, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="2" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginLeft}}" />
-                            <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="3" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginTop}}" />
-                            <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="4" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginRight}}" />
-                            <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="5" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.MarginBottom}}" />
-                            <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Grid.Row="6" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.PaperColor}}" />
+                            <TextBlock Grid.Row="0"
+                                       Style="{StaticResource LayoutFieldLabel}"
+                                       Text="{I18N {x:Static r:LangKeys.PaperWidth}}" />
+                            <TextBox Grid.Row="0"
+                                     Grid.Column="1"
+                                     Style="{StaticResource LayoutNumberBox}"
+                                     Text="{Binding PaperWidth, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                            <TextBlock Grid.Row="1"
+                                       Style="{StaticResource LayoutFieldLabel}"
+                                       Text="{I18N {x:Static r:LangKeys.PaperHeight}}" />
+                            <TextBox Grid.Row="1"
+                                     Grid.Column="1"
+                                     Style="{StaticResource LayoutNumberBox}"
+                                     Text="{Binding PaperHeight, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                            <TextBlock Grid.Row="2"
+                                       Style="{StaticResource LayoutFieldLabel}"
+                                       Text="{I18N {x:Static r:LangKeys.MarginLeft}}" />
+                            <TextBox Grid.Row="2"
+                                     Grid.Column="1"
+                                     Style="{StaticResource LayoutNumberBox}"
+                                     Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                            <TextBlock Grid.Row="3"
+                                       Style="{StaticResource LayoutFieldLabel}"
+                                       Text="{I18N {x:Static r:LangKeys.MarginTop}}" />
+                            <TextBox Grid.Row="3"
+                                     Grid.Column="1"
+                                     Style="{StaticResource LayoutNumberBox}"
+                                     Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                            <TextBlock Grid.Row="4"
+                                       Style="{StaticResource LayoutFieldLabel}"
+                                       Text="{I18N {x:Static r:LangKeys.MarginRight}}" />
+                            <TextBox Grid.Row="4"
+                                     Grid.Column="1"
+                                     Style="{StaticResource LayoutNumberBox}"
+                                     Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                            <TextBlock Grid.Row="5"
+                                       Style="{StaticResource LayoutFieldLabel}"
+                                       Text="{I18N {x:Static r:LangKeys.MarginBottom}}" />
+                            <TextBox Grid.Row="5"
+                                     Grid.Column="1"
+                                     Style="{StaticResource LayoutNumberBox}"
+                                     Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                            <TextBlock Grid.Row="6"
+                                       Style="{StaticResource LayoutFieldLabel}"
+                                       Text="{I18N {x:Static r:LangKeys.PaperColor}}" />
                             <mah:ColorPicker Grid.Row="6"
                                              Grid.Column="1"
                                              Height="30"
-                                             SelectedColor="{Binding PaperColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
+                                             SelectedColor="{Binding PaperColor, Mode=TwoWay, Delay=150, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}"
                                              AddToRecentColorsTrigger="SelectedColorChanged" />
                             <Button Grid.Row="7"
                                     Grid.ColumnSpan="2"
@@ -130,25 +172,40 @@
                                     HorizontalAlignment="Left"
                                     Command="{Binding SwapPaperOrientationCommand}">
                                 <StackPanel Orientation="Horizontal">
-                                    <md:PackIcon Kind="PhoneRotateLandscape" Width="18" Height="18" Margin="0,0,6,0" />
+                                    <md:PackIcon Kind="PhoneRotateLandscape"
+                                                 Width="18"
+                                                 Height="18"
+                                                 Margin="0,0,6,0" />
                                     <TextBlock Text="{I18N {x:Static r:LangKeys.SwapOrientation}}" />
                                 </StackPanel>
                             </Button>
                         </Grid>
-                    </Expander>
+                    </GroupBox>
 
-                    <Expander Header="{I18N {x:Static r:LangKeys.Viewport}}"
-                              IsExpanded="True">
+                    <GroupBox Header="{I18N {x:Static r:LangKeys.Viewport}}">
                         <StackPanel Margin="10,8,4,10">
                             <DockPanel Margin="0,0,0,8">
-                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Width="30" Height="30" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
-                                            Command="{Binding AddViewportCommand}" ToolTip="{I18N {x:Static r:LangKeys.AddViewport}}">
-                                        <md:PackIcon Kind="Plus" Width="18" Height="18" />
+                                <StackPanel DockPanel.Dock="Right"
+                                            Orientation="Horizontal">
+                                    <Button Width="30"
+                                            Height="30"
+                                            Padding="0"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Command="{Binding AddViewportCommand}"
+                                            ToolTip="{I18N {x:Static r:LangKeys.AddViewport}}">
+                                        <md:PackIcon Kind="Plus"
+                                                     Width="18"
+                                                     Height="18" />
                                     </Button>
-                                    <Button Width="30" Height="30" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
-                                            Command="{Binding RemoveViewportCommand}" ToolTip="{I18N {x:Static r:LangKeys.DeleteViewport}}">
-                                        <md:PackIcon Kind="DeleteOutline" Width="18" Height="18" />
+                                    <Button Width="30"
+                                            Height="30"
+                                            Padding="0"
+                                            Style="{StaticResource MaterialDesignFlatButton}"
+                                            Command="{Binding RemoveViewportCommand}"
+                                            ToolTip="{I18N {x:Static r:LangKeys.DeleteViewport}}">
+                                        <md:PackIcon Kind="DeleteOutline"
+                                                     Width="18"
+                                                     Height="18" />
                                     </Button>
                                 </StackPanel>
                                 <ComboBox ItemsSource="{Binding Viewports}"
@@ -163,43 +220,91 @@
                                     <ColumnDefinition Width="92" />
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Left}}" />
-                                <TextBox Grid.Row="0" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportLeft, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="1" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Bottom}}" />
-                                <TextBox Grid.Row="1" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportBottom, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="2" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Width}}" />
-                                <TextBox Grid.Row="2" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportWidth, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="3" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.Height}}" />
-                                <TextBox Grid.Row="3" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportHeight, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="4" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.ModelCenterX}}" />
-                                <TextBox Grid.Row="4" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ModelCenterX, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="5" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.ModelCenterY}}" />
-                                <TextBox Grid.Row="5" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ModelCenterY, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="6" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.ViewportScale}}" />
-                                <TextBox Grid.Row="6" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportScale, UpdateSourceTrigger=PropertyChanged}" />
-                                <TextBlock Grid.Row="7" Style="{StaticResource LayoutFieldLabel}" Text="{I18N {x:Static r:LangKeys.RotationDegrees}}" />
-                                <TextBox Grid.Row="7" Grid.Column="1" Style="{StaticResource LayoutNumberBox}" Text="{Binding ViewportRotationDegrees, UpdateSourceTrigger=PropertyChanged}" />
-                                <CheckBox Grid.Row="8" Grid.ColumnSpan="2" Margin="0,6,0,2" Content="{I18N {x:Static r:LangKeys.Visible}}" IsChecked="{Binding IsViewportVisible}" />
-                                <CheckBox Grid.Row="9" Grid.ColumnSpan="2" Margin="0,2" Content="{I18N {x:Static r:LangKeys.Locked}}" IsChecked="{Binding IsViewportLocked}" />
+                                <TextBlock Grid.Row="0"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.Left}}" />
+                                <TextBox Grid.Row="0"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ViewportLeft, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <TextBlock Grid.Row="1"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.Bottom}}" />
+                                <TextBox Grid.Row="1"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ViewportBottom, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <TextBlock Grid.Row="2"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.Width}}" />
+                                <TextBox Grid.Row="2"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ViewportWidth, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <TextBlock Grid.Row="3"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.Height}}" />
+                                <TextBox Grid.Row="3"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ViewportHeight, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <TextBlock Grid.Row="4"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.ModelCenterX}}" />
+                                <TextBox Grid.Row="4"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ModelCenterX, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <TextBlock Grid.Row="5"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.ModelCenterY}}" />
+                                <TextBox Grid.Row="5"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ModelCenterY, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <TextBlock Grid.Row="6"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.ViewportScale}}" />
+                                <TextBox Grid.Row="6"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ViewportScale, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <TextBlock Grid.Row="7"
+                                           Style="{StaticResource LayoutFieldLabel}"
+                                           Text="{I18N {x:Static r:LangKeys.RotationDegrees}}" />
+                                <TextBox Grid.Row="7"
+                                         Grid.Column="1"
+                                         Style="{StaticResource LayoutNumberBox}"
+                                         Text="{Binding ViewportRotationDegrees, UpdateSourceTrigger=PropertyChanged, Delay=300}" />
+                                <CheckBox Grid.Row="8"
+                                          Grid.ColumnSpan="2"
+                                          Margin="0,6,0,2"
+                                          Content="{I18N {x:Static r:LangKeys.Visible}}"
+                                          IsChecked="{Binding IsViewportVisible}" />
+                                <CheckBox Grid.Row="9"
+                                          Grid.ColumnSpan="2"
+                                          Margin="0,2"
+                                          Content="{I18N {x:Static r:LangKeys.Locked}}"
+                                          IsChecked="{Binding IsViewportLocked}" />
                             </Grid>
                         </StackPanel>
-                    </Expander>
+                    </GroupBox>
 
                     <TextBlock Margin="0,4,0,0"
                                Foreground="{DynamicResource MaterialDesign.Brush.Error}"
                                Text="{Binding ValidationError}"
                                TextWrapping="Wrap" />
-                    <Button Margin="0,10,0,0"
-                            MinWidth="88"
-                            HorizontalAlignment="Right"
-                            Command="{Binding ApplyLayoutSettingsCommand}"
-                            Content="{I18N {x:Static r:LangKeys.Apply}}" />
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -208,8 +313,11 @@
                 Background="{DynamicResource MaterialDesign.Brush.Background}"
                 BorderBrush="{DynamicResource MaterialDesign.Brush.Foreground.Hint}"
                 BorderThickness="0,1,0,0">
-            <DockPanel DataContext="{Binding LayoutWorkspace}" LastChildFill="True">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="4,0,6,0">
+            <DockPanel DataContext="{Binding LayoutWorkspace}"
+                       LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right"
+                            Orientation="Horizontal"
+                            Margin="4,0,6,0">
                     <Button Width="32"
                             Height="32"
                             Padding="0"
@@ -217,7 +325,9 @@
                             Command="{Binding DataContext.CadDocumentViewModel.BeginLayoutViewportCreationCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
                             Visibility="{Binding HasActiveLayout, Converter={StaticResource BooleanToVisibilityConverter}}"
                             ToolTip="{I18N {x:Static r:LangKeys.CreateViewportMode}}">
-                        <md:PackIcon Kind="ViewDashboardOutline" Width="18" Height="18" />
+                        <md:PackIcon Kind="ViewDashboardOutline"
+                                     Width="18"
+                                     Height="18" />
                     </Button>
                     <StackPanel Margin="2,0,6,0"
                                 Orientation="Horizontal"
@@ -243,17 +353,35 @@
                                      Style="{StaticResource MaterialDesignTabRadioButtonTop}"
                                      ToolTip="{I18N {x:Static r:LangKeys.Model}}" />
                     </StackPanel>
-                    <Button Width="32" Height="32" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
-                            Command="{Binding AddLayoutCommand}" ToolTip="{I18N {x:Static r:LangKeys.AddLayout}}">
-                        <md:PackIcon Kind="Plus" Width="18" Height="18" />
+                    <Button Width="32"
+                            Height="32"
+                            Padding="0"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding AddLayoutCommand}"
+                            ToolTip="{I18N {x:Static r:LangKeys.AddLayout}}">
+                        <md:PackIcon Kind="Plus"
+                                     Width="18"
+                                     Height="18" />
                     </Button>
-                    <Button Width="32" Height="32" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
-                            Command="{Binding DeleteLayoutCommand}" ToolTip="{I18N {x:Static r:LangKeys.DeleteLayout}}">
-                        <md:PackIcon Kind="DeleteOutline" Width="18" Height="18" />
+                    <Button Width="32"
+                            Height="32"
+                            Padding="0"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding DeleteLayoutCommand}"
+                            ToolTip="{I18N {x:Static r:LangKeys.DeleteLayout}}">
+                        <md:PackIcon Kind="DeleteOutline"
+                                     Width="18"
+                                     Height="18" />
                     </Button>
-                    <Button Width="32" Height="32" Padding="0" Style="{StaticResource MaterialDesignFlatButton}"
-                            Command="{Binding ToggleSettingsCommand}" ToolTip="{I18N {x:Static r:LangKeys.LayoutSettings}}">
-                        <md:PackIcon Kind="CogOutline" Width="18" Height="18" />
+                    <Button Width="32"
+                            Height="32"
+                            Padding="0"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Command="{Binding ToggleSettingsCommand}"
+                            ToolTip="{I18N {x:Static r:LangKeys.LayoutSettings}}">
+                        <md:PackIcon Kind="CogOutline"
+                                     Width="18"
+                                     Height="18" />
                     </Button>
                 </StackPanel>
 
@@ -269,19 +397,30 @@
                         </ItemsPanelTemplate>
                     </ListBox.ItemsPanel>
                     <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem" >
-                            <Setter Property="Padding" Value="12,0" />
-                            <Setter Property="MinWidth" Value="70" />
-                            <Setter Property="Height" Value="35" />
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                            <Setter Property="VerticalContentAlignment" Value="Center" />
-                            <Setter Property="BorderThickness" Value="0,2,0,0" />
-                            <Setter Property="BorderBrush" Value="Transparent" />
-                            <Setter Property="Background" Value="Transparent" />
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding"
+                                    Value="12,0" />
+                            <Setter Property="MinWidth"
+                                    Value="70" />
+                            <Setter Property="Height"
+                                    Value="35" />
+                            <Setter Property="HorizontalContentAlignment"
+                                    Value="Stretch" />
+                            <Setter Property="VerticalContentAlignment"
+                                    Value="Center" />
+                            <Setter Property="BorderThickness"
+                                    Value="0,2,0,0" />
+                            <Setter Property="BorderBrush"
+                                    Value="Transparent" />
+                            <Setter Property="Background"
+                                    Value="Transparent" />
                             <Style.Triggers>
-                                <Trigger Property="IsSelected" Value="True">
-                                    <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
-                                    <Setter Property="Background" Value="{DynamicResource MaterialDesign.Brush.Primary.Light}" />
+                                <Trigger Property="IsSelected"
+                                         Value="True">
+                                    <Setter Property="BorderBrush"
+                                            Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                    <Setter Property="Background"
+                                            Value="{DynamicResource MaterialDesign.Brush.Primary.Light}" />
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
@@ -300,9 +439,14 @@
                                                       EmptyTextErrorMessage="{I18N {x:Static r:LangKeys.LayoutNameCannotBeEmpty}}" />
                             </Grid>
                             <DataTemplate.Triggers>
-                                <DataTrigger Binding="{Binding IsModelSpace}" Value="True">
-                                    <Setter TargetName="ModelLabel" Property="Visibility" Value="Visible" />
-                                    <Setter TargetName="LayoutName" Property="Visibility" Value="Collapsed" />
+                                <DataTrigger Binding="{Binding IsModelSpace}"
+                                             Value="True">
+                                    <Setter TargetName="ModelLabel"
+                                            Property="Visibility"
+                                            Value="Visible" />
+                                    <Setter TargetName="LayoutName"
+                                            Property="Visibility"
+                                            Value="Collapsed" />
                                 </DataTrigger>
                             </DataTemplate.Triggers>
                         </DataTemplate>

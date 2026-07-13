@@ -168,18 +168,28 @@ public sealed class CadDocumentCommandManager
     {
         var entityChanges = new List<CadEntityChange>();
         var structureChanged = false;
+        var layoutsChanged = false;
+        var layoutStructureChanged = false;
         var viewSettingsChanged = false;
 
         foreach (var result in results)
         {
             entityChanges.AddRange(result.EntityChanges);
             structureChanged |= result.AffectsDocumentStructure;
+            layoutsChanged |= result.AffectsLayouts;
+            layoutStructureChanged |= result.AffectsLayoutStructure;
             viewSettingsChanged |= result.AffectsViewSettings;
         }
 
         var combined = new CadDocumentChangeSet(entityChanges);
         if (structureChanged)
             combined = combined.WithDocumentStructureChanged();
+
+        if (layoutsChanged)
+            combined = combined.WithLayoutsChanged();
+
+        if (layoutStructureChanged)
+            combined = combined.WithLayoutStructureChanged();
 
         if (viewSettingsChanged)
             combined = combined.WithViewSettingsChanged();

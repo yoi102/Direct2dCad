@@ -6,9 +6,16 @@ public sealed class DirtySet
 {
     private readonly Dictionary<EntityId, CadEntityChangeKind> _entityChanges = [];
     private bool _documentStructureChanged;
+    private bool _layoutsChanged;
+    private bool _layoutStructureChanged;
     private bool _viewSettingsChanged;
 
-    public bool HasChanges => _entityChanges.Count > 0 || _documentStructureChanged || _viewSettingsChanged;
+    public bool HasChanges =>
+        _entityChanges.Count > 0 ||
+        _documentStructureChanged ||
+        _layoutsChanged ||
+        _layoutStructureChanged ||
+        _viewSettingsChanged;
 
     public IReadOnlyCollection<EntityId> EntityIds => _entityChanges.Keys.ToArray();
 
@@ -17,6 +24,8 @@ public sealed class DirtySet
         ArgumentNullException.ThrowIfNull(result);
 
         _documentStructureChanged |= result.AffectsDocumentStructure;
+        _layoutsChanged |= result.AffectsLayouts;
+        _layoutStructureChanged |= result.AffectsLayoutStructure;
         _viewSettingsChanged |= result.AffectsViewSettings;
 
         foreach (var change in result.EntityChanges)
@@ -40,6 +49,12 @@ public sealed class DirtySet
         if (_documentStructureChanged)
             result = result.WithDocumentStructureChanged();
 
+        if (_layoutsChanged)
+            result = result.WithLayoutsChanged();
+
+        if (_layoutStructureChanged)
+            result = result.WithLayoutStructureChanged();
+
         if (_viewSettingsChanged)
             result = result.WithViewSettingsChanged();
 
@@ -57,6 +72,8 @@ public sealed class DirtySet
     {
         _entityChanges.Clear();
         _documentStructureChanged = false;
+        _layoutsChanged = false;
+        _layoutStructureChanged = false;
         _viewSettingsChanged = false;
     }
 }

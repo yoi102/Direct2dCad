@@ -56,6 +56,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly CadSelectionCycleController _selectionCycle = new();
     private readonly CadDrawingSessionState _drawingState = new();
     private readonly CadLayoutViewportCreationState _layoutViewportCreation = new();
+    private readonly Dictionary<LayoutId, LayoutViewportId> _preferredLayoutViewports = [];
     private readonly HashSet<Type> _disabledSelectionEntityTypes = [];
     private LayerId _drawingLayerId = LayerId.Default;
     private LayerId _pasteTargetLayerId = LayerId.Default;
@@ -104,8 +105,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 return;
             }
 
-            var viewport = CadEditor.Document.GetLayout(ActiveLayoutId.Value).Viewports
-                .FirstOrDefault(item => item.IsVisible);
+            var layout = CadEditor.Document.GetLayout(ActiveLayoutId.Value);
+            var viewport = ResolvePreferredLayoutViewport(layout);
             if (viewport is not null)
                 ActivateLayoutViewport(viewport.Id);
         }
@@ -201,6 +202,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.CommandActivity += OnCommandActivity;
         _viewportInitialization.ResetInitialView();
         _spaceViewportState.Reset();
+        _preferredLayoutViewports.Clear();
         ActiveLayoutViewportId = null;
         ActiveLayoutId = null;
         CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
@@ -684,6 +686,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (!viewport.IsVisible)
             throw new InvalidOperationException("A hidden layout viewport cannot be activated.");
 
+        _preferredLayoutViewports[layoutId] = viewport.Id;
         ActiveLayoutViewportId = viewport.Id;
         CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
         CadEditor.Selection.Clear();
@@ -709,6 +712,34 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestRender();
         RaiseInteractionStateChanged();
         PublishInteractionActivity("Return to paper space");
+    }
+
+    public void SetPreferredLayoutViewport(LayoutViewportId viewportId)
+    {
+        if (ActiveLayoutId is not { } layoutId)
+            return;
+
+        var layout = CadEditor.Document.GetLayout(layoutId);
+        if (layout.Viewports.Any(item => item.Id == viewportId))
+            _preferredLayoutViewports[layoutId] = viewportId;
+    }
+
+    public LayoutViewportId? GetPreferredLayoutViewportId(LayoutId layoutId)
+    {
+        var layout = CadEditor.Document.GetLayout(layoutId);
+        return ResolvePreferredLayoutViewport(layout)?.Id;
+    }
+
+    private CadLayoutViewport? ResolvePreferredLayoutViewport(CadLayout layout)
+    {
+        if (_preferredLayoutViewports.TryGetValue(layout.Id, out var preferredId))
+        {
+            var preferred = layout.Viewports.FirstOrDefault(item => item.Id == preferredId && item.IsVisible);
+            if (preferred is not null)
+                return preferred;
+        }
+
+        return layout.Viewports.FirstOrDefault(item => item.IsVisible);
     }
 
     [RelayCommand]

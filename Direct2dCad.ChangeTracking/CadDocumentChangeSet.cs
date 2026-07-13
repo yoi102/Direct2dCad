@@ -30,8 +30,15 @@ public sealed class CadDocumentChangeSet
 
     public IReadOnlyList<CadEntityChange> EntityChanges { get; }
     public bool AffectsDocumentStructure { get; init; }
+    public bool AffectsLayouts { get; init; }
+    public bool AffectsLayoutStructure { get; init; }
     public bool AffectsViewSettings { get; init; }
-    public bool DocumentChanged => EntityChanges.Count > 0 || AffectsDocumentStructure || AffectsViewSettings;
+    public bool DocumentChanged =>
+        EntityChanges.Count > 0 ||
+        AffectsDocumentStructure ||
+        AffectsLayouts ||
+        AffectsLayoutStructure ||
+        AffectsViewSettings;
 
     public static CadDocumentChangeSet Empty => EmptyResult;
 
@@ -55,6 +62,30 @@ public sealed class CadDocumentChangeSet
         return new CadDocumentChangeSet(EntityChanges)
         {
             AffectsDocumentStructure = true,
+            AffectsLayouts = AffectsLayouts,
+            AffectsLayoutStructure = AffectsLayoutStructure,
+            AffectsViewSettings = AffectsViewSettings
+        };
+    }
+
+    public CadDocumentChangeSet WithLayoutsChanged()
+    {
+        return new CadDocumentChangeSet(EntityChanges)
+        {
+            AffectsDocumentStructure = AffectsDocumentStructure,
+            AffectsLayouts = true,
+            AffectsLayoutStructure = AffectsLayoutStructure,
+            AffectsViewSettings = AffectsViewSettings
+        };
+    }
+
+    public CadDocumentChangeSet WithLayoutStructureChanged()
+    {
+        return new CadDocumentChangeSet(EntityChanges)
+        {
+            AffectsDocumentStructure = AffectsDocumentStructure,
+            AffectsLayouts = true,
+            AffectsLayoutStructure = true,
             AffectsViewSettings = AffectsViewSettings
         };
     }
@@ -64,6 +95,8 @@ public sealed class CadDocumentChangeSet
         return new CadDocumentChangeSet(EntityChanges)
         {
             AffectsDocumentStructure = AffectsDocumentStructure,
+            AffectsLayouts = AffectsLayouts,
+            AffectsLayoutStructure = AffectsLayoutStructure,
             AffectsViewSettings = true
         };
     }

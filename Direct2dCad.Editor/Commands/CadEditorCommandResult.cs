@@ -45,6 +45,8 @@ public sealed class CadEditorCommandResult
 
         var entityChanges = new List<CadEntityChange>();
         var structureChanged = false;
+        var layoutsChanged = false;
+        var layoutStructureChanged = false;
         var viewSettingsChanged = false;
         var selectionChanged = false;
         var viewChanged = false;
@@ -53,6 +55,8 @@ public sealed class CadEditorCommandResult
         {
             entityChanges.AddRange(result.DocumentChanges.EntityChanges);
             structureChanged |= result.DocumentChanges.AffectsDocumentStructure;
+            layoutsChanged |= result.DocumentChanges.AffectsLayouts;
+            layoutStructureChanged |= result.DocumentChanges.AffectsLayoutStructure;
             viewSettingsChanged |= result.DocumentChanges.AffectsViewSettings;
             selectionChanged |= result.SelectionChanged;
             viewChanged |= result.ViewChanged;
@@ -61,6 +65,10 @@ public sealed class CadEditorCommandResult
         var documentChanges = new CadDocumentChangeSet(entityChanges);
         if (structureChanged)
             documentChanges = documentChanges.WithDocumentStructureChanged();
+        if (layoutsChanged)
+            documentChanges = documentChanges.WithLayoutsChanged();
+        if (layoutStructureChanged)
+            documentChanges = documentChanges.WithLayoutStructureChanged();
         if (viewSettingsChanged)
             documentChanges = documentChanges.WithViewSettingsChanged();
 

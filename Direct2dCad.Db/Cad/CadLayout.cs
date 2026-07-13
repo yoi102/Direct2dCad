@@ -41,14 +41,24 @@ public sealed class CadLayout
         double marginRight,
         double marginBottom)
     {
-        PaperWidth = GuardPositive(width, nameof(width));
-        PaperHeight = GuardPositive(height, nameof(height));
-        MarginLeft = GuardNonNegative(marginLeft, nameof(marginLeft));
-        MarginTop = GuardNonNegative(marginTop, nameof(marginTop));
-        MarginRight = GuardNonNegative(marginRight, nameof(marginRight));
-        MarginBottom = GuardNonNegative(marginBottom, nameof(marginBottom));
-        if (MarginLeft + MarginRight >= PaperWidth || MarginTop + MarginBottom >= PaperHeight)
+        var validatedWidth = GuardPositive(width, nameof(width));
+        var validatedHeight = GuardPositive(height, nameof(height));
+        var validatedMarginLeft = GuardNonNegative(marginLeft, nameof(marginLeft));
+        var validatedMarginTop = GuardNonNegative(marginTop, nameof(marginTop));
+        var validatedMarginRight = GuardNonNegative(marginRight, nameof(marginRight));
+        var validatedMarginBottom = GuardNonNegative(marginBottom, nameof(marginBottom));
+        if (validatedMarginLeft + validatedMarginRight >= validatedWidth ||
+            validatedMarginTop + validatedMarginBottom >= validatedHeight)
+        {
             throw new ArgumentException("Paper margins must leave a positive printable area.");
+        }
+
+        PaperWidth = validatedWidth;
+        PaperHeight = validatedHeight;
+        MarginLeft = validatedMarginLeft;
+        MarginTop = validatedMarginTop;
+        MarginRight = validatedMarginRight;
+        MarginBottom = validatedMarginBottom;
     }
 
     public void SetPaperColor(CadColor color) => PaperColor = color;
@@ -114,10 +124,22 @@ public sealed class CadLayoutViewport
 
     public void SetView(CadRectD bounds, CadPointD modelCenter, double scale, double rotationRadians)
     {
-        if (bounds.IsEmpty)
-            throw new ArgumentException("Layout viewport bounds cannot be empty.", nameof(bounds));
+        if (bounds.IsEmpty ||
+            bounds.Width <= 0 ||
+            bounds.Height <= 0 ||
+            !double.IsFinite(bounds.MinX) ||
+            !double.IsFinite(bounds.MinY) ||
+            !double.IsFinite(bounds.MaxX) ||
+            !double.IsFinite(bounds.MaxY))
+        {
+            throw new ArgumentException("Layout viewport bounds must have a finite positive size.", nameof(bounds));
+        }
+        if (!double.IsFinite(modelCenter.X) || !double.IsFinite(modelCenter.Y))
+            throw new ArgumentOutOfRangeException(nameof(modelCenter));
         if (scale <= 0 || !double.IsFinite(scale))
             throw new ArgumentOutOfRangeException(nameof(scale));
+        if (!double.IsFinite(rotationRadians))
+            throw new ArgumentOutOfRangeException(nameof(rotationRadians));
         Bounds = bounds;
         ModelCenter = modelCenter;
         Scale = scale;

@@ -698,8 +698,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private void OnEditorDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
-        if (e.AffectsDocumentStructure)
-            LayoutWorkspace.RefreshDocumentStructure();
+        if (e.AffectsDocumentStructure || e.AffectsLayoutStructure)
+            LayoutWorkspace.HandleDocumentStructureChanged();
+        else if (e.AffectsLayouts)
+            LayoutWorkspace.HandleLayoutSettingsChanged();
         RefreshModifiedState();
     }
 
