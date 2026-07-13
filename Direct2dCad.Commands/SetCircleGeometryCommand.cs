@@ -24,6 +24,7 @@ public sealed class SetCircleGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var circle = GetCircle(document);
         _previousCenter = circle.Center;
         _previousRadius = circle.Radius;

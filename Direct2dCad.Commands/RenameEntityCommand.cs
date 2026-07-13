@@ -20,6 +20,7 @@ public sealed class RenameEntityCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
 
         var entity = document.GetEntity(_entityId);
         _previousName ??= entity.Name;

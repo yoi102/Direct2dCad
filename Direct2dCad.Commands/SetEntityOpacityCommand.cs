@@ -26,6 +26,7 @@ public sealed class SetEntityOpacityCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousOpacities.Clear();
 
         var entities = new CadEntity[_entityIds.Length];

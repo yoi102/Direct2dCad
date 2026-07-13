@@ -34,6 +34,7 @@ public sealed class SetPolylineGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var polyline = GetPolyline(document);
         _previousPoints = polyline.Points.ToArray();
         _previousClosed = polyline.Closed;

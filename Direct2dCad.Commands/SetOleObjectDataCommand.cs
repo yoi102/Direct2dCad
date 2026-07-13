@@ -26,6 +26,7 @@ public sealed class SetOleObjectDataCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var oleObject = GetOleObject(document);
         _previous = OleObjectData.From(oleObject);
         _next.ApplyTo(oleObject);

@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views.Toolboxes"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:vm_ep="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
@@ -14,7 +15,7 @@
              d:DesignWidth="800">
     <Grid>
 
-        <Grid.Resources>
+        <Grid.Resources>           
             <DataTemplate DataType="{x:Type vm_ep:ArcPropertyViewModel}">
                 <v_ep:ArcPropertyView />
             </DataTemplate>

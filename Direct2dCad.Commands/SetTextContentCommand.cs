@@ -20,6 +20,7 @@ public sealed class SetTextContentCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var text = GetText(document);
         _previousText = text.Text;
         text.SetText(_text);

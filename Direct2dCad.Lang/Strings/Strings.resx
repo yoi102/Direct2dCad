@@ -536,6 +536,14 @@
     <value>Frozen</value>
     <comment>Frozen</comment>
   </data>
+  <data name="LayerLockedMessageFormat" xml:space="preserve">
+    <value>Layer "{0}" is locked.</value>
+    <comment>Shown when an entity cannot be created on a locked layer.</comment>
+  </data>
+  <data name="LayerFrozenMessageFormat" xml:space="preserve">
+    <value>Layer "{0}" is frozen.</value>
+    <comment>Shown when an entity cannot be created on a frozen layer.</comment>
+  </data>
   <data name="TogglePrimarySideBar" xml:space="preserve">
     <value>Toggle primary side bar</value>
     <comment>Toggle primary side bar</comment>

@@ -21,6 +21,7 @@ public sealed class SetImageBoundsCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var image = GetImage(document);
         _previousBounds = image.FrameBounds;
         image.SetBounds(_bounds);

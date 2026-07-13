@@ -11,6 +11,7 @@ using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
@@ -50,6 +51,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly IImageImportService _imageImportService;
     private readonly IClipboardTextService _clipboardTextService;
     private readonly IOleHostService _oleHostService;
+    private readonly ISnackbarService _snackbarService;
     private readonly CadSelectionDragController _selectionDrag = new();
     private readonly CadSelectionCycleController _selectionCycle = new();
     private readonly CadDrawingSessionState _drawingState = new();
@@ -162,7 +164,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         ICadClipboardStore clipboardStore,
         IImageImportService imageImportService,
         IClipboardTextService clipboardTextService,
-        IOleHostService oleHostService)
+        IOleHostService oleHostService,
+        ISnackbarService snackbarService)
     {
         _interactionStateChangedPublisher = interactionStateChangedPublisher;
         _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
@@ -172,6 +175,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
         _clipboardTextService = clipboardTextService ?? throw new ArgumentNullException(nameof(clipboardTextService));
         _oleHostService = oleHostService ?? throw new ArgumentNullException(nameof(oleHostService));
+        _snackbarService = snackbarService ?? throw new ArgumentNullException(nameof(snackbarService));
         _oleObjectUpdatedSubscription = (oleObjectUpdatedSubscriber ?? throw new ArgumentNullException(nameof(oleObjectUpdatedSubscriber)))
             .Subscribe(OnOleObjectUpdated);
         Direct2DImageRenderHost.SetOleDrawCallback(DrawOleObjectForRender);
@@ -318,6 +322,23 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadLayer ResolveDrawingLayer()
     {
         return CadEditor.Document.GetLayer(ResolveDrawingLayerId());
+    }
+
+    private bool EnsureLayerAcceptsEntities(LayerId layerId)
+    {
+        if (CadEntityAccessPolicy.CanAddToLayer(CadEditor.Document, layerId))
+            return true;
+
+        var layer = CadEditor.Document.GetLayer(layerId);
+        var resourceKey = layer.IsFrozen
+            ? "LayerFrozenMessageFormat"
+            : "LayerLockedMessageFormat";
+        var fallback = layer.IsFrozen
+            ? "Layer \"{0}\" is frozen."
+            : "Layer \"{0}\" is locked.";
+        var format = Strings.ResourceManager.GetString(resourceKey) ?? fallback;
+        _snackbarService.Enqueue(string.Format(format, layer.Name));
+        return false;
     }
 
     private void OnDrawingDefaultsChanged(object? sender, EventArgs e)
@@ -878,6 +899,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private bool CanSelectEntity(CadEntity entity)
     {
         return entity.OwnerBlockId.Equals(CadEditor.ActiveOwnerBlockId) &&
+               CadEntityAccessPolicy.IsSelectable(CadEditor.Document, entity) &&
                !_disabledSelectionEntityTypes.Contains(entity.GetType());
     }
 
@@ -901,7 +923,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var entityIds = CadEditor.Selection.EntityIds
             .Where(entityId =>
                 CadEditor.Document.TryGetEntity(entityId, out var entity) &&
-                entity is { IsErased: false })
+                entity is not null &&
+                CadEntityAccessPolicy.IsEditable(CadEditor.Document, entity))
             .ToArray();
 
         if (entityIds.Length == 0)
@@ -991,8 +1014,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             .Select(entityId => CadEditor.Document.TryGetEntity(entityId, out var entity) ? entity : null)
             .OfType<CadOleObject>()
             .Where(entity =>
-                !entity.IsErased &&
-                entity.IsVisible &&
+                CadEntityAccessPolicy.IsEditable(CadEditor.Document, entity) &&
                 entity.OwnerBlockId.Equals(CadEditor.ActiveOwnerBlockId) &&
                 entity.Bounds.Contains(world))
             .OrderByDescending(entity => CadEditor.Document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
@@ -1024,7 +1046,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         if (_disposed || message.SessionId != _oleEditSessionId ||
             !CadEditor.Document.TryGetEntity(message.EntityId, out var entity) ||
-            entity is not CadOleObject oleObject)
+            entity is not CadOleObject oleObject ||
+            !CadEntityAccessPolicy.IsEditable(CadEditor.Document, oleObject))
         {
             return;
         }
@@ -1253,6 +1276,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private bool HandleDrawingWorldPoint(CadPointD world)
     {
+        if (!EnsureLayerAcceptsEntities(DrawingLayerId))
+            return false;
+
         if (!CreateDrawingClickHandler().HandleClick(world))
             return false;
 
@@ -1275,6 +1301,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void CommitPaste(CadPointD screen)
     {
+        if (!EnsureLayerAcceptsEntities(PasteTargetLayerId))
+            return;
+
         var target = ScreenToWorld(screen, snapToGrid: true);
         var createdIds = _paste.Commit(
             CreateClipboardInteractionService(),
@@ -1880,6 +1909,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
         EnsureActiveLayoutViewportStillExists();
+        if (e.AffectsDocumentStructure &&
+            !CadEntityAccessPolicy.CanAddToLayer(CadEditor.Document, DrawingLayerId))
+        {
+            _drawingState.Clear();
+        }
+        if (_gripDrag.ActiveDrag is { } drag &&
+            (!CadEditor.Document.TryGetEntity(drag.Handle.EntityId, out var draggedEntity) ||
+             draggedEntity is null ||
+             !CadEntityAccessPolicy.IsEditable(CadEditor.Document, draggedEntity)))
+        {
+            _gripDrag.Clear();
+        }
         CloseStaleOleEditSessions();
         CloseReplacedOleEditSessions(e);
         ReleaseChangedOleRenderSessions(e);
@@ -1891,7 +1932,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             PublishViewSettingsChanged();
 
         if (e.DocumentChanged)
+        {
+            if (PruneSelectionToFilter())
+                ClearInteractionState(clearClipboard: false, render: false);
             RaiseInteractionStateChanged();
+        }
     }
 
     private void EnsureActiveLayoutViewportStillExists()
@@ -1968,7 +2013,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         {
             if (CadEditor.Document.TryGetEntity(entityId, out var entity) &&
                 entity is CadOleObject &&
-                !entity.IsErased)
+                CadEntityAccessPolicy.IsEditable(CadEditor.Document, entity))
             {
                 continue;
             }

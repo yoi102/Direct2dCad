@@ -432,6 +432,12 @@
   <data name="Frozen" xml:space="preserve">
     <value>冻结</value>
   </data>
+  <data name="LayerLockedMessageFormat" xml:space="preserve">
+    <value>图层“{0}”已锁定。</value>
+  </data>
+  <data name="LayerFrozenMessageFormat" xml:space="preserve">
+    <value>图层“{0}”已冻结。</value>
+  </data>
   <data name="TogglePrimarySideBar" xml:space="preserve">
     <value>切换主侧栏</value>
   </data>

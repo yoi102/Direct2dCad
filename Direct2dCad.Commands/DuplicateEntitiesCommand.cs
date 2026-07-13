@@ -27,6 +27,12 @@ public sealed class DuplicateEntitiesCommand : ICadCommand
     {
         ArgumentNullException.ThrowIfNull(document);
 
+        foreach (var sourceEntityId in _sourceEntityIds)
+        {
+            if (document.TryGetEntity(sourceEntityId, out var source) && source is not null)
+                CadEntityAccessPolicy.EnsureCanAddToLayer(document, source.LayerId);
+        }
+
         if (_createdEntityIds.Count > 0)
         {
             var restoredIds = new List<EntityId>();

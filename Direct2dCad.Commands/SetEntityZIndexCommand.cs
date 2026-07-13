@@ -23,6 +23,7 @@ public sealed class SetEntityZIndexCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousZIndexes.Clear();
 
         foreach (var entityId in _entityIds)

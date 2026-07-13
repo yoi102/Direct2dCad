@@ -20,6 +20,7 @@ public sealed class SetShapeTextContentCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var text = GetShapeText(document);
         _previousText = text.Text;
         text.SetText(_text);

@@ -53,6 +53,7 @@ public sealed class AddPolylineCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadEntityAccessPolicy.EnsureCanAddToLayer(document, _layerId ?? LayerId.Default);
 
         if (_createdEntityId is not null &&
             document.TryGetEntity(_createdEntityId.Value, out var existing) &&

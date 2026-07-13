@@ -1,4 +1,5 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Handles;
 
@@ -29,8 +30,7 @@ internal static class CadGripDragEntityResolver
     {
         return editor.Document.TryGetEntity(entityId, out var entity) &&
                entity is not null &&
-               !entity.IsErased &&
-               !entity.IsLocked &&
+               CadEntityAccessPolicy.IsEditable(editor.Document, entity) &&
                CadHandleSceneBuilder.SupportsCenterGrip(entity);
     }
 }

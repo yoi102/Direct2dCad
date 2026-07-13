@@ -21,6 +21,7 @@ public sealed class SetOleObjectBoundsCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var oleObject = GetOleObject(document);
         _previousBounds = oleObject.Bounds;
         oleObject.SetBounds(_bounds);

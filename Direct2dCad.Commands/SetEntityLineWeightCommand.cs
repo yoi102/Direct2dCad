@@ -23,6 +23,7 @@ public sealed class SetEntityLineWeightCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousLineWeights.Clear();
 
         foreach (var entityId in _entityIds)

@@ -27,6 +27,7 @@ public sealed class SetEllipseGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var ellipse = GetEllipse(document);
         _previousCenter = ellipse.Center;
         _previousRadiusX = ellipse.RadiusX;

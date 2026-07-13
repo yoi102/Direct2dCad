@@ -22,6 +22,7 @@ public sealed class MoveEntitiesCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         Move(document, _delta);
         return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Geometry);
     }
@@ -39,9 +40,6 @@ public sealed class MoveEntitiesCommand : ICadCommand
         foreach (var entityId in _entityIds)
         {
             var entity = document.GetEntity(entityId);
-            if (entity.IsLocked)
-                throw new InvalidOperationException($"Entity is locked: {entityId}");
-
             CadEntityTransform.Translate(entity, delta);
         }
     }

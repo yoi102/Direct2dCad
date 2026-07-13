@@ -29,6 +29,7 @@ public sealed class SetTextInvertedMarginFactorCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousValues.Clear();
 
         var entities = _entityIds

@@ -20,6 +20,7 @@ public sealed class SetTextStyleCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var text = GetText(document);
         _previousTextStyleId = text.TextStyleId;
         document.SetTextEntityStyle(_entityId, _textStyleId);

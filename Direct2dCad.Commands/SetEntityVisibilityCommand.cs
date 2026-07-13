@@ -23,6 +23,7 @@ public sealed class SetEntityVisibilityCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousVisibility.Clear();
 
         foreach (var entityId in _entityIds)

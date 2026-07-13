@@ -24,6 +24,7 @@ public sealed class SetLineGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var line = GetLine(document);
         _previousStart = line.Start;
         _previousEnd = line.End;

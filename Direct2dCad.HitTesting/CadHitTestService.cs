@@ -43,7 +43,9 @@ public sealed class CadHitTestService
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (!_cadDocument.TryGetEntity(entityId, out var entity) || entity is null)
+        if (!_cadDocument.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            !CadEntityAccessPolicy.IsSelectable(_cadDocument, entity))
         {
             result = default;
             return false;
@@ -63,7 +65,9 @@ public sealed class CadHitTestService
         CadPointD point,
         out CadHitTestResult result)
     {
-        if (!_cadDocument.TryGetEntity(entityId, out var entity) || entity is null)
+        if (!_cadDocument.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            !CadEntityAccessPolicy.IsSelectable(_cadDocument, entity))
         {
             result = default;
             return false;
@@ -129,7 +133,7 @@ public sealed class CadHitTestService
 
         foreach (var entity in _cadDocument.Entities.Values)
         {
-            if (entity.IsErased || !entity.IsVisible)
+            if (!CadEntityAccessPolicy.IsSelectable(_cadDocument, entity))
                 continue;
 
             maxPadding = Math.Max(

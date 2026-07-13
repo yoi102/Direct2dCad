@@ -35,6 +35,7 @@ public sealed class SetArcGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var arc = GetArc(document);
         _previousCenter = arc.Center;
         _previousRadius = arc.Radius;

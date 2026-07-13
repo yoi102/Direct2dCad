@@ -1,4 +1,5 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
@@ -22,6 +23,13 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
     {
         if (!hitTester.TryHitGrip(handleScene, worldToScreen, screen, out var grip))
             return false;
+
+        if (!editor.Document.TryGetEntity(grip.EntityId, out var entity) ||
+            entity is null ||
+            !CadEntityAccessPolicy.IsEditable(editor.Document, entity))
+        {
+            return false;
+        }
 
         ActiveDrag = new GripDragState(
             grip,
@@ -53,7 +61,7 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
 
         if (!editor.Document.TryGetEntity(drag.Handle.EntityId, out var entity) ||
             entity is null ||
-            entity.IsErased)
+            !CadEntityAccessPolicy.IsEditable(editor.Document, entity))
         {
             return false;
         }

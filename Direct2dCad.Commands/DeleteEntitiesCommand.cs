@@ -20,14 +20,12 @@ public sealed class DeleteEntitiesCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousErasedStates.Clear();
 
         foreach (var entityId in _entityIds)
         {
             var entity = document.GetEntity(entityId);
-            if (entity.IsLocked)
-                throw new InvalidOperationException($"Entity is locked: {entityId}");
-
             _previousErasedStates[entityId] = entity.IsErased;
             entity.Erase();
         }

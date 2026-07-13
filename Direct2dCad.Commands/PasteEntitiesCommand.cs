@@ -34,6 +34,8 @@ public sealed class PasteEntitiesCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        if (_targetLayerId is { } targetLayerId)
+            CadEntityAccessPolicy.EnsureCanAddToLayer(document, targetLayerId);
 
         if (_createdEntityIds.Count > 0)
         {

@@ -432,6 +432,12 @@
   <data name="Frozen" xml:space="preserve">
     <value>凍結</value>
   </data>
+  <data name="LayerLockedMessageFormat" xml:space="preserve">
+    <value>レイヤー「{0}」はロックされています。</value>
+  </data>
+  <data name="LayerFrozenMessageFormat" xml:space="preserve">
+    <value>レイヤー「{0}」は凍結されています。</value>
+  </data>
   <data name="TogglePrimarySideBar" xml:space="preserve">
     <value>プライマリサイドバー切替</value>
   </data>

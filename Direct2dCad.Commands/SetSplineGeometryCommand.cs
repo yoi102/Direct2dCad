@@ -34,6 +34,7 @@ public sealed class SetSplineGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var spline = GetSpline(document);
         _previousFitPoints = spline.FitPoints.ToArray();
         _previousClosed = spline.Closed;

@@ -30,6 +30,7 @@ public sealed class SetShapeTextFontCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousShapeFontIds.Clear();
 
         var texts = _entityIds

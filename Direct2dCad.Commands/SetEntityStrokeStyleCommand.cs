@@ -24,6 +24,7 @@ public sealed class SetEntityStrokeStyleCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousStrokeStyles.Clear();
 
         foreach (var entityId in _entityIds)

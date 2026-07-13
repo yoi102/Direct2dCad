@@ -43,6 +43,7 @@ public sealed class SetShapeTextGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var text = GetShapeText(document);
         _previousPosition = text.Position;
         _previousHeight = text.Height;

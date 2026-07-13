@@ -25,6 +25,7 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousFillStyles.Clear();
         ValidateFillStyle(document);
 

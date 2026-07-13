@@ -23,6 +23,7 @@ public sealed class SetImageRotationCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var image = GetImage(document);
         _previousRotationRadians = image.RotationRadians;
         image.SetRotation(_rotationRadians);

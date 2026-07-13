@@ -25,6 +25,7 @@ public sealed class SetEntityColorCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousGraphicStyles.Clear();
 
         _newGraphicStyleId ??= document.CreateGraphicStyle(

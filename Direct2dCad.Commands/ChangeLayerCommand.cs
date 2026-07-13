@@ -23,6 +23,8 @@ public sealed class ChangeLayerCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
+        CadCommandEntityAccess.EnsureEditable(document, _entityIds);
+        CadEntityAccessPolicy.EnsureCanAddToLayer(document, _targetLayerId);
         _previousLayers.Clear();
 
         foreach (var entityId in _entityIds)

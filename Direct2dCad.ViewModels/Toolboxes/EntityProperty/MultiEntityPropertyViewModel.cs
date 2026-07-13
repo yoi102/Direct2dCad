@@ -32,6 +32,9 @@ public partial class MultiEntityPropertyViewModel : ObservableObject
     public string SelectionCountText => $"{GetLocalizedText("SelectedEntities", "Selected entities")}: {SelectedCount}";
 
     [ObservableProperty]
+    public partial bool IsEditable { get; private set; } = true;
+
+    [ObservableProperty]
     public partial bool IsSameType { get; private set; }
 
     [ObservableProperty]
@@ -135,6 +138,8 @@ public partial class MultiEntityPropertyViewModel : ObservableObject
         _isRefreshing = true;
         try
         {
+            IsEditable = entities.All(entity =>
+                CadEntityAccessPolicy.IsEditable(_documentViewModel.CadEditor.Document, entity));
             IsSameType = entities.Select(entity => entity.GetType()).Distinct().Count() == 1;
             EntityTypeName = IsSameType
                 ? GetEntityTypeDisplayName(entities[0].GetType())
@@ -302,6 +307,8 @@ public partial class MultiEntityPropertyViewModel : ObservableObject
     {
         var document = _documentViewModel.CadEditor.Document;
         LayerOptions = document.Layers.Values
+            .Where(layer => entities.All(entity => entity.LayerId.Equals(layer.Id)) ||
+                            CadEntityAccessPolicy.CanAddToLayer(document, layer.Id))
             .OrderBy(layer => document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id))
             .ThenBy(layer => layer.Id.Value)
             .Select(layer => new EntityLayerOption(layer.Id, layer.Name, layer.Color))

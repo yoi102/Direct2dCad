@@ -31,6 +31,7 @@ public sealed class SetTextGeometryCommand : ICadCommand
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var text = GetText(document);
         _previousPosition = text.Position;
         _previousHeight = text.Height;

@@ -23,6 +23,8 @@ public abstract class EntityPropertyViewModel : ObservableObject
     private StrokeLineJoinOption? _selectedLineJoinOption;
     private string _entityName = string.Empty;
 
+    public bool IsEditable { get; private set; } = true;
+
     public IReadOnlyList<EntityLayerOption> LayerOptions { get; private set; } = [];
     public IReadOnlyList<StrokeCapOption> StrokeCapOptions { get; } = Enum.GetValues<CadStrokeCap>()
         .Select(value => new StrokeCapOption(value, value.ToString()))
@@ -113,6 +115,8 @@ public abstract class EntityPropertyViewModel : ObservableObject
         _layerEntityId = entity.Id;
         _isDrawingLayerSelection = false;
         _isPasteLayerSelection = false;
+        IsEditable = CadEntityAccessPolicy.IsEditable(documentViewModel.CadEditor.Document, entity);
+        OnPropertyChanged(nameof(IsEditable));
         RefreshEntityName(entity);
         RefreshStrokeStyle(entity.StrokeStyle);
 
@@ -147,6 +151,8 @@ public abstract class EntityPropertyViewModel : ObservableObject
     {
         var document = documentViewModel.CadEditor.Document;
         LayerOptions = document.Layers.Values
+            .Where(layer => layer.Id.Equals(selectedLayerId) ||
+                            CadEntityAccessPolicy.CanAddToLayer(document, layer.Id))
             .OrderBy(layer => document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id))
             .ThenBy(layer => layer.Id.Value)
             .Select(layer => new EntityLayerOption(layer.Id, layer.Name, layer.Color))

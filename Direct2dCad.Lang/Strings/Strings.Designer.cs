@@ -1231,6 +1231,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Layer &quot;{0}&quot; is frozen. 的本地化字符串。
+        /// </summary>
+        public static string LayerFrozenMessageFormat {
+            get {
+                return ResourceManager.GetString("LayerFrozenMessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Layer &quot;{0}&quot; is locked. 的本地化字符串。
+        /// </summary>
+        public static string LayerLockedMessageFormat {
+            get {
+                return ResourceManager.GetString("LayerLockedMessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Layer name already exists. 的本地化字符串。
         /// </summary>
         public static string LayerNameAlreadyExists {
