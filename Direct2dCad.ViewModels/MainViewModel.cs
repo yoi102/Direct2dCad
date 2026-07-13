@@ -314,11 +314,27 @@ public partial class MainViewModel : ObservableObject
 
     public async Task<bool> ConfirmCloseApplicationAsync()
     {
-        foreach (var document in _dockLayoutService.Documents
-                     .OfType<EditorTabViewModel>()
-                     .ToArray())
+        var modifiedDocuments = _dockLayoutService.Documents
+            .OfType<EditorTabViewModel>()
+            .Where(document => document.IsModified)
+            .ToArray();
+        if (modifiedDocuments.Length == 0)
+            return true;
+
+        var result = await _dialogService.ShowUnsavedDocumentsDialogAsync(
+            modifiedDocuments
+                .Select(document => new UnsavedDocumentInfo(
+                    document.DocumentName,
+                    document.CurrentFilePath))
+                .ToArray());
+        if (result == UnsavedDocumentDialogResult.Cancel)
+            return false;
+        if (result == UnsavedDocumentDialogResult.Discard)
+            return true;
+
+        foreach (var document in modifiedDocuments)
         {
-            if (!await document.ConfirmCloseAsync())
+            if (!await document.SaveForCloseAsync())
                 return false;
         }
 

@@ -84,6 +84,22 @@ internal sealed class DialogService : IDialogService
             : UnsavedDocumentDialogResult.Cancel;
     }
 
+    public async Task<UnsavedDocumentDialogResult> ShowUnsavedDocumentsDialogAsync(
+        IReadOnlyList<UnsavedDocumentInfo> documents,
+        string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+        if (documents.Count == 0)
+            return UnsavedDocumentDialogResult.Discard;
+
+        var result = await ShowReplacingCurrentAsync(
+            () => new UnsavedDocumentsDialog(documents),
+            dialogIdentifier);
+        return result is UnsavedDocumentDialogResult dialogResult
+            ? dialogResult
+            : UnsavedDocumentDialogResult.Cancel;
+    }
+
     private static Task<object?> ShowMessageAsync(string header, string message, string dialogIdentifier, MessageDialogButton buttonType = MessageDialogButton.OK)
     {
         MessageDialog messageDialog = new(header, message, buttonType);

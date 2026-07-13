@@ -64,8 +64,6 @@ public partial class MainWindow
 
     private void OnWindowClosing(object? sender, CancelEventArgs e)
     {
-        e.Cancel = true; // 临时取消关闭
-
         if (_allowWindowClose)
             return;
 
@@ -111,7 +109,7 @@ public partial class MainWindow
         Process.Start(new ProcessStartInfo("https://github.com/yoi102/Direct2dCad") { UseShellExecute = true });
     }
 
-    private async void dockManager_DocumentClosing(object sender, DocumentClosingEventArgs e)
+    private async void dockManager_DocumentClosing(object? sender, DocumentClosingEventArgs e)
     {
         e.Cancel = true;
         if (e.Document.Content is not EditorTabViewModel editorTabViewModel)

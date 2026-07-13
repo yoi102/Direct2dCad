@@ -45,9 +45,6 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private readonly IDisposable _viewSettingsChangedSubscription;
     private readonly IDisposable _selectionFilterChangedSubscription;
     private readonly IPublisher<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedPublisher;
-    private Task<bool>? _closeConfirmationTask;
-    private bool _closeRequestPending;
-    private bool _allowCloseOnce;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
         IUserSettingsStore userSettingsStore,
@@ -86,41 +83,18 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     }
 
-    public override bool OnClose()
-    {
-        if (_allowCloseOnce)
-        {
-            _allowCloseOnce = false;
-            return base.OnClose();
-        }
-
-        if (!IsModified)
-            return base.OnClose();
-
-        if (!_closeRequestPending)
-        {
-            _closeRequestPending = true;
-            _ = CloseAfterConfirmationAsync();
-        }
-
-        return false;
-    }
-
     public async Task<bool> ConfirmCloseAsync()
     {
         if (!IsModified)
             return true;
 
-        var confirmationTask = _closeConfirmationTask ??= ConfirmCloseCoreAsync();
-        try
-        {
-            return await confirmationTask;
-        }
-        finally
-        {
-            if (ReferenceEquals(_closeConfirmationTask, confirmationTask))
-                _closeConfirmationTask = null;
-        }
+        return await ConfirmCloseCoreAsync();
+
+    }
+
+    internal Task<bool> SaveForCloseAsync()
+    {
+        return TrySaveFileAsync();
     }
 
     private async Task<bool> ConfirmCloseCoreAsync()
@@ -134,21 +108,6 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         };
     }
 
-    private async Task CloseAfterConfirmationAsync()
-    {
-        try
-        {
-            if (!await ConfirmCloseAsync())
-                return;
-
-            _allowCloseOnce = true;
-            _dockLayoutService.CloseDocument(this);
-        }
-        finally
-        {
-            _closeRequestPending = false;
-        }
-    }
     public CadDocumentViewModel CadDocumentViewModel { get; }
     public LayoutWorkspaceViewModel LayoutWorkspace { get; }
     public string LayoutSpaceGroupName { get; } = $"LayoutSpaceMode_{Guid.NewGuid():N}";

@@ -1960,6 +1960,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Save All 的本地化字符串。
+        /// </summary>
+        public static string SaveAll {
+            get {
+                return ResourceManager.GetString("SaveAll", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Save As... 的本地化字符串。
         /// </summary>
         public static string SaveAs {
@@ -2487,6 +2496,33 @@ namespace Direct2dCad.Lang.Strings {
         public static string UnsavedDocumentMessageFormat {
             get {
                 return ResourceManager.GetString("UnsavedDocumentMessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Not saved yet 的本地化字符串。
+        /// </summary>
+        public static string UnsavedDocumentNoPath {
+            get {
+                return ResourceManager.GetString("UnsavedDocumentNoPath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 The following documents have unsaved changes: 的本地化字符串。
+        /// </summary>
+        public static string UnsavedDocumentsMessage {
+            get {
+                return ResourceManager.GetString("UnsavedDocumentsMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Unsaved documents 的本地化字符串。
+        /// </summary>
+        public static string UnsavedDocumentsTitle {
+            get {
+                return ResourceManager.GetString("UnsavedDocumentsTitle", resourceCulture);
             }
         }
         

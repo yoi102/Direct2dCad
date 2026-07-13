@@ -14,6 +14,9 @@ public interface IDialogService
     Task<UnsavedDocumentDialogResult> ShowUnsavedDocumentDialogAsync(
         string documentName,
         string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
+    Task<UnsavedDocumentDialogResult> ShowUnsavedDocumentsDialogAsync(
+        IReadOnlyList<UnsavedDocumentInfo> documents,
+        string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
     void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel);
     void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel);
 }
@@ -24,3 +27,5 @@ public enum UnsavedDocumentDialogResult
     Discard,
     Cancel
 }
+
+public sealed record UnsavedDocumentInfo(string Name, string FilePath);

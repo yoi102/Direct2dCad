@@ -966,4 +966,16 @@
   <data name="CreateViewportMode" xml:space="preserve">
     <value>レイアウトビューポートを作成して調整</value>
   </data>
+  <data name="UnsavedDocumentsTitle" xml:space="preserve">
+    <value>未保存のドキュメント</value>
+  </data>
+  <data name="UnsavedDocumentsMessage" xml:space="preserve">
+    <value>次のドキュメントには未保存の変更があります：</value>
+  </data>
+  <data name="UnsavedDocumentNoPath" xml:space="preserve">
+    <value>まだ保存されていません</value>
+  </data>
+  <data name="SaveAll" xml:space="preserve">
+    <value>すべて保存</value>
+  </data>
 </root>

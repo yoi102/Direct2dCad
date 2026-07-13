@@ -966,4 +966,16 @@
   <data name="CreateViewportMode" xml:space="preserve">
     <value>创建并调整布局视口</value>
   </data>
+  <data name="UnsavedDocumentsTitle" xml:space="preserve">
+    <value>未保存的文档</value>
+  </data>
+  <data name="UnsavedDocumentsMessage" xml:space="preserve">
+    <value>以下文档包含未保存的更改：</value>
+  </data>
+  <data name="UnsavedDocumentNoPath" xml:space="preserve">
+    <value>尚未保存</value>
+  </data>
+  <data name="SaveAll" xml:space="preserve">
+    <value>全部保存</value>
+  </data>
 </root>
