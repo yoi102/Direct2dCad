@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=toolboxes:EntitySearchToolboxViewModel}"
              d:DesignHeight="450"
@@ -79,6 +80,12 @@
                  BorderThickness="0"
                  Style="{StaticResource MaterialDesignNavigationListBox}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <i:Interaction.Triggers>
+                <i:EventTrigger EventName="MouseDoubleClick">
+                    <i:InvokeCommandAction Command="{Binding PanToResultCommand}" />
+                </i:EventTrigger>
+            </i:Interaction.Triggers>
+
             <ListBox.ItemContainerStyle>
                 <Style TargetType="{x:Type ListBoxItem}"
                        BasedOn="{StaticResource MaterialDesignNavigationListBoxItem}">

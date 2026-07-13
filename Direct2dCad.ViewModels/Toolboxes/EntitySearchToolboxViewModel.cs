@@ -104,6 +104,16 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     }
 
     [RelayCommand]
+    private void PanToResult()
+    {
+        if (SelectedResult is null || _documentViewModel is null)
+            return;
+
+        if (_documentViewModel.PanToEntity(SelectedResult.EntityId))
+            _documentViewModel.SelectEntities([SelectedResult.EntityId]);
+    }
+
+    [RelayCommand]
     private void Refresh()
     {
         _isRefreshing = true;

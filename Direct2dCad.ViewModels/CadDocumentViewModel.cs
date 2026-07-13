@@ -862,6 +862,51 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestRender();
     }
 
+    public bool PanToEntity(EntityId entityId)
+    {
+        if (!CadEditor.Document.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            entity.IsErased ||
+            entity.Bounds.IsEmpty ||
+            !TryActivateEntityOwnerSpace(entity.OwnerBlockId))
+        {
+            return false;
+        }
+
+        var viewport = CadEditor.Viewport;
+        if (viewport.ViewWidth <= 1 || viewport.ViewHeight <= 1)
+            return false;
+
+        var entityScreenCenter = viewport.WorldToScreen(entity.Bounds.Center);
+        var viewportCenter = new CadPointD(viewport.ViewWidth * 0.5, viewport.ViewHeight * 0.5);
+        var screenDelta = viewportCenter - entityScreenCenter;
+        if (Math.Abs(screenDelta.X) > 0.5 || Math.Abs(screenDelta.Y) > 0.5)
+            CadEditor.Execute(new PanViewportCommand(screenDelta));
+
+        RefreshPointerWorldStatus();
+        RequestRender();
+        return true;
+    }
+
+    private bool TryActivateEntityOwnerSpace(BlockId ownerBlockId)
+    {
+        if (ownerBlockId.Equals(BlockId.ModelSpace))
+        {
+            if (ActiveLayoutId is not null)
+                ActivateModelSpace();
+            return true;
+        }
+
+        var layout = CadEditor.Document.Layouts.Values
+            .FirstOrDefault(item => item.PaperSpaceBlockId.Equals(ownerBlockId));
+        if (layout is null)
+            return ownerBlockId.Equals(CadEditor.ActiveOwnerBlockId);
+
+        if (!ActiveLayoutId.Equals(layout.Id) || ActiveLayoutViewportId is not null)
+            ActivateLayout(layout.Id);
+        return true;
+    }
+
     public CadCanvasInteractionResult SelectAllEntities()
     {
         var entityIds = GetSelectableEntityIds();
