@@ -19,6 +19,10 @@ Direct2dCad 是一个基于 WPF、Direct2D 和 DirectWrite 的桌面 CAD 编辑�
 https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
 
 
+https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed
+
+
+
 - [OLE 对象演示]
 
 https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
