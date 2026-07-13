@@ -13,14 +13,14 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="12">
             <TextBlock Text="{I18N {x:Static r:LangKeys.Spline}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
-            <ep:EntityHeaderPropertySection />
+            <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
             <CheckBox Content="{I18N {x:Static r:LangKeys.Closed}}"
                       IsChecked="{Binding IsClosed}"
                       Margin="0,2,0,8" />
 
-            <ep:EntitySettingsPropertySection />
-            <ep:FillPropertySection />
-            <ep:StrokeAppearancePropertySection />
+            <ep:EntitySettingsPropertySection ViewModel="{Binding}" />
+            <ep:FillPropertySection ViewModel="{Binding}" />
+            <ep:StrokeAppearancePropertySection ViewModel="{Binding}" />
             <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True">
                 <Grid Margin="8,6,8,8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -51,7 +51,7 @@
                     <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Length, Mode=OneWay, StringFormat=F3}" IsReadOnly="True" />
                 </Grid>
             </Expander>
-            <ep:StrokeStylePropertySection />
+            <ep:StrokeStylePropertySection ViewModel="{Binding}" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

@@ -13,8 +13,8 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="12">
             <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
-            <ep:EntityHeaderPropertySection />
-            <ep:EntitySettingsPropertySection />
+            <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
+            <ep:EntitySettingsPropertySection ViewModel="{Binding}" />
             <Expander Header="{I18N {x:Static r:LangKeys.ObjectSettings}}" IsExpanded="True" Margin="0,0,0,8">
                 <Grid Margin="8,6,8,8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

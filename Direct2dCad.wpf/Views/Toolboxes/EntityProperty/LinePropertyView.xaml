@@ -14,9 +14,9 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="12">
             <TextBlock Text="{I18N {x:Static r:LangKeys.Line}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
-            <ep:EntityHeaderPropertySection />
-            <ep:EntitySettingsPropertySection />
-            <ep:StrokeAppearancePropertySection />
+            <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
+            <ep:EntitySettingsPropertySection ViewModel="{Binding}" />
+            <ep:StrokeAppearancePropertySection ViewModel="{Binding}" />
             <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True" Margin="0,0,0,8">
                 <Grid Margin="8,6,8,8">
                     <Grid.ColumnDefinitions>
@@ -41,7 +41,7 @@
                     <mah:NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding AngleDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F2" Interval="5" />
                 </Grid>
             </Expander>
-            <ep:StrokeStylePropertySection />
+            <ep:StrokeStylePropertySection ViewModel="{Binding}" />
         </StackPanel>
     </ScrollViewer>
 </UserControl>

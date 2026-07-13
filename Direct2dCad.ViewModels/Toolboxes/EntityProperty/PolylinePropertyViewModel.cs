@@ -57,7 +57,11 @@ public partial class PolylineVertexPropertyViewModel : ObservableObject
     }
 }
 
-public partial class PolylinePropertyViewModel : EntityPropertyViewModel
+public partial class PolylinePropertyViewModel : EntityPropertyViewModel,
+    IEntityHeaderPropertySectionViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IFillPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
@@ -111,6 +115,8 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
     public bool ColorControlsEnabled => !UseByLayerColor;
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
+    public bool FillControlsEnabled => true;
 
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
@@ -492,7 +498,10 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel
     }
 }
 
-public partial class TransientPolylinePropertyViewModel : EntityPropertyViewModel
+public partial class TransientPolylinePropertyViewModel : EntityPropertyViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IFillPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;
@@ -534,6 +543,8 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
+    public bool FillControlsEnabled => true;
     public bool ColorControlsEnabled => !UseByLayerColor;
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 

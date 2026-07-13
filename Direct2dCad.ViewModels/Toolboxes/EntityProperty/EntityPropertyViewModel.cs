@@ -6,7 +6,9 @@ using Direct2dCad.Db.Data.Styles;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public abstract class EntityPropertyViewModel : ObservableObject
+public abstract class EntityPropertyViewModel : ObservableObject,
+    IDrawingLayerPropertySectionViewModel,
+    IStrokeStylePropertySectionViewModel
 {
     private bool _isRefreshingLayerOptions;
     private bool _isRefreshingEntityName;

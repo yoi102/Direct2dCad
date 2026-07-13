@@ -9,7 +9,11 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class SplinePropertyViewModel : EntityPropertyViewModel
+public partial class SplinePropertyViewModel : EntityPropertyViewModel,
+    IEntityHeaderPropertySectionViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IFillPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
@@ -459,7 +463,10 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel
     }
 }
 
-public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
+public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IFillPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;

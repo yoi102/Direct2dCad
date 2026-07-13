@@ -9,7 +9,7 @@ using Direct2dCad.ViewModels.Services.Interactions;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class MultiEntityPropertyViewModel : ObservableObject
+public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeStylePropertySectionViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private readonly EntityId[] _entityIds;

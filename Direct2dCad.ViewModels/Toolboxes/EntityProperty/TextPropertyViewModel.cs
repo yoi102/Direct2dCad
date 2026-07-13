@@ -8,7 +8,10 @@ using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class TextPropertyViewModel : EntityPropertyViewModel
+public partial class TextPropertyViewModel : EntityPropertyViewModel,
+    IEntityHeaderPropertySectionViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
@@ -402,7 +405,9 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel
     }
 }
 
-public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
+public partial class TransientTextPropertyViewModel : EntityPropertyViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private readonly ISystemFontCatalog _systemFontCatalog;

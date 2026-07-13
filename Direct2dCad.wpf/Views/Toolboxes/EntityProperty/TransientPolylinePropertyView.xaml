@@ -1,7 +1,7 @@
 <UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.TransientPolylinePropertyView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="12">
         <TextBlock Text="{I18N {x:Static r:LangKeys.PolylineDrawing}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
-        <ep:DrawingLayerPropertySection /><ep:EntitySettingsPropertySection /><ep:FillPropertySection /><ep:TransientStrokeAppearancePropertySection />
+        <ep:DrawingLayerPropertySection ViewModel="{Binding}" /><ep:EntitySettingsPropertySection ViewModel="{Binding}" /><ep:FillPropertySection ViewModel="{Binding}" /><ep:StrokeAppearancePropertySection ViewModel="{Binding}" />
         <Expander Header="{I18N {x:Static r:LangKeys.Geometry}}" IsExpanded="True" Margin="0,0,0,8"><CheckBox Content="{I18N {x:Static r:LangKeys.Closed}}" IsChecked="{Binding IsClosed}" Margin="8,6,8,8" /></Expander>
     </StackPanel></ScrollViewer>
 </UserControl>

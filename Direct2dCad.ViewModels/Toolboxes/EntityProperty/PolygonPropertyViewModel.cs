@@ -4,7 +4,10 @@ using Direct2dCad.Db.Cad;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
+public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IFillPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;
@@ -43,6 +46,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool FillControlsEnabled => true;
     public bool ColorControlsEnabled => !UseByLayerColor;
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 

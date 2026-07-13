@@ -1,4 +1,5 @@
 <UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.EntitySettingsPropertySection"
+             x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
@@ -19,13 +20,13 @@
                        Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
                        VerticalAlignment="Center" />
             <mah:NumericUpDown Grid.Row="0" Grid.Column="1"
-                               Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                               Value="{Binding ViewModel.ZIndex, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                StringFormat="F0"
                                Interval="1"
                                Margin="0,0,0,8" />
             <CheckBox Grid.Row="1" Grid.ColumnSpan="2"
                       Content="{I18N {x:Static r:LangKeys.Visible}}"
-                      IsChecked="{Binding IsVisible}" />
+                      IsChecked="{Binding ViewModel.IsVisible, ElementName=Root, Mode=TwoWay}" />
         </Grid>
     </Expander>
 </UserControl>

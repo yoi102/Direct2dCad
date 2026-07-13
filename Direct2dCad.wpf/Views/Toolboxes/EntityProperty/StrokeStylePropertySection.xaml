@@ -1,4 +1,5 @@
 <UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.StrokeStylePropertySection"
+             x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang">
@@ -18,15 +19,15 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.StartCap}}" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding StrokeCapOptions, Mode=OneWay}" SelectedItem="{Binding SelectedStartCapOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedStartCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
             <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.EndCap}}" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding StrokeCapOptions, Mode=OneWay}" SelectedItem="{Binding SelectedEndCapOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedEndCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
             <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DashCap}}" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding StrokeCapOptions, Mode=OneWay}" SelectedItem="{Binding SelectedDashCapOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+            <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedDashCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
             <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DashStyle}}" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding StrokeDashStyleOptions, Mode=OneWay}" SelectedItem="{Binding SelectedDashStyleOption, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+            <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeDashStyleOptions, ElementName=Root, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedDashStyleOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
             <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.LineJoin}}" VerticalAlignment="Center" />
-            <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding StrokeLineJoinOptions, Mode=OneWay}" SelectedItem="{Binding SelectedLineJoinOption, Mode=TwoWay}" DisplayMemberPath="Name" />
+            <ComboBox Grid.Row="4" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeLineJoinOptions, ElementName=Root, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedLineJoinOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" />
         </Grid>
     </Expander>
 </UserControl>

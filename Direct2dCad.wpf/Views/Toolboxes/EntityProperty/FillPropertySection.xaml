@@ -1,4 +1,5 @@
 <UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.FillPropertySection"
+             x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
@@ -20,9 +21,9 @@
                        Text="{I18N {x:Static r:LangKeys.Fill}}"
                        VerticalAlignment="Center" />
             <ComboBox Grid.Row="0" Grid.Column="1"
-                      ItemsSource="{Binding FillStyleOptions, Mode=OneWay}"
-                      SelectedItem="{Binding SelectedFillStyleOption, Mode=TwoWay}"
-                      IsEnabled="{Binding FillControlsEnabled, FallbackValue=True}"
+                      ItemsSource="{Binding ViewModel.FillStyleOptions, ElementName=Root, Mode=OneWay}"
+                      SelectedItem="{Binding ViewModel.SelectedFillStyleOption, ElementName=Root, Mode=TwoWay}"
+                      IsEnabled="{Binding ViewModel.FillControlsEnabled, ElementName=Root, Mode=OneWay}"
                       DisplayMemberPath="Name"
                       Margin="0,0,0,8" />
             <TextBlock Grid.Row="1" Grid.Column="0"
@@ -37,8 +38,8 @@
                              RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
                              StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
                              AddToRecentColorsTrigger="SelectedColorChanged"
-                             IsEnabled="{Binding FillColorControlsEnabled}"
-                             SelectedColor="{Binding FillColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                             IsEnabled="{Binding ViewModel.FillColorControlsEnabled, ElementName=Root, Mode=OneWay}"
+                             SelectedColor="{Binding ViewModel.FillColor, ElementName=Root, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
         </Grid>
     </Expander>
 </UserControl>

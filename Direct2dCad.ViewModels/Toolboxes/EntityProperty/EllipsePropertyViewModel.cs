@@ -7,7 +7,11 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class EllipsePropertyViewModel : EntityPropertyViewModel
+public partial class EllipsePropertyViewModel : EntityPropertyViewModel,
+    IEntityHeaderPropertySectionViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IFillPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
@@ -65,6 +69,8 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
     public bool ColorControlsEnabled => !UseByLayerColor;
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+
+    public bool FillControlsEnabled => true;
 
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
@@ -283,7 +289,10 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel
     }
 }
 
-public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
+public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IFillPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;
@@ -322,6 +331,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool FillControlsEnabled => true;
     public bool ColorControlsEnabled => !UseByLayerColor;
     public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 

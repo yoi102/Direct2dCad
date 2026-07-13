@@ -7,7 +7,10 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class ArcPropertyViewModel : EntityPropertyViewModel
+public partial class ArcPropertyViewModel : EntityPropertyViewModel,
+    IEntityHeaderPropertySectionViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
@@ -267,7 +270,9 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel
     }
 }
 
-public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
+public partial class TransientArcPropertyViewModel : EntityPropertyViewModel,
+    IEntitySettingsPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private bool _isRefreshing;

@@ -181,6 +181,7 @@
                 </Expander>
 
                 <property:StrokeStylePropertySection
+                    ViewModel="{Binding}"
                     Visibility="{Binding SupportsStrokeAppearance, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                 <Expander Header="{I18N {x:Static r:LangKeys.Appearance}}"
