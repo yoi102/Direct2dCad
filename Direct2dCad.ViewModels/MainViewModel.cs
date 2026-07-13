@@ -353,9 +353,11 @@ public partial class MainViewModel : ObservableObject
             editorTabViewModel.Dispose();
             DocumentExplorer.RefreshDocuments();
         }
-        else
+
+
+        if (CurrentEditorTabViewModel is null)
         {
-            //TabControlSelectedIndex = 0;
+            TabControlSelectedIndex = 0;
         }
     }
 
@@ -366,10 +368,7 @@ public partial class MainViewModel : ObservableObject
         {
             CurrentEditorTabViewModel = editorTabView;
         }
-        else
-        {
-            TabControlSelectedIndex = 0;
-        }
+
 
     }
 
