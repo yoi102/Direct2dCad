@@ -430,7 +430,13 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
@@ -444,6 +450,9 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
     [ObservableProperty]
     public partial double InvertedMarginFactor { get; set; }
 
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
+
     public void RefreshFromDocument()
     {
         _isRefreshing = true;
@@ -455,7 +464,9 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
                 _documentViewModel.CadEditor.Document,
                 _documentViewModel.DrawingDefaults.TextStyleId));
             StrokeColor = _documentViewModel.DrawingDefaults.TextStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.TextUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.TextLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.TextUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.TextZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.TextIsVisible;
             IsInverted = _documentViewModel.DrawingDefaults.TextInverted;
@@ -497,7 +508,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.TextStrokeColor = value;
@@ -505,12 +516,30 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.TextLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.TextUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.TextUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)

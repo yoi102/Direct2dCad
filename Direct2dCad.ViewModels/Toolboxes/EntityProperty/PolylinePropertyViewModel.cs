@@ -519,7 +519,13 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
@@ -528,6 +534,8 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -539,7 +547,9 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
             RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.PolylineFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.PolylineFillStyleId);
             StrokeColor = _documentViewModel.DrawingDefaults.PolylineStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.PolylineUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.PolylineLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.PolylineUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.PolylineZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.PolylineIsVisible;
         }
@@ -580,7 +590,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.PolylineStrokeColor = value;
@@ -588,12 +598,30 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.PolylineLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.PolylineUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.PolylineUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)

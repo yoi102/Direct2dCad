@@ -321,13 +321,22 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -336,7 +345,9 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
         {
             RefreshDrawingLayerOptions(_documentViewModel);
             StrokeColor = _documentViewModel.DrawingDefaults.LineStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.LineUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.LineLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.LineUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.LineZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.LineIsVisible;
         }
@@ -348,7 +359,7 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.LineStrokeColor = value;
@@ -356,12 +367,30 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.LineLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.LineUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.LineUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)

@@ -12,38 +12,52 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
     private int _updateDepth;
     private bool _defaultsChanged;
     private CadColor _lineStrokeColor = CadColor.Green;
+    private bool _lineUseLayerColor = true;
     private double _lineLineWeight = CadLineWeight.Default.Value;
+    private bool _lineUseLayerLineWeight = true;
     private int _lineZIndex;
     private bool _lineIsVisible = true;
     private CadColor _polylineStrokeColor = CadColor.Green;
+    private bool _polylineUseLayerColor = true;
     private double _polylineLineWeight = CadLineWeight.Default.Value;
+    private bool _polylineUseLayerLineWeight = true;
     private int _polylineZIndex;
     private bool _polylineIsVisible = true;
     private bool _polylineClosed;
     private StyleId? _polylineFillStyleId;
     private CadColor _polygonStrokeColor = CadColor.Green;
+    private bool _polygonUseLayerColor = true;
     private double _polygonLineWeight = CadLineWeight.Default.Value;
+    private bool _polygonUseLayerLineWeight = true;
     private int _polygonZIndex;
     private bool _polygonIsVisible = true;
     private StyleId? _polygonFillStyleId;
     private CadColor _splineStrokeColor = CadColor.Green;
+    private bool _splineUseLayerColor = true;
     private double _splineLineWeight = CadLineWeight.Default.Value;
+    private bool _splineUseLayerLineWeight = true;
     private int _splineZIndex;
     private bool _splineIsVisible = true;
     private bool _splineClosed;
     private StyleId? _splineFillStyleId;
     private CadColor _circleStrokeColor = CadColor.Green;
+    private bool _circleUseLayerColor = true;
     private double _circleLineWeight = CadLineWeight.Default.Value;
+    private bool _circleUseLayerLineWeight = true;
     private int _circleZIndex;
     private bool _circleIsVisible = true;
     private StyleId? _circleFillStyleId;
     private CadColor _ellipseStrokeColor = CadColor.Green;
+    private bool _ellipseUseLayerColor = true;
     private double _ellipseLineWeight = CadLineWeight.Default.Value;
+    private bool _ellipseUseLayerLineWeight = true;
     private int _ellipseZIndex;
     private bool _ellipseIsVisible = true;
     private StyleId? _ellipseFillStyleId;
     private CadColor _rectangleStrokeColor = CadColor.Green;
+    private bool _rectangleUseLayerColor = true;
     private double _rectangleLineWeight = CadLineWeight.Default.Value;
+    private bool _rectangleUseLayerLineWeight = true;
     private int _rectangleZIndex;
     private bool _rectangleIsVisible = true;
     private StyleId? _rectangleFillStyleId;
@@ -53,12 +67,16 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
     private bool _textInverted;
     private double _textInvertedMarginFactor = CadText.DefaultInvertedMarginFactor;
     private CadColor _textStrokeColor = CadColor.Green;
+    private bool _textUseLayerColor = true;
     private double _textLineWeight = CadLineWeight.Default.Value;
+    private bool _textUseLayerLineWeight = true;
     private int _textZIndex;
     private bool _textIsVisible = true;
     private StyleId? _textStyleId;
     private CadColor _arcStrokeColor = CadColor.Green;
+    private bool _arcUseLayerColor = true;
     private double _arcLineWeight = CadLineWeight.Default.Value;
+    private bool _arcUseLayerLineWeight = true;
     private int _arcZIndex;
     private bool _arcIsVisible = true;
 
@@ -70,10 +88,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _lineStrokeColor, value);
     }
 
+    public bool LineUseLayerColor
+    {
+        get => _lineUseLayerColor;
+        set => SetDrawingSetting(ref _lineUseLayerColor, value);
+    }
+
     public double LineLineWeight
     {
         get => _lineLineWeight;
         set => SetDrawingSetting(ref _lineLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool LineUseLayerLineWeight
+    {
+        get => _lineUseLayerLineWeight;
+        set => SetDrawingSetting(ref _lineUseLayerLineWeight, value);
     }
 
     public int LineZIndex
@@ -94,10 +124,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _polylineStrokeColor, value);
     }
 
+    public bool PolylineUseLayerColor
+    {
+        get => _polylineUseLayerColor;
+        set => SetDrawingSetting(ref _polylineUseLayerColor, value);
+    }
+
     public double PolylineLineWeight
     {
         get => _polylineLineWeight;
         set => SetDrawingSetting(ref _polylineLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool PolylineUseLayerLineWeight
+    {
+        get => _polylineUseLayerLineWeight;
+        set => SetDrawingSetting(ref _polylineUseLayerLineWeight, value);
     }
 
     public int PolylineZIndex
@@ -130,10 +172,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _polygonStrokeColor, value);
     }
 
+    public bool PolygonUseLayerColor
+    {
+        get => _polygonUseLayerColor;
+        set => SetDrawingSetting(ref _polygonUseLayerColor, value);
+    }
+
     public double PolygonLineWeight
     {
         get => _polygonLineWeight;
         set => SetDrawingSetting(ref _polygonLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool PolygonUseLayerLineWeight
+    {
+        get => _polygonUseLayerLineWeight;
+        set => SetDrawingSetting(ref _polygonUseLayerLineWeight, value);
     }
 
     public int PolygonZIndex
@@ -160,10 +214,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _splineStrokeColor, value);
     }
 
+    public bool SplineUseLayerColor
+    {
+        get => _splineUseLayerColor;
+        set => SetDrawingSetting(ref _splineUseLayerColor, value);
+    }
+
     public double SplineLineWeight
     {
         get => _splineLineWeight;
         set => SetDrawingSetting(ref _splineLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool SplineUseLayerLineWeight
+    {
+        get => _splineUseLayerLineWeight;
+        set => SetDrawingSetting(ref _splineUseLayerLineWeight, value);
     }
 
     public int SplineZIndex
@@ -196,10 +262,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _circleStrokeColor, value);
     }
 
+    public bool CircleUseLayerColor
+    {
+        get => _circleUseLayerColor;
+        set => SetDrawingSetting(ref _circleUseLayerColor, value);
+    }
+
     public double CircleLineWeight
     {
         get => _circleLineWeight;
         set => SetDrawingSetting(ref _circleLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool CircleUseLayerLineWeight
+    {
+        get => _circleUseLayerLineWeight;
+        set => SetDrawingSetting(ref _circleUseLayerLineWeight, value);
     }
 
     public int CircleZIndex
@@ -226,10 +304,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _ellipseStrokeColor, value);
     }
 
+    public bool EllipseUseLayerColor
+    {
+        get => _ellipseUseLayerColor;
+        set => SetDrawingSetting(ref _ellipseUseLayerColor, value);
+    }
+
     public double EllipseLineWeight
     {
         get => _ellipseLineWeight;
         set => SetDrawingSetting(ref _ellipseLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool EllipseUseLayerLineWeight
+    {
+        get => _ellipseUseLayerLineWeight;
+        set => SetDrawingSetting(ref _ellipseUseLayerLineWeight, value);
     }
 
     public int EllipseZIndex
@@ -256,10 +346,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _rectangleStrokeColor, value);
     }
 
+    public bool RectangleUseLayerColor
+    {
+        get => _rectangleUseLayerColor;
+        set => SetDrawingSetting(ref _rectangleUseLayerColor, value);
+    }
+
     public double RectangleLineWeight
     {
         get => _rectangleLineWeight;
         set => SetDrawingSetting(ref _rectangleLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool RectangleUseLayerLineWeight
+    {
+        get => _rectangleUseLayerLineWeight;
+        set => SetDrawingSetting(ref _rectangleUseLayerLineWeight, value);
     }
 
     public int RectangleZIndex
@@ -316,10 +418,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _textStrokeColor, value);
     }
 
+    public bool TextUseLayerColor
+    {
+        get => _textUseLayerColor;
+        set => SetDrawingSetting(ref _textUseLayerColor, value);
+    }
+
     public double TextLineWeight
     {
         get => _textLineWeight;
         set => SetDrawingSetting(ref _textLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool TextUseLayerLineWeight
+    {
+        get => _textUseLayerLineWeight;
+        set => SetDrawingSetting(ref _textUseLayerLineWeight, value);
     }
 
     public int TextZIndex
@@ -346,10 +460,22 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _arcStrokeColor, value);
     }
 
+    public bool ArcUseLayerColor
+    {
+        get => _arcUseLayerColor;
+        set => SetDrawingSetting(ref _arcUseLayerColor, value);
+    }
+
     public double ArcLineWeight
     {
         get => _arcLineWeight;
         set => SetDrawingSetting(ref _arcLineWeight, value, IsFinitePositive(value));
+    }
+
+    public bool ArcUseLayerLineWeight
+    {
+        get => _arcUseLayerLineWeight;
+        set => SetDrawingSetting(ref _arcUseLayerLineWeight, value);
     }
 
     public int ArcZIndex
@@ -364,20 +490,20 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _arcIsVisible, value);
     }
 
-    private void UpdateStrokeColors(CadColor previousColor, CadColor newColor)
+    private void UpdateStrokeColors(CadColor newColor)
     {
         BeginUpdate();
         try
         {
-            if (LineStrokeColor == previousColor) LineStrokeColor = newColor;
-            if (PolylineStrokeColor == previousColor) PolylineStrokeColor = newColor;
-            if (PolygonStrokeColor == previousColor) PolygonStrokeColor = newColor;
-            if (SplineStrokeColor == previousColor) SplineStrokeColor = newColor;
-            if (CircleStrokeColor == previousColor) CircleStrokeColor = newColor;
-            if (EllipseStrokeColor == previousColor) EllipseStrokeColor = newColor;
-            if (RectangleStrokeColor == previousColor) RectangleStrokeColor = newColor;
-            if (TextStrokeColor == previousColor) TextStrokeColor = newColor;
-            if (ArcStrokeColor == previousColor) ArcStrokeColor = newColor;
+            if (LineUseLayerColor) LineStrokeColor = newColor;
+            if (PolylineUseLayerColor) PolylineStrokeColor = newColor;
+            if (PolygonUseLayerColor) PolygonStrokeColor = newColor;
+            if (SplineUseLayerColor) SplineStrokeColor = newColor;
+            if (CircleUseLayerColor) CircleStrokeColor = newColor;
+            if (EllipseUseLayerColor) EllipseStrokeColor = newColor;
+            if (RectangleUseLayerColor) RectangleStrokeColor = newColor;
+            if (TextUseLayerColor) TextStrokeColor = newColor;
+            if (ArcUseLayerColor) ArcStrokeColor = newColor;
         }
         finally
         {
@@ -385,20 +511,20 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         }
     }
 
-    private void UpdateLineWeights(double previousLineWeight, double newLineWeight)
+    private void UpdateLineWeights(double newLineWeight)
     {
         BeginUpdate();
         try
         {
-            if (AreClose(LineLineWeight, previousLineWeight)) LineLineWeight = newLineWeight;
-            if (AreClose(PolylineLineWeight, previousLineWeight)) PolylineLineWeight = newLineWeight;
-            if (AreClose(PolygonLineWeight, previousLineWeight)) PolygonLineWeight = newLineWeight;
-            if (AreClose(SplineLineWeight, previousLineWeight)) SplineLineWeight = newLineWeight;
-            if (AreClose(CircleLineWeight, previousLineWeight)) CircleLineWeight = newLineWeight;
-            if (AreClose(EllipseLineWeight, previousLineWeight)) EllipseLineWeight = newLineWeight;
-            if (AreClose(RectangleLineWeight, previousLineWeight)) RectangleLineWeight = newLineWeight;
-            if (AreClose(TextLineWeight, previousLineWeight)) TextLineWeight = newLineWeight;
-            if (AreClose(ArcLineWeight, previousLineWeight)) ArcLineWeight = newLineWeight;
+            if (LineUseLayerLineWeight) LineLineWeight = newLineWeight;
+            if (PolylineUseLayerLineWeight) PolylineLineWeight = newLineWeight;
+            if (PolygonUseLayerLineWeight) PolygonLineWeight = newLineWeight;
+            if (SplineUseLayerLineWeight) SplineLineWeight = newLineWeight;
+            if (CircleUseLayerLineWeight) CircleLineWeight = newLineWeight;
+            if (EllipseUseLayerLineWeight) EllipseLineWeight = newLineWeight;
+            if (RectangleUseLayerLineWeight) RectangleLineWeight = newLineWeight;
+            if (TextUseLayerLineWeight) TextLineWeight = newLineWeight;
+            if (ArcUseLayerLineWeight) ArcLineWeight = newLineWeight;
         }
         finally
         {
@@ -406,17 +532,13 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         }
     }
 
-    public void UpdateLayerDefaults(
-        CadColor previousColor,
-        CadColor newColor,
-        double previousLineWeight,
-        double newLineWeight)
+    public void UpdateLayerDefaults(CadColor newColor, double newLineWeight)
     {
         BeginUpdate();
         try
         {
-            UpdateStrokeColors(previousColor, newColor);
-            UpdateLineWeights(previousLineWeight, newLineWeight);
+            UpdateStrokeColors(newColor);
+            UpdateLineWeights(newLineWeight);
         }
         finally
         {
@@ -470,8 +592,4 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         return value >= 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
-    private static bool AreClose(double left, double right)
-    {
-        return Math.Abs(left - right) <= 1e-9;
-    }
 }

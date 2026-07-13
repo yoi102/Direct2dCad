@@ -136,9 +136,6 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
         if (currentLayer.Color == layer.Color && currentLayer.LineWeight == lineWeight)
             return;
 
-        var previousColor = currentLayer.Color;
-        var previousLineWeight = currentLayer.LineWeight;
-
         ExecuteAndRefresh(
             () => _documentViewModel.CadEditor.SetLayerAppearance(
                 layer.LayerId,
@@ -147,8 +144,6 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
             layer.LayerId);
         _documentViewModel.UpdateDrawingDefaultsForLayerAppearance(
             layer.LayerId,
-            previousColor,
-            previousLineWeight,
             layer.Color,
             lineWeight);
     }

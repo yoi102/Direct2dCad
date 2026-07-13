@@ -313,7 +313,13 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
@@ -322,6 +328,8 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -332,7 +340,9 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
             RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.CircleFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.CircleFillStyleId);
             StrokeColor = _documentViewModel.DrawingDefaults.CircleStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.CircleUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.CircleLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.CircleUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.CircleZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.CircleIsVisible;
         }
@@ -365,7 +375,7 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.CircleStrokeColor = value;
@@ -373,12 +383,30 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.CircleLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.CircleUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.CircleUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)

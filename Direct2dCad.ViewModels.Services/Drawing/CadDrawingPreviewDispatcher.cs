@@ -93,7 +93,7 @@ internal sealed class CadDrawingPreviewDispatcher(
             state.PendingCircleSecondPoint,
             mouseWorld,
             styleResolver.CreateCircleTransientStyle(),
-            previewStyleService.CreateDrawingAuxiliaryStyle(defaults.CircleStrokeColor));
+            previewStyleService.CreateDrawingAuxiliaryStyle(styleResolver.ResolveCircleStrokeColor()));
     }
 
     private void AddEllipsePreview(List<CadTransientItem> items, CadPointD mouseWorld)
@@ -103,7 +103,7 @@ internal sealed class CadDrawingPreviewDispatcher(
             state.PendingEllipsePoints,
             mouseWorld,
             styleResolver.CreateEllipseTransientStyle(),
-            previewStyleService.CreateDrawingAuxiliaryStyle(defaults.EllipseStrokeColor));
+            previewStyleService.CreateDrawingAuxiliaryStyle(styleResolver.ResolveEllipseStrokeColor()));
     }
 
     private void AddArcPreview(List<CadTransientItem> items, CadPointD mouseWorld)
@@ -120,7 +120,7 @@ internal sealed class CadDrawingPreviewDispatcher(
             continueTangent,
             mouseWorld,
             styleResolver.CreateArcTransientStyle(),
-            previewStyleService.CreateDrawingAuxiliaryStyle(defaults.ArcStrokeColor));
+            previewStyleService.CreateDrawingAuxiliaryStyle(styleResolver.ResolveArcStrokeColor()));
     }
 
     private void AddRectanglePreview(List<CadTransientItem> items, CadPointD firstCorner, CadPointD mouseWorld)

@@ -307,7 +307,13 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
@@ -316,6 +322,8 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -326,7 +334,9 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
             RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.EllipseFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.EllipseFillStyleId);
             StrokeColor = _documentViewModel.DrawingDefaults.EllipseStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.EllipseUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.EllipseLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.EllipseUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.EllipseZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.EllipseIsVisible;
         }
@@ -359,7 +369,7 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.EllipseStrokeColor = value;
@@ -367,12 +377,30 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.EllipseLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.EllipseUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.EllipseUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)

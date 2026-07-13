@@ -284,13 +284,22 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
 
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
+
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -299,7 +308,9 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
         {
             RefreshDrawingLayerOptions(_documentViewModel);
             StrokeColor = _documentViewModel.DrawingDefaults.ArcStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.ArcUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.ArcLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.ArcUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.ArcZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.ArcIsVisible;
         }
@@ -311,7 +322,7 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.ArcStrokeColor = value;
@@ -319,12 +330,30 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.ArcLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.ArcUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.ArcUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)

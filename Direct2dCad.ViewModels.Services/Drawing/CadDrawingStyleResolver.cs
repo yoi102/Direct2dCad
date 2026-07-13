@@ -15,30 +15,30 @@ internal sealed class CadDrawingStyleResolver(
 {
     public CadTransientStyle CreateLineTransientStyle()
     {
-        return CreatePreviewStyle(defaults.LineStrokeColor, ResolveLineLineWeight());
+        return CreatePreviewStyle(ResolveLineStrokeColor(), ResolveLineLineWeight());
     }
 
     public StyleId? ResolveLineGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Line", defaults.LineStrokeColor);
+        return ResolveGraphicStyleId("Line", defaults.LineStrokeColor, defaults.LineUseLayerColor);
     }
 
     public CadLineWeight ResolveLineLineWeight()
     {
-        return ResolveLineWeight(defaults.LineLineWeight);
+        return ResolveLineWeight(defaults.LineLineWeight, defaults.LineUseLayerLineWeight);
     }
 
     public CadTransientStyle CreatePolylineTransientStyle(bool includeFill = false)
     {
         return CreatePreviewStyle(
-            defaults.PolylineStrokeColor,
+            ResolvePolylineStrokeColor(),
             ResolvePolylineLineWeight(),
             includeFill ? ResolvePolylineFillStyleId() : null);
     }
 
     public StyleId? ResolvePolylineGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Polyline", defaults.PolylineStrokeColor);
+        return ResolveGraphicStyleId("Polyline", defaults.PolylineStrokeColor, defaults.PolylineUseLayerColor);
     }
 
     public StyleId? ResolvePolylineFillStyleId()
@@ -48,7 +48,7 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadLineWeight ResolvePolylineLineWeight()
     {
-        return ResolveLineWeight(defaults.PolylineLineWeight);
+        return ResolveLineWeight(defaults.PolylineLineWeight, defaults.PolylineUseLayerLineWeight);
     }
 
     public bool ResolvePolylineClosed(int pointCount)
@@ -59,14 +59,14 @@ internal sealed class CadDrawingStyleResolver(
     public CadTransientStyle CreatePolygonTransientStyle(bool includeFill = true)
     {
         return CreatePreviewStyle(
-            defaults.PolygonStrokeColor,
+            ResolvePolygonStrokeColor(),
             ResolvePolygonLineWeight(),
             includeFill ? ResolvePolygonFillStyleId() : null);
     }
 
     public StyleId? ResolvePolygonGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Polygon", defaults.PolygonStrokeColor);
+        return ResolveGraphicStyleId("Polygon", defaults.PolygonStrokeColor, defaults.PolygonUseLayerColor);
     }
 
     public StyleId? ResolvePolygonFillStyleId()
@@ -76,20 +76,20 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadLineWeight ResolvePolygonLineWeight()
     {
-        return ResolveLineWeight(defaults.PolygonLineWeight);
+        return ResolveLineWeight(defaults.PolygonLineWeight, defaults.PolygonUseLayerLineWeight);
     }
 
     public CadTransientStyle CreateSplineTransientStyle(bool includeFill = false)
     {
         return CreatePreviewStyle(
-            defaults.SplineStrokeColor,
+            ResolveSplineStrokeColor(),
             ResolveSplineLineWeight(),
             includeFill ? ResolveSplineFillStyleId() : null);
     }
 
     public StyleId? ResolveSplineGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Spline", defaults.SplineStrokeColor);
+        return ResolveGraphicStyleId("Spline", defaults.SplineStrokeColor, defaults.SplineUseLayerColor);
     }
 
     public StyleId? ResolveSplineFillStyleId()
@@ -99,7 +99,7 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadLineWeight ResolveSplineLineWeight()
     {
-        return ResolveLineWeight(defaults.SplineLineWeight);
+        return ResolveLineWeight(defaults.SplineLineWeight, defaults.SplineUseLayerLineWeight);
     }
 
     public bool ResolveSplineClosed(int fitPointCount)
@@ -109,30 +109,30 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadTransientStyle CreateArcTransientStyle()
     {
-        return CreatePreviewStyle(defaults.ArcStrokeColor, ResolveArcLineWeight());
+        return CreatePreviewStyle(ResolveArcStrokeColor(), ResolveArcLineWeight());
     }
 
     public StyleId? ResolveArcGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Arc", defaults.ArcStrokeColor);
+        return ResolveGraphicStyleId("Arc", defaults.ArcStrokeColor, defaults.ArcUseLayerColor);
     }
 
     public CadLineWeight ResolveArcLineWeight()
     {
-        return ResolveLineWeight(defaults.ArcLineWeight);
+        return ResolveLineWeight(defaults.ArcLineWeight, defaults.ArcUseLayerLineWeight);
     }
 
     public CadTransientStyle CreateCircleTransientStyle()
     {
         return CreatePreviewStyle(
-            defaults.CircleStrokeColor,
+            ResolveCircleStrokeColor(),
             ResolveCircleLineWeight(),
             ResolveCircleFillStyleId());
     }
 
     public StyleId? ResolveCircleGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Circle", defaults.CircleStrokeColor);
+        return ResolveGraphicStyleId("Circle", defaults.CircleStrokeColor, defaults.CircleUseLayerColor);
     }
 
     public StyleId? ResolveCircleFillStyleId()
@@ -142,20 +142,20 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadLineWeight ResolveCircleLineWeight()
     {
-        return ResolveLineWeight(defaults.CircleLineWeight);
+        return ResolveLineWeight(defaults.CircleLineWeight, defaults.CircleUseLayerLineWeight);
     }
 
     public CadTransientStyle CreateEllipseTransientStyle()
     {
         return CreatePreviewStyle(
-            defaults.EllipseStrokeColor,
+            ResolveEllipseStrokeColor(),
             ResolveEllipseLineWeight(),
             ResolveEllipseFillStyleId());
     }
 
     public StyleId? ResolveEllipseGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Ellipse", defaults.EllipseStrokeColor);
+        return ResolveGraphicStyleId("Ellipse", defaults.EllipseStrokeColor, defaults.EllipseUseLayerColor);
     }
 
     public StyleId? ResolveEllipseFillStyleId()
@@ -165,20 +165,20 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadLineWeight ResolveEllipseLineWeight()
     {
-        return ResolveLineWeight(defaults.EllipseLineWeight);
+        return ResolveLineWeight(defaults.EllipseLineWeight, defaults.EllipseUseLayerLineWeight);
     }
 
     public CadTransientStyle CreateRectangleTransientStyle()
     {
         return CreatePreviewStyle(
-            defaults.RectangleStrokeColor,
+            ResolveRectangleStrokeColor(),
             ResolveRectangleLineWeight(),
             ResolveRectangleFillStyleId());
     }
 
     public StyleId? ResolveRectangleGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Rectangle", defaults.RectangleStrokeColor);
+        return ResolveGraphicStyleId("Rectangle", defaults.RectangleStrokeColor, defaults.RectangleUseLayerColor);
     }
 
     public StyleId? ResolveRectangleFillStyleId()
@@ -188,7 +188,7 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadLineWeight ResolveRectangleLineWeight()
     {
-        return ResolveLineWeight(defaults.RectangleLineWeight);
+        return ResolveLineWeight(defaults.RectangleLineWeight, defaults.RectangleUseLayerLineWeight);
     }
 
     public double ResolveRectangleCornerRadiusX(CadRectD bounds)
@@ -203,32 +203,42 @@ internal sealed class CadDrawingStyleResolver(
 
     public CadTransientStyle CreateTextTransientStyle()
     {
-        return CreatePreviewStyle(defaults.TextStrokeColor, ResolveTextLineWeight());
+        return CreatePreviewStyle(ResolveTextStrokeColor(), ResolveTextLineWeight());
     }
 
     public StyleId? ResolveTextGraphicStyleId()
     {
-        return ResolveGraphicStyleId("Text", defaults.TextStrokeColor);
+        return ResolveGraphicStyleId("Text", defaults.TextStrokeColor, defaults.TextUseLayerColor);
     }
 
     public CadLineWeight ResolveTextLineWeight()
     {
-        return ResolveLineWeight(defaults.TextLineWeight);
+        return ResolveLineWeight(defaults.TextLineWeight, defaults.TextUseLayerLineWeight);
     }
+
+    public CadColor ResolveLineStrokeColor() => ResolveStrokeColor(defaults.LineStrokeColor, defaults.LineUseLayerColor);
+    public CadColor ResolvePolylineStrokeColor() => ResolveStrokeColor(defaults.PolylineStrokeColor, defaults.PolylineUseLayerColor);
+    public CadColor ResolvePolygonStrokeColor() => ResolveStrokeColor(defaults.PolygonStrokeColor, defaults.PolygonUseLayerColor);
+    public CadColor ResolveSplineStrokeColor() => ResolveStrokeColor(defaults.SplineStrokeColor, defaults.SplineUseLayerColor);
+    public CadColor ResolveCircleStrokeColor() => ResolveStrokeColor(defaults.CircleStrokeColor, defaults.CircleUseLayerColor);
+    public CadColor ResolveEllipseStrokeColor() => ResolveStrokeColor(defaults.EllipseStrokeColor, defaults.EllipseUseLayerColor);
+    public CadColor ResolveRectangleStrokeColor() => ResolveStrokeColor(defaults.RectangleStrokeColor, defaults.RectangleUseLayerColor);
+    public CadColor ResolveTextStrokeColor() => ResolveStrokeColor(defaults.TextStrokeColor, defaults.TextUseLayerColor);
+    public CadColor ResolveArcStrokeColor() => ResolveStrokeColor(defaults.ArcStrokeColor, defaults.ArcUseLayerColor);
 
     public CadColor ResolveDefaultStrokeColor()
     {
         return previewStyleService.ResolveLayerStrokeColor(layer);
     }
 
-    public CadLineWeight ResolveLineWeight(double value)
+    public CadLineWeight ResolveLineWeight(double value, bool useLayerLineWeight)
     {
-        if (!IsFinitePositive(value))
+        if (useLayerLineWeight)
             return CadLineWeight.ByLayer;
 
-        return AreClose(value, ResolveLineWeightDisplayValue(layer.LineWeight))
-            ? CadLineWeight.ByLayer
-            : new CadLineWeight(value);
+        return IsFinitePositive(value)
+            ? new CadLineWeight(value)
+            : CadLineWeight.Default;
     }
 
     public static double ResolveLineWeightDisplayValue(CadLineWeight lineWeight)
@@ -250,9 +260,14 @@ internal sealed class CadDrawingStyleResolver(
             fillStyleId);
     }
 
-    private StyleId? ResolveGraphicStyleId(string label, CadColor strokeColor)
+    private CadColor ResolveStrokeColor(CadColor strokeColor, bool useLayerColor)
     {
-        if (strokeColor == ResolveDefaultStrokeColor())
+        return useLayerColor ? ResolveDefaultStrokeColor() : strokeColor;
+    }
+
+    private StyleId? ResolveGraphicStyleId(string label, CadColor strokeColor, bool useLayerColor)
+    {
+        if (useLayerColor)
             return null;
 
         return document.CreateGraphicStyle(
@@ -283,8 +298,4 @@ internal sealed class CadDrawingStyleResolver(
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
-    private static bool AreClose(double left, double right)
-    {
-        return Math.Abs(left - right) <= 1e-9;
-    }
 }

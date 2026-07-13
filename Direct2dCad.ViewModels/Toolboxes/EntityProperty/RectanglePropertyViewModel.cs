@@ -420,7 +420,13 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial double CornerRadiusX { get; set; }
@@ -435,6 +441,8 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -445,7 +453,9 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
             RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.RectangleFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.RectangleFillStyleId);
             StrokeColor = _documentViewModel.DrawingDefaults.RectangleStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.RectangleUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.RectangleLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.RectangleUseLayerLineWeight;
             CornerRadiusX = _documentViewModel.DrawingDefaults.RectangleCornerRadiusX;
             CornerRadiusY = _documentViewModel.DrawingDefaults.RectangleCornerRadiusY;
             ZIndex = _documentViewModel.DrawingDefaults.RectangleZIndex;
@@ -480,7 +490,7 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.RectangleStrokeColor = value;
@@ -488,12 +498,30 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.RectangleLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.RectangleUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.RectangleUseLayerLineWeight = value;
     }
 
     partial void OnCornerRadiusXChanged(double value)

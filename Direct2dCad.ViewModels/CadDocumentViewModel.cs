@@ -121,11 +121,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             if (_drawingLayerId.Equals(resolvedLayerId))
                 return;
 
-            var previousLayer = CadEditor.Document.GetLayer(previousLayerId);
             var newLayer = CadEditor.Document.GetLayer(resolvedLayerId);
             _drawingLayerId = resolvedLayerId;
             OnPropertyChanged();
-            UpdateDrawingDefaultsForLayerSelection(previousLayer, newLayer);
+            UpdateDrawingDefaultsForLayerSelection(newLayer);
             RaiseInteractionStateChanged();
             RequestRender();
         }
@@ -264,8 +263,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void UpdateDrawingDefaultsForLayerAppearance(
         LayerId layerId,
-        CadColor previousColor,
-        CadLineWeight previousLineWeight,
         CadColor newColor,
         CadLineWeight newLineWeight)
     {
@@ -273,18 +270,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return;
 
         DrawingDefaults.UpdateLayerDefaults(
-            previousColor,
             newColor,
-            ResolveDrawingLineWeightDisplayValue(previousLineWeight),
             ResolveDrawingLineWeightDisplayValue(newLineWeight));
     }
 
-    private void UpdateDrawingDefaultsForLayerSelection(CadLayer previousLayer, CadLayer newLayer)
+    private void UpdateDrawingDefaultsForLayerSelection(CadLayer newLayer)
     {
         DrawingDefaults.UpdateLayerDefaults(
-            ResolveLayerStrokeColor(previousLayer),
             ResolveLayerStrokeColor(newLayer),
-            ResolveDrawingLineWeightDisplayValue(previousLayer.LineWeight),
             ResolveDrawingLineWeightDisplayValue(newLayer.LineWeight));
     }
 

@@ -28,7 +28,13 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
@@ -37,6 +43,8 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
     public partial bool IsVisible { get; set; }
 
     public bool FillColorControlsEnabled => CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -47,7 +55,9 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
             RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.PolygonFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.PolygonFillStyleId);
             StrokeColor = _documentViewModel.DrawingDefaults.PolygonStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.PolygonUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.PolygonLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.PolygonUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.PolygonZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.PolygonIsVisible;
         }
@@ -80,7 +90,7 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.PolygonStrokeColor = value;
@@ -88,12 +98,30 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.PolygonLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.PolygonUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.PolygonUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)

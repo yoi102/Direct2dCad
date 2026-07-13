@@ -486,7 +486,13 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
     public partial CadColor StrokeColor { get; set; }
 
     [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; }
+
+    [ObservableProperty]
     public partial double LineWeight { get; set; }
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; }
 
     [ObservableProperty]
     public partial int ZIndex { get; set; }
@@ -497,6 +503,8 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
     public bool FillControlsEnabled => IsClosed;
 
     public bool FillColorControlsEnabled => IsClosed && CirclePropertyViewModel.SupportsFillColor(SelectedFillStyleOption);
+    public bool ColorControlsEnabled => !UseByLayerColor;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
 
     public void RefreshFromDocument()
     {
@@ -508,7 +516,9 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
             RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.SplineFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.SplineFillStyleId);
             StrokeColor = _documentViewModel.DrawingDefaults.SplineStrokeColor;
+            UseByLayerColor = _documentViewModel.DrawingDefaults.SplineUseLayerColor;
             LineWeight = _documentViewModel.DrawingDefaults.SplineLineWeight;
+            UseByLayerLineWeight = _documentViewModel.DrawingDefaults.SplineUseLayerLineWeight;
             ZIndex = _documentViewModel.DrawingDefaults.SplineZIndex;
             IsVisible = _documentViewModel.DrawingDefaults.SplineIsVisible;
         }
@@ -551,7 +561,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerColor)
             return;
 
         _documentViewModel.DrawingDefaults.SplineStrokeColor = value;
@@ -559,12 +569,30 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing)
+        if (_isRefreshing || UseByLayerLineWeight)
             return;
 
         _documentViewModel.DrawingDefaults.SplineLineWeight = IsFinitePositive(value)
             ? value
             : CadLineWeight.Default.Value;
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.SplineUseLayerColor = value;
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.SplineUseLayerLineWeight = value;
     }
 
     partial void OnZIndexChanged(int value)
