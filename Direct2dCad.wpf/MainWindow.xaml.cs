@@ -111,10 +111,10 @@ public partial class MainWindow
 
     private async void dockManager_DocumentClosing(object? sender, DocumentClosingEventArgs e)
     {
-        e.Cancel = true;
         if (e.Document.Content is not EditorTabViewModel editorTabViewModel)
             return;
 
+        e.Cancel = true;
         var confirmed = await editorTabViewModel.ConfirmCloseAsync();
         if (!confirmed)
             return;

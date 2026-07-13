@@ -366,9 +366,11 @@ public partial class MainViewModel : ObservableObject
         {
             CurrentEditorTabViewModel = editorTabView;
         }
+        else
+        {
+            TabControlSelectedIndex = 0;
+        }
 
-        //CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
-        //TabControlSelectedIndex = CurrentEditorTabViewModel != null ? 1 : 0;
     }
 
     #region TitleBar
