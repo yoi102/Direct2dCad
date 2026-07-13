@@ -177,6 +177,15 @@
   <data name="ConfirmExitTitle" xml:space="preserve">
     <value>退出确认</value>
   </data>
+  <data name="UnsavedDocumentTitle" xml:space="preserve">
+    <value>未保存的更改</value>
+  </data>
+  <data name="UnsavedDocumentMessageFormat" xml:space="preserve">
+    <value>是否保存对“{0}”所做的更改？</value>
+  </data>
+  <data name="DontSave" xml:space="preserve">
+    <value>不保存</value>
+  </data>
   <data name="Cross" xml:space="preserve">
     <value>十字</value>
   </data>

@@ -11,6 +11,16 @@ public interface IDialogService
     IDisposable ShowProgressBarDialog(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
 
     Task<bool> ShowExitConfirmation(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
+    Task<UnsavedDocumentDialogResult> ShowUnsavedDocumentDialogAsync(
+        string documentName,
+        string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
     void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel);
     void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel);
+}
+
+public enum UnsavedDocumentDialogResult
+{
+    Save,
+    Discard,
+    Cancel
 }

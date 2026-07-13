@@ -14,6 +14,8 @@ public sealed class ClickSelectCommand : SelectionCommandBase
     private readonly Func<CadEntity, bool> _selectionFilter;
 
     public override string Name => "Click Select";
+    public IReadOnlyList<EntityId> HitEntityIds { get; private set; } = [];
+    public EntityId? SelectedEntityId { get; private set; }
 
     public ClickSelectCommand(
         CadPointD worldPoint,
@@ -34,19 +36,20 @@ public sealed class ClickSelectCommand : SelectionCommandBase
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
     {
-        var hit = FindTopHit(context);
+        HitEntityIds = FindHits(context);
+        SelectedEntityId = HitEntityIds.Count > 0 ? HitEntityIds[0] : null;
 
-        if (hit is null)
+        if (SelectedEntityId is not { } selectedEntityId)
         {
             if (_mode == CadSelectionMode.Replace && _clearWhenMiss)
                 context.Selection.Clear();
             return;
         }
 
-        ApplySelection(context.Selection, [hit.Value], _mode);
+        ApplySelection(context.Selection, [selectedEntityId], _mode);
     }
 
-    private EntityId? FindTopHit(CadEditorCommandContext context)
+    private IReadOnlyList<EntityId> FindHits(CadEditorCommandContext context)
     {
         var options = new CadHitTestOptions(context.Viewport.Zoom);
         var queryPadding = _tolerance + context.HitTesting.GetMaxStrokeHitPadding(options);
@@ -55,7 +58,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
             queryPadding * 2,
             queryPadding * 2);
 
-        var hit = context.SpatialIndex.Query(queryArea)
+        return context.SpatialIndex.Query(queryArea)
             .Select(entityId => TryHit(context, entityId, options))
             .Where(x => x is not null)
             .OrderByDescending(x => x!.Value.LayerPriority)
@@ -63,9 +66,8 @@ public sealed class ClickSelectCommand : SelectionCommandBase
             .ThenByDescending(x => x!.Value.EntityOrder)
             .ThenBy(x => x!.Value.Distance)
             .Select(x => x!.Value.TopEntityId)
-            .FirstOrDefault();
-
-        return hit.Equals(default(EntityId)) ? null : hit;
+            .Distinct()
+            .ToArray();
     }
 
     private HitCandidate? TryHit(

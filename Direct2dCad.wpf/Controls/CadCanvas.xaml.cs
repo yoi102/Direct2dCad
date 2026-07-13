@@ -127,7 +127,8 @@ public partial class CadCanvas : IDisposable
         var result = DocumentViewModel.PointerDown(
             ToCadPoint(e.GetPosition(this)),
             ToPointerButton(e.ChangedButton),
-            forcePan: false);
+            forcePan: false,
+            modifiers: ToInputModifiers(Keyboard.Modifiers));
 
         ApplyInteractionResult(result, e);
     }
@@ -182,6 +183,16 @@ public partial class CadCanvas : IDisposable
         if (e.Key == Key.Delete)
         {
             ApplyInteractionResult(DocumentViewModel.DeleteSelection(), e);
+            return;
+        }
+
+        if (e.Key == Key.Tab &&
+            (Keyboard.Modifiers & ~ModifierKeys.Shift) == ModifierKeys.None)
+        {
+            ApplyInteractionResult(
+                DocumentViewModel.CycleSelection(
+                    (Keyboard.Modifiers & ModifierKeys.Shift) != 0),
+                e);
             return;
         }
 
@@ -262,6 +273,18 @@ public partial class CadCanvas : IDisposable
             MouseButton.Right => CadCanvasPointerButton.Right,
             _ => CadCanvasPointerButton.None
         };
+    }
+
+    private static CadCanvasInputModifiers ToInputModifiers(ModifierKeys modifiers)
+    {
+        var result = CadCanvasInputModifiers.None;
+        if ((modifiers & ModifierKeys.Shift) != 0)
+            result |= CadCanvasInputModifiers.Shift;
+        if ((modifiers & ModifierKeys.Control) != 0)
+            result |= CadCanvasInputModifiers.Control;
+        if ((modifiers & ModifierKeys.Alt) != 0)
+            result |= CadCanvasInputModifiers.Alt;
+        return result;
     }
 
     private static CadPointD ToCadPoint(Point point)

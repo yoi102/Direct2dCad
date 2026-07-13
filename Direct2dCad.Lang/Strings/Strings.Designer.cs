@@ -754,6 +754,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Don&apos;t Save 的本地化字符串。
+        /// </summary>
+        public static string DontSave {
+            get {
+                return ResourceManager.GetString("DontSave", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Dot 的本地化字符串。
         /// </summary>
         public static string Dot {
@@ -2469,6 +2478,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string Unicode {
             get {
                 return ResourceManager.GetString("Unicode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Do you want to save changes to &quot;{0}&quot;? 的本地化字符串。
+        /// </summary>
+        public static string UnsavedDocumentMessageFormat {
+            get {
+                return ResourceManager.GetString("UnsavedDocumentMessageFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Unsaved changes 的本地化字符串。
+        /// </summary>
+        public static string UnsavedDocumentTitle {
+            get {
+                return ResourceManager.GetString("UnsavedDocumentTitle", resourceCulture);
             }
         }
         

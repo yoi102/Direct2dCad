@@ -8,6 +8,15 @@ public enum CadCanvasPointerButton
     Right
 }
 
+[Flags]
+public enum CadCanvasInputModifiers
+{
+    None = 0,
+    Shift = 1 << 0,
+    Control = 1 << 1,
+    Alt = 1 << 2
+}
+
 public enum CadCanvasCursorKind
 {
     Cross,

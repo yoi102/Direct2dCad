@@ -17,6 +17,8 @@ public partial class MainWindow
 {
     private readonly MainViewModel _viewModel;
     private readonly ToolboxLayoutPersistenceService _toolboxLayoutPersistence;
+    private bool _isExitConfirmationRunning;
+    private bool _allowWindowClose;
 
     public MainWindow(MainViewModel viewModel, ISubscriber<ThemeChangedEvent> subscriber, IApplicationThemeService applicationThemeService,
         ToggleDockOptions dockOptions,
@@ -64,26 +66,43 @@ public partial class MainWindow
     {
         e.Cancel = true; // 临时取消关闭
 
-        // 不能直接 await，所以用 async void 包装异步处理
-        HandleExitConfirmationAsync(e);
+        if (_allowWindowClose)
+            return;
+
+        e.Cancel = true;
+        if (_isExitConfirmationRunning)
+            return;
+
+        _isExitConfirmationRunning = true;
+        HandleExitConfirmationAsync();
     }
 
-    private async void HandleExitConfirmationAsync(CancelEventArgs e)
+    private async void HandleExitConfirmationAsync()
     {
-        var dialog =Ioc.Default.GetRequiredService<IDialogService>();
-
-        bool confirm = await dialog.ShowExitConfirmation();
-
-        if (confirm)
+        try
         {
+
+            var dialog = Ioc.Default.GetRequiredService<IDialogService>();
+            bool confirm = await dialog.ShowExitConfirmation();
+
+            if (!confirm)
+                return;
+
+
+            if (!await _viewModel.ConfirmCloseApplicationAsync())
+                return;
+
             _toolboxLayoutPersistence.Save(
                 dockManager,
                 _viewModel.LayoutService.Anchorables);
 
-            // 手动移除关闭事件，避免递归触发
+            _allowWindowClose = true;
             Closing -= OnWindowClosing;
-
-            Close();  // 程序关闭
+            Close();
+        }
+        finally
+        {
+            _isExitConfirmationRunning = false;
         }
     }
 
@@ -91,4 +110,20 @@ public partial class MainWindow
     {
         Process.Start(new ProcessStartInfo("https://github.com/yoi102/Direct2dCad") { UseShellExecute = true });
     }
+
+    private async void dockManager_DocumentClosing(object sender, DocumentClosingEventArgs e)
+    {
+        e.Cancel = true;
+        if (e.Document.Content is not EditorTabViewModel editorTabViewModel)
+            return;
+
+        var confirmed = await editorTabViewModel.ConfirmCloseAsync();
+        if (!confirmed)
+            return;
+        dockManager.DocumentClosing -= dockManager_DocumentClosing;
+        e.Document.Close();
+        dockManager.DocumentClosing += dockManager_DocumentClosing;
+    }
+
+
 }

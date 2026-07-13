@@ -1,6 +1,6 @@
-using AvalonDock.Mvvm.CommunityToolkit;
-using System.IO;
 using System.ComponentModel;
+using AvalonDock.Core;
+using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
@@ -10,10 +10,10 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Enums;
-using Direct2dCad.ViewModels.Services.Events;
-using MessagePipe;
-using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Layouts;
+using Direct2dCad.ViewModels.Services.Events;
+using Direct2dCad.ViewModels.Services.Platform;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
 
@@ -34,6 +34,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private readonly IFileDialogService _fileDialogService;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
+    private readonly IDockLayoutService _dockLayoutService;
     private bool _isSyncingViewSettings;
     private bool _isSyncingUserSettings;
     private bool _isRestoringWorkspaceSettings;
@@ -44,10 +45,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private readonly IDisposable _viewSettingsChangedSubscription;
     private readonly IDisposable _selectionFilterChangedSubscription;
     private readonly IPublisher<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedPublisher;
+    private Task<bool>? _closeConfirmationTask;
+    private bool _closeRequestPending;
+    private bool _allowCloseOnce;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
         IUserSettingsStore userSettingsStore,
         IWorkspaceSettingsStore workspaceSettingsStore,
+        IDockLayoutService dockLayoutService,
         IFileDialogService fileDialogService,
         IDialogService dialogService,
         ISnackbarService snackbarService,
@@ -58,6 +63,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     {
         _userSettingsStore = userSettingsStore;
         _workspaceSettingsStore = workspaceSettingsStore;
+        _dockLayoutService = dockLayoutService;
         _userSettings = _userSettingsStore.Load();
         _fileDialogService = fileDialogService;
         _dialogService = dialogService;
@@ -82,7 +88,66 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     public override bool OnClose()
     {
-        return base.OnClose();
+        if (_allowCloseOnce)
+        {
+            _allowCloseOnce = false;
+            return base.OnClose();
+        }
+
+        if (!IsModified)
+            return base.OnClose();
+
+        if (!_closeRequestPending)
+        {
+            _closeRequestPending = true;
+            _ = CloseAfterConfirmationAsync();
+        }
+
+        return false;
+    }
+
+    public async Task<bool> ConfirmCloseAsync()
+    {
+        if (!IsModified)
+            return true;
+
+        var confirmationTask = _closeConfirmationTask ??= ConfirmCloseCoreAsync();
+        try
+        {
+            return await confirmationTask;
+        }
+        finally
+        {
+            if (ReferenceEquals(_closeConfirmationTask, confirmationTask))
+                _closeConfirmationTask = null;
+        }
+    }
+
+    private async Task<bool> ConfirmCloseCoreAsync()
+    {
+        var result = await _dialogService.ShowUnsavedDocumentDialogAsync(DocumentName);
+        return result switch
+        {
+            UnsavedDocumentDialogResult.Save => await TrySaveFileAsync(),
+            UnsavedDocumentDialogResult.Discard => true,
+            _ => false
+        };
+    }
+
+    private async Task CloseAfterConfirmationAsync()
+    {
+        try
+        {
+            if (!await ConfirmCloseAsync())
+                return;
+
+            _allowCloseOnce = true;
+            _dockLayoutService.CloseDocument(this);
+        }
+        finally
+        {
+            _closeRequestPending = false;
+        }
     }
     public CadDocumentViewModel CadDocumentViewModel { get; }
     public LayoutWorkspaceViewModel LayoutWorkspace { get; }
@@ -320,32 +385,42 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     }
 
     [RelayCommand]
-    private async Task SaveFileAsync()
+    private Task SaveFileAsync()
+    {
+        return TrySaveFileAsync();
+    }
+
+    private async Task<bool> TrySaveFileAsync()
     {
         if (string.IsNullOrWhiteSpace(CurrentFilePath))
-        {
-            await SaveAsFileAsync();
-            return;
-        }
+            return await TrySaveAsFileAsync();
 
-        await SaveToAsync(CurrentFilePath);
+        return await SaveToAsync(CurrentFilePath);
     }
 
     [RelayCommand]
-    private async Task SaveAsFileAsync()
+    private Task SaveAsFileAsync()
+    {
+        return TrySaveAsFileAsync();
+    }
+
+    private async Task<bool> TrySaveAsFileAsync()
     {
         var fileName = string.IsNullOrWhiteSpace(CadDocumentViewModel.CadEditor.Document.Name)
                   ? "Untitled.d2cad"
                   : $"{CadDocumentViewModel.CadEditor.Document.Name}.d2cad";
         var selectedFileName = _fileDialogService.SaveAsD2cad(fileName);
         if (selectedFileName is null)
-            return;
+            return false;
 
         if (await SaveToAsync(selectedFileName))
         {
             CurrentFilePath = selectedFileName;
             SaveWorkspaceSettings();
+            return true;
         }
+
+        return false;
     }
 
     private async Task<bool> SaveToAsync(string filePath)

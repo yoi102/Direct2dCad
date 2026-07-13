@@ -197,6 +197,18 @@
     <value>Exit Confirmation</value>
     <comment>Exit Confirmation</comment>
   </data>
+  <data name="UnsavedDocumentTitle" xml:space="preserve">
+    <value>Unsaved changes</value>
+    <comment>Unsaved document dialog title</comment>
+  </data>
+  <data name="UnsavedDocumentMessageFormat" xml:space="preserve">
+    <value>Do you want to save changes to "{0}"?</value>
+    <comment>Unsaved document dialog message</comment>
+  </data>
+  <data name="DontSave" xml:space="preserve">
+    <value>Don't Save</value>
+    <comment>Close without saving</comment>
+  </data>
   <data name="Cross" xml:space="preserve">
     <value>Cross</value>
     <comment>Cross</comment>

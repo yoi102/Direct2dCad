@@ -312,6 +312,19 @@ public partial class MainViewModel : ObservableObject
         return CadRectD.FromCenter(viewportBounds.Center, width, height);
     }
 
+    public async Task<bool> ConfirmCloseApplicationAsync()
+    {
+        foreach (var document in _dockLayoutService.Documents
+                     .OfType<EditorTabViewModel>()
+                     .ToArray())
+        {
+            if (!await document.ConfirmCloseAsync())
+                return false;
+        }
+
+        return true;
+    }
+
     [RelayCommand]
     private void DocumentClosed(object content)
     {

@@ -1,3 +1,4 @@
+using Direct2dCad.Db;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Editor;
@@ -15,23 +16,36 @@ internal sealed class CadSelectionInteractionService(
     CadPreviewStyleService styleService,
     Func<CadEntity, bool> selectionFilter)
 {
-    public void CompleteSelection(CadPointD startScreen, CadPointD endScreen)
+    public CadSelectionCycleSeed? CompleteSelection(
+        CadPointD startScreen,
+        CadPointD endScreen,
+        CadSelectionMode selectionMode)
     {
         if ((endScreen - startScreen).Length < 4)
         {
-            editor.Execute(new ClickSelectCommand(
+            var baseSelection = editor.Selection.EntityIds.ToArray();
+            var command = new ClickSelectCommand(
                 screenToWorld(endScreen),
                 6.0 / Math.Max(zoom, double.Epsilon),
-                selectionFilter: selectionFilter));
-            return;
+                selectionMode,
+                selectionFilter: selectionFilter);
+            editor.Execute(command);
+            return command.SelectedEntityId is null
+                ? null
+                : new CadSelectionCycleSeed(
+                    baseSelection,
+                    command.HitEntityIds,
+                    selectionMode);
         }
 
         var area = ToWorldRect(startScreen, endScreen);
         editor.Execute(new BoxSelectCommand(
             area,
+            selectionMode,
             requireContained: IsSelectionWindow(startScreen, endScreen),
             selectionFilter: selectionFilter,
             viewportZoom: zoom));
+        return null;
     }
 
     public void AddWindowPreview(
@@ -77,3 +91,8 @@ internal sealed class CadSelectionInteractionService(
         return endScreen.X >= startScreen.X;
     }
 }
+
+internal sealed record CadSelectionCycleSeed(
+    IReadOnlyList<EntityId> BaseSelection,
+    IReadOnlyList<EntityId> Candidates,
+    CadSelectionMode SelectionMode);

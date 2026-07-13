@@ -50,6 +50,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly IClipboardTextService _clipboardTextService;
     private readonly IOleHostService _oleHostService;
     private readonly CadSelectionDragController _selectionDrag = new();
+    private readonly CadSelectionCycleController _selectionCycle = new();
     private readonly CadDrawingSessionState _drawingState = new();
     private readonly CadLayoutViewportCreationState _layoutViewportCreation = new();
     private readonly HashSet<Type> _disabledSelectionEntityTypes = [];
@@ -340,10 +341,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadCanvasInteractionResult PointerDown(
         CadPointD screen,
         CadCanvasPointerButton button,
-        bool forcePan)
+        bool forcePan,
+        CadCanvasInputModifiers modifiers = CadCanvasInputModifiers.None)
     {
         _currentMousePoint = screen;
         UpdatePointerWorldStatus(screen);
+        _selectionCycle.Clear();
 
         if (forcePan || button is CadCanvasPointerButton.Middle or CadCanvasPointerButton.Right)
         {
@@ -378,10 +381,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (CadCanvasToolMode == CadCanvasToolMode.Select)
         {
-            if (TryBeginGripDrag(screen))
+            var toggleSelection = modifiers.HasFlag(CadCanvasInputModifiers.Shift);
+            if (!toggleSelection && TryBeginGripDrag(screen))
                 return new CadCanvasInteractionResult(true, CaptureMouse: true, Cursor: CadCanvasCursorKind.Hand);
 
-            _selectionDrag.Begin(screen);
+            _selectionDrag.Begin(
+                screen,
+                toggleSelection ? CadSelectionMode.Toggle : CadSelectionMode.Replace);
             RequestRender();
             return new CadCanvasInteractionResult(true, CaptureMouse: true);
         }
@@ -447,6 +453,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult MouseWheel(CadPointD screen, int delta)
     {
+        _selectionCycle.Clear();
         var factor = delta > 0 ? 1.1 : 1.0 / 1.1;
         if (TryGetActiveLayoutViewport(out var layout, out var layoutViewport))
         {
@@ -491,6 +498,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             CadRenderInvalidation.Full,
             drawGripHandles: true,
             updateHandleScene: true);
+        return CadCanvasInteractionResult.HandledOnly;
+    }
+
+    public CadCanvasInteractionResult CycleSelection(bool backwards)
+    {
+        if (CadCanvasToolMode != CadCanvasToolMode.Select ||
+            !_selectionCycle.Cycle(CadEditor, backwards, CanSelectEntity))
+        {
+            return CadCanvasInteractionResult.NotHandled;
+        }
+
+        RequestRender();
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -1221,8 +1240,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void CompleteSelection(CadPointD endScreen)
     {
-        if (_selectionDrag.Complete(CreateSelectionInteractionService(), endScreen))
+        if (_selectionDrag.Complete(
+                CreateSelectionInteractionService(),
+                endScreen,
+                out var cycleSeed))
+        {
+            _selectionCycle.Begin(cycleSeed);
             RequestRender();
+        }
     }
 
     private void CommitPaste(CadPointD screen)
@@ -1267,6 +1292,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         _drawingState.Clear();
         _selectionDrag.Clear();
+        _selectionCycle.Clear();
         _gripDrag.Clear();
         _paste.Clear(clearClipboard);
         OnPropertyChanged(nameof(IsPastePreviewActive));
