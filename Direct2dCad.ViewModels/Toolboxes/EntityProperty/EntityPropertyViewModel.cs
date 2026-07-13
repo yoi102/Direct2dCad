@@ -24,8 +24,21 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     private StrokeDashStyleOption? _selectedDashStyleOption;
     private StrokeLineJoinOption? _selectedLineJoinOption;
     private string _entityName = string.Empty;
+    private bool _supportsStartEndCaps;
+    private bool _supportsLineJoin;
 
     public bool IsEditable { get; private set; } = true;
+    public bool SupportsStartEndCaps
+    {
+        get => _supportsStartEndCaps;
+        private set => SetProperty(ref _supportsStartEndCaps, value);
+    }
+
+    public bool SupportsLineJoin
+    {
+        get => _supportsLineJoin;
+        private set => SetProperty(ref _supportsLineJoin, value);
+    }
 
     public IReadOnlyList<EntityLayerOption> LayerOptions { get; private set; } = [];
     public IReadOnlyList<StrokeCapOption> StrokeCapOptions { get; } = Enum.GetValues<CadStrokeCap>()
@@ -119,7 +132,8 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         _isPasteLayerSelection = false;
         IsEditable = CadEntityAccessPolicy.IsEditable(documentViewModel.CadEditor.Document, entity);
         OnPropertyChanged(nameof(IsEditable));
-        RefreshEntityName(entity);
+        RefreshEntityName(entity.Name);
+        RefreshStrokeStyleCapabilities(entity);
         RefreshStrokeStyle(entity.StrokeStyle);
 
         RefreshLayerOptionsCore(documentViewModel, entity.LayerId);
@@ -133,6 +147,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         _layerEntityId = null;
         _isDrawingLayerSelection = true;
         _isPasteLayerSelection = false;
+        RefreshEntityName(documentViewModel.DrawingDefaults.EntityName);
 
         RefreshLayerOptionsCore(documentViewModel, documentViewModel.DrawingLayerId);
     }
@@ -267,12 +282,12 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         documentViewModel.CadEditor.ChangeEntityLayer(entityId, option.LayerId);
     }
 
-    private void RefreshEntityName(CadEntity entity)
+    private void RefreshEntityName(string name)
     {
         _isRefreshingEntityName = true;
         try
         {
-            EntityName = entity.Name;
+            EntityName = name;
         }
         finally
         {
@@ -283,7 +298,20 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     private void OnEntityNameChanged(string value)
     {
         if (_isRefreshingEntityName ||
-            _layerDocumentViewModel is not { } documentViewModel ||
+            _layerDocumentViewModel is not { } documentViewModel)
+        {
+            return;
+        }
+
+        var normalizedName = value ?? string.Empty;
+        if (_isDrawingLayerSelection)
+        {
+            if (!string.Equals(documentViewModel.DrawingDefaults.EntityName, normalizedName, StringComparison.Ordinal))
+                documentViewModel.DrawingDefaults.EntityName = normalizedName;
+            return;
+        }
+
+        if (
             _layerEntityId is not { } entityId ||
             !documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ||
             entity is null ||
@@ -292,7 +320,6 @@ public abstract class EntityPropertyViewModel : ObservableObject,
             return;
         }
 
-        var normalizedName = value ?? string.Empty;
         if (string.Equals(entity.Name, normalizedName, StringComparison.Ordinal))
             return;
 
@@ -314,6 +341,20 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         {
             _isRefreshingStrokeStyle = false;
         }
+    }
+
+    private void RefreshStrokeStyleCapabilities(CadEntity entity)
+    {
+        SupportsStartEndCaps = entity switch
+        {
+            CadLine => true,
+            CadArc arc => !arc.IsFullCircle,
+            CadEllipseArc => true,
+            CadPolyline polyline => !polyline.Closed,
+            CadSpline spline => !spline.Closed,
+            _ => false
+        };
+        SupportsLineJoin = entity is CadRectangle or CadPolyline or CadSpline;
     }
 
     private void CommitStrokeStyleChange()

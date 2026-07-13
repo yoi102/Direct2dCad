@@ -11,6 +11,7 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
 {
     private int _updateDepth;
     private bool _defaultsChanged;
+    private string _entityName = string.Empty;
     private CadColor _lineStrokeColor = CadColor.Green;
     private bool _lineUseLayerColor = true;
     private double _lineLineWeight = CadLineWeight.Default.Value;
@@ -79,6 +80,12 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
     private bool _arcUseLayerLineWeight = true;
     private int _arcZIndex;
     private bool _arcIsVisible = true;
+
+    public string EntityName
+    {
+        get => _entityName;
+        set => SetDrawingSetting(ref _entityName, value ?? string.Empty);
+    }
 
     public event EventHandler? DefaultsChanged;
 

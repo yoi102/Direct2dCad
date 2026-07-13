@@ -210,6 +210,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RefreshPointerWorldStatus();
         _pasteTargetLayerId = ResolveExistingDrawingLayerId(_pasteTargetLayerId);
         ClearInteractionState(clearClipboard: false, render: false);
+        RefreshDrawingEntityName();
         _overlayScenes.ClearHandleScene();
 
         if (wasAttached)
@@ -348,6 +349,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (toolMode != CadCanvasToolMode.LayoutViewport)
             _layoutViewportCreation.Clear();
         CadCanvasToolMode = toolMode;
+        if (modeChanged)
+            RefreshDrawingEntityName();
         _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
         RaiseInteractionStateChanged();
@@ -1747,7 +1750,20 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             ResolveDrawingLayerId(),
             DrawingDefaults,
             CreateDrawingStyleResolver(),
-            CreateTextMeasurementService());
+            CreateTextMeasurementService(),
+            OnDrawingEntityCreated);
+    }
+
+    private void OnDrawingEntityCreated()
+    {
+        RefreshDrawingEntityName();
+    }
+
+    private void RefreshDrawingEntityName()
+    {
+        DrawingDefaults.EntityName = CadDrawingEntityNameGenerator.CreateNext(
+            CadEditor.Document,
+            CadCanvasToolMode);
     }
 
     private CadDrawingClickHandler CreateDrawingClickHandler()

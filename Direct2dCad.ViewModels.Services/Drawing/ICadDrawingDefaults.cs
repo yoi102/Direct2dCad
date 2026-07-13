@@ -5,6 +5,7 @@ namespace Direct2dCad.ViewModels.Services.Drawing;
 
 public interface ICadDrawingDefaults
 {
+    string EntityName { get; }
     CadColor LineStrokeColor { get; }
     bool LineUseLayerColor { get; }
     double LineLineWeight { get; }

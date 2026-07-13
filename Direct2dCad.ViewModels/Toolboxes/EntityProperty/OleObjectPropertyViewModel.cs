@@ -5,7 +5,9 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-public partial class OleObjectPropertyViewModel : EntityPropertyViewModel
+public partial class OleObjectPropertyViewModel : EntityPropertyViewModel,
+    IEntityHeaderPropertySectionViewModel,
+    IEntitySettingsPropertySectionViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;

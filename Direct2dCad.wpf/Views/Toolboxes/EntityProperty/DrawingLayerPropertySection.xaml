@@ -8,10 +8,24 @@
             <ColumnDefinition Width="96" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <TextBlock Grid.Column="0"
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Grid.Row="0"
+                   Grid.Column="0"
+                   Text="{I18N {x:Static r:LangKeys.Name}}"
+                   VerticalAlignment="Center" />
+        <TextBox Grid.Row="0"
+                 Grid.Column="1"
+                 Margin="0,0,0,8"
+                 Text="{Binding ViewModel.EntityName, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <TextBlock Grid.Row="1"
+                   Grid.Column="0"
                    Text="{I18N {x:Static r:LangKeys.Layers}}"
                    VerticalAlignment="Center" />
-        <ComboBox Grid.Column="1"
+        <ComboBox Grid.Row="1"
+                  Grid.Column="1"
                   ItemsSource="{Binding ViewModel.LayerOptions, ElementName=Root, Mode=OneWay}"
                   SelectedItem="{Binding ViewModel.SelectedLayerOption, ElementName=Root, Mode=TwoWay}"
                   DisplayMemberPath="Name" />

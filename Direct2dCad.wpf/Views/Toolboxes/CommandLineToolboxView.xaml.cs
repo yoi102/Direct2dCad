@@ -26,7 +26,8 @@ public partial class CommandLineToolboxView : UserControl
             AttachOutputScrollViewer();
             ScheduleScrollToEnd();
         };
-        CommandInput.KeyDown += OnCommandInputKeyDown;
+        CommandInput.PreviewKeyDown += OnCommandInputKeyDown;
+        SuggestionList.PreviewMouseLeftButtonUp += OnSuggestionMouseLeftButtonUp;
         OutputList.KeyDown += OnOutputListKeyDown;
         NewOutputButton.Click += (_, _) => FollowLatestOutput();
     }
@@ -124,30 +125,78 @@ public partial class CommandLineToolboxView : UserControl
         switch (e.Key)
         {
             case Key.Enter:
+                if (viewModel.SelectedSuggestion is not null && viewModel.AcceptSelectedSuggestion())
+                {
+                    MoveCaretToCommandEnd();
+                    e.Handled = true;
+                    break;
+                }
                 if (viewModel.ExecuteCommandCommand.CanExecute(null))
                     viewModel.ExecuteCommandCommand.Execute(null);
                 e.Handled = true;
                 break;
             case Key.Up:
-                viewModel.ShowPreviousCommand();
-                CommandInput.CaretIndex = CommandInput.Text.Length;
+                if (viewModel.HasSuggestions)
+                    MoveSuggestionSelection(viewModel, moveNext: false);
+                else
+                    viewModel.ShowPreviousCommand();
+                MoveCaretToCommandEnd();
                 e.Handled = true;
                 break;
             case Key.Down:
-                viewModel.ShowNextCommand();
-                CommandInput.CaretIndex = CommandInput.Text.Length;
+                if (viewModel.HasSuggestions)
+                    MoveSuggestionSelection(viewModel, moveNext: true);
+                else
+                    viewModel.ShowNextCommand();
+                MoveCaretToCommandEnd();
                 e.Handled = true;
                 break;
             case Key.Tab:
                 viewModel.CompleteCommand();
-                CommandInput.CaretIndex = CommandInput.Text.Length;
+                MoveCaretToCommandEnd();
                 e.Handled = true;
                 break;
             case Key.Escape:
-                viewModel.CancelCurrentCommand();
+                if (viewModel.HasSuggestions)
+                    viewModel.DismissSuggestions();
+                else
+                    viewModel.CancelCurrentCommand();
                 e.Handled = true;
                 break;
         }
+    }
+
+    private void OnSuggestionMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is not CommandLineToolboxViewModel viewModel ||
+            SuggestionList.SelectedItem is not string suggestion)
+        {
+            return;
+        }
+
+        viewModel.SelectedSuggestion = suggestion;
+        if (!viewModel.AcceptSelectedSuggestion())
+            return;
+
+        CommandInput.Focus();
+        MoveCaretToCommandEnd();
+        e.Handled = true;
+    }
+
+    private void MoveCaretToCommandEnd()
+    {
+        CommandInput.CaretIndex = CommandInput.Text.Length;
+    }
+
+    private void MoveSuggestionSelection(CommandLineToolboxViewModel viewModel, bool moveNext)
+    {
+        if (moveNext)
+            viewModel.SelectNextSuggestion();
+        else
+            viewModel.SelectPreviousSuggestion();
+
+        if (viewModel.SelectedSuggestion is not null)
+            SuggestionList.ScrollIntoView(viewModel.SelectedSuggestion);
     }
 
     private void OnOutputListKeyDown(object sender, KeyEventArgs e)

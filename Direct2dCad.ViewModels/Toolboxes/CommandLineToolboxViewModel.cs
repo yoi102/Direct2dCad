@@ -45,6 +45,9 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     [ObservableProperty]
     public partial string CommandText { get; set; } = string.Empty;
 
+    [ObservableProperty]
+    public partial string? SelectedSuggestion { get; set; }
+
     public ObservableCollection<CadCommandLineEntryViewModel> Entries { get; } = [];
     public ObservableCollection<string> Suggestions { get; } = [];
 
@@ -128,15 +131,32 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     public void CompleteCommand()
     {
-        var prefix = CommandText.Trim();
-        if (prefix.Length == 0 || prefix.Any(char.IsWhiteSpace))
+        if (Suggestions.Count == 0)
             return;
 
-        var matches = _commandLineService.Complete(prefix);
-        if (matches.Count == 0)
-            return;
+        var suggestion = SelectedSuggestion ?? Suggestions[0];
+        CommandText = suggestion + (Suggestions.Count == 1 ? " " : string.Empty);
+    }
 
-        CommandText = matches[0] + (matches.Count == 1 ? " " : string.Empty);
+    public void SelectPreviousSuggestion() => MoveSuggestion(-1);
+
+    public void SelectNextSuggestion() => MoveSuggestion(1);
+
+    public bool AcceptSelectedSuggestion()
+    {
+        var suggestion = SelectedSuggestion ?? Suggestions.FirstOrDefault();
+        if (suggestion is null)
+            return false;
+
+        CommandText = suggestion + " ";
+        return true;
+    }
+
+    public void DismissSuggestions()
+    {
+        Suggestions.Clear();
+        SelectedSuggestion = null;
+        OnPropertyChanged(nameof(HasSuggestions));
     }
 
     public void CancelCurrentCommand()
@@ -148,6 +168,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     partial void OnCommandTextChanged(string value)
     {
         Suggestions.Clear();
+        SelectedSuggestion = null;
         var prefix = value.Trim();
         if (prefix.Length > 0 && !prefix.Any(char.IsWhiteSpace))
         {
@@ -156,6 +177,20 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         }
 
         OnPropertyChanged(nameof(HasSuggestions));
+    }
+
+    private void MoveSuggestion(int direction)
+    {
+        if (Suggestions.Count == 0)
+            return;
+
+        var currentIndex = SelectedSuggestion is null
+            ? -1
+            : Suggestions.IndexOf(SelectedSuggestion);
+        var nextIndex = currentIndex < 0
+            ? direction > 0 ? 0 : Suggestions.Count - 1
+            : (currentIndex + direction + Suggestions.Count) % Suggestions.Count;
+        SelectedSuggestion = Suggestions[nextIndex];
     }
 
     public void Dispose()

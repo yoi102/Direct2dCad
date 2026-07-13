@@ -12,7 +12,8 @@ internal sealed class CadDrawingEntityCreator(
     LayerId layerId,
     ICadDrawingDefaults defaults,
     CadDrawingStyleResolver styleResolver,
-    CadTextMeasurementService textMeasurementService)
+    CadTextMeasurementService textMeasurementService,
+    Action entityCreated)
 {
     public void AddLine(CadPointD start, CadPointD end)
     {
@@ -21,9 +22,11 @@ internal sealed class CadDrawingEntityCreator(
             end,
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveLineGraphicStyleId(),
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolveLineLineWeight(),
             zIndex: defaults.LineZIndex,
             isVisible: defaults.LineIsVisible);
+        entityCreated();
     }
 
     public void AddRectangleIfValid(CadRectD bounds)
@@ -38,9 +41,11 @@ internal sealed class CadDrawingEntityCreator(
             cornerRadiusY: styleResolver.ResolveRectangleCornerRadiusY(bounds),
             graphicStyleId: styleResolver.ResolveRectangleGraphicStyleId(),
             fillStyleId: styleResolver.ResolveRectangleFillStyleId(),
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolveRectangleLineWeight(),
             zIndex: defaults.RectangleZIndex,
             isVisible: defaults.RectangleIsVisible);
+        entityCreated();
     }
 
     public void AddCircleIfValid(CadPointD center, double radius)
@@ -54,9 +59,11 @@ internal sealed class CadDrawingEntityCreator(
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveCircleGraphicStyleId(),
             fillStyleId: styleResolver.ResolveCircleFillStyleId(),
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolveCircleLineWeight(),
             zIndex: defaults.CircleZIndex,
             isVisible: defaults.CircleIsVisible);
+        entityCreated();
     }
 
     public void AddArcIfValid(ArcDrawingGeometry geometry)
@@ -71,9 +78,11 @@ internal sealed class CadDrawingEntityCreator(
             geometry.SweepAngleRadians,
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveArcGraphicStyleId(),
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolveArcLineWeight(),
             zIndex: defaults.ArcZIndex,
             isVisible: defaults.ArcIsVisible);
+        entityCreated();
     }
 
     public void AddEllipseIfValid(CadPointD center, double radiusX, double radiusY)
@@ -88,9 +97,11 @@ internal sealed class CadDrawingEntityCreator(
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveEllipseGraphicStyleId(),
             fillStyleId: styleResolver.ResolveEllipseFillStyleId(),
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolveEllipseLineWeight(),
             zIndex: defaults.EllipseZIndex,
             isVisible: defaults.EllipseIsVisible);
+        entityCreated();
     }
 
     public void AddEllipseArcIfValid(EllipseArcDrawingGeometry geometry)
@@ -109,9 +120,11 @@ internal sealed class CadDrawingEntityCreator(
             geometry.SweepAngleRadians,
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveEllipseGraphicStyleId(),
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolveEllipseLineWeight(),
             zIndex: defaults.EllipseZIndex,
             isVisible: defaults.EllipseIsVisible);
+        entityCreated();
     }
 
     public void AddPolyline(IReadOnlyList<CadPointD> points)
@@ -126,9 +139,11 @@ internal sealed class CadDrawingEntityCreator(
             layerId: layerId,
             graphicStyleId: styleResolver.ResolvePolylineGraphicStyleId(),
             fillStyleId: closed ? styleResolver.ResolvePolylineFillStyleId() : null,
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolvePolylineLineWeight(),
             zIndex: defaults.PolylineZIndex,
             isVisible: defaults.PolylineIsVisible);
+        entityCreated();
     }
 
     public void AddSpline(IReadOnlyList<CadPointD> fitPoints)
@@ -143,9 +158,11 @@ internal sealed class CadDrawingEntityCreator(
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveSplineGraphicStyleId(),
             fillStyleId: closed ? styleResolver.ResolveSplineFillStyleId() : null,
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolveSplineLineWeight(),
             zIndex: defaults.SplineZIndex,
             isVisible: defaults.SplineIsVisible);
+        entityCreated();
     }
 
     public void AddPolygon(IReadOnlyList<CadPointD> points)
@@ -158,9 +175,11 @@ internal sealed class CadDrawingEntityCreator(
             layerId: layerId,
             graphicStyleId: styleResolver.ResolvePolygonGraphicStyleId(),
             fillStyleId: styleResolver.ResolvePolygonFillStyleId(),
+            name: defaults.EntityName,
             lineWeight: styleResolver.ResolvePolygonLineWeight(),
             zIndex: defaults.PolygonZIndex,
             isVisible: defaults.PolygonIsVisible);
+        entityCreated();
     }
 
     public void AddText(CadPointD position, string text, StyleId? textStyleId, double invertedMarginFactor)
@@ -172,11 +191,13 @@ internal sealed class CadDrawingEntityCreator(
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveTextGraphicStyleId(),
             textStyleId: textStyleId,
+            name: defaults.EntityName,
             isInverted: defaults.TextInverted,
             invertedMarginFactor: invertedMarginFactor,
             lineWeight: styleResolver.ResolveTextLineWeight(),
             zIndex: defaults.TextZIndex,
             isVisible: defaults.TextIsVisible);
+        entityCreated();
     }
 
     public void SetOriginPosition(CadPointD position)

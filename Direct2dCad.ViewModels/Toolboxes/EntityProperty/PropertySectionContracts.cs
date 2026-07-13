@@ -5,6 +5,7 @@ namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
 public interface IDrawingLayerPropertySectionViewModel
 {
+    string EntityName { get; set; }
     IReadOnlyList<EntityLayerOption> LayerOptions { get; }
     EntityLayerOption? SelectedLayerOption { get; set; }
 }
@@ -12,7 +13,6 @@ public interface IDrawingLayerPropertySectionViewModel
 public interface IEntityHeaderPropertySectionViewModel : IDrawingLayerPropertySectionViewModel
 {
     string EntityIdText { get; }
-    string EntityName { get; set; }
 }
 
 public interface IEntitySettingsPropertySectionViewModel
@@ -42,6 +42,8 @@ public interface IStrokeAppearancePropertySectionViewModel
 
 public interface IStrokeStylePropertySectionViewModel
 {
+    bool SupportsStartEndCaps { get; }
+    bool SupportsLineJoin { get; }
     IReadOnlyList<StrokeCapOption> StrokeCapOptions { get; }
     IReadOnlyList<StrokeDashStyleOption> StrokeDashStyleOptions { get; }
     IReadOnlyList<StrokeLineJoinOption> StrokeLineJoinOptions { get; }

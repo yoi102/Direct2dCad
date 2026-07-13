@@ -11,7 +11,7 @@
              d:DataContext="{d:DesignInstance Type=vm_ep:SplinePropertyViewModel}"
              d:DesignHeight="760" d:DesignWidth="360">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="12">
+        <StackPanel Margin="12" IsEnabled="{Binding IsEditable, Mode=OneWay}">
             <TextBlock Text="{I18N {x:Static r:LangKeys.Spline}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
             <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
             <CheckBox Content="{I18N {x:Static r:LangKeys.Closed}}"

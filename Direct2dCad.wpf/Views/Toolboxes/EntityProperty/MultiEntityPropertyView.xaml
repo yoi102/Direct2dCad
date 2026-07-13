@@ -42,7 +42,8 @@
                 </TextBlock.Style>
             </TextBlock>
 
-            <StackPanel Visibility="{Binding IsSameType, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel IsEnabled="{Binding IsEditable, Mode=OneWay}"
+                        Visibility="{Binding IsSameType, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Expander Margin="0,0,0,8"
                           Header="{I18N {x:Static r:LangKeys.CommonProperties}}"
                           IsExpanded="True">
@@ -182,7 +183,7 @@
 
                 <property:StrokeStylePropertySection
                     ViewModel="{Binding}"
-                    Visibility="{Binding SupportsStrokeAppearance, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    Visibility="{Binding SupportsStrokeStyle, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
                 <Expander Header="{I18N {x:Static r:LangKeys.Appearance}}"
                           IsExpanded="True"

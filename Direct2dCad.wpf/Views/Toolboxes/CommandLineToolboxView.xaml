@@ -145,16 +145,31 @@
                     BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}"
                     BorderThickness="1"
                     CornerRadius="2">
-                <ItemsControl ItemsSource="{Binding Suggestions}">
-                    <ItemsControl.ItemTemplate>
+                <ListBox x:Name="SuggestionList"
+                         Padding="0"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ItemsSource="{Binding Suggestions}"
+                         SelectedItem="{Binding SelectedSuggestion, Mode=TwoWay}"
+                         SelectionMode="Single"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Padding="6,3"
                                        FontFamily="Cascadia Mono, Consolas"
                                        Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                        Text="{Binding}" />
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </Border>
         </Popup>
     </Grid>

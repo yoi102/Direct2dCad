@@ -421,6 +421,23 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
+        if (selectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+            entity is { IsErased: false })
+        {
+            if (Entity is CommonEntityPropertyViewModel commonEntityViewModel &&
+                commonEntityViewModel.EntityId.Equals(entity.Id))
+            {
+                commonEntityViewModel.RefreshFromEntity();
+            }
+            else
+            {
+                Entity = new CommonEntityPropertyViewModel(_documentViewModel, entity.Id);
+            }
+
+            return;
+        }
+
         Entity = null;
     }
 

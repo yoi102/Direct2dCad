@@ -56,6 +56,15 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
     public partial bool SupportsStrokeAppearance { get; private set; }
 
     [ObservableProperty]
+    public partial bool SupportsStrokeStyle { get; private set; }
+
+    [ObservableProperty]
+    public partial bool SupportsStartEndCaps { get; private set; }
+
+    [ObservableProperty]
+    public partial bool SupportsLineJoin { get; private set; }
+
+    [ObservableProperty]
     public partial bool? UseByLayerColor { get; set; }
 
     [ObservableProperty]
@@ -150,6 +159,9 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             IsVisible = GetCommonValue(entities, entity => entity.IsVisible);
 
             SupportsStrokeAppearance = IsSameType && SupportsGraphicStyle(entities[0]);
+            SupportsStrokeStyle = IsSameType && SupportsEntityStrokeStyle(entities[0]);
+            SupportsStartEndCaps = SupportsStrokeStyle && entities.All(SupportsEntityStartEndCaps);
+            SupportsLineJoin = SupportsStrokeStyle && entities.All(SupportsEntityLineJoin);
             if (SupportsStrokeAppearance)
             {
                 UseByLayerColor = GetCommonValue(entities, entity => entity.UseLayerColor);
@@ -351,7 +363,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
 
     private void RefreshStrokeStyleProperties(IReadOnlyList<CadEntity> entities)
     {
-        if (!SupportsStrokeAppearance)
+        if (!SupportsStrokeStyle)
         {
             SelectedStartCapOption = null;
             SelectedEndCapOption = null;
@@ -395,7 +407,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         CadStrokeDashStyle? dashStyle,
         CadStrokeLineJoin? lineJoin)
     {
-        if (_isRefreshing || !SupportsStrokeAppearance ||
+        if (_isRefreshing || !SupportsStrokeStyle ||
             startCap is null && endCap is null && dashCap is null && dashStyle is null && lineJoin is null)
         {
             return;
@@ -459,6 +471,22 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
     private static bool SupportsGraphicStyle(CadEntity entity) => entity is
         CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or
         CadPolyline or CadSpline or CadText or CadShapeText or CadBlockReference;
+
+    private static bool SupportsEntityStrokeStyle(CadEntity entity) => entity is
+        CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or CadPolyline or CadSpline;
+
+    private static bool SupportsEntityStartEndCaps(CadEntity entity) => entity switch
+    {
+        CadLine => true,
+        CadArc arc => !arc.IsFullCircle,
+        CadEllipseArc => true,
+        CadPolyline polyline => !polyline.Closed,
+        CadSpline spline => !spline.Closed,
+        _ => false
+    };
+
+    private static bool SupportsEntityLineJoin(CadEntity entity) =>
+        entity is CadRectangle or CadPolyline or CadSpline;
 
     private static double ResolveOpacity(CadEntity entity) => entity switch
     {

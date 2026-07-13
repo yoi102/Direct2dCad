@@ -12,7 +12,7 @@
              d:DesignHeight="620"
              d:DesignWidth="320">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="12">
+        <StackPanel Margin="12" IsEnabled="{Binding IsEditable, Mode=OneWay}">
             <TextBlock Text="{I18N {x:Static r:LangKeys.Circle}}"
                        FontSize="16"
                        FontWeight="SemiBold"
