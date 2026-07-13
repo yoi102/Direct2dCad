@@ -85,7 +85,7 @@
         </ListBox>
 
         <Button x:Name="NewOutputButton"
-                Grid.Row="0"s
+                Grid.Row="0"
                 Width="28"
                 Height="28"
                 Style="{StaticResource MaterialDesignFlatButton}"
