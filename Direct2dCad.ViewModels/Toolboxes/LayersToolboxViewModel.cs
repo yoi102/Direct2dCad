@@ -177,7 +177,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
         var priority = Layers.Count == 0 ? 0 : Layers.Min(x => x.Priority) - 1;
         var layerId = _documentViewModel.CadEditor.CreateLayer(
             name,
-            CadColor.White,
+            CadColor.Green,
             CadLineWeight.Default,
             drawingPriority: priority);
 

@@ -54,7 +54,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         var defaultGraphicStyle = new CadGraphicStyle(
             StyleId.DefaultGraphic,
             "Default Graphic",
-            CadColor.White,
+            CadColor.Green,
             CadLineWeight.Default,
             LineTypeId.Continuous);
 
@@ -63,7 +63,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         var defaultLayer = new CadLayer(
             LayerId.Default,
             "DefaultLayer",
-            CadColor.White,
+            CadColor.Green,
             CadLineWeight.Default);
 
         AddLayerCore(defaultLayer);
