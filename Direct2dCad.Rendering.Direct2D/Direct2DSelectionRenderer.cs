@@ -12,7 +12,7 @@ namespace Direct2dCad.Rendering.Direct2D;
 internal sealed class Direct2DSelectionRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DTransientRenderer transientRenderer,
-    Direct2DStyleResourceFactory styleFactory,
+    Direct2DStyleResourceCache styleResources,
     Direct2DHandleRenderer handleRenderer)
 {
     private const byte SelectedSolidFillMaximumAlpha = 64;
@@ -228,9 +228,9 @@ internal sealed class Direct2DSelectionRenderer(
         if (resources?.Geometry is null)
             return false;
 
-        using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
-        using var strokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
-        var strokeWidth = styleFactory.ResolveStrokeWidth(style, viewport);
+        var brush = styleResources.GetBrush(context, style.StrokeColor);
+        var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
+        var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
         if (reference.Offset == CadVectorD.Zero)
         {
             DrawCachedFill(context, resources.Geometry, entity.Bounds, style, viewport);
@@ -264,14 +264,14 @@ internal sealed class Direct2DSelectionRenderer(
     {
         if (style.FillColor is { IsTransparent: false } fillColor)
         {
-            using var fillBrush = styleFactory.CreateBrush(context, fillColor);
+            var fillBrush = styleResources.GetBrush(context, fillColor);
             context.FillGeometry(geometry, fillBrush);
         }
 
         if (style.HatchFill is not { ForegroundColor.IsTransparent: false } hatchFill || bounds.IsEmpty)
             return;
 
-        using var hatchBrush = styleFactory.CreateBrush(context, hatchFill.ForegroundColor);
+        var hatchBrush = styleResources.GetBrush(context, hatchFill.ForegroundColor);
         Direct2DHatchRenderer.Draw(context, geometry, bounds, hatchFill, hatchBrush, viewport);
     }
 

@@ -14,7 +14,7 @@ namespace Direct2dCad.Rendering.Direct2D;
 internal sealed class Direct2DEntityRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DGeometryFactory geometryFactory,
-    Direct2DStyleResourceFactory styleFactory)
+    Direct2DStyleResourceCache styleResources)
 {
     public void Draw(
         ID2D1DeviceContext context,
@@ -29,7 +29,7 @@ internal sealed class Direct2DEntityRenderer(
             resources.StrokeBrush is not null)
         {
             FillBounds(context, shapeText.InvertedBackgroundBounds, resources.StrokeBrush);
-            using var invertedBrush = styleFactory.CreateBrush(context, document.ViewSettings.BackgroundColor);
+            var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
             context.DrawGeometry(
                 resources.Geometry,
                 invertedBrush,
@@ -135,12 +135,11 @@ internal sealed class Direct2DEntityRenderer(
         CadViewport viewport,
         CadRenderOptions options)
     {
-        if (HasFill(resources) && resourceCache.Factory is { } factory)
+        if (resources.HatchBrush is not null && resources.Geometry is not null)
         {
-            using var geometry = factory.CreateEllipseGeometry(ellipse);
             DrawFill(
                 context,
-                geometry,
+                resources.Geometry,
                 CadRectD.FromCenter(
                     new CadPointD(ellipse.Point.X, ellipse.Point.Y),
                     ellipse.RadiusX * 2.0,
@@ -179,10 +178,9 @@ internal sealed class Direct2DEntityRenderer(
         if (radiusX > 0 && radiusY > 0)
         {
             var rounded = geometryFactory.CreateRoundedRectangle(bounds, radiusX, radiusY);
-            if (HasFill(resources) && resourceCache.Factory is { } factory)
+            if (resources.HatchBrush is not null && resources.Geometry is not null)
             {
-                using var geometry = factory.CreateRoundedRectangleGeometry(rounded);
-                DrawFill(context, geometry, bounds, resources, viewport);
+                DrawFill(context, resources.Geometry, bounds, resources, viewport);
             }
             else if (resources.FillBrush is not null)
             {
@@ -202,10 +200,9 @@ internal sealed class Direct2DEntityRenderer(
         }
 
         var rect = ToRawRect(bounds);
-        if (HasFill(resources) && resourceCache.Factory is { } rectangleFactory)
+        if (resources.HatchBrush is not null && resources.Geometry is not null)
         {
-            using var geometry = rectangleFactory.CreateRectangleGeometry(rect);
-            DrawFill(context, geometry, bounds, resources, viewport);
+            DrawFill(context, resources.Geometry, bounds, resources, viewport);
         }
         else if (resources.FillBrush is not null)
         {
@@ -235,7 +232,7 @@ internal sealed class Direct2DEntityRenderer(
             if (text.IsInverted)
             {
                 FillBounds(context, text.InvertedBackgroundBounds, resources.StrokeBrush!);
-                using var invertedBrush = styleFactory.CreateBrush(context, document.ViewSettings.BackgroundColor);
+                var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
                 DrawTextClipped(context, text.Text, resources.TextFormat!, text.Position, text.TextBounds, invertedBrush);
                 return;
             }
@@ -273,11 +270,6 @@ internal sealed class Direct2DEntityRenderer(
             resources.HatchFillStyle.HatchOrigin,
             resources.HatchPattern.Lines.ToArray());
         Direct2DHatchRenderer.Draw(context, geometry, bounds, hatch, resources.HatchBrush, viewport);
-    }
-
-    private static bool HasFill(Direct2DResourceCache.EntityResourceBucket resources)
-    {
-        return resources.FillBrush is not null || resources.HatchBrush is not null;
     }
 
     private static void FillBounds(ID2D1DeviceContext context, CadRectD bounds, ID2D1Brush brush)

@@ -14,8 +14,9 @@ namespace Direct2dCad.Rendering.Direct2D;
 
 public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager, IDisposable
 {
+    private readonly Direct2DStyleResourceCache _styleResources = new();
     private readonly Direct2DResourceCache _resourceCache = new();
-    private readonly Direct2DBackgroundRenderer _backgroundRenderer = new();
+    private readonly Direct2DBackgroundRenderer _backgroundRenderer;
     private readonly Direct2DTransientSceneRenderer _transientSceneRenderer;
     private readonly Direct2DSelectionRenderer _selectionRenderer;
     private readonly Direct2DEntityRenderer _entityRenderer;
@@ -27,25 +28,25 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     public Direct2DSceneRender()
     {
         var geometryFactory = new Direct2DGeometryFactory();
-        var styleResourceFactory = new Direct2DStyleResourceFactory();
         var transientRenderer = new Direct2DTransientRenderer(
             _resourceCache,
             geometryFactory,
-            styleResourceFactory);
-        var handleRenderer = new Direct2DHandleRenderer();
+            _styleResources);
+        var handleRenderer = new Direct2DHandleRenderer(_styleResources);
 
+        _backgroundRenderer = new Direct2DBackgroundRenderer(_styleResources);
         _transientSceneRenderer = new Direct2DTransientSceneRenderer(
             transientRenderer,
             new Direct2DTransientImageCache());
         _selectionRenderer = new Direct2DSelectionRenderer(
             _resourceCache,
             transientRenderer,
-            styleResourceFactory,
+            _styleResources,
             handleRenderer);
         _entityRenderer = new Direct2DEntityRenderer(
             _resourceCache,
             geometryFactory,
-            styleResourceFactory);
+            _styleResources);
         _oleRenderer = new Direct2DOleRenderer(_resourceCache);
         _entityReferenceRenderer = new Direct2DEntityReferenceRenderer(
             _resourceCache,
@@ -88,6 +89,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _transientSceneRenderer.Clear();
         _oleRenderer.Clear();
+        _styleResources.Reset(factory, deviceContext);
         _resourceCache.ResetDeviceResources(factory, writeFactory, deviceContext, document);
     }
 
@@ -263,9 +265,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private void DrawPaper(ID2D1DeviceContext context, CadLayout layout)
     {
         var bounds = ToRawRect(layout.PaperBounds);
-        using var paperBrush = context.CreateSolidColorBrush(ToColor4(layout.PaperColor));
-        using var edgeBrush = context.CreateSolidColorBrush(new Color4(0.25f, 0.25f, 0.25f, 1f));
-        using var marginBrush = context.CreateSolidColorBrush(new Color4(0.45f, 0.45f, 0.45f, 0.85f));
+        var paperBrush = _styleResources.GetBrush(context, layout.PaperColor);
+        var edgeBrush = _styleResources.GetBrush(context, CadColor.FromRgb(64, 64, 64));
+        var marginBrush = _styleResources.GetBrush(context, CadColor.FromArgb(217, 115, 115, 115));
         context.FillRectangle(bounds, paperBrush);
         context.DrawRectangle(bounds, edgeBrush, 1f / Math.Max((float)CadEditorZoom(context), 1e-6f));
         context.DrawRectangle(
@@ -284,7 +286,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadRenderOptions options)
     {
         var paperTransform = context.Transform;
-        using var borderBrush = context.CreateSolidColorBrush(new Color4(0.2f, 0.45f, 0.8f, 0.9f));
+        var borderBrush = _styleResources.GetBrush(context, CadColor.FromArgb(230, 51, 115, 204));
 
         foreach (var layoutViewport in layout.Viewports.Where(item => item.IsVisible))
         {
@@ -435,12 +437,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         (float)bounds.MaxX,
         (float)bounds.MaxY);
 
-    private static Color4 ToColor4(CadColor color) => new(
-        color.R / 255f,
-        color.G / 255f,
-        color.B / 255f,
-        color.A / 255f);
-
     private static double CadEditorZoom(ID2D1DeviceContext context)
     {
         var transform = context.Transform;
@@ -499,6 +495,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _resourceCache.Dispose();
         _transientSceneRenderer.Dispose();
         _oleRenderer.Dispose();
+        _styleResources.Dispose();
         _disposed = true;
     }
 

@@ -30,6 +30,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
     {
         Title = Localize("Blocks", "Blocks");
         Icon = toolboxIconProvider.Blocks;
+        IsOpenByDefault = false;
         CanClose = false;
         _dialogService = dialogService;
         _snackbarService = snackbarService;

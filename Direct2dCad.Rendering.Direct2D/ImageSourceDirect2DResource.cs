@@ -81,8 +81,6 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         }
     }
 
-    public Direct2DResourceCache? Direct2DResourceCache { get; private set; }
-
     public bool IsTargetReady =>
         _imageSource != null &&
         _d3d11RenderTarget != null &&
@@ -139,8 +137,6 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         if (_d2dFactory is null || _dwriteFactory is null || _d2dContext is null)
             throw new InvalidOperationException("Failed to create necessary Direct2D resources.");
-
-        Direct2DResourceCache ??= new Direct2DResourceCache(_d2dFactory, _dwriteFactory, _d2dContext);
 
         _d2dContext.Target = _targetBitmap;
 
@@ -517,9 +513,6 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         if (_d2dFactory is null || _dwriteFactory is null || _d2dContext is null)
             throw new InvalidOperationException("Failed to recreate Direct2D device resources.");
 
-        Direct2DResourceCache ??= new Direct2DResourceCache();
-        Direct2DResourceCache.ResetDeviceResources(_d2dFactory, _dwriteFactory, _d2dContext);
-
         _d2dContext.Target = _targetBitmap;
         _imageSource.SetSurface(_sharedSurface9.NativePointer);
         _imageSource.Invalidate();
@@ -561,8 +554,6 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     private void ReleaseDeviceResources()
     {
-        Direct2DResourceCache?.ClearCache();
-
         _dwriteFactory?.Dispose();
         _dwriteFactory = null;
 

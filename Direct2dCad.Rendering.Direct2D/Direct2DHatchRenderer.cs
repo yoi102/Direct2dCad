@@ -52,10 +52,10 @@ internal static class Direct2DHatchRenderer
 
         var previousPrimitiveBlend = deviceContext.PrimitiveBlend;
         var layerPushed = false;
-        using var layer = deviceContext.CreateLayer(null);
         try
         {
-            deviceContext.PushLayer(ref layerParameters, layer);
+            // ID2D1DeviceContext manages an implicit layer when this optional argument is null.
+            deviceContext.PushLayer(ref layerParameters, null!);
             layerPushed = true;
             deviceContext.PrimitiveBlend = PrimitiveBlend.Copy;
 

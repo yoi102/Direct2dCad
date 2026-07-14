@@ -155,9 +155,10 @@ internal sealed class Direct2DResourceCache : IDisposable
         bucket.StrokeBrush = CreateBrush(ResolveStrokeColor(document, entity, layer, graphic));
         bucket.StrokeStyle = CreateStrokeStyle(entity.StrokeStyle);
 
-        bucket.Geometry = CreateGeometry(entity);
+        var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
+        bucket.Geometry = CreateGeometry(entity, fillStyle is CadHatchFillStyle);
 
-        if (TryResolveFillStyle(document, entity, out var fillStyle))
+        if (hasFillStyle)
         {
             switch (fillStyle)
             {
@@ -190,14 +191,19 @@ internal sealed class Direct2DResourceCache : IDisposable
         return bucket;
     }
 
-    private ID2D1Geometry? CreateGeometry(CadEntity entity)
+    private ID2D1Geometry? CreateGeometry(CadEntity entity, bool includePrimitiveFillGeometry)
     {
         return entity switch
         {
             CadLine => null,
+            CadCircle circle when includePrimitiveFillGeometry => Factory!.CreateEllipseGeometry(
+                new Ellipse(ToVector2(circle.Center), (float)circle.Radius, (float)circle.Radius)),
             CadCircle => null,
+            CadEllipse ellipse when includePrimitiveFillGeometry => Factory!.CreateEllipseGeometry(
+                new Ellipse(ToVector2(ellipse.Center), (float)ellipse.RadiusX, (float)ellipse.RadiusY)),
             CadEllipse => null,
             CadEllipseArc ellipseArc => CreateEllipseArcPathGeometry(ellipseArc),
+            CadRectangle rectangle when includePrimitiveFillGeometry => CreateRectangleGeometry(rectangle),
             CadRectangle => null,
             CadArc arc => arc.IsFullCircle ? null : CreateArcPathGeometry(arc),
             CadPolyline polyline => CreatePolylineGeometry(polyline.Points, polyline.Closed),
@@ -374,13 +380,35 @@ internal sealed class Direct2DResourceCache : IDisposable
             : SweepDirection.CounterClockwise;
     }
 
-    private ID2D1Geometry CreateRectangleGeometry(CadRectD bounds)
+    private ID2D1Geometry CreateRectangleGeometry(CadRectangle rectangle)
     {
+        var bounds = rectangle.Bounds;
+        var radiusX = ClampCornerRadius(rectangle.CornerRadiusX, bounds.Width);
+        var radiusY = ClampCornerRadius(rectangle.CornerRadiusY, bounds.Height);
+        if (radiusX > 0 && radiusY > 0)
+        {
+            return Factory!.CreateRoundedRectangleGeometry(new RoundedRectangle(
+                new RawRectF(
+                    (float)bounds.MinX,
+                    (float)bounds.MinY,
+                    (float)bounds.MaxX,
+                    (float)bounds.MaxY),
+                (float)radiusX,
+                (float)radiusY));
+        }
+
         return Factory!.CreateRectangleGeometry(new RawRectF(
             (float)bounds.MinX,
             (float)bounds.MinY,
             (float)bounds.MaxX,
             (float)bounds.MaxY));
+    }
+
+    private static double ClampCornerRadius(double radius, double size)
+    {
+        if (!double.IsFinite(radius) || !double.IsFinite(size) || radius <= 0 || size <= 0)
+            return 0;
+        return Math.Min(radius, size * 0.5);
     }
 
     private ID2D1SolidColorBrush CreateBrush(CadColor color)

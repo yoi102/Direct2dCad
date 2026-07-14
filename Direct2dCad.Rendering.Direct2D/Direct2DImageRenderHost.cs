@@ -21,6 +21,9 @@ public sealed class Direct2DImageRenderHost : IDisposable
     private CadTransientScene? _transientScene;
     private CadHandleScene? _handleScene;
     private CadRenderOptions _renderOptions = new();
+    private ID2D1DeviceContext? _clearBrushContext;
+    private ID2D1SolidColorBrush? _clearBrush;
+    private Color4 _clearBrushColor;
     private bool _disposed;
 
     public ICadGeometryResourceManager GeometryResourceManager => _renderer;
@@ -322,7 +325,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
             rect.Y + rect.Height);
     }
 
-    private static void FillScreenRect(ID2D1DeviceContext context, RawRectF rect, Color4 color)
+    private void FillScreenRect(ID2D1DeviceContext context, RawRectF rect, Color4 color)
     {
         var previousTransform = context.Transform;
         var previousPrimitiveBlend = context.PrimitiveBlend;
@@ -331,14 +334,36 @@ public sealed class Direct2DImageRenderHost : IDisposable
 
         try
         {
-            using var brush = context.CreateSolidColorBrush(color);
-            context.FillRectangle(rect, brush);
+            context.FillRectangle(rect, GetClearBrush(context, color));
         }
         finally
         {
             context.PrimitiveBlend = previousPrimitiveBlend;
             context.Transform = previousTransform;
         }
+    }
+
+    private ID2D1SolidColorBrush GetClearBrush(ID2D1DeviceContext context, Color4 color)
+    {
+        if (_clearBrush is not null &&
+            ReferenceEquals(_clearBrushContext, context) &&
+            _clearBrushColor.Equals(color))
+        {
+            return _clearBrush;
+        }
+
+        ReleaseClearBrush();
+        _clearBrushContext = context;
+        _clearBrushColor = color;
+        _clearBrush = context.CreateSolidColorBrush(color);
+        return _clearBrush;
+    }
+
+    private void ReleaseClearBrush()
+    {
+        _clearBrush?.Dispose();
+        _clearBrush = null;
+        _clearBrushContext = null;
     }
 
     private static Color4 ToColor4(CadColor color)
@@ -355,6 +380,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
         if (!_target.IsTargetReady)
             return;
 
+        ReleaseClearBrush();
         _renderer.ResetDeviceResources(
             _target.Factory,
             _target.DwriteFactory,
@@ -367,6 +393,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
         if (_disposed)
             return;
 
+        ReleaseClearBrush();
         _renderer.Dispose();
         _target.Dispose();
         _imageSource = null;

@@ -16,7 +16,7 @@ namespace Direct2dCad.Rendering.Direct2D;
 internal sealed class Direct2DTransientRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DGeometryFactory geometryFactory,
-    Direct2DStyleResourceFactory styleFactory)
+    Direct2DStyleResourceCache styleResources)
 {
     public void DrawLine(
         ID2D1DeviceContext context,
@@ -25,13 +25,13 @@ internal sealed class Direct2DTransientRenderer(
         CadPointD end,
         CadTransientStyle style)
     {
-        using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
-        using var strokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
+        var brush = styleResources.GetBrush(context, style.StrokeColor);
+        var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
         context.DrawLine(
             ToVector2(start),
             ToVector2(end),
             brush,
-            styleFactory.ResolveStrokeWidth(style, viewport),
+            styleResources.ResolveStrokeWidth(style, viewport),
             strokeStyle);
     }
 
@@ -45,9 +45,9 @@ internal sealed class Direct2DTransientRenderer(
         if (points.Count < 2)
             return;
 
-        using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
-        using var strokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
-        var strokeWidth = styleFactory.ResolveStrokeWidth(style, viewport);
+        var brush = styleResources.GetBrush(context, style.StrokeColor);
+        var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
+        var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
         if (resourceCache.Factory is not { } factory || !closed || !HasFill(style))
         {
             for (var index = 1; index < points.Count; index++)
@@ -73,11 +73,11 @@ internal sealed class Direct2DTransientRenderer(
             return;
 
         using var geometry = geometryFactory.CreateSpline(factory, fitPoints, closed);
-        using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
-        using var strokeStyle = styleFactory.CreateStrokeStyle(factory, style);
+        var brush = styleResources.GetBrush(context, style.StrokeColor);
+        var strokeStyle = styleResources.GetStrokeStyle(factory, style);
         if (closed && HasFill(style))
             DrawFill(context, geometry, BoundsFromPoints(fitPoints), style, viewport);
-        context.DrawGeometry(geometry, brush, styleFactory.ResolveStrokeWidth(style, viewport), strokeStyle);
+        context.DrawGeometry(geometry, brush, styleResources.ResolveStrokeWidth(style, viewport), strokeStyle);
     }
 
     public void DrawArc(
@@ -141,20 +141,20 @@ internal sealed class Direct2DTransientRenderer(
         CadTransientStyle style)
     {
         var ellipse = new Ellipse(ToVector2(center), (float)radiusX, (float)radiusY);
-        if (HasFill(style) && resourceCache.Factory is { } factory)
+        if (HasHatchFill(style) && resourceCache.Factory is { } factory)
         {
             using var geometry = factory.CreateEllipseGeometry(ellipse);
             DrawFill(context, geometry, CadRectD.FromCenter(center, radiusX * 2.0, radiusY * 2.0), style, viewport);
         }
         else if (style.FillColor is { IsTransparent: false } fillColor)
         {
-            using var fillBrush = styleFactory.CreateBrush(context, fillColor);
+            var fillBrush = styleResources.GetBrush(context, fillColor);
             context.FillEllipse(ellipse, fillBrush);
         }
 
-        using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
-        using var strokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
-        context.DrawEllipse(ellipse, brush, styleFactory.ResolveStrokeWidth(style, viewport), strokeStyle);
+        var brush = styleResources.GetBrush(context, style.StrokeColor);
+        var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
+        context.DrawEllipse(ellipse, brush, styleResources.ResolveStrokeWidth(style, viewport), strokeStyle);
     }
 
     public void DrawRectangle(
@@ -170,20 +170,20 @@ internal sealed class Direct2DTransientRenderer(
         if (radiusX > 0 && radiusY > 0)
         {
             var rounded = geometryFactory.CreateRoundedRectangle(bounds, radiusX, radiusY);
-            if (HasFill(style) && resourceCache.Factory is { } factory)
+            if (HasHatchFill(style) && resourceCache.Factory is { } factory)
             {
                 using var geometry = factory.CreateRoundedRectangleGeometry(rounded);
                 DrawFill(context, geometry, bounds, style, viewport);
             }
             else if (style.FillColor is { IsTransparent: false } fillColor)
             {
-                using var fillBrush = styleFactory.CreateBrush(context, fillColor);
+                var fillBrush = styleResources.GetBrush(context, fillColor);
                 context.FillRoundedRectangle(rounded, fillBrush);
             }
 
-            using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
-            using var strokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
-            var strokeWidth = styleFactory.ResolveStrokeWidth(style, viewport);
+            var brush = styleResources.GetBrush(context, style.StrokeColor);
+            var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
+            var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
             if (strokeStyle is null)
                 context.DrawRoundedRectangle(rounded, brush, strokeWidth);
             else
@@ -192,23 +192,23 @@ internal sealed class Direct2DTransientRenderer(
         }
 
         var rectangle = ToRawRect(bounds);
-        if (HasFill(style) && resourceCache.Factory is { } rectangleFactory)
+        if (HasHatchFill(style) && resourceCache.Factory is { } rectangleFactory)
         {
             using var geometry = rectangleFactory.CreateRectangleGeometry(rectangle);
             DrawFill(context, geometry, bounds, style, viewport);
         }
         else if (style.FillColor is { IsTransparent: false } fillColor)
         {
-            using var fillBrush = styleFactory.CreateBrush(context, fillColor);
+            var fillBrush = styleResources.GetBrush(context, fillColor);
             context.FillRectangle(rectangle, fillBrush);
         }
 
-        using var rectangleBrush = styleFactory.CreateBrush(context, style.StrokeColor);
-        using var rectangleStrokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
+        var rectangleBrush = styleResources.GetBrush(context, style.StrokeColor);
+        var rectangleStrokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
         context.DrawRectangle(
             rectangle,
             rectangleBrush,
-            styleFactory.ResolveStrokeWidth(style, viewport),
+            styleResources.ResolveStrokeWidth(style, viewport),
             rectangleStrokeStyle);
     }
 
@@ -236,11 +236,11 @@ internal sealed class Direct2DTransientRenderer(
         {
             if (isInverted)
             {
-                using var fillBrush = styleFactory.CreateBrush(context, style.StrokeColor);
+                var fillBrush = styleResources.GetBrush(context, style.StrokeColor);
                 FillBounds(context, CreateInvertedBounds(bounds, height, invertedMarginFactor), fillBrush);
             }
 
-            using var brush = styleFactory.CreateBrush(
+            var brush = styleResources.GetBrush(
                 context,
                 isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
             using var format = Direct2DTextServices.CreateTextFormat(
@@ -287,16 +287,16 @@ internal sealed class Direct2DTransientRenderer(
                 shapeFont.Id);
             if (!bounds.IsEmpty)
             {
-                using var fillBrush = styleFactory.CreateBrush(context, style.StrokeColor);
+                var fillBrush = styleResources.GetBrush(context, style.StrokeColor);
                 FillBounds(context, CreateInvertedBounds(bounds, height, invertedMarginFactor), fillBrush);
             }
         }
 
-        using var brush = styleFactory.CreateBrush(
+        var brush = styleResources.GetBrush(
             context,
             isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
-        using var strokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
-        var strokeWidth = styleFactory.ResolveStrokeWidth(style, viewport);
+        var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
+        var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
         foreach (var segment in CadStrokeFont.CreateSegments(
                      text,
                      position,
@@ -317,9 +317,9 @@ internal sealed class Direct2DTransientRenderer(
         ID2D1Geometry geometry,
         CadTransientStyle style)
     {
-        using var brush = styleFactory.CreateBrush(context, style.StrokeColor);
-        using var strokeStyle = styleFactory.CreateStrokeStyle(resourceCache.Factory, style);
-        context.DrawGeometry(geometry, brush, styleFactory.ResolveStrokeWidth(style, viewport), strokeStyle);
+        var brush = styleResources.GetBrush(context, style.StrokeColor);
+        var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
+        context.DrawGeometry(geometry, brush, styleResources.ResolveStrokeWidth(style, viewport), strokeStyle);
     }
 
     private void DrawFill(
@@ -331,7 +331,7 @@ internal sealed class Direct2DTransientRenderer(
     {
         if (style.FillColor is { IsTransparent: false } fillColor)
         {
-            using var fillBrush = styleFactory.CreateBrush(context, fillColor);
+            var fillBrush = styleResources.GetBrush(context, fillColor);
             context.FillGeometry(geometry, fillBrush);
         }
 
@@ -342,7 +342,7 @@ internal sealed class Direct2DTransientRenderer(
             return;
         }
 
-        using var hatchBrush = styleFactory.CreateBrush(context, hatchFill.ForegroundColor);
+        var hatchBrush = styleResources.GetBrush(context, hatchFill.ForegroundColor);
         Direct2DHatchRenderer.Draw(context, geometry, bounds, hatchFill, hatchBrush, viewport);
     }
 
@@ -350,6 +350,11 @@ internal sealed class Direct2DTransientRenderer(
     {
         return style.FillColor is { IsTransparent: false } ||
                style.HatchFill is { ForegroundColor.IsTransparent: false, Lines.Count: > 0 };
+    }
+
+    private static bool HasHatchFill(CadTransientStyle style)
+    {
+        return style.HatchFill is { ForegroundColor.IsTransparent: false, Lines.Count: > 0 };
     }
 
     private static CadRectD BoundsFromPoints(IReadOnlyList<CadPointD> points)

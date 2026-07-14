@@ -9,7 +9,7 @@ using Vortice.Mathematics;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
-internal sealed class Direct2DHandleRenderer
+internal sealed class Direct2DHandleRenderer(Direct2DStyleResourceCache styleResources)
 {
     public void DrawGrip(
         ID2D1DeviceContext deviceContext,
@@ -26,10 +26,10 @@ internal sealed class Direct2DHandleRenderer
             grip.Position.Y - halfSize,
             grip.Position.X + halfSize,
             grip.Position.Y + halfSize);
-        using var strokeBrush = CreateBrush(deviceContext, grip.Style.StrokeColor);
-        using var fillBrush = factory is null || grip.Style.FillColor.IsTransparent
+        var strokeBrush = styleResources.GetBrush(deviceContext, grip.Style.StrokeColor);
+        var fillBrush = factory is null || grip.Style.FillColor.IsTransparent
             ? null
-            : CreateBrush(deviceContext, grip.Style.FillColor);
+            : styleResources.GetBrush(deviceContext, grip.Style.FillColor);
         var minimumStrokeWidth = grip.Style.Shape == CadHandleShape.Diamond ? 0.1 : 0.5;
         var strokeWidth = ResolveStrokeWidth(grip.Style, viewport, minimumStrokeWidth);
 
@@ -109,15 +109,6 @@ internal sealed class Direct2DHandleRenderer
         return style.KeepSizeScreenConstant
             ? (float)(width / Math.Max(viewport.Zoom, double.Epsilon))
             : (float)width;
-    }
-
-    private static ID2D1SolidColorBrush CreateBrush(ID2D1DeviceContext context, CadColor color)
-    {
-        return context.CreateSolidColorBrush(new Color4(
-            color.R / 255.0f,
-            color.G / 255.0f,
-            color.B / 255.0f,
-            color.A / 255.0f));
     }
 
     private static Vector2 ToVector2(CadPointD point) => new((float)point.X, (float)point.Y);
