@@ -9,13 +9,15 @@ namespace Direct2dCad.Rendering.Direct2D;
 
 internal sealed class Direct2DStyleResourceCache : IDisposable
 {
-    private const int MaximumCachedBrushCount = 128;
-    private readonly Dictionary<CadColor, BrushCacheEntry> _brushes = [];
+    private readonly Dictionary<CadColor, ID2D1SolidColorBrush> _brushes = [];
     private readonly Dictionary<CadTransientLinePattern, ID2D1StrokeStyle> _transientStrokeStyles = [];
     private readonly Dictionary<CadOriginLinePattern, ID2D1StrokeStyle> _originStrokeStyles = [];
+    private readonly HashSet<CadColor> _usedBrushes = [];
+    private readonly HashSet<CadTransientLinePattern> _usedTransientStrokeStyles = [];
+    private readonly HashSet<CadOriginLinePattern> _usedOriginStrokeStyles = [];
     private ID2D1DeviceContext? _deviceContext;
     private ID2D1Factory? _factory;
-    private long _brushUseCounter;
+    private int _frameDepth;
     private bool _disposed;
 
     public void Reset(ID2D1Factory? factory, ID2D1DeviceContext? deviceContext)
@@ -26,23 +28,40 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         _deviceContext = deviceContext;
     }
 
+    public void BeginFrame()
+    {
+        ThrowIfDisposed();
+        if (_frameDepth++ > 0)
+            return;
+
+        _usedBrushes.Clear();
+        _usedTransientStrokeStyles.Clear();
+        _usedOriginStrokeStyles.Clear();
+    }
+
+    public void CompleteFrame()
+    {
+        ThrowIfDisposed();
+        if (_frameDepth == 0 || --_frameDepth > 0)
+            return;
+
+        RemoveUnusedResources();
+    }
+
     public ID2D1SolidColorBrush GetBrush(ID2D1DeviceContext context, CadColor color)
     {
         ThrowIfDisposed();
         EnsureDeviceContext(context);
-        if (_brushes.TryGetValue(color, out var cached))
-        {
-            cached.LastUsed = ++_brushUseCounter;
-            return cached.Brush;
-        }
+        MarkBrushUsed(color);
+        if (_brushes.TryGetValue(color, out var brush))
+            return brush;
 
-        TrimBrushCache();
-        var brush = context.CreateSolidColorBrush(new Color4(
+        brush = context.CreateSolidColorBrush(new Color4(
             color.R / 255.0f,
             color.G / 255.0f,
             color.B / 255.0f,
             color.A / 255.0f));
-        _brushes.Add(color, new BrushCacheEntry(brush, ++_brushUseCounter));
+        _brushes.Add(color, brush);
         return brush;
     }
 
@@ -56,6 +75,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             return null;
 
         EnsureFactory(factory);
+        MarkTransientStrokeStyleUsed(style.LinePattern);
         if (_transientStrokeStyles.TryGetValue(style.LinePattern, out var strokeStyle))
             return strokeStyle;
 
@@ -88,6 +108,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             return null;
 
         EnsureFactory(factory);
+        MarkOriginStrokeStyleUsed(pattern);
         if (_originStrokeStyles.TryGetValue(pattern, out var strokeStyle))
             return strokeStyle;
 
@@ -128,6 +149,49 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         _disposed = true;
     }
 
+    private void MarkBrushUsed(CadColor color)
+    {
+        if (_frameDepth > 0)
+            _usedBrushes.Add(color);
+    }
+
+    private void MarkTransientStrokeStyleUsed(CadTransientLinePattern pattern)
+    {
+        if (_frameDepth > 0)
+            _usedTransientStrokeStyles.Add(pattern);
+    }
+
+    private void MarkOriginStrokeStyleUsed(CadOriginLinePattern pattern)
+    {
+        if (_frameDepth > 0)
+            _usedOriginStrokeStyles.Add(pattern);
+    }
+
+    private void RemoveUnusedResources()
+    {
+        foreach (var color in _brushes.Keys.Where(color => !_usedBrushes.Contains(color)).ToArray())
+        {
+            _brushes[color].Dispose();
+            _brushes.Remove(color);
+        }
+
+        foreach (var pattern in _transientStrokeStyles.Keys
+                     .Where(pattern => !_usedTransientStrokeStyles.Contains(pattern))
+                     .ToArray())
+        {
+            _transientStrokeStyles[pattern].Dispose();
+            _transientStrokeStyles.Remove(pattern);
+        }
+
+        foreach (var pattern in _originStrokeStyles.Keys
+                     .Where(pattern => !_usedOriginStrokeStyles.Contains(pattern))
+                     .ToArray())
+        {
+            _originStrokeStyles[pattern].Dispose();
+            _originStrokeStyles.Remove(pattern);
+        }
+    }
+
     private void EnsureDeviceContext(ID2D1DeviceContext context)
     {
         if (ReferenceEquals(_deviceContext, context))
@@ -150,38 +214,19 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     {
         ClearBrushes();
         ClearStrokeStyles();
+        _usedBrushes.Clear();
+        _usedTransientStrokeStyles.Clear();
+        _usedOriginStrokeStyles.Clear();
         _deviceContext = null;
         _factory = null;
+        _frameDepth = 0;
     }
 
     private void ClearBrushes()
     {
-        foreach (var entry in _brushes.Values)
-            entry.Brush.Dispose();
+        foreach (var brush in _brushes.Values)
+            brush.Dispose();
         _brushes.Clear();
-        _brushUseCounter = 0;
-    }
-
-    private void TrimBrushCache()
-    {
-        if (_brushes.Count < MaximumCachedBrushCount)
-            return;
-
-        var hasOldest = false;
-        var oldestColor = default(CadColor);
-        var oldestUse = long.MaxValue;
-        foreach (var pair in _brushes)
-        {
-            if (pair.Value.LastUsed >= oldestUse)
-                continue;
-
-            hasOldest = true;
-            oldestColor = pair.Key;
-            oldestUse = pair.Value.LastUsed;
-        }
-
-        if (hasOldest && _brushes.Remove(oldestColor, out var oldest))
-            oldest.Brush.Dispose();
     }
 
     private void ClearStrokeStyles()
@@ -198,11 +243,5 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(Direct2DStyleResourceCache));
-    }
-
-    private sealed class BrushCacheEntry(ID2D1SolidColorBrush brush, long lastUsed)
-    {
-        public ID2D1SolidColorBrush Brush { get; } = brush;
-        public long LastUsed { get; set; } = lastUsed;
     }
 }

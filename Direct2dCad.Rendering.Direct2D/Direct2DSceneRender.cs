@@ -120,9 +120,23 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _oleRenderer.RemoveEntity(entityId);
     }
 
+    public void BeginFrame()
+    {
+        ThrowIfDisposed();
+        _styleResources.BeginFrame();
+    }
+
     public void CompleteFrame()
     {
-        _oleRenderer.CompleteFrame();
+        ThrowIfDisposed();
+        try
+        {
+            _oleRenderer.CompleteFrame();
+        }
+        finally
+        {
+            _styleResources.CompleteFrame();
+        }
     }
 
     public void PrepareOleTiles(

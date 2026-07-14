@@ -185,17 +185,18 @@ public sealed class Direct2DImageRenderHost : IDisposable
 
         try
         {
-            if (_document is not null && _viewport is not null)
-            {
-                _renderer.PrepareOleTiles(
-                    _document,
-                    _viewport,
-                    _transientScene,
-                    _renderOptions);
-            }
-
+            _renderer.BeginFrame();
             try
             {
+                if (_document is not null && _viewport is not null)
+                {
+                    _renderer.PrepareOleTiles(
+                        _document,
+                        _viewport,
+                        _transientScene,
+                        _renderOptions);
+                }
+
                 _target.DrawFrame(context =>
                 {
                     if (!effectiveInvalidation.IsFull)
