@@ -37,4 +37,6 @@ public sealed class CadSettingsSection
     [Key(27)] public CadOriginLinePattern? OriginLinePattern { get; set; }
     [Key(28)] public double? OriginSize { get; set; }
     [Key(29)] public CadPointData? OriginPosition { get; set; }
+    [Key(30)] public double? GridMinorSpacingX { get; set; }
+    [Key(31)] public double? GridMinorSpacingY { get; set; }
 }

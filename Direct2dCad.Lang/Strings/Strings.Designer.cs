@@ -1276,6 +1276,33 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Grid appearance 的本地化字符串。
+        /// </summary>
+        public static string GridAppearance {
+            get {
+                return ResourceManager.GetString("GridAppearance", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Grid density 的本地化字符串。
+        /// </summary>
+        public static string GridDensity {
+            get {
+                return ResourceManager.GetString("GridDensity", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Density preset (major / minor) 的本地化字符串。
+        /// </summary>
+        public static string GridDensityPreset {
+            get {
+                return ResourceManager.GetString("GridDensityPreset", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Grid type 的本地化字符串。
         /// </summary>
         public static string GridType {
@@ -1564,6 +1591,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Major spacing X (mm) 的本地化字符串。
+        /// </summary>
+        public static string MajorGridSpacingXMillimeters {
+            get {
+                return ResourceManager.GetString("MajorGridSpacingXMillimeters", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Major spacing Y (mm) 的本地化字符串。
+        /// </summary>
+        public static string MajorGridSpacingYMillimeters {
+            get {
+                return ResourceManager.GetString("MajorGridSpacingYMillimeters", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Margin 的本地化字符串。
         /// </summary>
         public static string Margin {
@@ -1659,6 +1704,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string MinorGridLineWidth {
             get {
                 return ResourceManager.GetString("MinorGridLineWidth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Minor spacing X (mm) 的本地化字符串。
+        /// </summary>
+        public static string MinorGridSpacingXMillimeters {
+            get {
+                return ResourceManager.GetString("MinorGridSpacingXMillimeters", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Minor spacing Y (mm) 的本地化字符串。
+        /// </summary>
+        public static string MinorGridSpacingYMillimeters {
+            get {
+                return ResourceManager.GetString("MinorGridSpacingYMillimeters", resourceCulture);
             }
         }
         

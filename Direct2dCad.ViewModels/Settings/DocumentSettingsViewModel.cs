@@ -74,6 +74,8 @@ public partial class DocumentSettingsViewModel : ObservableObject, IDocumentSett
                leftGrid.Type == rightGrid.Type &&
                leftGrid.SpacingX == rightGrid.SpacingX &&
                leftGrid.SpacingY == rightGrid.SpacingY &&
+               leftGrid.MinorSpacingX == rightGrid.MinorSpacingX &&
+               leftGrid.MinorSpacingY == rightGrid.MinorSpacingY &&
                leftGrid.Subdivision == rightGrid.Subdivision &&
                leftGrid.SnapSpacingX == rightGrid.SnapSpacingX &&
                leftGrid.SnapSpacingY == rightGrid.SnapSpacingY &&

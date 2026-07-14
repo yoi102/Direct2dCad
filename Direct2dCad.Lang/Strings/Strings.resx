@@ -1274,4 +1274,25 @@
   <data name="DeleteBlockConfirmFormat" xml:space="preserve">
     <value>Delete block '{0}'?</value>
   </data>
+  <data name="GridDensity" xml:space="preserve">
+    <value>Grid density</value>
+  </data>
+  <data name="GridDensityPreset" xml:space="preserve">
+    <value>Density preset (major / minor)</value>
+  </data>
+  <data name="MajorGridSpacingXMillimeters" xml:space="preserve">
+    <value>Major spacing X (mm)</value>
+  </data>
+  <data name="MajorGridSpacingYMillimeters" xml:space="preserve">
+    <value>Major spacing Y (mm)</value>
+  </data>
+  <data name="MinorGridSpacingXMillimeters" xml:space="preserve">
+    <value>Minor spacing X (mm)</value>
+  </data>
+  <data name="MinorGridSpacingYMillimeters" xml:space="preserve">
+    <value>Minor spacing Y (mm)</value>
+  </data>
+  <data name="GridAppearance" xml:space="preserve">
+    <value>Grid appearance</value>
+  </data>
 </root>

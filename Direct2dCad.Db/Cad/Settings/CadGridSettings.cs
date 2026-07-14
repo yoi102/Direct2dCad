@@ -22,10 +22,17 @@ public enum CadSnapMarkerType
 
 public sealed class CadGridSettings
 {
+    public const double MinimumSpacingMillimeters = 0.001;
+    public const double MaximumSpacingMillimeters = 100_000.0;
+    public const int MinimumSubdivision = 2;
+    public const int MaximumSubdivision = 100;
+
     public CadGridType Type { get; set; } = CadGridType.Lines;
     public double SpacingX { get; set; } = 10.0;
     public double SpacingY { get; set; } = 10.0;
-    public int Subdivision { get; set; } = 5;
+    public double MinorSpacingX { get; set; } = 1.0;
+    public double MinorSpacingY { get; set; } = 1.0;
+    public int Subdivision { get; set; } = 10;
     public double SnapSpacingX { get; set; }
     public double SnapSpacingY { get; set; }
     public double MinimumScreenSpacing { get; set; } = 28.0;
@@ -41,13 +48,17 @@ public sealed class CadGridSettings
 
     public double GetSnapSpacingX()
     {
-        return SnapSpacingX > 0 ? GuardSpacing(SnapSpacingX) : GuardMinimumWorldSpacing(MinimumWorldSpacing);
+        return SnapSpacingX > 0 ? GuardSpacing(SnapSpacingX) : GetMinorSpacingX();
     }
 
     public double GetSnapSpacingY()
     {
-        return SnapSpacingY > 0 ? GuardSpacing(SnapSpacingY) : GuardMinimumWorldSpacing(MinimumWorldSpacing);
+        return SnapSpacingY > 0 ? GuardSpacing(SnapSpacingY) : GetMinorSpacingY();
     }
+
+    public double GetMinorSpacingX() => GuardMinorSpacing(MinorSpacingX, SpacingX);
+
+    public double GetMinorSpacingY() => GuardMinorSpacing(MinorSpacingY, SpacingY);
 
     private static double GuardSpacing(double spacing)
     {
@@ -56,10 +67,20 @@ public sealed class CadGridSettings
             : spacing;
     }
 
-    private static double GuardMinimumWorldSpacing(double spacing)
+    private double GuardMinorSpacing(double spacing, double majorSpacing)
     {
-        return spacing <= 0 || double.IsNaN(spacing) || double.IsInfinity(spacing)
-            ? 1.0
-            : spacing;
+        if (spacing >= MinimumSpacingMillimeters &&
+            spacing <= MaximumSpacingMillimeters &&
+            double.IsFinite(spacing))
+        {
+            return spacing;
+        }
+
+        var subdivision = Math.Clamp(Subdivision, MinimumSubdivision, MaximumSubdivision);
+        return Math.Clamp(
+            GuardSpacing(majorSpacing) / subdivision,
+            MinimumSpacingMillimeters,
+            MaximumSpacingMillimeters);
     }
+
 }

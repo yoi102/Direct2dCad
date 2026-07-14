@@ -1053,4 +1053,25 @@
   <data name="DeleteBlockConfirmFormat" xml:space="preserve">
     <value>ブロック「{0}」を削除しますか？</value>
   </data>
+  <data name="GridDensity" xml:space="preserve">
+    <value>グリッド密度</value>
+  </data>
+  <data name="GridDensityPreset" xml:space="preserve">
+    <value>密度プリセット（主 / 副）</value>
+  </data>
+  <data name="MajorGridSpacingXMillimeters" xml:space="preserve">
+    <value>主グリッド X 間隔 (mm)</value>
+  </data>
+  <data name="MajorGridSpacingYMillimeters" xml:space="preserve">
+    <value>主グリッド Y 間隔 (mm)</value>
+  </data>
+  <data name="MinorGridSpacingXMillimeters" xml:space="preserve">
+    <value>副グリッド X 間隔 (mm)</value>
+  </data>
+  <data name="MinorGridSpacingYMillimeters" xml:space="preserve">
+    <value>副グリッド Y 間隔 (mm)</value>
+  </data>
+  <data name="GridAppearance" xml:space="preserve">
+    <value>グリッド表示</value>
+  </data>
 </root>

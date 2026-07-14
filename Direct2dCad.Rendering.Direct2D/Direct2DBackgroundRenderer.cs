@@ -27,23 +27,21 @@ internal sealed class Direct2DBackgroundRenderer(Direct2DStyleResourceCache styl
 
         var spacingX = ResolveGridSpacing(
             grid.SpacingX,
-            grid.Subdivision,
+            grid.GetMinorSpacingX(),
             grid.MinimumScreenSpacing,
-            grid.MinimumWorldSpacing,
             grid.GetSnapSpacingX(),
             viewport.Zoom);
         var spacingY = ResolveGridSpacing(
             grid.SpacingY,
-            grid.Subdivision,
+            grid.GetMinorSpacingY(),
             grid.MinimumScreenSpacing,
-            grid.MinimumWorldSpacing,
             grid.GetSnapSpacingY(),
             viewport.Zoom);
         if (spacingX <= 0 || spacingY <= 0)
             return;
 
-        var majorX = ResolveMajorGridSpacing(grid.SpacingX, spacingX, grid.Subdivision);
-        var majorY = ResolveMajorGridSpacing(grid.SpacingY, spacingY, grid.Subdivision);
+        var majorX = ResolveMajorGridSpacing(grid.SpacingX, grid.GetMinorSpacingX(), spacingX);
+        var majorY = ResolveMajorGridSpacing(grid.SpacingY, grid.GetMinorSpacingY(), spacingY);
         var origin = document.ViewSettings.Origin.Position;
         var palette = CreateGridPalette(grid);
         var rasterization = GridRasterization.Create(
@@ -279,23 +277,28 @@ internal sealed class Direct2DBackgroundRenderer(Direct2DStyleResourceCache styl
 
     private static double ResolveGridSpacing(
         double configuredMajorSpacing,
-        int subdivision,
+        double configuredMinorSpacing,
         double minimumScreenSpacing,
-        double minimumWorldSpacing,
         double snapSpacing,
         double zoom)
     {
         if (!IsPositiveFinite(configuredMajorSpacing))
             configuredMajorSpacing = 10.0;
 
-        var factor = Math.Max(2, subdivision);
-        var snap = IsPositiveFinite(snapSpacing) ? snapSpacing : 1.0;
-        var minWorld = IsPositiveFinite(minimumWorldSpacing) ? minimumWorldSpacing : 1.0;
-        var minSpacing = CeilToMultiple(Math.Max(minWorld, snap), snap);
-        var spacing = CeilToMultiple(Math.Max(configuredMajorSpacing / factor, minSpacing), snap);
+        var minorSpacing = IsPositiveFinite(configuredMinorSpacing)
+            ? configuredMinorSpacing
+            : configuredMajorSpacing / 10.0;
+        var snap = IsPositiveFinite(snapSpacing) ? snapSpacing : minorSpacing;
+        var minSpacing = CeilToMultiple(Math.Max(minorSpacing, snap), snap);
+        var factor = ResolveGridRatio(configuredMajorSpacing, minorSpacing);
+        var spacing = minSpacing;
         var minPixels = minimumScreenSpacing > 0 ? minimumScreenSpacing : 28.0;
         while (spacing * zoom < minPixels)
-            spacing *= factor;
+        {
+            spacing = spacing < configuredMajorSpacing
+                ? configuredMajorSpacing
+                : spacing * factor;
+        }
 
         while (spacing * zoom > minPixels * factor)
         {
@@ -312,14 +315,25 @@ internal sealed class Direct2DBackgroundRenderer(Direct2DStyleResourceCache styl
         return Math.Max(spacing, minSpacing);
     }
 
-    private static double ResolveMajorGridSpacing(double configured, double display, int subdivision)
+    private static double ResolveMajorGridSpacing(double configured, double minor, double display)
     {
-        var factor = Math.Max(2, subdivision);
+        var factor = ResolveGridRatio(configured, minor);
         if (!IsPositiveFinite(display))
             return 1.0;
         if (!IsPositiveFinite(configured))
             return display * factor;
         return configured > display ? CeilToMultiple(configured, display) : display * factor;
+    }
+
+    private static int ResolveGridRatio(double major, double minor)
+    {
+        if (!IsPositiveFinite(major) || !IsPositiveFinite(minor))
+            return 10;
+
+        return Math.Clamp(
+            (int)Math.Round(major / minor, MidpointRounding.AwayFromZero),
+            CadGridSettings.MinimumSubdivision,
+            CadGridSettings.MaximumSubdivision);
     }
 
     private static IEnumerable<double> EnumerateGridCoordinates(double min, double max, double spacing, double origin)

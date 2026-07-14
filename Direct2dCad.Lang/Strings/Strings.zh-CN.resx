@@ -1053,4 +1053,25 @@
   <data name="DeleteBlockConfirmFormat" xml:space="preserve">
     <value>确定删除块“{0}”吗？</value>
   </data>
+  <data name="GridDensity" xml:space="preserve">
+    <value>栅格密度</value>
+  </data>
+  <data name="GridDensityPreset" xml:space="preserve">
+    <value>密度预设（主 / 副）</value>
+  </data>
+  <data name="MajorGridSpacingXMillimeters" xml:space="preserve">
+    <value>主栅格 X 间距 (mm)</value>
+  </data>
+  <data name="MajorGridSpacingYMillimeters" xml:space="preserve">
+    <value>主栅格 Y 间距 (mm)</value>
+  </data>
+  <data name="MinorGridSpacingXMillimeters" xml:space="preserve">
+    <value>副栅格 X 间距 (mm)</value>
+  </data>
+  <data name="MinorGridSpacingYMillimeters" xml:space="preserve">
+    <value>副栅格 Y 间距 (mm)</value>
+  </data>
+  <data name="GridAppearance" xml:space="preserve">
+    <value>栅格外观</value>
+  </data>
 </root>

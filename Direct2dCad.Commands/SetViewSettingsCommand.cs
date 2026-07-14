@@ -9,6 +9,8 @@ public readonly record struct CadViewSettingsSnapshot(
     CadGridType GridType,
     double GridSpacingX,
     double GridSpacingY,
+    double GridMinorSpacingX,
+    double GridMinorSpacingY,
     int GridSubdivision,
     double GridSnapSpacingX,
     double GridSnapSpacingY,
@@ -36,7 +38,8 @@ public readonly record struct CadViewSettingsSnapshot(
         var grid = settings.Grid;
         var origin = settings.Origin;
         return new CadViewSettingsSnapshot(
-            settings.BackgroundColor, grid.Type, grid.SpacingX, grid.SpacingY, grid.Subdivision,
+            settings.BackgroundColor, grid.Type, grid.SpacingX, grid.SpacingY,
+            grid.MinorSpacingX, grid.MinorSpacingY, grid.Subdivision,
             grid.SnapSpacingX, grid.SnapSpacingY, grid.MinimumScreenSpacing, grid.MinimumWorldSpacing,
             grid.MinorLineColor, grid.MajorLineColor, grid.MinorLineWidth, grid.MajorLineWidth,
             grid.SnapMarkerColor, grid.SnapMarkerLength, grid.SnapMarkerStrokeWidth, grid.SnapMarkerType,
@@ -53,6 +56,8 @@ public readonly record struct CadViewSettingsSnapshot(
         grid.Type = GridType;
         grid.SpacingX = GridSpacingX;
         grid.SpacingY = GridSpacingY;
+        grid.MinorSpacingX = GridMinorSpacingX;
+        grid.MinorSpacingY = GridMinorSpacingY;
         grid.Subdivision = GridSubdivision;
         grid.SnapSpacingX = GridSnapSpacingX;
         grid.SnapSpacingY = GridSnapSpacingY;
@@ -113,8 +118,9 @@ public sealed class SetViewSettingsCommand : ICadCommand
 
     private static void Validate(CadViewSettingsSnapshot value)
     {
-        if (!IsPositiveFinite(value.GridSpacingX) || !IsPositiveFinite(value.GridSpacingY) ||
-            value.GridSubdivision < 1 ||
+        if (!IsGridDensityValid(value.GridSpacingX, value.GridMinorSpacingX) ||
+            !IsGridDensityValid(value.GridSpacingY, value.GridMinorSpacingY) ||
+            value.GridSubdivision is < CadGridSettings.MinimumSubdivision or > CadGridSettings.MaximumSubdivision ||
             !IsNonNegativeFinite(value.GridSnapSpacingX) || !IsNonNegativeFinite(value.GridSnapSpacingY) ||
             !IsPositiveFinite(value.GridMinimumScreenSpacing) || !IsPositiveFinite(value.GridMinimumWorldSpacing) ||
             !IsPositiveFinite(value.GridMinorLineWidth) || !IsPositiveFinite(value.GridMajorLineWidth) ||
@@ -129,4 +135,21 @@ public sealed class SetViewSettingsCommand : ICadCommand
     private static bool IsPositiveFinite(double value) => value > 0 && IsFinite(value);
     private static bool IsNonNegativeFinite(double value) => value >= 0 && IsFinite(value);
     private static bool IsFinite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
+
+    private static bool IsGridDensityValid(double major, double minor)
+    {
+        if (major < CadGridSettings.MinimumSpacingMillimeters ||
+            major > CadGridSettings.MaximumSpacingMillimeters ||
+            minor < CadGridSettings.MinimumSpacingMillimeters ||
+            minor > CadGridSettings.MaximumSpacingMillimeters ||
+            !IsFinite(major) || !IsFinite(minor))
+        {
+            return false;
+        }
+
+        var ratio = major / minor;
+        return ratio >= CadGridSettings.MinimumSubdivision &&
+               ratio <= CadGridSettings.MaximumSubdivision &&
+               Math.Abs(ratio - Math.Round(ratio)) <= 1e-9;
+    }
 }

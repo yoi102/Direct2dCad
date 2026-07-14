@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
@@ -35,6 +36,8 @@ internal static class CadDocumentMapper
             GridType = document.ViewSettings.Grid.Type,
             GridSpacingX = document.ViewSettings.Grid.SpacingX,
             GridSpacingY = document.ViewSettings.Grid.SpacingY,
+            GridMinorSpacingX = document.ViewSettings.Grid.MinorSpacingX,
+            GridMinorSpacingY = document.ViewSettings.Grid.MinorSpacingY,
             GridSubdivision = document.ViewSettings.Grid.Subdivision,
             GridSnapSpacingX = document.ViewSettings.Grid.SnapSpacingX,
             GridSnapSpacingY = document.ViewSettings.Grid.SnapSpacingY,
@@ -488,6 +491,12 @@ internal static class CadDocumentMapper
         document.ViewSettings.Grid.SpacingX = settings.GridSpacingX;
         document.ViewSettings.Grid.SpacingY = settings.GridSpacingY;
         document.ViewSettings.Grid.Subdivision = settings.GridSubdivision;
+        document.ViewSettings.Grid.MinorSpacingX = settings.GridMinorSpacingX is > 0
+            ? settings.GridMinorSpacingX.Value
+            : ResolveLegacyMinorSpacing(settings.GridSpacingX, settings.GridSubdivision, settings.GridSnapSpacingX);
+        document.ViewSettings.Grid.MinorSpacingY = settings.GridMinorSpacingY is > 0
+            ? settings.GridMinorSpacingY.Value
+            : ResolveLegacyMinorSpacing(settings.GridSpacingY, settings.GridSubdivision, settings.GridSnapSpacingY);
         document.ViewSettings.Grid.SnapSpacingX = settings.GridSnapSpacingX;
         document.ViewSettings.Grid.SnapSpacingY = settings.GridSnapSpacingY;
         document.ViewSettings.Grid.MinimumScreenSpacing = settings.GridMinimumScreenSpacing > 0
@@ -544,6 +553,29 @@ internal static class CadDocumentMapper
             document.DocumentSettings.LayerDrawingPriority.SetPriority(
                 new LayerId(priority.LayerId),
                 priority.Priority);
+    }
+
+    private static double ResolveLegacyMinorSpacing(double majorSpacing, int subdivision, double snapSpacing)
+    {
+        if (double.IsFinite(snapSpacing) && snapSpacing > 0)
+        {
+            return Math.Clamp(
+                snapSpacing,
+                CadGridSettings.MinimumSpacingMillimeters,
+                CadGridSettings.MaximumSpacingMillimeters);
+        }
+
+        var ratio = Math.Clamp(
+            subdivision,
+            CadGridSettings.MinimumSubdivision,
+            CadGridSettings.MaximumSubdivision);
+        var spacing = majorSpacing / ratio;
+        return double.IsFinite(spacing) && spacing > 0
+            ? Math.Clamp(
+                spacing,
+                CadGridSettings.MinimumSpacingMillimeters,
+                CadGridSettings.MaximumSpacingMillimeters)
+            : 1.0;
     }
 
     private static void ApplyLayers(CadDocument document, CadLayerSection section)
