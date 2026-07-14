@@ -204,7 +204,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadSpline spline => CreateSplineGeometry(spline.FitPoints, spline.Closed),
             CadShapeText shapeText => CreateShapeTextGeometry(shapeText),
             CadText => null,
-            CadBlockReference blockReference => CreateRectangleGeometry(blockReference.Bounds),
+            CadBlockReference => null,
             _ => null
         };
     }

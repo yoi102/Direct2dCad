@@ -104,6 +104,48 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
                 effectiveOptions);
         }
 
+        if (entity is CadBlockReference reference && !reference.IsErased)
+        {
+            var blockPosition = reference.Position;
+            var blockRotationRadians = reference.RotationRadians;
+            var blockScaleX = reference.ScaleX;
+            var blockScaleY = reference.ScaleY;
+            var hasTransform = drag.Handle.Type == CadHandleType.Center;
+            if (hasTransform)
+            {
+                blockPosition += drag.Delta;
+            }
+            else
+            {
+                var definition = editor.Document.GetBlock(reference.DefinitionBlockId);
+                hasTransform = TryCreateBlockReferenceGripTransform(
+                    definition,
+                    reference,
+                    drag,
+                    out blockPosition,
+                    out blockRotationRadians,
+                    out blockScaleX,
+                    out blockScaleY);
+            }
+
+            if (hasTransform)
+            {
+                var effectiveOptions = options with
+                {
+                    RotationHandleOffset = 28.0 / Math.Max(interactionZoom, double.Epsilon)
+                };
+                return new CadHandleSceneBuilder().BuildBlockReferenceGripHandles(
+                    editor.Document,
+                    reference.Id,
+                    reference.DefinitionBlockId,
+                    blockPosition,
+                    blockRotationRadians,
+                    blockScaleX,
+                    blockScaleY,
+                    effectiveOptions);
+            }
+        }
+
         return [drag.Handle with { Position = drag.DraggedGripPosition }];
     }
 

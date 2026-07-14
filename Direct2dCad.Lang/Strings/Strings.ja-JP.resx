@@ -1014,4 +1014,43 @@
   <data name="EntitySearchResultCountFormat" xml:space="preserve">
     <value>{0} 個のエンティティ</value>
   </data>
+  <data name="Blocks" xml:space="preserve">
+    <value>ブロック</value>
+  </data>
+  <data name="CreateBlock" xml:space="preserve">
+    <value>ブロックを作成</value>
+  </data>
+  <data name="InsertBlock" xml:space="preserve">
+    <value>ブロックを挿入</value>
+  </data>
+  <data name="EditBlock" xml:space="preserve">
+    <value>ブロックを編集</value>
+  </data>
+  <data name="ExitBlockEditor" xml:space="preserve">
+    <value>ブロック編集を終了</value>
+  </data>
+  <data name="DeleteBlock" xml:space="preserve">
+    <value>ブロックを削除</value>
+  </data>
+  <data name="BasePoint" xml:space="preserve">
+    <value>基点</value>
+  </data>
+  <data name="References" xml:space="preserve">
+    <value>参照数</value>
+  </data>
+  <data name="ScaleX" xml:space="preserve">
+    <value>X 尺度</value>
+  </data>
+  <data name="ScaleY" xml:space="preserve">
+    <value>Y 尺度</value>
+  </data>
+  <data name="BlockReference" xml:space="preserve">
+    <value>ブロック参照</value>
+  </data>
+  <data name="BlockDefinition" xml:space="preserve">
+    <value>ブロック定義</value>
+  </data>
+  <data name="DeleteBlockConfirmFormat" xml:space="preserve">
+    <value>ブロック「{0}」を削除しますか？</value>
+  </data>
 </root>

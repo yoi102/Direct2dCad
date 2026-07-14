@@ -1,4 +1,5 @@
 using System.Numerics;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
@@ -54,8 +55,30 @@ internal sealed class Direct2DSelectionRenderer(
         CadViewport viewport,
         CadSelectionEntityReference reference)
     {
+        DrawSelectionReference(context, document, viewport, reference, []);
+    }
+
+    private void DrawSelectionReference(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadSelectionEntityReference reference,
+        HashSet<BlockId> visitedBlocks)
+    {
         if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
             return;
+
+        if (entity is CadBlockReference blockReference)
+        {
+            DrawBlockReferenceSelection(
+                context,
+                document,
+                viewport,
+                blockReference,
+                reference.Style,
+                visitedBlocks);
+            return;
+        }
 
         resourceCache.TryGetEntityResources(entity.Id, out var resources);
         var style = ToTransientStyle(reference.Style, resources);
@@ -139,6 +162,58 @@ internal sealed class Direct2DSelectionRenderer(
             default:
                 transientRenderer.DrawRectangle(context, viewport, entity.Bounds.Translate(reference.Offset), style);
                 break;
+        }
+    }
+
+    private void DrawBlockReferenceSelection(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadBlockReference reference,
+        CadHandleStyle selectionStyle,
+        HashSet<BlockId> visitedBlocks)
+    {
+        if (!visitedBlocks.Add(reference.DefinitionBlockId) ||
+            !document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
+            definition is null)
+        {
+            return;
+        }
+
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateTranslation(
+                                (float)-definition.BasePoint.X,
+                                (float)-definition.BasePoint.Y) *
+                            Matrix3x2.CreateScale((float)reference.ScaleX, (float)reference.ScaleY) *
+                            Matrix3x2.CreateRotation((float)reference.RotationRadians) *
+                            Matrix3x2.CreateTranslation(
+                                (float)reference.Position.X,
+                                (float)reference.Position.Y) *
+                            previousTransform;
+        try
+        {
+            foreach (var child in document.GetEntitiesInBlock(reference.DefinitionBlockId)
+                         .Where(entity =>
+                             !entity.IsErased &&
+                             entity.IsVisible &&
+                             document.TryGetLayer(entity.LayerId, out var layer) &&
+                             layer is { IsVisible: true, IsFrozen: false })
+                         .OrderBy(entity => document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
+                         .ThenBy(entity => entity.ZIndex)
+                         .ThenBy(entity => entity.Id.Value))
+            {
+                DrawSelectionReference(
+                    context,
+                    document,
+                    viewport,
+                    new CadSelectionEntityReference(child.Id, CadVectorD.Zero, selectionStyle),
+                    visitedBlocks);
+            }
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+            visitedBlocks.Remove(reference.DefinitionBlockId);
         }
     }
 

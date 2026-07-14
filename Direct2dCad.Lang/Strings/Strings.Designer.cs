@@ -295,6 +295,42 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Base point 的本地化字符串。
+        /// </summary>
+        public static string BasePoint {
+            get {
+                return ResourceManager.GetString("BasePoint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Block definition 的本地化字符串。
+        /// </summary>
+        public static string BlockDefinition {
+            get {
+                return ResourceManager.GetString("BlockDefinition", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Block reference 的本地化字符串。
+        /// </summary>
+        public static string BlockReference {
+            get {
+                return ResourceManager.GetString("BlockReference", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Blocks 的本地化字符串。
+        /// </summary>
+        public static string Blocks {
+            get {
+                return ResourceManager.GetString("Blocks", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Bottom 的本地化字符串。
         /// </summary>
         public static string Bottom {
@@ -583,6 +619,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Create block 的本地化字符串。
+        /// </summary>
+        public static string CreateBlock {
+            get {
+                return ResourceManager.GetString("CreateBlock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Create and adjust a layout viewport 的本地化字符串。
         /// </summary>
         public static string CreateViewportMode {
@@ -642,6 +687,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string DashStyle {
             get {
                 return ResourceManager.GetString("DashStyle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Delete block 的本地化字符串。
+        /// </summary>
+        public static string DeleteBlock {
+            get {
+                return ResourceManager.GetString("DeleteBlock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Delete block &apos;{0}&apos;? 的本地化字符串。
+        /// </summary>
+        public static string DeleteBlockConfirmFormat {
+            get {
+                return ResourceManager.GetString("DeleteBlockConfirmFormat", resourceCulture);
             }
         }
         
@@ -795,6 +858,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string DrawOrder {
             get {
                 return ResourceManager.GetString("DrawOrder", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Edit block 的本地化字符串。
+        /// </summary>
+        public static string EditBlock {
+            get {
+                return ResourceManager.GetString("EditBlock", resourceCulture);
             }
         }
         
@@ -1002,6 +1074,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string EntitySettings {
             get {
                 return ResourceManager.GetString("EntitySettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Exit block editor 的本地化字符串。
+        /// </summary>
+        public static string ExitBlockEditor {
+            get {
+                return ResourceManager.GetString("ExitBlockEditor", resourceCulture);
             }
         }
         
@@ -1254,6 +1335,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string InfiniteCross {
             get {
                 return ResourceManager.GetString("InfiniteCross", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Insert block 的本地化字符串。
+        /// </summary>
+        public static string InsertBlock {
+            get {
+                return ResourceManager.GetString("InsertBlock", resourceCulture);
             }
         }
         
@@ -1996,6 +2086,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 References 的本地化字符串。
+        /// </summary>
+        public static string References {
+            get {
+                return ResourceManager.GetString("References", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Refresh 的本地化字符串。
         /// </summary>
         public static string Refresh {
@@ -2082,6 +2181,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string SaveAs {
             get {
                 return ResourceManager.GetString("SaveAs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Scale X 的本地化字符串。
+        /// </summary>
+        public static string ScaleX {
+            get {
+                return ResourceManager.GetString("ScaleX", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Scale Y 的本地化字符串。
+        /// </summary>
+        public static string ScaleY {
+            get {
+                return ResourceManager.GetString("ScaleY", resourceCulture);
             }
         }
         

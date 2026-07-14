@@ -28,5 +28,6 @@ public enum CadCommandLineDrawingMode
     Spline,
     Text,
     SetOrigin,
+    InsertBlock,
     LayoutViewport
 }

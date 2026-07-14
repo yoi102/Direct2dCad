@@ -32,6 +32,9 @@ internal static class CadSectionMigrationRegistry
             Section<CadLayoutsSection>(CadSectionKind.Layouts, currentVersion: 1)
                 .ReadsVersion<CadLayoutsSection>(1),
 
+            Section<CadBlocksSection>(CadSectionKind.Blocks, currentVersion: 1)
+                .ReadsVersion<CadBlocksSection>(1),
+
             Section<CadLinesSection>(CadSectionKind.Lines, currentVersion: 1)
                 .ReadsVersion<CadLinesSection>(1),
 
@@ -63,7 +66,10 @@ internal static class CadSectionMigrationRegistry
                 .ReadsVersion<CadImagesSection>(1),
 
             Section<CadOleObjectsSection>(CadSectionKind.OleObjects, currentVersion: 1)
-                .ReadsVersion<CadOleObjectsSection>(1)
+                .ReadsVersion<CadOleObjectsSection>(1),
+
+            Section<CadBlockReferencesSection>(CadSectionKind.BlockReferences, currentVersion: 1)
+                .ReadsVersion<CadBlockReferencesSection>(1)
         }
         .ToDictionary(x => x.Kind);
 

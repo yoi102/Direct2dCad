@@ -4,13 +4,17 @@ namespace Direct2dCad.Db.Data.Entities;
 
 public sealed class CadBlockReference : CadEntity
 {
+    private CadRectD _resolvedBounds;
+
     public BlockId DefinitionBlockId { get; private set; }
     public CadPointD Position { get; private set; }
     public double RotationRadians { get; private set; }
     public double ScaleX { get; private set; }
     public double ScaleY { get; private set; }
 
-    public override CadRectD Bounds => CadRectD.FromLTRB(Position.X, Position.Y, Position.X, Position.Y);
+    public override CadRectD Bounds => _resolvedBounds.IsEmpty
+        ? CadRectD.FromLTRB(Position.X, Position.Y, Position.X, Position.Y)
+        : _resolvedBounds;
     public StyleId? GraphicStyleId { get; private set; }
 
     internal CadBlockReference(
@@ -30,6 +34,7 @@ public sealed class CadBlockReference : CadEntity
         RotationRadians = rotationRadians;
         ScaleX = GuardPositive(scaleX, nameof(scaleX));
         ScaleY = GuardPositive(scaleY, nameof(scaleY));
+        _resolvedBounds = CadRectD.Empty;
     }
 
     internal void SetDefinitionBlockInternal(BlockId definitionBlockId) => DefinitionBlockId = definitionBlockId;
@@ -42,6 +47,15 @@ public sealed class CadBlockReference : CadEntity
     {
         ScaleX = GuardPositive(scaleX, nameof(scaleX));
         ScaleY = GuardPositive(scaleY, nameof(scaleY));
+    }
+
+    internal bool SetResolvedBounds(CadRectD bounds)
+    {
+        if (_resolvedBounds.NearEquals(bounds))
+            return false;
+
+        _resolvedBounds = bounds;
+        return true;
     }
 
     private static double GuardPositive(double value, string paramName)

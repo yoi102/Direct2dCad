@@ -52,6 +52,7 @@ public partial class MainViewModel : ObservableObject
         DocumentExplorer = _dockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DocumentExplorerToolboxViewModel));
         DocumentExplorer.Attach(_dockLayoutService);
         Layers = _dockLayoutService.GetAnchorable<LayersToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayersToolboxViewModel));
+        Blocks = _dockLayoutService.GetAnchorable<BlocksToolboxViewModel>() ?? throw new ArgumentNullException(nameof(BlocksToolboxViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
         EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
         SelectionFilter = _dockLayoutService.GetAnchorable<SelectionFilterToolboxViewModel>() ?? throw new ArgumentNullException(nameof(SelectionFilterToolboxViewModel));
@@ -76,6 +77,7 @@ public partial class MainViewModel : ObservableObject
     public DocumentExplorerToolboxViewModel DocumentExplorer { get; }
 
     public LayersToolboxViewModel Layers { get; }
+    public BlocksToolboxViewModel Blocks { get; }
 
     public EntityPropertiesToolboxViewModel EntityProperties { get; }
     public EntitySearchToolboxViewModel EntitySearch { get; }
@@ -89,6 +91,7 @@ public partial class MainViewModel : ObservableObject
     {
         DocumentExplorer.SetActiveDocument(value);
         Layers.Attach(value?.CadDocumentViewModel);
+        Blocks.Attach(value?.CadDocumentViewModel);
         EntityProperties.Attach(value?.CadDocumentViewModel);
         EntitySearch.Attach(value?.CadDocumentViewModel);
         SelectionFilter.Attach(value?.CadDocumentViewModel);

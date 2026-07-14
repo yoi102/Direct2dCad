@@ -1235,4 +1235,43 @@
     <value>{0} entities</value>
     <comment>Entity search result count</comment>
   </data>
+  <data name="Blocks" xml:space="preserve">
+    <value>Blocks</value>
+  </data>
+  <data name="CreateBlock" xml:space="preserve">
+    <value>Create block</value>
+  </data>
+  <data name="InsertBlock" xml:space="preserve">
+    <value>Insert block</value>
+  </data>
+  <data name="EditBlock" xml:space="preserve">
+    <value>Edit block</value>
+  </data>
+  <data name="ExitBlockEditor" xml:space="preserve">
+    <value>Exit block editor</value>
+  </data>
+  <data name="DeleteBlock" xml:space="preserve">
+    <value>Delete block</value>
+  </data>
+  <data name="BasePoint" xml:space="preserve">
+    <value>Base point</value>
+  </data>
+  <data name="References" xml:space="preserve">
+    <value>References</value>
+  </data>
+  <data name="ScaleX" xml:space="preserve">
+    <value>Scale X</value>
+  </data>
+  <data name="ScaleY" xml:space="preserve">
+    <value>Scale Y</value>
+  </data>
+  <data name="BlockReference" xml:space="preserve">
+    <value>Block reference</value>
+  </data>
+  <data name="BlockDefinition" xml:space="preserve">
+    <value>Block definition</value>
+  </data>
+  <data name="DeleteBlockConfirmFormat" xml:space="preserve">
+    <value>Delete block '{0}'?</value>
+  </data>
 </root>

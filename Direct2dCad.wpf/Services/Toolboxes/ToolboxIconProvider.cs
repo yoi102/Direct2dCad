@@ -12,6 +12,7 @@ internal sealed class ToolboxIconProvider : IToolboxIconProvider
 {
     public object Explorer => CreateExplorerIcon();
     public object Layers => CreateLayersIcon();
+    public object Blocks => CreateBlocksIcon();
     public object Terminal => CreateTerminalIcon();
     public object Search => CreateSearchIcon();
     public object Filter => CreateFilterIcon();
@@ -71,6 +72,26 @@ internal sealed class ToolboxIconProvider : IToolboxIconProvider
         canvas.Children.Add(back);
         canvas.Children.Add(middle);
         canvas.Children.Add(front);
+        return new Viewbox { Width = 16, Height = 16, Child = canvas };
+    }
+
+    private static Viewbox CreateBlocksIcon()
+    {
+        var canvas = new Canvas { Width = 16, Height = 16 };
+        foreach (var (left, top) in new[] { (1.0, 1.0), (8.5, 1.0), (1.0, 8.5), (8.5, 8.5) })
+        {
+            var rectangle = new Rectangle
+            {
+                Width = 6.5,
+                Height = 6.5,
+                StrokeThickness = 0.9,
+                Fill = Brushes.Transparent
+            };
+            Canvas.SetLeft(rectangle, left);
+            Canvas.SetTop(rectangle, top);
+            rectangle.SetBinding(Shape.StrokeProperty, ForegroundBinding());
+            canvas.Children.Add(rectangle);
+        }
         return new Viewbox { Width = 16, Height = 16, Child = canvas };
     }
 

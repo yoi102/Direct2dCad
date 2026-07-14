@@ -119,6 +119,7 @@ public sealed class CadDocumentStorage
         var layers = ReadSection<CadLayerSection>(filePath, CadSectionKind.Layers);
         var styles = ReadSection<CadStylesSection>(filePath, CadSectionKind.Styles);
         var layouts = ReadOptionalSection(filePath, CadSectionKind.Layouts, new CadLayoutsSection());
+        var blocks = ReadOptionalSection(filePath, CadSectionKind.Blocks, new CadBlocksSection());
         var lines = ReadSection<CadLinesSection>(filePath, CadSectionKind.Lines);
         var circles = ReadSection<CadCirclesSection>(filePath, CadSectionKind.Circles);
         var ellipses = ReadOptionalSection(filePath, CadSectionKind.Ellipses, new CadEllipsesSection());
@@ -130,6 +131,7 @@ public sealed class CadDocumentStorage
         var shapeTexts = ReadOptionalSection(filePath, CadSectionKind.ShapeTexts, new CadShapeTextsSection());
         var images = ReadOptionalSection(filePath, CadSectionKind.Images, new CadImagesSection());
         var oleObjects = ReadOptionalSection(filePath, CadSectionKind.OleObjects, new CadOleObjectsSection());
+        var blockReferences = ReadOptionalSection(filePath, CadSectionKind.BlockReferences, new CadBlockReferencesSection());
 
         return CadDocumentMapper.FromSections(
             documentInfo,
@@ -137,6 +139,7 @@ public sealed class CadDocumentStorage
             layers,
             styles,
             layouts,
+            blocks,
             lines,
             circles,
             ellipses,
@@ -147,7 +150,8 @@ public sealed class CadDocumentStorage
             texts,
             shapeTexts,
             images,
-            oleObjects);
+            oleObjects,
+            blockReferences);
     }
 
     public async Task<CadDocument> LoadAsync(
@@ -259,6 +263,7 @@ public sealed class CadDocumentStorage
         var layers = ReadRequiredSection<CadLayerSection>(payloads, CadSectionKind.Layers);
         var styles = ReadRequiredSection<CadStylesSection>(payloads, CadSectionKind.Styles);
         var layouts = ReadOptionalSection(payloads, CadSectionKind.Layouts, new CadLayoutsSection());
+        var blocks = ReadOptionalSection(payloads, CadSectionKind.Blocks, new CadBlocksSection());
         var lines = ReadRequiredSection<CadLinesSection>(payloads, CadSectionKind.Lines);
         var circles = ReadRequiredSection<CadCirclesSection>(payloads, CadSectionKind.Circles);
         var ellipses = ReadOptionalSection(payloads, CadSectionKind.Ellipses, new CadEllipsesSection());
@@ -270,6 +275,7 @@ public sealed class CadDocumentStorage
         var shapeTexts = ReadOptionalSection(payloads, CadSectionKind.ShapeTexts, new CadShapeTextsSection());
         var images = ReadOptionalSection(payloads, CadSectionKind.Images, new CadImagesSection());
         var oleObjects = ReadOptionalSection(payloads, CadSectionKind.OleObjects, new CadOleObjectsSection());
+        var blockReferences = ReadOptionalSection(payloads, CadSectionKind.BlockReferences, new CadBlockReferencesSection());
 
         return CadDocumentMapper.FromSections(
             documentInfo,
@@ -277,6 +283,7 @@ public sealed class CadDocumentStorage
             layers,
             styles,
             layouts,
+            blocks,
             lines,
             circles,
             ellipses,
@@ -287,7 +294,8 @@ public sealed class CadDocumentStorage
             texts,
             shapeTexts,
             images,
-            oleObjects);
+            oleObjects,
+            blockReferences);
     }
 
     private static TSection ReadRequiredSection<TSection>(
@@ -362,6 +370,7 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Layers, CadDocumentMapper.ToLayerSection(document)),
             Serialize(CadSectionKind.Styles, CadDocumentMapper.ToStylesSection(document)),
             Serialize(CadSectionKind.Layouts, CadDocumentMapper.ToLayoutsSection(document)),
+            Serialize(CadSectionKind.Blocks, CadDocumentMapper.ToBlocksSection(document)),
             Serialize(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(document)),
             Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(document)),
             Serialize(CadSectionKind.Ellipses, CadDocumentMapper.ToEllipsesSection(document)),
@@ -372,7 +381,8 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(document)),
             Serialize(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(document)),
             Serialize(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(document)),
-            Serialize(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(document))
+            Serialize(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(document)),
+            Serialize(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document))
         ];
     }
 

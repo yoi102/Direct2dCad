@@ -115,8 +115,34 @@ internal sealed class CadRenderInvalidationCalculator(
                 ResolveTransientShapeTextBounds(text),
                 text.Style),
             CadTransientEntityReference reference => CreateEntityReferenceInvalidation(reference.EntityId, reference.Offset),
+            CadTransientBlockReference reference => CreateBlockReferenceInvalidation(reference),
             _ => CadRenderInvalidation.FromScreenRect(default)
         };
+    }
+
+    private CadRenderInvalidation CreateBlockReferenceInvalidation(CadTransientBlockReference reference)
+    {
+        if (!document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
+            definition is null)
+        {
+            return CadRenderInvalidation.FromScreenRect(default);
+        }
+
+        var localBounds = document.GetBlockBounds(reference.DefinitionBlockId);
+        if (localBounds.IsEmpty)
+            return CreateScreenPointInvalidation(viewport.WorldToScreen(reference.Position), 12.0);
+
+        var worldBounds = CadBlockTransform.TransformBounds(
+            definition,
+            reference.Position,
+            reference.RotationRadians,
+            reference.ScaleX,
+            reference.ScaleY,
+            localBounds);
+        return CreateTransientBoundsInvalidation(
+            worldBounds,
+            reference.Style,
+            minimumPaddingPixels: 24.0);
     }
 
     private CadRenderInvalidation CreateTransientBoundsInvalidation(

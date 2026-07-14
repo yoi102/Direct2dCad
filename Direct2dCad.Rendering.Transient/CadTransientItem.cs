@@ -114,3 +114,12 @@ public sealed record CadTransientEntityReference(
     CadVectorD Offset,
     CadTransientStyle Style)
     : CadTransientItem(Style);
+
+public sealed record CadTransientBlockReference(
+    BlockId DefinitionBlockId,
+    CadPointD Position,
+    double RotationRadians,
+    double ScaleX,
+    double ScaleY,
+    CadTransientStyle Style)
+    : CadTransientItem(Style);

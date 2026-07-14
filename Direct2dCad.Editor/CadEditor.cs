@@ -640,6 +640,71 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new MoveEntitiesCommand(entityIds, delta));
     }
 
+    public CreateBlockCommand CreateBlock(
+        IEnumerable<EntityId> entityIds,
+        string name,
+        CadPointD basePoint,
+        LayerId referenceLayerId,
+        string referenceName = "")
+    {
+        var command = new CreateBlockCommand(
+            entityIds,
+            name,
+            basePoint,
+            ActiveOwnerBlockId,
+            referenceLayerId,
+            referenceName);
+        DocumentCommands.Execute(command);
+        return command;
+    }
+
+    public EntityId InsertBlockReference(
+        BlockId definitionBlockId,
+        CadPointD position,
+        LayerId layerId,
+        double rotationRadians = 0,
+        double scaleX = 1,
+        double scaleY = 1,
+        string name = "")
+    {
+        var command = new InsertBlockReferenceCommand(
+            definitionBlockId,
+            ActiveOwnerBlockId,
+            position,
+            layerId,
+            rotationRadians,
+            scaleX,
+            scaleY,
+            name);
+        DocumentCommands.Execute(command);
+        return GetCreatedEntityId(command.CreatedEntityId, command.Name);
+    }
+
+    public CadDocumentChangeSet RenameBlock(BlockId blockId, string name) =>
+        DocumentCommands.Execute(new RenameBlockCommand(blockId, name));
+
+    public CadDocumentChangeSet DeleteBlock(BlockId blockId) =>
+        DocumentCommands.Execute(new DeleteBlockDefinitionCommand(blockId));
+
+    public CadDocumentChangeSet SetBlockReferenceTransform(
+        EntityId entityId,
+        CadPointD position,
+        double rotationRadians,
+        double scaleX,
+        double scaleY) =>
+        DocumentCommands.Execute(new SetBlockReferenceTransformCommand(
+            entityId,
+            position,
+            rotationRadians,
+            scaleX,
+            scaleY));
+
+    public CadDocumentChangeSet SetBlockReferenceDefinition(EntityId entityId, BlockId definitionBlockId) =>
+        DocumentCommands.Execute(new SetBlockReferenceDefinitionCommand(entityId, definitionBlockId));
+
+    public CadDocumentChangeSet SetBlockDefinitionBasePoint(BlockId blockId, CadPointD basePoint) =>
+        DocumentCommands.Execute(new SetBlockDefinitionBasePointCommand(blockId, basePoint));
+
     public IReadOnlyList<EntityId> DuplicateEntities(IEnumerable<EntityId> entityIds, CadVectorD delta)
     {
         var command = new DuplicateEntitiesCommand(entityIds, delta);

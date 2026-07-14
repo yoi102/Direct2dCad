@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.ViewModels.Services.Interactions;
@@ -9,6 +10,53 @@ namespace Direct2dCad.ViewModels.Services.Geometry;
 
 internal static class CadGripDragGeometryFactory
 {
+    public static bool TryCreateBlockReferenceGripTransform(
+        CadBlockDefinition definition,
+        CadBlockReference reference,
+        GripDragState drag,
+        out CadPointD position,
+        out double rotationRadians,
+        out double scaleX,
+        out double scaleY)
+    {
+        position = reference.Position;
+        rotationRadians = reference.RotationRadians;
+        scaleX = reference.ScaleX;
+        scaleY = reference.ScaleY;
+
+        if (drag.Handle.Type == CadHandleType.Rotation)
+        {
+            var original = drag.Handle.Position - reference.Position;
+            var target = drag.DraggedGripPosition - reference.Position;
+            if (original.LengthSquared <= double.Epsilon || target.LengthSquared <= double.Epsilon)
+                return false;
+            rotationRadians += Math.Atan2(target.Y, target.X) - Math.Atan2(original.Y, original.X);
+            return true;
+        }
+
+        if (drag.Handle.Type != CadHandleType.BoundsCorner ||
+            !CadBlockTransform.Create(definition, reference).TryInvert(out var inverse))
+        {
+            return false;
+        }
+
+        var localHandle = inverse.TransformPoint(drag.Handle.Position);
+        var sourceX = localHandle.X - definition.BasePoint.X;
+        var sourceY = localHandle.Y - definition.BasePoint.Y;
+        var targetWorld = drag.DraggedGripPosition - reference.Position;
+        var cos = Math.Cos(reference.RotationRadians);
+        var sin = Math.Sin(reference.RotationRadians);
+        var targetX = targetWorld.X * cos + targetWorld.Y * sin;
+        var targetY = -targetWorld.X * sin + targetWorld.Y * cos;
+
+        if (Math.Abs(sourceX) > 1e-9)
+            scaleX = targetX / sourceX;
+        if (Math.Abs(sourceY) > 1e-9)
+            scaleY = targetY / sourceY;
+        return scaleX > 1e-9 && scaleY > 1e-9 &&
+               double.IsFinite(scaleX) && double.IsFinite(scaleY);
+    }
+
     public static bool IsLineStartGrip(CadLine line, CadPointD gripPosition)
     {
         return line.Start.DistanceSquaredTo(gripPosition) <= line.End.DistanceSquaredTo(gripPosition);

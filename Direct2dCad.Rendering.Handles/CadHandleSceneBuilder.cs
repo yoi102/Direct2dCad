@@ -34,7 +34,7 @@ public sealed class CadHandleSceneBuilder
             if (options.IncludeGripHandles &&
                 (!entity.IsLocked || options.IncludeLockedEntityGripHandles))
             {
-                AddEntityGripHandles(items, entity, options.GripStyle, options.RotationHandleOffset);
+                AddEntityGripHandles(items, document, entity, options.GripStyle, options.RotationHandleOffset);
             }
         }
 
@@ -44,6 +44,37 @@ public sealed class CadHandleSceneBuilder
     public static bool SupportsCenterGrip(CadEntity entity)
     {
         return entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadShapeText or CadImage or CadOleObject or CadBlockReference;
+    }
+
+    public IReadOnlyList<CadHandleItem> BuildBlockReferenceGripHandles(
+        CadDocument document,
+        EntityId entityId,
+        BlockId definitionBlockId,
+        CadPointD position,
+        double rotationRadians,
+        double scaleX,
+        double scaleY,
+        CadHandleSceneBuildOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        options ??= CadHandleSceneBuildOptions.Default;
+
+        var items = new List<CadHandleItem>();
+        if (!document.TryGetBlock(definitionBlockId, out var definition) || definition is null)
+            return items;
+
+        AddBlockReferenceGripHandles(
+            items,
+            entityId,
+            definition,
+            document.GetBlockBounds(definitionBlockId),
+            position,
+            rotationRadians,
+            scaleX,
+            scaleY,
+            options.GripStyle,
+            options.RotationHandleOffset);
+        return items;
     }
 
     private static bool TryGetSelectableEntity(
@@ -71,6 +102,7 @@ public sealed class CadHandleSceneBuilder
 
     private static void AddEntityGripHandles(
         List<CadHandleItem> items,
+        CadDocument document,
         CadEntity entity,
         CadHandleStyle gripStyle,
         double rotationHandleOffset)
@@ -144,11 +176,97 @@ public sealed class CadHandleSceneBuilder
                 AddBoundsAndSideGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;
 
+            case CadBlockReference blockReference:
+                AddBlockReferenceGripHandles(
+                    items,
+                    document,
+                    blockReference,
+                    gripStyle,
+                    rotationHandleOffset);
+                break;
+
             default:
                 if (SupportsCenterGrip(entity) && !entity.Bounds.IsEmpty)
                     AddGrip(items, entity.Id, entity.Bounds.Center, CadHandleType.Center, gripStyle);
                 break;
         }
+    }
+
+    private static void AddBlockReferenceGripHandles(
+        List<CadHandleItem> items,
+        CadDocument document,
+        CadBlockReference reference,
+        CadHandleStyle gripStyle,
+        double rotationHandleOffset)
+    {
+        if (!document.TryGetBlock(reference.DefinitionBlockId, out var definition) || definition is null)
+            return;
+
+        AddBlockReferenceGripHandles(
+            items,
+            reference.Id,
+            definition,
+            document.GetBlockBounds(definition.Id),
+            reference.Position,
+            reference.RotationRadians,
+            reference.ScaleX,
+            reference.ScaleY,
+            gripStyle,
+            rotationHandleOffset);
+    }
+
+    private static void AddBlockReferenceGripHandles(
+        List<CadHandleItem> items,
+        EntityId entityId,
+        CadBlockDefinition definition,
+        CadRectD localBounds,
+        CadPointD position,
+        double rotationRadians,
+        double scaleX,
+        double scaleY,
+        CadHandleStyle gripStyle,
+        double rotationHandleOffset)
+    {
+        var transform = CadBlockTransform.Create(
+            definition,
+            position,
+            rotationRadians,
+            scaleX,
+            scaleY);
+        AddGrip(items, entityId, position, CadHandleType.Center, gripStyle);
+        if (localBounds.IsEmpty)
+            return;
+
+        var corners = new[]
+        {
+            new CadPointD(localBounds.MinX, localBounds.MinY),
+            new CadPointD(localBounds.MaxX, localBounds.MinY),
+            new CadPointD(localBounds.MaxX, localBounds.MaxY),
+            new CadPointD(localBounds.MinX, localBounds.MaxY)
+        };
+        foreach (var corner in corners)
+        {
+            AddGrip(
+                items,
+                entityId,
+                transform.TransformPoint(corner),
+                CadHandleType.BoundsCorner,
+                gripStyle);
+        }
+
+        var localTop = new CadPointD(localBounds.Center.X, localBounds.MaxY);
+        var guideStart = transform.TransformPoint(localTop);
+        var direction = guideStart - position;
+        var length = Math.Sqrt(direction.X * direction.X + direction.Y * direction.Y);
+        var offset = double.IsFinite(rotationHandleOffset) && rotationHandleOffset > 0
+            ? rotationHandleOffset
+            : Math.Max(localBounds.Transform(transform).Height * 0.2, 1.0);
+        var unit = length > double.Epsilon
+            ? new CadVectorD(direction.X / length, direction.Y / length)
+            : new CadVectorD(-Math.Sin(rotationRadians), Math.Cos(rotationRadians));
+        var rotationPosition = guideStart + unit * offset;
+        items.Add(new CadRotationHandleGuide(guideStart, rotationPosition, gripStyle));
+        AddGrip(items, entityId, rotationPosition, CadHandleType.Rotation, gripStyle);
     }
 
     private static void AddPolylineGripHandles(

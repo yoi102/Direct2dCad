@@ -67,6 +67,9 @@
             <DataTemplate DataType="{x:Type vm_ep:ImagePropertyViewModel}">
                 <v_ep:ImagePropertyView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:BlockReferencePropertyViewModel}">
+                <v_ep:BlockReferencePropertyView />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:OleObjectPropertyViewModel}">
                 <v_ep:ImagePropertyView />
             </DataTemplate>

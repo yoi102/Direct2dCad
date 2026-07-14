@@ -5,6 +5,7 @@ public interface IToolboxIconProvider
 
     object Explorer { get; }
     object Layers { get; }
+    object Blocks { get; }
     object Terminal { get; }
     object Search { get; }
     object Filter { get; }

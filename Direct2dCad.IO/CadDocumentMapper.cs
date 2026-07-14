@@ -132,6 +132,25 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadBlocksSection ToBlocksSection(CadDocument document)
+    {
+        return new CadBlocksSection
+        {
+            Blocks = document.Blocks.Values
+                .Where(block => !block.IsSystem)
+                .OrderBy(block => block.Id.Value)
+                .Select(block => new CadBlockDefinitionData
+                {
+                    Id = block.Id.Value,
+                    Name = block.Name,
+                    BasePoint = ToData(block.BasePoint),
+                    Kind = block.Kind,
+                    IsReadOnly = block.IsReadOnly
+                })
+                .ToList()
+        };
+    }
+
     internal static CadLinesSection ToLinesSection(CadDocument document)
     {
         return new CadLinesSection
@@ -365,12 +384,34 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadBlockReferencesSection ToBlockReferencesSection(CadDocument document)
+    {
+        return new CadBlockReferencesSection
+        {
+            BlockReferences = document.Entities.Values
+                .OfType<CadBlockReference>()
+                .Where(reference => document.Blocks.ContainsKey(reference.DefinitionBlockId))
+                .Select(reference => new CadBlockReferenceData
+                {
+                    Entity = ToEntityData(reference),
+                    DefinitionBlockId = reference.DefinitionBlockId.Value,
+                    Position = ToData(reference.Position),
+                    RotationRadians = reference.RotationRadians,
+                    ScaleX = reference.ScaleX,
+                    ScaleY = reference.ScaleY,
+                    GraphicStyleId = reference.GraphicStyleId?.Value
+                })
+                .ToList()
+        };
+    }
+
     internal static CadDocument FromSections(
         CadDocumentSection documentInfo,
         CadSettingsSection settings,
         CadLayerSection layers,
         CadStylesSection styles,
         CadLayoutsSection layouts,
+        CadBlocksSection blocks,
         CadLinesSection lines,
         CadCirclesSection circles,
         CadEllipsesSection ellipses,
@@ -381,7 +422,8 @@ internal static class CadDocumentMapper
         CadTextsSection texts,
         CadShapeTextsSection shapeTexts,
         CadImagesSection images,
-        CadOleObjectsSection oleObjects)
+        CadOleObjectsSection oleObjects,
+        CadBlockReferencesSection blockReferences)
     {
         var document = new CadDocument(
             new DocumentId(documentInfo.Id),
@@ -392,9 +434,48 @@ internal static class CadDocumentMapper
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);
         ApplyLayouts(document, layouts);
+        ApplyBlocks(document, blocks);
         ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts, images, oleObjects);
+        ApplyBlockReferences(document, blockReferences);
+        document.RefreshBlockReferenceBounds();
 
         return document;
+    }
+
+    private static void ApplyBlocks(CadDocument document, CadBlocksSection section)
+    {
+        foreach (var block in section.Blocks)
+        {
+            var blockId = new BlockId(block.Id);
+            if (document.Blocks.ContainsKey(blockId))
+                continue;
+            document.RestoreBlockDefinition(
+                blockId,
+                block.Name,
+                FromData(block.BasePoint),
+                block.Kind,
+                block.IsReadOnly);
+        }
+    }
+
+    private static void ApplyBlockReferences(CadDocument document, CadBlockReferencesSection section)
+    {
+        foreach (var data in section.BlockReferences)
+        {
+            var reference = new CadBlockReference(
+                new EntityId(data.Entity.Id),
+                new LayerId(data.Entity.LayerId),
+                new BlockId(data.Entity.OwnerBlockId),
+                new BlockId(data.DefinitionBlockId),
+                FromData(data.Position),
+                data.RotationRadians,
+                data.ScaleX,
+                data.ScaleY,
+                data.Entity.Name);
+            reference.SetGraphicStyleInternal(ToStyleId(data.GraphicStyleId));
+            ApplyEntityState(document, reference, data.Entity);
+            document.AddEntityCore(reference);
+        }
     }
 
     private static void ApplySettings(CadDocument document, CadSettingsSection settings)

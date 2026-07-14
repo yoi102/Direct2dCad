@@ -7,6 +7,7 @@ public enum CadSectionKind : ushort
     Layers = 10,
     Styles = 11,
     Layouts = 12,
+    Blocks = 13,
     Lines = 100,
     Circles = 101,
     Arcs = 102,
@@ -17,5 +18,6 @@ public enum CadSectionKind : ushort
     Ellipses = 107,
     ShapeTexts = 108,
     Images = 109,
-    OleObjects = 110
+    OleObjects = 110,
+    BlockReferences = 111
 }

@@ -71,12 +71,16 @@ public sealed class CadDocument : IEquatable<CadDocument>
         AddBlockCore(new CadBlockDefinition(
             BlockId.ModelSpace,
             "*ModelSpace",
-            CadPointD.Origin));
+            CadPointD.Origin,
+            CadBlockKind.SystemSpace,
+            isReadOnly: true));
 
         AddBlockCore(new CadBlockDefinition(
             BlockId.PaperSpace,
             "*PaperSpace",
-            CadPointD.Origin));
+            CadPointD.Origin,
+            CadBlockKind.SystemSpace,
+            isReadOnly: true));
 
         var defaultLayout = new CadLayout(
             LayoutId.Default,
@@ -246,11 +250,43 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     #region Block
 
-    public BlockId CreateBlockDefinition(string name, CadPointD basePoint)
+    public BlockId CreateBlockDefinition(
+        string name,
+        CadPointD basePoint,
+        CadBlockKind kind = CadBlockKind.User,
+        bool isReadOnly = false)
     {
-        var block = new CadBlockDefinition(_ids.NewBlockId(), name, basePoint);
+        ValidateUniqueBlockName(name);
+        var block = new CadBlockDefinition(_ids.NewBlockId(), name, basePoint, kind, isReadOnly);
         AddBlockCore(block);
         return block.Id;
+    }
+
+    public void RestoreBlockDefinition(
+        BlockId blockId,
+        string name,
+        CadPointD basePoint,
+        CadBlockKind kind = CadBlockKind.User,
+        bool isReadOnly = false)
+    {
+        ValidateUniqueBlockName(name, blockId);
+        AddBlockCore(new CadBlockDefinition(blockId, name, basePoint, kind, isReadOnly));
+    }
+
+    public void RenameBlockDefinition(BlockId blockId, string name)
+    {
+        var block = GetBlock(blockId);
+        EnsureBlockCanBeEdited(block);
+        ValidateUniqueBlockName(name, blockId);
+        block.Rename(name);
+    }
+
+    public void SetBlockDefinitionBasePoint(BlockId blockId, CadPointD basePoint)
+    {
+        var block = GetBlock(blockId);
+        EnsureBlockCanBeEdited(block);
+        block.SetBasePoint(basePoint);
+        RefreshBlockReferenceBounds();
     }
 
     public bool RemoveBlockDefinition(BlockId blockId)
@@ -274,29 +310,55 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return true;
     }
 
+    public CadDetachedBlockDefinition DetachBlockDefinition(BlockId blockId)
+    {
+        var block = GetBlock(blockId);
+        EnsureBlockCanBeRemoved(blockId);
+        if (IsBlockReferenced(blockId))
+        {
+            throw new InvalidOperationException(
+                $"Block definition cannot be removed because it is referenced by one or more block references: {blockId}");
+        }
+
+        var entities = block.EntityIds.Select(GetEntity).ToArray();
+        foreach (var entity in entities)
+            _entities.Remove(entity.Id);
+        _blocks.Remove(blockId);
+        return new CadDetachedBlockDefinition(block, entities);
+    }
+
+    public void RestoreBlockDefinition(CadDetachedBlockDefinition snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        AddBlockCore(snapshot.Definition);
+        foreach (var entity in snapshot.Entities)
+            AddEntityCore(entity);
+        RefreshBlockReferenceBounds();
+    }
+
     public bool IsBlockReferenced(BlockId blockId)
     {
         return _entities.Values
             .OfType<CadBlockReference>()
-            .Any(x => x.DefinitionBlockId.Equals(blockId));
+            .Any(x => !x.IsErased && x.DefinitionBlockId.Equals(blockId));
     }
 
     public IReadOnlyList<EntityId> GetBlockReferenceIds(BlockId definitionBlockId)
     {
         return _entities.Values
             .OfType<CadBlockReference>()
-            .Where(x => x.DefinitionBlockId.Equals(definitionBlockId))
+            .Where(x => !x.IsErased && x.DefinitionBlockId.Equals(definitionBlockId))
             .Select(x => x.Id)
             .ToArray();
     }
 
     private void EnsureBlockCanBeRemoved(BlockId blockId)
     {
-        if (blockId.Equals(BlockId.ModelSpace))
-            throw new InvalidOperationException("ModelSpace block cannot be removed.");
-
-        if (blockId.Equals(BlockId.PaperSpace))
-            throw new InvalidOperationException("PaperSpace block cannot be removed.");
+        var block = GetBlock(blockId);
+        if (block.IsSystem || _layouts.Values.Any(layout => layout.PaperSpaceBlockId.Equals(blockId)))
+            throw new InvalidOperationException("System space blocks cannot be removed.");
+        if (block.IsReadOnly)
+            throw new InvalidOperationException($"Read-only block cannot be removed: {block.Name}");
     }
 
     public void MoveEntityToBlock(EntityId entityId, BlockId targetBlockId)
@@ -315,11 +377,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             throw new InvalidOperationException($"Target block does not exist: {targetBlockId}");
 
         // 防止 BlockReference 引用自己的 owner block。
-        if (entity is CadBlockReference blockReference &&
-            blockReference.DefinitionBlockId.Equals(targetBlockId))
-        {
-            throw new InvalidOperationException("Block reference cannot be moved into its own definition block.");
-        }
+        if (entity is CadBlockReference blockReference)
+            EnsureBlockReferenceDoesNotCreateCycle(targetBlockId, blockReference.DefinitionBlockId);
 
         oldBlock.RemoveEntity(entityId);
         newBlock.AddEntity(entityId);
@@ -338,7 +397,11 @@ public sealed class CadDocument : IEquatable<CadDocument>
     {
         ValidateUniqueLayoutName(name);
         var layoutId = _ids.NewLayoutId();
-        var paperSpaceBlockId = CreateBlockDefinition($"*PaperSpace_{layoutId.Value}", CadPointD.Origin);
+        var paperSpaceBlockId = CreateBlockDefinition(
+            $"*PaperSpace_{layoutId.Value}",
+            CadPointD.Origin,
+            CadBlockKind.SystemSpace,
+            isReadOnly: true);
         var layout = new CadLayout(layoutId, name, paperSpaceBlockId, paperWidth, paperHeight);
         if (createDefaultViewport)
         {
@@ -373,7 +436,12 @@ public sealed class CadDocument : IEquatable<CadDocument>
         ArgumentNullException.ThrowIfNull(layout);
         ValidateUniqueLayoutName(layout.Name);
         if (!_blocks.ContainsKey(layout.PaperSpaceBlockId))
-            AddBlockCore(new CadBlockDefinition(layout.PaperSpaceBlockId, $"*PaperSpace_{layout.Id.Value}", CadPointD.Origin));
+            AddBlockCore(new CadBlockDefinition(
+                layout.PaperSpaceBlockId,
+                $"*PaperSpace_{layout.Id.Value}",
+                CadPointD.Origin,
+                CadBlockKind.SystemSpace,
+                isReadOnly: true));
         AddLayoutCore(layout);
     }
 
@@ -455,7 +523,12 @@ public sealed class CadDocument : IEquatable<CadDocument>
     internal void EnsurePaperSpaceBlockForStorage(BlockId blockId, string name)
     {
         if (!_blocks.ContainsKey(blockId))
-            AddBlockCore(new CadBlockDefinition(blockId, name, CadPointD.Origin));
+            AddBlockCore(new CadBlockDefinition(
+                blockId,
+                name,
+                CadPointD.Origin,
+                CadBlockKind.SystemSpace,
+                isReadOnly: true));
     }
 
     private void ValidateUniqueLayoutName(string name, LayoutId? excludedLayoutId = null)
@@ -954,13 +1027,15 @@ public sealed class CadDocument : IEquatable<CadDocument>
         double rotationRadians = 0,
         double scaleX = 1.0,
         double scaleY = 1.0,
-        string name = "")
+        string name = "",
+        BlockId? ownerBlockId = null)
     {
         ValidateBlock(definitionBlockId);
 
-        var owner = BlockId.ModelSpace;
-        if (definitionBlockId.Equals(owner))
-            throw new InvalidOperationException("Block reference cannot reference its owner block.");
+        var owner = ownerBlockId ?? BlockId.ModelSpace;
+        ValidateBlock(owner);
+        EnsureDefinitionCanBeReferenced(definitionBlockId);
+        EnsureBlockReferenceDoesNotCreateCycle(owner, definitionBlockId);
 
         var entity = new CadBlockReference(
             _ids.NewEntityId(),
@@ -977,6 +1052,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         entity.SetUseLayerColor(graphicStyleId is null);
         entity.SetUseLayerLineWeight(graphicStyleId is null);
         AddEntityCore(entity);
+        RefreshBlockReferenceBounds();
         return entity;
     }
 
@@ -1190,10 +1266,11 @@ public sealed class CadDocument : IEquatable<CadDocument>
         if (GetEntity(entityId) is not CadBlockReference reference)
             throw new InvalidOperationException($"Entity is not block reference: {entityId}");
 
-        if (reference.OwnerBlockId.Equals(definitionBlockId))
-            throw new InvalidOperationException("Block reference cannot reference its owner block.");
+        EnsureDefinitionCanBeReferenced(definitionBlockId);
+        EnsureBlockReferenceDoesNotCreateCycle(reference.OwnerBlockId, definitionBlockId);
 
         reference.SetDefinitionBlockInternal(definitionBlockId);
+        RefreshBlockReferenceBounds();
     }
 
     #endregion Entities
@@ -1267,15 +1344,24 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public CadRectD GetBlockBounds(BlockId blockId)
     {
-        var bounds = CadRectD.Empty;
+        ValidateBlock(blockId);
+        return ResolveBlockBounds(blockId, []);
+    }
 
-        foreach (var entity in GetEntitiesInBlock(blockId))
+    public IReadOnlyList<EntityId> RefreshBlockReferenceBounds()
+    {
+        var changed = new List<EntityId>();
+        foreach (var reference in _entities.Values.OfType<CadBlockReference>())
         {
-            if (!entity.IsErased)
-                bounds = bounds.Union(entity.Bounds);
+            if (reference.IsErased)
+                continue;
+
+            var bounds = ResolveBlockReferenceBounds(reference, []);
+            if (reference.SetResolvedBounds(bounds))
+                changed.Add(reference.Id);
         }
 
-        return bounds;
+        return changed;
     }
 
     #endregion Query
@@ -1302,6 +1388,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         if (_blocks.ContainsKey(block.Id))
             throw new InvalidOperationException($"Block already exists: {block.Id}");
 
+        ValidateUniqueBlockName(block.Name, block.Id);
         _blocks.Add(block.Id, block);
         _ids.RegisterExisting(block.Id);
     }
@@ -1361,8 +1448,10 @@ public sealed class CadDocument : IEquatable<CadDocument>
         if (entity is CadBlockReference blockReference)
         {
             ValidateBlock(blockReference.DefinitionBlockId);
-            if (blockReference.DefinitionBlockId.Equals(blockReference.OwnerBlockId))
-                throw new InvalidOperationException("Block reference cannot reference its owner block.");
+            EnsureDefinitionCanBeReferenced(blockReference.DefinitionBlockId);
+            EnsureBlockReferenceDoesNotCreateCycle(
+                blockReference.OwnerBlockId,
+                blockReference.DefinitionBlockId);
         }
     }
 
@@ -1394,6 +1483,82 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return string.IsNullOrWhiteSpace(name)
             ? throw new ArgumentException("Layer name cannot be empty.", nameof(name))
             : name.Trim();
+    }
+
+    private void ValidateUniqueBlockName(string name, BlockId? blockId = null)
+    {
+        var normalizedName = string.IsNullOrWhiteSpace(name)
+            ? throw new ArgumentException("Block name cannot be empty.", nameof(name))
+            : name.Trim();
+        var duplicate = _blocks.Values.FirstOrDefault(block =>
+            (blockId is null || !block.Id.Equals(blockId.Value)) &&
+            string.Equals(block.Name, normalizedName, StringComparison.OrdinalIgnoreCase));
+        if (duplicate is not null)
+            throw new InvalidOperationException($"Block name already exists: {normalizedName}");
+    }
+
+    private static void EnsureBlockCanBeEdited(CadBlockDefinition block)
+    {
+        if (block.IsSystem || block.IsReadOnly)
+            throw new InvalidOperationException($"Block is read-only: {block.Name}");
+    }
+
+    private void EnsureDefinitionCanBeReferenced(BlockId definitionBlockId)
+    {
+        var definition = GetBlock(definitionBlockId);
+        if (definition.IsSystem)
+            throw new InvalidOperationException("Model and paper space blocks cannot be inserted as block references.");
+    }
+
+    private void EnsureBlockReferenceDoesNotCreateCycle(BlockId ownerBlockId, BlockId definitionBlockId)
+    {
+        if (ownerBlockId.Equals(definitionBlockId) || BlockDependsOn(definitionBlockId, ownerBlockId, []))
+            throw new InvalidOperationException("Block reference would create a circular block dependency.");
+    }
+
+    private bool BlockDependsOn(BlockId blockId, BlockId targetBlockId, HashSet<BlockId> visited)
+    {
+        if (blockId.Equals(targetBlockId))
+            return true;
+        if (!visited.Add(blockId))
+            return false;
+
+        foreach (var reference in GetEntitiesInBlock(blockId).OfType<CadBlockReference>())
+        {
+            if (!reference.IsErased && BlockDependsOn(reference.DefinitionBlockId, targetBlockId, visited))
+                return true;
+        }
+
+        return false;
+    }
+
+    private CadRectD ResolveBlockBounds(BlockId blockId, HashSet<BlockId> visited)
+    {
+        if (!visited.Add(blockId))
+            return CadRectD.Empty;
+
+        var bounds = CadRectD.Empty;
+        foreach (var entity in GetEntitiesInBlock(blockId))
+        {
+            if (entity.IsErased)
+                continue;
+
+            bounds = bounds.Union(entity is CadBlockReference reference
+                ? ResolveBlockReferenceBounds(reference, visited)
+                : entity.Bounds);
+        }
+
+        visited.Remove(blockId);
+        return bounds;
+    }
+
+    private CadRectD ResolveBlockReferenceBounds(CadBlockReference reference, HashSet<BlockId> visited)
+    {
+        var definition = GetBlock(reference.DefinitionBlockId);
+        var localBounds = ResolveBlockBounds(reference.DefinitionBlockId, visited);
+        return localBounds.IsEmpty
+            ? CadRectD.FromLTRB(reference.Position.X, reference.Position.Y, reference.Position.X, reference.Position.Y)
+            : CadBlockTransform.TransformBounds(definition, reference, localBounds);
     }
 
     private void ValidateBlock(BlockId blockId)

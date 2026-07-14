@@ -66,6 +66,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadLayoutViewportSnapshot? _layoutPanInitialSnapshot;
     private bool _layoutPanHasMoved;
     private bool _fitToWindowPending;
+    private BlockId? _insertBlockDefinitionId;
+    private double _insertBlockRotationRadians;
+    private double _insertBlockScaleX = 1;
+    private double _insertBlockScaleY = 1;
     private bool _disposed;
 
     [ObservableProperty]
@@ -91,6 +95,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public bool IsModelSpaceActive => ActiveLayoutId is null;
     public bool IsLayoutViewportActive => ActiveLayoutId is not null && ActiveLayoutViewportId is not null;
     public bool IsPaperSpaceActive => ActiveLayoutId is not null && ActiveLayoutViewportId is null;
+    public BlockId? EditingBlockId { get; private set; }
+    public bool IsEditingBlock => EditingBlockId is not null;
     public CadLayoutSpaceMode ActiveLayoutSpaceMode
     {
         get => IsLayoutViewportActive ? CadLayoutSpaceMode.Model : CadLayoutSpaceMode.Paper;
@@ -205,6 +211,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _preferredLayoutViewports.Clear();
         ActiveLayoutViewportId = null;
         ActiveLayoutId = null;
+        SetEditingBlock(null);
         CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
         _viewportInitialization.ApplyCurrentSize(CadEditor);
         RefreshPointerWorldStatus();
@@ -346,6 +353,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
     {
         var modeChanged = CadCanvasToolMode != toolMode;
+        if (toolMode != CadCanvasToolMode.InsertBlock)
+            _insertBlockDefinitionId = null;
         if (toolMode != CadCanvasToolMode.LayoutViewport)
             _layoutViewportCreation.Clear();
         CadCanvasToolMode = toolMode;
@@ -414,6 +423,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 toggleSelection ? CadSelectionMode.Toggle : CadSelectionMode.Replace);
             RequestRender();
             return new CadCanvasInteractionResult(true, CaptureMouse: true);
+        }
+
+        if (CadCanvasToolMode == CadCanvasToolMode.InsertBlock)
+        {
+            CommitBlockInsertion(screen);
+            return CadCanvasInteractionResult.HandledOnly;
         }
 
         HandleDrawingClick(screen);
@@ -625,12 +640,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return;
         }
 
-        CadEditor.Execute(new FitViewportCommand(ownerBlockId: BlockId.ModelSpace));
+        CadEditor.Execute(new FitViewportCommand(ownerBlockId: CadEditor.ActiveOwnerBlockId));
         RequestRender();
     }
 
     public void ActivateModelSpace()
     {
+        SetEditingBlock(null);
         _fitToWindowPending = false;
         if (ActiveLayoutId is { } previousLayoutId)
             _spaceViewportState.Capture(CadEditor.Viewport, previousLayoutId);
@@ -653,6 +669,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void ActivateLayout(LayoutId layoutId)
     {
+        SetEditingBlock(null);
         _fitToWindowPending = false;
         if (ActiveLayoutId is { } previousLayoutId)
             _spaceViewportState.Capture(CadEditor.Viewport, previousLayoutId);
@@ -1515,12 +1532,109 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             AddPastePreview(items, snappedMouseWorld);
             AddSelectionWindowPreview(items, mousePoint);
             AddGripDragPreview(items);
+            AddBlockInsertionPreview(items, snappedMouseWorld);
             AddDrawingPreview(items, snappedMouseWorld);
             AddSnapMarker(items, rawMouseWorld, snappedMouseWorld);
             AddLayoutViewportCreationPreview(items, mousePoint);
         }
 
         return items;
+    }
+
+    public CadCanvasInteractionResult BeginBlockInsertion(
+        BlockId definitionBlockId,
+        double rotationRadians = 0,
+        double scaleX = 1,
+        double scaleY = 1)
+    {
+        var definition = CadEditor.Document.GetBlock(definitionBlockId);
+        if (definition.IsSystem)
+            throw new InvalidOperationException("System space blocks cannot be inserted.");
+        if (scaleX <= 0 || scaleY <= 0 || !double.IsFinite(scaleX) || !double.IsFinite(scaleY))
+            throw new ArgumentOutOfRangeException(nameof(scaleX), "Block scale must be finite and positive.");
+
+        SetToolMode(CadCanvasToolMode.InsertBlock);
+        _insertBlockDefinitionId = definitionBlockId;
+        _insertBlockRotationRadians = rotationRadians;
+        _insertBlockScaleX = scaleX;
+        _insertBlockScaleY = scaleY;
+        RaiseInteractionStateChanged();
+        RequestOverlayRender();
+        return CadCanvasInteractionResult.HandledOnly;
+    }
+
+    public void EditBlockDefinition(BlockId blockId)
+    {
+        var block = CadEditor.Document.GetBlock(blockId);
+        if (block.IsSystem || block.IsReadOnly)
+            throw new InvalidOperationException($"Block is read-only: {block.Name}");
+
+        ActivateModelSpace();
+        CadEditor.ActiveOwnerBlockId = blockId;
+        SetEditingBlock(blockId);
+        CadEditor.Selection.Clear();
+        ClearInteractionState(clearClipboard: false, render: false);
+        FitToWindow();
+        RaiseInteractionStateChanged();
+        PublishInteractionActivity($"Edit block: {block.Name}");
+    }
+
+    public void ExitBlockEditing()
+    {
+        if (!IsEditingBlock)
+            return;
+        ActivateModelSpace();
+        PublishInteractionActivity("Exit block editor");
+    }
+
+    private void SetEditingBlock(BlockId? blockId)
+    {
+        if (EditingBlockId == blockId)
+            return;
+        EditingBlockId = blockId;
+        OnPropertyChanged(nameof(EditingBlockId));
+        OnPropertyChanged(nameof(IsEditingBlock));
+    }
+
+    private void CommitBlockInsertion(CadPointD screen)
+    {
+        if (_insertBlockDefinitionId is not { } definitionBlockId ||
+            !EnsureLayerAcceptsEntities(DrawingLayerId))
+        {
+            return;
+        }
+
+        var position = ScreenToWorld(screen, snapToGrid: true);
+        var definition = CadEditor.Document.GetBlock(definitionBlockId);
+        var entityId = CadEditor.InsertBlockReference(
+            definitionBlockId,
+            position,
+            DrawingLayerId,
+            _insertBlockRotationRadians,
+            _insertBlockScaleX,
+            _insertBlockScaleY,
+            definition.Name);
+        CadEditor.Selection.Replace([entityId]);
+        SetToolMode(CadCanvasToolMode.Select);
+        RaiseInteractionStateChanged();
+        RequestRender();
+    }
+
+    private void AddBlockInsertionPreview(List<CadTransientItem> items, CadPointD position)
+    {
+        if (CadCanvasToolMode != CadCanvasToolMode.InsertBlock ||
+            _insertBlockDefinitionId is not { } definitionBlockId)
+        {
+            return;
+        }
+
+        items.Add(new CadTransientBlockReference(
+            definitionBlockId,
+            position,
+            _insertBlockRotationRadians,
+            _insertBlockScaleX,
+            _insertBlockScaleY,
+            CreatePreviewStyleService().CreateSelectionWindowStyle()));
     }
 
     private void AddLayoutViewportCreationPreview(

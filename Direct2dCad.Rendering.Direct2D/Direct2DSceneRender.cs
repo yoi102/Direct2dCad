@@ -21,6 +21,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private readonly Direct2DEntityRenderer _entityRenderer;
     private readonly Direct2DOleRenderer _oleRenderer;
     private readonly Direct2DEntityReferenceRenderer _entityReferenceRenderer;
+    private readonly Direct2DBlockReferenceRenderer _blockReferenceRenderer;
     private bool _disposed;
 
     public Direct2DSceneRender()
@@ -50,6 +51,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _resourceCache,
             _entityRenderer,
             transientRenderer,
+            _oleRenderer);
+        _blockReferenceRenderer = new Direct2DBlockReferenceRenderer(
+            _resourceCache,
+            _entityRenderer,
             _oleRenderer);
     }
 
@@ -302,6 +307,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                              modelOptions,
                              _resourceCache))
                 {
+                    if (entity is CadBlockReference blockReference)
+                    {
+                        _blockReferenceRenderer.Draw(context, document, modelViewport, blockReference, modelOptions);
+                        continue;
+                    }
                     if (entity is CadOleObject ole)
                     {
                         _oleRenderer.DrawEntity(context, ole, paperViewport);
@@ -345,6 +355,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         foreach (var entity in Direct2DEntityVisibility.Enumerate(document, viewport, options, _resourceCache))
         {
+            if (entity is CadBlockReference blockReference)
+            {
+                _blockReferenceRenderer.Draw(context, document, viewport, blockReference, options);
+                continue;
+            }
             if (entity is CadOleObject oleObject)
             {
                 _oleRenderer.DrawEntity(context, oleObject, viewport);
@@ -455,6 +470,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 document,
                 viewport,
                 reference,
+                options),
+            reference => _blockReferenceRenderer.Draw(
+                deviceContext,
+                document,
+                viewport,
+                reference.DefinitionBlockId,
+                reference.Position,
+                reference.RotationRadians,
+                reference.ScaleX,
+                reference.ScaleY,
                 options));
     }
 

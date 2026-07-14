@@ -70,6 +70,10 @@ internal sealed class CadGripDragCommitter(
             case CadOleObject oleObject:
                 CommitOleObjectGripDrag(oleObject, drag);
                 break;
+
+            case CadBlockReference blockReference:
+                CommitBlockReferenceGripDrag(blockReference, drag);
+                break;
         }
     }
 
@@ -172,5 +176,26 @@ internal sealed class CadGripDragCommitter(
     {
         if (TryCreateImageGripGeometry(oleObject.Bounds, drag, out var bounds))
             editor.SetOleObjectBounds(oleObject.Id, bounds);
+    }
+
+    private void CommitBlockReferenceGripDrag(CadBlockReference reference, GripDragState drag)
+    {
+        var definition = editor.Document.GetBlock(reference.DefinitionBlockId);
+        if (TryCreateBlockReferenceGripTransform(
+                definition,
+                reference,
+                drag,
+                out var position,
+                out var rotationRadians,
+                out var scaleX,
+                out var scaleY))
+        {
+            editor.SetBlockReferenceTransform(
+                reference.Id,
+                position,
+                rotationRadians,
+                scaleX,
+                scaleY);
+        }
     }
 }

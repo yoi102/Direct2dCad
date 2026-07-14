@@ -72,10 +72,38 @@ public sealed class CadDocumentChangeDispatcher
         if (!result.DocumentChanged)
             return;
 
+        result = ExpandBlockReferenceChanges(result);
         _dirtySet.Add(result);
         UpdateSpatialIndex(result);
         UpdateGeometryResources(result);
         DocumentChanged?.Invoke(this, result);
+    }
+
+    private CadDocumentChangeSet ExpandBlockReferenceChanges(CadDocumentChangeSet result)
+    {
+        var affectedReferenceIds = _document.RefreshBlockReferenceBounds();
+        if (affectedReferenceIds.Count == 0)
+            return result;
+
+        var changes = result.EntityChanges
+            .GroupBy(change => change.EntityId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Aggregate(CadEntityChangeKind.None, (kind, change) => kind | change.Kind));
+        foreach (var entityId in affectedReferenceIds)
+        {
+            changes[entityId] = changes.GetValueOrDefault(entityId) |
+                                CadEntityChangeKind.Geometry;
+        }
+
+        return new CadDocumentChangeSet(
+            changes.Select(change => new CadEntityChange(change.Key, change.Value)))
+        {
+            AffectsDocumentStructure = result.AffectsDocumentStructure,
+            AffectsLayouts = result.AffectsLayouts,
+            AffectsLayoutStructure = result.AffectsLayoutStructure,
+            AffectsViewSettings = result.AffectsViewSettings
+        };
     }
 
     private void UpdateGeometryResources(CadDocumentChangeSet result)

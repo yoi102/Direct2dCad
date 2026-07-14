@@ -130,6 +130,9 @@
                         <DataTemplate DataType="{x:Type vm_tb:LayersToolboxViewModel}">
                             <v_tb:LayersToolboxView />
                         </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm_tb:BlocksToolboxViewModel}">
+                            <v_tb:BlocksToolboxView />
+                        </DataTemplate>
                         <DataTemplate DataType="{x:Type vm_tb:EntitySearchToolboxViewModel}">
                             <v_tb:EntitySearchToolboxView />
                         </DataTemplate>

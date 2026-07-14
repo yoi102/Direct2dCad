@@ -2,6 +2,13 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Db.Cad;
 
+public enum CadBlockKind
+{
+    SystemSpace,
+    User,
+    Library
+}
+
 public sealed class CadBlockDefinition : IEquatable<CadBlockDefinition>
 {
     private readonly List<EntityId> _entityIds = new();
@@ -9,17 +16,28 @@ public sealed class CadBlockDefinition : IEquatable<CadBlockDefinition>
     public BlockId Id { get; } 
     public string Name { get; private set; }
     public CadPointD BasePoint { get; private set; }
+    public CadBlockKind Kind { get; }
+    public bool IsReadOnly { get; private set; }
+    public bool IsSystem => Kind == CadBlockKind.SystemSpace;
     public IReadOnlyList<EntityId> EntityIds => _entityIds;
 
-    internal CadBlockDefinition(BlockId id, string name, CadPointD basePoint)
+    internal CadBlockDefinition(
+        BlockId id,
+        string name,
+        CadPointD basePoint,
+        CadBlockKind kind = CadBlockKind.User,
+        bool isReadOnly = false)
     {
         Id = id;
         Name = GuardName(name);
         BasePoint = basePoint;
+        Kind = kind;
+        IsReadOnly = isReadOnly || kind == CadBlockKind.SystemSpace;
     }
 
     public void Rename(string name) => Name = GuardName(name);
     public void SetBasePoint(CadPointD basePoint) => BasePoint = basePoint;
+    public void SetReadOnly(bool isReadOnly) => IsReadOnly = IsSystem || isReadOnly;
 
     internal void AddEntity(EntityId entityId)
     {

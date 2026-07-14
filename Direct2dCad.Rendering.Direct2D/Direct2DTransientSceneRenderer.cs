@@ -17,7 +17,8 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadViewport viewport,
         CadTransientScene? scene,
         Action<CadTransientOleObject> drawOle,
-        Action<CadTransientEntityReference> drawEntityReference)
+        Action<CadTransientEntityReference> drawEntityReference,
+        Action<CadTransientBlockReference> drawBlockReference)
     {
         if (scene is null || scene.IsEmpty)
         {
@@ -110,6 +111,9 @@ internal sealed class Direct2DTransientSceneRenderer(
                     break;
                 case CadTransientEntityReference reference:
                     drawEntityReference(reference);
+                    break;
+                case CadTransientBlockReference reference:
+                    drawBlockReference(reference);
                     break;
             }
         }

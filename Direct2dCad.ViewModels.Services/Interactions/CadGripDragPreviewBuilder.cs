@@ -77,6 +77,10 @@ internal sealed class CadGripDragPreviewBuilder(
             case CadOleObject oleObject:
                 AddOleObjectGripPreview(items, oleObject, drag, style);
                 break;
+
+            case CadBlockReference blockReference:
+                AddBlockReferenceGripPreview(items, blockReference, drag, style);
+                break;
         }
     }
 
@@ -90,7 +94,21 @@ internal sealed class CadGripDragPreviewBuilder(
                 entity is not null &&
                 !entity.IsErased)
             {
-                items.Add(new CadTransientEntityReference(entityId, drag.Delta, styleService.CreateEntityPreviewStyle(entity)));
+                var style = styleService.CreateEntityPreviewStyle(entity);
+                if (entity is CadBlockReference reference)
+                {
+                    items.Add(new CadTransientBlockReference(
+                        reference.DefinitionBlockId,
+                        reference.Position + drag.Delta,
+                        reference.RotationRadians,
+                        reference.ScaleX,
+                        reference.ScaleY,
+                        style));
+                }
+                else
+                {
+                    items.Add(new CadTransientEntityReference(entityId, drag.Delta, style));
+                }
             }
         }
     }
@@ -296,5 +314,36 @@ internal sealed class CadGripDragPreviewBuilder(
             oleObject.Id,
             Guid.Empty,
             oleObject.Opacity));
+    }
+
+    private void AddBlockReferenceGripPreview(
+        List<CadTransientItem> items,
+        CadBlockReference reference,
+        GripDragState drag,
+        CadTransientStyle style)
+    {
+        var definition = editor.Document.GetBlock(reference.DefinitionBlockId);
+        if (!TryCreateBlockReferenceGripTransform(
+                definition,
+                reference,
+                drag,
+                out var position,
+                out var rotationRadians,
+                out var scaleX,
+                out var scaleY))
+        {
+            position = reference.Position;
+            rotationRadians = reference.RotationRadians;
+            scaleX = reference.ScaleX;
+            scaleY = reference.ScaleY;
+        }
+
+        items.Add(new CadTransientBlockReference(
+            reference.DefinitionBlockId,
+            position,
+            rotationRadians,
+            scaleX,
+            scaleY,
+            style));
     }
 }

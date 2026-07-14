@@ -424,6 +424,24 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
 
         if (selectedEntityIds.Length == 1 &&
             _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+            entity is CadBlockReference blockReference &&
+            !blockReference.IsErased)
+        {
+            if (Entity is BlockReferencePropertyViewModel blockReferenceViewModel &&
+                blockReferenceViewModel.EntityId.Equals(blockReference.Id))
+            {
+                blockReferenceViewModel.RefreshFromEntity();
+            }
+            else
+            {
+                Entity = new BlockReferencePropertyViewModel(_documentViewModel, blockReference.Id);
+            }
+
+            return;
+        }
+
+        if (selectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
             entity is { IsErased: false })
         {
             if (Entity is CommonEntityPropertyViewModel commonEntityViewModel &&

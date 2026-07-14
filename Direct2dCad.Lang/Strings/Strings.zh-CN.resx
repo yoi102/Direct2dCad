@@ -1014,4 +1014,43 @@
   <data name="EntitySearchResultCountFormat" xml:space="preserve">
     <value>共 {0} 个实体</value>
   </data>
+  <data name="Blocks" xml:space="preserve">
+    <value>块</value>
+  </data>
+  <data name="CreateBlock" xml:space="preserve">
+    <value>创建块</value>
+  </data>
+  <data name="InsertBlock" xml:space="preserve">
+    <value>插入块</value>
+  </data>
+  <data name="EditBlock" xml:space="preserve">
+    <value>编辑块</value>
+  </data>
+  <data name="ExitBlockEditor" xml:space="preserve">
+    <value>退出块编辑</value>
+  </data>
+  <data name="DeleteBlock" xml:space="preserve">
+    <value>删除块</value>
+  </data>
+  <data name="BasePoint" xml:space="preserve">
+    <value>基点</value>
+  </data>
+  <data name="References" xml:space="preserve">
+    <value>参照数</value>
+  </data>
+  <data name="ScaleX" xml:space="preserve">
+    <value>X 比例</value>
+  </data>
+  <data name="ScaleY" xml:space="preserve">
+    <value>Y 比例</value>
+  </data>
+  <data name="BlockReference" xml:space="preserve">
+    <value>块参照</value>
+  </data>
+  <data name="BlockDefinition" xml:space="preserve">
+    <value>块定义</value>
+  </data>
+  <data name="DeleteBlockConfirmFormat" xml:space="preserve">
+    <value>确定删除块“{0}”吗？</value>
+  </data>
 </root>
