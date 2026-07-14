@@ -1,46 +1,31 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Enums;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Settings;
 
 public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionViewModel
 {
-    private bool _isLoadingDensity;
+    private readonly IDialogService _dialogService;
 
-    public DocumentGridSettingsViewModel(CadGridSettings settings)
+    public DocumentGridSettingsViewModel(CadGridSettings settings, IDialogService dialogService)
         : base(Strings.GridAndSnapping)
     {
-        GridDensityPresets =
-        [
-            new(0.01, 0.001),
-            new(0.05, 0.01),
-            new(0.1, 0.01),
-            new(0.25, 0.05),
-            new(0.5, 0.1),
-            new(1.0, 0.1),
-            new(2.5, 0.5),
-            new(5.0, 1.0),
-            new(10.0, 1.0),
-            new(25.0, 5.0),
-            new(50.0, 10.0),
-            new(100.0, 10.0),
-            new(500.0, 100.0),
-            new(1_000.0, 100.0)
-        ];
+        _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
         Load(settings);
     }
 
-    public IReadOnlyList<GridDensityPresetViewModel> GridDensityPresets { get; }
+    public ObservableCollection<GridSpacingPresetItemViewModel> GridSpacingPresets { get; } = [];
 
     [ObservableProperty] public partial ViewModelCadGridType GridType { get; set; }
-    [ObservableProperty] public partial GridDensityPresetViewModel? SelectedGridDensityPreset { get; set; }
-    [ObservableProperty] public partial double GridMajorSpacingXMillimeters { get; set; }
-    [ObservableProperty] public partial double GridMajorSpacingYMillimeters { get; set; }
-    [ObservableProperty] public partial double GridMinorSpacingXMillimeters { get; set; }
-    [ObservableProperty] public partial double GridMinorSpacingYMillimeters { get; set; }
+    [ObservableProperty] public partial GridSpacingPresetItemViewModel? SelectedGridSpacingPreset { get; set; }
+    [ObservableProperty] public partial GridSpacingPresetItemViewModel? SelectedMajorGridPreset { get; set; }
+    [ObservableProperty] public partial GridSpacingPresetItemViewModel? SelectedMinorGridPreset { get; set; }
     [ObservableProperty] public partial double GridMinimumScreenSpacing { get; set; }
     [ObservableProperty] public partial CadColor GridMinorLineColor { get; set; }
     [ObservableProperty] public partial CadColor GridMajorLineColor { get; set; }
@@ -53,8 +38,17 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
 
     internal override bool TryApplyTo(CadViewSettings settings)
     {
-        if (!TryResolveSubdivision(GridMajorSpacingXMillimeters, GridMinorSpacingXMillimeters, out var subdivisionX) ||
-            !TryResolveSubdivision(GridMajorSpacingYMillimeters, GridMinorSpacingYMillimeters, out var subdivisionY) ||
+        if (SelectedMajorGridPreset is null ||
+            SelectedMinorGridPreset is null ||
+            GridSpacingPresets.Count < 2 ||
+            !TryResolveSubdivision(
+                SelectedMajorGridPreset.SpacingX,
+                SelectedMinorGridPreset.SpacingX,
+                out var subdivisionX) ||
+            !TryResolveSubdivision(
+                SelectedMajorGridPreset.SpacingY,
+                SelectedMinorGridPreset.SpacingY,
+                out var subdivisionY) ||
             !IsPositiveFinite(GridMinimumScreenSpacing) ||
             !IsPositiveFinite(GridMinorLineWidth) || !IsPositiveFinite(GridMajorLineWidth) ||
             !IsPositiveFinite(SnapMarkerLength) || !IsPositiveFinite(SnapMarkerStrokeWidth))
@@ -64,15 +58,15 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
 
         var grid = settings.Grid;
         grid.Type = (CadGridType)GridType;
-        grid.SpacingX = GridMajorSpacingXMillimeters;
-        grid.SpacingY = GridMajorSpacingYMillimeters;
-        grid.MinorSpacingX = GridMinorSpacingXMillimeters;
-        grid.MinorSpacingY = GridMinorSpacingYMillimeters;
+        grid.SpacingX = SelectedMajorGridPreset.SpacingX;
+        grid.SpacingY = SelectedMajorGridPreset.SpacingY;
+        grid.MinorSpacingX = SelectedMinorGridPreset.SpacingX;
+        grid.MinorSpacingY = SelectedMinorGridPreset.SpacingY;
         grid.Subdivision = Math.Max(subdivisionX, subdivisionY);
         grid.SnapSpacingX = 0;
         grid.SnapSpacingY = 0;
         grid.MinimumScreenSpacing = GridMinimumScreenSpacing;
-        grid.MinimumWorldSpacing = Math.Min(GridMinorSpacingXMillimeters, GridMinorSpacingYMillimeters);
+        grid.MinimumWorldSpacing = Math.Min(grid.MinorSpacingX, grid.MinorSpacingY);
         grid.MinorLineColor = GridMinorLineColor;
         grid.MajorLineColor = GridMajorLineColor;
         grid.MinorLineWidth = GridMinorLineWidth;
@@ -81,6 +75,10 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
         grid.SnapMarkerColor = SnapMarkerColor;
         grid.SnapMarkerLength = SnapMarkerLength;
         grid.SnapMarkerStrokeWidth = SnapMarkerStrokeWidth;
+        grid.ReplaceSpacingPresets(
+            GridSpacingPresets.Select(item => item.ToModel()),
+            SelectedMajorGridPreset.Id,
+            SelectedMinorGridPreset.Id);
         return true;
     }
 
@@ -89,34 +87,129 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
         Load(new CadGridSettings());
     }
 
-    partial void OnSelectedGridDensityPresetChanged(GridDensityPresetViewModel? value)
+    [RelayCommand]
+    private async Task AddGridSpacingPresetAsync()
     {
-        if (_isLoadingDensity || value is null)
+        var result = await _dialogService.ShowGridSpacingPresetDialogAsync(
+            new GridSpacingPresetDialogRequest(
+                false,
+                string.Empty,
+                1.0,
+                1.0,
+                true,
+                GetUsedNames()));
+        if (result is null)
             return;
 
-        _isLoadingDensity = true;
-        GridMajorSpacingXMillimeters = value.MajorSpacingMillimeters;
-        GridMajorSpacingYMillimeters = value.MajorSpacingMillimeters;
-        GridMinorSpacingXMillimeters = value.MinorSpacingMillimeters;
-        GridMinorSpacingYMillimeters = value.MinorSpacingMillimeters;
-        _isLoadingDensity = false;
+        var item = new GridSpacingPresetItemViewModel(
+            Guid.NewGuid(),
+            result.Name,
+            result.SpacingX,
+            result.SpacingY,
+            result.LinkAxes);
+        GridSpacingPresets.Add(item);
+        SelectedGridSpacingPreset = item;
+        NotifyListCommandStateChanged();
     }
 
-    partial void OnGridMajorSpacingXMillimetersChanged(double value) => RefreshSelectedPreset();
-    partial void OnGridMajorSpacingYMillimetersChanged(double value) => RefreshSelectedPreset();
-    partial void OnGridMinorSpacingXMillimetersChanged(double value) => RefreshSelectedPreset();
-    partial void OnGridMinorSpacingYMillimetersChanged(double value) => RefreshSelectedPreset();
+    [RelayCommand(CanExecute = nameof(CanEditGridSpacingPreset))]
+    private async Task EditGridSpacingPresetAsync()
+    {
+        var current = SelectedGridSpacingPreset;
+        if (current is null)
+            return;
+
+        var result = await _dialogService.ShowGridSpacingPresetDialogAsync(
+            new GridSpacingPresetDialogRequest(
+                true,
+                current.Name,
+                current.SpacingX,
+                current.SpacingY,
+                current.LinkAxes,
+                GetUsedNames(current)));
+        if (result is null)
+            return;
+
+        var replacement = new GridSpacingPresetItemViewModel(
+            current.Id,
+            result.Name,
+            result.SpacingX,
+            result.SpacingY,
+            result.LinkAxes);
+        var index = GridSpacingPresets.IndexOf(current);
+        GridSpacingPresets[index] = replacement;
+        if (ReferenceEquals(SelectedMajorGridPreset, current))
+            SelectedMajorGridPreset = replacement;
+        if (ReferenceEquals(SelectedMinorGridPreset, current))
+            SelectedMinorGridPreset = replacement;
+        SelectedGridSpacingPreset = replacement;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDeleteGridSpacingPreset))]
+    private void DeleteGridSpacingPreset()
+    {
+        var current = SelectedGridSpacingPreset;
+        if (current is null || GridSpacingPresets.Count <= 2)
+            return;
+
+        var index = GridSpacingPresets.IndexOf(current);
+        GridSpacingPresets.RemoveAt(index);
+        if (ReferenceEquals(SelectedMajorGridPreset, current))
+            SelectedMajorGridPreset = GridSpacingPresets.FirstOrDefault();
+        if (ReferenceEquals(SelectedMinorGridPreset, current))
+            SelectedMinorGridPreset = GridSpacingPresets.LastOrDefault();
+        SelectedGridSpacingPreset = GridSpacingPresets[Math.Min(index, GridSpacingPresets.Count - 1)];
+        NotifyListCommandStateChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanMoveGridSpacingPresetUp))]
+    private void MoveGridSpacingPresetUp()
+    {
+        var item = SelectedGridSpacingPreset!;
+        var index = GridSpacingPresets.IndexOf(item);
+        GridSpacingPresets.Move(index, index - 1);
+        NotifyListCommandStateChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanMoveGridSpacingPresetDown))]
+    private void MoveGridSpacingPresetDown()
+    {
+        var item = SelectedGridSpacingPreset!;
+        var index = GridSpacingPresets.IndexOf(item);
+        GridSpacingPresets.Move(index, index + 1);
+        NotifyListCommandStateChanged();
+    }
+
+    partial void OnSelectedGridSpacingPresetChanged(GridSpacingPresetItemViewModel? value)
+    {
+        NotifyListCommandStateChanged();
+    }
+
+    private bool CanEditGridSpacingPreset() => SelectedGridSpacingPreset is not null;
+    private bool CanDeleteGridSpacingPreset() => SelectedGridSpacingPreset is not null && GridSpacingPresets.Count > 2;
+    private bool CanMoveGridSpacingPresetUp() =>
+        SelectedGridSpacingPreset is not null && GridSpacingPresets.IndexOf(SelectedGridSpacingPreset) > 0;
+    private bool CanMoveGridSpacingPresetDown() =>
+        SelectedGridSpacingPreset is not null &&
+        GridSpacingPresets.IndexOf(SelectedGridSpacingPreset) is var index &&
+        index >= 0 && index < GridSpacingPresets.Count - 1;
 
     private void Load(CadGridSettings settings)
     {
         GridType = (ViewModelCadGridType)settings.Type;
-        _isLoadingDensity = true;
-        GridMajorSpacingXMillimeters = settings.SpacingX;
-        GridMajorSpacingYMillimeters = settings.SpacingY;
-        GridMinorSpacingXMillimeters = settings.GetMinorSpacingX();
-        GridMinorSpacingYMillimeters = settings.GetMinorSpacingY();
-        SelectedGridDensityPreset = FindMatchingPreset();
-        _isLoadingDensity = false;
+        GridSpacingPresets.Clear();
+        foreach (var preset in settings.SpacingPresets)
+            GridSpacingPresets.Add(GridSpacingPresetItemViewModel.From(preset));
+
+        var major = FindById(settings.MajorSpacingPresetId)
+                    ?? FindBySpacing(settings.SpacingX, settings.SpacingY)
+                    ?? AddLocalPreset(settings.SpacingX, settings.SpacingY);
+        var minor = FindById(settings.MinorSpacingPresetId)
+                    ?? FindBySpacing(settings.GetMinorSpacingX(), settings.GetMinorSpacingY())
+                    ?? AddLocalPreset(settings.GetMinorSpacingX(), settings.GetMinorSpacingY());
+        SelectedMajorGridPreset = major;
+        SelectedMinorGridPreset = minor;
+        SelectedGridSpacingPreset = major;
         GridMinimumScreenSpacing = settings.MinimumScreenSpacing;
         GridMinorLineColor = settings.MinorLineColor;
         GridMajorLineColor = settings.MajorLineColor;
@@ -126,63 +219,93 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
         SnapMarkerColor = settings.SnapMarkerColor;
         SnapMarkerLength = settings.SnapMarkerLength;
         SnapMarkerStrokeWidth = settings.SnapMarkerStrokeWidth;
+        NotifyListCommandStateChanged();
     }
 
-    private void RefreshSelectedPreset()
+    private GridSpacingPresetItemViewModel AddLocalPreset(double spacingX, double spacingY)
     {
-        if (_isLoadingDensity)
-            return;
-
-        _isLoadingDensity = true;
-        SelectedGridDensityPreset = FindMatchingPreset();
-        _isLoadingDensity = false;
+        var item = new GridSpacingPresetItemViewModel(
+            Guid.NewGuid(),
+            string.Empty,
+            spacingX,
+            spacingY,
+            NearlyEqual(spacingX, spacingY));
+        GridSpacingPresets.Add(item);
+        return item;
     }
 
-    private GridDensityPresetViewModel? FindMatchingPreset()
-    {
-        if (!NearlyEqual(GridMajorSpacingXMillimeters, GridMajorSpacingYMillimeters) ||
-            !NearlyEqual(GridMinorSpacingXMillimeters, GridMinorSpacingYMillimeters))
-        {
-            return null;
-        }
+    private GridSpacingPresetItemViewModel? FindById(Guid? id) =>
+        id is null ? null : GridSpacingPresets.FirstOrDefault(item => item.Id == id.Value);
 
-        return GridDensityPresets.FirstOrDefault(preset =>
-            NearlyEqual(preset.MajorSpacingMillimeters, GridMajorSpacingXMillimeters) &&
-            NearlyEqual(preset.MinorSpacingMillimeters, GridMinorSpacingXMillimeters));
+    private GridSpacingPresetItemViewModel? FindBySpacing(double spacingX, double spacingY) =>
+        GridSpacingPresets.FirstOrDefault(item =>
+            NearlyEqual(item.SpacingX, spacingX) && NearlyEqual(item.SpacingY, spacingY));
+
+    private IReadOnlyList<string> GetUsedNames(GridSpacingPresetItemViewModel? except = null) =>
+        GridSpacingPresets
+            .Where(item => !ReferenceEquals(item, except) && !string.IsNullOrWhiteSpace(item.Name))
+            .Select(item => item.Name)
+            .ToArray();
+
+    private void NotifyListCommandStateChanged()
+    {
+        EditGridSpacingPresetCommand.NotifyCanExecuteChanged();
+        DeleteGridSpacingPresetCommand.NotifyCanExecuteChanged();
+        MoveGridSpacingPresetUpCommand.NotifyCanExecuteChanged();
+        MoveGridSpacingPresetDownCommand.NotifyCanExecuteChanged();
     }
 
     private static bool TryResolveSubdivision(double major, double minor, out int subdivision)
     {
         subdivision = 0;
-        if (major < CadGridSettings.MinimumSpacingMillimeters ||
-            major > CadGridSettings.MaximumSpacingMillimeters ||
-            minor < CadGridSettings.MinimumSpacingMillimeters ||
-            minor > CadGridSettings.MaximumSpacingMillimeters ||
-            !double.IsFinite(major) || !double.IsFinite(minor))
-        {
+        if (!IsValidRatio(major, minor))
             return false;
-        }
-
-        var ratio = major / minor;
-        var rounded = Math.Round(ratio, MidpointRounding.AwayFromZero);
-        if (rounded < CadGridSettings.MinimumSubdivision ||
-            rounded > CadGridSettings.MaximumSubdivision ||
-            !NearlyEqual(ratio, rounded))
-        {
-            return false;
-        }
-
-        subdivision = (int)rounded;
+        subdivision = (int)Math.Round(major / minor, MidpointRounding.AwayFromZero);
         return true;
     }
+
+    private static bool IsValidRatio(double major, double minor)
+    {
+        if (!IsSpacingValid(major) || !IsSpacingValid(minor))
+            return false;
+        var ratio = major / minor;
+        return ratio >= CadGridSettings.MinimumSubdivision &&
+               ratio <= CadGridSettings.MaximumSubdivision &&
+               NearlyEqual(ratio, Math.Round(ratio));
+    }
+
+    private static bool IsSpacingValid(double value) =>
+        value >= CadGridSettings.MinimumSpacingMillimeters &&
+        value <= CadGridSettings.MaximumSpacingMillimeters &&
+        double.IsFinite(value);
 
     private static bool NearlyEqual(double left, double right) =>
         Math.Abs(left - right) <= Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right))) * 1e-9;
 }
 
-public sealed record GridDensityPresetViewModel(
-    double MajorSpacingMillimeters,
-    double MinorSpacingMillimeters)
+public sealed record GridSpacingPresetItemViewModel(
+    Guid Id,
+    string Name,
+    double SpacingX,
+    double SpacingY,
+    bool LinkAxes)
 {
-    public string DisplayName => $"{MajorSpacingMillimeters:0.###} / {MinorSpacingMillimeters:0.###} mm";
+    public string DisplayName
+    {
+        get
+        {
+            var spacing = NearlyEqual(SpacingX, SpacingY)
+                ? $"{SpacingX:0.###} mm"
+                : $"{SpacingX:0.###} x {SpacingY:0.###} mm";
+            return string.IsNullOrWhiteSpace(Name) ? spacing : $"{Name}: {spacing}";
+        }
+    }
+
+    public CadGridSpacingPreset ToModel() => new(Id, Name, SpacingX, SpacingY, LinkAxes);
+
+    public static GridSpacingPresetItemViewModel From(CadGridSpacingPreset preset) =>
+        new(preset.Id, preset.Name, preset.SpacingX, preset.SpacingY, preset.LinkAxes);
+
+    private static bool NearlyEqual(double left, double right) =>
+        Math.Abs(left - right) <= Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right))) * 1e-9;
 }

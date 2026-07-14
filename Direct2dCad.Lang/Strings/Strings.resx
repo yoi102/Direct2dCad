@@ -1295,4 +1295,40 @@
   <data name="GridAppearance" xml:space="preserve">
     <value>Grid appearance</value>
   </data>
+  <data name="GridSpacingOptions" xml:space="preserve">
+    <value>Grid spacing options</value>
+  </data>
+  <data name="GridSpacingSelection" xml:space="preserve">
+    <value>Grid spacing selection</value>
+  </data>
+  <data name="MajorGridSpacing" xml:space="preserve">
+    <value>Major grid</value>
+  </data>
+  <data name="MinorGridSpacing" xml:space="preserve">
+    <value>Minor grid</value>
+  </data>
+  <data name="AddGridSpacingPreset" xml:space="preserve">
+    <value>Add grid spacing</value>
+  </data>
+  <data name="EditGridSpacingPreset" xml:space="preserve">
+    <value>Edit grid spacing</value>
+  </data>
+  <data name="DeleteGridSpacingPreset" xml:space="preserve">
+    <value>Delete grid spacing</value>
+  </data>
+  <data name="MoveUp" xml:space="preserve">
+    <value>Move up</value>
+  </data>
+  <data name="MoveDown" xml:space="preserve">
+    <value>Move down</value>
+  </data>
+  <data name="LinkGridAxes" xml:space="preserve">
+    <value>Link X and Y</value>
+  </data>
+  <data name="GridSpacingPresetNameExists" xml:space="preserve">
+    <value>A grid spacing with this name already exists.</value>
+  </data>
+  <data name="GridSpacingPresetRangeError" xml:space="preserve">
+    <value>Spacing must be between 0.001 mm and 100000 mm.</value>
+  </data>
 </root>

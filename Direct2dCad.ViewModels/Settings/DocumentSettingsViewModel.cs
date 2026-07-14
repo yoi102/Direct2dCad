@@ -8,13 +8,13 @@ public partial class DocumentSettingsViewModel : ObservableObject, IDocumentSett
 {
     private readonly EditorTabViewModel _editorTab;
 
-    public DocumentSettingsViewModel(EditorTabViewModel editorTab)
+    public DocumentSettingsViewModel(EditorTabViewModel editorTab, IDialogService dialogService)
     {
         _editorTab = editorTab ?? throw new ArgumentNullException(nameof(editorTab));
         var settings = editorTab.CadDocumentViewModel.CadEditor.Document.ViewSettings;
 
         Display = new DocumentDisplaySettingsViewModel(settings);
-        GridAndSnapping = new DocumentGridSettingsViewModel(settings.Grid);
+        GridAndSnapping = new DocumentGridSettingsViewModel(settings.Grid, dialogService);
         Origin = new DocumentOriginSettingsViewModel(settings.Origin);
         Sections = [Display, GridAndSnapping, Origin];
         SelectedSection = Sections[0];
@@ -76,6 +76,9 @@ public partial class DocumentSettingsViewModel : ObservableObject, IDocumentSett
                leftGrid.SpacingY == rightGrid.SpacingY &&
                leftGrid.MinorSpacingX == rightGrid.MinorSpacingX &&
                leftGrid.MinorSpacingY == rightGrid.MinorSpacingY &&
+               leftGrid.SpacingPresets.SequenceEqual(rightGrid.SpacingPresets) &&
+               leftGrid.MajorSpacingPresetId == rightGrid.MajorSpacingPresetId &&
+               leftGrid.MinorSpacingPresetId == rightGrid.MinorSpacingPresetId &&
                leftGrid.Subdivision == rightGrid.Subdivision &&
                leftGrid.SnapSpacingX == rightGrid.SnapSpacingX &&
                leftGrid.SnapSpacingY == rightGrid.SnapSpacingY &&

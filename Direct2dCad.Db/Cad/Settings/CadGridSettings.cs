@@ -20,6 +20,13 @@ public enum CadSnapMarkerType
     InfiniteCross = 4
 }
 
+public sealed record CadGridSpacingPreset(
+    Guid Id,
+    string Name,
+    double SpacingX,
+    double SpacingY,
+    bool LinkAxes);
+
 public sealed class CadGridSettings
 {
     public const double MinimumSpacingMillimeters = 0.001;
@@ -45,6 +52,18 @@ public sealed class CadGridSettings
     public double SnapMarkerLength { get; set; } = 58.0;
     public double SnapMarkerStrokeWidth { get; set; } = 1.25;
     public CadSnapMarkerType SnapMarkerType { get; set; } = CadSnapMarkerType.Cross;
+    public List<CadGridSpacingPreset> SpacingPresets { get; } = [];
+    public Guid? MajorSpacingPresetId { get; set; }
+    public Guid? MinorSpacingPresetId { get; set; }
+
+    public CadGridSettings()
+    {
+        foreach (var spacing in DefaultPresetSpacings)
+            SpacingPresets.Add(CreatePreset(spacing, spacing));
+
+        MajorSpacingPresetId = FindPreset(10.0, 10.0)?.Id;
+        MinorSpacingPresetId = FindPreset(1.0, 1.0)?.Id;
+    }
 
     public double GetSnapSpacingX()
     {
@@ -59,6 +78,59 @@ public sealed class CadGridSettings
     public double GetMinorSpacingX() => GuardMinorSpacing(MinorSpacingX, SpacingX);
 
     public double GetMinorSpacingY() => GuardMinorSpacing(MinorSpacingY, SpacingY);
+
+    public void ReplaceSpacingPresets(
+        IEnumerable<CadGridSpacingPreset> presets,
+        Guid? majorPresetId,
+        Guid? minorPresetId)
+    {
+        ArgumentNullException.ThrowIfNull(presets);
+        SpacingPresets.Clear();
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var preset in presets)
+        {
+            var name = preset.Name?.Trim() ?? string.Empty;
+            var spacingY = preset.LinkAxes ? preset.SpacingX : preset.SpacingY;
+            if (preset.Id == Guid.Empty ||
+                !IsSpacingInRange(preset.SpacingX) ||
+                !IsSpacingInRange(spacingY) ||
+                SpacingPresets.Any(existing => existing.Id == preset.Id) ||
+                (!string.IsNullOrEmpty(name) && !names.Add(name)))
+            {
+                continue;
+            }
+
+            SpacingPresets.Add(preset with { Name = name, SpacingY = spacingY });
+        }
+
+        if (SpacingPresets.Count == 0)
+        {
+            foreach (var spacing in DefaultPresetSpacings)
+                SpacingPresets.Add(CreatePreset(spacing, spacing));
+        }
+
+        MajorSpacingPresetId = SpacingPresets.Any(item => item.Id == majorPresetId)
+            ? majorPresetId
+            : null;
+        MinorSpacingPresetId = SpacingPresets.Any(item => item.Id == minorPresetId)
+            ? minorPresetId
+            : null;
+        EnsurePresetSelections();
+    }
+
+    public void EnsurePresetSelections()
+    {
+        var major = SpacingPresets.FirstOrDefault(item => item.Id == MajorSpacingPresetId)
+                    ?? FindPreset(SpacingX, SpacingY)
+                    ?? AddPresetForSpacing(SpacingX, SpacingY);
+        var minorX = GetMinorSpacingX();
+        var minorY = GetMinorSpacingY();
+        var minor = SpacingPresets.FirstOrDefault(item => item.Id == MinorSpacingPresetId)
+                    ?? FindPreset(minorX, minorY)
+                    ?? AddPresetForSpacing(minorX, minorY);
+        MajorSpacingPresetId = major.Id;
+        MinorSpacingPresetId = minor.Id;
+    }
 
     private static double GuardSpacing(double spacing)
     {
@@ -82,5 +154,43 @@ public sealed class CadGridSettings
             MinimumSpacingMillimeters,
             MaximumSpacingMillimeters);
     }
+
+    private CadGridSpacingPreset AddPresetForSpacing(double spacingX, double spacingY)
+    {
+        var preset = CreatePreset(
+            GuardPresetSpacing(spacingX),
+            GuardPresetSpacing(spacingY));
+        SpacingPresets.Add(preset);
+        return preset;
+    }
+
+    private CadGridSpacingPreset? FindPreset(double spacingX, double spacingY)
+    {
+        return SpacingPresets.FirstOrDefault(preset =>
+            NearlyEqual(preset.SpacingX, spacingX) &&
+            NearlyEqual(preset.SpacingY, spacingY));
+    }
+
+    private static CadGridSpacingPreset CreatePreset(double spacingX, double spacingY) =>
+        new(Guid.NewGuid(), string.Empty, spacingX, spacingY, NearlyEqual(spacingX, spacingY));
+
+    private static bool IsSpacingInRange(double value) =>
+        value >= MinimumSpacingMillimeters &&
+        value <= MaximumSpacingMillimeters &&
+        double.IsFinite(value);
+
+    private static double GuardPresetSpacing(double value) =>
+        double.IsFinite(value)
+            ? Math.Clamp(value, MinimumSpacingMillimeters, MaximumSpacingMillimeters)
+            : 1.0;
+
+    private static bool NearlyEqual(double left, double right) =>
+        Math.Abs(left - right) <= Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right))) * 1e-9;
+
+    private static readonly double[] DefaultPresetSpacings =
+    [
+        1_000.0, 500.0, 100.0, 50.0, 25.0, 10.0, 5.0, 2.5,
+        1.0, 0.5, 0.25, 0.1, 0.05, 0.025, 0.01, 0.005, 0.001
+    ];
 
 }

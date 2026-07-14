@@ -195,7 +195,7 @@ public partial class MainViewModel : ObservableObject
             return;
 
         _dialogService.ShowDocumentSettingsDialog(
-            new DocumentSettingsViewModel(CurrentEditorTabViewModel));
+            new DocumentSettingsViewModel(CurrentEditorTabViewModel, _dialogService));
     }
 
     [RelayCommand]

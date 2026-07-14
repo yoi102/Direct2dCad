@@ -39,4 +39,17 @@ public sealed class CadSettingsSection
     [Key(29)] public CadPointData? OriginPosition { get; set; }
     [Key(30)] public double? GridMinorSpacingX { get; set; }
     [Key(31)] public double? GridMinorSpacingY { get; set; }
+    [Key(32)] public List<CadGridSpacingPresetData>? GridSpacingPresets { get; set; }
+    [Key(33)] public Guid? GridMajorSpacingPresetId { get; set; }
+    [Key(34)] public Guid? GridMinorSpacingPresetId { get; set; }
+}
+
+[MessagePackObject]
+public sealed class CadGridSpacingPresetData
+{
+    [Key(0)] public Guid Id { get; set; }
+    [Key(1)] public string Name { get; set; } = string.Empty;
+    [Key(2)] public double SpacingX { get; set; }
+    [Key(3)] public double SpacingY { get; set; }
+    [Key(4)] public bool LinkAxes { get; set; }
 }

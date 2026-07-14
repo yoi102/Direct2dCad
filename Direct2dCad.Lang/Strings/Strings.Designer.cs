@@ -70,6 +70,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Add grid spacing 的本地化字符串。
+        /// </summary>
+        public static string AddGridSpacingPreset {
+            get {
+                return ResourceManager.GetString("AddGridSpacingPreset", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Add layer 的本地化字符串。
         /// </summary>
         public static string AddLayer {
@@ -709,6 +718,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Delete grid spacing 的本地化字符串。
+        /// </summary>
+        public static string DeleteGridSpacingPreset {
+            get {
+                return ResourceManager.GetString("DeleteGridSpacingPreset", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Delete layer 的本地化字符串。
         /// </summary>
         public static string DeleteLayer {
@@ -867,6 +885,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string EditBlock {
             get {
                 return ResourceManager.GetString("EditBlock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Edit grid spacing 的本地化字符串。
+        /// </summary>
+        public static string EditGridSpacingPreset {
+            get {
+                return ResourceManager.GetString("EditGridSpacingPreset", resourceCulture);
             }
         }
         
@@ -1303,6 +1330,42 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Grid spacing options 的本地化字符串。
+        /// </summary>
+        public static string GridSpacingOptions {
+            get {
+                return ResourceManager.GetString("GridSpacingOptions", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 A grid spacing with this name already exists. 的本地化字符串。
+        /// </summary>
+        public static string GridSpacingPresetNameExists {
+            get {
+                return ResourceManager.GetString("GridSpacingPresetNameExists", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Spacing must be between 0.001 mm and 100000 mm. 的本地化字符串。
+        /// </summary>
+        public static string GridSpacingPresetRangeError {
+            get {
+                return ResourceManager.GetString("GridSpacingPresetRangeError", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Grid spacing selection 的本地化字符串。
+        /// </summary>
+        public static string GridSpacingSelection {
+            get {
+                return ResourceManager.GetString("GridSpacingSelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Grid type 的本地化字符串。
         /// </summary>
         public static string GridType {
@@ -1564,6 +1627,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Link X and Y 的本地化字符串。
+        /// </summary>
+        public static string LinkGridAxes {
+            get {
+                return ResourceManager.GetString("LinkGridAxes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Locked 的本地化字符串。
         /// </summary>
         public static string Locked {
@@ -1587,6 +1659,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string MajorGridLineWidth {
             get {
                 return ResourceManager.GetString("MajorGridLineWidth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Major grid 的本地化字符串。
+        /// </summary>
+        public static string MajorGridSpacing {
+            get {
+                return ResourceManager.GetString("MajorGridSpacing", resourceCulture);
             }
         }
         
@@ -1708,6 +1789,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Minor grid 的本地化字符串。
+        /// </summary>
+        public static string MinorGridSpacing {
+            get {
+                return ResourceManager.GetString("MinorGridSpacing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Minor spacing X (mm) 的本地化字符串。
         /// </summary>
         public static string MinorGridSpacingXMillimeters {
@@ -1758,6 +1848,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string MonoLine {
             get {
                 return ResourceManager.GetString("MonoLine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Move down 的本地化字符串。
+        /// </summary>
+        public static string MoveDown {
+            get {
+                return ResourceManager.GetString("MoveDown", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Move up 的本地化字符串。
+        /// </summary>
+        public static string MoveUp {
+            get {
+                return ResourceManager.GetString("MoveUp", resourceCulture);
             }
         }
         

@@ -5,11 +5,12 @@
                  Title="{I18N {x:Static r:LangKeys.DocumentSettings}}"
                  xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
                  xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+                 xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services.Platform;assembly=Direct2dCad.ViewModels.Services"
                  xmlns:entityproperty="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                 Width="720"
+                 Width="940"
                  Height="620"
-                 MinWidth="620"
+                 MinWidth="820"
                  MinHeight="500"
                  Background="{DynamicResource MaterialDesign.Brush.Background}"
                  TitleCharacterCasing="Normal"
@@ -19,6 +20,10 @@
                  mc:Ignorable="d"
                  WindowStartupLocation="CenterOwner"
                  ShowInTaskbar="False">
+    <md:DialogHost Identifier="{x:Static svc:ViewServiceIdentifiers.DocumentSettingsDialogHost}"
+                   Style="{StaticResource MaterialDesignEmbeddedDialogHost}"
+                   Background="{DynamicResource MaterialDesign.Brush.Background}"
+                   DialogTheme="Inherit">
     <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -56,4 +61,5 @@
             </StackPanel>
         </Grid>
     </Grid>
+    </md:DialogHost>
 </mah:MetroWindow>

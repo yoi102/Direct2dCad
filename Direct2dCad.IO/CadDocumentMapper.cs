@@ -38,6 +38,18 @@ internal static class CadDocumentMapper
             GridSpacingY = document.ViewSettings.Grid.SpacingY,
             GridMinorSpacingX = document.ViewSettings.Grid.MinorSpacingX,
             GridMinorSpacingY = document.ViewSettings.Grid.MinorSpacingY,
+            GridSpacingPresets = document.ViewSettings.Grid.SpacingPresets
+                .Select(preset => new CadGridSpacingPresetData
+                {
+                    Id = preset.Id,
+                    Name = preset.Name,
+                    SpacingX = preset.SpacingX,
+                    SpacingY = preset.SpacingY,
+                    LinkAxes = preset.LinkAxes
+                })
+                .ToList(),
+            GridMajorSpacingPresetId = document.ViewSettings.Grid.MajorSpacingPresetId,
+            GridMinorSpacingPresetId = document.ViewSettings.Grid.MinorSpacingPresetId,
             GridSubdivision = document.ViewSettings.Grid.Subdivision,
             GridSnapSpacingX = document.ViewSettings.Grid.SnapSpacingX,
             GridSnapSpacingY = document.ViewSettings.Grid.SnapSpacingY,
@@ -499,6 +511,22 @@ internal static class CadDocumentMapper
             : ResolveLegacyMinorSpacing(settings.GridSpacingY, settings.GridSubdivision, settings.GridSnapSpacingY);
         document.ViewSettings.Grid.SnapSpacingX = settings.GridSnapSpacingX;
         document.ViewSettings.Grid.SnapSpacingY = settings.GridSnapSpacingY;
+        if (settings.GridSpacingPresets is { Count: > 0 })
+        {
+            document.ViewSettings.Grid.ReplaceSpacingPresets(
+                settings.GridSpacingPresets.Select(preset => new CadGridSpacingPreset(
+                    preset.Id,
+                    preset.Name,
+                    preset.SpacingX,
+                    preset.SpacingY,
+                    preset.LinkAxes)),
+                settings.GridMajorSpacingPresetId,
+                settings.GridMinorSpacingPresetId);
+        }
+        else
+        {
+            document.ViewSettings.Grid.EnsurePresetSelections();
+        }
         document.ViewSettings.Grid.MinimumScreenSpacing = settings.GridMinimumScreenSpacing > 0
             ? settings.GridMinimumScreenSpacing
             : document.ViewSettings.Grid.MinimumScreenSpacing;

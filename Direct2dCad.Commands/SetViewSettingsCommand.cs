@@ -11,6 +11,9 @@ public readonly record struct CadViewSettingsSnapshot(
     double GridSpacingY,
     double GridMinorSpacingX,
     double GridMinorSpacingY,
+    CadGridSpacingPreset[] GridSpacingPresets,
+    Guid? GridMajorSpacingPresetId,
+    Guid? GridMinorSpacingPresetId,
     int GridSubdivision,
     double GridSnapSpacingX,
     double GridSnapSpacingY,
@@ -39,7 +42,8 @@ public readonly record struct CadViewSettingsSnapshot(
         var origin = settings.Origin;
         return new CadViewSettingsSnapshot(
             settings.BackgroundColor, grid.Type, grid.SpacingX, grid.SpacingY,
-            grid.MinorSpacingX, grid.MinorSpacingY, grid.Subdivision,
+            grid.MinorSpacingX, grid.MinorSpacingY, grid.SpacingPresets.ToArray(),
+            grid.MajorSpacingPresetId, grid.MinorSpacingPresetId, grid.Subdivision,
             grid.SnapSpacingX, grid.SnapSpacingY, grid.MinimumScreenSpacing, grid.MinimumWorldSpacing,
             grid.MinorLineColor, grid.MajorLineColor, grid.MinorLineWidth, grid.MajorLineWidth,
             grid.SnapMarkerColor, grid.SnapMarkerLength, grid.SnapMarkerStrokeWidth, grid.SnapMarkerType,
@@ -58,6 +62,10 @@ public readonly record struct CadViewSettingsSnapshot(
         grid.SpacingY = GridSpacingY;
         grid.MinorSpacingX = GridMinorSpacingX;
         grid.MinorSpacingY = GridMinorSpacingY;
+        grid.ReplaceSpacingPresets(
+            GridSpacingPresets,
+            GridMajorSpacingPresetId,
+            GridMinorSpacingPresetId);
         grid.Subdivision = GridSubdivision;
         grid.SnapSpacingX = GridSnapSpacingX;
         grid.SnapSpacingY = GridSnapSpacingY;
@@ -120,6 +128,7 @@ public sealed class SetViewSettingsCommand : ICadCommand
     {
         if (!IsGridDensityValid(value.GridSpacingX, value.GridMinorSpacingX) ||
             !IsGridDensityValid(value.GridSpacingY, value.GridMinorSpacingY) ||
+            !AreGridSpacingPresetsValid(value.GridSpacingPresets) ||
             value.GridSubdivision is < CadGridSettings.MinimumSubdivision or > CadGridSettings.MaximumSubdivision ||
             !IsNonNegativeFinite(value.GridSnapSpacingX) || !IsNonNegativeFinite(value.GridSnapSpacingY) ||
             !IsPositiveFinite(value.GridMinimumScreenSpacing) || !IsPositiveFinite(value.GridMinimumWorldSpacing) ||
@@ -152,4 +161,34 @@ public sealed class SetViewSettingsCommand : ICadCommand
                ratio <= CadGridSettings.MaximumSubdivision &&
                Math.Abs(ratio - Math.Round(ratio)) <= 1e-9;
     }
+
+    private static bool AreGridSpacingPresetsValid(IReadOnlyList<CadGridSpacingPreset> presets)
+    {
+        if (presets.Count < 2)
+            return false;
+
+        var ids = new HashSet<Guid>();
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var preset in presets)
+        {
+            if (preset.Id == Guid.Empty ||
+                !ids.Add(preset.Id) ||
+                !IsGridSpacingValid(preset.SpacingX) ||
+                !IsGridSpacingValid(preset.SpacingY))
+            {
+                return false;
+            }
+
+            var name = preset.Name?.Trim();
+            if (!string.IsNullOrEmpty(name) && !names.Add(name))
+                return false;
+        }
+
+        return true;
+    }
+
+    private static bool IsGridSpacingValid(double value) =>
+        value >= CadGridSettings.MinimumSpacingMillimeters &&
+        value <= CadGridSettings.MaximumSpacingMillimeters &&
+        IsFinite(value);
 }

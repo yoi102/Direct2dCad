@@ -2,6 +2,7 @@ using System.Windows;
 using Direct2dCad.Client.Common;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Settings;
 using Direct2dCad.wpf.Views.Dialogs;
 using Direct2dCad.wpf.Views.Settings.DocumentSettings;
 using Direct2dCad.wpf.Views.Settings.UserSettings;
@@ -98,6 +99,20 @@ internal sealed class DialogService : IDialogService
         return result is UnsavedDocumentDialogResult dialogResult
             ? dialogResult
             : UnsavedDocumentDialogResult.Cancel;
+    }
+
+    public async Task<GridSpacingPresetDialogResult?> ShowGridSpacingPresetDialogAsync(
+        GridSpacingPresetDialogRequest request,
+        string dialogIdentifier = ViewServiceIdentifiers.DocumentSettingsDialogHost)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var viewModel = new GridSpacingPresetEditorViewModel(request);
+        var result = await ShowReplacingCurrentAsync(
+            () => new GridSpacingPresetDialog { DataContext = viewModel },
+            dialogIdentifier);
+        return result is GridSpacingPresetDialogAction.Confirm && viewModel.IsValid
+            ? viewModel.CreateResult()
+            : null;
     }
 
     private static Task<object?> ShowMessageAsync(string header, string message, string dialogIdentifier, MessageDialogButton buttonType = MessageDialogButton.OK)
