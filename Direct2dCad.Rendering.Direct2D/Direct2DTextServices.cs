@@ -19,8 +19,7 @@ internal static class Direct2DTextServices
         if (writeFactory is null)
             return null;
 
-        var style = ResolveTextStyle(document, text.TextStyleId);
-        return CreateTextFormat(writeFactory, style, text.Height);
+        return CreateTextFormat(writeFactory, CreateTextFormatKey(document, text.TextStyleId, text.Height));
     }
 
     public static IDWriteTextFormat? CreateTextFormat(
@@ -32,8 +31,7 @@ internal static class Direct2DTextServices
         if (writeFactory is null)
             return null;
 
-        var style = ResolveTextStyle(document, textStyleId);
-        return CreateTextFormat(writeFactory, style, height);
+        return CreateTextFormat(writeFactory, CreateTextFormatKey(document, textStyleId, height));
     }
 
     public static bool TryMeasureTextBounds(
@@ -70,7 +68,7 @@ internal static class Direct2DTextServices
         }
 
         var safeText = string.IsNullOrEmpty(text) ? " " : text;
-        using var format = CreateTextFormat(writeFactory, ResolveTextStyle(document, textStyleId), height);
+        using var format = CreateTextFormat(writeFactory, CreateTextFormatKey(document, textStyleId, height));
         using var layout = writeFactory.CreateTextLayout(safeText, format, LayoutExtent, LayoutExtent);
         var metrics = layout.Metrics;
         var overhang = layout.OverhangMetrics;
@@ -95,23 +93,30 @@ internal static class Direct2DTextServices
         return !localBounds.IsEmpty;
     }
 
-    private static IDWriteTextFormat CreateTextFormat(
-        IDWriteFactory writeFactory,
-        CadTextStyle? style,
+    internal static Direct2DTextFormatKey CreateTextFormatKey(
+        CadDocument document,
+        StyleId? textStyleId,
         double height)
     {
+        var style = ResolveTextStyle(document, textStyleId);
         var fontFamily = style?.FontFamily ?? "Meiryo";
         var fontWeight = style?.IsBold == true ? FontWeight.Bold : FontWeight.Normal;
         var fontStyle = style?.IsItalic == true ? FontStyle.Italic : FontStyle.Normal;
         var fontSize = (float)(height * CadText.FontSizeScale);
+        return new Direct2DTextFormatKey(fontFamily, fontWeight, fontStyle, fontSize);
+    }
 
+    internal static IDWriteTextFormat CreateTextFormat(
+        IDWriteFactory writeFactory,
+        Direct2DTextFormatKey key)
+    {
         var format = writeFactory.CreateTextFormat(
-            fontFamily,
+            key.FontFamily,
             null,
-            fontWeight,
-            fontStyle,
+            key.FontWeight,
+            key.FontStyle,
             FontStretch.Normal,
-            fontSize,
+            key.FontSize,
             "ja-JP");
 
         format.TextAlignment = TextAlignment.Leading;
@@ -129,3 +134,9 @@ internal static class Direct2DTextServices
             : null;
     }
 }
+
+internal readonly record struct Direct2DTextFormatKey(
+    string FontFamily,
+    FontWeight FontWeight,
+    FontStyle FontStyle,
+    float FontSize);

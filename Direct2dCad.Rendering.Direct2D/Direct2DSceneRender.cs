@@ -15,7 +15,8 @@ namespace Direct2dCad.Rendering.Direct2D;
 public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager, IDisposable
 {
     private readonly Direct2DStyleResourceCache _styleResources = new();
-    private readonly Direct2DResourceCache _resourceCache = new();
+    private readonly Direct2DTextFormatResourceCache _textFormatResources = new();
+    private readonly Direct2DResourceCache _resourceCache;
     private readonly Direct2DBackgroundRenderer _backgroundRenderer;
     private readonly Direct2DTransientSceneRenderer _transientSceneRenderer;
     private readonly Direct2DSelectionRenderer _selectionRenderer;
@@ -27,11 +28,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     public Direct2DSceneRender()
     {
+        _resourceCache = new Direct2DResourceCache(_styleResources, _textFormatResources);
         var geometryFactory = new Direct2DGeometryFactory();
         var transientRenderer = new Direct2DTransientRenderer(
             _resourceCache,
             geometryFactory,
-            _styleResources);
+            _styleResources,
+            _textFormatResources);
         var handleRenderer = new Direct2DHandleRenderer(_styleResources);
 
         _backgroundRenderer = new Direct2DBackgroundRenderer(_styleResources);
@@ -89,7 +92,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _transientSceneRenderer.Clear();
         _oleRenderer.Clear();
+        // Release entity leases before the device-bound shared caches are reset.
+        _resourceCache.ClearCache();
         _styleResources.Reset(factory, deviceContext);
+        _textFormatResources.Reset(writeFactory);
         _resourceCache.ResetDeviceResources(factory, writeFactory, deviceContext, document);
     }
 
@@ -124,6 +130,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         ThrowIfDisposed();
         _styleResources.BeginFrame();
+        _textFormatResources.BeginFrame();
     }
 
     public void CompleteFrame()
@@ -135,7 +142,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
         finally
         {
-            _styleResources.CompleteFrame();
+            try
+            {
+                _styleResources.CompleteFrame();
+            }
+            finally
+            {
+                _textFormatResources.CompleteFrame();
+            }
         }
     }
 
@@ -509,6 +523,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _resourceCache.Dispose();
         _transientSceneRenderer.Dispose();
         _oleRenderer.Dispose();
+        _textFormatResources.Dispose();
         _styleResources.Dispose();
         _disposed = true;
     }

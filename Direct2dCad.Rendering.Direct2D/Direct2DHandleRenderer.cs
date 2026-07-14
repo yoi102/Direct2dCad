@@ -1,11 +1,8 @@
 using System.Numerics;
-using Direct2dCad.Db;
-using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Handles;
 using Vortice;
 using Vortice.Direct2D1;
-using Vortice.Mathematics;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
@@ -36,28 +33,28 @@ internal sealed class Direct2DHandleRenderer(Direct2DStyleResourceCache styleRes
         switch (grip.Style.Shape)
         {
             case CadHandleShape.Circle:
-            {
-                var ellipse = new Ellipse(ToVector2(bounds.Center), (float)halfSize, (float)halfSize);
-                if (fillBrush is not null)
-                    deviceContext.FillEllipse(ellipse, fillBrush);
-                deviceContext.DrawEllipse(ellipse, strokeBrush, strokeWidth);
-                break;
-            }
+                {
+                    var ellipse = new Ellipse(ToVector2(bounds.Center), (float)halfSize, (float)halfSize);
+                    if (fillBrush is not null)
+                        deviceContext.FillEllipse(ellipse, fillBrush);
+                    deviceContext.DrawEllipse(ellipse, strokeBrush, strokeWidth);
+                    break;
+                }
             case CadHandleShape.Diamond:
                 DrawDiamond(deviceContext, factory, bounds, fillBrush, strokeBrush, strokeWidth);
                 break;
             default:
-            {
-                var rectangle = ToRawRect(bounds);
-                if (fillBrush is not null)
-                    deviceContext.FillRectangle(rectangle, fillBrush);
-                deviceContext.DrawRectangle(rectangle, strokeBrush, strokeWidth);
-                break;
-            }
+                {
+                    var rectangle = ToRawRect(bounds);
+                    if (fillBrush is not null)
+                        deviceContext.FillRectangle(rectangle, fillBrush);
+                    deviceContext.DrawRectangle(rectangle, strokeBrush, strokeWidth);
+                    break;
+                }
         }
     }
 
-    private static void DrawDiamond(
+    private void DrawDiamond(
         ID2D1DeviceContext deviceContext,
         ID2D1Factory? factory,
         CadRectD bounds,
@@ -73,19 +70,22 @@ internal sealed class Direct2DHandleRenderer(Direct2DStyleResourceCache styleRes
             new Vector2((float)bounds.MinX, (float)bounds.Center.Y)
         };
 
-        if (fillBrush is not null && factory is not null)
+        if (fillBrush is not null && styleResources.GetUnitDiamondGeometry(factory) is { } geometry)
         {
-            using var geometry = factory.CreatePathGeometry();
-            using (var sink = geometry.Open())
+            var previousTransform = deviceContext.Transform;
+            deviceContext.Transform = Matrix3x2.CreateScale(
+                                          (float)(bounds.Width * 0.5),
+                                          (float)(bounds.Height * 0.5)) *
+                                      Matrix3x2.CreateTranslation(ToVector2(bounds.Center)) *
+                                      previousTransform;
+            try
             {
-                sink.BeginFigure(points[0], FigureBegin.Filled);
-                for (var index = 1; index < points.Length; index++)
-                    sink.AddLine(points[index]);
-                sink.EndFigure(FigureEnd.Closed);
-                sink.Close();
+                deviceContext.FillGeometry(geometry, fillBrush);
             }
-
-            deviceContext.FillGeometry(geometry, fillBrush);
+            finally
+            {
+                deviceContext.Transform = previousTransform;
+            }
         }
 
         for (var index = 0; index < points.Length; index++)

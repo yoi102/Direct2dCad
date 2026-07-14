@@ -16,7 +16,8 @@ namespace Direct2dCad.Rendering.Direct2D;
 internal sealed class Direct2DTransientRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DGeometryFactory geometryFactory,
-    Direct2DStyleResourceCache styleResources)
+    Direct2DStyleResourceCache styleResources,
+    Direct2DTextFormatResourceCache textFormatResources)
 {
     public void DrawLine(
         ID2D1DeviceContext context,
@@ -243,11 +244,7 @@ internal sealed class Direct2DTransientRenderer(
             var brush = styleResources.GetBrush(
                 context,
                 isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
-            using var format = Direct2DTextServices.CreateTextFormat(
-                resourceCache.WriteFactory,
-                document,
-                textStyleId,
-                height);
+            var format = textFormatResources.GetForFrame(document, textStyleId, height);
             if (format is not null)
                 DrawTextClipped(context, text, format, position, bounds, brush);
         }

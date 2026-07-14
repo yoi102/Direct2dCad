@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Runtime.InteropServices;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -10,22 +9,28 @@ using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.DirectWrite;
-using Vortice.DXGI;
 using Vortice.Mathematics;
-using DXGIFormat = Vortice.DXGI.Format;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
 internal sealed class Direct2DResourceCache : IDisposable
 {
     private readonly Dictionary<EntityId, EntityResourceBucket> _entityResources = [];
+    private readonly Direct2DStyleResourceCache _styleResources;
+    private readonly Direct2DTextFormatResourceCache _textFormatResources;
+    private readonly Direct2DImageBitmapResourceCache _imageBitmapResources;
     private bool _disposed;
 
     public Direct2DResourceCache(
+        Direct2DStyleResourceCache styleResources,
+        Direct2DTextFormatResourceCache textFormatResources,
         ID2D1Factory? d2D1Factory = null,
         IDWriteFactory? writeFactory = null,
         ID2D1DeviceContext? deviceContext = null)
     {
+        _styleResources = styleResources;
+        _textFormatResources = textFormatResources;
+        _imageBitmapResources = new Direct2DImageBitmapResourceCache(deviceContext);
         Factory = d2D1Factory;
         WriteFactory = writeFactory;
         DeviceContext = deviceContext;
@@ -43,7 +48,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         ID2D1DeviceContext? deviceContext,
         CadDocument? document = null)
     {
-        ClearCache();
+        ClearEntityResources();
+        _imageBitmapResources.Reset(deviceContext);
         Factory = d2D1Factory;
         WriteFactory = writeFactory;
         DeviceContext = deviceContext;
@@ -102,30 +108,44 @@ internal sealed class Direct2DResourceCache : IDisposable
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
 
-        RemoveEntity(entityId);
-
         if (!CanCreateDeviceResources())
+        {
+            RemoveEntity(entityId);
             return;
+        }
 
         if (!document.TryGetEntity(entityId, out var entity) || entity is null)
+        {
+            RemoveEntity(entityId);
             return;
+        }
 
         if (entity.IsErased || !entity.IsVisible)
+        {
+            RemoveEntity(entityId);
             return;
+        }
 
         if (!document.TryGetLayer(entity.LayerId, out var layer) ||
             layer is null ||
             !layer.IsVisible ||
             layer.IsFrozen)
         {
+            RemoveEntity(entityId);
             return;
         }
 
-        var bucket = CreateEntityResources(document, entity, layer);
-        if (!bucket.IsEmpty)
-            _entityResources[entityId] = bucket;
-        else
-            bucket.Dispose();
+        var newBucket = CreateEntityResources(document, entity, layer);
+        if (newBucket.IsEmpty)
+        {
+            newBucket.Dispose();
+            RemoveEntity(entityId);
+            return;
+        }
+
+        _entityResources.Remove(entityId, out var oldBucket);
+        _entityResources[entityId] = newBucket;
+        oldBucket?.Dispose();
     }
 
     public void RemoveEntity(EntityId entityId)
@@ -137,6 +157,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     public void ClearCache()
     {
         ClearEntityResources();
+        _imageBitmapResources.Clear();
     }
 
     private EntityResourceBucket CreateEntityResources(
@@ -145,50 +166,58 @@ internal sealed class Direct2DResourceCache : IDisposable
         CadLayer layer)
     {
         var bucket = new EntityResourceBucket(entity.Id);
-        var graphic = ResolveGraphicStyle(document, entity, layer);
-
-        bucket.StrokeWidth = ResolveStrokeWidth(
-            entity.LineWeight,
-            entity.UseLayerLineWeight,
-            graphic?.LineWeight,
-            layer.LineWeight);
-        bucket.StrokeBrush = CreateBrush(ResolveStrokeColor(document, entity, layer, graphic));
-        bucket.StrokeStyle = CreateStrokeStyle(entity.StrokeStyle);
-
-        var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
-        bucket.Geometry = CreateGeometry(entity, fillStyle is CadHatchFillStyle);
-
-        if (hasFillStyle)
+        try
         {
-            switch (fillStyle)
+            var graphic = ResolveGraphicStyle(document, entity, layer);
+            bucket.StrokeWidth = ResolveStrokeWidth(
+                entity.LineWeight,
+                entity.UseLayerLineWeight,
+                graphic?.LineWeight,
+                layer.LineWeight);
+            bucket.StrokeBrushLease = _styleResources.AcquireBrush(
+                ResolveStrokeColor(document, entity, layer, graphic));
+            bucket.StrokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
+
+            var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
+            bucket.Geometry = CreateGeometry(entity, fillStyle is CadHatchFillStyle);
+
+            if (hasFillStyle)
             {
-                case CadGradientFillStyle { IsSolid: true } gradient:
-                    var fillColor = gradient.Stops[0].Color;
-                    if (!fillColor.IsTransparent)
-                        bucket.FillBrush = CreateBrush(fillColor);
-                    break;
+                switch (fillStyle)
+                {
+                    case CadGradientFillStyle { IsSolid: true } gradient:
+                        var fillColor = gradient.Stops[0].Color;
+                        if (!fillColor.IsTransparent)
+                            bucket.FillBrushLease = _styleResources.AcquireBrush(fillColor);
+                        break;
 
-                case CadHatchFillStyle hatch when document.TryGetHatchPattern(hatch.PatternId, out var pattern) &&
-                                                  pattern is not null:
-                    bucket.HatchFillStyle = hatch;
-                    bucket.HatchPattern = pattern;
-                    if (!hatch.ForegroundColor.IsTransparent)
-                        bucket.HatchBrush = CreateBrush(hatch.ForegroundColor);
-                    break;
+                    case CadHatchFillStyle hatch when document.TryGetHatchPattern(hatch.PatternId, out var pattern) &&
+                                                      pattern is not null:
+                        bucket.HatchFillStyle = hatch;
+                        bucket.HatchPattern = pattern;
+                        if (!hatch.ForegroundColor.IsTransparent)
+                            bucket.HatchBrushLease = _styleResources.AcquireBrush(hatch.ForegroundColor);
+                        break;
+                }
             }
+
+            if (entity is CadText text)
+                bucket.TextFormatLease = _textFormatResources.Acquire(document, text);
+
+            if (entity is CadImage image)
+            {
+                bucket.BitmapLease = _imageBitmapResources.Acquire(image);
+                if (bucket.Bitmap is not null)
+                    bucket.BitmapBrush = CreateBitmapBrush(image.FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
+            }
+
+            return bucket;
         }
-
-        if (entity is CadText text)
-            bucket.TextFormat = Direct2DTextServices.CreateTextFormat(WriteFactory, document, text);
-
-        if (entity is CadImage image)
+        catch
         {
-            bucket.Bitmap = CreateBitmap(image.PixelWidth, image.PixelHeight, image.Stride, image.CopyPixels());
-            if (bucket.Bitmap is not null)
-                bucket.BitmapBrush = CreateBitmapBrush(image.FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
+            bucket.Dispose();
+            throw;
         }
-
-        return bucket;
     }
 
     private ID2D1Geometry? CreateGeometry(CadEntity entity, bool includePrimitiveFillGeometry)
@@ -213,34 +242,6 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadBlockReference => null,
             _ => null
         };
-    }
-
-    private ID2D1Bitmap? CreateBitmap(int pixelWidth, int pixelHeight, int stride, byte[] pixels)
-    {
-        if (DeviceContext is null)
-            return null;
-
-        var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
-        try
-        {
-            return DeviceContext.CreateBitmap(
-                new SizeI(pixelWidth, pixelHeight),
-                handle.AddrOfPinnedObject(),
-                (uint)stride,
-                new BitmapProperties1
-                {
-                    PixelFormat = new PixelFormat(
-                        DXGIFormat.B8G8R8A8_UNorm,
-                        Vortice.DCommon.AlphaMode.Premultiplied),
-                    DpiX = 96.0f,
-                    DpiY = 96.0f,
-                    BitmapOptions = BitmapOptions.None
-                });
-        }
-        finally
-        {
-            handle.Free();
-        }
     }
 
     private ID2D1BitmapBrush? CreateBitmapBrush(CadRectD bounds, int pixelWidth, int pixelHeight, ID2D1Bitmap bitmap)
@@ -411,26 +412,6 @@ internal sealed class Direct2DResourceCache : IDisposable
         return Math.Min(radius, size * 0.5);
     }
 
-    private ID2D1SolidColorBrush CreateBrush(CadColor color)
-    {
-        return DeviceContext!.CreateSolidColorBrush(ToColor4(color));
-    }
-
-    private ID2D1StrokeStyle? CreateStrokeStyle(CadStrokeStyle strokeStyle)
-    {
-        if (Factory is null || strokeStyle == CadStrokeStyle.Default)
-            return null;
-
-        return Factory.CreateStrokeStyle(new StrokeStyleProperties
-        {
-            StartCap = ToD2DCapStyle(strokeStyle.StartCap),
-            EndCap = ToD2DCapStyle(strokeStyle.EndCap),
-            DashCap = ToD2DCapStyle(strokeStyle.DashCap),
-            LineJoin = ToD2DLineJoin(strokeStyle.LineJoin),
-            DashStyle = ToD2DDashStyle(strokeStyle.DashStyle)
-        });
-    }
-
     private CadGraphicStyle? ResolveGraphicStyle(
         CadDocument document,
         CadEntity entity,
@@ -553,6 +534,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             return;
 
         ClearCache();
+        _imageBitmapResources.Dispose();
         _disposed = true;
     }
 
@@ -567,61 +549,24 @@ internal sealed class Direct2DResourceCache : IDisposable
         return new Vector2((float)point.X, (float)point.Y);
     }
 
-    private static Color4 ToColor4(CadColor color)
-    {
-        return new Color4(
-            color.R / 255.0f,
-            color.G / 255.0f,
-            color.B / 255.0f,
-            color.A / 255.0f);
-    }
-
-    private static CapStyle ToD2DCapStyle(CadStrokeCap cap)
-    {
-        return cap switch
-        {
-            CadStrokeCap.Square => CapStyle.Square,
-            CadStrokeCap.Round => CapStyle.Round,
-            CadStrokeCap.Triangle => CapStyle.Triangle,
-            _ => CapStyle.Flat
-        };
-    }
-
-    private static DashStyle ToD2DDashStyle(CadStrokeDashStyle dashStyle)
-    {
-        return dashStyle switch
-        {
-            CadStrokeDashStyle.Dash => DashStyle.Dash,
-            CadStrokeDashStyle.Dot => DashStyle.Dot,
-            CadStrokeDashStyle.DashDot => DashStyle.DashDot,
-            CadStrokeDashStyle.DashDotDot => DashStyle.DashDotDot,
-            _ => DashStyle.Solid
-        };
-    }
-
-    private static LineJoin ToD2DLineJoin(CadStrokeLineJoin lineJoin)
-    {
-        return lineJoin switch
-        {
-            CadStrokeLineJoin.Bevel => LineJoin.Bevel,
-            CadStrokeLineJoin.Round => LineJoin.Round,
-            CadStrokeLineJoin.MiterOrBevel => LineJoin.MiterOrBevel,
-            _ => LineJoin.Miter
-        };
-    }
-
     internal sealed class EntityResourceBucket : IDisposable
     {
         public EntityId EntityId { get; }
         public ID2D1Geometry? Geometry { get; set; }
-        public ID2D1Brush? StrokeBrush { get; set; }
-        public ID2D1StrokeStyle? StrokeStyle { get; set; }
-        public ID2D1Brush? FillBrush { get; set; }
-        public ID2D1Brush? HatchBrush { get; set; }
+        internal ResourceLease<ID2D1SolidColorBrush>? StrokeBrushLease { get; set; }
+        internal ResourceLease<ID2D1StrokeStyle>? StrokeStyleLease { get; set; }
+        internal ResourceLease<ID2D1SolidColorBrush>? FillBrushLease { get; set; }
+        internal ResourceLease<ID2D1SolidColorBrush>? HatchBrushLease { get; set; }
+        public ID2D1Brush? StrokeBrush => StrokeBrushLease?.Resource;
+        public ID2D1StrokeStyle? StrokeStyle => StrokeStyleLease?.Resource;
+        public ID2D1Brush? FillBrush => FillBrushLease?.Resource;
+        public ID2D1Brush? HatchBrush => HatchBrushLease?.Resource;
         public CadHatchFillStyle? HatchFillStyle { get; set; }
         public CadHatchPatternDefinition? HatchPattern { get; set; }
-        public IDWriteTextFormat? TextFormat { get; set; }
-        public ID2D1Bitmap? Bitmap { get; set; }
+        internal ResourceLease<IDWriteTextFormat>? TextFormatLease { get; set; }
+        public IDWriteTextFormat? TextFormat => TextFormatLease?.Resource;
+        internal ResourceLease<ID2D1Bitmap>? BitmapLease { get; set; }
+        public ID2D1Bitmap? Bitmap => BitmapLease?.Resource;
         public ID2D1BitmapBrush? BitmapBrush { get; set; }
         public float StrokeWidth { get; set; }
 
@@ -643,23 +588,23 @@ internal sealed class Direct2DResourceCache : IDisposable
         public void Dispose()
         {
             Geometry?.Dispose();
-            StrokeBrush?.Dispose();
-            StrokeStyle?.Dispose();
-            FillBrush?.Dispose();
-            HatchBrush?.Dispose();
-            TextFormat?.Dispose();
+            StrokeBrushLease?.Dispose();
+            StrokeStyleLease?.Dispose();
+            FillBrushLease?.Dispose();
+            HatchBrushLease?.Dispose();
+            TextFormatLease?.Dispose();
             BitmapBrush?.Dispose();
-            Bitmap?.Dispose();
+            BitmapLease?.Dispose();
             Geometry = null;
-            StrokeBrush = null;
-            StrokeStyle = null;
-            FillBrush = null;
-            HatchBrush = null;
+            StrokeBrushLease = null;
+            StrokeStyleLease = null;
+            FillBrushLease = null;
+            HatchBrushLease = null;
             HatchFillStyle = null;
             HatchPattern = null;
-            TextFormat = null;
+            TextFormatLease = null;
             BitmapBrush = null;
-            Bitmap = null;
+            BitmapLease = null;
         }
     }
 }

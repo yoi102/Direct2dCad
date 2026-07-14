@@ -1,5 +1,7 @@
+using System.Numerics;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.Direct2D1;
@@ -9,14 +11,13 @@ namespace Direct2dCad.Rendering.Direct2D;
 
 internal sealed class Direct2DStyleResourceCache : IDisposable
 {
-    private readonly Dictionary<CadColor, ID2D1SolidColorBrush> _brushes = [];
-    private readonly Dictionary<CadTransientLinePattern, ID2D1StrokeStyle> _transientStrokeStyles = [];
-    private readonly Dictionary<CadOriginLinePattern, ID2D1StrokeStyle> _originStrokeStyles = [];
+    private readonly Dictionary<CadColor, ResourceEntry<ID2D1SolidColorBrush>> _brushes = [];
+    private readonly Dictionary<StrokeStyleKey, ResourceEntry<ID2D1StrokeStyle>> _strokeStyles = [];
     private readonly HashSet<CadColor> _usedBrushes = [];
-    private readonly HashSet<CadTransientLinePattern> _usedTransientStrokeStyles = [];
-    private readonly HashSet<CadOriginLinePattern> _usedOriginStrokeStyles = [];
+    private readonly HashSet<StrokeStyleKey> _usedStrokeStyles = [];
     private ID2D1DeviceContext? _deviceContext;
     private ID2D1Factory? _factory;
+    private ID2D1PathGeometry? _unitDiamondGeometry;
     private int _frameDepth;
     private bool _disposed;
 
@@ -35,8 +36,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             return;
 
         _usedBrushes.Clear();
-        _usedTransientStrokeStyles.Clear();
-        _usedOriginStrokeStyles.Clear();
+        _usedStrokeStyles.Clear();
     }
 
     public void CompleteFrame()
@@ -52,17 +52,20 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDeviceContext(context);
-        MarkBrushUsed(color);
-        if (_brushes.TryGetValue(color, out var brush))
-            return brush;
+        if (_frameDepth > 0)
+            _usedBrushes.Add(color);
+        return GetOrCreateBrush(color).Resource;
+    }
 
-        brush = context.CreateSolidColorBrush(new Color4(
-            color.R / 255.0f,
-            color.G / 255.0f,
-            color.B / 255.0f,
-            color.A / 255.0f));
-        _brushes.Add(color, brush);
-        return brush;
+    public ResourceLease<ID2D1SolidColorBrush> AcquireBrush(CadColor color)
+    {
+        ThrowIfDisposed();
+        if (_deviceContext is null)
+            throw new InvalidOperationException("The Direct2D device context is not available.");
+
+        var entry = GetOrCreateBrush(color);
+        entry.ReferenceCount++;
+        return new ResourceLease<ID2D1SolidColorBrush>(entry.Resource, () => ReleaseBrush(color));
     }
 
     public ID2D1StrokeStyle? GetStrokeStyle(ID2D1Factory? factory, CadTransientStyle style)
@@ -70,30 +73,13 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         if (style.LinePattern == CadTransientLinePattern.Solid)
             return null;
 
-        ThrowIfDisposed();
-        if (factory is null)
-            return null;
-
-        EnsureFactory(factory);
-        MarkTransientStrokeStyleUsed(style.LinePattern);
-        if (_transientStrokeStyles.TryGetValue(style.LinePattern, out var strokeStyle))
-            return strokeStyle;
-
-        strokeStyle = factory.CreateStrokeStyle(new StrokeStyleProperties
+        var dashStyle = style.LinePattern switch
         {
-            StartCap = CapStyle.Flat,
-            EndCap = CapStyle.Flat,
-            DashCap = CapStyle.Flat,
-            LineJoin = LineJoin.Miter,
-            DashStyle = style.LinePattern switch
-            {
-                CadTransientLinePattern.Dot => DashStyle.Dot,
-                CadTransientLinePattern.DashDot => DashStyle.DashDot,
-                _ => DashStyle.Dash
-            }
-        });
-        _transientStrokeStyles.Add(style.LinePattern, strokeStyle);
-        return strokeStyle;
+            CadTransientLinePattern.Dot => DashStyle.Dot,
+            CadTransientLinePattern.DashDot => DashStyle.DashDot,
+            _ => DashStyle.Dash
+        };
+        return GetStrokeStyleForFrame(factory, StrokeStyleKey.CreateDefault(dashStyle));
     }
 
     public ID2D1StrokeStyle? GetOriginStrokeStyle(
@@ -103,30 +89,55 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         if (pattern == CadOriginLinePattern.Solid)
             return null;
 
+        var dashStyle = pattern switch
+        {
+            CadOriginLinePattern.Dot => DashStyle.Dot,
+            CadOriginLinePattern.DashDot => DashStyle.DashDot,
+            _ => DashStyle.Dash
+        };
+        return GetStrokeStyleForFrame(factory, StrokeStyleKey.CreateDefault(dashStyle));
+    }
+
+    public ResourceLease<ID2D1StrokeStyle>? AcquireStrokeStyle(CadStrokeStyle style)
+    {
+        ThrowIfDisposed();
+        if (style == CadStrokeStyle.Default || _factory is null)
+            return null;
+
+        var key = new StrokeStyleKey(
+            ToD2DCapStyle(style.StartCap),
+            ToD2DCapStyle(style.EndCap),
+            ToD2DCapStyle(style.DashCap),
+            ToD2DLineJoin(style.LineJoin),
+            ToD2DDashStyle(style.DashStyle));
+        var entry = GetOrCreateStrokeStyle(key);
+        entry.ReferenceCount++;
+        return new ResourceLease<ID2D1StrokeStyle>(entry.Resource, () => ReleaseStrokeStyle(key));
+    }
+
+    public ID2D1PathGeometry? GetUnitDiamondGeometry(ID2D1Factory? factory)
+    {
         ThrowIfDisposed();
         if (factory is null)
             return null;
 
         EnsureFactory(factory);
-        MarkOriginStrokeStyleUsed(pattern);
-        if (_originStrokeStyles.TryGetValue(pattern, out var strokeStyle))
-            return strokeStyle;
+        if (_unitDiamondGeometry is not null)
+            return _unitDiamondGeometry;
 
-        strokeStyle = factory.CreateStrokeStyle(new StrokeStyleProperties
+        var geometry = factory.CreatePathGeometry();
+        using (var sink = geometry.Open())
         {
-            StartCap = CapStyle.Flat,
-            EndCap = CapStyle.Flat,
-            DashCap = CapStyle.Flat,
-            LineJoin = LineJoin.Miter,
-            DashStyle = pattern switch
-            {
-                CadOriginLinePattern.Dot => DashStyle.Dot,
-                CadOriginLinePattern.DashDot => DashStyle.DashDot,
-                _ => DashStyle.Dash
-            }
-        });
-        _originStrokeStyles.Add(pattern, strokeStyle);
-        return strokeStyle;
+            sink.BeginFigure(new Vector2(0, -1), FigureBegin.Filled);
+            sink.AddLine(new Vector2(1, 0));
+            sink.AddLine(new Vector2(0, 1));
+            sink.AddLine(new Vector2(-1, 0));
+            sink.EndFigure(FigureEnd.Closed);
+            sink.Close();
+        }
+
+        _unitDiamondGeometry = geometry;
+        return geometry;
     }
 
     public float ResolveStrokeWidth(CadTransientStyle style, CadViewport viewport)
@@ -149,47 +160,102 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         _disposed = true;
     }
 
-    private void MarkBrushUsed(CadColor color)
+    private ID2D1StrokeStyle? GetStrokeStyleForFrame(ID2D1Factory? factory, StrokeStyleKey key)
     {
+        ThrowIfDisposed();
+        if (factory is null)
+            return null;
+
+        EnsureFactory(factory);
         if (_frameDepth > 0)
-            _usedBrushes.Add(color);
+            _usedStrokeStyles.Add(key);
+        return GetOrCreateStrokeStyle(key).Resource;
     }
 
-    private void MarkTransientStrokeStyleUsed(CadTransientLinePattern pattern)
+    private ResourceEntry<ID2D1SolidColorBrush> GetOrCreateBrush(CadColor color)
     {
-        if (_frameDepth > 0)
-            _usedTransientStrokeStyles.Add(pattern);
+        if (_brushes.TryGetValue(color, out var entry))
+            return entry;
+
+        var brush = _deviceContext!.CreateSolidColorBrush(new Color4(
+            color.R / 255.0f,
+            color.G / 255.0f,
+            color.B / 255.0f,
+            color.A / 255.0f));
+        entry = new ResourceEntry<ID2D1SolidColorBrush>(brush);
+        _brushes.Add(color, entry);
+        return entry;
     }
 
-    private void MarkOriginStrokeStyleUsed(CadOriginLinePattern pattern)
+    private ResourceEntry<ID2D1StrokeStyle> GetOrCreateStrokeStyle(StrokeStyleKey key)
     {
-        if (_frameDepth > 0)
-            _usedOriginStrokeStyles.Add(pattern);
+        if (_strokeStyles.TryGetValue(key, out var entry))
+            return entry;
+
+        var strokeStyle = _factory!.CreateStrokeStyle(new StrokeStyleProperties
+        {
+            StartCap = key.StartCap,
+            EndCap = key.EndCap,
+            DashCap = key.DashCap,
+            LineJoin = key.LineJoin,
+            DashStyle = key.DashStyle
+        });
+        entry = new ResourceEntry<ID2D1StrokeStyle>(strokeStyle);
+        _strokeStyles.Add(key, entry);
+        return entry;
+    }
+
+    private void ReleaseBrush(CadColor color)
+    {
+        if (!_brushes.TryGetValue(color, out var entry))
+            return;
+
+        if (entry.ReferenceCount > 0)
+            entry.ReferenceCount--;
+        if (entry.ReferenceCount == 0 && _frameDepth == 0)
+            RemoveBrush(color);
+    }
+
+    private void ReleaseStrokeStyle(StrokeStyleKey key)
+    {
+        if (!_strokeStyles.TryGetValue(key, out var entry))
+            return;
+
+        if (entry.ReferenceCount > 0)
+            entry.ReferenceCount--;
+        if (entry.ReferenceCount == 0 && _frameDepth == 0)
+            RemoveStrokeStyle(key);
     }
 
     private void RemoveUnusedResources()
     {
-        foreach (var color in _brushes.Keys.Where(color => !_usedBrushes.Contains(color)).ToArray())
-        {
-            _brushes[color].Dispose();
-            _brushes.Remove(color);
-        }
-
-        foreach (var pattern in _transientStrokeStyles.Keys
-                     .Where(pattern => !_usedTransientStrokeStyles.Contains(pattern))
+        foreach (var color in _brushes
+                     .Where(pair => pair.Value.ReferenceCount == 0 && !_usedBrushes.Contains(pair.Key))
+                     .Select(pair => pair.Key)
                      .ToArray())
         {
-            _transientStrokeStyles[pattern].Dispose();
-            _transientStrokeStyles.Remove(pattern);
+            RemoveBrush(color);
         }
 
-        foreach (var pattern in _originStrokeStyles.Keys
-                     .Where(pattern => !_usedOriginStrokeStyles.Contains(pattern))
+        foreach (var key in _strokeStyles
+                     .Where(pair => pair.Value.ReferenceCount == 0 && !_usedStrokeStyles.Contains(pair.Key))
+                     .Select(pair => pair.Key)
                      .ToArray())
         {
-            _originStrokeStyles[pattern].Dispose();
-            _originStrokeStyles.Remove(pattern);
+            RemoveStrokeStyle(key);
         }
+    }
+
+    private void RemoveBrush(CadColor color)
+    {
+        if (_brushes.Remove(color, out var entry))
+            entry.Resource.Dispose();
+    }
+
+    private void RemoveStrokeStyle(StrokeStyleKey key)
+    {
+        if (_strokeStyles.Remove(key, out var entry))
+            entry.Resource.Dispose();
     }
 
     private void EnsureDeviceContext(ID2D1DeviceContext context)
@@ -206,17 +272,16 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         if (ReferenceEquals(_factory, factory))
             return;
 
-        ClearStrokeStyles();
+        ClearFactoryResources();
         _factory = factory;
     }
 
     private void Clear()
     {
         ClearBrushes();
-        ClearStrokeStyles();
+        ClearFactoryResources();
         _usedBrushes.Clear();
-        _usedTransientStrokeStyles.Clear();
-        _usedOriginStrokeStyles.Clear();
+        _usedStrokeStyles.Clear();
         _deviceContext = null;
         _factory = null;
         _frameDepth = 0;
@@ -224,24 +289,78 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
 
     private void ClearBrushes()
     {
-        foreach (var brush in _brushes.Values)
-            brush.Dispose();
+        foreach (var entry in _brushes.Values)
+            entry.Resource.Dispose();
         _brushes.Clear();
     }
 
-    private void ClearStrokeStyles()
+    private void ClearFactoryResources()
     {
-        foreach (var strokeStyle in _transientStrokeStyles.Values)
-            strokeStyle.Dispose();
-        foreach (var strokeStyle in _originStrokeStyles.Values)
-            strokeStyle.Dispose();
-        _transientStrokeStyles.Clear();
-        _originStrokeStyles.Clear();
+        foreach (var entry in _strokeStyles.Values)
+            entry.Resource.Dispose();
+        _strokeStyles.Clear();
+        _unitDiamondGeometry?.Dispose();
+        _unitDiamondGeometry = null;
     }
 
     private void ThrowIfDisposed()
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(Direct2DStyleResourceCache));
+    }
+
+    private static CapStyle ToD2DCapStyle(CadStrokeCap cap)
+    {
+        return cap switch
+        {
+            CadStrokeCap.Square => CapStyle.Square,
+            CadStrokeCap.Round => CapStyle.Round,
+            CadStrokeCap.Triangle => CapStyle.Triangle,
+            _ => CapStyle.Flat
+        };
+    }
+
+    private static DashStyle ToD2DDashStyle(CadStrokeDashStyle dashStyle)
+    {
+        return dashStyle switch
+        {
+            CadStrokeDashStyle.Dash => DashStyle.Dash,
+            CadStrokeDashStyle.Dot => DashStyle.Dot,
+            CadStrokeDashStyle.DashDot => DashStyle.DashDot,
+            CadStrokeDashStyle.DashDotDot => DashStyle.DashDotDot,
+            _ => DashStyle.Solid
+        };
+    }
+
+    private static LineJoin ToD2DLineJoin(CadStrokeLineJoin lineJoin)
+    {
+        return lineJoin switch
+        {
+            CadStrokeLineJoin.Bevel => LineJoin.Bevel,
+            CadStrokeLineJoin.Round => LineJoin.Round,
+            CadStrokeLineJoin.MiterOrBevel => LineJoin.MiterOrBevel,
+            _ => LineJoin.Miter
+        };
+    }
+
+    private readonly record struct StrokeStyleKey(
+        CapStyle StartCap,
+        CapStyle EndCap,
+        CapStyle DashCap,
+        LineJoin LineJoin,
+        DashStyle DashStyle)
+    {
+        public static StrokeStyleKey CreateDefault(DashStyle dashStyle) => new(
+            CapStyle.Flat,
+            CapStyle.Flat,
+            CapStyle.Flat,
+            LineJoin.Miter,
+            dashStyle);
+    }
+
+    private sealed class ResourceEntry<T>(T resource) where T : IDisposable
+    {
+        public T Resource { get; } = resource;
+        public int ReferenceCount { get; set; }
     }
 }

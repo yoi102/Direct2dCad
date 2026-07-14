@@ -10,15 +10,22 @@ namespace Direct2dCad.Rendering.Direct2D;
 
 internal sealed class Direct2DTransientImageCache : IDisposable
 {
-    private readonly Dictionary<EntityId, ID2D1Bitmap> _entityBitmaps = [];
+    private readonly Dictionary<EntityId, EntityBitmapEntry> _entityBitmaps = [];
     private readonly Dictionary<byte[], ID2D1Bitmap> _pixelBitmaps = new(ReferenceEqualityComparer.Instance);
 
     public ID2D1Bitmap? GetOrCreate(ID2D1DeviceContext? deviceContext, CadTransientImage image)
     {
         if (image.SourceEntityId is { } sourceEntityId &&
-            _entityBitmaps.TryGetValue(sourceEntityId, out var cachedEntityBitmap))
+            _entityBitmaps.TryGetValue(sourceEntityId, out var cachedEntityBitmap) &&
+            ReferenceEquals(cachedEntityBitmap.PixelSource, image.Pixels))
         {
-            return cachedEntityBitmap;
+            return cachedEntityBitmap.Bitmap;
+        }
+
+        if (image.SourceEntityId is { } changedSourceEntityId &&
+            _entityBitmaps.Remove(changedSourceEntityId, out var staleEntityBitmap))
+        {
+            staleEntityBitmap.Bitmap.Dispose();
         }
 
         if (_pixelBitmaps.TryGetValue(image.Pixels, out var cached))
@@ -49,7 +56,7 @@ internal sealed class Direct2DTransientImageCache : IDisposable
                 });
 
             if (image.SourceEntityId is { } entityId)
-                _entityBitmaps[entityId] = bitmap;
+                _entityBitmaps[entityId] = new EntityBitmapEntry(image.Pixels, bitmap);
             else
                 _pixelBitmaps[image.Pixels] = bitmap;
 
@@ -85,7 +92,7 @@ internal sealed class Direct2DTransientImageCache : IDisposable
             if (activeEntityImages.Contains(entityId))
                 continue;
 
-            _entityBitmaps[entityId].Dispose();
+            _entityBitmaps[entityId].Bitmap.Dispose();
             _entityBitmaps.Remove(entityId);
         }
 
@@ -101,8 +108,8 @@ internal sealed class Direct2DTransientImageCache : IDisposable
 
     public void Clear()
     {
-        foreach (var bitmap in _entityBitmaps.Values)
-            bitmap.Dispose();
+        foreach (var entry in _entityBitmaps.Values)
+            entry.Bitmap.Dispose();
 
         foreach (var bitmap in _pixelBitmaps.Values)
             bitmap.Dispose();
@@ -112,4 +119,6 @@ internal sealed class Direct2DTransientImageCache : IDisposable
     }
 
     public void Dispose() => Clear();
+
+    private sealed record EntityBitmapEntry(byte[] PixelSource, ID2D1Bitmap Bitmap);
 }
