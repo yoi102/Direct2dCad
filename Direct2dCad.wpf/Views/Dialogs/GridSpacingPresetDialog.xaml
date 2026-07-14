@@ -5,6 +5,11 @@
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services.Platform;assembly=Direct2dCad.ViewModels.Services"
+             xmlns:settings="clr-namespace:Direct2dCad.ViewModels.Settings;assembly=Direct2dCad.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             d:DataContext="{d:DesignInstance Type=settings:GridSpacingPresetEditorViewModel}"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
              MinWidth="380"
              MaxWidth="460">
     <Grid Margin="22,18">
@@ -98,6 +103,7 @@
                         IsDefault="True"
                         IsEnabled="{Binding IsValid}" />
                 <Button MinWidth="82"
+                        IsCancel="True"
                         Command="{x:Static md:DialogHost.CloseDialogCommand}"
                         CommandParameter="{x:Static svc:GridSpacingPresetDialogAction.Cancel}"
                         Content="{I18N {x:Static r:LangKeys.Cancel}}" />
