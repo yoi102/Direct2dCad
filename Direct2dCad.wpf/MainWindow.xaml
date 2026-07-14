@@ -28,8 +28,8 @@
                  ShowIconOnTitleBar="True"
                  Title="{I18N {x:Static r:LangKeys.Direct2dCad}}"
                  WindowStartupLocation="CenterScreen"
-                 Height="1000"
-                 Width="1200">
+                 Height="900"
+                 Width="1300">
     <mah:MetroWindow.LeftWindowCommands>
         <mah:WindowCommands>
             <Button Margin="15 0 0 0"

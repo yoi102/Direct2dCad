@@ -288,12 +288,16 @@ public sealed record GridSpacingPresetItemViewModel(
     string Name,
     double SpacingX,
     double SpacingY,
-    bool LinkAxes)
+    bool LinkAxes,
+    bool OpensGridSettings = false)
 {
     public string DisplayName
     {
         get
         {
+            if (OpensGridSettings)
+                return Strings.EditGridSpacingPreset;
+
             var spacing = NearlyEqual(SpacingX, SpacingY)
                 ? $"{SpacingX:0.###} mm"
                 : $"{SpacingX:0.###} x {SpacingY:0.###} mm";
@@ -302,6 +306,9 @@ public sealed record GridSpacingPresetItemViewModel(
     }
 
     public CadGridSpacingPreset ToModel() => new(Id, Name, SpacingX, SpacingY, LinkAxes);
+
+    public static GridSpacingPresetItemViewModel CreateGridSettingsAction() =>
+        new(Guid.Empty, string.Empty, 0, 0, true, true);
 
     public static GridSpacingPresetItemViewModel From(CadGridSpacingPreset preset) =>
         new(preset.Id, preset.Name, preset.SpacingX, preset.SpacingY, preset.LinkAxes);

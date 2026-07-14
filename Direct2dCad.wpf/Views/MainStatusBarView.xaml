@@ -57,6 +57,34 @@
 
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="8,0,4,0"
+                               VerticalAlignment="Center"
+                               Text="{I18N {x:Static r:LangKeys.MajorGridSpacing}}" />
+                    <ComboBox Width="128"
+                              Height="24"
+                              Margin="5,0,0,0"
+                              DisplayMemberPath="DisplayName"
+                              ItemsSource="{Binding CurrentEditorTabViewModel.GridSpacingPresets}"
+                              SelectedItem="{Binding CurrentEditorTabViewModel.SelectedMajorGridSpacingPreset}" />
+                </StackPanel>
+            </StatusBarItem>
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="8,0,4,0"
+                               VerticalAlignment="Center"
+                               Text="{I18N {x:Static r:LangKeys.MinorGridSpacing}}" />
+                    <ComboBox Width="128"
+                              Height="24"
+                              Margin="5,0,0,0"
+                              DisplayMemberPath="DisplayName"
+                              ItemsSource="{Binding CurrentEditorTabViewModel.GridSpacingPresets}"
+                              SelectedItem="{Binding CurrentEditorTabViewModel.SelectedMinorGridSpacingPreset}" />
+                </StackPanel>
+            </StatusBarItem>
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{I18N {x:Static r:LangKeys.OriginMarker}}"
                                VerticalAlignment="Center"
                                Margin="8,0,4,0" />

@@ -1043,6 +1043,41 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetSnapMarkerTypeCommand(markerType));
     }
 
+    public bool TrySetGridSpacingPresets(Guid majorPresetId, Guid minorPresetId)
+    {
+        var grid = Document.ViewSettings.Grid;
+        var major = grid.SpacingPresets.FirstOrDefault(item => item.Id == majorPresetId);
+        var minor = grid.SpacingPresets.FirstOrDefault(item => item.Id == minorPresetId);
+        if (major is null || minor is null ||
+            !TryResolveGridSubdivision(major.SpacingX, minor.SpacingX, out var subdivisionX) ||
+            !TryResolveGridSubdivision(major.SpacingY, minor.SpacingY, out var subdivisionY))
+        {
+            return false;
+        }
+
+        if (grid.MajorSpacingPresetId == majorPresetId &&
+            grid.MinorSpacingPresetId == minorPresetId)
+        {
+            return true;
+        }
+
+        var target = CadViewSettingsSnapshot.From(Document.ViewSettings) with
+        {
+            GridSpacingX = major.SpacingX,
+            GridSpacingY = major.SpacingY,
+            GridMinorSpacingX = minor.SpacingX,
+            GridMinorSpacingY = minor.SpacingY,
+            GridMajorSpacingPresetId = majorPresetId,
+            GridMinorSpacingPresetId = minorPresetId,
+            GridSubdivision = Math.Max(subdivisionX, subdivisionY),
+            GridSnapSpacingX = 0,
+            GridSnapSpacingY = 0,
+            GridMinimumWorldSpacing = Math.Min(minor.SpacingX, minor.SpacingY)
+        };
+        DocumentCommands.Execute(new SetViewSettingsCommand(target));
+        return true;
+    }
+
     public CadDocumentChangeSet SetBackgroundColor(CadColor color)
     {
         if (Document.ViewSettings.BackgroundColor == color)
@@ -1055,6 +1090,25 @@ public sealed class CadEditor
     {
         ArgumentNullException.ThrowIfNull(settings);
         return DocumentCommands.Execute(new SetViewSettingsCommand(settings));
+    }
+
+    private static bool TryResolveGridSubdivision(double major, double minor, out int subdivision)
+    {
+        subdivision = 0;
+        if (!double.IsFinite(major) || !double.IsFinite(minor) || minor <= 0)
+            return false;
+
+        var ratio = major / minor;
+        var rounded = Math.Round(ratio);
+        if (ratio < CadGridSettings.MinimumSubdivision ||
+            ratio > CadGridSettings.MaximumSubdivision ||
+            Math.Abs(ratio - rounded) > 1e-9)
+        {
+            return false;
+        }
+
+        subdivision = (int)rounded;
+        return true;
     }
 
     public void RegisterRenderer(ICadRenderer renderer, bool rebuildExistingResources = true)

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,6 +14,7 @@ using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Layouts;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Settings;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels;
@@ -132,6 +134,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     [ObservableProperty]
     public partial ViewModelCadGridType ViewModelCadGridType { get; set; } = ViewModelCadGridType.Lines;
 
+    public ObservableCollection<GridSpacingPresetItemViewModel> GridSpacingPresets { get; } = [];
+
+    [ObservableProperty]
+    public partial GridSpacingPresetItemViewModel? SelectedMajorGridSpacingPreset { get; set; }
+
+    [ObservableProperty]
+    public partial GridSpacingPresetItemViewModel? SelectedMinorGridSpacingPreset { get; set; }
+
     [ObservableProperty]
     public partial ViewModelCadSnapMarkerType ViewModelCadSnapMarkerType { get; set; } = ViewModelCadSnapMarkerType.Cross;
 
@@ -201,6 +211,16 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
 
         CadDocumentViewModel.CadEditor.SetGridType(gridType);
+    }
+
+    partial void OnSelectedMajorGridSpacingPresetChanged(GridSpacingPresetItemViewModel? value)
+    {
+        ApplyGridSpacingPresetsFromToolbar();
+    }
+
+    partial void OnSelectedMinorGridSpacingPresetChanged(GridSpacingPresetItemViewModel? value)
+    {
+        ApplyGridSpacingPresetsFromToolbar();
     }
 
     partial void OnViewModelCadSnapMarkerTypeChanged(ViewModelCadSnapMarkerType value)
@@ -507,8 +527,18 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         _isSyncingViewSettings = true;
         try
         {
-            ViewModelCadGridType = (ViewModelCadGridType)CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.Type;
-            ViewModelCadSnapMarkerType = (ViewModelCadSnapMarkerType)CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid.SnapMarkerType;
+            var grid = CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid;
+            ViewModelCadGridType = (ViewModelCadGridType)grid.Type;
+            ViewModelCadSnapMarkerType = (ViewModelCadSnapMarkerType)grid.SnapMarkerType;
+            GridSpacingPresets.Clear();
+            foreach (var preset in grid.SpacingPresets)
+                GridSpacingPresets.Add(GridSpacingPresetItemViewModel.From(preset));
+            GridSpacingPresets.Add(GridSpacingPresetItemViewModel.CreateGridSettingsAction());
+            SelectedMajorGridSpacingPreset = FindGridSpacingPreset(grid.MajorSpacingPresetId, grid.SpacingX, grid.SpacingY);
+            SelectedMinorGridSpacingPreset = FindGridSpacingPreset(
+                grid.MinorSpacingPresetId,
+                grid.GetMinorSpacingX(),
+                grid.GetMinorSpacingY());
             ViewModelCadOriginDisplayType = (ViewModelCadOriginDisplayType)CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.DisplayType;
             ViewModelCadOriginMarkerType = (ViewModelCadOriginMarkerType)CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.MarkerType;
             ViewModelCadOriginLinePattern = (ViewModelCadOriginLinePattern)CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.LinePattern;
@@ -524,6 +554,54 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             _isSyncingViewSettings = false;
         }
     }
+
+    private void ApplyGridSpacingPresetsFromToolbar()
+    {
+        if (_isSyncingViewSettings ||
+            SelectedMajorGridSpacingPreset is null ||
+            SelectedMinorGridSpacingPreset is null)
+        {
+            return;
+        }
+
+        if (SelectedMajorGridSpacingPreset.OpensGridSettings ||
+            SelectedMinorGridSpacingPreset.OpensGridSettings)
+        {
+            OpenGridSettingsDialog();
+            ApplyDocumentViewSettingsToToolbar();
+            return;
+        }
+
+        if (!CadDocumentViewModel.CadEditor.TrySetGridSpacingPresets(
+                SelectedMajorGridSpacingPreset.Id,
+                SelectedMinorGridSpacingPreset.Id))
+        {
+            ApplyDocumentViewSettingsToToolbar();
+        }
+    }
+
+    private void OpenGridSettingsDialog()
+    {
+        var viewModel = new DocumentSettingsViewModel(this, _dialogService);
+        viewModel.SelectedSection = viewModel.GridAndSnapping;
+        _dialogService.ShowDocumentSettingsDialog(viewModel);
+    }
+
+    private GridSpacingPresetItemViewModel? FindGridSpacingPreset(
+        Guid? id,
+        double spacingX,
+        double spacingY)
+    {
+        return (id is null
+                ? null
+                : GridSpacingPresets.FirstOrDefault(item => !item.OpensGridSettings && item.Id == id.Value))
+            ?? GridSpacingPresets.FirstOrDefault(item =>
+                !item.OpensGridSettings &&
+                NearlyEqual(item.SpacingX, spacingX) && NearlyEqual(item.SpacingY, spacingY));
+    }
+
+    private static bool NearlyEqual(double left, double right) =>
+        Math.Abs(left - right) <= Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right))) * 1e-9;
 
     private void ApplyOriginSettingsFromToolbar()
     {
@@ -674,7 +752,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
 
         if (e.PropertyName == nameof(CadDocumentViewModel.CadEditor))
+        {
             AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
+            ApplyDocumentViewSettingsToToolbar();
+        }
     }
 
     private void AttachDocumentChangeTracking(CadEditor editor)
