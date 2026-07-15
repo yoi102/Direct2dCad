@@ -27,10 +27,39 @@ internal sealed class Direct2DTransientSceneRenderer(
         }
 
         imageCache.Reconcile(scene);
-        foreach (var item in scene.Items)
+        DrawItems(
+            context,
+            document,
+            viewport,
+            scene.Items,
+            drawOle,
+            drawEntityReference,
+            drawBlockReference);
+    }
+
+    private void DrawItems(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        IReadOnlyList<CadTransientItem> items,
+        Action<CadTransientOleObject> drawOle,
+        Action<CadTransientEntityReference> drawEntityReference,
+        Action<CadTransientBlockReference> drawBlockReference)
+    {
+        foreach (var item in items)
         {
             switch (item)
             {
+                case CadTransientGroup group:
+                    DrawGroup(
+                        context,
+                        document,
+                        viewport,
+                        group,
+                        drawOle,
+                        drawEntityReference,
+                        drawBlockReference);
+                    break;
                 case CadTransientLine line:
                     primitives.DrawLine(context, viewport, line.Start, line.End, line.Style);
                     break;
@@ -119,6 +148,34 @@ internal sealed class Direct2DTransientSceneRenderer(
         }
     }
 
+    private void DrawGroup(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadTransientGroup group,
+        Action<CadTransientOleObject> drawOle,
+        Action<CadTransientEntityReference> drawEntityReference,
+        Action<CadTransientBlockReference> drawBlockReference)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = ToMatrix3x2(group.Transform) * previousTransform;
+        try
+        {
+            DrawItems(
+                context,
+                document,
+                viewport,
+                group.Items,
+                drawOle,
+                drawEntityReference,
+                drawBlockReference);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
+    }
+
     public void Clear() => imageCache.Clear();
 
     public void Dispose() => imageCache.Dispose();
@@ -165,6 +222,14 @@ internal sealed class Direct2DTransientSceneRenderer(
                 (float)rotation,
                 new Vector2((float)center.X, (float)center.Y)) * transform;
     }
+
+    private static Matrix3x2 ToMatrix3x2(CadMatrixD transform) => new(
+        (float)transform.M11,
+        (float)transform.M12,
+        (float)transform.M21,
+        (float)transform.M22,
+        (float)transform.OffsetX,
+        (float)transform.OffsetY);
 
     private static float ToOpacity(double opacity)
     {

@@ -13,7 +13,10 @@ public sealed class PasteEntitiesCommand : ICadCommand
     private readonly CadClipboardSnapshot _snapshot;
     private readonly CadVectorD _delta;
     private readonly LayerId? _targetLayerId;
+    private readonly BlockId _ownerBlockId;
     private readonly List<EntityId> _createdEntityIds = [];
+    private readonly List<BlockId> _createdBlockIds = [];
+    private readonly Dictionary<BlockId, CadDetachedBlockDefinition> _detachedBlockDefinitions = [];
 
     public string Name => "Paste Entities";
     public IReadOnlyList<EntityId> CreatedEntityIds => _createdEntityIds;
@@ -21,11 +24,13 @@ public sealed class PasteEntitiesCommand : ICadCommand
     public PasteEntitiesCommand(
         CadClipboardSnapshot snapshot,
         CadVectorD delta,
-        LayerId? targetLayerId = null)
+        LayerId? targetLayerId = null,
+        BlockId? ownerBlockId = null)
     {
         _snapshot = snapshot ?? throw new ArgumentNullException(nameof(snapshot));
         _delta = delta;
         _targetLayerId = targetLayerId;
+        _ownerBlockId = ownerBlockId ?? BlockId.ModelSpace;
 
         if (_snapshot.IsEmpty)
             throw new ArgumentException("Clipboard snapshot must contain at least one entity.", nameof(snapshot));
@@ -36,9 +41,17 @@ public sealed class PasteEntitiesCommand : ICadCommand
         ArgumentNullException.ThrowIfNull(document);
         if (_targetLayerId is { } targetLayerId)
             CadEntityAccessPolicy.EnsureCanAddToLayer(document, targetLayerId);
+        _ = document.GetBlock(_ownerBlockId);
 
         if (_createdEntityIds.Count > 0)
         {
+            foreach (var blockId in _createdBlockIds)
+            {
+                if (_detachedBlockDefinitions.TryGetValue(blockId, out var definition))
+                    document.RestoreBlockDefinition(definition);
+            }
+            _detachedBlockDefinitions.Clear();
+
             var restoredIds = new List<EntityId>();
             foreach (var entityId in _createdEntityIds)
             {
@@ -49,28 +62,34 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 restoredIds.Add(entity.Id);
             }
 
-            return restoredIds.Count == 0
-                ? CadDocumentChangeSet.Empty
-                : CadDocumentChangeSet.ForEntities(
-                    restoredIds,
-                    CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility);
+            return CreateChangeSet(
+                restoredIds.Concat(GetCreatedBlockEntityIds(document)),
+                CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility,
+                _createdBlockIds.Count > 0);
         }
 
-        var context = new PasteEntityContext(document)
-        {
-            TargetLayerId = _targetLayerId
-        };
+        var context = new PasteEntityContext(document, _snapshot.BlockDefinitions);
         foreach (var item in _snapshot.Items)
         {
-            if (TryCreateEntity(context, item, _delta, out var created) && created is not null)
+            if (TryCreateEntity(
+                    context,
+                    item,
+                    _delta,
+                    _ownerBlockId,
+                    _targetLayerId,
+                    out var created) &&
+                created is not null)
+            {
                 _createdEntityIds.Add(created.Id);
+            }
         }
+        _createdBlockIds.AddRange(context.CreatedBlockIds);
 
-        return _createdEntityIds.Count == 0
-            ? CadDocumentChangeSet.Empty
-            : CadDocumentChangeSet.ForEntities(
-                _createdEntityIds,
-                CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Fill | CadEntityChangeKind.Layer | CadEntityChangeKind.DrawOrder);
+        return CreateChangeSet(
+            _createdEntityIds.Concat(GetCreatedBlockEntityIds(document)),
+            CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Fill | CadEntityChangeKind.Layer | CadEntityChangeKind.DrawOrder,
+            _createdBlockIds.Count > 0);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -87,25 +106,47 @@ public sealed class PasteEntitiesCommand : ICadCommand
             erasedIds.Add(entity.Id);
         }
 
-        return erasedIds.Count == 0
-            ? CadDocumentChangeSet.Empty
-            : CadDocumentChangeSet.ForEntities(erasedIds, CadEntityChangeKind.Deleted | CadEntityChangeKind.Visibility);
+        var detachedEntityIds = new List<EntityId>();
+        for (var index = _createdBlockIds.Count - 1; index >= 0; index--)
+        {
+            var blockId = _createdBlockIds[index];
+            var detached = document.DetachBlockDefinition(blockId);
+            _detachedBlockDefinitions[blockId] = detached;
+            detachedEntityIds.AddRange(detached.Entities.Select(entity => entity.Id));
+        }
+
+        return CreateChangeSet(
+            erasedIds.Concat(detachedEntityIds),
+            CadEntityChangeKind.Deleted | CadEntityChangeKind.Visibility,
+            _createdBlockIds.Count > 0);
     }
 
     private static bool TryCreateEntity(
         PasteEntityContext context,
         CadClipboardEntityItem item,
         CadVectorD delta,
+        BlockId ownerBlockId,
+        LayerId? targetLayerId,
         out CadEntity? created)
     {
         var document = context.Document;
-        var layerId = context.ResolveLayer(item.Layer, context.TargetLayerId);
+        var layerId = context.ResolveLayer(item.Layer, targetLayerId);
         var graphicStyleId = context.ResolveStyle(item.GraphicStyle);
         var fillStyleId = context.ResolveStyle(item.FillStyle);
         var textStyleId = context.ResolveStyle(item.TextStyle);
 
         created = item.Entity switch
         {
+            CadBlockReferenceClipboardSnapshot blockReference => document.AddBlockReference(
+                context.ResolveBlockDefinition(blockReference.SourceDefinitionBlockId),
+                blockReference.Position + delta,
+                layerId,
+                graphicStyleId,
+                blockReference.RotationRadians,
+                blockReference.ScaleX,
+                blockReference.ScaleY,
+                blockReference.State.Name,
+                ownerBlockId),
             CadLineClipboardSnapshot line => document.AddLine(
                 line.Start + delta,
                 line.End + delta,
@@ -208,7 +249,30 @@ public sealed class PasteEntitiesCommand : ICadCommand
             return false;
 
         ApplyState(created, item.Entity.State);
+        if (created is not CadBlockReference && !ownerBlockId.Equals(BlockId.ModelSpace))
+            document.MoveEntityToBlock(created.Id, ownerBlockId);
         return true;
+    }
+
+    private IReadOnlyList<EntityId> GetCreatedBlockEntityIds(CadDocument document)
+    {
+        return _createdBlockIds
+            .Where(blockId => document.TryGetBlock(blockId, out _))
+            .SelectMany(document.GetEntitiesInBlock)
+            .Select(entity => entity.Id)
+            .ToArray();
+    }
+
+    private static CadDocumentChangeSet CreateChangeSet(
+        IEnumerable<EntityId> entityIds,
+        CadEntityChangeKind kind,
+        bool structureChanged)
+    {
+        var ids = entityIds.Distinct().ToArray();
+        var changes = ids.Length == 0
+            ? CadDocumentChangeSet.Empty
+            : CadDocumentChangeSet.ForEntities(ids, kind);
+        return structureChanged ? changes.WithDocumentStructureChanged() : changes;
     }
 
     private static CadText CreateText(
@@ -247,15 +311,74 @@ public sealed class PasteEntitiesCommand : ICadCommand
         entity.SetZIndex(state.ZIndex);
     }
 
-    private sealed class PasteEntityContext(CadDocument document)
+    private sealed class PasteEntityContext(
+        CadDocument document,
+        IReadOnlyList<CadBlockDefinitionClipboardSnapshot> blockDefinitions)
     {
         private readonly Dictionary<CadLayerClipboardSnapshot, LayerId> _layers = [];
         private readonly Dictionary<CadStyleClipboardSnapshot, StyleId?> _styles = [];
         private readonly Dictionary<CadHatchPatternClipboardSnapshot, HatchPatternId> _hatchPatterns = [];
+        private readonly IReadOnlyDictionary<BlockId, CadBlockDefinitionClipboardSnapshot> _blockDefinitionSnapshots =
+            blockDefinitions.ToDictionary(snapshot => snapshot.SourceBlockId);
+        private readonly Dictionary<BlockId, BlockId> _blockDefinitions = [];
+        private readonly HashSet<BlockId> _resolvingBlockDefinitions = [];
 
         public CadDocument Document { get; } = document;
+        public List<BlockId> CreatedBlockIds { get; } = [];
 
-        public LayerId? TargetLayerId { get; init; }
+        public BlockId ResolveBlockDefinition(BlockId sourceBlockId)
+        {
+            if (_blockDefinitions.TryGetValue(sourceBlockId, out var cached))
+                return cached;
+            if (!_blockDefinitionSnapshots.TryGetValue(sourceBlockId, out var snapshot))
+                throw new InvalidOperationException($"Clipboard block definition is missing: {sourceBlockId}");
+
+            var existing = Document.Blocks.Values.FirstOrDefault(block =>
+                string.Equals(block.Name, snapshot.Name, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                _blockDefinitions[sourceBlockId] = existing.Id;
+                return existing.Id;
+            }
+
+            if (!_resolvingBlockDefinitions.Add(sourceBlockId))
+                throw new InvalidOperationException($"Clipboard block definition cycle detected: {snapshot.Name}");
+
+            try
+            {
+                foreach (var nestedReference in snapshot.Entities
+                             .Select(item => item.Entity)
+                             .OfType<CadBlockReferenceClipboardSnapshot>())
+                {
+                    ResolveBlockDefinition(nestedReference.SourceDefinitionBlockId);
+                }
+
+                var blockId = Document.CreateBlockDefinition(snapshot.Name, snapshot.BasePoint);
+                _blockDefinitions[sourceBlockId] = blockId;
+                CreatedBlockIds.Add(blockId);
+
+                foreach (var item in snapshot.Entities)
+                {
+                    if (!TryCreateEntity(
+                            this,
+                            item,
+                            CadVectorD.Zero,
+                            blockId,
+                            targetLayerId: null,
+                            out _))
+                    {
+                        throw new InvalidOperationException(
+                            $"Clipboard block contains an unsupported entity: {snapshot.Name}");
+                    }
+                }
+
+                return blockId;
+            }
+            finally
+            {
+                _resolvingBlockDefinitions.Remove(sourceBlockId);
+            }
+        }
 
         public LayerId ResolveLayer(CadLayerClipboardSnapshot snapshot, LayerId? targetLayerId)
         {

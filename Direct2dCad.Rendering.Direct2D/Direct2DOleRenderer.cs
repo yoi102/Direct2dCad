@@ -43,35 +43,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
         }
 
         if (transientScene is not null)
-        {
-            foreach (var item in transientScene.Items)
-            {
-                switch (item)
-                {
-                    case CadTransientOleObject transient:
-                        PrepareTiles(
-                            context,
-                            transient.SourceEntityId is { } sourceId
-                                ? Direct2DOleRenderKey.ForEntity(sourceId)
-                                : Direct2DOleRenderKey.ForTransient(transient.RenderId),
-                            transient.Bounds,
-                            transient.OleBytes,
-                            viewport,
-                            transform);
-                        break;
-                    case CadTransientEntityReference reference
-                        when document.TryGetEntity(reference.EntityId, out var entity) && entity is CadOleObject ole:
-                        PrepareTiles(
-                            context,
-                            Direct2DOleRenderKey.ForEntity(ole.Id),
-                            ole.Bounds.Translate(reference.Offset),
-                            ole.CopyOleBytes(),
-                            viewport,
-                            transform);
-                        break;
-                }
-            }
-        }
+            PrepareTransientItems(context, document, viewport, transientScene.Items, transform);
 
         _suppressDrawDuringFrame = true;
     }
@@ -128,6 +100,19 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
             transform);
     }
 
+    public void PrepareTransientSceneTiles(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadTransientScene scene,
+        CadViewport viewport,
+        Matrix3x2 transform)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(scene);
+        PrepareTransientItems(context, document, viewport, scene.Items, transform);
+    }
+
     public void DrawTransient(
         ID2D1DeviceContext context,
         CadTransientOleObject ole,
@@ -147,7 +132,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
 
     public void ReconcileTransient(CadTransientScene scene)
     {
-        var activeKeys = scene.Items
+        var activeKeys = EnumerateTransientItems(scene.Items)
             .OfType<CadTransientOleObject>()
             .Where(item => item.SourceEntityId is null)
             .Select(item => Direct2DOleRenderKey.ForTransient(item.RenderId))
@@ -169,6 +154,71 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
             ReleaseCallback?.Invoke(key);
         }
     }
+
+    private void PrepareTransientItems(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        IReadOnlyList<CadTransientItem> items,
+        Matrix3x2 transform)
+    {
+        foreach (var item in items)
+        {
+            switch (item)
+            {
+                case CadTransientGroup group:
+                    PrepareTransientItems(
+                        context,
+                        document,
+                        viewport,
+                        group.Items,
+                        ToMatrix3x2(group.Transform) * transform);
+                    break;
+                case CadTransientOleObject transient:
+                    PrepareTiles(
+                        context,
+                        transient.SourceEntityId is { } sourceId
+                            ? Direct2DOleRenderKey.ForEntity(sourceId)
+                            : Direct2DOleRenderKey.ForTransient(transient.RenderId),
+                        transient.Bounds,
+                        transient.OleBytes,
+                        viewport,
+                        transform);
+                    break;
+                case CadTransientEntityReference reference
+                    when document.TryGetEntity(reference.EntityId, out var entity) && entity is CadOleObject ole:
+                    PrepareTiles(
+                        context,
+                        Direct2DOleRenderKey.ForEntity(ole.Id),
+                        ole.Bounds.Translate(reference.Offset),
+                        ole.CopyOleBytes(),
+                        viewport,
+                        transform);
+                    break;
+            }
+        }
+    }
+
+    private static IEnumerable<CadTransientItem> EnumerateTransientItems(IEnumerable<CadTransientItem> items)
+    {
+        foreach (var item in items)
+        {
+            yield return item;
+            if (item is not CadTransientGroup group)
+                continue;
+
+            foreach (var child in EnumerateTransientItems(group.Items))
+                yield return child;
+        }
+    }
+
+    private static Matrix3x2 ToMatrix3x2(CadMatrixD transform) => new(
+        (float)transform.M11,
+        (float)transform.M12,
+        (float)transform.M21,
+        (float)transform.M22,
+        (float)transform.OffsetX,
+        (float)transform.OffsetY);
 
     public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
     {

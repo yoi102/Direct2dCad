@@ -7,6 +7,12 @@ namespace Direct2dCad.Rendering.Transient;
 
 public abstract record CadTransientItem(CadTransientStyle Style);
 
+public sealed record CadTransientGroup(
+    IReadOnlyList<CadTransientItem> Items,
+    CadMatrixD Transform,
+    CadTransientStyle Style = default)
+    : CadTransientItem(Style);
+
 public sealed record CadTransientLine(
     CadPointD Start,
     CadPointD End,

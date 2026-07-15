@@ -69,7 +69,7 @@
                 <mah:NumericUpDown Grid.Row="3"
                                    Grid.Column="1"
                                    Margin="0,0,0,8"
-                                   Minimum="0.001"
+                                   Minimum="-100000"
                                    Maximum="100000"
                                    Speedup="True"
                                    StringFormat="F3"
@@ -81,7 +81,7 @@
                            Text="{I18N {x:Static r:LangKeys.ScaleY}}" />
                 <mah:NumericUpDown Grid.Row="4"
                                    Grid.Column="1"
-                                   Minimum="0.001"
+                                   Minimum="-100000"
                                    Maximum="100000"
                                    Speedup="True"
                                    StringFormat="F3"

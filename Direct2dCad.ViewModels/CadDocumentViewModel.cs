@@ -1554,8 +1554,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var definition = CadEditor.Document.GetBlock(definitionBlockId);
         if (definition.IsSystem)
             throw new InvalidOperationException("System space blocks cannot be inserted.");
-        if (scaleX <= 0 || scaleY <= 0 || !double.IsFinite(scaleX) || !double.IsFinite(scaleY))
-            throw new ArgumentOutOfRangeException(nameof(scaleX), "Block scale must be finite and positive.");
+        if (!IsValidBlockScale(scaleX) || !IsValidBlockScale(scaleY))
+            throw new ArgumentOutOfRangeException(nameof(scaleX), "Block scale must be finite and non-zero.");
 
         SetToolMode(CadCanvasToolMode.InsertBlock);
         _insertBlockDefinitionId = definitionBlockId;
@@ -1580,8 +1580,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (!double.IsFinite(rotationDegrees))
             throw new ArgumentOutOfRangeException(nameof(rotationDegrees));
-        if (scaleX <= 0 || scaleY <= 0 || !double.IsFinite(scaleX) || !double.IsFinite(scaleY))
-            throw new ArgumentOutOfRangeException(nameof(scaleX), "Block scale must be finite and positive.");
+        if (!IsValidBlockScale(scaleX) || !IsValidBlockScale(scaleY))
+            throw new ArgumentOutOfRangeException(nameof(scaleX), "Block scale must be finite and non-zero.");
 
         var rotationRadians = rotationDegrees * Math.PI / 180.0;
         if (_insertBlockRotationRadians.Equals(rotationRadians) &&
@@ -1598,6 +1598,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestOverlayRender();
         return true;
     }
+
+    private static bool IsValidBlockScale(double value) =>
+        double.IsFinite(value) && Math.Abs(value) > 1e-9;
 
     public void EditBlockDefinition(BlockId blockId)
     {

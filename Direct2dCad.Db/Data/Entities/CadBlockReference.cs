@@ -32,8 +32,8 @@ public sealed class CadBlockReference : CadEntity
         DefinitionBlockId = definitionBlockId;
         Position = position;
         RotationRadians = rotationRadians;
-        ScaleX = GuardPositive(scaleX, nameof(scaleX));
-        ScaleY = GuardPositive(scaleY, nameof(scaleY));
+        ScaleX = GuardNonZero(scaleX, nameof(scaleX));
+        ScaleY = GuardNonZero(scaleY, nameof(scaleY));
         _resolvedBounds = CadRectD.Empty;
     }
 
@@ -45,8 +45,8 @@ public sealed class CadBlockReference : CadEntity
 
     public void SetScale(double scaleX, double scaleY)
     {
-        ScaleX = GuardPositive(scaleX, nameof(scaleX));
-        ScaleY = GuardPositive(scaleY, nameof(scaleY));
+        ScaleX = GuardNonZero(scaleX, nameof(scaleX));
+        ScaleY = GuardNonZero(scaleY, nameof(scaleY));
     }
 
     internal bool SetResolvedBounds(CadRectD bounds)
@@ -58,9 +58,9 @@ public sealed class CadBlockReference : CadEntity
         return true;
     }
 
-    private static double GuardPositive(double value, string paramName)
+    private static double GuardNonZero(double value, string paramName)
     {
-        return value <= 0 || double.IsNaN(value) || double.IsInfinity(value)
+        return !double.IsFinite(value) || Math.Abs(value) <= 1e-9
             ? throw new ArgumentOutOfRangeException(paramName)
             : value;
     }

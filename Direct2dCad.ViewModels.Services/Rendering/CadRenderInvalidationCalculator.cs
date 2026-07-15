@@ -74,6 +74,10 @@ internal sealed class CadRenderInvalidationCalculator(
     {
         return item switch
         {
+            CadTransientGroup group => CreateTransientBoundsInvalidation(
+                ResolveTransientGroupBounds(group),
+                group.Style,
+                minimumPaddingPixels: 24.0),
             CadTransientLine line => CreateTransientBoundsInvalidation(
                 BoundsFromPoints(line.Start, line.End),
                 line.Style),
@@ -118,6 +122,60 @@ internal sealed class CadRenderInvalidationCalculator(
             CadTransientBlockReference reference => CreateBlockReferenceInvalidation(reference),
             _ => CadRenderInvalidation.FromScreenRect(default)
         };
+    }
+
+    private CadRectD ResolveTransientGroupBounds(CadTransientGroup group)
+    {
+        var bounds = CadRectD.Empty;
+        foreach (var child in group.Items)
+            bounds = bounds.Union(ResolveTransientItemBounds(child));
+        return bounds.Transform(group.Transform);
+    }
+
+    private CadRectD ResolveTransientItemBounds(CadTransientItem item)
+    {
+        return item switch
+        {
+            CadTransientGroup group => ResolveTransientGroupBounds(group),
+            CadTransientLine line => BoundsFromPoints(line.Start, line.End),
+            CadTransientCircle circle when circle.Radius > 0 =>
+                CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2),
+            CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 =>
+                CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2),
+            CadTransientEllipseArc ellipseArc when ellipseArc.RadiusX > 0 && ellipseArc.RadiusY > 0 =>
+                CadRectD.FromCenter(ellipseArc.Center, ellipseArc.RadiusX * 2, ellipseArc.RadiusY * 2),
+            CadTransientArc arc when arc.Radius > 0 =>
+                CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2),
+            CadTransientPolyline polyline => BoundsFromPoints(polyline.Points),
+            CadTransientSpline spline => BoundsFromPoints(spline.FitPoints),
+            CadTransientRectangle rectangle => rectangle.Bounds,
+            CadTransientImage image => RotateBounds(image.Bounds, image.RotationRadians),
+            CadTransientOleObject oleObject => oleObject.Bounds,
+            CadTransientText text => ResolveTransientTextBounds(text),
+            CadTransientShapeText text => ResolveTransientShapeTextBounds(text),
+            CadTransientEntityReference reference
+                when document.TryGetEntity(reference.EntityId, out var entity) && entity is not null =>
+                entity.Bounds.Translate(reference.Offset),
+            CadTransientBlockReference reference => ResolveTransientBlockReferenceBounds(reference),
+            _ => CadRectD.Empty
+        };
+    }
+
+    private CadRectD ResolveTransientBlockReferenceBounds(CadTransientBlockReference reference)
+    {
+        if (!document.TryGetBlock(reference.DefinitionBlockId, out var definition) || definition is null)
+            return CadRectD.FromLTRB(reference.Position.X, reference.Position.Y, reference.Position.X, reference.Position.Y);
+
+        var localBounds = document.GetBlockBounds(reference.DefinitionBlockId);
+        return localBounds.IsEmpty
+            ? CadRectD.FromLTRB(reference.Position.X, reference.Position.Y, reference.Position.X, reference.Position.Y)
+            : CadBlockTransform.TransformBounds(
+                definition,
+                reference.Position,
+                reference.RotationRadians,
+                reference.ScaleX,
+                reference.ScaleY,
+                localBounds);
     }
 
     private CadRenderInvalidation CreateBlockReferenceInvalidation(CadTransientBlockReference reference)

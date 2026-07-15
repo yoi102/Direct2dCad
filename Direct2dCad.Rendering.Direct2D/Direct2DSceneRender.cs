@@ -193,10 +193,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             }
 
             if (options.ActiveLayoutViewportId == layoutViewport.Id && transientScene is not null)
-            {
-                foreach (var transientOle in transientScene.Items.OfType<CadTransientOleObject>())
-                    _oleRenderer.PrepareTransientTiles(context, transientOle, viewport, modelToScreen);
-            }
+                _oleRenderer.PrepareTransientSceneTiles(
+                    context,
+                    document,
+                    transientScene,
+                    viewport,
+                    modelToScreen);
         }
     }
 

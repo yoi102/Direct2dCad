@@ -137,7 +137,7 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
             !double.IsFinite(PositionX) || !double.IsFinite(PositionY) ||
             !double.IsFinite(RotationDegrees) ||
             !double.IsFinite(ScaleX) || !double.IsFinite(ScaleY) ||
-            ScaleX <= Epsilon || ScaleY <= Epsilon)
+            Math.Abs(ScaleX) <= Epsilon || Math.Abs(ScaleY) <= Epsilon)
         {
             return;
         }

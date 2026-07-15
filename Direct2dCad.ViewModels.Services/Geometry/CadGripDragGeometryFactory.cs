@@ -53,7 +53,7 @@ internal static class CadGripDragGeometryFactory
             scaleX = targetX / sourceX;
         if (Math.Abs(sourceY) > 1e-9)
             scaleY = targetY / sourceY;
-        return scaleX > 1e-9 && scaleY > 1e-9 &&
+        return Math.Abs(scaleX) > 1e-9 && Math.Abs(scaleY) > 1e-9 &&
                double.IsFinite(scaleX) && double.IsFinite(scaleY);
     }
 

@@ -56,7 +56,7 @@ public partial class TransientBlockInsertionPropertyViewModel : EntityPropertyVi
     {
         if (_isRefreshing ||
             !double.IsFinite(RotationDegrees) ||
-            ScaleX <= 0 || ScaleY <= 0 ||
+            Math.Abs(ScaleX) <= 1e-9 || Math.Abs(ScaleY) <= 1e-9 ||
             !double.IsFinite(ScaleX) || !double.IsFinite(ScaleY))
         {
             return;

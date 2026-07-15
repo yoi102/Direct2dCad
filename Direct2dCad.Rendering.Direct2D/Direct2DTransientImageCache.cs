@@ -70,12 +70,13 @@ internal sealed class Direct2DTransientImageCache : IDisposable
 
     public void Reconcile(CadTransientScene scene)
     {
-        var activeEntityImages = scene.Items
+        var transientItems = EnumerateItems(scene.Items).ToArray();
+        var activeEntityImages = transientItems
             .OfType<CadTransientImage>()
             .Where(image => image.SourceEntityId is not null)
             .Select(image => image.SourceEntityId!.Value)
             .ToHashSet();
-        var activeImages = scene.Items
+        var activeImages = transientItems
             .OfType<CadTransientImage>()
             .Where(image => image.SourceEntityId is null)
             .Select(image => image.Pixels)
@@ -119,6 +120,19 @@ internal sealed class Direct2DTransientImageCache : IDisposable
     }
 
     public void Dispose() => Clear();
+
+    private static IEnumerable<CadTransientItem> EnumerateItems(IEnumerable<CadTransientItem> items)
+    {
+        foreach (var item in items)
+        {
+            yield return item;
+            if (item is not CadTransientGroup group)
+                continue;
+
+            foreach (var child in EnumerateItems(group.Items))
+                yield return child;
+        }
+    }
 
     private sealed record EntityBitmapEntry(byte[] PixelSource, ID2D1Bitmap Bitmap);
 }

@@ -714,7 +714,7 @@ public sealed class CadEditor
 
     public IReadOnlyList<EntityId> PasteEntities(CadClipboardSnapshot snapshot, CadVectorD delta, LayerId? targetLayerId = null)
     {
-        var command = new PasteEntitiesCommand(snapshot, delta, targetLayerId);
+        var command = new PasteEntitiesCommand(snapshot, delta, targetLayerId, ActiveOwnerBlockId);
         DocumentCommands.Execute(command);
         return command.CreatedEntityIds.ToArray();
     }

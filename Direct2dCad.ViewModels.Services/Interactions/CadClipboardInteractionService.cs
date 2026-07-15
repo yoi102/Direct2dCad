@@ -34,8 +34,19 @@ internal sealed class CadClipboardInteractionService(
         var targetLayer = editor.Document.TryGetLayer(targetLayerId, out var resolvedLayer) && resolvedLayer is not null
             ? resolvedLayer
             : null;
+        var blockDefinitions = clipboard.BlockDefinitions.ToDictionary(
+            definition => definition.SourceBlockId);
         foreach (var item in clipboard.Items)
-            AddPreviewItem(items, item, delta, targetLayer, editor.Document);
+        {
+            AddPreviewItem(
+                items,
+                item,
+                delta,
+                targetLayer,
+                editor.Document,
+                blockDefinitions,
+                []);
+        }
     }
 
     public IReadOnlyList<EntityId> CommitPaste(
@@ -52,11 +63,24 @@ internal sealed class CadClipboardInteractionService(
         CadClipboardEntityItem item,
         CadVectorD delta,
         CadLayer? targetLayer,
-        CadDocument document)
+        CadDocument document,
+        IReadOnlyDictionary<BlockId, CadBlockDefinitionClipboardSnapshot> blockDefinitions,
+        HashSet<BlockId> visitingBlocks)
     {
         var style = CreatePreviewStyle(item, targetLayer, document);
         switch (item.Entity)
         {
+            case CadBlockReferenceClipboardSnapshot blockReference:
+                AddBlockPreview(
+                    items,
+                    blockReference,
+                    delta,
+                    style,
+                    document,
+                    blockDefinitions,
+                    visitingBlocks);
+                break;
+
             case CadLineClipboardSnapshot line:
                 items.Add(new CadTransientLine(line.Start + delta, line.End + delta, style));
                 break;
@@ -159,6 +183,50 @@ internal sealed class CadClipboardInteractionService(
                     oleObject.RenderId,
                     oleObject.Opacity));
                 break;
+        }
+    }
+
+    private static void AddBlockPreview(
+        List<CadTransientItem> items,
+        CadBlockReferenceClipboardSnapshot reference,
+        CadVectorD delta,
+        CadTransientStyle style,
+        CadDocument document,
+        IReadOnlyDictionary<BlockId, CadBlockDefinitionClipboardSnapshot> blockDefinitions,
+        HashSet<BlockId> visitingBlocks)
+    {
+        if (!blockDefinitions.TryGetValue(reference.SourceDefinitionBlockId, out var definition) ||
+            !visitingBlocks.Add(reference.SourceDefinitionBlockId))
+        {
+            return;
+        }
+
+        try
+        {
+            var children = new List<CadTransientItem>();
+            foreach (var child in definition.Entities)
+            {
+                AddPreviewItem(
+                    children,
+                    child,
+                    CadVectorD.Zero,
+                    null,
+                    document,
+                    blockDefinitions,
+                    visitingBlocks);
+            }
+
+            var transform = CadMatrixD.CreateTranslation(-definition.BasePoint.X, -definition.BasePoint.Y) *
+                            CadMatrixD.CreateScale(reference.ScaleX, reference.ScaleY) *
+                            CadMatrixD.CreateRotation(reference.RotationRadians) *
+                            CadMatrixD.CreateTranslation(
+                                reference.Position.X + delta.X,
+                                reference.Position.Y + delta.Y);
+            items.Add(new CadTransientGroup(children, transform, style));
+        }
+        finally
+        {
+            visitingBlocks.Remove(reference.SourceDefinitionBlockId);
         }
     }
 

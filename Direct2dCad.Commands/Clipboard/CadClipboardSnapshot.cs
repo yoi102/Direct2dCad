@@ -13,8 +13,16 @@ public sealed record CadClipboardSnapshot(
     CadPointD BasePoint,
     CadRectD Bounds)
 {
-    public bool IsEmpty => Items.Count == 0 || Bounds.IsEmpty;
+    public bool IsEmpty => Items.Count == 0;
+
+    public IReadOnlyList<CadBlockDefinitionClipboardSnapshot> BlockDefinitions { get; init; } = [];
 }
+
+public sealed record CadBlockDefinitionClipboardSnapshot(
+    BlockId SourceBlockId,
+    string Name,
+    CadPointD BasePoint,
+    IReadOnlyList<CadClipboardEntityItem> Entities);
 
 public sealed record CadClipboardEntityItem(
     CadEntityClipboardSnapshot Entity,
@@ -42,6 +50,14 @@ public sealed record CadEntityStateClipboardSnapshot(
     int ZIndex);
 
 public abstract record CadEntityClipboardSnapshot(CadEntityStateClipboardSnapshot State);
+
+public sealed record CadBlockReferenceClipboardSnapshot(
+    CadEntityStateClipboardSnapshot State,
+    BlockId SourceDefinitionBlockId,
+    CadPointD Position,
+    double RotationRadians,
+    double ScaleX,
+    double ScaleY) : CadEntityClipboardSnapshot(State);
 
 public sealed record CadLineClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
@@ -183,6 +199,9 @@ public static class CadClipboardSnapshotFactory
         ArgumentNullException.ThrowIfNull(entityIds);
 
         var items = new List<CadClipboardEntityItem>();
+        var blockDefinitions = new Dictionary<BlockId, CadBlockDefinitionClipboardSnapshot>();
+        var blockDefinitionOrder = new List<BlockId>();
+        var visitingBlocks = new HashSet<BlockId>();
         var bounds = CadRectD.Empty;
 
         foreach (var entityId in entityIds.Distinct())
@@ -190,7 +209,13 @@ public static class CadClipboardSnapshotFactory
             if (!document.TryGetEntity(entityId, out var entity) ||
                 entity is null ||
                 entity.IsErased ||
-                !TryCreateEntitySnapshot(document, entity, out var item) ||
+                !TryCreateEntitySnapshot(
+                    document,
+                    entity,
+                    blockDefinitions,
+                    blockDefinitionOrder,
+                    visitingBlocks,
+                    out var item) ||
                 item is null)
             {
                 continue;
@@ -200,20 +225,39 @@ public static class CadClipboardSnapshotFactory
             bounds = bounds.Union(entity.Bounds);
         }
 
-        return items.Count == 0 || bounds.IsEmpty
+        return items.Count == 0
             ? null
-            : new CadClipboardSnapshot(items, bounds.Center, bounds);
+            : new CadClipboardSnapshot(items, bounds.Center, bounds)
+            {
+                BlockDefinitions = blockDefinitionOrder
+                    .Select(blockId => blockDefinitions[blockId])
+                    .ToArray()
+            };
     }
 
     private static bool TryCreateEntitySnapshot(
         CadDocument document,
         CadEntity entity,
+        Dictionary<BlockId, CadBlockDefinitionClipboardSnapshot> blockDefinitions,
+        List<BlockId> blockDefinitionOrder,
+        HashSet<BlockId> visitingBlocks,
         out CadClipboardEntityItem? item)
     {
         item = null;
 
         if (!document.TryGetLayer(entity.LayerId, out var layer) || layer is null)
             return false;
+
+        if (entity is CadBlockReference blockReference &&
+            !TryCreateBlockDefinitionSnapshot(
+                document,
+                blockReference.DefinitionBlockId,
+                blockDefinitions,
+                blockDefinitionOrder,
+                visitingBlocks))
+        {
+            return false;
+        }
 
         if (!TryCreateEntitySnapshot(entity, out var entitySnapshot) || entitySnapshot is null)
             return false;
@@ -235,6 +279,58 @@ public static class CadClipboardSnapshotFactory
         return true;
     }
 
+    private static bool TryCreateBlockDefinitionSnapshot(
+        CadDocument document,
+        BlockId blockId,
+        Dictionary<BlockId, CadBlockDefinitionClipboardSnapshot> blockDefinitions,
+        List<BlockId> blockDefinitionOrder,
+        HashSet<BlockId> visitingBlocks)
+    {
+        if (blockDefinitions.ContainsKey(blockId))
+            return true;
+        if (!visitingBlocks.Add(blockId) ||
+            !document.TryGetBlock(blockId, out var definition) ||
+            definition is null)
+        {
+            return false;
+        }
+
+        try
+        {
+            var entities = new List<CadClipboardEntityItem>();
+            foreach (var entity in document.GetEntitiesInBlock(blockId)
+                         .Where(entity => !entity.IsErased)
+                         .OrderBy(entity => entity.Id.Value))
+            {
+                if (!TryCreateEntitySnapshot(
+                        document,
+                        entity,
+                        blockDefinitions,
+                        blockDefinitionOrder,
+                        visitingBlocks,
+                        out var item) ||
+                    item is null)
+                {
+                    return false;
+                }
+
+                entities.Add(item);
+            }
+
+            blockDefinitions[blockId] = new CadBlockDefinitionClipboardSnapshot(
+                blockId,
+                definition.Name,
+                definition.BasePoint,
+                entities);
+            blockDefinitionOrder.Add(blockId);
+            return true;
+        }
+        finally
+        {
+            visitingBlocks.Remove(blockId);
+        }
+    }
+
     private static bool TryCreateEntitySnapshot(CadEntity entity, out CadEntityClipboardSnapshot? snapshot)
     {
         var state = new CadEntityStateClipboardSnapshot(
@@ -249,6 +345,13 @@ public static class CadClipboardSnapshotFactory
 
         snapshot = entity switch
         {
+            CadBlockReference blockReference => new CadBlockReferenceClipboardSnapshot(
+                state,
+                blockReference.DefinitionBlockId,
+                blockReference.Position,
+                blockReference.RotationRadians,
+                blockReference.ScaleX,
+                blockReference.ScaleY),
             CadLine line => new CadLineClipboardSnapshot(state, line.Start, line.End),
             CadCircle circle => new CadCircleClipboardSnapshot(state, circle.Center, circle.Radius),
             CadEllipse ellipse => new CadEllipseClipboardSnapshot(state, ellipse.Center, ellipse.RadiusX, ellipse.RadiusY),
@@ -386,6 +489,7 @@ public static class CadClipboardSnapshotFactory
             CadSpline spline => spline.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
+            CadBlockReference blockReference => blockReference.GraphicStyleId,
             _ => null
         };
 
