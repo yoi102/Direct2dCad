@@ -119,7 +119,8 @@ internal sealed class Direct2DTransientSceneRenderer(
                         document.ViewSettings.BackgroundColor,
                         text.InvertedMarginFactor,
                         text.TextStyleId,
-                        text.RotationRadians);
+                        text.RotationRadians,
+                        text.TextFormat);
                     break;
                 case CadTransientShapeText text when text.Height > 0:
                     primitives.DrawShapeText(

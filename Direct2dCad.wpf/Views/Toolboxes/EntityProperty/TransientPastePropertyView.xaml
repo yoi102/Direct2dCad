@@ -23,10 +23,56 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0"
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Grid.Column="0"
+                           Margin="0,0,0,8"
+                           Text="{I18N {x:Static r:LangKeys.Entities}}"
+                           VerticalAlignment="Center" />
+                <TextBlock Grid.Row="0"
+                           Grid.Column="1"
+                           Margin="0,0,0,8"
+                           Text="{Binding EntityCount, Mode=OneWay}"
+                           VerticalAlignment="Center" />
+
+                <TextBlock Grid.Row="1"
+                           Grid.Column="0"
+                           Margin="0,0,0,8"
+                           Text="{I18N {x:Static r:LangKeys.BlockReference}}"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasBlockReferences, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Grid.Row="1"
+                           Grid.Column="1"
+                           Margin="0,0,0,8"
+                           Text="{Binding BlockReferenceCount, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasBlockReferences, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <TextBlock Grid.Row="2"
+                           Grid.Column="0"
+                           Margin="0,0,0,8"
+                           Text="{I18N {x:Static r:LangKeys.BlockDefinition}}"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasBlockDefinitions, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Grid.Row="2"
+                           Grid.Column="1"
+                           Margin="0,0,0,8"
+                           Text="{Binding BlockDefinitionCount, Mode=OneWay}"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding HasBlockDefinitions, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                <TextBlock Grid.Row="3"
+                           Grid.Column="0"
                            Text="{I18N {x:Static r:LangKeys.TargetLayer}}"
                            VerticalAlignment="Center" />
-                <ComboBox Grid.Column="1"
+                <ComboBox Grid.Row="3"
+                          Grid.Column="1"
                           ItemsSource="{Binding LayerOptions, Mode=OneWay}"
                           SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}"
                           DisplayMemberPath="Name" />

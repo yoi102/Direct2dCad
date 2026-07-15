@@ -12,17 +12,19 @@ internal sealed class CadPasteInteractionController
 
     public bool IsPreviewActive { get; private set; }
     public bool HasUserCopySnapshot => _hasUserCopySnapshot && _clipboardStore.Snapshot is not null;
+    public CadClipboardSnapshot? Snapshot => _clipboardStore.Snapshot;
 
     public CadPasteInteractionController(ICadClipboardStore clipboardStore)
     {
         _clipboardStore = clipboardStore ?? throw new ArgumentNullException(nameof(clipboardStore));
     }
 
-    public void Copy(CadClipboardInteractionService clipboardService)
+    public CadClipboardSnapshot? Copy(CadClipboardInteractionService clipboardService)
     {
         var snapshot = clipboardService.CreateSelectionSnapshot();
         _clipboardStore.Set(snapshot);
         _hasUserCopySnapshot = snapshot is not null;
+        return snapshot;
     }
 
     public bool BeginPreview(CadClipboardInteractionService clipboardService)

@@ -55,12 +55,22 @@ public sealed class CadCommandLineService : ICadCommandLineService
         Register("SELECTALL", "ALL", "SELECTALL", "Select all selectable entities.", request =>
             Success($"Selected {request.Context.SelectAll()} entities."));
         Register("ERASE", "DELETE, E", "ERASE", "Delete selected entities.", ExecuteErase);
-        Register("COPY", "CO", "COPY", "Copy selected entities.", request => request.Context.CopySelection()
-            ? Success($"Copied {request.Context.SelectionCount} entities.")
-            : Failure("Nothing is selected."));
-        Register("PASTE", "V", "PASTE", "Start a movable paste preview.", request => request.Context.BeginPaste()
-            ? Success("Paste preview active. Move it and click to place.")
-            : Failure("The clipboard does not contain supported CAD content."));
+        Register(
+            "COPY",
+            "CO",
+            "COPY",
+            "Copy selected entities and dependent block definitions.",
+            request => request.Context.CopySelection() is { } summary
+                ? Success($"Copied {FormatClipboardSummary(summary)}.")
+                : Failure("Nothing is selected or the selection contains no supported CAD content."));
+        Register(
+            "PASTE",
+            "V",
+            "PASTE",
+            "Start a movable paste preview, including copied block definitions.",
+            request => request.Context.BeginPaste() is { } summary
+                ? Success($"Paste preview active for {FormatClipboardSummary(summary)}. Move it and click to place.")
+                : Failure("The clipboard does not contain supported CAD content."));
         RegisterMode("LINE", "L", "LINE", "Enter line drawing mode.", CadCommandLineDrawingMode.Line);
         Register("CIRCLE", "C", "CIRCLE [RADIUS|DIAMETER|2P|3P]", "Enter a circle drawing mode.", request =>
             ActivateMode(request.Context, ParseCircleMode(request.Arguments)));
@@ -249,6 +259,28 @@ public sealed class CadCommandLineService : ICadCommandLineService
         return $"  {command.Syntax}{aliases} - {command.Description}";
     }
 
+    private static string FormatClipboardSummary(CadCommandLineClipboardSummary summary)
+    {
+        var parts = new List<string>
+        {
+            $"{summary.EntityCount} {(summary.EntityCount == 1 ? "entity" : "entities")}"
+        };
+        if (summary.BlockReferenceCount > 0)
+        {
+            parts.Add(
+                $"{summary.BlockReferenceCount} block " +
+                (summary.BlockReferenceCount == 1 ? "reference" : "references"));
+        }
+        if (summary.BlockDefinitionCount > 0)
+        {
+            parts.Add(
+                $"{summary.BlockDefinitionCount} dependent block " +
+                (summary.BlockDefinitionCount == 1 ? "definition" : "definitions"));
+        }
+
+        return string.Join(", ", parts);
+    }
+
     private static CadCommandLineResult Success(string message) => new(true, message);
 
     private static CadCommandLineResult Failure(string message) => new(false, message);
@@ -279,8 +311,8 @@ public sealed class CadCommandLineService : ICadCommandLineService
         public void FitToWindow() { }
         public int SelectAll() => 0;
         public int DeleteSelection() => 0;
-        public bool CopySelection() => false;
-        public bool BeginPaste() => false;
+        public CadCommandLineClipboardSummary? CopySelection() => null;
+        public CadCommandLineClipboardSummary? BeginPaste() => null;
         public bool SubmitDrawingPoint(CadCommandLinePoint point) => false;
         public bool CompleteCurrentDrawing() => false;
     }

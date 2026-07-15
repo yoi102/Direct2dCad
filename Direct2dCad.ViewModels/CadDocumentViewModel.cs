@@ -154,6 +154,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     }
 
     public bool IsPastePreviewActive => _paste.IsPreviewActive;
+    internal CadClipboardSnapshot? ActivePasteSnapshot => _paste.IsPreviewActive ? _paste.Snapshot : null;
     public BlockId? BlockInsertionDefinitionId => _insertBlockDefinitionId;
     public double BlockInsertionRotationDegrees => _insertBlockRotationRadians * 180.0 / Math.PI;
     public double BlockInsertionScaleX => _insertBlockScaleX;
@@ -859,10 +860,19 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return CadCanvasInteractionResult.HandledOnly;
     }
 
-    public void CopySelection()
+    public CadClipboardSnapshot? CopySelection()
     {
-        _paste.Copy(CreateClipboardInteractionService());
-        PublishInteractionActivity($"Copy selection ({CadEditor.Selection.EntityIds.Count})");
+        var snapshot = _paste.Copy(CreateClipboardInteractionService());
+        if (snapshot is null)
+            return null;
+
+        var blockReferenceCount = snapshot.Items.Count(item => item.Entity is CadBlockReferenceClipboardSnapshot);
+        var blockDetails = blockReferenceCount > 0
+            ? $", {blockReferenceCount} block references, {snapshot.BlockDefinitions.Count} block definitions"
+            : string.Empty;
+        PublishInteractionActivity(
+            $"Copy selection ({snapshot.Items.Count} entities{blockDetails})");
+        return snapshot;
     }
 
     public void SelectEntities(IEnumerable<EntityId> entityIds)
@@ -1422,11 +1432,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             CreateClipboardInteractionService(),
             target,
             PasteTargetLayerId);
-        if (!CadEditor.ActiveOwnerBlockId.Equals(BlockId.ModelSpace))
-        {
-            foreach (var entityId in createdIds)
-                CadEditor.Document.MoveEntityToBlock(entityId, CadEditor.ActiveOwnerBlockId);
-        }
         if (createdIds.Count > 0)
         {
             CadEditor.Selection.Replace(createdIds.Where(entityId =>
@@ -1437,6 +1442,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         }
 
         OnPropertyChanged(nameof(IsPastePreviewActive));
+        OnPropertyChanged(nameof(ActivePasteSnapshot));
         RequestRender();
     }
 
@@ -1447,6 +1453,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _selectionDrag.Clear();
         OnPropertyChanged(nameof(PasteTargetLayerId));
         OnPropertyChanged(nameof(IsPastePreviewActive));
+        OnPropertyChanged(nameof(ActivePasteSnapshot));
         RaiseInteractionStateChanged();
         PublishInteractionActivity("Begin paste preview");
         RequestRender();
@@ -1461,6 +1468,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _gripDrag.Clear();
         _paste.Clear(clearClipboard);
         OnPropertyChanged(nameof(IsPastePreviewActive));
+        OnPropertyChanged(nameof(ActivePasteSnapshot));
 
         _overlayScenes.ClearTransientScene();
 
@@ -2352,21 +2360,35 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return DeleteSelection().Handled ? count : 0;
     }
 
-    bool ICadCommandLineContext.CopySelection()
+    CadCommandLineClipboardSummary? ICadCommandLineContext.CopySelection()
     {
         if (CadEditor.Selection.EntityIds.Count == 0)
-            return false;
+            return null;
 
-        CopySelection();
-        return true;
+        return CreateClipboardSummary(CopySelection());
     }
 
-    bool ICadCommandLineContext.BeginPaste() => BeginClipboardPastePreview().Handled;
+    CadCommandLineClipboardSummary? ICadCommandLineContext.BeginPaste()
+    {
+        return BeginClipboardPastePreview().Handled
+            ? CreateClipboardSummary(_paste.Snapshot)
+            : null;
+    }
 
     bool ICadCommandLineContext.SubmitDrawingPoint(CadCommandLinePoint point) =>
         HandleDrawingWorldPoint(SnapWorld(new CadPointD(point.X, point.Y)));
 
     bool ICadCommandLineContext.CompleteCurrentDrawing() => CompleteCurrentDrawing().Handled;
+
+    private static CadCommandLineClipboardSummary? CreateClipboardSummary(CadClipboardSnapshot? snapshot)
+    {
+        return snapshot is null
+            ? null
+            : new CadCommandLineClipboardSummary(
+                snapshot.Items.Count,
+                snapshot.Items.Count(item => item.Entity is CadBlockReferenceClipboardSnapshot),
+                snapshot.BlockDefinitions.Count);
+    }
 
     private void RaiseInteractionStateChanged()
     {

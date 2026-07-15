@@ -707,7 +707,7 @@ public sealed class CadEditor
 
     public IReadOnlyList<EntityId> DuplicateEntities(IEnumerable<EntityId> entityIds, CadVectorD delta)
     {
-        var command = new DuplicateEntitiesCommand(entityIds, delta);
+        var command = new DuplicateEntitiesCommand(entityIds, delta, ActiveOwnerBlockId);
         DocumentCommands.Execute(command);
         return command.CreatedEntityIds.ToArray();
     }

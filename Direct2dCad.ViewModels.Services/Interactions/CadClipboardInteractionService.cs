@@ -67,7 +67,16 @@ internal sealed class CadClipboardInteractionService(
         IReadOnlyDictionary<BlockId, CadBlockDefinitionClipboardSnapshot> blockDefinitions,
         HashSet<BlockId> visitingBlocks)
     {
-        var style = CreatePreviewStyle(item, targetLayer, document);
+        var effectiveLayer = targetLayer ?? document.Layers.Values.FirstOrDefault(layer =>
+            string.Equals(layer.Name, item.Layer.Name, StringComparison.OrdinalIgnoreCase));
+        if (!item.Entity.State.IsVisible ||
+            effectiveLayer is { IsVisible: false } or { IsFrozen: true } ||
+            effectiveLayer is null && (!item.Layer.IsVisible || item.Layer.IsFrozen))
+        {
+            return;
+        }
+
+        var style = CreatePreviewStyle(item, effectiveLayer, document);
         switch (item.Entity)
         {
             case CadBlockReferenceClipboardSnapshot blockReference:
@@ -144,7 +153,8 @@ internal sealed class CadClipboardInteractionService(
                     text.IsInverted,
                     text.InvertedMarginFactor,
                     null,
-                    text.RotationRadians));
+                    text.RotationRadians,
+                    CreateTransientTextFormat(item.TextStyle)));
                 break;
 
             case CadShapeTextClipboardSnapshot shapeText:
@@ -295,6 +305,13 @@ internal sealed class CadClipboardInteractionService(
         }
 
         return null;
+    }
+
+    private static CadTransientTextFormat? CreateTransientTextFormat(CadStyleClipboardSnapshot? textStyle)
+    {
+        return textStyle is CadTextStyleClipboardSnapshot text
+            ? new CadTransientTextFormat(text.FontFamily, text.IsBold, text.IsItalic)
+            : null;
     }
 
     private static CadTransientHatchFill? ResolvePreviewHatchFill(CadStyleClipboardSnapshot? fillStyle)

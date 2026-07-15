@@ -226,7 +226,8 @@ internal sealed class Direct2DTransientRenderer(
         CadColor? invertedTextColor,
         double invertedMarginFactor,
         StyleId? textStyleId,
-        double rotationRadians)
+        double rotationRadians,
+        CadTransientTextFormat? textFormat)
     {
         if (resourceCache.WriteFactory is null || bounds.IsEmpty)
             return;
@@ -244,7 +245,7 @@ internal sealed class Direct2DTransientRenderer(
             var brush = styleResources.GetBrush(
                 context,
                 isInverted ? invertedTextColor ?? CadColor.Black : style.StrokeColor);
-            var format = textFormatResources.GetForFrame(document, textStyleId, height);
+            var format = textFormatResources.GetForFrame(document, textStyleId, height, textFormat);
             if (format is not null)
                 DrawTextClipped(context, text, format, position, bounds, brush);
         }

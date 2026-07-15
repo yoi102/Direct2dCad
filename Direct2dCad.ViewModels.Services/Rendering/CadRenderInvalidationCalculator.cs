@@ -74,10 +74,7 @@ internal sealed class CadRenderInvalidationCalculator(
     {
         return item switch
         {
-            CadTransientGroup group => CreateTransientBoundsInvalidation(
-                ResolveTransientGroupBounds(group),
-                group.Style,
-                minimumPaddingPixels: 24.0),
+            CadTransientGroup group => CreateTransientGroupInvalidation(group),
             CadTransientLine line => CreateTransientBoundsInvalidation(
                 BoundsFromPoints(line.Start, line.End),
                 line.Style),
@@ -122,6 +119,18 @@ internal sealed class CadRenderInvalidationCalculator(
             CadTransientBlockReference reference => CreateBlockReferenceInvalidation(reference),
             _ => CadRenderInvalidation.FromScreenRect(default)
         };
+    }
+
+    private CadRenderInvalidation CreateTransientGroupInvalidation(CadTransientGroup group)
+    {
+        var bounds = ResolveTransientGroupBounds(group);
+        if (bounds.IsEmpty)
+            return CadRenderInvalidation.Empty;
+
+        var padding = ResolveTransientGroupPadding(
+            group.Items,
+            ResolveMaximumScale(group.Transform));
+        return CreateWorldBoundsInvalidation(bounds, Math.Max(24.0, padding));
     }
 
     private CadRectD ResolveTransientGroupBounds(CadTransientGroup group)
@@ -176,6 +185,40 @@ internal sealed class CadRenderInvalidationCalculator(
                 reference.ScaleX,
                 reference.ScaleY,
                 localBounds);
+    }
+
+    private double ResolveTransientGroupPadding(
+        IReadOnlyList<CadTransientItem> items,
+        double accumulatedScale)
+    {
+        var maximum = 0.0;
+        foreach (var item in items)
+        {
+            if (item is CadTransientGroup group)
+            {
+                maximum = Math.Max(
+                    maximum,
+                    ResolveTransientGroupPadding(
+                        group.Items,
+                        accumulatedScale * ResolveMaximumScale(group.Transform)));
+                continue;
+            }
+
+            var minimumPadding = item is CadTransientImage or CadTransientOleObject ? 4.0 : 12.0;
+            maximum = Math.Max(
+                maximum,
+                ResolveTransientInvalidationPadding(item.Style, minimumPadding) * accumulatedScale);
+        }
+
+        return maximum;
+    }
+
+    private static double ResolveMaximumScale(CadMatrixD transform)
+    {
+        var scaleX = Math.Sqrt(transform.M11 * transform.M11 + transform.M12 * transform.M12);
+        var scaleY = Math.Sqrt(transform.M21 * transform.M21 + transform.M22 * transform.M22);
+        var scale = Math.Max(scaleX, scaleY);
+        return double.IsFinite(scale) ? Math.Max(scale, 1.0) : 1.0;
     }
 
     private CadRenderInvalidation CreateBlockReferenceInvalidation(CadTransientBlockReference reference)

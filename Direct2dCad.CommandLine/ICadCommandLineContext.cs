@@ -17,8 +17,13 @@ public interface ICadCommandLineContext
     void FitToWindow();
     int SelectAll();
     int DeleteSelection();
-    bool CopySelection();
-    bool BeginPaste();
+    CadCommandLineClipboardSummary? CopySelection();
+    CadCommandLineClipboardSummary? BeginPaste();
     bool SubmitDrawingPoint(CadCommandLinePoint point);
     bool CompleteCurrentDrawing();
 }
+
+public sealed record CadCommandLineClipboardSummary(
+    int EntityCount,
+    int BlockReferenceCount,
+    int BlockDefinitionCount);

@@ -1,6 +1,7 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Rendering.Transient;
 using Vortice.DirectWrite;
 
 namespace Direct2dCad.Rendering.Direct2D;
@@ -67,13 +68,16 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
     public IDWriteTextFormat? GetForFrame(
         CadDocument document,
         StyleId? textStyleId,
-        double height)
+        double height,
+        CadTransientTextFormat? transientFormat = null)
     {
         ThrowIfDisposed();
         if (_writeFactory is null)
             return null;
 
-        var key = Direct2DTextServices.CreateTextFormatKey(document, textStyleId, height);
+        var key = transientFormat is null
+            ? Direct2DTextServices.CreateTextFormatKey(document, textStyleId, height)
+            : Direct2DTextServices.CreateTextFormatKey(transientFormat, height);
         if (_frameDepth > 0)
             _usedThisFrame.Add(key);
         return GetOrCreate(key).Format;

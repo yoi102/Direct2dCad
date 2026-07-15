@@ -113,7 +113,8 @@ internal sealed class Direct2DEntityReferenceRenderer(
                     document.ViewSettings.BackgroundColor,
                     text.InvertedMarginFactor,
                     text.TextStyleId,
-                    text.RotationRadians);
+                    text.RotationRadians,
+                    textFormat: null);
                 break;
             default:
                 transientRenderer.DrawRectangle(context, viewport, entity.Bounds.Translate(reference.Offset), reference.Style);

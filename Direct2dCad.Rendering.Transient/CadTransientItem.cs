@@ -98,8 +98,14 @@ public sealed record CadTransientText(
     bool IsInverted = false,
     double InvertedMarginFactor = CadText.DefaultInvertedMarginFactor,
     StyleId? TextStyleId = null,
-    double RotationRadians = 0.0)
+    double RotationRadians = 0.0,
+    CadTransientTextFormat? TextFormat = null)
     : CadTransientItem(Style);
+
+public sealed record CadTransientTextFormat(
+    string FontFamily,
+    bool IsBold,
+    bool IsItalic);
 
 public sealed record CadTransientShapeText(
     string Text,

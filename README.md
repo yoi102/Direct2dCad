@@ -7,7 +7,7 @@ Direct2dCad 是一个基于 WPF、Direct2D 和 DirectWrite 的桌面 CAD 编辑�
 主要功能：
 
 - 绘制和编辑常见 CAD 实体，支持图层、样式、填充、文字、OLE对象与图像。
-- 提供选择、框选、grip / handle 拖拽、复制粘贴和多实体编辑。
+- 提供选择、框选、grip / handle 拖拽、跨文档复制粘贴和多实体编辑；复制 Block Reference 时会递归携带依赖的块定义。
 - 使用命令系统管理文档与视口操作，支持单条或批量 undo / redo。
 - 通过 Direct2D 资源缓存、局部刷新和变更跟踪提高渲染效率。
 - 提供 WPF 工具面板、属性设置、文件读写、CAD Terminal 和多语言界面。
@@ -138,6 +138,7 @@ CAD 文档命令层。
 
 - 定义 `ICadCommand` 和命令执行结果。
 - 实现实体 CRUD、属性修改、图层修改、原点设置等可 undo / redo 的文档命令。
+- 使用统一的剪贴板快照实现复制、粘贴和重复实体，支持嵌套 Block Reference 及其依赖资源。
 - 支持单条命令和批量命令。
 - 批量命令是否按组 undo / redo，应该由命令管理设置决定，而不是由渲染层决定。
 - 命令执行后返回 `CadDocumentChangeSet`，用于索引、缓存和 Direct2D 资源更新。
@@ -150,7 +151,7 @@ CAD 文档命令层。
 
 - 定义命令目录、语法、别名、执行上下文和执行结果。
 - 通过 `ICadCommandLineHandler` 和 `CadCommandLineRegistry` 注册内置、插件或 AI 命令，无需修改中心 switch。
-- 支持 `HELP`、undo / redo、fit、选择、删除、复制粘贴以及实体绘制模式命令。
+- 支持 `HELP`、undo / redo、fit、选择、删除、复制粘贴以及实体绘制模式命令；复制粘贴结果会报告实体、块引用和依赖块定义数量。
 - 支持 Tab 补全、命令历史、空 Enter 重复命令，以及 `X,Y`、`@dX,dY`、`@距离<角度` 坐标输入。
 - 将圆、圆弧、椭圆等命令的子模式转换为稳定的语义枚举。
 - 不依赖 WPF、ViewModels、Editor 或 Db，可供桌面 UI、脚本、插件和后续 AI 功能复用。
@@ -212,6 +213,7 @@ WPF Terminal 的日志、输入历史和当前文档适配仍由 ViewModel 层�
 
 - 定义绘制模式中的临时图形，例如 circle / arc / ellipse / line / polyline / spline / polygon / rectangle / text 预览。
 - 定义选择框、复制粘贴预览、snap marker、绘制辅助线和测量文字。
+- 使用可递归变换的 transient group 表示跨文档 Block 粘贴预览，并纳入局部刷新、图像和 OLE 缓存管理。
 - Transient 图形的 stroke、fill、hatch、line weight 应尽量与最终实体绘制一致。
 - 不负责命令执行，也不把临时图形持久化到 `CadDocument`。
 

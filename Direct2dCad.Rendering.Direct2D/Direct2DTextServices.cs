@@ -3,6 +3,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Transient;
 using Vortice.DirectWrite;
 
 namespace Direct2dCad.Rendering.Direct2D;
@@ -102,6 +103,18 @@ internal static class Direct2DTextServices
         var fontFamily = style?.FontFamily ?? "Meiryo";
         var fontWeight = style?.IsBold == true ? FontWeight.Bold : FontWeight.Normal;
         var fontStyle = style?.IsItalic == true ? FontStyle.Italic : FontStyle.Normal;
+        var fontSize = (float)(height * CadText.FontSizeScale);
+        return new Direct2DTextFormatKey(fontFamily, fontWeight, fontStyle, fontSize);
+    }
+
+    internal static Direct2DTextFormatKey CreateTextFormatKey(
+        CadTransientTextFormat format,
+        double height)
+    {
+        ArgumentNullException.ThrowIfNull(format);
+        var fontFamily = string.IsNullOrWhiteSpace(format.FontFamily) ? "Meiryo" : format.FontFamily.Trim();
+        var fontWeight = format.IsBold ? FontWeight.Bold : FontWeight.Normal;
+        var fontStyle = format.IsItalic ? FontStyle.Italic : FontStyle.Normal;
         var fontSize = (float)(height * CadText.FontSizeScale);
         return new Direct2DTextFormatKey(fontFamily, fontWeight, fontStyle, fontSize);
     }
