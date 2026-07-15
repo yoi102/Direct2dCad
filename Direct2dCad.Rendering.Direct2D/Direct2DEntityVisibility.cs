@@ -1,3 +1,4 @@
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
@@ -13,6 +14,7 @@ internal static class Direct2DEntityVisibility
         Direct2DResourceCache resourceCache)
     {
         var dirtyWorldBounds = ResolveDirtyWorldBounds(viewport, options);
+        var blockDefinitionPaintBounds = new Dictionary<BlockId, CadRectD>();
         return document.Entities.Values
             .Where(entity =>
                 !entity.IsErased &&
@@ -20,11 +22,13 @@ internal static class Direct2DEntityVisibility
                 entity.IsVisible &&
                 !options.HiddenEntityIds.Contains(entity.Id) &&
                 (dirtyWorldBounds is null || IntersectsDirtyBounds(
+                    document,
                     entity,
                     dirtyWorldBounds.Value,
                     viewport,
                     options,
-                    resourceCache)) &&
+                    resourceCache,
+                    blockDefinitionPaintBounds)) &&
                 document.TryGetLayer(entity.LayerId, out var layer) &&
                 layer is { IsVisible: true, IsFrozen: false })
             .OrderBy(entity => document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
@@ -45,25 +49,51 @@ internal static class Direct2DEntityVisibility
     }
 
     private static bool IntersectsDirtyBounds(
+        CadDocument document,
         CadEntity entity,
         CadRectD dirtyWorldBounds,
         CadViewport viewport,
         CadRenderOptions options,
-        Direct2DResourceCache resourceCache)
+        Direct2DResourceCache resourceCache,
+        Dictionary<BlockId, CadRectD> blockDefinitionPaintBounds)
     {
         resourceCache.TryGetEntityResources(entity.Id, out var resources);
-        var bounds = ResolvePaintBounds(entity, resources, viewport, options);
+        var bounds = ResolvePaintBounds(
+            document,
+            entity,
+            resources,
+            viewport,
+            options,
+            resourceCache,
+            blockDefinitionPaintBounds,
+            []);
         return bounds.Intersects(dirtyWorldBounds) ||
                bounds.Contains(dirtyWorldBounds.Center) ||
                dirtyWorldBounds.Contains(bounds);
     }
 
     private static CadRectD ResolvePaintBounds(
+        CadDocument document,
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket? resources,
         CadViewport viewport,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
+        Dictionary<BlockId, CadRectD> blockDefinitionPaintBounds,
+        HashSet<BlockId> visitedBlocks)
     {
+        if (entity is CadBlockReference blockReference)
+        {
+            return ResolveBlockReferencePaintBounds(
+                document,
+                blockReference,
+                viewport,
+                options,
+                resourceCache,
+                blockDefinitionPaintBounds,
+                visitedBlocks);
+        }
+
         var bounds = entity.Bounds;
         if (bounds.IsEmpty)
             return bounds;
@@ -83,6 +113,90 @@ internal static class Direct2DEntityVisibility
         return padding > 0 ? bounds.Inflate(padding) : bounds;
     }
 
+    private static CadRectD ResolveBlockReferencePaintBounds(
+        CadDocument document,
+        CadBlockReference reference,
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
+        Dictionary<BlockId, CadRectD> blockDefinitionPaintBounds,
+        HashSet<BlockId> visitedBlocks)
+    {
+        if (!document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
+            definition is null)
+        {
+            return reference.Bounds;
+        }
+
+        var localPaintBounds = ResolveBlockDefinitionPaintBounds(
+            document,
+            reference.DefinitionBlockId,
+            viewport,
+            options,
+            resourceCache,
+            blockDefinitionPaintBounds,
+            visitedBlocks);
+
+        if (localPaintBounds.IsEmpty)
+            return reference.Bounds;
+
+        return CadBlockTransform.TransformBounds(definition, reference, localPaintBounds)
+            .Union(reference.Bounds);
+    }
+
+    private static CadRectD ResolveBlockDefinitionPaintBounds(
+        CadDocument document,
+        BlockId definitionBlockId,
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
+        Dictionary<BlockId, CadRectD> blockDefinitionPaintBounds,
+        HashSet<BlockId> visitedBlocks)
+    {
+        if (blockDefinitionPaintBounds.TryGetValue(definitionBlockId, out var cachedBounds))
+            return cachedBounds;
+
+        if (!visitedBlocks.Add(definitionBlockId))
+            return CadRectD.Empty;
+
+        var bounds = CadRectD.Empty;
+        try
+        {
+            foreach (var child in document.GetEntitiesInBlock(definitionBlockId))
+            {
+                if (child.IsErased ||
+                    !child.IsVisible ||
+                    options.HiddenEntityIds.Contains(child.Id) ||
+                    !document.TryGetLayer(child.LayerId, out var layer) ||
+                    layer is not { IsVisible: true, IsFrozen: false })
+                {
+                    continue;
+                }
+
+                Direct2DResourceCache.EntityResourceBucket? childResources = null;
+                if (child is not CadBlockReference)
+                    resourceCache.TryGetEntityResources(child.Id, out childResources);
+
+                bounds = bounds.Union(ResolvePaintBounds(
+                    document,
+                    child,
+                    childResources,
+                    viewport,
+                    options,
+                    resourceCache,
+                    blockDefinitionPaintBounds,
+                    visitedBlocks));
+            }
+        }
+        finally
+        {
+            visitedBlocks.Remove(definitionBlockId);
+        }
+
+        blockDefinitionPaintBounds[definitionBlockId] = bounds;
+        return bounds;
+    }
+
     private static bool UsesStrokeWidth(CadEntity entity)
     {
         return entity is CadLine or
@@ -93,8 +207,7 @@ internal static class Direct2DEntityVisibility
             CadArc or
             CadPolyline or
             CadSpline or
-            CadShapeText or
-            CadBlockReference;
+            CadShapeText;
     }
 
     private static float ResolveStrokeWidth(

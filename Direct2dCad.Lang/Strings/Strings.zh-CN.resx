@@ -1020,6 +1020,15 @@
   <data name="CreateBlock" xml:space="preserve">
     <value>创建块</value>
   </data>
+  <data name="CreateBlockNameRequired" xml:space="preserve">
+    <value>请输入块名称。</value>
+  </data>
+  <data name="BlockNameAlreadyExists" xml:space="preserve">
+    <value>已存在同名块。</value>
+  </data>
+  <data name="CreateBlockBasePointInvalid" xml:space="preserve">
+    <value>请输入有效的基点。</value>
+  </data>
   <data name="InsertBlock" xml:space="preserve">
     <value>插入块</value>
   </data>

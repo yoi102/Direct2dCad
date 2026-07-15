@@ -1,5 +1,6 @@
 using AvalonDock.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Enums;
@@ -14,18 +15,26 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
 {
 
     private readonly IDisposable _interactionStateChangedSubscription;
+    private readonly IDisposable _blockDefinitionSelectionChangedSubscription;
     private readonly ISystemFontCatalog _systemFontCatalog;
+    private readonly ISnackbarService _snackbarService;
+    private BlockId? _selectedBlockDefinitionId;
 
     public EntityPropertiesToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber,
-        ISystemFontCatalog systemFontCatalog)
+        ISubscriber<CadBlockDefinitionSelectionChangedMessage> blockDefinitionSelectionChangedSubscriber,
+        ISystemFontCatalog systemFontCatalog,
+        ISnackbarService snackbarService)
         : base(toolboxLayoutSettingsStore, "toolbox.entity-properties", DockZone.LeftBottom, isOpenByDefault: true)
     {
         _systemFontCatalog = systemFontCatalog ?? throw new ArgumentNullException(nameof(systemFontCatalog));
+        _snackbarService = snackbarService ?? throw new ArgumentNullException(nameof(snackbarService));
         Title = Strings.Property;
         _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
+        _blockDefinitionSelectionChangedSubscription = blockDefinitionSelectionChangedSubscriber.Subscribe(
+            OnBlockDefinitionSelectionChanged);
         Icon = toolboxIconProvider.Git;
         Shortcut = "Ctrl+Shift+G";
         CanClose = false;
@@ -43,6 +52,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
+        _selectedBlockDefinitionId = null;
         _documentViewModel = documentViewModel;
 
         Refresh();
@@ -56,9 +66,19 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
         Refresh();
     }
 
+    private void OnBlockDefinitionSelectionChanged(CadBlockDefinitionSelectionChangedMessage message)
+    {
+        if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
+            return;
+
+        _selectedBlockDefinitionId = message.BlockId;
+        Refresh();
+    }
+
     public void Dispose()
     {
         _interactionStateChangedSubscription.Dispose();
+        _blockDefinitionSelectionChangedSubscription.Dispose();
     }
 
     private void Refresh()
@@ -79,6 +99,22 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             else
             {
                 Entity = new TransientPastePropertyViewModel(_documentViewModel);
+            }
+
+            return;
+        }
+
+        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.InsertBlock &&
+            _documentViewModel.BlockInsertionDefinitionId is not null)
+        {
+            if (Entity is TransientBlockInsertionPropertyViewModel transient &&
+                ReferenceEquals(transient.DocumentViewModel, _documentViewModel))
+            {
+                transient.RefreshFromDocument();
+            }
+            else
+            {
+                Entity = new TransientBlockInsertionPropertyViewModel(_documentViewModel);
             }
 
             return;
@@ -452,6 +488,26 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             else
             {
                 Entity = new CommonEntityPropertyViewModel(_documentViewModel, entity.Id);
+            }
+
+            return;
+        }
+
+        if (_selectedBlockDefinitionId is { } blockId &&
+            _documentViewModel.CadEditor.Document.TryGetBlock(blockId, out var block) &&
+            block is { IsSystem: false })
+        {
+            if (Entity is BlockDefinitionPropertyViewModel blockDefinitionViewModel &&
+                blockDefinitionViewModel.BlockId.Equals(blockId))
+            {
+                blockDefinitionViewModel.RefreshFromDefinition();
+            }
+            else
+            {
+                Entity = new BlockDefinitionPropertyViewModel(
+                    _documentViewModel,
+                    blockId,
+                    _snackbarService);
             }
 
             return;

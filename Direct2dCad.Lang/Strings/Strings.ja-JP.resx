@@ -1020,6 +1020,15 @@
   <data name="CreateBlock" xml:space="preserve">
     <value>ブロックを作成</value>
   </data>
+  <data name="CreateBlockNameRequired" xml:space="preserve">
+    <value>ブロック名を入力してください。</value>
+  </data>
+  <data name="BlockNameAlreadyExists" xml:space="preserve">
+    <value>同じ名前のブロックが既に存在します。</value>
+  </data>
+  <data name="CreateBlockBasePointInvalid" xml:space="preserve">
+    <value>有効な基点を入力してください。</value>
+  </data>
   <data name="InsertBlock" xml:space="preserve">
     <value>ブロックを挿入</value>
   </data>

@@ -1314,6 +1314,16 @@
                                 Command="{Binding OpenDocumentSettingsDialogCommand}">
 
                         </Button>
+
+                        <Button   Width="33"
+                                  Height="33"
+                                  Margin="5"
+                                  Padding="0"
+                                  Content="{md:PackIcon Kind=ShapePlus, Size=30}"
+                                  Command="{Binding CurrentEditorTabViewModel.CreateBlockFromSelectionCommand}"
+                                  Style="{StaticResource MaterialDesignFlatButton}"
+                                  ToolTip="{I18N {x:Static r:LangKeys.CreateBlock}}" />
+
                     </WrapPanel>
 
 

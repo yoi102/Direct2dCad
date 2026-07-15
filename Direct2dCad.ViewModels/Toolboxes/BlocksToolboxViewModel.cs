@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
-using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -17,6 +16,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
     private readonly IDisposable _interactionSubscription;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
+    private readonly IPublisher<CadBlockDefinitionSelectionChangedMessage> _selectionChangedPublisher;
     private CadDocumentViewModel? _documentViewModel;
     private bool _isRefreshing;
 
@@ -25,7 +25,8 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         IToolboxIconProvider toolboxIconProvider,
         IDialogService dialogService,
         ISnackbarService snackbarService,
-        ISubscriber<CadDocumentInteractionStateChangedMessage> interactionSubscriber)
+        ISubscriber<CadDocumentInteractionStateChangedMessage> interactionSubscriber,
+        IPublisher<CadBlockDefinitionSelectionChangedMessage> selectionChangedPublisher)
         : base(toolboxLayoutSettingsStore, "toolbox.blocks", DockZone.BottomLeft, isOpenByDefault: true)
     {
         Title = Localize("Blocks", "Blocks");
@@ -34,53 +35,32 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         CanClose = false;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
+        _selectionChangedPublisher = selectionChangedPublisher;
         _interactionSubscription = interactionSubscriber.Subscribe(OnInteractionStateChanged);
     }
 
     public ObservableCollection<BlockItemViewModel> Blocks { get; } = [];
     public bool HasDocument => _documentViewModel is not null;
     public bool IsEditingBlock => _documentViewModel?.IsEditingBlock == true;
-    public string CreateLabel => Localize("CreateBlock", "Create block");
     public string InsertLabel => Localize("InsertBlock", "Insert block");
     public string EditLabel => Localize("EditBlock", "Edit block");
     public string ExitEditLabel => Localize("ExitBlockEditor", "Exit block editor");
     public string DeleteLabel => Localize("DeleteBlock", "Delete block");
-    public string BasePointLabel => Localize("BasePoint", "Base point");
     public string ReferencesLabel => Localize("References", "References");
     public string EntitiesLabel => Localize("Entities", "Entities");
-    public string RotationLabel => Localize("Rotation", "Rotation");
-    public string ScaleXLabel => Localize("ScaleX", "Scale X");
-    public string ScaleYLabel => Localize("ScaleY", "Scale Y");
 
     [ObservableProperty]
     public partial BlockItemViewModel? SelectedBlock { get; set; }
 
-    [ObservableProperty]
-    public partial string NewBlockName { get; set; } = "Block 1";
-
-    [ObservableProperty]
-    public partial double CreateBasePointX { get; set; }
-
-    [ObservableProperty]
-    public partial double CreateBasePointY { get; set; }
-
-    [ObservableProperty]
-    public partial double SelectedBasePointX { get; set; }
-
-    [ObservableProperty]
-    public partial double SelectedBasePointY { get; set; }
-
-    [ObservableProperty]
-    public partial double InsertRotationDegrees { get; set; }
-
-    [ObservableProperty]
-    public partial double InsertScaleX { get; set; } = 1;
-
-    [ObservableProperty]
-    public partial double InsertScaleY { get; set; } = 1;
-
     public void Attach(CadDocumentViewModel? documentViewModel)
     {
+        if (_documentViewModel is not null &&
+            !ReferenceEquals(_documentViewModel, documentViewModel))
+        {
+            _selectionChangedPublisher.Publish(
+                new CadBlockDefinitionSelectionChangedMessage(_documentViewModel, null));
+        }
+
         _documentViewModel = documentViewModel;
         OnPropertyChanged(nameof(HasDocument));
         RefreshBlocks();
@@ -88,18 +68,14 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     partial void OnSelectedBlockChanged(BlockItemViewModel? value)
     {
-        _isRefreshing = true;
-        try
-        {
-            SelectedBasePointX = value?.BasePoint.X ?? 0;
-            SelectedBasePointY = value?.BasePoint.Y ?? 0;
-        }
-        finally
-        {
-            _isRefreshing = false;
-        }
-
         NotifyCommandStates();
+        if (_documentViewModel is not null)
+        {
+            _selectionChangedPublisher.Publish(
+                new CadBlockDefinitionSelectionChangedMessage(
+                    _documentViewModel,
+                    value?.BlockId));
+        }
     }
 
     internal void RenameBlock(BlockItemViewModel item, string name)
@@ -120,54 +96,6 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         RefreshBlocks(item.BlockId);
     }
 
-    [RelayCommand(CanExecute = nameof(CanCreateFromSelection))]
-    private void CreateFromSelection()
-    {
-        if (_documentViewModel is null)
-            return;
-        var selectedIds = _documentViewModel.CadEditor.Selection.EntityIds
-            .Where(id => _documentViewModel.CadEditor.Document.TryGetEntity(id, out var entity) &&
-                         entity is { IsErased: false } &&
-                         entity.OwnerBlockId.Equals(_documentViewModel.CadEditor.ActiveOwnerBlockId))
-            .ToArray();
-        if (selectedIds.Length == 0)
-            return;
-
-        try
-        {
-            var command = _documentViewModel.CadEditor.CreateBlock(
-                selectedIds,
-                NewBlockName,
-                new CadPointD(CreateBasePointX, CreateBasePointY),
-                _documentViewModel.DrawingLayerId);
-            if (command.CreatedReferenceId is { } referenceId)
-                _documentViewModel.SelectEntities([referenceId]);
-            RefreshBlocks(command.CreatedBlockId);
-        }
-        catch (Exception ex)
-        {
-            _snackbarService.Enqueue(ex.Message);
-        }
-    }
-
-    private bool CanCreateFromSelection() =>
-        _documentViewModel is not null && _documentViewModel.CadEditor.Selection.EntityIds.Count > 0;
-
-    [RelayCommand]
-    private void UseSelectionCenter()
-    {
-        if (_documentViewModel is null)
-            return;
-        var bounds = _documentViewModel.CadEditor.Selection.EntityIds
-            .Select(id => _documentViewModel.CadEditor.Document.TryGetEntity(id, out var entity) ? entity : null)
-            .Where(entity => entity is { IsErased: false })
-            .Aggregate(CadRectD.Empty, static (current, entity) => current.Union(entity!.Bounds));
-        if (bounds.IsEmpty)
-            return;
-        CreateBasePointX = bounds.Center.X;
-        CreateBasePointY = bounds.Center.Y;
-    }
-
     [RelayCommand(CanExecute = nameof(CanInsert))]
     private void Insert()
     {
@@ -175,11 +103,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
             return;
         try
         {
-            _documentViewModel.BeginBlockInsertion(
-                SelectedBlock.BlockId,
-                InsertRotationDegrees * Math.PI / 180.0,
-                InsertScaleX,
-                InsertScaleY);
+            _documentViewModel.BeginBlockInsertion(SelectedBlock.BlockId);
         }
         catch (Exception ex)
         {
@@ -215,26 +139,6 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
     }
 
     private bool CanExitEdit() => IsEditingBlock;
-
-    [RelayCommand(CanExecute = nameof(CanApplyBasePoint))]
-    private void ApplyBasePoint()
-    {
-        if (_documentViewModel is null || SelectedBlock is null || _isRefreshing)
-            return;
-        try
-        {
-            _documentViewModel.CadEditor.SetBlockDefinitionBasePoint(
-                SelectedBlock.BlockId,
-                new CadPointD(SelectedBasePointX, SelectedBasePointY));
-        }
-        catch (Exception ex)
-        {
-            _snackbarService.Enqueue(ex.Message);
-        }
-        RefreshBlocks(SelectedBlock.BlockId);
-    }
-
-    private bool CanApplyBasePoint() => CanEdit();
 
     [RelayCommand(CanExecute = nameof(CanDelete))]
     private async Task Delete()
@@ -296,7 +200,6 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
                         block,
                         document.GetBlockReferenceIds(block.Id).Count));
                 }
-                NewBlockName = CreateUniqueBlockName(document);
             }
 
             SelectedBlock = selectedBlockId is { } id
@@ -314,25 +217,10 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     private void NotifyCommandStates()
     {
-        CreateFromSelectionCommand.NotifyCanExecuteChanged();
         InsertCommand.NotifyCanExecuteChanged();
         EditCommand.NotifyCanExecuteChanged();
         ExitEditCommand.NotifyCanExecuteChanged();
-        ApplyBasePointCommand.NotifyCanExecuteChanged();
         DeleteCommand.NotifyCanExecuteChanged();
-    }
-
-    private static string CreateUniqueBlockName(CadDocument document)
-    {
-        for (var index = 1; ; index++)
-        {
-            var name = $"Block {index}";
-            if (document.Blocks.Values.All(block =>
-                    !string.Equals(block.Name, name, StringComparison.OrdinalIgnoreCase)))
-            {
-                return name;
-            }
-        }
     }
 
     private static string Localize(string key, string fallback) =>
@@ -356,7 +244,6 @@ public sealed partial class BlockItemViewModel : ObservableObject
         _refreshing = true;
         Name = block.Name;
         _refreshing = false;
-        BasePoint = block.BasePoint;
         EntityCount = block.EntityIds.Count;
         ReferenceCount = referenceCount;
         IsReadOnly = block.IsReadOnly;
@@ -364,7 +251,6 @@ public sealed partial class BlockItemViewModel : ObservableObject
     }
 
     public BlockId BlockId { get; }
-    public CadPointD BasePoint { get; }
     public int EntityCount { get; }
     public int ReferenceCount { get; }
     public bool IsReadOnly { get; }

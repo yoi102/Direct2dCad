@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:yr="https://github.com/yoi102/xaml/controls"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
@@ -12,130 +11,111 @@
              d:DataContext="{d:DesignInstance Type=vm:BlocksToolboxViewModel}"
              d:DesignWidth="320"
              d:DesignHeight="640">
-    <Grid Background="Transparent" IsEnabled="{Binding HasDocument}">
+    <Grid Background="Transparent"
+          IsEnabled="{Binding HasDocument}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="10,8,10,8">
-            <TextBlock Text="{Binding CreateLabel}" FontWeight="SemiBold" Margin="0,0,0,7" />
-            <TextBox Text="{Binding NewBlockName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                     mah:TextBoxHelper.Watermark="{Binding CreateLabel}"
-                     Margin="0,0,0,7" />
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="32" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="X" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Column="1" Value="{Binding CreateBasePointX, Mode=TwoWay}" StringFormat="F3" />
-                <TextBlock Grid.Column="2" Text="Y" VerticalAlignment="Center" Margin="6,0,0,0" />
-                <mah:NumericUpDown Grid.Column="3" Value="{Binding CreateBasePointY, Mode=TwoWay}" StringFormat="F3" />
-                <Button Grid.Column="4" Width="28" Height="28" Padding="0"
-                        Command="{Binding UseSelectionCenterCommand}"
-                        Style="{StaticResource MaterialDesignFlatButton}"
-                        ToolTip="{Binding BasePointLabel}">
-                    <md:PackIcon Kind="SelectionMarker" Width="16" Height="16" />
-                </Button>
-            </Grid>
-            <Button Command="{Binding CreateFromSelectionCommand}"
-                    Content="{Binding CreateLabel}"
-                    Margin="0,8,0,0"
-                    Style="{StaticResource MaterialDesignOutlinedButton}" />
-        </StackPanel>
-
-        <ListBox Grid.Row="1"
+        <ListBox Grid.Row="0"
                  ItemsSource="{Binding Blocks}"
                  SelectedItem="{Binding SelectedBlock, Mode=TwoWay}"
                  Background="Transparent"
                  BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemContainerStyle>
-                <Style TargetType="ListBoxItem" BasedOn="{StaticResource MaterialDesignNavigationListBoxItem}">
-                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                    <Setter Property="Padding" Value="0" />
-                    <Setter Property="Margin" Value="1" />
+                <Style TargetType="ListBoxItem"
+                       BasedOn="{StaticResource MaterialDesignNavigationListBoxItem}">
+                    <Setter Property="HorizontalContentAlignment"
+                            Value="Stretch" />
+                    <Setter Property="Padding"
+                            Value="0" />
                 </Style>
             </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:BlockItemViewModel}">
-                    <Border Margin="5,2" Padding="8,6" BorderThickness="1"
-                            BorderBrush="{DynamicResource MaterialDesignDivider}" CornerRadius="3">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <yr:EditableTextBlock Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
-                                                  FontWeight="SemiBold" />
-                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,4,0,0" Opacity="0.65">
-                                <TextBlock Text="ID " FontSize="11" />
-                                <TextBlock Text="{Binding IdText}" FontSize="11" Margin="0,0,10,0" />
-                                <TextBlock Text="E " FontSize="11" />
-                                <TextBlock Text="{Binding EntityCount}" FontSize="11" Margin="0,0,10,0" />
-                                <TextBlock Text="R " FontSize="11" />
-                                <TextBlock Text="{Binding ReferenceCount}" FontSize="11" />
-                            </StackPanel>
+                    <Border Padding="8,6"
+                            BorderThickness="1"
+                            BorderBrush="{DynamicResource MaterialDesignDivider}"
+                            CornerRadius="3">
+                        <Grid ColumnDefinitions="auto *">
+                            <Border  x:Name="SelectedBorder"
+                                     Visibility="Hidden"
+                                     HorizontalAlignment="Stretch"
+                                     Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                                     CornerRadius="2"
+                                     Width="2" />
+                            <Grid Grid.Column="1"
+                                  Margin="5,2"
+                                  RowDefinitions="auto auto">
+                                <yr:EditableTextBlock Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                      FontWeight="SemiBold" />
+                                <StackPanel Grid.Row="1"
+                                            Orientation="Horizontal"
+                                            Margin="0,4,0,0"
+                                            Opacity="0.65">
+                                    <TextBlock Text="ID "
+                                               FontSize="11" />
+                                    <TextBlock Text="{Binding IdText}"
+                                               FontSize="11"
+                                               Margin="0,0,10,0" />
+                                    <TextBlock Text="E "
+                                               FontSize="11" />
+                                    <TextBlock Text="{Binding EntityCount}"
+                                               FontSize="11"
+                                               Margin="0,0,10,0" />
+                                    <TextBlock Text="R "
+                                               FontSize="11" />
+                                    <TextBlock Text="{Binding ReferenceCount}"
+                                               FontSize="11" />
+                                </StackPanel>
+                            </Grid>
+
                         </Grid>
                     </Border>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+                                     Value="True">
+                            <Setter TargetName="SelectedBorder"
+                                    Property="Visibility"
+                                    Value="Visible" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <StackPanel Grid.Row="2" Margin="10,8,10,10">
-            <Grid Margin="0,0,0,7">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="72" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="30" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding BasePointLabel}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Column="1" Value="{Binding SelectedBasePointX, Mode=TwoWay}" StringFormat="F3" Margin="0,0,4,0" />
-                <mah:NumericUpDown Grid.Column="2" Value="{Binding SelectedBasePointY, Mode=TwoWay}" StringFormat="F3" Margin="0,0,4,0" />
-                <Button Grid.Column="3" Width="28" Height="28" Padding="0"
-                        Command="{Binding ApplyBasePointCommand}"
-                        Style="{StaticResource MaterialDesignFlatButton}">
-                    <md:PackIcon Kind="Check" Width="16" Height="16" />
-                </Button>
-            </Grid>
-            <Grid Margin="0,0,0,7">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="72" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding RotationLabel}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Column="1" Value="{Binding InsertRotationDegrees, Mode=TwoWay}" StringFormat="F2" Interval="1" />
-            </Grid>
-            <Grid Margin="0,0,0,8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="72" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="72" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding ScaleXLabel}" VerticalAlignment="Center" />
-                <mah:NumericUpDown Grid.Column="1" Value="{Binding InsertScaleX, Mode=TwoWay}" Minimum="0.001" StringFormat="F3" />
-                <TextBlock Grid.Column="2" Text="{Binding ScaleYLabel}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                <mah:NumericUpDown Grid.Column="3" Value="{Binding InsertScaleY, Mode=TwoWay}" Minimum="0.001" StringFormat="F3" />
-            </Grid>
+        <StackPanel Grid.Row="1"
+                    Margin="10,8,10,10">
             <UniformGrid Columns="4">
-                <Button Command="{Binding InsertCommand}" ToolTip="{Binding InsertLabel}" Style="{StaticResource MaterialDesignFlatButton}">
-                    <md:PackIcon Kind="Import" Width="18" Height="18" />
+                <Button Command="{Binding InsertCommand}"
+                        ToolTip="{Binding InsertLabel}"
+                        Style="{StaticResource MaterialDesignFlatButton}">
+                    <md:PackIcon Kind="Import"
+                                 Width="18"
+                                 Height="18" />
                 </Button>
-                <Button Command="{Binding EditCommand}" ToolTip="{Binding EditLabel}" Style="{StaticResource MaterialDesignFlatButton}">
-                    <md:PackIcon Kind="Pencil" Width="18" Height="18" />
+                <Button Command="{Binding EditCommand}"
+                        ToolTip="{Binding EditLabel}"
+                        Style="{StaticResource MaterialDesignFlatButton}">
+                    <md:PackIcon Kind="Pencil"
+                                 Width="18"
+                                 Height="18" />
                 </Button>
-                <Button Command="{Binding ExitEditCommand}" ToolTip="{Binding ExitEditLabel}" Style="{StaticResource MaterialDesignFlatButton}">
-                    <md:PackIcon Kind="ExitToApp" Width="18" Height="18" />
+                <Button Command="{Binding ExitEditCommand}"
+                        ToolTip="{Binding ExitEditLabel}"
+                        Style="{StaticResource MaterialDesignFlatButton}">
+                    <md:PackIcon Kind="ExitToApp"
+                                 Width="18"
+                                 Height="18" />
                 </Button>
-                <Button Command="{Binding DeleteCommand}" ToolTip="{Binding DeleteLabel}" Style="{StaticResource MaterialDesignFlatButton}">
-                    <md:PackIcon Kind="Delete" Width="18" Height="18" />
+                <Button Command="{Binding DeleteCommand}"
+                        ToolTip="{Binding DeleteLabel}"
+                        Style="{StaticResource MaterialDesignFlatButton}">
+                    <md:PackIcon Kind="Delete"
+                                 Width="18"
+                                 Height="18" />
                 </Button>
             </UniformGrid>
         </StackPanel>

@@ -91,8 +91,8 @@ public partial class MainViewModel : ObservableObject
     {
         DocumentExplorer.SetActiveDocument(value);
         Layers.Attach(value?.CadDocumentViewModel);
-        Blocks.Attach(value?.CadDocumentViewModel);
         EntityProperties.Attach(value?.CadDocumentViewModel);
+        Blocks.Attach(value?.CadDocumentViewModel);
         EntitySearch.Attach(value?.CadDocumentViewModel);
         SelectionFilter.Attach(value?.CadDocumentViewModel);
         CommandLine.Attach(value?.CadDocumentViewModel);

@@ -154,6 +154,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     }
 
     public bool IsPastePreviewActive => _paste.IsPreviewActive;
+    public BlockId? BlockInsertionDefinitionId => _insertBlockDefinitionId;
+    public double BlockInsertionRotationDegrees => _insertBlockRotationRadians * 180.0 / Math.PI;
+    public double BlockInsertionScaleX => _insertBlockScaleX;
+    public double BlockInsertionScaleY => _insertBlockScaleY;
 
     public CadDrawingDefaultsViewModel DrawingDefaults { get; } = new();
 
@@ -1561,6 +1565,38 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RaiseInteractionStateChanged();
         RequestOverlayRender();
         return CadCanvasInteractionResult.HandledOnly;
+    }
+
+    public bool UpdateBlockInsertionTransform(
+        double rotationDegrees,
+        double scaleX,
+        double scaleY)
+    {
+        if (CadCanvasToolMode != CadCanvasToolMode.InsertBlock ||
+            _insertBlockDefinitionId is null)
+        {
+            return false;
+        }
+
+        if (!double.IsFinite(rotationDegrees))
+            throw new ArgumentOutOfRangeException(nameof(rotationDegrees));
+        if (scaleX <= 0 || scaleY <= 0 || !double.IsFinite(scaleX) || !double.IsFinite(scaleY))
+            throw new ArgumentOutOfRangeException(nameof(scaleX), "Block scale must be finite and positive.");
+
+        var rotationRadians = rotationDegrees * Math.PI / 180.0;
+        if (_insertBlockRotationRadians.Equals(rotationRadians) &&
+            _insertBlockScaleX.Equals(scaleX) &&
+            _insertBlockScaleY.Equals(scaleY))
+        {
+            return true;
+        }
+
+        _insertBlockRotationRadians = rotationRadians;
+        _insertBlockScaleX = scaleX;
+        _insertBlockScaleY = scaleY;
+        RaiseInteractionStateChanged();
+        RequestOverlayRender();
+        return true;
     }
 
     public void EditBlockDefinition(BlockId blockId)

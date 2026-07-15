@@ -70,6 +70,9 @@
             <DataTemplate DataType="{x:Type vm_ep:BlockReferencePropertyViewModel}">
                 <v_ep:BlockReferencePropertyView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:BlockDefinitionPropertyViewModel}">
+                <v_ep:BlockDefinitionPropertyView />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:OleObjectPropertyViewModel}">
                 <v_ep:ImagePropertyView />
             </DataTemplate>
@@ -81,6 +84,9 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:TransientPastePropertyViewModel}">
                 <v_ep:TransientPastePropertyView />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm_ep:TransientBlockInsertionPropertyViewModel}">
+                <v_ep:TransientBlockInsertionPropertyView />
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm_ep:MultiEntityPropertyViewModel}">
                 <v_ep:MultiEntityPropertyView />

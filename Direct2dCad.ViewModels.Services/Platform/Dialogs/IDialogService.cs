@@ -1,3 +1,5 @@
+using Direct2dCad.Db.Geometry;
+
 namespace Direct2dCad.ViewModels.Services.Platform;
 
 public interface IDialogService
@@ -20,6 +22,9 @@ public interface IDialogService
     Task<GridSpacingPresetDialogResult?> ShowGridSpacingPresetDialogAsync(
         GridSpacingPresetDialogRequest request,
         string dialogIdentifier = ViewServiceIdentifiers.DocumentSettingsDialogHost);
+    Task<CreateBlockDialogResult?> ShowCreateBlockDialogAsync(
+        CreateBlockDialogRequest request,
+        string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
     void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel);
     void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel);
 }
@@ -48,6 +53,22 @@ public sealed record GridSpacingPresetDialogResult(
     bool LinkAxes);
 
 public enum GridSpacingPresetDialogAction
+{
+    Confirm,
+    Cancel
+}
+
+public sealed record CreateBlockDialogRequest(
+    string SuggestedName,
+    CadPointD SuggestedBasePoint,
+    int SelectedEntityCount,
+    IReadOnlyList<string> UnavailableNames);
+
+public sealed record CreateBlockDialogResult(
+    string Name,
+    CadPointD BasePoint);
+
+public enum CreateBlockDialogAction
 {
     Confirm,
     Cancel

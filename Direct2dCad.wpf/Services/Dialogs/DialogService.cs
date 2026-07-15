@@ -1,6 +1,7 @@
 using System.Windows;
 using Direct2dCad.Client.Common;
 using Direct2dCad.Lang.Strings;
+using Direct2dCad.ViewModels.Blocks;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Settings;
 using Direct2dCad.wpf.Views.Dialogs;
@@ -111,6 +112,20 @@ internal sealed class DialogService : IDialogService
             () => new GridSpacingPresetDialog { DataContext = viewModel },
             dialogIdentifier);
         return result is GridSpacingPresetDialogAction.Confirm && viewModel.IsValid
+            ? viewModel.CreateResult()
+            : null;
+    }
+
+    public async Task<CreateBlockDialogResult?> ShowCreateBlockDialogAsync(
+        CreateBlockDialogRequest request,
+        string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var viewModel = new CreateBlockDialogViewModel(request);
+        var result = await ShowReplacingCurrentAsync(
+            () => new CreateBlockDialog { DataContext = viewModel },
+            dialogIdentifier);
+        return result is CreateBlockDialogAction.Confirm && viewModel.IsValid
             ? viewModel.CreateResult()
             : null;
     }

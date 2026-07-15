@@ -1241,6 +1241,15 @@
   <data name="CreateBlock" xml:space="preserve">
     <value>Create block</value>
   </data>
+  <data name="CreateBlockNameRequired" xml:space="preserve">
+    <value>Enter a block name.</value>
+  </data>
+  <data name="BlockNameAlreadyExists" xml:space="preserve">
+    <value>A block with this name already exists.</value>
+  </data>
+  <data name="CreateBlockBasePointInvalid" xml:space="preserve">
+    <value>Enter a valid base point.</value>
+  </data>
   <data name="InsertBlock" xml:space="preserve">
     <value>Insert block</value>
   </data>

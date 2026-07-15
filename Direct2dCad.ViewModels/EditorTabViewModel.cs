@@ -5,6 +5,7 @@ using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
@@ -46,6 +47,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private int _savedDirectChangeVersion;
     private readonly IDisposable _viewSettingsChangedSubscription;
     private readonly IDisposable _selectionFilterChangedSubscription;
+    private readonly IDisposable _interactionStateChangedSubscription;
     private readonly IPublisher<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedPublisher;
 
     public EditorTabViewModel(CadDocumentViewModel cadDocumentViewModel,
@@ -57,6 +59,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ISnackbarService snackbarService,
         ISubscriber<CadDocumentViewSettingsChangedMessage> viewSettingsChangedSubscriber,
         ISubscriber<CadSelectionFilterChangedMessage> selectionFilterChangedSubscriber,
+        ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber,
         IPublisher<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedPublisher
         )
     {
@@ -74,6 +77,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
         _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
         _selectionFilterChangedSubscription = selectionFilterChangedSubscriber.Subscribe(OnSelectionFilterChanged);
+        _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
         AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
         CadDocumentViewModel.DrawingDefaults.Text = TextInput;
         ApplyDocumentViewSettingsToToolbar();
@@ -402,6 +406,93 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         return false;
     }
 
+    [RelayCommand(CanExecute = nameof(CanCreateBlockFromSelection))]
+    private async Task CreateBlockFromSelectionAsync()
+    {
+        var editor = CadDocumentViewModel.CadEditor;
+        var entityIds = GetBlockCreationSelection();
+        if (entityIds.Length == 0)
+            return;
+
+        var document = editor.Document;
+        var bounds = entityIds
+            .Select(id => document.GetEntity(id).Bounds)
+            .Aggregate(CadRectD.Empty, static (current, entityBounds) => current.Union(entityBounds));
+        var basePoint = bounds.IsEmpty
+            ? document.ViewSettings.Origin.Position
+            : bounds.Center;
+        var referenceLayer = document.Layers.Values
+            .Where(layer => CadEntityAccessPolicy.CanAddToLayer(document, layer.Id))
+            .OrderByDescending(layer => layer.Id.Equals(CadDocumentViewModel.DrawingLayerId))
+            .ThenByDescending(layer => document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id))
+            .FirstOrDefault();
+        if (referenceLayer is null)
+            return;
+
+        var result = await _dialogService.ShowCreateBlockDialogAsync(
+            new CreateBlockDialogRequest(
+                CreateUniqueBlockName(document),
+                basePoint,
+                entityIds.Length,
+                document.Blocks.Values.Select(block => block.Name).ToArray()));
+        if (result is null)
+            return;
+
+        try
+        {
+            var command = editor.CreateBlock(
+                entityIds,
+                result.Name,
+                result.BasePoint,
+                referenceLayer.Id);
+            if (command.CreatedReferenceId is { } referenceId)
+                CadDocumentViewModel.SelectEntities([referenceId]);
+        }
+        catch (Exception ex)
+        {
+            _snackbarService.Enqueue(ex.Message);
+        }
+    }
+
+    private bool CanCreateBlockFromSelection()
+    {
+        var editor = CadDocumentViewModel.CadEditor;
+        var selectedIds = editor.Selection.EntityIds;
+        return selectedIds.Count > 0 &&
+               selectedIds.All(id =>
+                   editor.Document.TryGetEntity(id, out var entity) &&
+                   entity is not null &&
+                   entity.OwnerBlockId.Equals(editor.ActiveOwnerBlockId) &&
+                   CadEntityAccessPolicy.IsEditable(editor.Document, entity)) &&
+               editor.Document.Layers.Values.Any(layer =>
+                   CadEntityAccessPolicy.CanAddToLayer(editor.Document, layer.Id));
+    }
+
+    private EntityId[] GetBlockCreationSelection()
+    {
+        var editor = CadDocumentViewModel.CadEditor;
+        return editor.Selection.EntityIds
+            .Where(id =>
+                editor.Document.TryGetEntity(id, out var entity) &&
+                entity is not null &&
+                entity.OwnerBlockId.Equals(editor.ActiveOwnerBlockId) &&
+                CadEntityAccessPolicy.IsEditable(editor.Document, entity))
+            .ToArray();
+    }
+
+    private static string CreateUniqueBlockName(CadDocument document)
+    {
+        for (var index = 1; ; index++)
+        {
+            var name = $"Block {index}";
+            if (document.Blocks.Values.All(block =>
+                    !string.Equals(block.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                return name;
+            }
+        }
+    }
+
     private async Task<bool> SaveToAsync(string filePath)
     {
         try
@@ -715,6 +806,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         CadDocumentViewModel.PropertyChanged -= OnCadDocumentViewModelPropertyChanged;
         _viewSettingsChangedSubscription.Dispose();
         _selectionFilterChangedSubscription.Dispose();
+        _interactionStateChangedSubscription.Dispose();
         CadDocumentViewModel.Dispose();
     }
 
@@ -737,6 +829,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         SaveWorkspaceSettings();
     }
 
+    private void OnInteractionStateChanged(CadDocumentInteractionStateChangedMessage message)
+    {
+        if (!ReferenceEquals(message.DocumentViewModel, CadDocumentViewModel))
+            return;
+
+        CreateBlockFromSelectionCommand.NotifyCanExecuteChanged();
+    }
+
     private void OnCadDocumentViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
@@ -755,6 +855,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         {
             AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
             ApplyDocumentViewSettingsToToolbar();
+            CreateBlockFromSelectionCommand.NotifyCanExecuteChanged();
         }
     }
 
