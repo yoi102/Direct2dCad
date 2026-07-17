@@ -23,11 +23,12 @@
                  BorderThickness="0"
                  ItemsSource="{Binding Entries}"
                  SelectionMode="Extended"
-                 ScrollViewer.CanContentScroll="False"
+                 ScrollViewer.CanContentScroll="True"
                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
                  ScrollViewer.PanningMode="VerticalOnly"
                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                  VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.ScrollUnit="Pixel"
                  VirtualizingPanel.VirtualizationMode="Recycling">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">

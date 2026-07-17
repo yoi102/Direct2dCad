@@ -10,7 +10,10 @@ namespace Direct2dCad.wpf.Views.Toolboxes;
 
 public partial class CommandLineToolboxView : UserControl
 {
+    private static readonly TimeSpan OutputFlushInterval = TimeSpan.FromMilliseconds(50);
+    private const int MaximumFlushBatchSize = 100;
     private INotifyCollectionChanged? _entries;
+    private readonly DispatcherTimer _outputFlushTimer;
     private bool _scrollToEndPending;
     private bool _isFollowingOutput = true;
     private bool _isProgrammaticScroll;
@@ -19,13 +22,14 @@ public partial class CommandLineToolboxView : UserControl
     public CommandLineToolboxView()
     {
         InitializeComponent();
-        DataContextChanged += OnDataContextChanged;
-        Loaded += (_, _) =>
+        _outputFlushTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            CommandInput.Focus();
-            AttachOutputScrollViewer();
-            ScheduleScrollToEnd();
+            Interval = OutputFlushInterval
         };
+        _outputFlushTimer.Tick += OnOutputFlushTimerTick;
+        DataContextChanged += OnDataContextChanged;
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         CommandInput.PreviewKeyDown += OnCommandInputKeyDown;
         SuggestionList.PreviewMouseLeftButtonUp += OnSuggestionMouseLeftButtonUp;
         OutputList.KeyDown += OnOutputListKeyDown;
@@ -44,6 +48,42 @@ public partial class CommandLineToolboxView : UserControl
         ScheduleScrollToEnd();
     }
 
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        CommandInput.Focus();
+        AttachOutputScrollViewer();
+        FlushPendingOutput();
+        _outputFlushTimer.Start();
+        ScheduleScrollToEnd();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        _outputFlushTimer.Stop();
+    }
+
+    private void OnOutputFlushTimerTick(object? sender, EventArgs e)
+    {
+        FlushPendingOutput();
+    }
+
+    private void FlushPendingOutput()
+    {
+        if (DataContext is not CommandLineToolboxViewModel viewModel ||
+            !viewModel.HasPendingEntries)
+        {
+            return;
+        }
+
+        var shouldFollowOutput = _isFollowingOutput;
+        if (shouldFollowOutput)
+            _isProgrammaticScroll = true;
+
+        var flushedCount = viewModel.FlushPendingEntries(MaximumFlushBatchSize);
+        if (flushedCount == 0 && shouldFollowOutput)
+            _isProgrammaticScroll = false;
+    }
+
     private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (_isFollowingOutput)
@@ -58,14 +98,20 @@ public partial class CommandLineToolboxView : UserControl
             return;
 
         _scrollToEndPending = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
         {
-            _scrollToEndPending = false;
-            OutputList.UpdateLayout();
             AttachOutputScrollViewer();
             _isProgrammaticScroll = true;
-            _outputScrollViewer?.ScrollToEnd();
-            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () => _isProgrammaticScroll = false);
+            if (OutputList.Items.Count > 0)
+                OutputList.ScrollIntoView(OutputList.Items[^1]);
+
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
+            {
+                AttachOutputScrollViewer();
+                _outputScrollViewer?.ScrollToEnd();
+                _isProgrammaticScroll = false;
+                _scrollToEndPending = false;
+            });
         });
     }
 
@@ -86,6 +132,8 @@ public partial class CommandLineToolboxView : UserControl
     private void OnOutputScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (_isProgrammaticScroll || _outputScrollViewer is null)
+            return;
+        if (Math.Abs(e.VerticalChange) < 0.01)
             return;
 
         _isFollowingOutput = _outputScrollViewer.ScrollableHeight - _outputScrollViewer.VerticalOffset <= 2;

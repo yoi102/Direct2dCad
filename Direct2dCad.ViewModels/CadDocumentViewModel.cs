@@ -35,8 +35,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly IPublisher<CadDocumentInteractionStateChangedMessage> _interactionStateChangedPublisher;
     private readonly IPublisher<CadDocumentViewSettingsChangedMessage> _viewSettingsChangedPublisher;
     private readonly IPublisher<CadSelectionFilterChangedMessage> _selectionFilterChangedPublisher;
-    private readonly IPublisher<CadCommandActivityMessage> _commandActivityPublisher;
-    private readonly IPublisher<CadInteractionActivityMessage> _interactionActivityPublisher;
+    private readonly IAsyncPublisher<CadCommandActivityMessage> _commandActivityPublisher;
+    private readonly IAsyncPublisher<CadInteractionActivityMessage> _interactionActivityPublisher;
     private readonly IDisposable _oleObjectUpdatedSubscription;
     private readonly Guid _oleEditSessionId = Guid.NewGuid();
     private readonly HashSet<EntityId> _openOleEditEntityIds = [];
@@ -175,8 +175,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         IPublisher<CadDocumentInteractionStateChangedMessage> interactionStateChangedPublisher,
         IPublisher<CadDocumentViewSettingsChangedMessage> viewSettingsChangedPublisher,
         IPublisher<CadSelectionFilterChangedMessage> selectionFilterChangedPublisher,
-        IPublisher<CadCommandActivityMessage> commandActivityPublisher,
-        IPublisher<CadInteractionActivityMessage> interactionActivityPublisher,
+        IAsyncPublisher<CadCommandActivityMessage> commandActivityPublisher,
+        IAsyncPublisher<CadInteractionActivityMessage> interactionActivityPublisher,
         ISubscriber<CadOleObjectUpdatedMessage> oleObjectUpdatedSubscriber,
         ICadClipboardStore clipboardStore,
         IImageImportService imageImportService,

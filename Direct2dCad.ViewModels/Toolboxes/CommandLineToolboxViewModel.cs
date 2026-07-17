@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.CommandLine;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Lang.Strings;
+using Direct2dCad.ViewModels.Collections;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
@@ -15,24 +16,38 @@ namespace Direct2dCad.ViewModels.Toolboxes;
 public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
     private const int MaximumEntryCount = 1000;
+    private const int MaximumPendingEntryCount = 4000;
     private readonly ICadCommandLineService _commandLineService;
     private readonly IDisposable _commandActivitySubscription;
     private readonly IDisposable _interactionActivitySubscription;
+    private readonly object _pendingEntriesGate = new();
+    private readonly Queue<CadCommandLineEntryViewModel> _pendingEntries = [];
     private readonly List<string> _commandHistory = [];
     private CadDocumentViewModel? _documentViewModel;
+    private int _droppedPendingEntryCount;
     private int _historyIndex;
 
     public CommandLineToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ICadCommandLineService commandLineService,
-        ISubscriber<CadCommandActivityMessage> commandActivitySubscriber,
-        ISubscriber<CadInteractionActivityMessage> interactionActivitySubscriber)
+        IAsyncSubscriber<CadCommandActivityMessage> commandActivitySubscriber,
+        IAsyncSubscriber<CadInteractionActivityMessage> interactionActivitySubscriber)
         : base(toolboxLayoutSettingsStore, "toolbox.command-line", DockZone.BottomRight, isOpenByDefault: true)
     {
         _commandLineService = commandLineService;
-        _commandActivitySubscription = commandActivitySubscriber.Subscribe(OnCommandActivity);
-        _interactionActivitySubscription = interactionActivitySubscriber.Subscribe(OnInteractionActivity);
+        _commandActivitySubscription = commandActivitySubscriber.Subscribe(
+            (message, _) =>
+            {
+                OnCommandActivity(message);
+                return ValueTask.CompletedTask;
+            });
+        _interactionActivitySubscription = interactionActivitySubscriber.Subscribe(
+            (message, _) =>
+            {
+                OnInteractionActivity(message);
+                return ValueTask.CompletedTask;
+            });
         
         Title = Strings.Terminal;
         Icon = toolboxIconProvider.Terminal;
@@ -48,11 +63,19 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     [ObservableProperty]
     public partial string? SelectedSuggestion { get; set; }
 
-    public ObservableCollection<CadCommandLineEntryViewModel> Entries { get; } = [];
+    public ObservableRangeCollection<CadCommandLineEntryViewModel> Entries { get; } = [];
     public ObservableCollection<string> Suggestions { get; } = [];
 
     public bool HasDocument => _documentViewModel is not null;
     public bool HasSuggestions => Suggestions.Count > 0;
+    public bool HasPendingEntries
+    {
+        get
+        {
+            lock (_pendingEntriesGate)
+                return _pendingEntries.Count > 0 || _droppedPendingEntryCount > 0;
+        }
+    }
 
     public void Attach(CadDocumentViewModel? documentViewModel)
     {
@@ -97,7 +120,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
         if (result.ClearOutput)
         {
-            Entries.Clear();
+            ClearOutput();
             return;
         }
 
@@ -199,6 +222,31 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         _interactionActivitySubscription.Dispose();
     }
 
+    public int FlushPendingEntries(int maximumBatchSize = 100)
+    {
+        if (maximumBatchSize <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumBatchSize));
+
+        var batch = new List<CadCommandLineEntryViewModel>(maximumBatchSize);
+        lock (_pendingEntriesGate)
+        {
+            if (_droppedPendingEntryCount > 0)
+            {
+                batch.Add(new CadCommandLineEntryViewModel(
+                    DateTimeOffset.Now,
+                    CadCommandLineEntryKind.Warning,
+                    $"[Terminal] {_droppedPendingEntryCount} buffered entries omitted."));
+                _droppedPendingEntryCount = 0;
+            }
+
+            while (batch.Count < maximumBatchSize && _pendingEntries.TryDequeue(out var entry))
+                batch.Add(entry);
+        }
+
+        Entries.AddRangeAndTrimStart(batch, MaximumEntryCount);
+        return batch.Count;
+    }
+
     private void OnCommandActivity(CadCommandActivityMessage message)
     {
         if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
@@ -251,9 +299,27 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private void AddEntry(CadCommandLineEntryKind kind, string text)
     {
-        Entries.Add(new CadCommandLineEntryViewModel(DateTimeOffset.Now, kind, text));
-        while (Entries.Count > MaximumEntryCount)
-            Entries.RemoveAt(0);
+        lock (_pendingEntriesGate)
+        {
+            if (_pendingEntries.Count >= MaximumPendingEntryCount)
+            {
+                _pendingEntries.Dequeue();
+                _droppedPendingEntryCount++;
+            }
+
+            _pendingEntries.Enqueue(new CadCommandLineEntryViewModel(DateTimeOffset.Now, kind, text));
+        }
+    }
+
+    private void ClearOutput()
+    {
+        lock (_pendingEntriesGate)
+        {
+            _pendingEntries.Clear();
+            _droppedPendingEntryCount = 0;
+        }
+
+        Entries.Clear();
     }
 
     private void AddMessage(CadCommandLineEntryKind kind, string message)

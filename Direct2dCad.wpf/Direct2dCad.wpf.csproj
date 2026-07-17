@@ -24,14 +24,14 @@
   <ItemGroup>
     <PackageReference Include="Antelcat.I18N.WPF" Version="2.0.0-preview-1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.0-preview.98" />
-    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.0-preview.98" />
-    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.0-preview.98" />
+    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.0-preview.100" />
+    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.0-preview.100" />
+    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.0-preview.100" />
     <PackageReference Include="gong-wpf-dragdrop" Version="4.0.0" />
     <PackageReference Include="MahApps.Metro" Version="3.0.0-rc0529" />
     <PackageReference Include="MaterialDesignThemes.MahApps" Version="5.3.3-ci1419" />
     <PackageReference Include="MessagePipe" Version="1.8.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.5.26302.115" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0-preview.6.26359.118" />
   </ItemGroup>
 
   <ItemGroup>
