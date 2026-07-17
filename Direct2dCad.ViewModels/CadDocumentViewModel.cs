@@ -97,6 +97,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public bool IsPaperSpaceActive => ActiveLayoutId is not null && ActiveLayoutViewportId is null;
     public BlockId? EditingBlockId { get; private set; }
     public bool IsEditingBlock => EditingBlockId is not null;
+    public string EditingBlockName =>
+        EditingBlockId is { } blockId &&
+        CadEditor.Document.TryGetBlock(blockId, out var block) &&
+        block is not null
+            ? block.Name
+            : string.Empty;
     public CadLayoutSpaceMode ActiveLayoutSpaceMode
     {
         get => IsLayoutViewportActive ? CadLayoutSpaceMode.Model : CadLayoutSpaceMode.Paper;
@@ -1626,6 +1632,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         PublishInteractionActivity($"Edit block: {block.Name}");
     }
 
+    [RelayCommand]
     public void ExitBlockEditing()
     {
         if (!IsEditingBlock)
@@ -1641,6 +1648,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         EditingBlockId = blockId;
         OnPropertyChanged(nameof(EditingBlockId));
         OnPropertyChanged(nameof(IsEditingBlock));
+        OnPropertyChanged(nameof(EditingBlockName));
     }
 
     private void CommitBlockInsertion(CadPointD screen)
@@ -2175,6 +2183,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
         EnsureActiveLayoutViewportStillExists();
+        if (e.AffectsDocumentStructure)
+            OnPropertyChanged(nameof(EditingBlockName));
         if (e.AffectsDocumentStructure &&
             !CadEntityAccessPolicy.CanAddToLayer(CadEditor.Document, DrawingLayerId))
         {

@@ -31,7 +31,7 @@ namespace Direct2dCad.Lang.Strings {
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Strings() {
         }
-
+        
         /// <summary>
         ///   返回此类使用的缓存的 ResourceManager 实例。
         /// </summary>
@@ -45,7 +45,7 @@ namespace Direct2dCad.Lang.Strings {
                 return resourceMan;
             }
         }
-
+        
         /// <summary>
         ///   重写当前线程的 CurrentUICulture 属性，对
         ///   使用此强类型资源类的所有资源查找执行重写。
@@ -59,7 +59,7 @@ namespace Direct2dCad.Lang.Strings {
                 resourceCulture = value;
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Add after 的本地化字符串。
         /// </summary>
@@ -68,7 +68,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("AddAfter", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Add grid spacing 的本地化字符串。
         /// </summary>
@@ -322,6 +322,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Block editing 的本地化字符串。
+        /// </summary>
+        public static string BlockEditing {
+            get {
+                return ResourceManager.GetString("BlockEditing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 A block with this name already exists. 的本地化字符串。
         /// </summary>
         public static string BlockNameAlreadyExists {
@@ -329,7 +338,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("BlockNameAlreadyExists", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Block reference 的本地化字符串。
         /// </summary>
@@ -653,7 +662,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("CreateBlockBasePointInvalid", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Enter a block name. 的本地化字符串。
         /// </summary>
@@ -662,7 +671,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("CreateBlockNameRequired", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Create and adjust a layout viewport 的本地化字符串。
         /// </summary>

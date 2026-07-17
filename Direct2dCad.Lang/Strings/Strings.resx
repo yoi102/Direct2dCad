@@ -1256,6 +1256,9 @@
   <data name="EditBlock" xml:space="preserve">
     <value>Edit block</value>
   </data>
+  <data name="BlockEditing" xml:space="preserve">
+    <value>Block editing</value>
+  </data>
   <data name="ExitBlockEditor" xml:space="preserve">
     <value>Exit block editor</value>
   </data>

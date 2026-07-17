@@ -69,6 +69,49 @@
         </Button>
 
         <Border Grid.Row="0"
+                Margin="12"
+                Padding="10,6,4,6"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="#66000000"
+                CornerRadius="2"
+                Visibility="{Binding CadDocumentViewModel.IsEditingBlock, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center">
+                <md:PackIcon Kind="CubeOutline"
+                             Width="20"
+                             Height="20"
+                             Margin="0,0,8,0"
+                             Foreground="White"
+                             VerticalAlignment="Center" />
+                <TextBlock Text="{Binding CadDocumentViewModel.EditingBlockName}"
+                           FontWeight="SemiBold"
+                           Foreground="White"
+                           VerticalAlignment="Center" />
+                <TextBlock Margin="8,0"
+                           Text="·"
+                           Foreground="#BFFFFFFF"
+                           VerticalAlignment="Center" />
+                <TextBlock Text="{I18N {x:Static r:LangKeys.BlockEditing}}"
+                           Foreground="#DFFFFFFF"
+                           VerticalAlignment="Center" />
+                <Button Width="30"
+                        Height="30"
+                        Margin="6,0,0,0"
+                        Padding="0"
+                        Background="Transparent"
+                        Foreground="White"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Command="{Binding CadDocumentViewModel.ExitBlockEditingCommand}"
+                        ToolTip="{I18N {x:Static r:LangKeys.ExitBlockEditor}}">
+                    <md:PackIcon Kind="Close"
+                                 Width="18"
+                                 Height="18" />
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="0"
                 Width="350"
                 MaxHeight="590"
                 Margin="0,12,12,12"

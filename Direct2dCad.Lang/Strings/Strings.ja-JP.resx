@@ -1035,6 +1035,9 @@
   <data name="EditBlock" xml:space="preserve">
     <value>ブロックを編集</value>
   </data>
+  <data name="BlockEditing" xml:space="preserve">
+    <value>ブロック編集中</value>
+  </data>
   <data name="ExitBlockEditor" xml:space="preserve">
     <value>ブロック編集を終了</value>
   </data>
