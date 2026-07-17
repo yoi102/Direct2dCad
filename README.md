@@ -21,7 +21,13 @@ https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
 
 https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed
 
+- [Block 演示]
+  
+https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310
 
+- [Layout 演示]
+
+https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906
 
 - [OLE 对象演示]
 
@@ -31,6 +37,10 @@ https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
 
 https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761
 - [Figma 设计稿](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
+
+
+
+
 
 ## 项目组成
 
