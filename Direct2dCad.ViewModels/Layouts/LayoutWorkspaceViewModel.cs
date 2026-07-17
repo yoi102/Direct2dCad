@@ -56,12 +56,16 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
 
     public ObservableCollection<LayoutTabItemViewModel> Tabs { get; } = [];
     public ObservableCollection<LayoutViewportItemViewModel> Viewports { get; } = [];
+    public ObservableCollection<LayoutViewportItemViewModel> CurrentViewportOptions { get; } = [];
 
     [ObservableProperty]
     public partial LayoutTabItemViewModel? SelectedTab { get; set; }
 
     [ObservableProperty]
     public partial LayoutViewportItemViewModel? SelectedViewport { get; set; }
+
+    [ObservableProperty]
+    public partial LayoutViewportItemViewModel? CurrentViewport { get; set; }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SettingsVisibility))]
@@ -124,6 +128,18 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(CanDeleteViewport));
         RemoveViewportCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnCurrentViewportChanged(LayoutViewportItemViewModel? value)
+    {
+        if (_isRefreshing ||
+            value is null ||
+            _documentViewModel.ActiveLayoutViewportId == value.Id)
+        {
+            return;
+        }
+
+        _documentViewModel.ActivateLayoutViewport(value.Id);
     }
 
     partial void OnIsSettingsOpenChanged(bool value) => OnPropertyChanged(nameof(SettingsVisibility));
@@ -202,6 +218,7 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         LoadPaperSettings(layout);
         if (SelectedViewport is { } selected && layout.Viewports.Any(item => item.Id == selected.Id))
             LoadSelectedViewport();
+        RefreshCurrentViewportOptions(layout);
         ValidationError = string.Empty;
     }
 
@@ -290,9 +307,11 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         try
         {
             Viewports.Clear();
+            CurrentViewportOptions.Clear();
             if (SelectedTab?.LayoutId is not { } layoutId)
             {
                 SelectedViewport = null;
+                CurrentViewport = null;
                 return;
             }
 
@@ -310,6 +329,7 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
             SelectedViewport = preferredViewportId is { } viewportId
                 ? Viewports.FirstOrDefault(item => item.Id == viewportId) ?? Viewports.FirstOrDefault()
                 : Viewports.FirstOrDefault();
+            RefreshCurrentViewportOptions(layout);
         }
         finally
         {
@@ -317,6 +337,30 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         }
 
         LoadSelectedViewport();
+    }
+
+    private void RefreshCurrentViewportOptions(CadLayout layout)
+    {
+        var wasRefreshing = _isRefreshing;
+        _isRefreshing = true;
+        try
+        {
+            CurrentViewportOptions.Clear();
+            foreach (var viewport in layout.Viewports.Where(item => item.IsVisible))
+            {
+                var item = Viewports.FirstOrDefault(candidate => candidate.Id == viewport.Id);
+                if (item is not null)
+                    CurrentViewportOptions.Add(item);
+            }
+
+            CurrentViewport = _documentViewModel.ActiveLayoutViewportId is { } activeViewportId
+                ? CurrentViewportOptions.FirstOrDefault(item => item.Id == activeViewportId)
+                : null;
+        }
+        finally
+        {
+            _isRefreshing = wasRefreshing;
+        }
     }
 
     private void LoadPaperSettings(CadLayout layout)
@@ -410,7 +454,8 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
         }
 
         var target = CreateViewportSnapshot();
-        var viewport = Document.GetLayout(layoutId).GetViewport(selectedViewport.Id);
+        var layout = Document.GetLayout(layoutId);
+        var viewport = layout.GetViewport(selectedViewport.Id);
         if (target == CadLayoutViewportSnapshot.From(viewport))
             return;
 
@@ -422,6 +467,7 @@ public partial class LayoutWorkspaceViewModel : ObservableObject
             return;
         }
 
+        RefreshCurrentViewportOptions(layout);
         if (!IsViewportVisible && _documentViewModel.ActiveLayoutViewportId == selectedViewport.Id)
             _documentViewModel.ExitLayoutViewport();
     }

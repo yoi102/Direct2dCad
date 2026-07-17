@@ -395,6 +395,15 @@
                                      IsChecked="{Binding DataContext.CadDocumentViewModel.ActiveLayoutSpaceMode, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Mode=TwoWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadLayoutSpaceMode.Model}}"
                                      Style="{StaticResource MaterialDesignTabRadioButtonTop}"
                                      ToolTip="{I18N {x:Static r:LangKeys.Model}}" />
+
+                        <ComboBox Width="100"
+                                  Height="28"
+                                  Margin="10,2,6,2"
+                                  ItemsSource="{Binding CurrentViewportOptions}"
+                                  SelectedItem="{Binding CurrentViewport, Mode=TwoWay}"
+                                  DisplayMemberPath="Name"
+                                  Visibility="{Binding DataContext.CadDocumentViewModel.IsLayoutViewportActive, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                  ToolTip="{I18N {x:Static r:LangKeys.Viewport}}" />
                     </StackPanel>
                     <Button Width="32"
                             Height="32"
