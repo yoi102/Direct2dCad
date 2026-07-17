@@ -845,7 +845,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
         }
 
-        if (e.PropertyName == nameof(CadDocumentViewModel.ActiveLayoutViewportId))
+        if (e.PropertyName is nameof(CadDocumentViewModel.ActiveLayoutId) or
+            nameof(CadDocumentViewModel.ActiveLayoutViewportId))
         {
             LayoutWorkspace.RefreshDocumentStructure();
             return;
