@@ -26,24 +26,7 @@
                        Opacity="0.7"
                        Text="{Binding EntityTypeName}" />
 
-            <TextBlock Margin="0,8"
-                       HorizontalAlignment="Center"
-                       Opacity="0.7"
-                       Text="{I18N {x:Static r:LangKeys.MultipleEntityTypes}}">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock">
-                        <Setter Property="Visibility" Value="Visible" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsSameType}" Value="True">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-
-            <StackPanel IsEnabled="{Binding IsEditable, Mode=OneWay}"
-                        Visibility="{Binding IsSameType, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel IsEnabled="{Binding IsEditable, Mode=OneWay}">
                 <Expander Margin="0,0,0,8"
                           Header="{I18N {x:Static r:LangKeys.CommonProperties}}"
                           IsExpanded="True">
@@ -66,21 +49,39 @@
 
                         <TextBlock Grid.Row="1" VerticalAlignment="Center"
                                    Text="{I18N {x:Static r:LangKeys.Layers}}" />
-                        <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,0,0,8"
-                                  DisplayMemberPath="Name"
-                                  ItemsSource="{Binding LayerOptions}"
-                                  SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,0,8">
+                            <TextBlock Margin="0,0,0,3"
+                                       FontStyle="Italic"
+                                       Opacity="0.7"
+                                       Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
+                                       Visibility="{Binding HasMixedLayer, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <ComboBox DisplayMemberPath="Name"
+                                      ItemsSource="{Binding LayerOptions}"
+                                      SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}" />
+                        </StackPanel>
 
                         <TextBlock Grid.Row="2" VerticalAlignment="Center"
                                    Text="{I18N {x:Static r:LangKeys.DrawOrder}}" />
-                        <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Margin="0,0,0,8"
-                                           Interval="1" StringFormat="F0"
-                                           Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,8">
+                            <TextBlock Margin="0,0,0,3"
+                                       FontStyle="Italic"
+                                       Opacity="0.7"
+                                       Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
+                                       Visibility="{Binding HasMixedZIndex, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <mah:NumericUpDown Interval="1" StringFormat="F0"
+                                               Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
 
-                        <CheckBox Grid.Row="3" Grid.ColumnSpan="2"
-                                  Content="{I18N {x:Static r:LangKeys.Visible}}"
-                                  IsChecked="{Binding IsVisible, Mode=TwoWay}"
-                                  IsThreeState="True" />
+                        <StackPanel Grid.Row="3" Grid.ColumnSpan="2">
+                            <TextBlock Margin="0,0,0,3"
+                                       FontStyle="Italic"
+                                       Opacity="0.7"
+                                       Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
+                                       Visibility="{Binding HasMixedVisibility, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <CheckBox Content="{I18N {x:Static r:LangKeys.Visible}}"
+                                      IsChecked="{Binding IsVisible, Mode=TwoWay}"
+                                      IsThreeState="True" />
+                        </StackPanel>
                     </Grid>
                 </Expander>
 

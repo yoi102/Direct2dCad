@@ -28,10 +28,15 @@ public sealed class SetEntityUseLayerColorCommand : ICadCommand
         CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousStates.Clear();
 
-        foreach (var entityId in _entityIds)
+        var entities = _entityIds
+            .Select(document.GetEntity)
+            .ToArray();
+        foreach (var entity in entities)
+            EnsureSupportsGraphicStyle(entity);
+
+        foreach (var entity in entities)
         {
-            var entity = document.GetEntity(entityId);
-            _previousStates[entityId] = new EntityColorLayerState(
+            _previousStates[entity.Id] = new EntityColorLayerState(
                 entity.UseLayerColor,
                 GetGraphicStyleId(entity));
 
@@ -141,6 +146,14 @@ public sealed class SetEntityUseLayerColorCommand : ICadCommand
             default:
                 throw new NotSupportedException($"Entity type has no graphic style: {entity.GetType().Name}");
         }
+    }
+
+    private static void EnsureSupportsGraphicStyle(CadEntity entity)
+    {
+        if (CadEntityCapabilities.SupportsGraphicStyle(entity))
+            return;
+
+        throw new NotSupportedException($"Entity type has no graphic style: {entity.GetType().Name}");
     }
 
     private readonly record struct EntityColorLayerState(bool UseLayerColor, StyleId? GraphicStyleId);

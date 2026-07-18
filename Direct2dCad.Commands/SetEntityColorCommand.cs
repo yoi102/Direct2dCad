@@ -28,16 +28,21 @@ public sealed class SetEntityColorCommand : ICadCommand
         CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         _previousGraphicStyles.Clear();
 
+        var entities = _entityIds
+            .Select(document.GetEntity)
+            .ToArray();
+        foreach (var entity in entities)
+            EnsureSupportsGraphicStyle(entity);
+
         _newGraphicStyleId ??= document.CreateGraphicStyle(
             $"Color {_color.R},{_color.G},{_color.B},{_color.A}",
             _color,
             CadLineWeight.ByLayer,
             LineTypeId.Continuous);
 
-        foreach (var entityId in _entityIds)
+        foreach (var entity in entities)
         {
-            var entity = document.GetEntity(entityId);
-            _previousGraphicStyles[entityId] = GetGraphicStyleId(entity);
+            _previousGraphicStyles[entity.Id] = GetGraphicStyleId(entity);
             SetGraphicStyleId(entity, _newGraphicStyleId);
         }
 
@@ -113,5 +118,13 @@ public sealed class SetEntityColorCommand : ICadCommand
             default:
                 throw new NotSupportedException($"Entity type has no graphic style: {entity.GetType().Name}");
         }
+    }
+
+    private static void EnsureSupportsGraphicStyle(CadEntity entity)
+    {
+        if (CadEntityCapabilities.SupportsGraphicStyle(entity))
+            return;
+
+        throw new NotSupportedException($"Entity type has no graphic style: {entity.GetType().Name}");
     }
 }

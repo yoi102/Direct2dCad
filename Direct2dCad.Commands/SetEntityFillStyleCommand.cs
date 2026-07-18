@@ -29,10 +29,15 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
         _previousFillStyles.Clear();
         ValidateFillStyle(document);
 
-        foreach (var entityId in _entityIds)
+        var entities = _entityIds
+            .Select(document.GetEntity)
+            .ToArray();
+        foreach (var entity in entities)
+            EnsureSupportsFill(entity);
+
+        foreach (var entity in entities)
         {
-            var entity = document.GetEntity(entityId);
-            _previousFillStyles[entityId] = GetFillStyleId(entity);
+            _previousFillStyles[entity.Id] = GetFillStyleId(entity);
             SetFillStyleId(entity, _fillStyleId);
         }
 
@@ -96,5 +101,13 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
 
         if (style is not CadFillStyle)
             throw new InvalidOperationException($"Style is not fill style: {_fillStyleId}");
+    }
+
+    private static void EnsureSupportsFill(CadEntity entity)
+    {
+        if (CadEntityCapabilities.SupportsFill(entity))
+            return;
+
+        throw new NotSupportedException($"Entity type has no fill style: {entity.GetType().Name}");
     }
 }

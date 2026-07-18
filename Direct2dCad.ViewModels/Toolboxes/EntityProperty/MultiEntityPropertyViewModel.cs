@@ -47,10 +47,19 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
     public partial EntityLayerOption? SelectedLayerOption { get; set; }
 
     [ObservableProperty]
+    public partial bool HasMixedLayer { get; private set; }
+
+    [ObservableProperty]
     public partial int? ZIndex { get; set; }
 
     [ObservableProperty]
+    public partial bool HasMixedZIndex { get; private set; }
+
+    [ObservableProperty]
     public partial bool? IsVisible { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasMixedVisibility { get; private set; }
 
     [ObservableProperty]
     public partial bool SupportsStrokeAppearance { get; private set; }
@@ -156,12 +165,14 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
 
             RefreshLayerOptions(entities);
             ZIndex = GetCommonValue(entities, entity => entity.ZIndex);
+            HasMixedZIndex = ZIndex is null;
             IsVisible = GetCommonValue(entities, entity => entity.IsVisible);
+            HasMixedVisibility = IsVisible is null;
 
-            SupportsStrokeAppearance = IsSameType && SupportsGraphicStyle(entities[0]);
-            SupportsStrokeStyle = IsSameType && SupportsEntityStrokeStyle(entities[0]);
-            SupportsStartEndCaps = SupportsStrokeStyle && entities.All(SupportsEntityStartEndCaps);
-            SupportsLineJoin = SupportsStrokeStyle && entities.All(SupportsEntityLineJoin);
+            SupportsStrokeAppearance = entities.All(CadEntityCapabilities.SupportsGraphicStyle);
+            SupportsStrokeStyle = entities.All(CadEntityCapabilities.SupportsStrokeStyle);
+            SupportsStartEndCaps = SupportsStrokeStyle && entities.All(CadEntityCapabilities.SupportsStartEndCaps);
+            SupportsLineJoin = SupportsStrokeStyle && entities.All(CadEntityCapabilities.SupportsLineJoin);
             if (SupportsStrokeAppearance)
             {
                 UseByLayerColor = GetCommonValue(entities, entity => entity.UseLayerColor);
@@ -179,7 +190,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
                 LineWeight = null;
             }
 
-            SupportsOpacity = IsSameType && entities[0] is CadImage or CadOleObject;
+            SupportsOpacity = entities.All(CadEntityCapabilities.SupportsOpacity);
             Opacity = SupportsOpacity ? GetCommonValue(entities, ResolveOpacity) : null;
 
             RefreshFillProperties(entities);
@@ -327,6 +338,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             .ToArray();
 
         var commonLayerId = GetCommonValue(entities, entity => entity.LayerId);
+        HasMixedLayer = commonLayerId is null;
         SelectedLayerOption = commonLayerId is { } layerId
             ? LayerOptions.FirstOrDefault(option => option.LayerId.Equals(layerId))
             : null;
@@ -334,7 +346,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
 
     private void RefreshFillProperties(IReadOnlyList<CadEntity> entities)
     {
-        SupportsFill = IsSameType && entities.All(SupportsEntityFill);
+        SupportsFill = entities.All(CadEntityCapabilities.SupportsFill);
         if (!SupportsFill)
         {
             FillStyleOptions = [];
@@ -468,39 +480,11 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         _ => null
     };
 
-    private static bool SupportsGraphicStyle(CadEntity entity) => entity is
-        CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or
-        CadPolyline or CadSpline or CadText or CadShapeText or CadBlockReference;
-
-    private static bool SupportsEntityStrokeStyle(CadEntity entity) => entity is
-        CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or CadPolyline or CadSpline;
-
-    private static bool SupportsEntityStartEndCaps(CadEntity entity) => entity switch
-    {
-        CadLine => true,
-        CadArc arc => !arc.IsFullCircle,
-        CadEllipseArc => true,
-        CadPolyline polyline => !polyline.Closed,
-        CadSpline spline => !spline.Closed,
-        _ => false
-    };
-
-    private static bool SupportsEntityLineJoin(CadEntity entity) =>
-        entity is CadRectangle or CadPolyline or CadSpline;
-
     private static double ResolveOpacity(CadEntity entity) => entity switch
     {
         CadImage image => image.Opacity,
         CadOleObject oleObject => oleObject.Opacity,
         _ => 1
-    };
-
-    private static bool SupportsEntityFill(CadEntity entity) => entity switch
-    {
-        CadCircle or CadEllipse or CadRectangle => true,
-        CadPolyline polyline => polyline.Closed,
-        CadSpline spline => spline.Closed,
-        _ => false
     };
 
     private static StyleId? GetFillStyleId(CadEntity entity) => entity switch
