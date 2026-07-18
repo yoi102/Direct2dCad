@@ -128,34 +128,49 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         foreach (var pair in _boundsByEntity)
             entries[index++] = new BvhEntry(pair.Key, pair.Value);
 
+        OrderEntriesForBulkLoad(entries);
         _root = BuildNode(entries, 0, entries.Length);
         _pendingChanges.Clear();
     }
 
-    private BvhNode BuildNode(BvhEntry[] entries, int start, int length)
+    private static void OrderEntriesForBulkLoad(BvhEntry[] entries)
     {
-        var bounds = CadRectD.Empty;
-        for (var index = start; index < start + length; index++)
-            bounds = bounds.Union(entries[index].Bounds);
+        Array.Sort(entries, BvhEntry.XComparer);
+        var leafCount = (entries.Length + LeafCapacity - 1) / LeafCapacity;
+        var sliceCount = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(leafCount)));
+        var sliceLength = (entries.Length + sliceCount - 1) / sliceCount;
+        sliceLength = ((sliceLength + LeafCapacity - 1) / LeafCapacity) * LeafCapacity;
 
+        for (var start = 0; start < entries.Length; start += sliceLength)
+        {
+            Array.Sort(
+                entries,
+                start,
+                Math.Min(sliceLength, entries.Length - start),
+                BvhEntry.YComparer);
+        }
+    }
+
+    private static BvhNode BuildNode(BvhEntry[] entries, int start, int length)
+    {
         if (length <= LeafCapacity)
         {
-            var leafEntries = new BvhEntry[length];
-            Array.Copy(entries, start, leafEntries, 0, length);
-            return new BvhNode(bounds, leafEntries);
+            var leafBounds = CadRectD.Empty;
+            for (var index = start; index < start + length; index++)
+                leafBounds = leafBounds.Union(entries[index].Bounds);
+            return new BvhNode(leafBounds, entries, start, length);
         }
 
-        var sortByX = bounds.Width >= bounds.Height;
-        Array.Sort(
-            entries,
-            start,
-            length,
-            sortByX ? BvhEntry.XComparer : BvhEntry.YComparer);
-
         var leftLength = length / 2;
+        if (length > LeafCapacity * 2)
+        {
+            leftLength = Math.Max(
+                LeafCapacity,
+                leftLength / LeafCapacity * LeafCapacity);
+        }
         var left = BuildNode(entries, start, leftLength);
         var right = BuildNode(entries, start + leftLength, length - leftLength);
-        return new BvhNode(bounds, left, right);
+        return new BvhNode(left.Bounds.Union(right.Bounds), left, right);
     }
 
     private void QueryNode(
@@ -169,8 +184,9 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
 
         if (node.Entries is { } entries)
         {
-            foreach (var entry in entries)
+            for (var index = node.EntryStart; index < node.EntryStart + node.EntryLength; index++)
             {
+                var entry = entries[index];
                 if ((!excludePendingChanges || !_pendingChanges.Contains(entry.EntityId)) &&
                     entry.Bounds.Intersects(area))
                 {
@@ -212,11 +228,19 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         public BvhNode? Left { get; }
         public BvhNode? Right { get; }
         public BvhEntry[]? Entries { get; }
+        public int EntryStart { get; }
+        public int EntryLength { get; }
 
-        public BvhNode(CadRectD bounds, BvhEntry[] entries)
+        public BvhNode(
+            CadRectD bounds,
+            BvhEntry[] entries,
+            int entryStart,
+            int entryLength)
         {
             Bounds = bounds;
             Entries = entries;
+            EntryStart = entryStart;
+            EntryLength = entryLength;
         }
 
         public BvhNode(CadRectD bounds, BvhNode left, BvhNode right)

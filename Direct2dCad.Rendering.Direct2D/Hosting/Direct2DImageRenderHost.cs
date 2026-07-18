@@ -43,6 +43,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
     public double LastFrameRenderTimeMilliseconds { get; private set; }
 
+    public double LastFullFrameRenderTimeMilliseconds { get; private set; }
+
     public Color4 FallbackBackgroundColor { get; set; } = new(0.08f, 0.09f, 0.10f, 1.0f);
 
     public CadDocumentChangeSet UpdateTextMeasurements(CadDocument document)
@@ -303,7 +305,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 _renderer.CompleteFrame();
             }
 
-            RecordRenderedFrame(frameStartTimestamp);
+            RecordRenderedFrame(frameStartTimestamp, effectiveInvalidation.IsFull);
         }
         catch (Direct2DDeviceResourcesRecreatedException) when (retryAfterDeviceResourceRecreation)
         {
@@ -464,13 +466,19 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         }
     }
 
-    private void RecordRenderedFrame(long frameStartTimestamp)
+    private void RecordRenderedFrame(
+        long frameStartTimestamp,
+        bool isFullFrame)
     {
         var elapsed = Stopwatch.GetElapsedTime(frameStartTimestamp).TotalSeconds;
         if (!double.IsFinite(elapsed) || elapsed <= 0)
             return;
 
         LastFrameRenderTimeMilliseconds = elapsed * 1000.0;
+        if (!isFullFrame)
+            return;
+
+        LastFullFrameRenderTimeMilliseconds = LastFrameRenderTimeMilliseconds;
         var instantaneousFrameRate = Math.Min(1.0 / elapsed, MaximumReportedFrameRate);
         FramesPerSecond = FramesPerSecond <= 0
             ? instantaneousFrameRate
@@ -517,6 +525,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _pendingTextMeasurementIds.Clear();
         FramesPerSecond = 0;
         LastFrameRenderTimeMilliseconds = 0;
+        LastFullFrameRenderTimeMilliseconds = 0;
         _disposed = true;
     }
 

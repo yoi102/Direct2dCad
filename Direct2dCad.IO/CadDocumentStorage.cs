@@ -114,44 +114,30 @@ public sealed class CadDocumentStorage
 
     public CadDocument Load(string filePath)
     {
-        var documentInfo = ReadSection<CadDocumentSection>(filePath, CadSectionKind.Document);
-        var settings = ReadSection<CadSettingsSection>(filePath, CadSectionKind.Settings);
-        var layers = ReadSection<CadLayerSection>(filePath, CadSectionKind.Layers);
-        var styles = ReadSection<CadStylesSection>(filePath, CadSectionKind.Styles);
-        var layouts = ReadOptionalSection(filePath, CadSectionKind.Layouts, new CadLayoutsSection());
-        var blocks = ReadOptionalSection(filePath, CadSectionKind.Blocks, new CadBlocksSection());
-        var lines = ReadSection<CadLinesSection>(filePath, CadSectionKind.Lines);
-        var circles = ReadSection<CadCirclesSection>(filePath, CadSectionKind.Circles);
-        var ellipses = ReadOptionalSection(filePath, CadSectionKind.Ellipses, new CadEllipsesSection());
-        var arcs = ReadSection<CadArcsSection>(filePath, CadSectionKind.Arcs);
-        var rectangles = ReadOptionalSection(filePath, CadSectionKind.Rectangles, new CadRectanglesSection());
-        var polylines = ReadOptionalSection(filePath, CadSectionKind.Polylines, new CadPolylinesSection());
-        var splines = ReadOptionalSection(filePath, CadSectionKind.Splines, new CadSplinesSection());
-        var texts = ReadSection<CadTextsSection>(filePath, CadSectionKind.Texts);
-        var shapeTexts = ReadOptionalSection(filePath, CadSectionKind.ShapeTexts, new CadShapeTextsSection());
-        var images = ReadOptionalSection(filePath, CadSectionKind.Images, new CadImagesSection());
-        var oleObjects = ReadOptionalSection(filePath, CadSectionKind.OleObjects, new CadOleObjectsSection());
-        var blockReferences = ReadOptionalSection(filePath, CadSectionKind.BlockReferences, new CadBlockReferencesSection());
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
-        return CadDocumentMapper.FromSections(
-            documentInfo,
-            settings,
-            layers,
-            styles,
-            layouts,
-            blocks,
-            lines,
-            circles,
-            ellipses,
-            arcs,
-            rectangles,
-            polylines,
-            splines,
-            texts,
-            shapeTexts,
-            images,
-            oleObjects,
-            blockReferences);
+        using var stream = new FileStream(
+            filePath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 64 * 1024,
+            FileOptions.SequentialScan);
+        using var reader = new BinaryReader(stream);
+        var entries = ReadSectionTable(reader);
+        var payloads = new Dictionary<CadSectionKind, SerializedSectionPayload>(entries.Count);
+        foreach (var entry in entries.OrderBy(static entry => entry.PayloadOffset))
+        {
+            ValidateSectionEntry(entry, stream.Length);
+            stream.Position = entry.PayloadOffset;
+            var payload = reader.ReadBytes(entry.PayloadLength);
+            if (payload.Length != entry.PayloadLength)
+                throw new EndOfStreamException($"Unexpected end of section: {entry.Kind}");
+            if (!payloads.TryAdd(entry.Kind, new SerializedSectionPayload(entry, payload)))
+                throw new InvalidDataException($"Duplicate section: {entry.Kind}");
+        }
+
+        return LoadFromPayloads(payloads);
     }
 
     public async Task<CadDocument> LoadAsync(
