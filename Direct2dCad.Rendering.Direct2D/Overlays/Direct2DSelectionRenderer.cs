@@ -186,6 +186,17 @@ internal sealed class Direct2DSelectionRenderer(
         if (!IntersectsRenderBounds(entity, offset, viewport, dirtyWorldBounds))
             return;
 
+        var detail = Direct2DEntityLevelOfDetail.ResolveSelection(entity, context.Transform);
+        if (detail == Direct2DEntityRenderDetail.Skip)
+            return;
+        if (detail == Direct2DEntityRenderDetail.Simplified)
+        {
+            var brush = styleResources.GetBrush(context, selectionStyle.StrokeColor);
+            var bounds = entity.Bounds.Translate(offset);
+            Direct2DEntityRenderer.DrawBoundsProxy(context, bounds, brush);
+            return;
+        }
+
         if (entity is CadBlockReference blockReference)
         {
             DrawBlockReferenceSelection(
@@ -351,13 +362,20 @@ internal sealed class Direct2DSelectionRenderer(
         if (resources?.Geometry is null)
             return false;
 
+        var geometry = Direct2DEntityLevelOfDetail.ResolveGeometry(
+            entity,
+            resources,
+            context.Transform);
+        if (geometry is null)
+            return false;
+
         var brush = styleResources.GetBrush(context, style.StrokeColor);
         var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
         var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
         if (offset == CadVectorD.Zero)
         {
-            DrawCachedFill(context, resources.Geometry, entity.Bounds, style, viewport);
-            context.DrawGeometry(resources.Geometry, brush, strokeWidth, strokeStyle);
+            DrawCachedFill(context, geometry, entity.Bounds, style, viewport);
+            context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
             return true;
         }
 
@@ -367,8 +385,8 @@ internal sealed class Direct2DSelectionRenderer(
             (float)offset.Y) * previousTransform;
         try
         {
-            DrawCachedFill(context, resources.Geometry, entity.Bounds, style, viewport);
-            context.DrawGeometry(resources.Geometry, brush, strokeWidth, strokeStyle);
+            DrawCachedFill(context, geometry, entity.Bounds, style, viewport);
+            context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
         }
         finally
         {

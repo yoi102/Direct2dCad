@@ -5,6 +5,7 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;
@@ -206,6 +207,8 @@ internal sealed class Direct2DResourceCache : IDisposable
 
             var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
             bucket.Geometry = CreateGeometry(entity, fillStyle is CadHatchFillStyle);
+            (bucket.MediumDetailGeometry, bucket.LowDetailGeometry) =
+                CreateGeometryLods(entity);
 
             if (hasFillStyle)
             {
@@ -329,9 +332,28 @@ internal sealed class Direct2DResourceCache : IDisposable
             return;
         }
 
-        var geometry = CreateGeometry(entity, bucket.HatchFillStyle is CadHatchFillStyle);
+        ID2D1Geometry? geometry = null;
+        ID2D1Geometry? mediumDetailGeometry = null;
+        ID2D1Geometry? lowDetailGeometry = null;
+        try
+        {
+            geometry = CreateGeometry(entity, bucket.HatchFillStyle is CadHatchFillStyle);
+            (mediumDetailGeometry, lowDetailGeometry) = CreateGeometryLods(entity);
+        }
+        catch
+        {
+            geometry?.Dispose();
+            mediumDetailGeometry?.Dispose();
+            lowDetailGeometry?.Dispose();
+            throw;
+        }
+
         bucket.Geometry?.Dispose();
+        bucket.MediumDetailGeometry?.Dispose();
+        bucket.LowDetailGeometry?.Dispose();
         bucket.Geometry = geometry;
+        bucket.MediumDetailGeometry = mediumDetailGeometry;
+        bucket.LowDetailGeometry = lowDetailGeometry;
     }
 
     private void UpdateTextResources(
@@ -387,6 +409,69 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadBlockReference => null,
             _ => null
         };
+    }
+
+    private (ID2D1Geometry? Medium, ID2D1Geometry? Low) CreateGeometryLods(CadEntity entity)
+    {
+        IReadOnlyList<CadPointD> points;
+        bool closed;
+        int sourceComplexity;
+        switch (entity)
+        {
+            case CadPolyline polyline when polyline.Points.Count > 16:
+                points = polyline.Points;
+                closed = polyline.Closed;
+                sourceComplexity = polyline.Points.Count;
+                break;
+            case CadSpline spline when spline.FitPoints.Count > 16:
+                points = spline.EnumerateFlattenedPoints(6).ToArray();
+                closed = spline.Closed;
+                sourceComplexity = spline.FitPoints.Count;
+                break;
+            default:
+                return (null, null);
+        }
+
+        var maximumExtent = Math.Max(entity.Bounds.Width, entity.Bounds.Height);
+        if (!double.IsFinite(maximumExtent) || maximumExtent <= double.Epsilon)
+            return (null, null);
+
+        ID2D1Geometry? medium = null;
+        ID2D1Geometry? low = null;
+        try
+        {
+            var mediumPoints = CadPointLodSimplifier.Simplify(
+                points,
+                closed,
+                maximumExtent / 1024.0);
+            if (IsWorthCaching(mediumPoints.Count, sourceComplexity, closed))
+                medium = CreatePolylineGeometry(mediumPoints, closed);
+
+            var lowPoints = CadPointLodSimplifier.Simplify(
+                points,
+                closed,
+                maximumExtent / 256.0);
+            var comparisonCount = mediumPoints.Count < sourceComplexity
+                ? mediumPoints.Count
+                : sourceComplexity;
+            if (IsWorthCaching(lowPoints.Count, comparisonCount, closed))
+                low = CreatePolylineGeometry(lowPoints, closed);
+
+            return (medium, low);
+        }
+        catch
+        {
+            medium?.Dispose();
+            low?.Dispose();
+            throw;
+        }
+    }
+
+    private static bool IsWorthCaching(int simplifiedCount, int sourceCount, bool closed)
+    {
+        var minimumCount = closed ? 3 : 2;
+        return simplifiedCount >= minimumCount &&
+               simplifiedCount <= sourceCount * 3 / 4;
     }
 
     private ID2D1BitmapBrush? CreateBitmapBrush(CadRectD bounds, int pixelWidth, int pixelHeight, ID2D1Bitmap bitmap)
@@ -725,6 +810,8 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         public EntityId EntityId { get; }
         public ID2D1Geometry? Geometry { get; set; }
+        public ID2D1Geometry? MediumDetailGeometry { get; set; }
+        public ID2D1Geometry? LowDetailGeometry { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? StrokeBrushLease { get; set; }
         internal ResourceLease<ID2D1StrokeStyle>? StrokeStyleLease { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? FillBrushLease { get; set; }
@@ -746,6 +833,8 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         public bool IsEmpty =>
             Geometry is null &&
+            MediumDetailGeometry is null &&
+            LowDetailGeometry is null &&
             StrokeBrush is null &&
             StrokeStyle is null &&
             FillBrush is null &&
@@ -763,6 +852,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         public void Dispose()
         {
             Geometry?.Dispose();
+            MediumDetailGeometry?.Dispose();
+            LowDetailGeometry?.Dispose();
             StrokeBrushLease?.Dispose();
             StrokeStyleLease?.Dispose();
             FillBrushLease?.Dispose();
@@ -772,6 +863,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             BitmapBrush?.Dispose();
             BitmapLease?.Dispose();
             Geometry = null;
+            MediumDetailGeometry = null;
+            LowDetailGeometry = null;
             StrokeBrushLease = null;
             StrokeStyleLease = null;
             FillBrushLease = null;

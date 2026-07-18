@@ -4,6 +4,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Transient;
@@ -17,7 +18,8 @@ namespace Direct2dCad.Rendering.Direct2D.Ole;
 
 internal sealed class Direct2DOleRenderer(
     Direct2DResourceCache resourceCache,
-    Direct2DEntityOrderCache entityOrderCache) : IDisposable
+    Direct2DEntityOrderCache entityOrderCache,
+    Direct2DStyleResourceCache styleResources) : IDisposable
 {
     private const int TilePixelSide = 1024;
     private const int MaxLogicalPixelSide = 1_048_576;
@@ -60,6 +62,12 @@ internal sealed class Direct2DOleRenderer(
                              entityOrderCache)
                          .Cast<CadOleObject>())
             {
+                if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform) !=
+                    Direct2DEntityRenderDetail.Full)
+                {
+                    continue;
+                }
+
                 PrepareTiles(
                     context,
                     Direct2DOleRenderKey.ForEntity(ole.Id),
@@ -78,10 +86,28 @@ internal sealed class Direct2DOleRenderer(
 
     public void DrawEntity(
         ID2D1DeviceContext context,
+        CadDocument document,
         CadOleObject ole,
         CadViewport viewport,
+        CadRenderOptions options,
+        CadColor? proxyColorOverride = null,
         bool allowDraw = true)
     {
+        var detail = Direct2DEntityLevelOfDetail.Resolve(
+            ole,
+            resources: null,
+            context.Transform,
+            options);
+        if (detail == Direct2DEntityRenderDetail.Skip)
+            return;
+        if (detail == Direct2DEntityRenderDetail.Simplified)
+        {
+            var color = proxyColorOverride ?? ResolveLayerColor(document, ole.LayerId);
+            var brush = styleResources.GetBrush(context, color);
+            Direct2DEntityRenderer.DrawRectangularProxy(context, ole.Bounds, brush);
+            return;
+        }
+
         Draw(
             context,
             Direct2DOleRenderKey.ForEntity(ole.Id),
@@ -100,6 +126,12 @@ internal sealed class Direct2DOleRenderer(
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(ole);
+        if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform) !=
+            Direct2DEntityRenderDetail.Full)
+        {
+            return;
+        }
+
         PrepareTiles(
             context,
             Direct2DOleRenderKey.ForEntity(ole.Id),
@@ -117,6 +149,12 @@ internal sealed class Direct2DOleRenderer(
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(ole);
+        if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform) !=
+            Direct2DEntityRenderDetail.Full)
+        {
+            return;
+        }
+
         PrepareTiles(
             context,
             ole.SourceEntityId is { } sourceId
@@ -146,6 +184,16 @@ internal sealed class Direct2DOleRenderer(
         CadTransientOleObject ole,
         CadViewport viewport)
     {
+        var detail = Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, context.Transform);
+        if (detail == Direct2DEntityRenderDetail.Skip)
+            return;
+        if (detail == Direct2DEntityRenderDetail.Simplified)
+        {
+            var brush = styleResources.GetBrush(context, ole.Style.StrokeColor);
+            Direct2DEntityRenderer.DrawRectangularProxy(context, ole.Bounds, brush);
+            return;
+        }
+
         Draw(
             context,
             ole.SourceEntityId is { } sourceId
@@ -225,6 +273,12 @@ internal sealed class Direct2DOleRenderer(
                         ToMatrix3x2(group.Transform) * transform);
                     break;
                 case CadTransientOleObject transient:
+                    if (Direct2DEntityLevelOfDetail.ResolveOle(transient.Bounds, transform) !=
+                        Direct2DEntityRenderDetail.Full)
+                    {
+                        break;
+                    }
+
                     PrepareTiles(
                         context,
                         transient.SourceEntityId is { } sourceId
@@ -237,10 +291,17 @@ internal sealed class Direct2DOleRenderer(
                     break;
                 case CadTransientEntityReference reference
                     when document.TryGetEntity(reference.EntityId, out var entity) && entity is CadOleObject ole:
+                    var translatedBounds = ole.Bounds.Translate(reference.Offset);
+                    if (Direct2DEntityLevelOfDetail.ResolveOle(translatedBounds, transform) !=
+                        Direct2DEntityRenderDetail.Full)
+                    {
+                        break;
+                    }
+
                     PrepareTiles(
                         context,
                         Direct2DOleRenderKey.ForEntity(ole.Id),
-                        ole.Bounds.Translate(reference.Offset),
+                        translatedBounds,
                         GetEntityBytes(ole),
                         viewport,
                         transform);
@@ -674,5 +735,12 @@ internal sealed class Direct2DOleRenderer(
     private static float ToOpacity(double opacity)
     {
         return double.IsFinite(opacity) ? (float)Math.Clamp(opacity, 0.0, 1.0) : 1.0f;
+    }
+
+    private static CadColor ResolveLayerColor(CadDocument document, LayerId layerId)
+    {
+        return document.TryGetLayer(layerId, out var layer) && layer is not null
+            ? layer.Color
+            : CadColor.FromRgb(128, 128, 128);
     }
 }

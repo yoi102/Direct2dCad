@@ -57,7 +57,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _resourceCache,
             geometryFactory,
             _styleResources);
-        _oleRenderer = new Direct2DOleRenderer(_resourceCache, _entityOrderCache);
+        _oleRenderer = new Direct2DOleRenderer(
+            _resourceCache,
+            _entityOrderCache,
+            _styleResources);
         _entityReferenceRenderer = new Direct2DEntityReferenceRenderer(
             _resourceCache,
             _entityRenderer,
@@ -383,7 +386,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     }
                     if (entity is CadOleObject ole)
                     {
-                        _oleRenderer.DrawEntity(context, ole, paperViewport);
+                        _oleRenderer.DrawEntity(
+                            context,
+                            document,
+                            ole,
+                            paperViewport,
+                            modelOptions);
                         continue;
                     }
                     if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) && resources is not null)
@@ -437,7 +445,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             }
             if (entity is CadOleObject oleObject)
             {
-                _oleRenderer.DrawEntity(context, oleObject, viewport);
+                _oleRenderer.DrawEntity(
+                    context,
+                    document,
+                    oleObject,
+                    viewport,
+                    options);
                 continue;
             }
 

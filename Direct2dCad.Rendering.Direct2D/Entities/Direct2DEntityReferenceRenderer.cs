@@ -141,7 +141,14 @@ internal sealed class Direct2DEntityReferenceRenderer(
         {
             if (entity is CadOleObject ole)
             {
-                oleRenderer.DrawEntity(context, ole, viewport, allowDraw: false);
+                oleRenderer.DrawEntity(
+                    context,
+                    document,
+                    ole,
+                    viewport,
+                    options,
+                    proxyColorOverride: reference.Style.StrokeColor,
+                    allowDraw: false);
                 return true;
             }
 

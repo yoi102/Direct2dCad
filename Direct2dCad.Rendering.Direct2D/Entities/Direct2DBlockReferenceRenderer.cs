@@ -28,6 +28,9 @@ internal sealed class Direct2DBlockReferenceRenderer(
         CadRenderOptions options)
     {
         _visitedBlocks.Clear();
+        if (TryDrawProxy(context, document, reference, options, parentStyle: null))
+            return;
+
         Draw(
             context,
             document,
@@ -104,6 +107,9 @@ internal sealed class Direct2DBlockReferenceRenderer(
 
                 if (child is CadBlockReference nested)
                 {
+                    if (TryDrawProxy(context, document, nested, options, referenceStyle))
+                        continue;
+
                     Draw(
                         context,
                         document,
@@ -117,7 +123,16 @@ internal sealed class Direct2DBlockReferenceRenderer(
 
                 if (child is CadOleObject oleObject)
                 {
-                    oleRenderer.DrawEntity(context, oleObject, viewport);
+                    CadColor? proxyColor = child.LayerId.Equals(LayerId.Default)
+                        ? referenceStyle.ReferenceColor
+                        : null;
+                    oleRenderer.DrawEntity(
+                        context,
+                        document,
+                        oleObject,
+                        viewport,
+                        options,
+                        proxyColor);
                     continue;
                 }
 
@@ -148,6 +163,32 @@ internal sealed class Direct2DBlockReferenceRenderer(
             context.Transform = previousTransform;
             visited.Remove(reference.DefinitionBlockId);
         }
+    }
+
+    private bool TryDrawProxy(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadBlockReference reference,
+        CadRenderOptions options,
+        BlockRenderStyleContext? parentStyle)
+    {
+        if (Direct2DEntityLevelOfDetail.Resolve(
+                reference,
+                resources: null,
+                context.Transform,
+                options) != Direct2DEntityRenderDetail.Simplified ||
+            !TryResolveReferenceStyle(
+                document,
+                ReferenceRenderState.From(reference),
+                parentStyle,
+                out var referenceStyle))
+        {
+            return false;
+        }
+
+        var brush = styleResources.GetBrush(context, referenceStyle.ReferenceColor);
+        Direct2DEntityRenderer.DrawRectangularProxy(context, reference.Bounds, brush);
+        return true;
     }
 
     private static bool TryResolveReferenceStyle(

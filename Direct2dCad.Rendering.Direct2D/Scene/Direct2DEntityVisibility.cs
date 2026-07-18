@@ -85,14 +85,24 @@ internal static class Direct2DEntityVisibility
                 !entity.IsVisible ||
                 options.HiddenEntityIds.Contains(entity.Id) ||
                 !document.TryGetLayer(entity.LayerId, out var layer) ||
-                layer is not { IsVisible: true, IsFrozen: false } ||
+                layer is not { IsVisible: true, IsFrozen: false })
+            {
+                continue;
+            }
+
+            resourceCache.TryGetEntityResources(entity.Id, out var resources);
+            if (Direct2DEntityLevelOfDetail.Resolve(
+                    entity,
+                    resources,
+                    viewport,
+                    options) == Direct2DEntityRenderDetail.Skip ||
                 renderWorldBounds is { } bounds &&
                 !IntersectsRenderBounds(
                     entity,
                     bounds,
                     viewport,
                     options,
-                    resourceCache))
+                    resources))
             {
                 continue;
             }
@@ -122,7 +132,7 @@ internal static class Direct2DEntityVisibility
         CadRectD renderWorldBounds,
         CadViewport viewport,
         CadRenderOptions options,
-        Direct2DResourceCache resourceCache)
+        Direct2DResourceCache.EntityResourceBucket? resources)
     {
         var broadPhasePadding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
         var entityBounds = entity.Bounds;
@@ -132,7 +142,6 @@ internal static class Direct2DEntityVisibility
             return false;
         }
 
-        resourceCache.TryGetEntityResources(entity.Id, out var resources);
         var bounds = ResolvePaintBounds(entity, resources, viewport, options);
         return bounds.Intersects(renderWorldBounds) ||
                bounds.Contains(renderWorldBounds.Center) ||
