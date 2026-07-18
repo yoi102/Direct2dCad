@@ -1131,4 +1131,7 @@
   <data name="Explicit" xml:space="preserve">
     <value>显式</value>
   </data>
+  <data name="ShowFramesPerSecond" xml:space="preserve">
+    <value>显示帧率</value>
+  </data>
 </root>

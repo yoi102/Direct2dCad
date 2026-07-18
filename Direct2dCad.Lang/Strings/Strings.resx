@@ -1352,4 +1352,7 @@
   <data name="Explicit" xml:space="preserve">
     <value>Explicit</value>
   </data>
+  <data name="ShowFramesPerSecond" xml:space="preserve">
+    <value>Show frames per second</value>
+  </data>
 </root>

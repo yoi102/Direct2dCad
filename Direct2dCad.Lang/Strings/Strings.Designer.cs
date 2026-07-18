@@ -2545,6 +2545,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Show frames per second 的本地化字符串。
+        /// </summary>
+        public static string ShowFramesPerSecond {
+            get {
+                return ResourceManager.GetString("ShowFramesPerSecond", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   查找类似 Show Image in New Window 的本地化字符串。
         /// </summary>
         public static string ShowImageInNewWindow {

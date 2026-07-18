@@ -16,16 +16,20 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     {
         IsAntialiasingEnabled = settings.IsAntialiasingEnabled;
         IsTextAntialiasingEnabled = settings.IsTextAntialiasingEnabled;
+        ShowFramesPerSecond = settings.ShowFramesPerSecond;
     }
 
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
 
     [ObservableProperty] public partial bool IsTextAntialiasingEnabled { get; set; }
 
+    [ObservableProperty] public partial bool ShowFramesPerSecond { get; set; }
+
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
         settings.Rendering.IsTextAntialiasingEnabled = IsTextAntialiasingEnabled;
+        settings.Rendering.ShowFramesPerSecond = ShowFramesPerSecond;
         return true;
     }
 

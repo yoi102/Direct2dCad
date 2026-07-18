@@ -17,11 +17,12 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
 {
     private const double PartialRenderMaxAreaRatio = 0.65;
-    private const double FrameRateSmoothingFactor = 0.2;
-    private const double MaximumReportedFrameRate = 999.0;
+    private const double FrameRateWindowSeconds = 0.5;
+    private const int FrameRateSampleResetMilliseconds = 750;
     private readonly ImageSourceDirect2DResource _target = new();
     private readonly Direct2DSceneRender _renderer = new();
     private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
+    private readonly Queue<RenderFrameSample> _frameRateSamples = [];
     private ID3D11ImageSource? _imageSource;
     private CadDocument? _document;
     private CadViewport? _viewport;
@@ -31,6 +32,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private ID2D1DeviceContext? _clearBrushContext;
     private ID2D1SolidColorBrush? _clearBrush;
     private Color4 _clearBrushColor;
+    private long _lastRenderedFrameTimestamp;
+    private double _renderDurationSecondsTotal;
     private bool _disposed;
 
     public ICadGeometryResourceManager GeometryResourceManager => this;
@@ -42,6 +45,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     public double FramesPerSecond { get; private set; }
 
     public double LastFrameRenderTimeMilliseconds { get; private set; }
+
+    public double AverageFrameRenderTimeMilliseconds { get; private set; }
 
     public double LastFullFrameRenderTimeMilliseconds { get; private set; }
 
@@ -470,20 +475,43 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         long frameStartTimestamp,
         bool isFullFrame)
     {
-        var elapsed = Stopwatch.GetElapsedTime(frameStartTimestamp).TotalSeconds;
+        var frameEndTimestamp = Stopwatch.GetTimestamp();
+        var elapsed = Stopwatch.GetElapsedTime(frameStartTimestamp, frameEndTimestamp).TotalSeconds;
         if (!double.IsFinite(elapsed) || elapsed <= 0)
             return;
 
         LastFrameRenderTimeMilliseconds = elapsed * 1000.0;
-        if (!isFullFrame)
-            return;
+        if (isFullFrame)
+            LastFullFrameRenderTimeMilliseconds = LastFrameRenderTimeMilliseconds;
 
-        LastFullFrameRenderTimeMilliseconds = LastFrameRenderTimeMilliseconds;
-        var instantaneousFrameRate = Math.Min(1.0 / elapsed, MaximumReportedFrameRate);
-        FramesPerSecond = FramesPerSecond <= 0
-            ? instantaneousFrameRate
-            : FramesPerSecond +
-              (instantaneousFrameRate - FramesPerSecond) * FrameRateSmoothingFactor;
+        if (_lastRenderedFrameTimestamp != 0 &&
+            Stopwatch.GetElapsedTime(_lastRenderedFrameTimestamp, frameEndTimestamp).TotalMilliseconds >
+            FrameRateSampleResetMilliseconds)
+        {
+            _frameRateSamples.Clear();
+            _renderDurationSecondsTotal = 0;
+        }
+
+        _lastRenderedFrameTimestamp = frameEndTimestamp;
+        _frameRateSamples.Enqueue(new RenderFrameSample(frameEndTimestamp, elapsed));
+        _renderDurationSecondsTotal += elapsed;
+        while (_frameRateSamples.Count > 1 &&
+               Stopwatch.GetElapsedTime(
+                   _frameRateSamples.Peek().CompletionTimestamp,
+                   frameEndTimestamp).TotalSeconds >
+               FrameRateWindowSeconds)
+        {
+            _renderDurationSecondsTotal -= _frameRateSamples.Dequeue().RenderDurationSeconds;
+        }
+
+        _renderDurationSecondsTotal = Math.Max(0, _renderDurationSecondsTotal);
+        var averageRenderDuration = _frameRateSamples.Count > 0
+            ? _renderDurationSecondsTotal / _frameRateSamples.Count
+            : 0;
+        AverageFrameRenderTimeMilliseconds = averageRenderDuration * 1000.0;
+        FramesPerSecond = averageRenderDuration > 0
+            ? 1.0 / averageRenderDuration
+            : 0;
     }
 
     private void RefreshPendingTextMeasurements(CadDocument document)
@@ -523,11 +551,19 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _transientScene = null;
         _handleScene = null;
         _pendingTextMeasurementIds.Clear();
+        _frameRateSamples.Clear();
+        _lastRenderedFrameTimestamp = 0;
+        _renderDurationSecondsTotal = 0;
         FramesPerSecond = 0;
         LastFrameRenderTimeMilliseconds = 0;
+        AverageFrameRenderTimeMilliseconds = 0;
         LastFullFrameRenderTimeMilliseconds = 0;
         _disposed = true;
     }
+
+    private readonly record struct RenderFrameSample(
+        long CompletionTimestamp,
+        double RenderDurationSeconds);
 
     private void ThrowIfDisposed()
     {

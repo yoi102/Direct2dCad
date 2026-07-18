@@ -47,7 +47,8 @@ public sealed class CadUserSettings
         Rendering = new CadRenderingUserSettings
         {
             IsAntialiasingEnabled = source.Rendering.IsAntialiasingEnabled,
-            IsTextAntialiasingEnabled = source.Rendering.IsTextAntialiasingEnabled
+            IsTextAntialiasingEnabled = source.Rendering.IsTextAntialiasingEnabled,
+            ShowFramesPerSecond = source.Rendering.ShowFramesPerSecond
         };
         Interaction = new CadInteractionUserSettings
         {
@@ -92,6 +93,7 @@ public sealed class CadRenderingUserSettings
 {
     public bool IsAntialiasingEnabled { get; set; } = true;
     public bool IsTextAntialiasingEnabled { get; set; } = true;
+    public bool ShowFramesPerSecond { get; set; } = true;
 
     internal void Normalize()
     {

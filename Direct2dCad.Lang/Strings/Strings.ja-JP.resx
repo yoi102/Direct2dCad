@@ -1131,4 +1131,7 @@
   <data name="Explicit" xml:space="preserve">
     <value>明示</value>
   </data>
+  <data name="ShowFramesPerSecond" xml:space="preserve">
+    <value>フレームレートを表示</value>
+  </data>
 </root>

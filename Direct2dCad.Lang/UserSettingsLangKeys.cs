@@ -7,6 +7,7 @@ public static class UserSettingsLangKeys
     public const string Rendering = nameof(Rendering);
     public const string Interaction = nameof(Interaction);
     public const string Antialiasing = nameof(Antialiasing);
+    public const string ShowFramesPerSecond = nameof(ShowFramesPerSecond);
     public const string SelectedEntity = nameof(SelectedEntity);
     public const string Grip = nameof(Grip);
     public const string GripPreview = nameof(GripPreview);

@@ -88,6 +88,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public partial double RenderFramesPerSecond { get; private set; }
 
     [ObservableProperty]
+    public partial double RenderFrameTimeMilliseconds { get; private set; }
+
+    [ObservableProperty]
+    public partial bool ShowFramesPerSecond { get; private set; } = true;
+
+    [ObservableProperty]
     public partial CadCanvasToolMode CadCanvasToolMode { get; internal set; } = CadCanvasToolMode.Select;
 
     [ObservableProperty]
@@ -275,6 +281,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
+        ShowFramesPerSecond = UserSettings.Rendering.ShowFramesPerSecond;
         RequestRender();
     }
 
@@ -1320,6 +1327,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions(drawGripHandles));
         Direct2DImageRenderHost.Render(effectiveInvalidation);
+        RenderFrameTimeMilliseconds = Direct2DImageRenderHost.AverageFrameRenderTimeMilliseconds;
         var framesPerSecond = Direct2DImageRenderHost.FramesPerSecond;
         if (!RenderFramesPerSecond.Equals(framesPerSecond))
             RenderFramesPerSecond = framesPerSecond;
@@ -2462,6 +2470,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (_disposed)
             return;
 
+        _disposed = true;
         DetachRenderResources();
         _oleHostService.EndEditSessions(_oleEditSessionId);
         _oleHostService.ReleaseRenderSessions(_oleEditSessionId);
@@ -2471,7 +2480,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.CommandActivity -= OnCommandActivity;
         DrawingDefaults.DefaultsChanged -= OnDrawingDefaultsChanged;
         Direct2DImageRenderHost.Dispose();
-        _disposed = true;
     }
 
     private void ThrowIfDisposed()
