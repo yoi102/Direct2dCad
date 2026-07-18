@@ -1355,4 +1355,7 @@
   <data name="ShowFramesPerSecond" xml:space="preserve">
     <value>Show frames per second</value>
   </data>
+  <data name="AcceleratedViewportInteraction" xml:space="preserve">
+    <value>Accelerated pan and zoom</value>
+  </data>
 </root>

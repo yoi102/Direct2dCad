@@ -1134,4 +1134,7 @@
   <data name="ShowFramesPerSecond" xml:space="preserve">
     <value>显示帧率</value>
   </data>
+  <data name="AcceleratedViewportInteraction" xml:space="preserve">
+    <value>加速画布平移和缩放</value>
+  </data>
 </root>

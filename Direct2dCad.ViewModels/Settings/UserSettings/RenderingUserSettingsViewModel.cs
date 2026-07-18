@@ -17,6 +17,8 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         IsAntialiasingEnabled = settings.IsAntialiasingEnabled;
         IsTextAntialiasingEnabled = settings.IsTextAntialiasingEnabled;
         ShowFramesPerSecond = settings.ShowFramesPerSecond;
+        IsViewportInteractionPreviewEnabled =
+            settings.IsViewportInteractionPreviewEnabled;
     }
 
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
@@ -25,11 +27,16 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
 
     [ObservableProperty] public partial bool ShowFramesPerSecond { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsViewportInteractionPreviewEnabled { get; set; }
+
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
         settings.Rendering.IsTextAntialiasingEnabled = IsTextAntialiasingEnabled;
         settings.Rendering.ShowFramesPerSecond = ShowFramesPerSecond;
+        settings.Rendering.IsViewportInteractionPreviewEnabled =
+            IsViewportInteractionPreviewEnabled;
         return true;
     }
 

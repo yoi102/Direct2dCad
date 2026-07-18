@@ -66,6 +66,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadPointD? _layoutPanLastScreen;
     private CadLayoutViewportSnapshot? _layoutPanInitialSnapshot;
     private bool _layoutPanHasMoved;
+    private bool _viewportInteractionRequiresHandleSceneUpdate;
     private bool _fitToWindowPending;
     private BlockId? _insertBlockDefinitionId;
     private double _insertBlockRotationRadians;
@@ -282,6 +283,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
         ShowFramesPerSecond = UserSettings.Rendering.ShowFramesPerSecond;
+        if (!UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
+            CancelViewportInteractionPreview();
         RequestRender();
     }
 
@@ -464,6 +467,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _currentMousePoint = screen;
         var requiresFullRender = false;
 
+        if (_pan.IsPanning &&
+            UserSettings.Rendering.IsViewportInteractionPreviewEnabled &&
+            !Direct2DImageRenderHost.IsViewportInteractionActive)
+        {
+            Direct2DImageRenderHost.BeginViewportInteraction();
+        }
+
         if (MovePan(screen))
             requiresFullRender = true;
 
@@ -473,14 +483,20 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         {
             _gripDrag.UpdatePointer(ScreenToSnappedWorld, screen);
             if (requiresFullRender)
-                RequestRender(CadRenderInvalidation.Full, updateHandleScene: true);
+            {
+                if (!RenderViewportInteractionPreview())
+                    RequestRender(CadRenderInvalidation.Full, updateHandleScene: true);
+            }
             else
                 RequestOverlayRender(updateHandleScene: true);
             return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Hand);
         }
 
         if (requiresFullRender)
-            RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
+        {
+            if (!RenderViewportInteractionPreview())
+                RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
+        }
         else
             RequestOverlayRender();
         return CadCanvasInteractionResult.HandledOnly;
@@ -555,15 +571,46 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return CadCanvasInteractionResult.HandledOnly;
         }
 
+        if (UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
+            Direct2DImageRenderHost.BeginViewportInteraction();
+        _viewportInteractionRequiresHandleSceneUpdate = true;
         CadEditor.Execute(new ZoomViewportCommand(screen, factor));
         UpdatePointerWorldStatus(screen);
+        if (!RenderViewportInteractionPreview())
+        {
+            Direct2DImageRenderHost.EndViewportInteraction();
+            _viewportInteractionRequiresHandleSceneUpdate = false;
+            RequestRender(
+                CadRenderInvalidation.Full,
+                drawGripHandles: true,
+                updateHandleScene:
+                    CadEditor.Selection.EntityIds.Count <=
+                    CadHandleSceneBuildOptions.DefaultMaximumIndividualGripEntityCount);
+        }
+        return CadCanvasInteractionResult.HandledOnly;
+    }
+
+    public void CompleteViewportInteractionPreview()
+    {
+        if (!Direct2DImageRenderHost.IsViewportInteractionActive)
+        {
+            _viewportInteractionRequiresHandleSceneUpdate = false;
+            return;
+        }
+
+        Direct2DImageRenderHost.EndViewportInteraction();
+        var updateHandleScene = _viewportInteractionRequiresHandleSceneUpdate;
+        _viewportInteractionRequiresHandleSceneUpdate = false;
         RequestRender(
             CadRenderInvalidation.Full,
             drawGripHandles: true,
-            updateHandleScene:
-                CadEditor.Selection.EntityIds.Count <=
-                CadHandleSceneBuildOptions.DefaultMaximumIndividualGripEntityCount);
-        return CadCanvasInteractionResult.HandledOnly;
+            updateHandleScene: updateHandleScene);
+    }
+
+    public void CancelViewportInteractionPreview()
+    {
+        Direct2DImageRenderHost.EndViewportInteraction();
+        _viewportInteractionRequiresHandleSceneUpdate = false;
     }
 
     public CadCanvasInteractionResult CycleSelection(bool backwards)
@@ -1293,6 +1340,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         bool drawGripHandles = true,
         bool updateHandleScene = true)
     {
+        if (Direct2DImageRenderHost.IsViewportInteractionActive)
+        {
+            Direct2DImageRenderHost.EndViewportInteraction();
+            _viewportInteractionRequiresHandleSceneUpdate = false;
+        }
+
         UpdateTextMeasurements();
         var requestedInvalidation = invalidation ?? CadRenderInvalidation.Full;
         CadRenderInvalidation effectiveInvalidation;
@@ -1351,6 +1404,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         else
         {
             _pan.Begin(screen);
+            if (UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
+                Direct2DImageRenderHost.BeginViewportInteraction();
+            _viewportInteractionRequiresHandleSceneUpdate = false;
         }
         OnPropertyChanged(nameof(IsPanning));
         return true;
@@ -1358,6 +1414,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void EndPan()
     {
+        var hadViewportPreview = Direct2DImageRenderHost.IsViewportInteractionActive;
         var hasMoved = _pan.End();
         if (_layoutPanInitialSnapshot is { } initial &&
             TryGetActiveLayoutViewport(out var layout, out var viewport))
@@ -1384,9 +1441,29 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _layoutPanLastScreen = null;
         _layoutPanInitialSnapshot = null;
         _layoutPanHasMoved = false;
+        Direct2DImageRenderHost.EndViewportInteraction();
+        _viewportInteractionRequiresHandleSceneUpdate = false;
         OnPropertyChanged(nameof(IsPanning));
         if (hasMoved)
             PublishInteractionActivity("Pan View");
+        if (hadViewportPreview && hasMoved)
+            RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
+    }
+
+    private bool RenderViewportInteractionPreview()
+    {
+        if (!UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
+            return false;
+
+        if (!Direct2DImageRenderHost.RenderViewportInteractionPreview())
+            return false;
+
+        RenderFrameTimeMilliseconds =
+            Direct2DImageRenderHost.AverageFrameRenderTimeMilliseconds;
+        var framesPerSecond = Direct2DImageRenderHost.FramesPerSecond;
+        if (!RenderFramesPerSecond.Equals(framesPerSecond))
+            RenderFramesPerSecond = framesPerSecond;
+        return true;
     }
 
     private bool MovePan(CadPointD screen)

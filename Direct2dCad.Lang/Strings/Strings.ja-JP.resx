@@ -1134,4 +1134,7 @@
   <data name="ShowFramesPerSecond" xml:space="preserve">
     <value>フレームレートを表示</value>
   </data>
+  <data name="AcceleratedViewportInteraction" xml:space="preserve">
+    <value>パンとズームを高速化</value>
+  </data>
 </root>

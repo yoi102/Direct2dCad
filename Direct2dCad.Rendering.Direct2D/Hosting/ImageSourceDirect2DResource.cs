@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using SharpGen.Runtime;
+using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.Direct3D;
@@ -33,6 +34,9 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     private ID3D11Texture2D? _d3d11BackBuffer;
     private IDXGISurface? _dxgiSurface;
     private ID2D1Bitmap1? _targetBitmap;
+    private ID3D11Texture2D? _interactionSnapshotTexture;
+    private IDXGISurface? _interactionSnapshotSurface;
+    private ID2D1Bitmap1? _interactionSnapshotBitmap;
 
     private IDirect3DTexture9? _sharedTexture9;
     private IDirect3DSurface9? _sharedSurface9;
@@ -262,6 +266,131 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         BeginDraw();
         drawAction(_d2dContext);
         EndDraw(dirtyRects);
+    }
+
+    public bool CaptureFrameSnapshot()
+    {
+        ThrowIfDisposed();
+        EnsureTargetReady();
+        if (_isDrawing || _d3dDevice is null || _d3dContext is null || _d2dContext is null)
+            return false;
+
+        try
+        {
+            EnsureFrameSnapshotResources();
+            _d3dContext.CopyResource(_interactionSnapshotTexture, _d3d11BackBuffer);
+            _d3dContext.Flush();
+            return true;
+        }
+        catch
+        {
+            ReleaseFrameSnapshot();
+            return false;
+        }
+    }
+
+    public bool DrawFrameSnapshot(
+        System.Numerics.Matrix3x2 screenTransform,
+        Color4 background,
+        Action<ID2D1DeviceContext>? drawAfterSnapshot = null)
+    {
+        ThrowIfDisposed();
+        if (_interactionSnapshotBitmap is null || !IsTargetReady)
+            return false;
+
+        DrawFrame(context =>
+        {
+            var previousTransform = context.Transform;
+            var previousAntialiasMode = context.AntialiasMode;
+            try
+            {
+                context.Transform = System.Numerics.Matrix3x2.Identity;
+                context.Clear(background);
+                context.Transform = screenTransform;
+                context.AntialiasMode = AntialiasMode.Aliased;
+                context.DrawBitmap(
+                    _interactionSnapshotBitmap,
+                    new RawRectF(0, 0, _width, _height),
+                    1.0f,
+                    Vortice.Direct2D1.InterpolationMode.Linear,
+                    null,
+                    null);
+            }
+            finally
+            {
+                context.AntialiasMode = previousAntialiasMode;
+                context.Transform = previousTransform;
+            }
+
+            drawAfterSnapshot?.Invoke(context);
+        });
+        return true;
+    }
+
+    [MemberNotNull(
+        nameof(_interactionSnapshotTexture),
+        nameof(_interactionSnapshotSurface),
+        nameof(_interactionSnapshotBitmap))]
+    private void EnsureFrameSnapshotResources()
+    {
+        if (_interactionSnapshotTexture is not null &&
+            _interactionSnapshotSurface is not null &&
+            _interactionSnapshotBitmap is not null)
+        {
+            return;
+        }
+
+        if (_d3dDevice is null || _d2dContext is null)
+            throw new InvalidOperationException("Direct2D device resources are not ready.");
+
+        ReleaseFrameSnapshot();
+        try
+        {
+            var description = new Texture2DDescription
+            {
+                Width = (uint)_width,
+                Height = (uint)_height,
+                MipLevels = 1,
+                ArraySize = 1,
+                Format = DXGIFormat.B8G8R8A8_UNorm,
+                SampleDescription = new SampleDescription(1, 0),
+                Usage = ResourceUsage.Default,
+                BindFlags = BindFlags.RenderTarget | BindFlags.ShaderResource,
+                CPUAccessFlags = CpuAccessFlags.None,
+                MiscFlags = ResourceOptionFlags.None
+            };
+            _interactionSnapshotTexture = _d3dDevice.CreateTexture2D(description);
+            _interactionSnapshotSurface =
+                _interactionSnapshotTexture.QueryInterface<IDXGISurface>();
+            _interactionSnapshotBitmap = _d2dContext.CreateBitmapFromDxgiSurface(
+                _interactionSnapshotSurface,
+                new BitmapProperties1
+                {
+                    PixelFormat = new PixelFormat(
+                        DXGIFormat.B8G8R8A8_UNorm,
+                        Vortice.DCommon.AlphaMode.Ignore),
+                    DpiX = 96.0f,
+                    DpiY = 96.0f,
+                    BitmapOptions = BitmapOptions.None
+                });
+        }
+        catch
+        {
+            ReleaseFrameSnapshot();
+            throw;
+        }
+    }
+
+    public void ReleaseFrameSnapshot()
+    {
+        _interactionSnapshotBitmap?.Dispose();
+        _interactionSnapshotBitmap = null;
+
+        _interactionSnapshotSurface?.Dispose();
+        _interactionSnapshotSurface = null;
+
+        _interactionSnapshotTexture?.Dispose();
+        _interactionSnapshotTexture = null;
     }
 
     private static IntRect[] ToIntRects(IReadOnlyList<CadScreenRect> dirtyRects)
@@ -560,6 +689,8 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     private void ReleaseImageTarget()
     {
+        ReleaseFrameSnapshot();
+
         if (_d2dContext != null)
             _d2dContext.Target = null;
 

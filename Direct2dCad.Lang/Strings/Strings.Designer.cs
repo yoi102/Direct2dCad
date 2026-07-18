@@ -61,6 +61,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Accelerated pan and zoom 的本地化字符串。
+        /// </summary>
+        public static string AcceleratedViewportInteraction {
+            get {
+                return ResourceManager.GetString("AcceleratedViewportInteraction", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Add after 的本地化字符串。
         /// </summary>
         public static string AddAfter {
@@ -2552,7 +2561,7 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("ShowFramesPerSecond", resourceCulture);
             }
         }
-
+        
         /// <summary>
         ///   查找类似 Show Image in New Window 的本地化字符串。
         /// </summary>

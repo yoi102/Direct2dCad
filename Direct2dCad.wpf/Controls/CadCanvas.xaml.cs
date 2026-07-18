@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels;
 
@@ -11,10 +12,18 @@ public partial class CadCanvas : IDisposable
     private CadPointD _pendingPointerScreen;
     private bool _pointerMovePending;
     private bool _pointerRenderScheduled;
+    private readonly DispatcherTimer _viewportInteractionCompletionTimer;
 
     public CadCanvas()
     {
         InitializeComponent();
+
+        _viewportInteractionCompletionTimer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(120),
+            DispatcherPriority.Render,
+            OnViewportInteractionCompletionTimer,
+            Dispatcher);
+        _viewportInteractionCompletionTimer.Stop();
 
         Focusable = true;
         Stretch = System.Windows.Media.Stretch.Fill;
@@ -66,6 +75,8 @@ public partial class CadCanvas : IDisposable
 
         if (e.OldValue is CadDocumentViewModel oldViewModel)
         {
+            canvas._viewportInteractionCompletionTimer.Stop();
+            oldViewModel.CancelViewportInteractionPreview();
             oldViewModel.PropertyChanged -= canvas.OnDocumentViewModelPropertyChanged;
             oldViewModel.DetachRenderResources();
         }
@@ -102,6 +113,7 @@ public partial class CadCanvas : IDisposable
 
     private void CadCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        CancelPendingViewportInteraction();
         UpdateViewportSize();
         UpdateRenderSize();
         DocumentViewModel?.RequestRender();
@@ -114,6 +126,7 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
+        CompletePendingViewportInteraction();
         var screen = ToCadPoint(e.GetPosition(this));
         FlushPendingPointerMove(screen);
 
@@ -175,6 +188,8 @@ public partial class CadCanvas : IDisposable
         FlushPendingPointerMove(screen);
         var result = DocumentViewModel.MouseWheel(screen, e.Delta);
         ApplyInteractionResult(result, e);
+        if (result.Handled)
+            ScheduleViewportInteractionCompletion();
     }
 
     private void CadCanvas_KeyDown(object sender, KeyEventArgs e)
@@ -300,6 +315,29 @@ public partial class CadCanvas : IDisposable
         FlushPendingPointerMove();
     }
 
+    private void ScheduleViewportInteractionCompletion()
+    {
+        _viewportInteractionCompletionTimer.Stop();
+        _viewportInteractionCompletionTimer.Start();
+    }
+
+    private void OnViewportInteractionCompletionTimer(object? sender, EventArgs e)
+    {
+        CompletePendingViewportInteraction();
+    }
+
+    private void CompletePendingViewportInteraction()
+    {
+        _viewportInteractionCompletionTimer.Stop();
+        DocumentViewModel?.CompleteViewportInteractionPreview();
+    }
+
+    private void CancelPendingViewportInteraction()
+    {
+        _viewportInteractionCompletionTimer.Stop();
+        DocumentViewModel?.CancelViewportInteractionPreview();
+    }
+
     private void FlushPendingPointerMove(CadPointD? latestScreen = null)
     {
         UnschedulePointerMove();
@@ -358,6 +396,7 @@ public partial class CadCanvas : IDisposable
 
     public void Dispose()
     {
+        CancelPendingViewportInteraction();
         UnschedulePointerMove();
         d3d11ImageSource.Dispose();
     }
