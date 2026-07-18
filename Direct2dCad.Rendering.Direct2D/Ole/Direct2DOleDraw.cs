@@ -1,6 +1,6 @@
 using Direct2dCad.Db;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Ole;
 
 public readonly record struct Direct2DOleRenderKey(
     EntityId? EntityId,

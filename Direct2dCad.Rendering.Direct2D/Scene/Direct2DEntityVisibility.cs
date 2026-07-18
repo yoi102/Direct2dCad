@@ -2,8 +2,9 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Resources;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 internal static class Direct2DEntityVisibility
 {

@@ -2,13 +2,16 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Ole;
+using Direct2dCad.Rendering.Direct2D.Resources;
+using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.Direct2D1;
 using Vortice.Mathematics;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Hosting;
 
 public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
 {

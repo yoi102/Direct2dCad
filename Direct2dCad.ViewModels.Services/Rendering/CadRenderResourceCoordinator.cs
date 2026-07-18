@@ -1,6 +1,6 @@
 using Direct2dCad.ChangeTracking;
 using Direct2dCad.Editor;
-using Direct2dCad.Rendering.Direct2D;
+using Direct2dCad.Rendering.Direct2D.Hosting;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 

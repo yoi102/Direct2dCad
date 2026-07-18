@@ -14,7 +14,7 @@ using D3D9Api = Vortice.Direct3D9.D3D9;
 using D3D9Format = Vortice.Direct3D9.Format;
 using DXGIFormat = Vortice.DXGI.Format;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Hosting;
 
 internal sealed class ImageSourceDirect2DResource : IDisposable
 {

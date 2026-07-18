@@ -1,6 +1,6 @@
 using Vortice.Direct2D1;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Ole;
 
 internal sealed class Direct2DOleBitmapCache : IDisposable
 {

@@ -5,7 +5,7 @@ using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.Direct2D1;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Transient;
 
 internal sealed class Direct2DTransientSceneRenderer(
     Direct2DTransientRenderer primitives,

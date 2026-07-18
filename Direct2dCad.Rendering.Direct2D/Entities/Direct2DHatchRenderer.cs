@@ -7,7 +7,7 @@ using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.Mathematics;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Entities;
 
 internal static class Direct2DHatchRenderer
 {

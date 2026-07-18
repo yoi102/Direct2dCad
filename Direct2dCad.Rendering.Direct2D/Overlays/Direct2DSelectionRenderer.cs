@@ -3,11 +3,15 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Entities;
+using Direct2dCad.Rendering.Direct2D.Resources;
+using Direct2dCad.Rendering.Direct2D.Scene;
+using Direct2dCad.Rendering.Direct2D.Transient;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Vortice.Direct2D1;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Overlays;
 
 internal sealed class Direct2DSelectionRenderer(
     Direct2DResourceCache resourceCache,

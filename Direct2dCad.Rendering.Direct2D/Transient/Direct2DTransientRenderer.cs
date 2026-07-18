@@ -4,6 +4,8 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Entities;
+using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;
@@ -11,7 +13,7 @@ using Vortice.Direct2D1;
 using Vortice.DirectWrite;
 using Vortice.Mathematics;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Transient;
 
 internal sealed class Direct2DTransientRenderer(
     Direct2DResourceCache resourceCache,

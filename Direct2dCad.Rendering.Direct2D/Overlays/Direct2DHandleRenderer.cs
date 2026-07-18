@@ -1,10 +1,11 @@
 using System.Numerics;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Handles;
 using Vortice;
 using Vortice.Direct2D1;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Overlays;
 
 internal sealed class Direct2DHandleRenderer(Direct2DStyleResourceCache styleResources)
 {

@@ -13,7 +13,6 @@ using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.Rendering;
-using Direct2dCad.Rendering.Direct2D;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Drawing;
@@ -27,6 +26,8 @@ using Direct2dCad.ViewModels.Services.Styling;
 using Direct2dCad.ViewModels.Services.Text;
 using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
+using Direct2dCad.Rendering.Direct2D.Ole;
+using Direct2dCad.Rendering.Direct2D.Hosting;
 
 namespace Direct2dCad.ViewModels;
 

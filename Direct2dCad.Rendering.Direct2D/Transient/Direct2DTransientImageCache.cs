@@ -6,7 +6,7 @@ using Vortice.Direct2D1;
 using Vortice.Mathematics;
 using DXGIFormat = Vortice.DXGI.Format;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Transient;
 
 internal sealed class Direct2DTransientImageCache : IDisposable
 {

@@ -6,7 +6,7 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Transient;
 using Vortice.DirectWrite;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Resources;
 
 internal static class Direct2DTextServices
 {

@@ -12,7 +12,7 @@ using Vortice.Direct2D1;
 using Vortice.DirectWrite;
 using Vortice.Mathematics;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Resources;
 
 internal sealed class Direct2DResourceCache : IDisposable
 {

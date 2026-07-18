@@ -4,7 +4,7 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Rendering.Transient;
 using Vortice.DirectWrite;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Resources;
 
 internal sealed class Direct2DTextFormatResourceCache : IDisposable
 {

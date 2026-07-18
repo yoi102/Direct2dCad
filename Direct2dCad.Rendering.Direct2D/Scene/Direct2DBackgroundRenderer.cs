@@ -3,11 +3,12 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Resources;
 using Vortice;
 using Vortice.Direct2D1;
 using Vortice.Mathematics;
 
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 internal sealed class Direct2DBackgroundRenderer(Direct2DStyleResourceCache styleResources)
 {

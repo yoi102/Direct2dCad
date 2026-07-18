@@ -1,4 +1,4 @@
-namespace Direct2dCad.Rendering.Direct2D;
+namespace Direct2dCad.Rendering.Direct2D.Resources;
 
 internal sealed class ResourceLease<T>(T resource, Action release) : IDisposable where T : IDisposable
 {
