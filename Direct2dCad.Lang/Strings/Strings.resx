@@ -1343,4 +1343,13 @@
   <data name="GridSpacingPresetRangeError" xml:space="preserve">
     <value>Spacing must be between 0.001 mm and 100000 mm.</value>
   </data>
+  <data name="ColorSource" xml:space="preserve">
+    <value>Color source</value>
+  </data>
+  <data name="ByBlock" xml:space="preserve">
+    <value>By block</value>
+  </data>
+  <data name="Explicit" xml:space="preserve">
+    <value>Explicit</value>
+  </data>
 </root>

@@ -109,10 +109,14 @@
                                        Visibility="{Binding HasMixedStrokeColor, Converter={StaticResource BooleanToVisibilityConverter}}" />
                             <mah:ColorPicker IsEnabled="{Binding ColorControlsEnabled}"
                                              SelectedColor="{Binding StrokeColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
-                            <CheckBox Margin="0,4,0,0"
-                                      Content="{I18N {x:Static r:LangKeys.ByLayer}}"
-                                      IsChecked="{Binding UseByLayerColor, Mode=TwoWay}"
-                                      IsThreeState="True" />
+                            <TextBlock Margin="0,4,0,3"
+                                       FontStyle="Italic"
+                                       Opacity="0.7"
+                                       Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
+                                       Visibility="{Binding HasMixedColorSource, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <ComboBox ItemsSource="{Binding ColorSourceOptions, Mode=OneWay}"
+                                      SelectedItem="{Binding SelectedColorSourceOption, Mode=TwoWay}"
+                                      DisplayMemberPath="Name" />
                         </StackPanel>
 
                         <TextBlock Grid.Row="1" VerticalAlignment="Center"

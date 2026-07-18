@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
+using Direct2dCad.Lang.Strings;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
@@ -13,6 +14,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     private bool _isRefreshingLayerOptions;
     private bool _isRefreshingEntityName;
     private bool _isRefreshingStrokeStyle;
+    private bool _isRefreshingColorSource;
     private bool _isDrawingLayerSelection;
     private bool _isPasteLayerSelection;
     private CadDocumentViewModel? _layerDocumentViewModel;
@@ -24,6 +26,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     private StrokeDashStyleOption? _selectedDashStyleOption;
     private StrokeLineJoinOption? _selectedLineJoinOption;
     private string _entityName = string.Empty;
+    private EntityColorSourceOption? _selectedColorSourceOption;
     private bool _supportsStartEndCaps;
     private bool _supportsLineJoin;
 
@@ -41,6 +44,10 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     }
 
     public IReadOnlyList<EntityLayerOption> LayerOptions { get; private set; } = [];
+    public IReadOnlyList<EntityColorSourceOption> ColorSourceOptions { get; private set; } = [];
+    public bool SupportsColorSourceSelection { get; private set; }
+    public bool IsExplicitColorSource =>
+        SelectedColorSourceOption?.Value == CadColorSource.Explicit;
     public IReadOnlyList<StrokeCapOption> StrokeCapOptions { get; } = Enum.GetValues<CadStrokeCap>()
         .Select(value => new StrokeCapOption(value, value.ToString()))
         .ToArray();
@@ -68,6 +75,30 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         {
             if (SetProperty(ref _selectedLayerOption, value))
                 OnSelectedLayerOptionChanged(value);
+        }
+    }
+
+    public EntityColorSourceOption? SelectedColorSourceOption
+    {
+        get => _selectedColorSourceOption;
+        set
+        {
+            if (!SetProperty(ref _selectedColorSourceOption, value))
+                return;
+
+            OnPropertyChanged(nameof(IsExplicitColorSource));
+            if (_isRefreshingColorSource ||
+                value is null ||
+                _layerDocumentViewModel is not { } documentViewModel ||
+                _layerEntityId is not { } entityId ||
+                !documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ||
+                entity is null ||
+                entity.ColorSource == value.Value)
+            {
+                return;
+            }
+
+            documentViewModel.CadEditor.SetEntityColorSource(entityId, value.Value);
         }
     }
 
@@ -135,6 +166,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         RefreshEntityName(entity.Name);
         RefreshStrokeStyleCapabilities(entity);
         RefreshStrokeStyle(entity.StrokeStyle);
+        RefreshColorSourceOptions(documentViewModel, entity);
 
         RefreshLayerOptionsCore(documentViewModel, entity.LayerId);
     }
@@ -147,6 +179,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         _layerEntityId = null;
         _isDrawingLayerSelection = true;
         _isPasteLayerSelection = false;
+        ClearColorSourceSelection();
         RefreshEntityName(documentViewModel.DrawingDefaults.EntityName);
 
         RefreshLayerOptionsCore(documentViewModel, documentViewModel.DrawingLayerId);
@@ -160,8 +193,68 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         _layerEntityId = null;
         _isDrawingLayerSelection = false;
         _isPasteLayerSelection = true;
+        ClearColorSourceSelection();
 
         RefreshLayerOptionsCore(documentViewModel, documentViewModel.PasteTargetLayerId);
+    }
+
+    private void RefreshColorSourceOptions(
+        CadDocumentViewModel documentViewModel,
+        CadEntity entity)
+    {
+        var document = documentViewModel.CadEditor.Document;
+        var supportsByBlock =
+            document.TryGetBlock(entity.OwnerBlockId, out var ownerBlock) &&
+            ownerBlock is { IsSystem: false };
+        var options = new List<EntityColorSourceOption>
+        {
+            new EntityColorSourceOption(
+                CadColorSource.ByLayer,
+                Strings.ResourceManager.GetString("ByLayer") ?? "By layer"),
+            new EntityColorSourceOption(
+                CadColorSource.Explicit,
+                Strings.ResourceManager.GetString("Explicit") ?? "Explicit")
+        };
+        if (supportsByBlock || entity.ColorSource == CadColorSource.ByBlock)
+        {
+            options.Add(new EntityColorSourceOption(
+                CadColorSource.ByBlock,
+                Strings.ResourceManager.GetString("ByBlock") ?? "By block"));
+        }
+
+        ColorSourceOptions = options;
+        SupportsColorSourceSelection = true;
+        OnPropertyChanged(nameof(ColorSourceOptions));
+        OnPropertyChanged(nameof(SupportsColorSourceSelection));
+
+        _isRefreshingColorSource = true;
+        try
+        {
+            SelectedColorSourceOption = ColorSourceOptions.First(option =>
+                option.Value == entity.ColorSource);
+        }
+        finally
+        {
+            _isRefreshingColorSource = false;
+        }
+    }
+
+    private void ClearColorSourceSelection()
+    {
+        SupportsColorSourceSelection = false;
+        ColorSourceOptions = [];
+        _isRefreshingColorSource = true;
+        try
+        {
+            SelectedColorSourceOption = null;
+        }
+        finally
+        {
+            _isRefreshingColorSource = false;
+        }
+
+        OnPropertyChanged(nameof(ColorSourceOptions));
+        OnPropertyChanged(nameof(SupportsColorSourceSelection));
     }
 
     private void RefreshLayerOptionsCore(CadDocumentViewModel documentViewModel, LayerId selectedLayerId)
@@ -195,10 +288,10 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         StyleId? graphicStyleId)
     {
         var layer = document.GetLayer(entity.LayerId);
-        return entity.UseLayerColor
-            ? ResolveLayerStrokeColor(document, layer)
-            : ResolveGraphicStrokeColor(document, graphicStyleId ?? layer.DefaultGraphicStyleId) ??
-              ResolveLayerStrokeColor(document, layer);
+        return entity.ColorSource == CadColorSource.Explicit
+            ? ResolveGraphicStrokeColor(document, graphicStyleId ?? layer.DefaultGraphicStyleId) ??
+              ResolveLayerStrokeColor(document, layer)
+            : ResolveLayerStrokeColor(document, layer);
     }
 
     protected static CadLineWeight ResolveEntityLineWeight(

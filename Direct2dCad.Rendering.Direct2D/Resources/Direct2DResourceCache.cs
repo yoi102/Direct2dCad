@@ -142,10 +142,16 @@ internal sealed class Direct2DResourceCache : IDisposable
             return;
         }
 
-        if (!document.TryGetLayer(entity.LayerId, out var layer) ||
-            layer is null ||
-            !layer.IsVisible ||
-            layer.IsFrozen)
+        if (!document.TryGetLayer(entity.LayerId, out var layer) || layer is null)
+        {
+            RemoveEntity(entityId);
+            return;
+        }
+
+        var belongsToReusableBlockDefinition =
+            document.TryGetBlock(entity.OwnerBlockId, out var ownerBlock) &&
+            ownerBlock is { IsSystem: false };
+        if (!belongsToReusableBlockDefinition && (!layer.IsVisible || layer.IsFrozen))
         {
             RemoveEntity(entityId);
             return;
@@ -640,9 +646,9 @@ internal sealed class Direct2DResourceCache : IDisposable
         CadLayer layer,
         CadGraphicStyle? graphic)
     {
-        return entity.UseLayerColor
-            ? ResolveLayerStrokeColor(document, layer)
-            : graphic?.StrokeColor ?? ResolveLayerStrokeColor(document, layer);
+        return entity.ColorSource == CadColorSource.Explicit
+            ? graphic?.StrokeColor ?? ResolveLayerStrokeColor(document, layer)
+            : ResolveLayerStrokeColor(document, layer);
     }
 
     private static CadColor ResolveLayerStrokeColor(CadDocument document, CadLayer layer)

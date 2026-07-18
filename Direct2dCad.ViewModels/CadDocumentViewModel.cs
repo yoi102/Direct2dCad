@@ -1706,6 +1706,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             _insertBlockRotationRadians,
             _insertBlockScaleX,
             _insertBlockScaleY,
+            DrawingLayerId,
+            CadColorSource.ByLayer,
+            GraphicStyleId: null,
             CreatePreviewStyleService().CreateSelectionWindowStyle()));
     }
 
@@ -1845,7 +1848,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var state = new CadEntityStateClipboardSnapshot(
             image.SourceName,
             null,
-            UseLayerColor: true,
+            ColorSource: CadColorSource.ByLayer,
             UseLayerLineWeight: true,
             IsVisible: true,
             IsLocked: false,
@@ -1882,7 +1885,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var state = new CadEntityStateClipboardSnapshot(
             oleObject.SourceName,
             null,
-            UseLayerColor: true,
+            ColorSource: CadColorSource.ByLayer,
             UseLayerLineWeight: true,
             IsVisible: true,
             IsLocked: false,

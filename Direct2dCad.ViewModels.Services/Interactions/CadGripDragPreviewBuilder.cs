@@ -103,6 +103,9 @@ internal sealed class CadGripDragPreviewBuilder(
                         reference.RotationRadians,
                         reference.ScaleX,
                         reference.ScaleY,
+                        reference.LayerId,
+                        reference.ColorSource,
+                        reference.GraphicStyleId,
                         style));
                 }
                 else
@@ -344,6 +347,9 @@ internal sealed class CadGripDragPreviewBuilder(
             rotationRadians,
             scaleX,
             scaleY,
+            reference.LayerId,
+            reference.ColorSource,
+            reference.GraphicStyleId,
             style));
     }
 }

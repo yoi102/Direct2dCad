@@ -42,12 +42,15 @@ public sealed record CadLayerClipboardSnapshot(
 public sealed record CadEntityStateClipboardSnapshot(
     string Name,
     CadLineWeight? LineWeight,
-    bool UseLayerColor,
+    CadColorSource ColorSource,
     bool UseLayerLineWeight,
     bool IsVisible,
     bool IsLocked,
     CadStrokeStyle StrokeStyle,
-    int ZIndex);
+    int ZIndex)
+{
+    public bool UseLayerColor => ColorSource == CadColorSource.ByLayer;
+}
 
 public abstract record CadEntityClipboardSnapshot(CadEntityStateClipboardSnapshot State);
 
@@ -336,7 +339,7 @@ public static class CadClipboardSnapshotFactory
         var state = new CadEntityStateClipboardSnapshot(
             entity.Name,
             entity.LineWeight,
-            entity.UseLayerColor,
+            entity.ColorSource,
             entity.UseLayerLineWeight,
             entity.IsVisible,
             entity.IsLocked,

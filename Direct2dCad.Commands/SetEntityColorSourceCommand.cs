@@ -5,18 +5,20 @@ using Direct2dCad.Db.Data.Styles;
 
 namespace Direct2dCad.Commands;
 
-public sealed class SetEntityUseLayerColorCommand : ICadCommand
+public sealed class SetEntityColorSourceCommand : ICadCommand
 {
     private readonly EntityId[] _entityIds;
-    private readonly bool _useLayerColor;
+    private readonly CadColorSource _colorSource;
     private readonly Dictionary<EntityId, EntityColorLayerState> _previousStates = [];
 
-    public string Name => "Set Entity Color By Layer";
+    public string Name => "Set Entity Color Source";
 
-    public SetEntityUseLayerColorCommand(IEnumerable<EntityId> entityIds, bool useLayerColor)
+    public SetEntityColorSourceCommand(IEnumerable<EntityId> entityIds, CadColorSource colorSource)
     {
         _entityIds = entityIds?.Distinct().ToArray() ?? throw new ArgumentNullException(nameof(entityIds));
-        _useLayerColor = useLayerColor;
+        if (!Enum.IsDefined(colorSource))
+            throw new ArgumentOutOfRangeException(nameof(colorSource));
+        _colorSource = colorSource;
 
         if (_entityIds.Length == 0)
             throw new ArgumentException("At least one entity is required.", nameof(entityIds));
@@ -37,13 +39,13 @@ public sealed class SetEntityUseLayerColorCommand : ICadCommand
         foreach (var entity in entities)
         {
             _previousStates[entity.Id] = new EntityColorLayerState(
-                entity.UseLayerColor,
+                entity.ColorSource,
                 GetGraphicStyleId(entity));
 
-            if (!_useLayerColor && GetGraphicStyleId(entity) is null)
+            if (_colorSource == CadColorSource.Explicit && GetGraphicStyleId(entity) is null)
                 SetGraphicStyleId(entity, CreateEntityGraphicStyleFromLayer(document, entity));
 
-            entity.SetUseLayerColor(_useLayerColor);
+            entity.SetColorSource(_colorSource);
         }
 
         return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Appearance);
@@ -57,7 +59,7 @@ public sealed class SetEntityUseLayerColorCommand : ICadCommand
         {
             var entity = document.GetEntity(entityId);
             SetGraphicStyleId(entity, state.GraphicStyleId);
-            entity.SetUseLayerColor(state.UseLayerColor);
+            entity.SetColorSource(state.ColorSource);
         }
 
         return CadDocumentChangeSet.ForEntities(_previousStates.Keys, CadEntityChangeKind.Appearance);
@@ -156,5 +158,21 @@ public sealed class SetEntityUseLayerColorCommand : ICadCommand
         throw new NotSupportedException($"Entity type has no graphic style: {entity.GetType().Name}");
     }
 
-    private readonly record struct EntityColorLayerState(bool UseLayerColor, StyleId? GraphicStyleId);
+    private readonly record struct EntityColorLayerState(CadColorSource ColorSource, StyleId? GraphicStyleId);
+}
+
+public sealed class SetEntityUseLayerColorCommand : ICadCommand
+{
+    private readonly SetEntityColorSourceCommand _inner;
+
+    public SetEntityUseLayerColorCommand(IEnumerable<EntityId> entityIds, bool useLayerColor)
+    {
+        _inner = new SetEntityColorSourceCommand(
+            entityIds,
+            useLayerColor ? CadColorSource.ByLayer : CadColorSource.Explicit);
+    }
+
+    public string Name => _inner.Name;
+    public CadDocumentChangeSet Execute(CadDocument document) => _inner.Execute(document);
+    public CadDocumentChangeSet Undo(CadDocument document) => _inner.Undo(document);
 }

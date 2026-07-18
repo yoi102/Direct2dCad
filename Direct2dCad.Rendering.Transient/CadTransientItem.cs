@@ -1,4 +1,5 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
@@ -133,5 +134,8 @@ public sealed record CadTransientBlockReference(
     double RotationRadians,
     double ScaleX,
     double ScaleY,
+    LayerId LayerId,
+    CadColorSource ColorSource,
+    StyleId? GraphicStyleId,
     CadTransientStyle Style)
     : CadTransientItem(Style);

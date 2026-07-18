@@ -15,6 +15,7 @@
             <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
             <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
             <ep:EntitySettingsPropertySection ViewModel="{Binding}" />
+            <ep:StrokeAppearancePropertySection ViewModel="{Binding}" />
 
             <Expander Header="{Binding DefinitionLabel}" IsExpanded="True" Margin="0,0,0,8">
                 <Grid Margin="8,6,8,8">

@@ -35,10 +35,16 @@ public interface IStrokeAppearancePropertySectionViewModel
     CadColor StrokeColor { get; set; }
     bool UseByLayerColor { get; set; }
     bool ColorControlsEnabled { get; }
+    bool SupportsColorSourceSelection { get; }
+    bool IsExplicitColorSource { get; }
+    IReadOnlyList<EntityColorSourceOption> ColorSourceOptions { get; }
+    EntityColorSourceOption? SelectedColorSourceOption { get; set; }
     double LineWeight { get; set; }
     bool UseByLayerLineWeight { get; set; }
     bool LineWeightControlsEnabled { get; }
 }
+
+public sealed record EntityColorSourceOption(CadColorSource Value, string Name);
 
 public interface IStrokeStylePropertySectionViewModel
 {

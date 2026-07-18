@@ -249,9 +249,9 @@ internal sealed class CadClipboardInteractionService(
         var layerColor = targetLayer is not null
             ? ResolveLayerStrokeColor(document, targetLayer)
             : item.Layer.Color;
-        var strokeColor = item.Entity.State.UseLayerColor
-            ? layerColor
-            : graphic?.StrokeColor ?? layerColor;
+        var strokeColor = item.Entity.State.ColorSource == CadColorSource.Explicit
+            ? graphic?.StrokeColor ?? layerColor
+            : layerColor;
         var strokeWidth = ResolveStrokeWidth(item, graphic, targetLayer);
 
         return new CadTransientStyle(

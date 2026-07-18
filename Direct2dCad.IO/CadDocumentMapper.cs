@@ -1124,6 +1124,7 @@ internal static class CadDocumentMapper
             LineWeight = entity.LineWeight?.Value,
             ZIndex = entity.ZIndex,
             UseLayerColor = entity.UseLayerColor,
+            ColorSource = (int)entity.ColorSource,
             UseLayerLineWeight = entity.UseLayerLineWeight,
             StrokeStartCap = (int)entity.StrokeStyle.StartCap,
             StrokeEndCap = (int)entity.StrokeStyle.EndCap,
@@ -1145,7 +1146,9 @@ internal static class CadDocumentMapper
                                   storedLineWeight is null && !hasGraphicLineWeight);
 
         entity.SetLineWeightState(storedLineWeight, useLayerLineWeight);
-        entity.SetUseLayerColor(data.UseLayerColor ?? (GetGraphicStyleId(entity) is null));
+        entity.SetColorSource(ToColorSource(
+            data.ColorSource,
+            data.UseLayerColor ?? (GetGraphicStyleId(entity) is null)));
         entity.SetStrokeStyle(ToStrokeStyle(data));
         entity.SetZIndex(data.ZIndex);
 
@@ -1172,6 +1175,15 @@ internal static class CadDocumentMapper
         return value is { } raw && Enum.IsDefined(typeof(TEnum), raw)
             ? (TEnum)Enum.ToObject(typeof(TEnum), raw)
             : fallback;
+    }
+
+    private static CadColorSource ToColorSource(int? value, bool legacyUseLayerColor)
+    {
+        return value is { } raw && Enum.IsDefined(typeof(CadColorSource), raw)
+            ? (CadColorSource)raw
+            : legacyUseLayerColor
+                ? CadColorSource.ByLayer
+                : CadColorSource.Explicit;
     }
 
     private static CadLineWeight? ToStoredLineWeight(double? value)

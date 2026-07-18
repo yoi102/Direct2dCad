@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang.Strings;
@@ -8,7 +9,8 @@ namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
 public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
     IEntityHeaderPropertySectionViewModel,
-    IEntitySettingsPropertySectionViewModel
+    IEntitySettingsPropertySectionViewModel,
+    IStrokeAppearancePropertySectionViewModel
 {
     private const double Epsilon = 1e-9;
     private readonly CadDocumentViewModel _documentViewModel;
@@ -61,6 +63,21 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
     [ObservableProperty]
     public partial bool IsVisible { get; set; }
 
+    [ObservableProperty]
+    public partial CadColor StrokeColor { get; set; } = CadColor.Green;
+
+    [ObservableProperty]
+    public partial bool UseByLayerColor { get; set; } = true;
+
+    [ObservableProperty]
+    public partial double LineWeight { get; set; } = CadLineWeight.Default.Value;
+
+    [ObservableProperty]
+    public partial bool UseByLayerLineWeight { get; set; } = true;
+
+    public bool ColorControlsEnabled => IsExplicitColorSource;
+    public bool LineWeightControlsEnabled => !UseByLayerLineWeight;
+
     public void RefreshFromEntity()
     {
         if (!TryGetReference(out var reference))
@@ -89,6 +106,10 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
             ScaleY = reference.ScaleY;
             ZIndex = reference.ZIndex;
             IsVisible = reference.IsVisible;
+            UseByLayerColor = reference.UseLayerColor;
+            StrokeColor = ResolveStrokeColor(document, reference, reference.GraphicStyleId);
+            UseByLayerLineWeight = reference.UseLayerLineWeight;
+            LineWeight = ResolveEntityLineWeight(document, reference, reference.GraphicStyleId).Value;
         }
         finally
         {
@@ -129,6 +150,59 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
     {
         if (!_isRefreshing && TryGetReference(out var reference) && reference.IsVisible != value)
             _documentViewModel.CadEditor.SetEntityVisibility(EntityId, value);
+    }
+
+    partial void OnStrokeColorChanged(CadColor value)
+    {
+        if (_isRefreshing ||
+            !IsExplicitColorSource ||
+            !TryGetReference(out var reference) ||
+            ResolveStrokeColor(_documentViewModel.CadEditor.Document, reference, reference.GraphicStyleId) == value)
+        {
+            return;
+        }
+
+        _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
+    }
+
+    partial void OnUseByLayerColorChanged(bool value)
+    {
+        if (!_isRefreshing &&
+            TryGetReference(out var reference) &&
+            reference.UseLayerColor != value)
+        {
+            _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+        }
+    }
+
+    partial void OnLineWeightChanged(double value)
+    {
+        if (_isRefreshing ||
+            UseByLayerLineWeight ||
+            value <= 0 ||
+            !TryGetReference(out var reference) ||
+            Math.Abs(ResolveEntityLineWeight(
+                _documentViewModel.CadEditor.Document,
+                reference,
+                reference.GraphicStyleId).Value - value) <= Epsilon)
+        {
+            return;
+        }
+
+        _documentViewModel.CadEditor.SetEntityLineWeight(EntityId, new CadLineWeight(value));
+    }
+
+    partial void OnUseByLayerLineWeightChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        if (_isRefreshing || !TryGetReference(out _))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityLineWeight(
+            EntityId,
+            value
+                ? CadLineWeight.ByLayer
+                : new CadLineWeight(LineWeight > 0 ? LineWeight : CadLineWeight.Default.Value));
     }
 
     private void CommitTransform()

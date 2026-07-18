@@ -21,4 +21,5 @@ public sealed class CadEntityData
     [Key(13)] public int? StrokeDashCap { get; set; }
     [Key(14)] public int? StrokeDashStyle { get; set; }
     [Key(15)] public int? StrokeLineJoin { get; set; }
+    [Key(16)] public int? ColorSource { get; set; }
 }

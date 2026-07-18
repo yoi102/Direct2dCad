@@ -385,6 +385,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 By block 的本地化字符串。
+        /// </summary>
+        public static string ByBlock {
+            get {
+                return ResourceManager.GetString("ByBlock", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 By layer 的本地化字符串。
         /// </summary>
         public static string ByLayer {
@@ -552,6 +561,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string ColorPickerStandardColors {
             get {
                 return ResourceManager.GetString("ColorPickerStandardColors", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Color source 的本地化字符串。
+        /// </summary>
+        public static string ColorSource {
+            get {
+                return ResourceManager.GetString("ColorSource", resourceCulture);
             }
         }
         
@@ -1146,6 +1164,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string ExitBlockEditor {
             get {
                 return ResourceManager.GetString("ExitBlockEditor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Explicit 的本地化字符串。
+        /// </summary>
+        public static string Explicit {
+            get {
+                return ResourceManager.GetString("Explicit", resourceCulture);
             }
         }
         

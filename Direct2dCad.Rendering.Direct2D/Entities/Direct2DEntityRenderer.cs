@@ -23,25 +23,29 @@ internal sealed class Direct2DEntityRenderer(
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadViewport viewport,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        ID2D1Brush? strokeBrushOverride = null,
+        float? strokeWidthOverride = null)
     {
+        var strokeBrush = strokeBrushOverride ?? resources.StrokeBrush;
+        var strokeWidth = strokeWidthOverride ?? resources.StrokeWidth;
         if (entity is CadShapeText { IsInverted: true } shapeText &&
             resources.Geometry is not null &&
-            resources.StrokeBrush is not null)
+            strokeBrush is not null)
         {
-            FillBounds(context, shapeText.InvertedBackgroundBounds, resources.StrokeBrush);
+            FillBounds(context, shapeText.InvertedBackgroundBounds, strokeBrush);
             var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
             context.DrawGeometry(
                 resources.Geometry,
                 invertedBrush,
-                ResolveStrokeWidth(resources.StrokeWidth, viewport, options));
+                ResolveStrokeWidth(strokeWidth, viewport, options));
             return;
         }
 
         switch (entity)
         {
             case CadLine line:
-                DrawLine(context, line, resources, viewport, options);
+                DrawLine(context, line, resources, viewport, options, strokeBrush, strokeWidth);
                 return;
             case CadCircle circle:
                 DrawEllipse(
@@ -49,7 +53,9 @@ internal sealed class Direct2DEntityRenderer(
                     new Ellipse(ToVector2(circle.Center), (float)circle.Radius, (float)circle.Radius),
                     resources,
                     viewport,
-                    options);
+                    options,
+                    strokeBrush,
+                    strokeWidth);
                 return;
             case CadEllipse ellipse:
                 DrawEllipse(
@@ -57,7 +63,9 @@ internal sealed class Direct2DEntityRenderer(
                     new Ellipse(ToVector2(ellipse.Center), (float)ellipse.RadiusX, (float)ellipse.RadiusY),
                     resources,
                     viewport,
-                    options);
+                    options,
+                    strokeBrush,
+                    strokeWidth);
                 return;
             case CadArc { IsFullCircle: true } arc:
                 DrawEllipse(
@@ -65,10 +73,12 @@ internal sealed class Direct2DEntityRenderer(
                     new Ellipse(ToVector2(arc.Center), (float)arc.Radius, (float)arc.Radius),
                     resources,
                     viewport,
-                    options);
+                    options,
+                    strokeBrush,
+                    strokeWidth);
                 return;
             case CadRectangle rectangle:
-                DrawRectangle(context, rectangle, resources, viewport, options);
+                DrawRectangle(context, rectangle, resources, viewport, options, strokeBrush, strokeWidth);
                 return;
             case CadImage image:
                 DrawImage(context, image, resources);
@@ -77,17 +87,17 @@ internal sealed class Direct2DEntityRenderer(
 
         if (resources.Geometry is not null)
             DrawFill(context, resources.Geometry, entity.Bounds, resources, viewport);
-        if (resources.Geometry is not null && resources.StrokeBrush is not null)
+        if (resources.Geometry is not null && strokeBrush is not null)
         {
             context.DrawGeometry(
                 resources.Geometry,
-                resources.StrokeBrush,
-                ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
+                strokeBrush,
+                ResolveStrokeWidth(strokeWidth, viewport, options),
                 resources.StrokeStyle);
         }
 
-        if (entity is CadText text && resources.TextLayout is not null && resources.StrokeBrush is not null)
-            DrawText(context, document, text, resources);
+        if (entity is CadText text && resources.TextLayout is not null && strokeBrush is not null)
+            DrawText(context, document, text, resources, strokeBrush);
     }
 
     private static void DrawLine(
@@ -95,15 +105,17 @@ internal sealed class Direct2DEntityRenderer(
         CadLine line,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadViewport viewport,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        ID2D1Brush? strokeBrush,
+        float strokeWidth)
     {
-        if (resources.StrokeBrush is null)
+        if (strokeBrush is null)
             return;
         context.DrawLine(
             ToVector2(line.Start),
             ToVector2(line.End),
-            resources.StrokeBrush,
-            ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
+            strokeBrush,
+            ResolveStrokeWidth(strokeWidth, viewport, options),
             resources.StrokeStyle);
     }
 
@@ -134,7 +146,9 @@ internal sealed class Direct2DEntityRenderer(
         Ellipse ellipse,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadViewport viewport,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        ID2D1Brush? strokeBrush,
+        float strokeWidth)
     {
         if (resources.HatchBrush is not null && resources.Geometry is not null)
         {
@@ -153,12 +167,12 @@ internal sealed class Direct2DEntityRenderer(
             context.FillEllipse(ellipse, resources.FillBrush);
         }
 
-        if (resources.StrokeBrush is not null)
+        if (strokeBrush is not null)
         {
             context.DrawEllipse(
                 ellipse,
-                resources.StrokeBrush,
-                ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
+                strokeBrush,
+                ResolveStrokeWidth(strokeWidth, viewport, options),
                 resources.StrokeStyle);
         }
     }
@@ -168,7 +182,9 @@ internal sealed class Direct2DEntityRenderer(
         CadRectangle rectangle,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadViewport viewport,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        ID2D1Brush? strokeBrush,
+        float strokeWidth)
     {
         var bounds = rectangle.Bounds;
         if (bounds.IsEmpty)
@@ -188,13 +204,13 @@ internal sealed class Direct2DEntityRenderer(
                 context.FillRoundedRectangle(rounded, resources.FillBrush);
             }
 
-            if (resources.StrokeBrush is not null)
+            if (strokeBrush is not null)
             {
-                var strokeWidth = ResolveStrokeWidth(resources.StrokeWidth, viewport, options);
+                var resolvedStrokeWidth = ResolveStrokeWidth(strokeWidth, viewport, options);
                 if (resources.StrokeStyle is null)
-                    context.DrawRoundedRectangle(rounded, resources.StrokeBrush, strokeWidth);
+                    context.DrawRoundedRectangle(rounded, strokeBrush, resolvedStrokeWidth);
                 else
-                    context.DrawRoundedRectangle(rounded, resources.StrokeBrush, strokeWidth, resources.StrokeStyle);
+                    context.DrawRoundedRectangle(rounded, strokeBrush, resolvedStrokeWidth, resources.StrokeStyle);
             }
 
             return;
@@ -210,12 +226,12 @@ internal sealed class Direct2DEntityRenderer(
             context.FillRectangle(rect, resources.FillBrush);
         }
 
-        if (resources.StrokeBrush is not null)
+        if (strokeBrush is not null)
         {
             context.DrawRectangle(
                 rect,
-                resources.StrokeBrush,
-                ResolveStrokeWidth(resources.StrokeWidth, viewport, options),
+                strokeBrush,
+                ResolveStrokeWidth(strokeWidth, viewport, options),
                 resources.StrokeStyle);
         }
     }
@@ -224,7 +240,8 @@ internal sealed class Direct2DEntityRenderer(
         ID2D1DeviceContext context,
         CadDocument document,
         CadText text,
-        Direct2DResourceCache.EntityResourceBucket resources)
+        Direct2DResourceCache.EntityResourceBucket resources,
+        ID2D1Brush strokeBrush)
     {
         var previousTransform = context.Transform;
         context.Transform = CreateWorldRotationTransform(text.RotationRadians, text.Position, previousTransform);
@@ -232,13 +249,13 @@ internal sealed class Direct2DEntityRenderer(
         {
             if (text.IsInverted)
             {
-                FillBounds(context, text.InvertedBackgroundBounds, resources.StrokeBrush!);
+                FillBounds(context, text.InvertedBackgroundBounds, strokeBrush);
                 var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
                 DrawTextClipped(context, resources.TextLayout!, text.Position, text.TextBounds, invertedBrush);
                 return;
             }
 
-            DrawTextClipped(context, resources.TextLayout!, text.Position, text.TextBounds, resources.StrokeBrush!);
+            DrawTextClipped(context, resources.TextLayout!, text.Position, text.TextBounds, strokeBrush);
         }
         finally
         {

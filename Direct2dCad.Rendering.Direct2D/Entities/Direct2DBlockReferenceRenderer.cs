@@ -2,6 +2,7 @@ using System.Numerics;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Ole;
 using Direct2dCad.Rendering.Direct2D.Resources;
@@ -14,6 +15,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DEntityRenderer entityRenderer,
     Direct2DOleRenderer oleRenderer,
+    Direct2DStyleResourceCache styleResources,
     Direct2DEntityOrderCache entityOrderCache)
 {
     private readonly HashSet<BlockId> _visitedBlocks = [];
@@ -30,12 +32,9 @@ internal sealed class Direct2DBlockReferenceRenderer(
             context,
             document,
             viewport,
-            reference.DefinitionBlockId,
-            reference.Position,
-            reference.RotationRadians,
-            reference.ScaleX,
-            reference.ScaleY,
+            ReferenceRenderState.From(reference),
             options,
+            parentStyle: null,
             _visitedBlocks);
     }
 
@@ -48,6 +47,9 @@ internal sealed class Direct2DBlockReferenceRenderer(
         double rotationRadians,
         double scaleX,
         double scaleY,
+        LayerId layerId,
+        CadColorSource colorSource,
+        StyleId? graphicStyleId,
         CadRenderOptions options)
     {
         _visitedBlocks.Clear();
@@ -55,12 +57,17 @@ internal sealed class Direct2DBlockReferenceRenderer(
             context,
             document,
             viewport,
-            definitionBlockId,
-            position,
-            rotationRadians,
-            scaleX,
-            scaleY,
+            new ReferenceRenderState(
+                definitionBlockId,
+                position,
+                rotationRadians,
+                scaleX,
+                scaleY,
+                layerId,
+                colorSource,
+                graphicStyleId),
             options,
+            parentStyle: null,
             _visitedBlocks);
     }
 
@@ -68,17 +75,15 @@ internal sealed class Direct2DBlockReferenceRenderer(
         ID2D1DeviceContext context,
         CadDocument document,
         CadViewport viewport,
-        BlockId definitionBlockId,
-        CadPointD position,
-        double rotationRadians,
-        double scaleX,
-        double scaleY,
+        ReferenceRenderState reference,
         CadRenderOptions options,
+        BlockRenderStyleContext? parentStyle,
         HashSet<BlockId> visited)
     {
-        if (!visited.Add(definitionBlockId) ||
-            !document.TryGetBlock(definitionBlockId, out var definition) ||
-            definition is null)
+        if (!visited.Add(reference.DefinitionBlockId) ||
+            !document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
+            definition is null ||
+            !TryResolveReferenceStyle(document, reference, parentStyle, out var referenceStyle))
         {
             return;
         }
@@ -86,15 +91,15 @@ internal sealed class Direct2DBlockReferenceRenderer(
         var previousTransform = context.Transform;
         context.Transform = CreateTransform(
             definition.BasePoint,
-            position,
-            rotationRadians,
-            scaleX,
-            scaleY) * previousTransform;
+            reference.Position,
+            reference.RotationRadians,
+            reference.ScaleX,
+            reference.ScaleY) * previousTransform;
         try
         {
-            foreach (var child in entityOrderCache.GetOrderedEntities(document, definitionBlockId))
+            foreach (var child in entityOrderCache.GetOrderedEntities(document, reference.DefinitionBlockId))
             {
-                if (!IsVisible(document, child, options))
+                if (!IsVisible(document, child, referenceStyle, options))
                     continue;
 
                 if (child is CadBlockReference nested)
@@ -103,12 +108,9 @@ internal sealed class Direct2DBlockReferenceRenderer(
                         context,
                         document,
                         viewport,
-                        nested.DefinitionBlockId,
-                        nested.Position,
-                        nested.RotationRadians,
-                        nested.ScaleX,
-                        nested.ScaleY,
+                        ReferenceRenderState.From(nested),
                         options,
+                        referenceStyle,
                         visited);
                     continue;
                 }
@@ -119,24 +121,117 @@ internal sealed class Direct2DBlockReferenceRenderer(
                     continue;
                 }
 
-                if (resourceCache.TryGetEntityResources(child.Id, out var resources) && resources is not null)
-                    entityRenderer.Draw(context, document, child, resources, viewport, options);
+                if (!resourceCache.TryGetEntityResources(child.Id, out var resources) || resources is null)
+                    continue;
+
+                var colorOverride = ResolveChildStrokeColor(document, child, referenceStyle);
+                var brushOverride = colorOverride is { } color
+                    ? styleResources.GetBrush(context, color)
+                    : null;
+                float? strokeWidthOverride = child.UseLayerLineWeight && child.LayerId.Equals(LayerId.Default)
+                    ? ResolveLayerStrokeWidth(referenceStyle.EffectiveLayer)
+                    : null;
+
+                entityRenderer.Draw(
+                    context,
+                    document,
+                    child,
+                    resources,
+                    viewport,
+                    options,
+                    brushOverride,
+                    strokeWidthOverride);
             }
         }
         finally
         {
             context.Transform = previousTransform;
-            visited.Remove(definitionBlockId);
+            visited.Remove(reference.DefinitionBlockId);
         }
     }
 
-    private static bool IsVisible(CadDocument document, CadEntity entity, CadRenderOptions options)
+    private static bool TryResolveReferenceStyle(
+        CadDocument document,
+        ReferenceRenderState reference,
+        BlockRenderStyleContext? parentStyle,
+        out BlockRenderStyleContext style)
     {
+        if (!document.TryGetLayer(reference.LayerId, out var ownLayer) || ownLayer is null)
+        {
+            style = default;
+            return false;
+        }
+
+        var effectiveLayer = reference.LayerId.Equals(LayerId.Default) && parentStyle is { } containingStyle
+            ? containingStyle.EffectiveLayer
+            : ownLayer;
+        var layerColor = ResolveLayerStrokeColor(document, effectiveLayer);
+        var referenceColor = reference.ColorSource switch
+        {
+            CadColorSource.Explicit =>
+                ResolveGraphicStrokeColor(document, reference.GraphicStyleId) ?? layerColor,
+            CadColorSource.ByBlock when parentStyle is { } containingReferenceStyle =>
+                containingReferenceStyle.ReferenceColor,
+            _ => layerColor
+        };
+
+        style = new BlockRenderStyleContext(effectiveLayer, referenceColor);
+        return true;
+    }
+
+    private static CadColor? ResolveChildStrokeColor(
+        CadDocument document,
+        CadEntity child,
+        BlockRenderStyleContext referenceStyle)
+    {
+        return child.ColorSource switch
+        {
+            CadColorSource.ByBlock => referenceStyle.ReferenceColor,
+            CadColorSource.ByLayer when child.LayerId.Equals(LayerId.Default) =>
+                ResolveLayerStrokeColor(document, referenceStyle.EffectiveLayer),
+            _ => null
+        };
+    }
+
+    private static bool IsVisible(
+        CadDocument document,
+        CadEntity entity,
+        BlockRenderStyleContext referenceStyle,
+        CadRenderOptions options)
+    {
+        var layer = entity.LayerId.Equals(LayerId.Default)
+            ? referenceStyle.EffectiveLayer
+            : document.TryGetLayer(entity.LayerId, out var childLayer)
+                ? childLayer
+                : null;
+
         return !entity.IsErased &&
                entity.IsVisible &&
                !options.HiddenEntityIds.Contains(entity.Id) &&
-               document.TryGetLayer(entity.LayerId, out var layer) &&
                layer is { IsVisible: true, IsFrozen: false };
+    }
+
+    private static CadColor ResolveLayerStrokeColor(CadDocument document, CadLayer layer)
+    {
+        return ResolveGraphicStrokeColor(document, layer.DefaultGraphicStyleId) ?? layer.Color;
+    }
+
+    private static CadColor? ResolveGraphicStrokeColor(CadDocument document, StyleId? styleId)
+    {
+        return styleId is { } id &&
+               document.TryGetStyle(id, out var style) &&
+               style is CadGraphicStyle graphic
+            ? graphic.StrokeColor
+            : null;
+    }
+
+    private static float ResolveLayerStrokeWidth(CadLayer layer)
+    {
+        var weight = layer.LineWeight;
+        if (weight.IsByLayer || weight.Value <= 0)
+            weight = CadLineWeight.Default;
+
+        return (float)Math.Max(weight.Value, 0.01);
     }
 
     private static Matrix3x2 CreateTransform(
@@ -150,5 +245,30 @@ internal sealed class Direct2DBlockReferenceRenderer(
                Matrix3x2.CreateScale((float)scaleX, (float)scaleY) *
                Matrix3x2.CreateRotation((float)rotationRadians) *
                Matrix3x2.CreateTranslation((float)position.X, (float)position.Y);
+    }
+
+    private readonly record struct BlockRenderStyleContext(
+        CadLayer EffectiveLayer,
+        CadColor ReferenceColor);
+
+    private readonly record struct ReferenceRenderState(
+        BlockId DefinitionBlockId,
+        CadPointD Position,
+        double RotationRadians,
+        double ScaleX,
+        double ScaleY,
+        LayerId LayerId,
+        CadColorSource ColorSource,
+        StyleId? GraphicStyleId)
+    {
+        public static ReferenceRenderState From(CadBlockReference reference) => new(
+            reference.DefinitionBlockId,
+            reference.Position,
+            reference.RotationRadians,
+            reference.ScaleX,
+            reference.ScaleY,
+            reference.LayerId,
+            reference.ColorSource,
+            reference.GraphicStyleId);
     }
 }

@@ -18,7 +18,8 @@ public abstract class CadEntity : IEquatable<CadEntity>
     public bool IsErased { get; private set; }
     public bool IsVisible { get; private set; } = true;
     public CadLineWeight? LineWeight { get; private set; }
-    public bool UseLayerColor { get; private set; } = true;
+    public CadColorSource ColorSource { get; private set; } = CadColorSource.ByLayer;
+    public bool UseLayerColor => ColorSource == CadColorSource.ByLayer;
     public bool UseLayerLineWeight { get; private set; } = true;
     public CadStrokeStyle StrokeStyle { get; private set; } = CadStrokeStyle.Default;
     public int ZIndex { get; private set; }
@@ -57,7 +58,16 @@ public abstract class CadEntity : IEquatable<CadEntity>
         UseLayerLineWeight = useLayerLineWeight || LineWeight is null;
     }
 
-    public void SetUseLayerColor(bool useLayerColor) => UseLayerColor = useLayerColor;
+    public void SetUseLayerColor(bool useLayerColor) =>
+        ColorSource = useLayerColor ? CadColorSource.ByLayer : CadColorSource.Explicit;
+
+    public void SetColorSource(CadColorSource colorSource)
+    {
+        if (!Enum.IsDefined(colorSource))
+            throw new ArgumentOutOfRangeException(nameof(colorSource));
+
+        ColorSource = colorSource;
+    }
 
     public void SetUseLayerLineWeight(bool useLayerLineWeight) => UseLayerLineWeight = useLayerLineWeight;
 

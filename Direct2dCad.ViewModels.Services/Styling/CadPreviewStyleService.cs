@@ -76,9 +76,9 @@ internal sealed class CadPreviewStyleService(
             ? resolvedLayer
             : document.GetLayer(LayerId.Default);
         var graphic = ResolveEntityGraphicStyle(entity, layer);
-        var strokeColor = entity.UseLayerColor
-            ? ResolveLayerStrokeColor(layer)
-            : graphic?.StrokeColor ?? ResolveLayerStrokeColor(layer);
+        var strokeColor = entity.ColorSource == CadColorSource.Explicit
+            ? graphic?.StrokeColor ?? ResolveLayerStrokeColor(layer)
+            : ResolveLayerStrokeColor(layer);
         var lineWeight = ResolveEntityLineWeight(entity, graphic, layer);
 
         var fill = ResolveTransientFill(ResolveEntityFillStyleId(entity));

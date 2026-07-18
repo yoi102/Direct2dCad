@@ -1122,4 +1122,13 @@
   <data name="GridSpacingPresetRangeError" xml:space="preserve">
     <value>间距必须在 0.001 mm 到 100000 mm 之间。</value>
   </data>
+  <data name="ColorSource" xml:space="preserve">
+    <value>颜色来源</value>
+  </data>
+  <data name="ByBlock" xml:space="preserve">
+    <value>随块</value>
+  </data>
+  <data name="Explicit" xml:space="preserve">
+    <value>显式</value>
+  </data>
 </root>

@@ -67,6 +67,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _resourceCache,
             _entityRenderer,
             _oleRenderer,
+            _styleResources,
             _entityOrderCache);
     }
 
@@ -562,10 +563,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 viewport,
                 reference.DefinitionBlockId,
                 reference.Position,
-                reference.RotationRadians,
-                reference.ScaleX,
-                reference.ScaleY,
-                options));
+                 reference.RotationRadians,
+                 reference.ScaleX,
+                 reference.ScaleY,
+                 reference.LayerId,
+                 reference.ColorSource,
+                 reference.GraphicStyleId,
+                 options));
     }
 
     private static System.Numerics.Matrix3x2 CreateViewportTransform(CadViewport viewport)

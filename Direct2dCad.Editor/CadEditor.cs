@@ -890,6 +890,18 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetEntityUseLayerColorCommand(entityIds, useLayerColor));
     }
 
+    public CadDocumentChangeSet SetEntityColorSource(EntityId entityId, CadColorSource colorSource)
+    {
+        return SetEntityColorSource([entityId], colorSource);
+    }
+
+    public CadDocumentChangeSet SetEntityColorSource(
+        IEnumerable<EntityId> entityIds,
+        CadColorSource colorSource)
+    {
+        return DocumentCommands.Execute(new SetEntityColorSourceCommand(entityIds, colorSource));
+    }
+
     public CadDocumentChangeSet SetEntityGraphicStyle(EntityId entityId, StyleId? graphicStyleId)
     {
         return SetEntityGraphicStyle([entityId], graphicStyleId);

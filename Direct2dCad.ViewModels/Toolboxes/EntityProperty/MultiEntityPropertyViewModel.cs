@@ -77,6 +77,15 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
     public partial bool? UseByLayerColor { get; set; }
 
     [ObservableProperty]
+    public partial IReadOnlyList<EntityColorSourceOption> ColorSourceOptions { get; private set; } = [];
+
+    [ObservableProperty]
+    public partial EntityColorSourceOption? SelectedColorSourceOption { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasMixedColorSource { get; private set; }
+
+    [ObservableProperty]
     public partial CadColor StrokeColor { get; set; } = CadColor.White;
 
     [ObservableProperty]
@@ -139,7 +148,9 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
     [ObservableProperty]
     public partial StrokeLineJoinOption? SelectedLineJoinOption { get; set; }
 
-    public bool ColorControlsEnabled => SupportsStrokeAppearance && UseByLayerColor == false;
+    public bool ColorControlsEnabled =>
+        SupportsStrokeAppearance &&
+        SelectedColorSourceOption?.Value == CadColorSource.Explicit;
     public bool LineWeightControlsEnabled => SupportsStrokeAppearance && UseByLayerLineWeight == false;
     public bool FillColorControlsEnabled =>
         SupportsFill && FillStyleCatalog.SupportsFillColor(SelectedFillStyleOption);
@@ -175,7 +186,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             SupportsLineJoin = SupportsStrokeStyle && entities.All(CadEntityCapabilities.SupportsLineJoin);
             if (SupportsStrokeAppearance)
             {
-                UseByLayerColor = GetCommonValue(entities, entity => entity.UseLayerColor);
+                RefreshColorSourceProperties(entities);
                 var colors = entities.Select(ResolveStrokeColor).ToArray();
                 StrokeColor = colors[0];
                 HasMixedStrokeColor = colors.Skip(1).Any(color => color != colors[0]);
@@ -185,6 +196,9 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             else
             {
                 UseByLayerColor = null;
+                ColorSourceOptions = [];
+                SelectedColorSourceOption = null;
+                HasMixedColorSource = false;
                 HasMixedStrokeColor = false;
                 UseByLayerLineWeight = null;
                 LineWeight = null;
@@ -242,6 +256,19 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             return;
 
         _documentViewModel.CadEditor.SetEntityUseLayerColor(_entityIds, value.Value);
+    }
+
+    partial void OnSelectedColorSourceOptionChanged(EntityColorSourceOption? value)
+    {
+        OnPropertyChanged(nameof(ColorControlsEnabled));
+        if (_isRefreshing || value is null || !SupportsStrokeAppearance)
+            return;
+
+        var entities = ResolveEntities();
+        if (entities.All(entity => entity.ColorSource == value.Value))
+            return;
+
+        _documentViewModel.CadEditor.SetEntityColorSource(_entityIds, value.Value);
     }
 
     partial void OnStrokeColorChanged(CadColor value)
@@ -373,6 +400,42 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         HasMixedFillColor = colors.Skip(1).Any(color => color != colors[0]);
     }
 
+    private void RefreshColorSourceProperties(IReadOnlyList<CadEntity> entities)
+    {
+        var document = _documentViewModel.CadEditor.Document;
+        var supportsByBlock = entities.All(entity =>
+            document.TryGetBlock(entity.OwnerBlockId, out var ownerBlock) &&
+            ownerBlock is { IsSystem: false });
+        var options = new List<EntityColorSourceOption>
+        {
+            new EntityColorSourceOption(
+                CadColorSource.ByLayer,
+                GetLocalizedText("ByLayer", "By layer")),
+            new EntityColorSourceOption(
+                CadColorSource.Explicit,
+                GetLocalizedText("Explicit", "Explicit"))
+        };
+        if (supportsByBlock || entities.Any(entity => entity.ColorSource == CadColorSource.ByBlock))
+        {
+            options.Add(new EntityColorSourceOption(
+                CadColorSource.ByBlock,
+                GetLocalizedText("ByBlock", "By block")));
+        }
+
+        ColorSourceOptions = options;
+        var firstSource = entities[0].ColorSource;
+        CadColorSource? commonSource = entities.Skip(1).All(entity => entity.ColorSource == firstSource)
+            ? firstSource
+            : null;
+        SelectedColorSourceOption = commonSource is { } source
+            ? ColorSourceOptions.FirstOrDefault(option => option.Value == source)
+            : null;
+        HasMixedColorSource = commonSource is null;
+        UseByLayerColor = commonSource is null
+            ? null
+            : commonSource == CadColorSource.ByLayer;
+    }
+
     private void RefreshStrokeStyleProperties(IReadOnlyList<CadEntity> entities)
     {
         if (!SupportsStrokeStyle)
@@ -438,7 +501,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
     {
         var document = _documentViewModel.CadEditor.Document;
         var layer = document.GetLayer(entity.LayerId);
-        if (entity.UseLayerColor)
+        if (entity.ColorSource != CadColorSource.Explicit)
             return ResolveGraphicStyle(document, layer.DefaultGraphicStyleId)?.StrokeColor ?? layer.Color;
 
         return ResolveGraphicStyle(document, GetGraphicStyleId(entity))?.StrokeColor ??

@@ -304,7 +304,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
     private static void ApplyState(CadEntity entity, CadEntityStateClipboardSnapshot state)
     {
         entity.SetLineWeightState(state.LineWeight, state.UseLayerLineWeight);
-        entity.SetUseLayerColor(state.UseLayerColor);
+        entity.SetColorSource(state.ColorSource);
         entity.SetVisible(state.IsVisible);
         entity.SetLocked(state.IsLocked);
         entity.SetStrokeStyle(state.StrokeStyle);
