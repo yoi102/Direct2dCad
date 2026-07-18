@@ -17,11 +17,17 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     private readonly HashSet<StrokeStyleKey> _usedStrokeStyles = [];
     private readonly HashSet<CadColor> _unleasedBrushes = [];
     private readonly HashSet<StrokeStyleKey> _unleasedStrokeStyles = [];
+    private readonly Action<CadColor> _releaseBrush;
     private ID2D1DeviceContext? _deviceContext;
     private ID2D1Factory? _factory;
     private ID2D1PathGeometry? _unitDiamondGeometry;
     private int _frameDepth;
     private bool _disposed;
+
+    public Direct2DStyleResourceCache()
+    {
+        _releaseBrush = ReleaseBrush;
+    }
 
     public void Reset(ID2D1Factory? factory, ID2D1DeviceContext? deviceContext)
     {
@@ -59,7 +65,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         return GetOrCreateBrush(color).Resource;
     }
 
-    public ResourceLease<ID2D1SolidColorBrush> AcquireBrush(CadColor color)
+    public KeyedResourceLease<ID2D1SolidColorBrush, CadColor> AcquireBrush(CadColor color)
     {
         ThrowIfDisposed();
         if (_deviceContext is null)
@@ -68,7 +74,10 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         var entry = GetOrCreateBrush(color);
         entry.ReferenceCount++;
         _unleasedBrushes.Remove(color);
-        return new ResourceLease<ID2D1SolidColorBrush>(entry.Resource, () => ReleaseBrush(color));
+        return new KeyedResourceLease<ID2D1SolidColorBrush, CadColor>(
+            entry.Resource,
+            color,
+            _releaseBrush);
     }
 
     public ID2D1StrokeStyle? GetStrokeStyle(ID2D1Factory? factory, CadTransientStyle style)

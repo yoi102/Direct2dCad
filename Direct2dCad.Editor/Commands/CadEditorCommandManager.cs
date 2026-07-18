@@ -38,7 +38,7 @@ public sealed class CadEditorCommandManager
         _documentChanges = documentChanges ?? throw new ArgumentNullException(nameof(documentChanges));
         _history = history ?? new CommandHistory<ICadEditorCommand>();
         _settings = settings ?? new CommandHistorySettings();
-        _documentChanges.DocumentChanged += (_, result) => DocumentChanged?.Invoke(this, result);
+        _documentChanges.DocumentChanged += OnDocumentChanged;
     }
 
     public CadEditorCommandResult Execute(ICadEditorCommand command)
@@ -67,13 +67,21 @@ public sealed class CadEditorCommandManager
 
         foreach (var command in commandArray)
         {
-            var result = command.Execute(_context);
-            _history.PushExecuted(command, batchId);
-            Publish(result);
-            results.Add(result);
+            try
+            {
+                var result = command.Execute(_context);
+                _history.PushExecuted(command, batchId);
+                results.Add(result);
+            }
+            catch
+            {
+                Publish(CadEditorCommandResult.Combine(results));
+                throw;
+            }
         }
 
         var combined = CadEditorCommandResult.Combine(results);
+        Publish(combined);
         PublishActivity(name, CadCommandActivityKind.Execute, commandArray.Length, combined.HasChanges);
         return combined;
     }
@@ -92,13 +100,21 @@ public sealed class CadEditorCommandManager
         var results = new List<CadEditorCommandResult>(entries.Count);
         foreach (var entry in entries)
         {
-            var result = entry.Command.Undo(_context);
-            _history.PushUndone(entry);
-            Publish(result);
-            results.Add(result);
+            try
+            {
+                var result = entry.Command.Undo(_context);
+                _history.PushUndone(entry);
+                results.Add(result);
+            }
+            catch
+            {
+                Publish(CadEditorCommandResult.Combine(results));
+                throw;
+            }
         }
 
         var combined = CadEditorCommandResult.Combine(results);
+        Publish(combined);
         PublishActivity(GetActivityName(entries), CadCommandActivityKind.Undo, entries.Count, combined.HasChanges);
         return combined;
     }
@@ -115,13 +131,21 @@ public sealed class CadEditorCommandManager
         var results = new List<CadEditorCommandResult>(entries.Count);
         foreach (var entry in entries)
         {
-            var result = entry.Command.Execute(_context);
-            _history.PushRedone(entry);
-            Publish(result);
-            results.Add(result);
+            try
+            {
+                var result = entry.Command.Execute(_context);
+                _history.PushRedone(entry);
+                results.Add(result);
+            }
+            catch
+            {
+                Publish(CadEditorCommandResult.Combine(results));
+                throw;
+            }
         }
 
         var combined = CadEditorCommandResult.Combine(results);
+        Publish(combined);
         PublishActivity(GetActivityName(entries), CadCommandActivityKind.Redo, entries.Count, combined.HasChanges);
         return combined;
     }
@@ -152,5 +176,28 @@ public sealed class CadEditorCommandManager
             _documentChanges.Publish(result.DocumentChanges);
 
         Changed?.Invoke(this, result);
+    }
+
+    private void OnDocumentChanged(object? sender, CadDocumentChangeSet result)
+    {
+        if (MayAffectHitTestStrokePadding(result))
+            _context.HitTesting.InvalidateCaches();
+        DocumentChanged?.Invoke(this, result);
+    }
+
+    private static bool MayAffectHitTestStrokePadding(CadDocumentChangeSet result)
+    {
+        if (result.AffectsDocumentStructure)
+            return true;
+
+        const CadEntityChangeKind relevantChanges =
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.Layer |
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Deleted |
+            CadEntityChangeKind.Rotation;
+        return result.EntityChanges.Any(change => (change.Kind & relevantChanges) != 0);
     }
 }

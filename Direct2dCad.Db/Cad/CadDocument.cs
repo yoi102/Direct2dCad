@@ -17,6 +17,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     private readonly Dictionary<LayerId, CadLayer> _layers = [];
     private readonly Dictionary<BlockId, CadBlockDefinition> _blocks = [];
     private readonly Dictionary<EntityId, CadEntity> _entities = [];
+    private readonly HashSet<EntityId> _blockReferenceIds = [];
     private readonly Dictionary<StyleId, CadStyle> _styles = [];
     private readonly Dictionary<HatchPatternId, CadHatchPatternDefinition> _hatchPatterns = [];
     private readonly Dictionary<LayoutId, CadLayout> _layouts = [];
@@ -322,7 +323,11 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
         var entities = block.EntityIds.Select(GetEntity).ToArray();
         foreach (var entity in entities)
+        {
             _entities.Remove(entity.Id);
+            if (entity is CadBlockReference)
+                _blockReferenceIds.Remove(entity.Id);
+        }
         _blocks.Remove(blockId);
         return new CadDetachedBlockDefinition(block, entities);
     }
@@ -338,18 +343,33 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public bool IsBlockReferenced(BlockId blockId)
     {
-        return _entities.Values
-            .OfType<CadBlockReference>()
-            .Any(x => !x.IsErased && x.DefinitionBlockId.Equals(blockId));
+        foreach (var entityId in _blockReferenceIds)
+        {
+            if (_entities.TryGetValue(entityId, out var entity) &&
+                entity is CadBlockReference { IsErased: false } reference &&
+                reference.DefinitionBlockId.Equals(blockId))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public IReadOnlyList<EntityId> GetBlockReferenceIds(BlockId definitionBlockId)
     {
-        return _entities.Values
-            .OfType<CadBlockReference>()
-            .Where(x => !x.IsErased && x.DefinitionBlockId.Equals(definitionBlockId))
-            .Select(x => x.Id)
-            .ToArray();
+        var result = new List<EntityId>();
+        foreach (var entityId in _blockReferenceIds)
+        {
+            if (_entities.TryGetValue(entityId, out var entity) &&
+                entity is CadBlockReference { IsErased: false } reference &&
+                reference.DefinitionBlockId.Equals(definitionBlockId))
+            {
+                result.Add(entityId);
+            }
+        }
+
+        return result;
     }
 
     private void EnsureBlockCanBeRemoved(BlockId blockId)
@@ -1236,6 +1256,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             return false;
 
         _entities.Remove(entityId);
+        if (entity is CadBlockReference)
+            _blockReferenceIds.Remove(entityId);
 
         if (_blocks.TryGetValue(entity.OwnerBlockId, out var ownerBlock))
             ownerBlock.RemoveEntity(entityId);
@@ -1345,18 +1367,28 @@ public sealed class CadDocument : IEquatable<CadDocument>
     public CadRectD GetBlockBounds(BlockId blockId)
     {
         ValidateBlock(blockId);
-        return ResolveBlockBounds(blockId, []);
+        return ResolveBlockBounds(blockId, [], []);
     }
 
     public IReadOnlyList<EntityId> RefreshBlockReferenceBounds()
     {
+        if (_blockReferenceIds.Count == 0)
+            return [];
+
         var changed = new List<EntityId>();
-        foreach (var reference in _entities.Values.OfType<CadBlockReference>())
+        var blockBounds = new Dictionary<BlockId, CadRectD>();
+        foreach (var entityId in _blockReferenceIds)
         {
+            if (!_entities.TryGetValue(entityId, out var entity) ||
+                entity is not CadBlockReference reference)
+            {
+                continue;
+            }
+
             if (reference.IsErased)
                 continue;
 
-            var bounds = ResolveBlockReferenceBounds(reference, []);
+            var bounds = ResolveBlockReferenceBounds(reference, [], blockBounds);
             if (reference.SetResolvedBounds(bounds))
                 changed.Add(reference.Id);
         }
@@ -1429,6 +1461,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
             throw new InvalidOperationException($"Owner block does not exist: {entity.OwnerBlockId}");
 
         _entities.Add(entity.Id, entity);
+        if (entity is CadBlockReference)
+            _blockReferenceIds.Add(entity.Id);
         ownerBlock.AddEntity(entity.Id);
         _ids.RegisterExisting(entity.Id);
     }
@@ -1532,8 +1566,14 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return false;
     }
 
-    private CadRectD ResolveBlockBounds(BlockId blockId, HashSet<BlockId> visited)
+    private CadRectD ResolveBlockBounds(
+        BlockId blockId,
+        HashSet<BlockId> visited,
+        Dictionary<BlockId, CadRectD> blockBounds)
     {
+        if (blockBounds.TryGetValue(blockId, out var cachedBounds))
+            return cachedBounds;
+
         if (!visited.Add(blockId))
             return CadRectD.Empty;
 
@@ -1544,18 +1584,22 @@ public sealed class CadDocument : IEquatable<CadDocument>
                 continue;
 
             bounds = bounds.Union(entity is CadBlockReference reference
-                ? ResolveBlockReferenceBounds(reference, visited)
+                ? ResolveBlockReferenceBounds(reference, visited, blockBounds)
                 : entity.Bounds);
         }
 
         visited.Remove(blockId);
+        blockBounds[blockId] = bounds;
         return bounds;
     }
 
-    private CadRectD ResolveBlockReferenceBounds(CadBlockReference reference, HashSet<BlockId> visited)
+    private CadRectD ResolveBlockReferenceBounds(
+        CadBlockReference reference,
+        HashSet<BlockId> visited,
+        Dictionary<BlockId, CadRectD> blockBounds)
     {
         var definition = GetBlock(reference.DefinitionBlockId);
-        var localBounds = ResolveBlockBounds(reference.DefinitionBlockId, visited);
+        var localBounds = ResolveBlockBounds(reference.DefinitionBlockId, visited, blockBounds);
         return localBounds.IsEmpty
             ? CadRectD.FromLTRB(reference.Position.X, reference.Position.Y, reference.Position.X, reference.Position.Y)
             : CadBlockTransform.TransformBounds(definition, reference, localBounds);

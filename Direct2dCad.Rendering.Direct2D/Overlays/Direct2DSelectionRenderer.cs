@@ -150,6 +150,15 @@ internal sealed class Direct2DSelectionRenderer(
         CadRectD? dirtyWorldBounds,
         HashSet<BlockId> visitedBlocks)
     {
+        if (!IntersectsRenderBounds(
+                reference.EntityBounds,
+                reference.Offset,
+                viewport,
+                dirtyWorldBounds))
+        {
+            return;
+        }
+
         if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
             return;
 
@@ -427,7 +436,16 @@ internal sealed class Direct2DSelectionRenderer(
         CadViewport viewport,
         CadRectD? dirtyWorldBounds)
     {
-        var entityBounds = entity.Bounds.Translate(offset);
+        return IntersectsRenderBounds(entity.Bounds, offset, viewport, dirtyWorldBounds);
+    }
+
+    private static bool IntersectsRenderBounds(
+        CadRectD bounds,
+        CadVectorD offset,
+        CadViewport viewport,
+        CadRectD? dirtyWorldBounds)
+    {
+        var entityBounds = bounds.Translate(offset);
         if (entityBounds.IsEmpty)
             return true;
 

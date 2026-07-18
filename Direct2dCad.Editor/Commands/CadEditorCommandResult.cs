@@ -43,36 +43,18 @@ public sealed class CadEditorCommandResult
     {
         ArgumentNullException.ThrowIfNull(results);
 
-        var entityChanges = new List<CadEntityChange>();
-        var structureChanged = false;
-        var layoutsChanged = false;
-        var layoutStructureChanged = false;
-        var viewSettingsChanged = false;
+        var documentChanges = new List<CadDocumentChangeSet>();
         var selectionChanged = false;
         var viewChanged = false;
 
         foreach (var result in results)
         {
-            entityChanges.AddRange(result.DocumentChanges.EntityChanges);
-            structureChanged |= result.DocumentChanges.AffectsDocumentStructure;
-            layoutsChanged |= result.DocumentChanges.AffectsLayouts;
-            layoutStructureChanged |= result.DocumentChanges.AffectsLayoutStructure;
-            viewSettingsChanged |= result.DocumentChanges.AffectsViewSettings;
+            documentChanges.Add(result.DocumentChanges);
             selectionChanged |= result.SelectionChanged;
             viewChanged |= result.ViewChanged;
         }
 
-        var documentChanges = new CadDocumentChangeSet(entityChanges);
-        if (structureChanged)
-            documentChanges = documentChanges.WithDocumentStructureChanged();
-        if (layoutsChanged)
-            documentChanges = documentChanges.WithLayoutsChanged();
-        if (layoutStructureChanged)
-            documentChanges = documentChanges.WithLayoutStructureChanged();
-        if (viewSettingsChanged)
-            documentChanges = documentChanges.WithViewSettingsChanged();
-
-        return new CadEditorCommandResult(documentChanges)
+        return new CadEditorCommandResult(CadDocumentChangeSet.Combine(documentChanges))
         {
             SelectionChanged = selectionChanged,
             ViewChanged = viewChanged

@@ -8,6 +8,7 @@ internal sealed class Direct2DEntityOrderCache
 {
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _entitiesByOwner = [];
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _oleEntitiesByOwner = [];
+    private readonly Dictionary<BlockId, IComparer<CadEntity>> _comparersByOwner = [];
     private CadDocument? _document;
 
     public IReadOnlyList<CadEntity> GetOrderedEntities(
@@ -21,6 +22,7 @@ internal sealed class Direct2DEntityOrderCache
             _document = document;
             _entitiesByOwner.Clear();
             _oleEntitiesByOwner.Clear();
+            _comparersByOwner.Clear();
         }
 
         if (_entitiesByOwner.TryGetValue(ownerBlockId, out var entities))
@@ -35,6 +37,26 @@ internal sealed class Direct2DEntityOrderCache
             .ToArray();
         _entitiesByOwner[ownerBlockId] = entities;
         return entities;
+    }
+
+    public IComparer<CadEntity> GetComparer(
+        CadDocument document,
+        BlockId ownerBlockId)
+    {
+        if (_comparersByOwner.TryGetValue(ownerBlockId, out var comparer) &&
+            ReferenceEquals(_document, document))
+        {
+            return comparer;
+        }
+
+        var entities = GetOrderedEntities(document, ownerBlockId);
+        var ranks = new Dictionary<EntityId, int>(entities.Count);
+        for (var index = 0; index < entities.Count; index++)
+            ranks[entities[index].Id] = index;
+
+        comparer = new EntityRankComparer(ranks);
+        _comparersByOwner[ownerBlockId] = comparer;
+        return comparer;
     }
 
     public IReadOnlyList<CadEntity> GetOrderedOleEntities(
@@ -58,5 +80,27 @@ internal sealed class Direct2DEntityOrderCache
     {
         _entitiesByOwner.Clear();
         _oleEntitiesByOwner.Clear();
+        _comparersByOwner.Clear();
+    }
+
+    private sealed class EntityRankComparer(
+        IReadOnlyDictionary<EntityId, int> ranks) : IComparer<CadEntity>
+    {
+        public int Compare(CadEntity? left, CadEntity? right)
+        {
+            if (ReferenceEquals(left, right))
+                return 0;
+            if (left is null)
+                return -1;
+            if (right is null)
+                return 1;
+
+            var leftRank = ranks.GetValueOrDefault(left.Id, int.MaxValue);
+            var rightRank = ranks.GetValueOrDefault(right.Id, int.MaxValue);
+            var result = leftRank.CompareTo(rightRank);
+            return result != 0
+                ? result
+                : left.Id.Value.CompareTo(right.Id.Value);
+        }
     }
 }

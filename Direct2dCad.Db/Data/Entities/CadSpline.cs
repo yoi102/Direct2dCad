@@ -6,6 +6,8 @@ public sealed class CadSpline : Curve
 {
     private const int DefaultFlattenStepsPerSegment = 20;
     private readonly List<CadPointD> _fitPoints = [];
+    private IReadOnlyList<CadBezierSegmentD> _bezierSegments = [];
+    private CadRectD _bounds = CadRectD.Empty;
 
     public IReadOnlyList<CadPointD> FitPoints => _fitPoints;
     public bool Closed { get; private set; }
@@ -19,37 +21,23 @@ public sealed class CadSpline : Curve
     {
         get
         {
-            var flattened = EnumerateFlattenedPoints(DefaultFlattenStepsPerSegment).ToArray();
-            if (flattened.Length < 2)
+            using var points = EnumerateFlattenedPoints(DefaultFlattenStepsPerSegment).GetEnumerator();
+            if (!points.MoveNext())
                 return 0;
 
             var length = 0.0;
-            for (var i = 1; i < flattened.Length; i++)
-                length += flattened[i - 1].DistanceTo(flattened[i]);
+            var previous = points.Current;
+            while (points.MoveNext())
+            {
+                length += previous.DistanceTo(points.Current);
+                previous = points.Current;
+            }
 
             return length;
         }
     }
 
-    public override CadRectD Bounds
-    {
-        get
-        {
-            var bounds = CadRectD.Empty;
-            foreach (var point in _fitPoints)
-                bounds = bounds.ExpandToInclude(point);
-
-            foreach (var segment in GetBezierSegments())
-            {
-                bounds = bounds
-                    .ExpandToInclude(segment.Control1)
-                    .ExpandToInclude(segment.Control2)
-                    .ExpandToInclude(segment.End);
-            }
-
-            return bounds;
-        }
-    }
+    public override CadRectD Bounds => _bounds;
 
     internal CadSpline(
         EntityId id,
@@ -77,6 +65,8 @@ public sealed class CadSpline : Curve
 
         if (Closed && _fitPoints.Count < 3)
             Closed = false;
+
+        RebuildDerivedGeometry();
     }
 
     public void SetClosed(bool closed)
@@ -84,23 +74,26 @@ public sealed class CadSpline : Curve
         if (closed && _fitPoints.Count < 3)
             throw new InvalidOperationException("Closed spline requires at least three fit points.");
 
+        if (Closed == closed)
+            return;
+
         Closed = closed;
+        RebuildDerivedGeometry();
     }
 
     public IReadOnlyList<CadBezierSegmentD> GetBezierSegments()
     {
-        return CreateBezierSegments(_fitPoints, Closed);
+        return _bezierSegments;
     }
 
     public IEnumerable<CadPointD> EnumerateFlattenedPoints(int stepsPerSegment = DefaultFlattenStepsPerSegment)
     {
         stepsPerSegment = Math.Max(1, stepsPerSegment);
-        var segments = GetBezierSegments();
-        if (segments.Count == 0)
+        if (_bezierSegments.Count == 0)
             yield break;
 
-        yield return segments[0].Start;
-        foreach (var segment in segments)
+        yield return _bezierSegments[0].Start;
+        foreach (var segment in _bezierSegments)
         {
             for (var step = 1; step <= stepsPerSegment; step++)
                 yield return segment.Evaluate((double)step / stepsPerSegment);
@@ -140,6 +133,25 @@ public sealed class CadSpline : Curve
         }
 
         return segments;
+    }
+
+    private void RebuildDerivedGeometry()
+    {
+        _bezierSegments = CreateBezierSegments(_fitPoints, Closed);
+
+        var bounds = CadRectD.Empty;
+        foreach (var point in _fitPoints)
+            bounds = bounds.ExpandToInclude(point);
+
+        foreach (var segment in _bezierSegments)
+        {
+            bounds = bounds
+                .ExpandToInclude(segment.Control1)
+                .ExpandToInclude(segment.Control2)
+                .ExpandToInclude(segment.End);
+        }
+
+        _bounds = bounds;
     }
 
     private static CadPointD GetPoint(IReadOnlyList<CadPointD> points, int index, bool closed)

@@ -78,12 +78,33 @@ internal sealed class Direct2DResourceCache : IDisposable
                 CadEntityChangeKind.Metadata |
                 CadEntityChangeKind.Opacity |
                 CadEntityChangeKind.Rotation;
-            if ((change.Kind & ~resourceIndependentChanges) == 0)
+            var resourceChanges = change.Kind & ~resourceIndependentChanges;
+            if (resourceChanges == CadEntityChangeKind.None)
             {
                 continue;
             }
 
-            RebuildEntityResources(document, change.EntityId);
+            const CadEntityChangeKind fullRebuildChanges =
+                CadEntityChangeKind.Created |
+                CadEntityChangeKind.Deleted |
+                CadEntityChangeKind.Visibility |
+                CadEntityChangeKind.Layer |
+                CadEntityChangeKind.Fill |
+                CadEntityChangeKind.EmbeddedData;
+            if ((resourceChanges & fullRebuildChanges) != 0 ||
+                !document.TryGetEntity(change.EntityId, out var entity) ||
+                entity is null ||
+                !_entityResources.TryGetValue(change.EntityId, out var bucket))
+            {
+                RebuildEntityResources(document, change.EntityId);
+                continue;
+            }
+
+            if ((resourceChanges & CadEntityChangeKind.Geometry) != 0)
+                UpdateGeometryResources(document, entity, bucket);
+
+            if ((resourceChanges & CadEntityChangeKind.Appearance) != 0)
+                UpdateAppearanceResources(document, entity, bucket);
         }
     }
 
@@ -169,9 +190,13 @@ internal sealed class Direct2DResourceCache : IDisposable
                 entity.UseLayerLineWeight,
                 graphic?.LineWeight,
                 layer.LineWeight);
-            bucket.StrokeBrushLease = _styleResources.AcquireBrush(
-                ResolveStrokeColor(document, entity, layer, graphic));
-            bucket.StrokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
+            if (UsesStrokeBrush(entity))
+            {
+                bucket.StrokeBrushLease = _styleResources.AcquireBrush(
+                    ResolveStrokeColor(document, entity, layer, graphic));
+            }
+            if (UsesStrokeStyle(entity))
+                bucket.StrokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
 
             var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
             bucket.Geometry = CreateGeometry(entity, fillStyle is CadHatchFillStyle);
@@ -228,6 +253,110 @@ internal sealed class Direct2DResourceCache : IDisposable
             bucket.Dispose();
             throw;
         }
+    }
+
+    private void UpdateAppearanceResources(
+        CadDocument document,
+        CadEntity entity,
+        EntityResourceBucket bucket)
+    {
+        if (!document.TryGetLayer(entity.LayerId, out var layer) || layer is null)
+        {
+            RebuildEntityResources(document, entity.Id);
+            return;
+        }
+
+        var graphic = ResolveGraphicStyle(document, entity, layer);
+        KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? strokeBrushLease = null;
+        ResourceLease<ID2D1StrokeStyle>? strokeStyleLease = null;
+        try
+        {
+            if (UsesStrokeBrush(entity))
+            {
+                strokeBrushLease = _styleResources.AcquireBrush(
+                    ResolveStrokeColor(document, entity, layer, graphic));
+            }
+            if (UsesStrokeStyle(entity))
+                strokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
+        }
+        catch
+        {
+            strokeBrushLease?.Dispose();
+            strokeStyleLease?.Dispose();
+            throw;
+        }
+
+        bucket.StrokeBrushLease?.Dispose();
+        bucket.StrokeStyleLease?.Dispose();
+        bucket.StrokeBrushLease = strokeBrushLease;
+        bucket.StrokeStyleLease = strokeStyleLease;
+        bucket.StrokeWidth = ResolveStrokeWidth(
+            entity.LineWeight,
+            entity.UseLayerLineWeight,
+            graphic?.LineWeight,
+            layer.LineWeight);
+    }
+
+    private void UpdateGeometryResources(
+        CadDocument document,
+        CadEntity entity,
+        EntityResourceBucket bucket)
+    {
+        if (entity is CadText text)
+        {
+            if (text.RequiresBoundsMeasurement)
+                UpdateTextResources(document, text, bucket);
+            return;
+        }
+
+        if (entity is CadImage image)
+        {
+            var bitmapBrush = bucket.Bitmap is null
+                ? null
+                : CreateBitmapBrush(
+                    image.FrameBounds,
+                    image.PixelWidth,
+                    image.PixelHeight,
+                    bucket.Bitmap);
+            bucket.BitmapBrush?.Dispose();
+            bucket.BitmapBrush = bitmapBrush;
+            return;
+        }
+
+        var geometry = CreateGeometry(entity, bucket.HatchFillStyle is CadHatchFillStyle);
+        bucket.Geometry?.Dispose();
+        bucket.Geometry = geometry;
+    }
+
+    private void UpdateTextResources(
+        CadDocument document,
+        CadText text,
+        EntityResourceBucket bucket)
+    {
+        ResourceLease<IDWriteTextFormat>? textFormatLease = null;
+        IDWriteTextLayout? textLayout = null;
+        try
+        {
+            textFormatLease = _textFormatResources.Acquire(document, text);
+            if (WriteFactory is not null && textFormatLease?.Resource is { } textFormat)
+            {
+                textLayout = Direct2DTextServices.CreateTextLayout(
+                    WriteFactory,
+                    text.Text,
+                    textFormat);
+            }
+        }
+        catch
+        {
+            textLayout?.Dispose();
+            textFormatLease?.Dispose();
+            throw;
+        }
+
+        bucket.TextLayout?.Dispose();
+        bucket.TextFormatLease?.Dispose();
+        bucket.TextFormatLease = textFormatLease;
+        bucket.TextLayout = textLayout;
     }
 
     private ID2D1Geometry? CreateGeometry(CadEntity entity, bool includePrimitiveFillGeometry)
@@ -455,6 +584,33 @@ internal sealed class Direct2DResourceCache : IDisposable
         };
     }
 
+    private static bool UsesStrokeBrush(CadEntity entity)
+    {
+        return entity is CadLine or
+            CadCircle or
+            CadEllipse or
+            CadEllipseArc or
+            CadRectangle or
+            CadArc or
+            CadPolyline or
+            CadSpline or
+            CadText or
+            CadShapeText;
+    }
+
+    private static bool UsesStrokeStyle(CadEntity entity)
+    {
+        return entity is CadLine or
+            CadCircle or
+            CadEllipse or
+            CadEllipseArc or
+            CadRectangle or
+            CadArc or
+            CadPolyline or
+            CadSpline or
+            CadShapeText;
+    }
+
     private static float ResolveStrokeWidth(
         CadLineWeight? entityWeight,
         bool useLayerLineWeight,
@@ -563,10 +719,10 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         public EntityId EntityId { get; }
         public ID2D1Geometry? Geometry { get; set; }
-        internal ResourceLease<ID2D1SolidColorBrush>? StrokeBrushLease { get; set; }
+        internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? StrokeBrushLease { get; set; }
         internal ResourceLease<ID2D1StrokeStyle>? StrokeStyleLease { get; set; }
-        internal ResourceLease<ID2D1SolidColorBrush>? FillBrushLease { get; set; }
-        internal ResourceLease<ID2D1SolidColorBrush>? HatchBrushLease { get; set; }
+        internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? FillBrushLease { get; set; }
+        internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? HatchBrushLease { get; set; }
         public ID2D1Brush? StrokeBrush => StrokeBrushLease?.Resource;
         public ID2D1StrokeStyle? StrokeStyle => StrokeStyleLease?.Resource;
         public ID2D1Brush? FillBrush => FillBrushLease?.Resource;

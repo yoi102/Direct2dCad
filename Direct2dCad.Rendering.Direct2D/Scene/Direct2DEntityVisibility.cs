@@ -13,8 +13,12 @@ internal static class Direct2DEntityVisibility
         CadViewport viewport,
         CadRenderOptions options,
         Direct2DResourceCache resourceCache,
-        IReadOnlyList<CadEntity> orderedEntities)
+        IReadOnlyList<CadEntity> orderedEntities,
+        Direct2DEntityOrderCache entityOrderCache)
     {
+        if (orderedEntities.Count == 0)
+            return [];
+
         var renderWorldBounds = ResolveRenderWorldBounds(viewport, options);
         if (renderWorldBounds is not { } bounds ||
             options.EntityBoundsQuery is not { } query)
@@ -55,7 +59,9 @@ internal static class Direct2DEntityVisibility
             candidates.Add(entity);
         }
 
-        candidates.Sort((left, right) => CompareDrawOrder(document, left, right));
+        candidates.Sort(entityOrderCache.GetComparer(
+            document,
+            options.ActiveOwnerBlockId));
         return EnumerateOrdered(
             document,
             viewport,
@@ -93,25 +99,6 @@ internal static class Direct2DEntityVisibility
 
             yield return entity;
         }
-    }
-
-    private static int CompareDrawOrder(
-        CadDocument document,
-        CadEntity left,
-        CadEntity right)
-    {
-        var leftLayerPriority =
-            document.DocumentSettings.LayerDrawingPriority.GetPriority(left.LayerId);
-        var rightLayerPriority =
-            document.DocumentSettings.LayerDrawingPriority.GetPriority(right.LayerId);
-        var result = leftLayerPriority.CompareTo(rightLayerPriority);
-        if (result != 0)
-            return result;
-
-        result = left.ZIndex.CompareTo(right.ZIndex);
-        return result != 0
-            ? result
-            : left.Id.Value.CompareTo(right.Id.Value);
     }
 
     private static CadRectD? ResolveRenderWorldBounds(

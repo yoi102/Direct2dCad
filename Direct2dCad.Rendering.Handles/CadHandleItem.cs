@@ -7,6 +7,7 @@ public abstract record CadHandleItem(CadHandleStyle Style);
 
 public sealed record CadSelectionEntityReference(
     EntityId EntityId,
+    CadRectD EntityBounds,
     CadVectorD Offset,
     CadHandleStyle Style)
     : CadHandleItem(Style);

@@ -363,6 +363,8 @@ public sealed class CadDocumentStorage
 
     private static List<SerializedSection> CreateSections(CadDocument document)
     {
+        var entities = CadDocumentMapper.IndexEntities(document);
+
         return
         [
             Serialize(CadSectionKind.Document, CadDocumentMapper.ToDocumentSection(document)),
@@ -371,18 +373,18 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Styles, CadDocumentMapper.ToStylesSection(document)),
             Serialize(CadSectionKind.Layouts, CadDocumentMapper.ToLayoutsSection(document)),
             Serialize(CadSectionKind.Blocks, CadDocumentMapper.ToBlocksSection(document)),
-            Serialize(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(document)),
-            Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(document)),
-            Serialize(CadSectionKind.Ellipses, CadDocumentMapper.ToEllipsesSection(document)),
-            Serialize(CadSectionKind.Arcs, CadDocumentMapper.ToArcsSection(document)),
-            Serialize(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(document)),
-            Serialize(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(document)),
-            Serialize(CadSectionKind.Splines, CadDocumentMapper.ToSplinesSection(document)),
-            Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(document)),
-            Serialize(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(document)),
-            Serialize(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(document)),
-            Serialize(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(document)),
-            Serialize(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document))
+            Serialize(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(entities)),
+            Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(entities)),
+            Serialize(CadSectionKind.Ellipses, CadDocumentMapper.ToEllipsesSection(entities)),
+            Serialize(CadSectionKind.Arcs, CadDocumentMapper.ToArcsSection(entities)),
+            Serialize(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(entities)),
+            Serialize(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(entities)),
+            Serialize(CadSectionKind.Splines, CadDocumentMapper.ToSplinesSection(entities)),
+            Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(entities)),
+            Serialize(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(entities)),
+            Serialize(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(entities)),
+            Serialize(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(entities)),
+            Serialize(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document, entities))
         ];
     }
 

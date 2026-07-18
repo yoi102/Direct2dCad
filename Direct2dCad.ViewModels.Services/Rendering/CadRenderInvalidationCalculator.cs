@@ -65,18 +65,13 @@ internal sealed class CadRenderInvalidationCalculator(
         CadHandleScene handleScene,
         bool includeGripHandles)
     {
-        var worldBounds = CadRectD.Empty;
+        var worldBounds = handleScene.SelectionWorldBounds;
         var paddingPixels = 32.0;
 
-        foreach (var item in handleScene.Items)
+        foreach (var item in handleScene.NonSelectionItems)
         {
             switch (item)
             {
-                case CadSelectionEntityReference reference
-                    when document.TryGetEntity(reference.EntityId, out var entity) &&
-                         entity is not null:
-                    worldBounds = worldBounds.Union(entity.Bounds.Translate(reference.Offset));
-                    break;
                 case CadGripHandle grip when includeGripHandles:
                     worldBounds = worldBounds.ExpandToInclude(grip.Position);
                     paddingPixels = Math.Max(

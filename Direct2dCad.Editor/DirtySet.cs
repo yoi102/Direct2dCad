@@ -17,7 +17,7 @@ public sealed class DirtySet
         _layoutStructureChanged ||
         _viewSettingsChanged;
 
-    public IReadOnlyCollection<EntityId> EntityIds => _entityChanges.Keys.ToArray();
+    public IReadOnlyCollection<EntityId> EntityIds => _entityChanges.Keys;
 
     public void Add(CadDocumentChangeSet result)
     {

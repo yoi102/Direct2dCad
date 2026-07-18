@@ -13,6 +13,7 @@ public sealed class CadHandleScene
     public IReadOnlyList<CadHandleItem> NonSelectionItems => _nonSelectionItems;
     public int SelectionReferenceCount => _selectionReferences.Count;
     public bool HasTranslatedSelectionReferences { get; private set; }
+    public CadRectD SelectionWorldBounds { get; private set; } = CadRectD.Empty;
     public bool IsEmpty => _items.Count == 0;
 
     public void Replace(IEnumerable<CadHandleItem> items)
@@ -30,6 +31,8 @@ public sealed class CadHandleScene
             {
                 _selectionReferences[reference.EntityId] = reference;
                 HasTranslatedSelectionReferences |= reference.Offset != CadVectorD.Zero;
+                SelectionWorldBounds = SelectionWorldBounds.Union(
+                    reference.EntityBounds.Translate(reference.Offset));
             }
             else
             {
@@ -51,5 +54,6 @@ public sealed class CadHandleScene
         _nonSelectionItems.Clear();
         _selectionReferences.Clear();
         HasTranslatedSelectionReferences = false;
+        SelectionWorldBounds = CadRectD.Empty;
     }
 }

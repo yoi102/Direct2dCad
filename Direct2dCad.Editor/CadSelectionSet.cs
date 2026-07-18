@@ -6,7 +6,7 @@ public sealed class CadSelectionSet
 {
     private readonly HashSet<EntityId> _entityIds = [];
 
-    public IReadOnlyCollection<EntityId> EntityIds => _entityIds.ToArray();
+    public IReadOnlySet<EntityId> EntityIds => _entityIds;
     public int Count => _entityIds.Count;
 
     public bool Contains(EntityId entityId) => _entityIds.Contains(entityId);
@@ -18,6 +18,8 @@ public sealed class CadSelectionSet
     public void Replace(IEnumerable<EntityId> entityIds)
     {
         ArgumentNullException.ThrowIfNull(entityIds);
+        if (ReferenceEquals(entityIds, _entityIds))
+            return;
 
         _entityIds.Clear();
         foreach (var entityId in entityIds)

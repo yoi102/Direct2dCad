@@ -54,8 +54,15 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         if (_root is null)
             return [];
 
-        var results = new List<EntityId>();
-        QueryNode(_root, area, results);
+        var results = new List<EntityId>(
+            area.Contains(_root.Bounds)
+                ? _boundsByEntity.Count
+                : Math.Min(_boundsByEntity.Count, 256));
+        var hasPendingChanges = _pendingChanges.Count > 0;
+        QueryNode(_root, area, results, hasPendingChanges);
+
+        if (!hasPendingChanges)
+            return results;
 
         foreach (var entityId in _pendingChanges)
         {
@@ -151,7 +158,11 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         return new BvhNode(bounds, left, right);
     }
 
-    private void QueryNode(BvhNode node, CadRectD area, List<EntityId> results)
+    private void QueryNode(
+        BvhNode node,
+        CadRectD area,
+        List<EntityId> results,
+        bool excludePendingChanges)
     {
         if (!node.Bounds.Intersects(area))
             return;
@@ -160,7 +171,7 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         {
             foreach (var entry in entries)
             {
-                if (!_pendingChanges.Contains(entry.EntityId) &&
+                if ((!excludePendingChanges || !_pendingChanges.Contains(entry.EntityId)) &&
                     entry.Bounds.Intersects(area))
                 {
                     results.Add(entry.EntityId);
@@ -171,9 +182,9 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         }
 
         if (node.Left is not null)
-            QueryNode(node.Left, area, results);
+            QueryNode(node.Left, area, results, excludePendingChanges);
         if (node.Right is not null)
-            QueryNode(node.Right, area, results);
+            QueryNode(node.Right, area, results, excludePendingChanges);
     }
 
     private static bool IsFinite(CadRectD bounds)

@@ -16,6 +16,12 @@ namespace Direct2dCad.IO;
 
 internal static class CadDocumentMapper
 {
+    internal static ILookup<Type, CadEntity> IndexEntities(CadDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return document.Entities.Values.ToLookup(static entity => entity.GetType());
+    }
+
     internal static CadDocumentSection ToDocumentSection(CadDocument document)
     {
         return new CadDocumentSection
@@ -166,12 +172,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadLinesSection ToLinesSection(CadDocument document)
+    internal static CadLinesSection ToLinesSection(ILookup<Type, CadEntity> entities)
     {
         return new CadLinesSection
         {
-            Lines = document.Entities.Values
-                .OfType<CadLine>()
+            Lines = entities[typeof(CadLine)]
+                .Cast<CadLine>()
                 .Select(x => new CadLineData
                 {
                     Entity = ToEntityData(x),
@@ -183,12 +189,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadCirclesSection ToCirclesSection(CadDocument document)
+    internal static CadCirclesSection ToCirclesSection(ILookup<Type, CadEntity> entities)
     {
         return new CadCirclesSection
         {
-            Circles = document.Entities.Values
-                .OfType<CadCircle>()
+            Circles = entities[typeof(CadCircle)]
+                .Cast<CadCircle>()
                 .Select(x => new CadCircleData
                 {
                     Entity = ToEntityData(x),
@@ -201,12 +207,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadEllipsesSection ToEllipsesSection(CadDocument document)
+    internal static CadEllipsesSection ToEllipsesSection(ILookup<Type, CadEntity> entities)
     {
         return new CadEllipsesSection
         {
-            Ellipses = document.Entities.Values
-                .OfType<CadEllipse>()
+            Ellipses = entities[typeof(CadEllipse)]
+                .Cast<CadEllipse>()
                 .Select(x => new CadEllipseData
                 {
                     Entity = ToEntityData(x),
@@ -217,8 +223,8 @@ internal static class CadDocumentMapper
                     FillStyleId = x.FillStyleId?.Value
                 })
                 .ToList(),
-            EllipseArcs = document.Entities.Values
-                .OfType<CadEllipseArc>()
+            EllipseArcs = entities[typeof(CadEllipseArc)]
+                .Cast<CadEllipseArc>()
                 .Select(x => new CadEllipseArcData
                 {
                     Entity = ToEntityData(x),
@@ -233,12 +239,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadArcsSection ToArcsSection(CadDocument document)
+    internal static CadArcsSection ToArcsSection(ILookup<Type, CadEntity> entities)
     {
         return new CadArcsSection
         {
-            Arcs = document.Entities.Values
-                .OfType<CadArc>()
+            Arcs = entities[typeof(CadArc)]
+                .Cast<CadArc>()
                 .Select(x => new CadArcData
                 {
                     Entity = ToEntityData(x),
@@ -252,12 +258,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadRectanglesSection ToRectanglesSection(CadDocument document)
+    internal static CadRectanglesSection ToRectanglesSection(ILookup<Type, CadEntity> entities)
     {
         return new CadRectanglesSection
         {
-            Rectangles = document.Entities.Values
-                .OfType<CadRectangle>()
+            Rectangles = entities[typeof(CadRectangle)]
+                .Cast<CadRectangle>()
                 .Select(x => new CadRectangleData
                 {
                     Entity = ToEntityData(x),
@@ -272,12 +278,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadPolylinesSection ToPolylinesSection(CadDocument document)
+    internal static CadPolylinesSection ToPolylinesSection(ILookup<Type, CadEntity> entities)
     {
         return new CadPolylinesSection
         {
-            Polylines = document.Entities.Values
-                .OfType<CadPolyline>()
+            Polylines = entities[typeof(CadPolyline)]
+                .Cast<CadPolyline>()
                 .Select(x => new CadPolylineData
                 {
                     Entity = ToEntityData(x),
@@ -290,12 +296,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadSplinesSection ToSplinesSection(CadDocument document)
+    internal static CadSplinesSection ToSplinesSection(ILookup<Type, CadEntity> entities)
     {
         return new CadSplinesSection
         {
-            Splines = document.Entities.Values
-                .OfType<CadSpline>()
+            Splines = entities[typeof(CadSpline)]
+                .Cast<CadSpline>()
                 .Select(x => new CadSplineData
                 {
                     Entity = ToEntityData(x),
@@ -308,12 +314,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadTextsSection ToTextsSection(CadDocument document)
+    internal static CadTextsSection ToTextsSection(ILookup<Type, CadEntity> entities)
     {
         return new CadTextsSection
         {
-            Texts = document.Entities.Values
-                .OfType<CadText>()
+            Texts = entities[typeof(CadText)]
+                .Cast<CadText>()
                 .Select(x => new CadTextData
                 {
                     Entity = ToEntityData(x),
@@ -330,12 +336,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadShapeTextsSection ToShapeTextsSection(CadDocument document)
+    internal static CadShapeTextsSection ToShapeTextsSection(ILookup<Type, CadEntity> entities)
     {
         return new CadShapeTextsSection
         {
-            ShapeTexts = document.Entities.Values
-                .OfType<CadShapeText>()
+            ShapeTexts = entities[typeof(CadShapeText)]
+                .Cast<CadShapeText>()
                 .Select(x => new CadShapeTextData
                 {
                     Entity = ToEntityData(x),
@@ -355,12 +361,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadImagesSection ToImagesSection(CadDocument document)
+    internal static CadImagesSection ToImagesSection(ILookup<Type, CadEntity> entities)
     {
         return new CadImagesSection
         {
-            Images = document.Entities.Values
-                .OfType<CadImage>()
+            Images = entities[typeof(CadImage)]
+                .Cast<CadImage>()
                 .Select(x => new CadImageData
                 {
                     Entity = ToEntityData(x),
@@ -379,12 +385,12 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadOleObjectsSection ToOleObjectsSection(CadDocument document)
+    internal static CadOleObjectsSection ToOleObjectsSection(ILookup<Type, CadEntity> entities)
     {
         return new CadOleObjectsSection
         {
-            OleObjects = document.Entities.Values
-                .OfType<CadOleObject>()
+            OleObjects = entities[typeof(CadOleObject)]
+                .Cast<CadOleObject>()
                 .Select(x => new CadOleObjectData
                 {
                     Entity = ToEntityData(x),
@@ -399,12 +405,14 @@ internal static class CadDocumentMapper
         };
     }
 
-    internal static CadBlockReferencesSection ToBlockReferencesSection(CadDocument document)
+    internal static CadBlockReferencesSection ToBlockReferencesSection(
+        CadDocument document,
+        ILookup<Type, CadEntity> entities)
     {
         return new CadBlockReferencesSection
         {
-            BlockReferences = document.Entities.Values
-                .OfType<CadBlockReference>()
+            BlockReferences = entities[typeof(CadBlockReference)]
+                .Cast<CadBlockReference>()
                 .Where(reference => document.Blocks.ContainsKey(reference.DefinitionBlockId))
                 .Select(reference => new CadBlockReferenceData
                 {

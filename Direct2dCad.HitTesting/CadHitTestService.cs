@@ -11,6 +11,8 @@ namespace Direct2dCad.HitTesting;
 public sealed class CadHitTestService
 {
     private readonly CadDocument _cadDocument;
+    private MaxStrokeHitPaddingCacheKey? _maxStrokeHitPaddingCacheKey;
+    private double _maxStrokeHitPaddingCache;
 
     public CadHitTestService(CadDocument cadDocument)
     {
@@ -129,7 +131,15 @@ public sealed class CadHitTestService
     public double GetMaxStrokeHitPadding(CadHitTestOptions? options = null)
     {
         var resolvedOptions = options ?? CadHitTestOptions.Default;
+        var cacheKey = new MaxStrokeHitPaddingCacheKey(
+            resolvedOptions.ViewportZoom,
+            resolvedOptions.KeepStrokeWidthScreenConstant,
+            resolvedOptions.MinimumScreenStrokeWidth);
+        if (_maxStrokeHitPaddingCacheKey == cacheKey)
+            return _maxStrokeHitPaddingCache;
+
         var maxPadding = 0.0;
+        var visitedBlocks = new HashSet<BlockId>();
 
         foreach (var entity in _cadDocument.Entities.Values)
         {
@@ -138,10 +148,18 @@ public sealed class CadHitTestService
 
             maxPadding = Math.Max(
                 maxPadding,
-                GetMaxStrokeHitPadding(entity, resolvedOptions, new HashSet<BlockId>()));
+                GetMaxStrokeHitPadding(entity, resolvedOptions, visitedBlocks));
         }
 
+        _maxStrokeHitPaddingCacheKey = cacheKey;
+        _maxStrokeHitPaddingCache = maxPadding;
         return maxPadding;
+    }
+
+    public void InvalidateCaches()
+    {
+        _maxStrokeHitPaddingCacheKey = null;
+        _maxStrokeHitPaddingCache = 0;
     }
 
     public double GetStrokeHitPadding(
@@ -334,4 +352,9 @@ public sealed class CadHitTestService
     }
 
     #endregion Resolved Bounds
+
+    private readonly record struct MaxStrokeHitPaddingCacheKey(
+        double ViewportZoom,
+        bool KeepStrokeWidthScreenConstant,
+        double MinimumScreenStrokeWidth);
 }

@@ -58,16 +58,39 @@ public sealed class ClickSelectCommand : SelectionCommandBase
             queryPadding * 2,
             queryPadding * 2);
 
-        return context.SpatialIndex.Query(queryArea)
-            .Select(entityId => TryHit(context, entityId, options))
-            .Where(x => x is not null)
-            .OrderByDescending(x => x!.Value.LayerPriority)
-            .ThenByDescending(x => x!.Value.ZIndex)
-            .ThenByDescending(x => x!.Value.EntityOrder)
-            .ThenBy(x => x!.Value.Distance)
-            .Select(x => x!.Value.TopEntityId)
-            .Distinct()
-            .ToArray();
+        var candidateIds = context.SpatialIndex.Query(queryArea);
+        var candidates = new List<HitCandidate>(candidateIds.Count);
+        foreach (var entityId in candidateIds)
+        {
+            if (TryHit(context, entityId, options) is { } candidate)
+                candidates.Add(candidate);
+        }
+
+        candidates.Sort(static (left, right) =>
+        {
+            var result = right.LayerPriority.CompareTo(left.LayerPriority);
+            if (result != 0)
+                return result;
+
+            result = right.ZIndex.CompareTo(left.ZIndex);
+            if (result != 0)
+                return result;
+
+            result = right.EntityOrder.CompareTo(left.EntityOrder);
+            return result != 0
+                ? result
+                : left.Distance.CompareTo(right.Distance);
+        });
+
+        var hitEntityIds = new List<EntityId>(candidates.Count);
+        var seenEntityIds = new HashSet<EntityId>();
+        foreach (var candidate in candidates)
+        {
+            if (seenEntityIds.Add(candidate.TopEntityId))
+                hitEntityIds.Add(candidate.TopEntityId);
+        }
+
+        return hitEntityIds;
     }
 
     private HitCandidate? TryHit(

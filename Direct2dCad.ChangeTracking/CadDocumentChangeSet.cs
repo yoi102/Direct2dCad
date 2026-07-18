@@ -57,6 +57,49 @@ public sealed class CadDocumentChangeSet
         return new CadDocumentChangeSet(entityIds.Select(x => new CadEntityChange(x, kind)));
     }
 
+    public static CadDocumentChangeSet Combine(IEnumerable<CadDocumentChangeSet> changeSets)
+    {
+        ArgumentNullException.ThrowIfNull(changeSets);
+
+        var entityChanges = new Dictionary<EntityId, CadEntityChangeKind>();
+        var affectsDocumentStructure = false;
+        var affectsLayouts = false;
+        var affectsLayoutStructure = false;
+        var affectsViewSettings = false;
+
+        foreach (var changeSet in changeSets)
+        {
+            foreach (var change in changeSet.EntityChanges)
+            {
+                entityChanges[change.EntityId] =
+                    entityChanges.GetValueOrDefault(change.EntityId) | change.Kind;
+            }
+
+            affectsDocumentStructure |= changeSet.AffectsDocumentStructure;
+            affectsLayouts |= changeSet.AffectsLayouts;
+            affectsLayoutStructure |= changeSet.AffectsLayoutStructure;
+            affectsViewSettings |= changeSet.AffectsViewSettings;
+        }
+
+        if (entityChanges.Count == 0 &&
+            !affectsDocumentStructure &&
+            !affectsLayouts &&
+            !affectsLayoutStructure &&
+            !affectsViewSettings)
+        {
+            return Empty;
+        }
+
+        return new CadDocumentChangeSet(
+            entityChanges.Select(static pair => new CadEntityChange(pair.Key, pair.Value)))
+        {
+            AffectsDocumentStructure = affectsDocumentStructure,
+            AffectsLayouts = affectsLayouts,
+            AffectsLayoutStructure = affectsLayoutStructure,
+            AffectsViewSettings = affectsViewSettings
+        };
+    }
+
     public CadDocumentChangeSet WithDocumentStructureChanged()
     {
         return new CadDocumentChangeSet(EntityChanges)

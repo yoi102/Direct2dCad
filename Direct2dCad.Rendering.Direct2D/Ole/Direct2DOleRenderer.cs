@@ -45,24 +45,29 @@ internal sealed class Direct2DOleRenderer(
             return;
 
         var transform = CreateViewportTransform(viewport);
-        foreach (var ole in Direct2DEntityVisibility
-                     .Enumerate(
-                         document,
-                         viewport,
-                         options,
-                         resourceCache,
-                         entityOrderCache.GetOrderedOleEntities(
-                             document,
-                             options.ActiveOwnerBlockId))
-                     .Cast<CadOleObject>())
+        var orderedOleEntities = entityOrderCache.GetOrderedOleEntities(
+            document,
+            options.ActiveOwnerBlockId);
+        if (orderedOleEntities.Count > 0)
         {
-            PrepareTiles(
-                context,
-                Direct2DOleRenderKey.ForEntity(ole.Id),
-                ole.Bounds,
-                GetEntityBytes(ole),
-                viewport,
-                transform);
+            foreach (var ole in Direct2DEntityVisibility
+                         .Enumerate(
+                             document,
+                             viewport,
+                             options,
+                             resourceCache,
+                             orderedOleEntities,
+                             entityOrderCache)
+                         .Cast<CadOleObject>())
+            {
+                PrepareTiles(
+                    context,
+                    Direct2DOleRenderKey.ForEntity(ole.Id),
+                    ole.Bounds,
+                    GetEntityBytes(ole),
+                    viewport,
+                    transform);
+            }
         }
 
         if (transientScene is not null)

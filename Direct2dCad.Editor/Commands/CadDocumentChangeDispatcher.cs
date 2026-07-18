@@ -1,4 +1,6 @@
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Indexing;
 using Direct2dCad.Rendering;
 
@@ -81,15 +83,20 @@ public sealed class CadDocumentChangeDispatcher
 
     private CadDocumentChangeSet ExpandBlockReferenceChanges(CadDocumentChangeSet result)
     {
+        if (!MayAffectBlockReferenceBounds(result))
+            return result;
+
         var affectedReferenceIds = _document.RefreshBlockReferenceBounds();
         if (affectedReferenceIds.Count == 0)
             return result;
 
-        var changes = result.EntityChanges
-            .GroupBy(change => change.EntityId)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Aggregate(CadEntityChangeKind.None, (kind, change) => kind | change.Kind));
+        var changes = new Dictionary<EntityId, CadEntityChangeKind>(
+            result.EntityChanges.Count);
+        foreach (var change in result.EntityChanges)
+        {
+            changes[change.EntityId] =
+                changes.GetValueOrDefault(change.EntityId) | change.Kind;
+        }
         foreach (var entityId in affectedReferenceIds)
         {
             changes[entityId] = changes.GetValueOrDefault(entityId) |
@@ -106,10 +113,41 @@ public sealed class CadDocumentChangeDispatcher
         };
     }
 
+    private bool MayAffectBlockReferenceBounds(CadDocumentChangeSet result)
+    {
+        if (result.AffectsDocumentStructure)
+            return true;
+
+        const CadEntityChangeKind relevantChanges =
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Deleted |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Rotation;
+        foreach (var change in result.EntityChanges)
+        {
+            if ((change.Kind & relevantChanges) == 0)
+                continue;
+
+            if (change.Kind.HasFlag(CadEntityChangeKind.Deleted))
+                return true;
+
+            if (!_document.TryGetEntity(change.EntityId, out var entity) || entity is null)
+                return true;
+
+            if (entity is CadBlockReference ||
+                _document.IsBlockReferenced(entity.OwnerBlockId))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void UpdateGeometryResources(CadDocumentChangeSet result)
     {
-        foreach (var resourceManager in _resourceManagers.ToArray())
-            resourceManager.ApplyChanges(_document, result);
+        for (var index = 0; index < _resourceManagers.Count; index++)
+            _resourceManagers[index].ApplyChanges(_document, result);
     }
 
     private void UpdateSpatialIndex(CadDocumentChangeSet result)

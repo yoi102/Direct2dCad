@@ -38,6 +38,7 @@ public sealed class CadHandleSceneBuilder
             {
                 items.Add(new CadSelectionEntityReference(
                     entity.Id,
+                    entity.Bounds,
                     CadVectorD.Zero,
                     options.SelectionOutlineStyle));
             }

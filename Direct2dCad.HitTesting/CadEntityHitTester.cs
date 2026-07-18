@@ -55,7 +55,7 @@ public static class CadEntityHitTester
             point,
             tolerance,
             options,
-            new HashSet<BlockId>(),
+            null,
             out result);
     }
 
@@ -76,7 +76,7 @@ public static class CadEntityHitTester
             document,
             entity,
             point,
-            [],
+            null,
             out result);
     }
 
@@ -86,7 +86,7 @@ public static class CadEntityHitTester
         CadPointD point,
         double tolerance,
         CadHitTestOptions options,
-        HashSet<BlockId> visitedBlocks,
+        HashSet<BlockId>? visitedBlocks,
         out CadHitTestResult result)
     {
         result = default;
@@ -141,7 +141,7 @@ public static class CadEntityHitTester
                     point,
                     tolerance,
                     options,
-                    visitedBlocks,
+                    visitedBlocks ?? [],
                     out result);
 
             default:
@@ -153,7 +153,7 @@ public static class CadEntityHitTester
         CadDocument document,
         CadEntity entity,
         CadPointD point,
-        HashSet<BlockId> visitedBlocks,
+        HashSet<BlockId>? visitedBlocks,
         out CadHitTestResult result)
     {
         result = default;
@@ -192,7 +192,7 @@ public static class CadEntityHitTester
                     document,
                     blockReference,
                     point,
-                    visitedBlocks,
+                    visitedBlocks ?? [],
                     out result);
 
             default:
@@ -637,19 +637,24 @@ public static class CadEntityHitTester
     {
         result = default;
 
-        var flattened = spline.EnumerateFlattenedPoints(24).ToArray();
-        if (flattened.Length < 2)
+        using var flattened = spline.EnumerateFlattenedPoints(24).GetEnumerator();
+        if (!flattened.MoveNext())
             return false;
 
         var bestDistance = double.PositiveInfinity;
-        for (var i = 1; i < flattened.Length; i++)
+        var previous = flattened.Current;
+        var pointCount = 1;
+        while (flattened.MoveNext())
         {
-            var distance = DistancePointToSegment(point, flattened[i - 1], flattened[i]);
+            pointCount++;
+            var current = flattened.Current;
+            var distance = DistancePointToSegment(point, previous, current);
             if (distance < bestDistance)
                 bestDistance = distance;
+            previous = current;
         }
 
-        if (bestDistance > tolerance)
+        if (pointCount < 2 || bestDistance > tolerance)
             return false;
 
         result = new CadHitTestResult(
@@ -671,8 +676,8 @@ public static class CadEntityHitTester
         if (!spline.IsClosed || spline.FillStyleId is null)
             return false;
 
-        var flattened = spline.EnumerateFlattenedPoints(24).ToArray();
-        if (flattened.Length < 3 || !PointInPolygon(point, flattened))
+        var flattened = spline.EnumerateFlattenedPoints(24);
+        if (!PointInPolygon(point, flattened))
             return false;
 
         result = new CadHitTestResult(
@@ -978,6 +983,41 @@ public static class CadEntityHitTester
         }
 
         return inside;
+    }
+
+    private static bool PointInPolygon(CadPointD point, IEnumerable<CadPointD> polygon)
+    {
+        using var points = polygon.GetEnumerator();
+        if (!points.MoveNext())
+            return false;
+
+        var first = points.Current;
+        var previous = first;
+        var pointCount = 1;
+        var inside = false;
+
+        while (points.MoveNext())
+        {
+            var current = points.Current;
+            if (RayIntersectsSegment(point, current, previous))
+                inside = !inside;
+            previous = current;
+            pointCount++;
+        }
+
+        if (pointCount < 3)
+            return false;
+
+        if (RayIntersectsSegment(point, first, previous))
+            inside = !inside;
+        return inside;
+    }
+
+    private static bool RayIntersectsSegment(CadPointD point, CadPointD first, CadPointD second)
+    {
+        return ((first.Y > point.Y) != (second.Y > point.Y)) &&
+               point.X < (second.X - first.X) * (point.Y - first.Y) /
+               (second.Y - first.Y + Epsilon) + first.X;
     }
 
     private static bool ContainsArcAngle(

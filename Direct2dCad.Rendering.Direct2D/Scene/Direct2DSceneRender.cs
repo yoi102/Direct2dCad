@@ -202,18 +202,23 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             var modelViewport = CreateModelViewport(viewport, layoutViewport);
             var modelOptions = CreateModelViewportOptions(options);
             var modelToScreen = CreateModelToPaperTransform(layoutViewport) * paperTransform;
-            foreach (var ole in Direct2DEntityVisibility
-                         .Enumerate(
-                             document,
-                             modelViewport,
-                             modelOptions,
-                             _resourceCache,
-                             _entityOrderCache.GetOrderedOleEntities(
-                                 document,
-                                 modelOptions.ActiveOwnerBlockId))
-                         .Cast<CadOleObject>())
+            var orderedOleEntities = _entityOrderCache.GetOrderedOleEntities(
+                document,
+                modelOptions.ActiveOwnerBlockId);
+            if (orderedOleEntities.Count > 0)
             {
-                _oleRenderer.PrepareEntityTiles(context, ole, viewport, modelToScreen);
+                foreach (var ole in Direct2DEntityVisibility
+                             .Enumerate(
+                                 document,
+                                 modelViewport,
+                                 modelOptions,
+                                 _resourceCache,
+                                 orderedOleEntities,
+                                 _entityOrderCache)
+                             .Cast<CadOleObject>())
+                {
+                    _oleRenderer.PrepareEntityTiles(context, ole, viewport, modelToScreen);
+                }
             }
 
             if (options.ActiveLayoutViewportId == layoutViewport.Id && transientScene is not null)
@@ -367,7 +372,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                              _resourceCache,
                              _entityOrderCache.GetOrderedEntities(
                                  document,
-                                 modelOptions.ActiveOwnerBlockId)))
+                                 modelOptions.ActiveOwnerBlockId),
+                             _entityOrderCache))
                 {
                     if (entity is CadBlockReference blockReference)
                     {
@@ -420,7 +426,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                      viewport,
                      options,
                      _resourceCache,
-                     _entityOrderCache.GetOrderedEntities(document, options.ActiveOwnerBlockId)))
+                     _entityOrderCache.GetOrderedEntities(document, options.ActiveOwnerBlockId),
+                     _entityOrderCache))
         {
             if (entity is CadBlockReference blockReference)
             {
@@ -521,8 +528,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             CadEntityChangeKind.Created |
             CadEntityChangeKind.Deleted |
             CadEntityChangeKind.DrawOrder |
-            CadEntityChangeKind.Layer |
-            CadEntityChangeKind.Visibility;
+            CadEntityChangeKind.Layer;
         return changes.EntityChanges.Any(change => (change.Kind & orderChanges) != 0);
     }
 

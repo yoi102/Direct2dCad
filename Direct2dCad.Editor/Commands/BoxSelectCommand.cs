@@ -121,14 +121,17 @@ public sealed class BoxSelectCommand : SelectionCommandBase
 
     private static bool SplineIntersectsArea(CadSpline spline, CadRectD area)
     {
-        var points = spline.EnumerateFlattenedPoints(24).ToArray();
-        if (points.Length < 2)
+        using var points = spline.EnumerateFlattenedPoints(24).GetEnumerator();
+        if (!points.MoveNext())
             return false;
 
-        for (var i = 1; i < points.Length; i++)
+        var previous = points.Current;
+        while (points.MoveNext())
         {
-            if (SegmentIntersectsArea(points[i - 1], points[i], area))
+            var current = points.Current;
+            if (SegmentIntersectsArea(previous, current, area))
                 return true;
+            previous = current;
         }
 
         return false;

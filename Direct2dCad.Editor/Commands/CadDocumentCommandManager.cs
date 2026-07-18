@@ -70,13 +70,21 @@ public sealed class CadDocumentCommandManager
 
         foreach (var command in commandArray)
         {
-            var result = command.Execute(_document);
-            _history.PushExecuted(command, batchId);
-            _changes.Publish(result);
-            results.Add(result);
+            try
+            {
+                var result = command.Execute(_document);
+                _history.PushExecuted(command, batchId);
+                results.Add(result);
+            }
+            catch
+            {
+                _changes.Publish(CadDocumentChangeSet.Combine(results));
+                throw;
+            }
         }
 
-        var combined = Combine(results);
+        var combined = CadDocumentChangeSet.Combine(results);
+        _changes.Publish(combined);
         PublishActivity(name, CadCommandActivityKind.Execute, commandArray.Length, combined.DocumentChanged);
         return combined;
     }
@@ -93,13 +101,21 @@ public sealed class CadDocumentCommandManager
         var results = new List<CadDocumentChangeSet>(entries.Count);
         foreach (var entry in entries)
         {
-            var result = entry.Command.Undo(_document);
-            _history.PushUndone(entry);
-            _changes.Publish(result);
-            results.Add(result);
+            try
+            {
+                var result = entry.Command.Undo(_document);
+                _history.PushUndone(entry);
+                results.Add(result);
+            }
+            catch
+            {
+                _changes.Publish(CadDocumentChangeSet.Combine(results));
+                throw;
+            }
         }
 
-        var combined = Combine(results);
+        var combined = CadDocumentChangeSet.Combine(results);
+        _changes.Publish(combined);
         PublishActivity(GetActivityName(entries), CadCommandActivityKind.Undo, entries.Count, combined.DocumentChanged);
         return combined;
     }
@@ -113,13 +129,21 @@ public sealed class CadDocumentCommandManager
         var results = new List<CadDocumentChangeSet>(entries.Count);
         foreach (var entry in entries)
         {
-            var result = entry.Command.Undo(_document);
-            _history.PushUndone(entry);
-            _changes.Publish(result);
-            results.Add(result);
+            try
+            {
+                var result = entry.Command.Undo(_document);
+                _history.PushUndone(entry);
+                results.Add(result);
+            }
+            catch
+            {
+                _changes.Publish(CadDocumentChangeSet.Combine(results));
+                throw;
+            }
         }
 
-        var combined = Combine(results);
+        var combined = CadDocumentChangeSet.Combine(results);
+        _changes.Publish(combined);
         PublishActivity("Cancel Command Batch", CadCommandActivityKind.Undo, entries.Count, combined.DocumentChanged);
         return combined;
     }
@@ -136,13 +160,21 @@ public sealed class CadDocumentCommandManager
         var results = new List<CadDocumentChangeSet>(entries.Count);
         foreach (var entry in entries)
         {
-            var result = entry.Command.Execute(_document);
-            _history.PushRedone(entry);
-            _changes.Publish(result);
-            results.Add(result);
+            try
+            {
+                var result = entry.Command.Execute(_document);
+                _history.PushRedone(entry);
+                results.Add(result);
+            }
+            catch
+            {
+                _changes.Publish(CadDocumentChangeSet.Combine(results));
+                throw;
+            }
         }
 
-        var combined = Combine(results);
+        var combined = CadDocumentChangeSet.Combine(results);
+        _changes.Publish(combined);
         PublishActivity(GetActivityName(entries), CadCommandActivityKind.Redo, entries.Count, combined.DocumentChanged);
         return combined;
     }
@@ -164,36 +196,4 @@ public sealed class CadDocumentCommandManager
     private static string GetActivityName(IReadOnlyList<CommandHistoryEntry<ICadCommand>> entries) =>
         entries.Count == 1 ? entries[0].Command.Name : "Command Batch";
 
-    private static CadDocumentChangeSet Combine(IEnumerable<CadDocumentChangeSet> results)
-    {
-        var entityChanges = new List<CadEntityChange>();
-        var structureChanged = false;
-        var layoutsChanged = false;
-        var layoutStructureChanged = false;
-        var viewSettingsChanged = false;
-
-        foreach (var result in results)
-        {
-            entityChanges.AddRange(result.EntityChanges);
-            structureChanged |= result.AffectsDocumentStructure;
-            layoutsChanged |= result.AffectsLayouts;
-            layoutStructureChanged |= result.AffectsLayoutStructure;
-            viewSettingsChanged |= result.AffectsViewSettings;
-        }
-
-        var combined = new CadDocumentChangeSet(entityChanges);
-        if (structureChanged)
-            combined = combined.WithDocumentStructureChanged();
-
-        if (layoutsChanged)
-            combined = combined.WithLayoutsChanged();
-
-        if (layoutStructureChanged)
-            combined = combined.WithLayoutStructureChanged();
-
-        if (viewSettingsChanged)
-            combined = combined.WithViewSettingsChanged();
-
-        return combined;
-    }
 }
