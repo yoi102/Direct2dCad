@@ -85,6 +85,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public partial double CurrentPointerWorldY { get; private set; }
 
     [ObservableProperty]
+    public partial double RenderFramesPerSecond { get; private set; }
+
+    [ObservableProperty]
     public partial CadCanvasToolMode CadCanvasToolMode { get; internal set; } = CadCanvasToolMode.Select;
 
     [ObservableProperty]
@@ -1314,6 +1317,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions(drawGripHandles));
         Direct2DImageRenderHost.Render(effectiveInvalidation);
+        var framesPerSecond = Direct2DImageRenderHost.FramesPerSecond;
+        if (!RenderFramesPerSecond.Equals(framesPerSecond))
+            RenderFramesPerSecond = framesPerSecond;
     }
 
     private void UpdateTextMeasurements()

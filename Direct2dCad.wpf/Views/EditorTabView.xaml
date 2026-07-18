@@ -70,6 +70,20 @@
 
         <Border Grid.Row="0"
                 Margin="12"
+                Padding="8,4"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Background="#66000000"
+                CornerRadius="2">
+            <TextBlock FontFamily="Consolas"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="White"
+                       Text="{Binding CadDocumentViewModel.RenderFramesPerSecond, StringFormat={}{0:F0} FPS}" />
+        </Border>
+
+        <Border Grid.Row="0"
+                Margin="12,46,12,12"
                 Padding="10,6,4,6"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Top"

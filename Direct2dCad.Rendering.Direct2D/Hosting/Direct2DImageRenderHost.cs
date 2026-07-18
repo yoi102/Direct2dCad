@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -16,6 +17,8 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
 {
     private const double PartialRenderMaxAreaRatio = 0.65;
+    private const double FrameRateSmoothingFactor = 0.2;
+    private const double MaximumReportedFrameRate = 999.0;
     private readonly ImageSourceDirect2DResource _target = new();
     private readonly Direct2DSceneRender _renderer = new();
     private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
@@ -35,6 +38,10 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     public int TargetWidth => _target.Width;
 
     public int TargetHeight => _target.Height;
+
+    public double FramesPerSecond { get; private set; }
+
+    public double LastFrameRenderTimeMilliseconds { get; private set; }
 
     public Color4 FallbackBackgroundColor { get; set; } = new(0.08f, 0.09f, 0.10f, 1.0f);
 
@@ -233,6 +240,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         var background = _document is null
             ? FallbackBackgroundColor
             : ToColor4(_document.ViewSettings.BackgroundColor);
+        var frameStartTimestamp = Stopwatch.GetTimestamp();
 
         try
         {
@@ -294,6 +302,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             {
                 _renderer.CompleteFrame();
             }
+
+            RecordRenderedFrame(frameStartTimestamp);
         }
         catch (Direct2DDeviceResourcesRecreatedException) when (retryAfterDeviceResourceRecreation)
         {
@@ -454,6 +464,20 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         }
     }
 
+    private void RecordRenderedFrame(long frameStartTimestamp)
+    {
+        var elapsed = Stopwatch.GetElapsedTime(frameStartTimestamp).TotalSeconds;
+        if (!double.IsFinite(elapsed) || elapsed <= 0)
+            return;
+
+        LastFrameRenderTimeMilliseconds = elapsed * 1000.0;
+        var instantaneousFrameRate = Math.Min(1.0 / elapsed, MaximumReportedFrameRate);
+        FramesPerSecond = FramesPerSecond <= 0
+            ? instantaneousFrameRate
+            : FramesPerSecond +
+              (instantaneousFrameRate - FramesPerSecond) * FrameRateSmoothingFactor;
+    }
+
     private void RefreshPendingTextMeasurements(CadDocument document)
     {
         _pendingTextMeasurementIds.Clear();
@@ -491,6 +515,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _transientScene = null;
         _handleScene = null;
         _pendingTextMeasurementIds.Clear();
+        FramesPerSecond = 0;
+        LastFrameRenderTimeMilliseconds = 0;
         _disposed = true;
     }
 
