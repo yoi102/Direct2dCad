@@ -19,6 +19,7 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         ShowFramesPerSecond = settings.ShowFramesPerSecond;
         IsViewportInteractionPreviewEnabled =
             settings.IsViewportInteractionPreviewEnabled;
+        IsLevelOfDetailEnabled = settings.IsLevelOfDetailEnabled;
     }
 
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
@@ -30,6 +31,9 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     [ObservableProperty]
     public partial bool IsViewportInteractionPreviewEnabled { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsLevelOfDetailEnabled { get; set; }
+
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
@@ -37,6 +41,7 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         settings.Rendering.ShowFramesPerSecond = ShowFramesPerSecond;
         settings.Rendering.IsViewportInteractionPreviewEnabled =
             IsViewportInteractionPreviewEnabled;
+        settings.Rendering.IsLevelOfDetailEnabled = IsLevelOfDetailEnabled;
         return true;
     }
 

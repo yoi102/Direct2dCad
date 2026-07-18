@@ -12,6 +12,8 @@ public partial class CadCanvas : IDisposable
     private CadPointD _pendingPointerScreen;
     private bool _pointerMovePending;
     private bool _pointerRenderScheduled;
+    private bool _viewportPresentationScheduled;
+    private bool _disposed;
     private readonly DispatcherTimer _viewportInteractionCompletionTimer;
 
     public CadCanvas()
@@ -189,7 +191,10 @@ public partial class CadCanvas : IDisposable
         var result = DocumentViewModel.MouseWheel(screen, e.Delta);
         ApplyInteractionResult(result, e);
         if (result.Handled)
+        {
             ScheduleViewportInteractionCompletion();
+            ScheduleViewportPresentation();
+        }
     }
 
     private void CadCanvas_KeyDown(object sender, KeyEventArgs e)
@@ -330,12 +335,30 @@ public partial class CadCanvas : IDisposable
     {
         _viewportInteractionCompletionTimer.Stop();
         DocumentViewModel?.CompleteViewportInteractionPreview();
+        ScheduleViewportPresentation();
     }
 
     private void CancelPendingViewportInteraction()
     {
         _viewportInteractionCompletionTimer.Stop();
         DocumentViewModel?.CancelViewportInteractionPreview();
+    }
+
+    private void ScheduleViewportPresentation()
+    {
+        if (_disposed || _viewportPresentationScheduled)
+            return;
+
+        _viewportPresentationScheduled = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
+        {
+            _viewportPresentationScheduled = false;
+            if (_disposed || !IsLoaded)
+                return;
+
+            d3d11ImageSource.Invalidate();
+            InvalidateVisual();
+        });
     }
 
     private void FlushPendingPointerMove(CadPointD? latestScreen = null)
@@ -396,6 +419,10 @@ public partial class CadCanvas : IDisposable
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
         CancelPendingViewportInteraction();
         UnschedulePointerMove();
         d3d11ImageSource.Dispose();

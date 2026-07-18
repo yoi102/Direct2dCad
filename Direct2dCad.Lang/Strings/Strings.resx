@@ -1358,4 +1358,7 @@
   <data name="AcceleratedViewportInteraction" xml:space="preserve">
     <value>Accelerated pan and zoom</value>
   </data>
+  <data name="LevelOfDetailOptimization" xml:space="preserve">
+    <value>Level of detail optimization</value>
+  </data>
 </root>

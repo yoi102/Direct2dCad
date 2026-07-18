@@ -20,12 +20,13 @@ internal static class Direct2DHatchRenderer
         CadRectD geometryBounds,
         CadTransientHatchFill hatchFill,
         ID2D1Brush hatchBrush,
-        CadViewport viewport)
+        CadViewport viewport,
+        bool isLevelOfDetailEnabled)
     {
         if (hatchFill.Lines.Count == 0 || geometryBounds.IsEmpty)
             return;
 
-        if (ShouldRenderAsSolidFill(hatchFill, viewport))
+        if (isLevelOfDetailEnabled && ShouldRenderAsSolidFill(hatchFill, viewport))
         {
             deviceContext.FillGeometry(geometry, hatchBrush);
             return;
@@ -67,7 +68,8 @@ internal static class Direct2DHatchRenderer
                     line,
                     hatchBrush,
                     strokeWidth,
-                    viewport.Zoom);
+                    viewport.Zoom,
+                    isLevelOfDetailEnabled);
             }
         }
         finally
@@ -91,7 +93,8 @@ internal static class Direct2DHatchRenderer
         CadHatchLineDefinition line,
         ID2D1Brush brush,
         float strokeWidth,
-        double zoom)
+        double zoom,
+        bool isLevelOfDetailEnabled)
     {
         var hatchRotation = DegreesToRadians(hatchStyle.HatchAngle);
         var angleRadians = DegreesToRadians(line.Angle + hatchStyle.HatchAngle);
@@ -147,6 +150,7 @@ internal static class Direct2DHatchRenderer
             ? 0.0
             : ResolveDashPatternLength(line.DashPattern, hatchStyle.HatchScale);
         var drawAsSolidLine = line.IsSolidLine ||
+                              isLevelOfDetailEnabled &&
                               dashPatternLength * Math.Max(zoom, double.Epsilon) <=
                               SolidLodPixelThreshold;
         var alongStep = offset.Dot(direction);

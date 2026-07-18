@@ -62,7 +62,7 @@ internal sealed class Direct2DOleRenderer(
                              entityOrderCache)
                          .Cast<CadOleObject>())
             {
-                if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform) !=
+                if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform, options) !=
                     Direct2DEntityRenderDetail.Full)
                 {
                     continue;
@@ -79,7 +79,13 @@ internal sealed class Direct2DOleRenderer(
         }
 
         if (transientScene is not null)
-            PrepareTransientItems(context, document, viewport, transientScene.Items, transform);
+            PrepareTransientItems(
+                context,
+                document,
+                viewport,
+                transientScene.Items,
+                transform,
+                options);
 
         _suppressDrawDuringFrame = true;
     }
@@ -122,11 +128,12 @@ internal sealed class Direct2DOleRenderer(
         ID2D1DeviceContext context,
         CadOleObject ole,
         CadViewport viewport,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(ole);
-        if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform) !=
+        if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform, options) !=
             Direct2DEntityRenderDetail.Full)
         {
             return;
@@ -145,11 +152,12 @@ internal sealed class Direct2DOleRenderer(
         ID2D1DeviceContext context,
         CadTransientOleObject ole,
         CadViewport viewport,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(ole);
-        if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform) !=
+        if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform, options) !=
             Direct2DEntityRenderDetail.Full)
         {
             return;
@@ -171,20 +179,25 @@ internal sealed class Direct2DOleRenderer(
         CadDocument document,
         CadTransientScene scene,
         CadViewport viewport,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(scene);
-        PrepareTransientItems(context, document, viewport, scene.Items, transform);
+        PrepareTransientItems(context, document, viewport, scene.Items, transform, options);
     }
 
     public void DrawTransient(
         ID2D1DeviceContext context,
         CadTransientOleObject ole,
-        CadViewport viewport)
+        CadViewport viewport,
+        CadRenderOptions options)
     {
-        var detail = Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, context.Transform);
+        var detail = Direct2DEntityLevelOfDetail.ResolveOle(
+            ole.Bounds,
+            context.Transform,
+            options);
         if (detail == Direct2DEntityRenderDetail.Skip)
             return;
         if (detail == Direct2DEntityRenderDetail.Simplified)
@@ -258,7 +271,8 @@ internal sealed class Direct2DOleRenderer(
         CadDocument document,
         CadViewport viewport,
         IReadOnlyList<CadTransientItem> items,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
         foreach (var item in items)
         {
@@ -270,10 +284,14 @@ internal sealed class Direct2DOleRenderer(
                         document,
                         viewport,
                         group.Items,
-                        ToMatrix3x2(group.Transform) * transform);
+                        ToMatrix3x2(group.Transform) * transform,
+                        options);
                     break;
                 case CadTransientOleObject transient:
-                    if (Direct2DEntityLevelOfDetail.ResolveOle(transient.Bounds, transform) !=
+                    if (Direct2DEntityLevelOfDetail.ResolveOle(
+                            transient.Bounds,
+                            transform,
+                            options) !=
                         Direct2DEntityRenderDetail.Full)
                     {
                         break;
@@ -292,7 +310,10 @@ internal sealed class Direct2DOleRenderer(
                 case CadTransientEntityReference reference
                     when document.TryGetEntity(reference.EntityId, out var entity) && entity is CadOleObject ole:
                     var translatedBounds = ole.Bounds.Translate(reference.Offset);
-                    if (Direct2DEntityLevelOfDetail.ResolveOle(translatedBounds, transform) !=
+                    if (Direct2DEntityLevelOfDetail.ResolveOle(
+                            translatedBounds,
+                            transform,
+                            options) !=
                         Direct2DEntityRenderDetail.Full)
                     {
                         break;

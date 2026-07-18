@@ -487,8 +487,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 if (!RenderViewportInteractionPreview())
                     RequestRender(CadRenderInvalidation.Full, updateHandleScene: true);
             }
-            else
+            else if (!Direct2DImageRenderHost.IsViewportInteractionActive)
+            {
                 RequestOverlayRender(updateHandleScene: true);
+            }
             return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Hand);
         }
 
@@ -497,8 +499,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             if (!RenderViewportInteractionPreview())
                 RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
         }
-        else
+        else if (!Direct2DImageRenderHost.IsViewportInteractionActive)
+        {
             RequestOverlayRender();
+        }
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -1340,14 +1344,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         bool drawGripHandles = true,
         bool updateHandleScene = true)
     {
-        if (Direct2DImageRenderHost.IsViewportInteractionActive)
+        var interruptedViewportInteraction =
+            Direct2DImageRenderHost.IsViewportInteractionActive;
+        if (interruptedViewportInteraction)
         {
             Direct2DImageRenderHost.EndViewportInteraction();
             _viewportInteractionRequiresHandleSceneUpdate = false;
         }
 
         UpdateTextMeasurements();
-        var requestedInvalidation = invalidation ?? CadRenderInvalidation.Full;
+        var requestedInvalidation = interruptedViewportInteraction
+            ? CadRenderInvalidation.Full
+            : invalidation ?? CadRenderInvalidation.Full;
         CadRenderInvalidation effectiveInvalidation;
 
         if (requestedInvalidation.IsFull)
@@ -1595,6 +1603,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             DrawGripHandles = drawGripHandles,
             IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = UserSettings.Rendering.IsLevelOfDetailEnabled,
             EntityBoundsQuery = CadEditor.SpatialIndex.Query,
             HiddenEntityIds = _gripDrag.IsActive
                 ? _gripDrag.ResolveHiddenEntityIds(CadEditor).ToHashSet()

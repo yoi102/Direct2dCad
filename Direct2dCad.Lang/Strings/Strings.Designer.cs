@@ -1654,6 +1654,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Level of detail optimization 的本地化字符串。
+        /// </summary>
+        public static string LevelOfDetailOptimization {
+            get {
+                return ResourceManager.GetString("LevelOfDetailOptimization", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Line 的本地化字符串。
         /// </summary>
         public static string Line {

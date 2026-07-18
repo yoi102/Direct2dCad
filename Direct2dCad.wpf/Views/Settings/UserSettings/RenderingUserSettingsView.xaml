@@ -22,5 +22,8 @@
         <CheckBox Margin="0,0,0,12"
                   Content="{I18N {x:Static r:UserSettingsLangKeys.AcceleratedViewportInteraction}}"
                   IsChecked="{Binding IsViewportInteractionPreviewEnabled}" />
+        <CheckBox Margin="0,0,0,12"
+                  Content="{I18N {x:Static r:UserSettingsLangKeys.LevelOfDetailOptimization}}"
+                  IsChecked="{Binding IsLevelOfDetailEnabled}" />
     </StackPanel>
 </UserControl>

@@ -1137,4 +1137,7 @@
   <data name="AcceleratedViewportInteraction" xml:space="preserve">
     <value>パンとズームを高速化</value>
   </data>
+  <data name="LevelOfDetailOptimization" xml:space="preserve">
+    <value>LOD 最適化を有効にする</value>
+  </data>
 </root>

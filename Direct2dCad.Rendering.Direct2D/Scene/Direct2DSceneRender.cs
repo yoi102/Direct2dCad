@@ -221,7 +221,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                                  _entityOrderCache)
                              .Cast<CadOleObject>())
                 {
-                    _oleRenderer.PrepareEntityTiles(context, ole, viewport, modelToScreen);
+                    _oleRenderer.PrepareEntityTiles(
+                        context,
+                        ole,
+                        viewport,
+                        modelToScreen,
+                        modelOptions);
                 }
             }
 
@@ -231,7 +236,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     document,
                     transientScene,
                     viewport,
-                    modelToScreen);
+                    modelToScreen,
+                    modelOptions);
         }
     }
 
@@ -495,6 +501,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         DrawGripHandles = drawGripHandles,
         IsAntialiasingEnabled = options.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
+        IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
         EntityBoundsQuery = options.EntityBoundsQuery,
@@ -514,6 +521,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         DrawGripHandles = options.DrawGripHandles,
         IsAntialiasingEnabled = options.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
+        IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
         HiddenEntityIds = options.HiddenEntityIds,
@@ -563,7 +571,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             document,
             viewport,
             scene,
-            ole => _oleRenderer.DrawTransient(deviceContext, ole, viewport),
+            options,
+            ole => _oleRenderer.DrawTransient(deviceContext, ole, viewport, options),
             reference => _entityReferenceRenderer.Draw(
                 deviceContext,
                 document,

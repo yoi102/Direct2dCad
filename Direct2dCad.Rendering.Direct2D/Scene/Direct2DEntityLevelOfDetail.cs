@@ -27,10 +27,10 @@ internal static class Direct2DEntityLevelOfDetail
     private const double ThickStrokeScreenWidth = 1.0;
     private const double SimplifiedGeometryScreenExtent = 2.0;
     private const double SimplifiedStrokeStyleScreenExtent = 8.0;
-    private const double MinimumTextScreenHeight = 0.35;
-    private const double TextSummaryScreenHeight = 1.0;
-    private const double FullTextScreenHeight = 2.5;
-    private const double BlockProxyScreenExtent = 12.0;
+    private const double MinimumTextScreenHeight = 0.1;
+    private const double TextSummaryScreenHeight = 0.5;
+    private const double FullTextScreenHeight = 1.0;
+    private const double BlockProxyScreenExtent = 3.0;
     private const double OleProxyMinimumScreenExtent = 8.0;
     private const double LowDetailGeometryScreenExtent = 128.0;
     private const double MediumDetailGeometryScreenExtent = 512.0;
@@ -59,6 +59,9 @@ internal static class Direct2DEntityLevelOfDetail
         double screenScale,
         CadRenderOptions options)
     {
+        if (!options.IsLevelOfDetailEnabled)
+            return Direct2DEntityRenderDetail.Full;
+
         if (entity is CadText or CadShapeText)
         {
             return ResolveText(entity, screenScale) switch
@@ -92,15 +95,23 @@ internal static class Direct2DEntityLevelOfDetail
 
     public static Direct2DTextRenderDetail ResolveText(
         CadEntity entity,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
+        if (!options.IsLevelOfDetailEnabled)
+            return Direct2DTextRenderDetail.Full;
+
         return ResolveText(entity, ResolveMaximumScreenScale(transform));
     }
 
     public static Direct2DEntityRenderDetail ResolveOle(
         CadRectD bounds,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
+        if (!options.IsLevelOfDetailEnabled)
+            return Direct2DEntityRenderDetail.Full;
+
         if (bounds.IsEmpty)
             return Direct2DEntityRenderDetail.Full;
 
@@ -119,11 +130,15 @@ internal static class Direct2DEntityLevelOfDetail
 
     public static Direct2DEntityRenderDetail ResolveSelection(
         CadEntity entity,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
+        if (!options.IsLevelOfDetailEnabled)
+            return Direct2DEntityRenderDetail.Full;
+
         if (entity is CadText or CadShapeText)
         {
-            return ResolveText(entity, transform) switch
+            return ResolveText(entity, transform, options) switch
             {
                 Direct2DTextRenderDetail.Skip => Direct2DEntityRenderDetail.Skip,
                 Direct2DTextRenderDetail.Full => Direct2DEntityRenderDetail.Full,
@@ -170,10 +185,15 @@ internal static class Direct2DEntityLevelOfDetail
     public static ID2D1StrokeStyle? ResolveStrokeStyle(
         CadEntity entity,
         ID2D1StrokeStyle? strokeStyle,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
-        if (strokeStyle is null || entity.Bounds.IsEmpty)
+        if (!options.IsLevelOfDetailEnabled ||
+            strokeStyle is null ||
+            entity.Bounds.IsEmpty)
+        {
             return strokeStyle;
+        }
 
         var screenScale = ResolveMaximumScreenScale(transform);
         var maximumExtent = Math.Max(
@@ -196,11 +216,16 @@ internal static class Direct2DEntityLevelOfDetail
     public static ID2D1Geometry? ResolveGeometry(
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket resources,
-        Matrix3x2 transform)
+        Matrix3x2 transform,
+        CadRenderOptions options)
     {
         var geometry = resources.Geometry;
-        if (geometry is null || entity is not (CadPolyline or CadSpline))
+        if (!options.IsLevelOfDetailEnabled ||
+            geometry is null ||
+            entity is not (CadPolyline or CadSpline))
+        {
             return geometry;
+        }
 
         var bounds = entity.Bounds;
         var maximumScreenExtent = Math.Max(bounds.Width, bounds.Height) *

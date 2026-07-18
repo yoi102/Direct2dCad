@@ -604,6 +604,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             DrawGripHandles = _renderOptions.DrawGripHandles,
             IsAntialiasingEnabled = _renderOptions.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = _renderOptions.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = _renderOptions.IsLevelOfDetailEnabled,
             KeepStrokeWidthScreenConstant = _renderOptions.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = _renderOptions.MinimumScreenStrokeWidth,
             HiddenEntityIds = _renderOptions.HiddenEntityIds,

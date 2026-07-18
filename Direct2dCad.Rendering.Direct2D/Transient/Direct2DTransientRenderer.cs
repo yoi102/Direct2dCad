@@ -43,7 +43,8 @@ internal sealed class Direct2DTransientRenderer(
         CadViewport viewport,
         IReadOnlyList<CadPointD> points,
         bool closed,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
     {
         if (points.Count < 2)
             return;
@@ -61,7 +62,13 @@ internal sealed class Direct2DTransientRenderer(
         }
 
         using var geometry = geometryFactory.CreatePolyline(factory, points, closed);
-        DrawFill(context, geometry, BoundsFromPoints(points), style, viewport);
+        DrawFill(
+            context,
+            geometry,
+            BoundsFromPoints(points),
+            style,
+            viewport,
+            isLevelOfDetailEnabled);
         context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
     }
 
@@ -70,7 +77,8 @@ internal sealed class Direct2DTransientRenderer(
         CadViewport viewport,
         IReadOnlyList<CadPointD> fitPoints,
         bool closed,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
     {
         if (resourceCache.Factory is not { } factory || fitPoints.Count < 2)
             return;
@@ -79,7 +87,13 @@ internal sealed class Direct2DTransientRenderer(
         var brush = styleResources.GetBrush(context, style.StrokeColor);
         var strokeStyle = styleResources.GetStrokeStyle(factory, style);
         if (closed && HasFill(style))
-            DrawFill(context, geometry, BoundsFromPoints(fitPoints), style, viewport);
+            DrawFill(
+                context,
+                geometry,
+                BoundsFromPoints(fitPoints),
+                style,
+                viewport,
+                isLevelOfDetailEnabled);
         context.DrawGeometry(geometry, brush, styleResources.ResolveStrokeWidth(style, viewport), strokeStyle);
     }
 
@@ -130,9 +144,17 @@ internal sealed class Direct2DTransientRenderer(
         CadViewport viewport,
         CadPointD center,
         double radius,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
     {
-        DrawEllipse(context, viewport, center, radius, radius, style);
+        DrawEllipse(
+            context,
+            viewport,
+            center,
+            radius,
+            radius,
+            style,
+            isLevelOfDetailEnabled);
     }
 
     public void DrawEllipse(
@@ -141,13 +163,20 @@ internal sealed class Direct2DTransientRenderer(
         CadPointD center,
         double radiusX,
         double radiusY,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
     {
         var ellipse = new Ellipse(ToVector2(center), (float)radiusX, (float)radiusY);
         if (HasHatchFill(style) && resourceCache.Factory is { } factory)
         {
             using var geometry = factory.CreateEllipseGeometry(ellipse);
-            DrawFill(context, geometry, CadRectD.FromCenter(center, radiusX * 2.0, radiusY * 2.0), style, viewport);
+            DrawFill(
+                context,
+                geometry,
+                CadRectD.FromCenter(center, radiusX * 2.0, radiusY * 2.0),
+                style,
+                viewport,
+                isLevelOfDetailEnabled);
         }
         else if (style.FillColor is { IsTransparent: false } fillColor)
         {
@@ -166,7 +195,8 @@ internal sealed class Direct2DTransientRenderer(
         CadRectD bounds,
         CadTransientStyle style,
         double cornerRadiusX = 0,
-        double cornerRadiusY = 0)
+        double cornerRadiusY = 0,
+        bool isLevelOfDetailEnabled = false)
     {
         var radiusX = geometryFactory.ClampCornerRadius(cornerRadiusX, bounds.Width);
         var radiusY = geometryFactory.ClampCornerRadius(cornerRadiusY, bounds.Height);
@@ -176,7 +206,7 @@ internal sealed class Direct2DTransientRenderer(
             if (HasHatchFill(style) && resourceCache.Factory is { } factory)
             {
                 using var geometry = factory.CreateRoundedRectangleGeometry(rounded);
-                DrawFill(context, geometry, bounds, style, viewport);
+                DrawFill(context, geometry, bounds, style, viewport, isLevelOfDetailEnabled);
             }
             else if (style.FillColor is { IsTransparent: false } fillColor)
             {
@@ -198,7 +228,7 @@ internal sealed class Direct2DTransientRenderer(
         if (HasHatchFill(style) && resourceCache.Factory is { } rectangleFactory)
         {
             using var geometry = rectangleFactory.CreateRectangleGeometry(rectangle);
-            DrawFill(context, geometry, bounds, style, viewport);
+            DrawFill(context, geometry, bounds, style, viewport, isLevelOfDetailEnabled);
         }
         else if (style.FillColor is { IsTransparent: false } fillColor)
         {
@@ -327,7 +357,8 @@ internal sealed class Direct2DTransientRenderer(
         ID2D1Geometry geometry,
         CadRectD bounds,
         CadTransientStyle style,
-        CadViewport viewport)
+        CadViewport viewport,
+        bool isLevelOfDetailEnabled)
     {
         if (style.FillColor is { IsTransparent: false } fillColor)
         {
@@ -343,7 +374,14 @@ internal sealed class Direct2DTransientRenderer(
         }
 
         var hatchBrush = styleResources.GetBrush(context, hatchFill.ForegroundColor);
-        Direct2DHatchRenderer.Draw(context, geometry, bounds, hatchFill, hatchBrush, viewport);
+        Direct2DHatchRenderer.Draw(
+            context,
+            geometry,
+            bounds,
+            hatchFill,
+            hatchBrush,
+            viewport,
+            isLevelOfDetailEnabled);
     }
 
     private static bool HasFill(CadTransientStyle style)

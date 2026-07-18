@@ -1137,4 +1137,7 @@
   <data name="AcceleratedViewportInteraction" xml:space="preserve">
     <value>加速画布平移和缩放</value>
   </data>
+  <data name="LevelOfDetailOptimization" xml:space="preserve">
+    <value>启用细节层级优化</value>
+  </data>
 </root>

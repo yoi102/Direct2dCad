@@ -34,10 +34,23 @@ internal sealed class Direct2DEntityReferenceRenderer(
                 transientRenderer.DrawLine(context, viewport, line.Start + reference.Offset, line.End + reference.Offset, reference.Style);
                 break;
             case CadCircle circle:
-                transientRenderer.DrawCircle(context, viewport, circle.Center + reference.Offset, circle.Radius, reference.Style);
+                transientRenderer.DrawCircle(
+                    context,
+                    viewport,
+                    circle.Center + reference.Offset,
+                    circle.Radius,
+                    reference.Style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadEllipse ellipse:
-                transientRenderer.DrawEllipse(context, viewport, ellipse.Center + reference.Offset, ellipse.RadiusX, ellipse.RadiusY, reference.Style);
+                transientRenderer.DrawEllipse(
+                    context,
+                    viewport,
+                    ellipse.Center + reference.Offset,
+                    ellipse.RadiusX,
+                    ellipse.RadiusY,
+                    reference.Style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadEllipseArc arc:
                 transientRenderer.DrawEllipseArc(
@@ -57,7 +70,8 @@ internal sealed class Direct2DEntityReferenceRenderer(
                     rectangle.Bounds.Translate(reference.Offset),
                     reference.Style,
                     rectangle.CornerRadiusX,
-                    rectangle.CornerRadiusY);
+                    rectangle.CornerRadiusY,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadArc arc:
                 transientRenderer.DrawArc(
@@ -75,7 +89,8 @@ internal sealed class Direct2DEntityReferenceRenderer(
                     viewport,
                     polyline.Points.Select(point => point + reference.Offset).ToArray(),
                     polyline.Closed,
-                    reference.Style);
+                    reference.Style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadSpline spline:
                 transientRenderer.DrawSpline(
@@ -83,7 +98,8 @@ internal sealed class Direct2DEntityReferenceRenderer(
                     viewport,
                     spline.FitPoints.Select(point => point + reference.Offset).ToArray(),
                     spline.Closed,
-                    reference.Style);
+                    reference.Style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadShapeText text:
                 transientRenderer.DrawShapeText(
@@ -120,7 +136,12 @@ internal sealed class Direct2DEntityReferenceRenderer(
                     textFormat: null);
                 break;
             default:
-                transientRenderer.DrawRectangle(context, viewport, entity.Bounds.Translate(reference.Offset), reference.Style);
+                transientRenderer.DrawRectangle(
+                    context,
+                    viewport,
+                    entity.Bounds.Translate(reference.Offset),
+                    reference.Style,
+                    isLevelOfDetailEnabled: options.IsLevelOfDetailEnabled);
                 break;
         }
     }

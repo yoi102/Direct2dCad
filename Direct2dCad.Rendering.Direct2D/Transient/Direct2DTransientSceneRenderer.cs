@@ -16,6 +16,7 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadDocument document,
         CadViewport viewport,
         CadTransientScene? scene,
+        CadRenderOptions options,
         Action<CadTransientOleObject> drawOle,
         Action<CadTransientEntityReference> drawEntityReference,
         Action<CadTransientBlockReference> drawBlockReference)
@@ -35,6 +36,7 @@ internal sealed class Direct2DTransientSceneRenderer(
             document,
             viewport,
             scene.Items,
+            options,
             drawOle,
             drawEntityReference,
             drawBlockReference);
@@ -45,6 +47,7 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadDocument document,
         CadViewport viewport,
         IReadOnlyList<CadTransientItem> items,
+        CadRenderOptions options,
         Action<CadTransientOleObject> drawOle,
         Action<CadTransientEntityReference> drawEntityReference,
         Action<CadTransientBlockReference> drawBlockReference)
@@ -59,6 +62,7 @@ internal sealed class Direct2DTransientSceneRenderer(
                         document,
                         viewport,
                         group,
+                        options,
                         drawOle,
                         drawEntityReference,
                         drawBlockReference);
@@ -67,10 +71,23 @@ internal sealed class Direct2DTransientSceneRenderer(
                     primitives.DrawLine(context, viewport, line.Start, line.End, line.Style);
                     break;
                 case CadTransientCircle circle when circle.Radius > 0:
-                    primitives.DrawCircle(context, viewport, circle.Center, circle.Radius, circle.Style);
+                    primitives.DrawCircle(
+                        context,
+                        viewport,
+                        circle.Center,
+                        circle.Radius,
+                        circle.Style,
+                        options.IsLevelOfDetailEnabled);
                     break;
                 case CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0:
-                    primitives.DrawEllipse(context, viewport, ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, ellipse.Style);
+                    primitives.DrawEllipse(
+                        context,
+                        viewport,
+                        ellipse.Center,
+                        ellipse.RadiusX,
+                        ellipse.RadiusY,
+                        ellipse.Style,
+                        options.IsLevelOfDetailEnabled);
                     break;
                 case CadTransientEllipseArc arc when arc.RadiusX > 0 && arc.RadiusY > 0 &&
                                                      Math.Abs(arc.SweepAngleRadians) > double.Epsilon:
@@ -88,10 +105,22 @@ internal sealed class Direct2DTransientSceneRenderer(
                     primitives.DrawArc(context, viewport, arc.Center, arc.Radius, arc.StartAngleRadians, arc.SweepAngleRadians, arc.Style);
                     break;
                 case CadTransientPolyline polyline when polyline.Points.Count >= 2:
-                    primitives.DrawPolyline(context, viewport, polyline.Points, polyline.Closed, polyline.Style);
+                    primitives.DrawPolyline(
+                        context,
+                        viewport,
+                        polyline.Points,
+                        polyline.Closed,
+                        polyline.Style,
+                        options.IsLevelOfDetailEnabled);
                     break;
                 case CadTransientSpline spline when spline.FitPoints.Count >= 2:
-                    primitives.DrawSpline(context, viewport, spline.FitPoints, spline.Closed, spline.Style);
+                    primitives.DrawSpline(
+                        context,
+                        viewport,
+                        spline.FitPoints,
+                        spline.Closed,
+                        spline.Style,
+                        options.IsLevelOfDetailEnabled);
                     break;
                 case CadTransientRectangle rectangle when !rectangle.Bounds.IsEmpty:
                     primitives.DrawRectangle(
@@ -100,7 +129,8 @@ internal sealed class Direct2DTransientSceneRenderer(
                         rectangle.Bounds,
                         rectangle.Style,
                         rectangle.CornerRadiusX,
-                        rectangle.CornerRadiusY);
+                        rectangle.CornerRadiusY,
+                        options.IsLevelOfDetailEnabled);
                     break;
                 case CadTransientImage image when !image.Bounds.IsEmpty:
                     DrawImage(context, image);
@@ -157,6 +187,7 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadDocument document,
         CadViewport viewport,
         CadTransientGroup group,
+        CadRenderOptions options,
         Action<CadTransientOleObject> drawOle,
         Action<CadTransientEntityReference> drawEntityReference,
         Action<CadTransientBlockReference> drawBlockReference)
@@ -170,6 +201,7 @@ internal sealed class Direct2DTransientSceneRenderer(
                 document,
                 viewport,
                 group.Items,
+                options,
                 drawOle,
                 drawEntityReference,
                 drawBlockReference);

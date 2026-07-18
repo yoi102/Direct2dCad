@@ -50,7 +50,8 @@ public sealed class CadUserSettings
             IsTextAntialiasingEnabled = source.Rendering.IsTextAntialiasingEnabled,
             ShowFramesPerSecond = source.Rendering.ShowFramesPerSecond,
             IsViewportInteractionPreviewEnabled =
-                source.Rendering.IsViewportInteractionPreviewEnabled
+                source.Rendering.IsViewportInteractionPreviewEnabled,
+            IsLevelOfDetailEnabled = source.Rendering.IsLevelOfDetailEnabled
         };
         Interaction = new CadInteractionUserSettings
         {
@@ -97,6 +98,7 @@ public sealed class CadRenderingUserSettings
     public bool IsTextAntialiasingEnabled { get; set; } = true;
     public bool ShowFramesPerSecond { get; set; } = true;
     public bool IsViewportInteractionPreviewEnabled { get; set; } = false;
+    public bool IsLevelOfDetailEnabled { get; set; } = true;
 
     internal void Normalize()
     {

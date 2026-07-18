@@ -62,6 +62,7 @@ internal sealed class Direct2DSelectionRenderer(
                         viewport,
                         reference,
                         renderWorldBounds,
+                        options,
                         _visitedBlocks);
                     break;
                 case CadGripHandle grip when options.DrawGripHandles && IsGripVisible(viewport, grip):
@@ -113,6 +114,7 @@ internal sealed class Direct2DSelectionRenderer(
                 viewport,
                 reference,
                 renderWorldBounds,
+                options,
                 _visitedBlocks);
         }
     }
@@ -148,6 +150,7 @@ internal sealed class Direct2DSelectionRenderer(
         CadViewport viewport,
         CadSelectionEntityReference reference,
         CadRectD? dirtyWorldBounds,
+        CadRenderOptions options,
         HashSet<BlockId> visitedBlocks)
     {
         if (!IntersectsRenderBounds(
@@ -170,6 +173,7 @@ internal sealed class Direct2DSelectionRenderer(
             reference.Offset,
             reference.Style,
             dirtyWorldBounds,
+            options,
             visitedBlocks);
     }
 
@@ -181,12 +185,16 @@ internal sealed class Direct2DSelectionRenderer(
         CadVectorD offset,
         CadHandleStyle selectionStyle,
         CadRectD? dirtyWorldBounds,
+        CadRenderOptions options,
         HashSet<BlockId> visitedBlocks)
     {
         if (!IntersectsRenderBounds(entity, offset, viewport, dirtyWorldBounds))
             return;
 
-        var detail = Direct2DEntityLevelOfDetail.ResolveSelection(entity, context.Transform);
+        var detail = Direct2DEntityLevelOfDetail.ResolveSelection(
+            entity,
+            context.Transform,
+            options);
         if (detail == Direct2DEntityRenderDetail.Skip)
             return;
         if (detail == Direct2DEntityRenderDetail.Simplified)
@@ -205,13 +213,21 @@ internal sealed class Direct2DSelectionRenderer(
                 viewport,
                 blockReference,
                 selectionStyle,
+                options,
                 visitedBlocks);
             return;
         }
 
         resourceCache.TryGetEntityResources(entity.Id, out var resources);
         var style = ToTransientStyle(selectionStyle, resources);
-        if (TryDrawCachedGeometry(context, entity, resources, viewport, offset, style))
+        if (TryDrawCachedGeometry(
+                context,
+                entity,
+                resources,
+                viewport,
+                offset,
+                style,
+                options))
             return;
 
         switch (entity)
@@ -220,10 +236,23 @@ internal sealed class Direct2DSelectionRenderer(
                 transientRenderer.DrawLine(context, viewport, line.Start + offset, line.End + offset, style);
                 break;
             case CadCircle circle:
-                transientRenderer.DrawCircle(context, viewport, circle.Center + offset, circle.Radius, style);
+                transientRenderer.DrawCircle(
+                    context,
+                    viewport,
+                    circle.Center + offset,
+                    circle.Radius,
+                    style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadEllipse ellipse:
-                transientRenderer.DrawEllipse(context, viewport, ellipse.Center + offset, ellipse.RadiusX, ellipse.RadiusY, style);
+                transientRenderer.DrawEllipse(
+                    context,
+                    viewport,
+                    ellipse.Center + offset,
+                    ellipse.RadiusX,
+                    ellipse.RadiusY,
+                    style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadEllipseArc arc:
                 transientRenderer.DrawEllipseArc(
@@ -243,7 +272,8 @@ internal sealed class Direct2DSelectionRenderer(
                     rectangle.Bounds.Translate(offset),
                     style,
                     rectangle.CornerRadiusX,
-                    rectangle.CornerRadiusY);
+                    rectangle.CornerRadiusY,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadArc arc:
                 transientRenderer.DrawArc(
@@ -261,7 +291,8 @@ internal sealed class Direct2DSelectionRenderer(
                     viewport,
                     polyline.Points.Select(point => point + offset).ToArray(),
                     polyline.Closed,
-                    style);
+                    style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadSpline spline:
                 transientRenderer.DrawSpline(
@@ -269,7 +300,8 @@ internal sealed class Direct2DSelectionRenderer(
                     viewport,
                     spline.FitPoints.Select(point => point + offset).ToArray(),
                     spline.Closed,
-                    style);
+                    style,
+                    options.IsLevelOfDetailEnabled);
                 break;
             case CadShapeText text:
                 transientRenderer.DrawShapeText(
@@ -289,7 +321,12 @@ internal sealed class Direct2DSelectionRenderer(
                 DrawImageFrame(context, viewport, image, offset, style);
                 break;
             default:
-                transientRenderer.DrawRectangle(context, viewport, entity.Bounds.Translate(offset), style);
+                transientRenderer.DrawRectangle(
+                    context,
+                    viewport,
+                    entity.Bounds.Translate(offset),
+                    style,
+                    isLevelOfDetailEnabled: options.IsLevelOfDetailEnabled);
                 break;
         }
     }
@@ -300,6 +337,7 @@ internal sealed class Direct2DSelectionRenderer(
         CadViewport viewport,
         CadBlockReference reference,
         CadHandleStyle selectionStyle,
+        CadRenderOptions options,
         HashSet<BlockId> visitedBlocks)
     {
         if (!visitedBlocks.Add(reference.DefinitionBlockId) ||
@@ -341,6 +379,7 @@ internal sealed class Direct2DSelectionRenderer(
                     CadVectorD.Zero,
                     selectionStyle,
                     dirtyWorldBounds: null,
+                    options,
                     visitedBlocks: visitedBlocks);
             }
         }
@@ -357,7 +396,8 @@ internal sealed class Direct2DSelectionRenderer(
         Direct2DResourceCache.EntityResourceBucket? resources,
         CadViewport viewport,
         CadVectorD offset,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        CadRenderOptions options)
     {
         if (resources?.Geometry is null)
             return false;
@@ -365,7 +405,8 @@ internal sealed class Direct2DSelectionRenderer(
         var geometry = Direct2DEntityLevelOfDetail.ResolveGeometry(
             entity,
             resources,
-            context.Transform);
+            context.Transform,
+            options);
         if (geometry is null)
             return false;
 
@@ -374,7 +415,7 @@ internal sealed class Direct2DSelectionRenderer(
         var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
         if (offset == CadVectorD.Zero)
         {
-            DrawCachedFill(context, geometry, entity.Bounds, style, viewport);
+            DrawCachedFill(context, geometry, entity.Bounds, style, viewport, options);
             context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
             return true;
         }
@@ -385,7 +426,7 @@ internal sealed class Direct2DSelectionRenderer(
             (float)offset.Y) * previousTransform;
         try
         {
-            DrawCachedFill(context, geometry, entity.Bounds, style, viewport);
+            DrawCachedFill(context, geometry, entity.Bounds, style, viewport, options);
             context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
         }
         finally
@@ -401,7 +442,8 @@ internal sealed class Direct2DSelectionRenderer(
         ID2D1Geometry geometry,
         CadRectD bounds,
         CadTransientStyle style,
-        CadViewport viewport)
+        CadViewport viewport,
+        CadRenderOptions options)
     {
         if (style.FillColor is { IsTransparent: false } fillColor)
         {
@@ -413,7 +455,14 @@ internal sealed class Direct2DSelectionRenderer(
             return;
 
         var hatchBrush = styleResources.GetBrush(context, hatchFill.ForegroundColor);
-        Direct2DHatchRenderer.Draw(context, geometry, bounds, hatchFill, hatchBrush, viewport);
+        Direct2DHatchRenderer.Draw(
+            context,
+            geometry,
+            bounds,
+            hatchFill,
+            hatchBrush,
+            viewport,
+            options.IsLevelOfDetailEnabled);
     }
 
     private void DrawImageFrame(

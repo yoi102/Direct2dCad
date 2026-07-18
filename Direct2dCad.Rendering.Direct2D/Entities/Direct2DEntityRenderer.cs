@@ -102,9 +102,10 @@ internal sealed class Direct2DEntityRenderer(
         var geometry = Direct2DEntityLevelOfDetail.ResolveGeometry(
             entity,
             resources,
-            context.Transform);
+            context.Transform,
+            options);
         if (geometry is not null)
-            DrawFill(context, geometry, entity.Bounds, resources, viewport);
+            DrawFill(context, geometry, entity.Bounds, resources, viewport, options);
         if (geometry is not null && strokeBrush is not null)
         {
             context.DrawGeometry(
@@ -114,7 +115,8 @@ internal sealed class Direct2DEntityRenderer(
                 Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
                     entity,
                     resources.StrokeStyle,
-                    context.Transform));
+                    context.Transform,
+                    options));
         }
 
         if (entity is CadText text && resources.TextLayout is not null && strokeBrush is not null)
@@ -141,7 +143,10 @@ internal sealed class Direct2DEntityRenderer(
         if (brush is null)
             return true;
 
-        var textDetail = Direct2DEntityLevelOfDetail.ResolveText(entity, context.Transform);
+        var textDetail = Direct2DEntityLevelOfDetail.ResolveText(
+            entity,
+            context.Transform,
+            options);
         switch (entity)
         {
             case CadText text:
@@ -208,7 +213,8 @@ internal sealed class Direct2DEntityRenderer(
             Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
                 line,
                 resources.StrokeStyle,
-                context.Transform));
+                context.Transform,
+                options));
     }
 
     private static void DrawImage(
@@ -253,7 +259,8 @@ internal sealed class Direct2DEntityRenderer(
                     ellipse.RadiusX * 2.0,
                     ellipse.RadiusY * 2.0),
                 resources,
-                viewport);
+                viewport,
+                options);
         }
         else if (resources.FillBrush is not null)
         {
@@ -269,7 +276,8 @@ internal sealed class Direct2DEntityRenderer(
                 Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
                     entity,
                     resources.StrokeStyle,
-                    context.Transform));
+                    context.Transform,
+                    options));
         }
     }
 
@@ -293,7 +301,7 @@ internal sealed class Direct2DEntityRenderer(
             var rounded = geometryFactory.CreateRoundedRectangle(bounds, radiusX, radiusY);
             if (resources.HatchBrush is not null && resources.Geometry is not null)
             {
-                DrawFill(context, resources.Geometry, bounds, resources, viewport);
+                DrawFill(context, resources.Geometry, bounds, resources, viewport, options);
             }
             else if (resources.FillBrush is not null)
             {
@@ -306,7 +314,8 @@ internal sealed class Direct2DEntityRenderer(
                 var strokeStyle = Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
                     rectangle,
                     resources.StrokeStyle,
-                    context.Transform);
+                    context.Transform,
+                    options);
                 if (strokeStyle is null)
                     context.DrawRoundedRectangle(rounded, strokeBrush, resolvedStrokeWidth);
                 else
@@ -319,7 +328,7 @@ internal sealed class Direct2DEntityRenderer(
         var rect = ToRawRect(bounds);
         if (resources.HatchBrush is not null && resources.Geometry is not null)
         {
-            DrawFill(context, resources.Geometry, bounds, resources, viewport);
+            DrawFill(context, resources.Geometry, bounds, resources, viewport, options);
         }
         else if (resources.FillBrush is not null)
         {
@@ -335,7 +344,8 @@ internal sealed class Direct2DEntityRenderer(
                 Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
                     rectangle,
                     resources.StrokeStyle,
-                    context.Transform));
+                    context.Transform,
+                    options));
         }
     }
 
@@ -473,7 +483,8 @@ internal sealed class Direct2DEntityRenderer(
         ID2D1Geometry geometry,
         CadRectD bounds,
         Direct2DResourceCache.EntityResourceBucket resources,
-        CadViewport viewport)
+        CadViewport viewport,
+        CadRenderOptions options)
     {
         if (resources.FillBrush is not null)
             context.FillGeometry(geometry, resources.FillBrush);
@@ -485,7 +496,14 @@ internal sealed class Direct2DEntityRenderer(
             return;
         }
 
-        Direct2DHatchRenderer.Draw(context, geometry, bounds, hatch, resources.HatchBrush, viewport);
+        Direct2DHatchRenderer.Draw(
+            context,
+            geometry,
+            bounds,
+            hatch,
+            resources.HatchBrush,
+            viewport,
+            options.IsLevelOfDetailEnabled);
     }
 
     private static void FillBounds(ID2D1DeviceContext context, CadRectD bounds, ID2D1Brush brush)
