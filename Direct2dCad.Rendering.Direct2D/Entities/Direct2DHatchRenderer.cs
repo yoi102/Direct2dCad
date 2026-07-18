@@ -31,7 +31,7 @@ internal static class Direct2DHatchRenderer
             return;
         }
 
-        var hatchBounds = ResolveRenderBounds(geometryBounds, viewport, hatchFill);
+        var hatchBounds = ResolveRenderBounds(deviceContext, geometryBounds, viewport, hatchFill);
         if (hatchBounds.IsEmpty)
             return;
 
@@ -330,17 +330,51 @@ internal static class Direct2DHatchRenderer
     }
 
     private static CadRectD ResolveRenderBounds(
+        ID2D1DeviceContext deviceContext,
         CadRectD geometryBounds,
         CadViewport viewport,
         CadTransientHatchFill hatchFill)
     {
-        var renderBounds = viewport.VisibleWorldBounds.IsEmpty
+        var visibleLocalBounds = ResolveVisibleLocalBounds(deviceContext, viewport);
+        var renderBounds = visibleLocalBounds.IsEmpty
             ? geometryBounds
-            : geometryBounds.Intersection(viewport.VisibleWorldBounds);
+            : geometryBounds.Intersection(visibleLocalBounds);
         if (renderBounds.IsEmpty)
             return CadRectD.Empty;
 
         return renderBounds.Inflate(Math.Max(4.0, hatchFill.HatchScale * 4.0));
+    }
+
+    private static CadRectD ResolveVisibleLocalBounds(
+        ID2D1DeviceContext deviceContext,
+        CadViewport viewport)
+    {
+        if (viewport.ViewWidth <= 0.0 ||
+            viewport.ViewHeight <= 0.0 ||
+            !Matrix3x2.Invert(deviceContext.Transform, out var screenToLocal))
+        {
+            return CadRectD.Empty;
+        }
+
+        Span<Vector2> screenCorners =
+        [
+            Vector2.Zero,
+            new Vector2((float)viewport.ViewWidth, 0.0f),
+            new Vector2((float)viewport.ViewWidth, (float)viewport.ViewHeight),
+            new Vector2(0.0f, (float)viewport.ViewHeight)
+        ];
+
+        var bounds = CadRectD.Empty;
+        foreach (var screenCorner in screenCorners)
+        {
+            var localPoint = Vector2.Transform(screenCorner, screenToLocal);
+            if (!float.IsFinite(localPoint.X) || !float.IsFinite(localPoint.Y))
+                return CadRectD.Empty;
+
+            bounds = bounds.ExpandToInclude(new CadPointD(localPoint.X, localPoint.Y));
+        }
+
+        return bounds;
     }
 
     private static CadPointD ResolveOrigin(CadRectD entityBounds, CadTransientHatchFill hatchFill)
