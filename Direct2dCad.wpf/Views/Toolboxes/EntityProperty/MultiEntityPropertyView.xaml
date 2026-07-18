@@ -121,15 +121,14 @@
 
                         <TextBlock Grid.Row="1" VerticalAlignment="Center"
                                    Text="{I18N {x:Static r:LangKeys.LineWeight}}" />
-                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Vertical">
                             <mah:NumericUpDown Width="112"
                                                IsEnabled="{Binding LineWeightControlsEnabled}"
                                                Minimum="0.01"
                                                Interval="0.05"
                                                StringFormat="F3"
                                                Value="{Binding LineWeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                            <CheckBox Margin="10,0,0,0"
-                                      VerticalAlignment="Center"
+                            <CheckBox VerticalAlignment="Center"
                                       Content="{I18N {x:Static r:LangKeys.ByLayer}}"
                                       IsChecked="{Binding UseByLayerLineWeight, Mode=TwoWay}"
                                       IsThreeState="True" />

@@ -54,24 +54,14 @@
                           Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
                           IsChecked="{Binding ViewModel.UseByLayerColor, ElementName=Root, Mode=TwoWay}"
+                          Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"
                           Margin="0,4,0,0">
-                    <CheckBox.Style>
-                        <Style TargetType="CheckBox">
-                            <Setter Property="Visibility" Value="Visible" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root}"
-                                             Value="True">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </CheckBox.Style>
                 </CheckBox>
             </StackPanel>
             <TextBlock Grid.Row="1" Grid.Column="0"
                        Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                        VerticalAlignment="Center" />
-            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal">
+            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Vertical">
                 <mah:NumericUpDown Width="112"
                                    Value="{Binding ViewModel.LineWeight, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    IsEnabled="{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Mode=OneWay}"
@@ -80,8 +70,7 @@
                                    Interval="0.05" />
                 <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
                           IsChecked="{Binding ViewModel.UseByLayerLineWeight, ElementName=Root, Mode=TwoWay}"
-                          VerticalAlignment="Center"
-                          Margin="10,0,0,0" />
+                          VerticalAlignment="Center"/>
             </StackPanel>
         </Grid>
     </Expander>
