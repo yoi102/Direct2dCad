@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using AvalonDock.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -37,6 +38,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         _snackbarService = snackbarService;
         _selectionChangedPublisher = selectionChangedPublisher;
         _interactionSubscription = interactionSubscriber.Subscribe(OnInteractionStateChanged);
+        PropertyChanged += OnToolboxPropertyChanged;
     }
 
     public ObservableCollection<BlockItemViewModel> Blocks { get; } = [];
@@ -179,7 +181,16 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
     {
         if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
             return;
-        RefreshBlocks(SelectedBlock?.BlockId);
+
+        RefreshBlocks(message.ClearBlockDefinitionSelection
+            ? null
+            : SelectedBlock?.BlockId);
+    }
+
+    private void OnToolboxPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(IsOpen) && !IsOpen)
+            SelectedBlock = null;
     }
 
     private void RefreshBlocks(BlockId? selectedBlockId = null)
@@ -203,8 +214,8 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
             }
 
             SelectedBlock = selectedBlockId is { } id
-                ? Blocks.FirstOrDefault(block => block.BlockId.Equals(id)) ?? Blocks.FirstOrDefault()
-                : Blocks.FirstOrDefault();
+                ? Blocks.FirstOrDefault(block => block.BlockId.Equals(id))
+                : null;
         }
         finally
         {
@@ -226,7 +237,11 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
     private static string Localize(string key, string fallback) =>
         Strings.ResourceManager.GetString(key) ?? fallback;
 
-    public void Dispose() => _interactionSubscription.Dispose();
+    public void Dispose()
+    {
+        PropertyChanged -= OnToolboxPropertyChanged;
+        _interactionSubscription.Dispose();
+    }
 }
 
 public sealed partial class BlockItemViewModel : ObservableObject

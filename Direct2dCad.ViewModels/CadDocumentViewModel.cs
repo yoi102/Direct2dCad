@@ -368,6 +368,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
     {
         var modeChanged = CadCanvasToolMode != toolMode;
+        if (modeChanged && toolMode != CadCanvasToolMode.Select)
+            CadEditor.Selection.Clear();
         if (toolMode != CadCanvasToolMode.InsertBlock)
             _insertBlockDefinitionId = null;
         if (toolMode != CadCanvasToolMode.LayoutViewport)
@@ -377,7 +379,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             RefreshDrawingEntityName();
         _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
-        RaiseInteractionStateChanged();
+        RaiseInteractionStateChanged(clearBlockDefinitionSelection: modeChanged);
         if (modeChanged)
             PublishInteractionActivity($"Tool mode: {toolMode}");
         return new CadCanvasInteractionResult(
@@ -583,10 +585,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 ExitLayoutViewport();
         }
         CadCanvasToolMode = CadCanvasToolMode.Select;
+        CadEditor.Selection.Clear();
         _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
         EndPan();
-        RaiseInteractionStateChanged();
+        RaiseInteractionStateChanged(clearBlockDefinitionSelection: true);
         PublishInteractionActivity("Cancel current interaction");
         return new CadCanvasInteractionResult(
             true,
@@ -2431,9 +2434,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 snapshot.BlockDefinitions.Count);
     }
 
-    private void RaiseInteractionStateChanged()
+    private void RaiseInteractionStateChanged(bool clearBlockDefinitionSelection = false)
     {
-        _interactionStateChangedPublisher.Publish(new CadDocumentInteractionStateChangedMessage(this));
+        _interactionStateChangedPublisher.Publish(
+            new CadDocumentInteractionStateChangedMessage(
+                this,
+                clearBlockDefinitionSelection));
     }
 
     private void PublishViewSettingsChanged()

@@ -7,7 +7,9 @@ public interface ICadDocumentViewModelMessageSource;
 
 public interface IEditorTabDocumentSummaryMessageSource;
 
-public sealed record CadDocumentInteractionStateChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
+public sealed record CadDocumentInteractionStateChangedMessage(
+    ICadDocumentViewModelMessageSource DocumentViewModel,
+    bool ClearBlockDefinitionSelection = false);
 
 public sealed record CadDocumentViewSettingsChangedMessage(ICadDocumentViewModelMessageSource DocumentViewModel);
 
