@@ -92,7 +92,7 @@
                 <Button Command="{Binding InsertCommand}"
                         ToolTip="{Binding InsertLabel}"
                         Style="{StaticResource MaterialDesignFlatButton}">
-                    <md:PackIcon Kind="Import"
+                    <md:PackIcon Kind="InsertLink"
                                  Width="18"
                                  Height="18" />
                 </Button>
@@ -106,7 +106,7 @@
                 <Button Command="{Binding ExitEditCommand}"
                         ToolTip="{Binding ExitEditLabel}"
                         Style="{StaticResource MaterialDesignFlatButton}">
-                    <md:PackIcon Kind="ExitToApp"
+                    <md:PackIcon Kind="ExitRun"
                                  Width="18"
                                  Height="18" />
                 </Button>
