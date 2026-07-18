@@ -1135,13 +1135,7 @@ public sealed class CadEditor
 
     public void RebuildSpatialIndex()
     {
-        SpatialIndex.Clear();
-
-        foreach (var entity in Document.Entities.Values)
-        {
-            if (!entity.IsErased && entity.IsVisible)
-                SpatialIndex.Update(entity.Id, entity.Bounds);
-        }
+        SpatialIndex.Rebuild(Document);
     }
 
     private EntityId GetCreatedEntityId(EntityId? entityId, string commandName)

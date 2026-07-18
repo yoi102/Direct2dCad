@@ -138,6 +138,19 @@ internal static class Direct2DTextServices
         return format;
     }
 
+    internal static IDWriteTextLayout CreateTextLayout(
+        IDWriteFactory writeFactory,
+        string text,
+        IDWriteTextFormat format)
+    {
+        var safeText = string.IsNullOrEmpty(text) ? " " : text;
+        return writeFactory.CreateTextLayout(
+            safeText,
+            format,
+            LayoutExtent,
+            LayoutExtent);
+    }
+
     private static CadTextStyle? ResolveTextStyle(CadDocument document, StyleId? styleId)
     {
         return styleId is not null &&

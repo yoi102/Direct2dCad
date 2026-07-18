@@ -8,7 +8,8 @@ namespace Direct2dCad.ViewModels.Services.Rendering;
 internal sealed class CadOverlaySceneCoordinator
 {
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
-    private CadRenderInvalidation _lastOverlayInvalidation = CadRenderInvalidation.FromScreenRect(default);
+    private CadRenderInvalidation _lastTransientInvalidation = CadRenderInvalidation.FromScreenRect(default);
+    private CadRenderInvalidation _lastHandleInvalidation = CadRenderInvalidation.FromScreenRect(default);
 
     public CadTransientScene TransientScene { get; } = new();
 
@@ -48,28 +49,34 @@ internal sealed class CadOverlaySceneCoordinator
         CadHandleSceneBuildOptions handleOptions,
         double interactionZoom)
     {
-        var previousOverlay = _lastOverlayInvalidation;
+        var previousTransient = _lastTransientInvalidation;
+        var previousHandles = _lastHandleInvalidation;
         UpdateOverlayScenes(editor, transientItems, updateHandleScene, activeHandleItems, handleOptions, interactionZoom);
-        var currentOverlay = CreateOverlayInvalidation(invalidationCalculator, includeGripHandles);
-        _lastOverlayInvalidation = currentOverlay;
-        return previousOverlay.Union(currentOverlay);
+
+        var currentTransient = invalidationCalculator.CreateTransientSceneInvalidation(TransientScene);
+        _lastTransientInvalidation = currentTransient;
+        var invalidation = previousTransient.Union(currentTransient);
+
+        if (!updateHandleScene)
+            return invalidation;
+
+        var currentHandles = invalidationCalculator.CreateHandleSceneInvalidation(
+            HandleScene,
+            includeGripHandles);
+        _lastHandleInvalidation = currentHandles;
+        return invalidation
+            .Union(previousHandles)
+            .Union(currentHandles);
     }
 
     public void RefreshLastOverlayInvalidation(
         CadRenderInvalidationCalculator invalidationCalculator,
         bool includeGripHandles)
     {
-        _lastOverlayInvalidation = CreateOverlayInvalidation(invalidationCalculator, includeGripHandles);
-    }
-
-    public CadRenderInvalidation CreateOverlayInvalidation(
-        CadRenderInvalidationCalculator invalidationCalculator,
-        bool includeGripHandles)
-    {
-        return invalidationCalculator.CreateOverlayInvalidation(
-            TransientScene,
-            HandleScene,
-            includeGripHandles);
+        _lastTransientInvalidation =
+            invalidationCalculator.CreateTransientSceneInvalidation(TransientScene);
+        _lastHandleInvalidation =
+            invalidationCalculator.CreateHandleSceneInvalidation(HandleScene, includeGripHandles);
     }
 
     public void UpdateHandleScene(

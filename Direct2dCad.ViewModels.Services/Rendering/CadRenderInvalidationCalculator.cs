@@ -18,26 +18,82 @@ internal sealed class CadRenderInvalidationCalculator(
     Func<CadEntity, CadTransientStyle> createEntityPreviewStyle)
 {
     private const int MaxPathDirtyBounds = 16;
+    private const int LargeHandleSceneAggregationThreshold = 512;
 
-    public CadRenderInvalidation CreateOverlayInvalidation(
-        CadTransientScene transientScene,
+    public CadRenderInvalidation CreateTransientSceneInvalidation(
+        CadTransientScene transientScene)
+    {
+        var dirtyRects = new List<CadScreenRect>();
+
+        foreach (var item in transientScene.Items)
+        {
+            var itemInvalidation = CreateTransientInvalidation(item);
+            if (itemInvalidation.IsFull)
+                return CadRenderInvalidation.Full;
+
+            dirtyRects.AddRange(itemInvalidation.DirtyScreenRects);
+        }
+
+        return CadRenderInvalidation.FromScreenRects(dirtyRects);
+    }
+
+    public CadRenderInvalidation CreateHandleSceneInvalidation(
         CadHandleScene handleScene,
         bool includeGripHandles = true)
     {
-        var invalidation = CadRenderInvalidation.FromScreenRect(default);
+        if (handleScene.Items.Count > LargeHandleSceneAggregationThreshold)
+            return CreateAggregatedHandleSceneInvalidation(handleScene, includeGripHandles);
 
-        foreach (var item in transientScene.Items)
-            invalidation = invalidation.Union(CreateTransientInvalidation(item));
+        var dirtyRects = new List<CadScreenRect>();
 
         foreach (var item in handleScene.Items)
         {
             if (!includeGripHandles && item is CadGripHandle or CadRotationHandleGuide)
                 continue;
 
-            invalidation = invalidation.Union(CreateHandleInvalidation(item));
+            var itemInvalidation = CreateHandleInvalidation(item);
+            if (itemInvalidation.IsFull)
+                return CadRenderInvalidation.Full;
+
+            dirtyRects.AddRange(itemInvalidation.DirtyScreenRects);
         }
 
-        return invalidation;
+        return CadRenderInvalidation.FromScreenRects(dirtyRects);
+    }
+
+    private CadRenderInvalidation CreateAggregatedHandleSceneInvalidation(
+        CadHandleScene handleScene,
+        bool includeGripHandles)
+    {
+        var worldBounds = CadRectD.Empty;
+        var paddingPixels = 32.0;
+
+        foreach (var item in handleScene.Items)
+        {
+            switch (item)
+            {
+                case CadSelectionEntityReference reference
+                    when document.TryGetEntity(reference.EntityId, out var entity) &&
+                         entity is not null:
+                    worldBounds = worldBounds.Union(entity.Bounds.Translate(reference.Offset));
+                    break;
+                case CadGripHandle grip when includeGripHandles:
+                    worldBounds = worldBounds.ExpandToInclude(grip.Position);
+                    paddingPixels = Math.Max(
+                        paddingPixels,
+                        Math.Max(grip.Style.Size, grip.Style.StrokeWidth) + 8.0);
+                    break;
+                case CadRotationHandleGuide guide when includeGripHandles:
+                    worldBounds = worldBounds
+                        .ExpandToInclude(guide.Start)
+                        .ExpandToInclude(guide.End);
+                    break;
+            }
+        }
+
+        return worldBounds.IsEmpty
+            ? CadRenderInvalidation.Empty
+            : CreateWorldBoundsInvalidation(worldBounds, paddingPixels);
     }
 
     public CadRenderInvalidation CreateDocumentInvalidation(CadDocumentChangeSet changes)

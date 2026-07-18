@@ -35,10 +35,7 @@ internal static class Direct2DHatchRenderer
         if (hatchBounds.IsEmpty)
             return;
 
-        var anchoredHatchFill = hatchFill with
-        {
-            HatchOrigin = ResolveOrigin(geometryBounds, hatchFill)
-        };
+        var hatchOrigin = ResolveOrigin(geometryBounds, hatchFill);
         var layerParameters = new LayerParameters1
         {
             ContentBounds = ToRawRect(hatchBounds),
@@ -60,12 +57,13 @@ internal static class Direct2DHatchRenderer
             deviceContext.PrimitiveBlend = PrimitiveBlend.Copy;
 
             var strokeWidth = 1.0f / Math.Max((float)viewport.Zoom, float.Epsilon);
-            foreach (var line in anchoredHatchFill.Lines)
+            foreach (var line in hatchFill.Lines)
             {
                 DrawLineSet(
                     deviceContext,
                     hatchBounds,
-                    anchoredHatchFill,
+                    hatchFill,
+                    hatchOrigin,
                     line,
                     hatchBrush,
                     strokeWidth,
@@ -89,6 +87,7 @@ internal static class Direct2DHatchRenderer
         ID2D1DeviceContext deviceContext,
         CadRectD bounds,
         CadTransientHatchFill hatchStyle,
+        CadPointD hatchOrigin,
         CadHatchLineDefinition line,
         ID2D1Brush brush,
         float strokeWidth,
@@ -113,16 +112,28 @@ internal static class Direct2DHatchRenderer
         var signedNormalStep = Math.Abs(normalStep) > 1e-6
             ? normalStep
             : Math.Max(offset.Length, 1e-6);
-        var origin = hatchStyle.HatchOrigin +
+        var origin = hatchOrigin +
                      Rotate(line.Origin - CadPointD.Origin, hatchRotation) * hatchStyle.HatchScale;
-        var corners = GetBoundsCorners(bounds);
+        Span<CadPointD> corners =
+        [
+            new CadPointD(bounds.MinX, bounds.MinY),
+            new CadPointD(bounds.MaxX, bounds.MinY),
+            new CadPointD(bounds.MaxX, bounds.MaxY),
+            new CadPointD(bounds.MinX, bounds.MaxY)
+        ];
         var minNormal = double.PositiveInfinity;
         var maxNormal = double.NegativeInfinity;
+        var minAlongOrigin = double.PositiveInfinity;
+        var maxAlongOrigin = double.NegativeInfinity;
         foreach (var corner in corners)
         {
-            var distance = (corner - origin).Dot(normal);
-            minNormal = Math.Min(minNormal, distance);
-            maxNormal = Math.Max(maxNormal, distance);
+            var relative = corner - origin;
+            var normalDistance = relative.Dot(normal);
+            var alongDistance = relative.Dot(direction);
+            minNormal = Math.Min(minNormal, normalDistance);
+            maxNormal = Math.Max(maxNormal, normalDistance);
+            minAlongOrigin = Math.Min(minAlongOrigin, alongDistance);
+            maxAlongOrigin = Math.Max(maxAlongOrigin, alongDistance);
         }
 
         var margin = Math.Max(spacing * 2.0, hatchStyle.HatchScale * 2.0);
@@ -132,22 +143,20 @@ internal static class Direct2DHatchRenderer
         var endIndex = Math.Ceiling(Math.Max(firstIndex, lastIndex)) + 1.0;
         var lineSetCount = Math.Max(1.0, endIndex - startIndex + 1.0);
         var indexStep = Math.Max(1.0, Math.Ceiling(lineSetCount / MaxLineSetsPerFamily));
-        var drawAsSolidLine = line.IsSolidLine || IsDashCycleSubpixel(line, hatchStyle.HatchScale, zoom);
+        var dashPatternLength = line.IsSolidLine
+            ? 0.0
+            : ResolveDashPatternLength(line.DashPattern, hatchStyle.HatchScale);
+        var drawAsSolidLine = line.IsSolidLine ||
+                              dashPatternLength * Math.Max(zoom, double.Epsilon) <=
+                              SolidLodPixelThreshold;
+        var alongStep = offset.Dot(direction);
 
         for (var index = startIndex; index <= endIndex;)
         {
             var basePoint = origin + offset * index;
-            var minAlong = double.PositiveInfinity;
-            var maxAlong = double.NegativeInfinity;
-            foreach (var corner in corners)
-            {
-                var distance = (corner - basePoint).Dot(direction);
-                minAlong = Math.Min(minAlong, distance);
-                maxAlong = Math.Max(maxAlong, distance);
-            }
-
-            var startDistance = minAlong - margin;
-            var endDistance = maxAlong + margin;
+            var alongOffset = alongStep * index;
+            var startDistance = minAlongOrigin - alongOffset - margin;
+            var endDistance = maxAlongOrigin - alongOffset + margin;
             if (drawAsSolidLine)
             {
                 deviceContext.DrawLine(
@@ -166,6 +175,7 @@ internal static class Direct2DHatchRenderer
                     endDistance,
                     line.DashPattern,
                     hatchStyle.HatchScale,
+                    dashPatternLength,
                     brush,
                     strokeWidth);
             }
@@ -186,16 +196,14 @@ internal static class Direct2DHatchRenderer
         double endDistance,
         IReadOnlyList<double> dashPattern,
         double scale,
+        double patternLength,
         ID2D1Brush brush,
         float strokeWidth)
     {
-        if (endDistance <= startDistance)
+        if (endDistance <= startDistance || patternLength <= 1e-6)
             return;
 
-        var patternLength = dashPattern.Sum(value => Math.Abs(value) * scale);
-        if (patternLength <= 1e-6)
-            return;
-
+        var absoluteScale = Math.Abs(scale);
         var position = startDistance;
         var cyclePosition = PositiveModulo(position, patternLength);
         var segmentIndex = 0;
@@ -203,7 +211,7 @@ internal static class Direct2DHatchRenderer
         var consumed = 0.0;
         for (var index = 0; index < dashPattern.Count; index++)
         {
-            var segmentLength = Math.Abs(dashPattern[index]) * scale;
+            var segmentLength = Math.Abs(dashPattern[index]) * absoluteScale;
             if (segmentLength <= 1e-6)
             {
                 if (Math.Abs(cyclePosition - consumed) <= 1e-9)
@@ -229,7 +237,7 @@ internal static class Direct2DHatchRenderer
         while (position < endDistance)
         {
             var dash = dashPattern[segmentIndex];
-            var segmentLength = Math.Abs(dash) * scale;
+            var segmentLength = Math.Abs(dash) * absoluteScale;
             if (segmentLength <= 1e-6)
             {
                 if (dash >= 0)
@@ -305,10 +313,20 @@ internal static class Direct2DHatchRenderer
         if (line.IsSolidLine)
             return false;
 
-        var dashCycleScreenLength = line.DashPattern.Sum(value => Math.Abs(value)) *
-                                    Math.Abs(scale) *
+        var dashCycleScreenLength = ResolveDashPatternLength(line.DashPattern, scale) *
                                     Math.Max(zoom, double.Epsilon);
         return dashCycleScreenLength <= SolidLodPixelThreshold;
+    }
+
+    private static double ResolveDashPatternLength(
+        IReadOnlyList<double> dashPattern,
+        double scale)
+    {
+        var length = 0.0;
+        var absoluteScale = Math.Abs(scale);
+        foreach (var value in dashPattern)
+            length += Math.Abs(value) * absoluteScale;
+        return length;
     }
 
     private static CadRectD ResolveRenderBounds(
@@ -330,17 +348,6 @@ internal static class Direct2DHatchRenderer
         return new CadPointD(
             entityBounds.MinX + hatchFill.HatchOrigin.X,
             entityBounds.MaxY + hatchFill.HatchOrigin.Y);
-    }
-
-    private static CadPointD[] GetBoundsCorners(CadRectD bounds)
-    {
-        return
-        [
-            new CadPointD(bounds.MinX, bounds.MinY),
-            new CadPointD(bounds.MaxX, bounds.MinY),
-            new CadPointD(bounds.MaxX, bounds.MaxY),
-            new CadPointD(bounds.MinX, bounds.MaxY)
-        ];
     }
 
     private static CadVectorD Rotate(CadVectorD vector, double angleRadians)

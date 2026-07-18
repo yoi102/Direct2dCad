@@ -85,7 +85,7 @@ internal sealed class Direct2DEntityRenderer(
                 resources.StrokeStyle);
         }
 
-        if (entity is CadText text && resources.TextFormat is not null && resources.StrokeBrush is not null)
+        if (entity is CadText text && resources.TextLayout is not null && resources.StrokeBrush is not null)
             DrawText(context, document, text, resources);
     }
 
@@ -233,11 +233,11 @@ internal sealed class Direct2DEntityRenderer(
             {
                 FillBounds(context, text.InvertedBackgroundBounds, resources.StrokeBrush!);
                 var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
-                DrawTextClipped(context, text.Text, resources.TextFormat!, text.Position, text.TextBounds, invertedBrush);
+                DrawTextClipped(context, resources.TextLayout!, text.Position, text.TextBounds, invertedBrush);
                 return;
             }
 
-            DrawTextClipped(context, text.Text, resources.TextFormat!, text.Position, text.TextBounds, resources.StrokeBrush!);
+            DrawTextClipped(context, resources.TextLayout!, text.Position, text.TextBounds, resources.StrokeBrush!);
         }
         finally
         {
@@ -255,20 +255,13 @@ internal sealed class Direct2DEntityRenderer(
         if (resources.FillBrush is not null)
             context.FillGeometry(geometry, resources.FillBrush);
         if (resources.HatchBrush is null ||
-            resources.HatchFillStyle is null ||
-            resources.HatchPattern is null ||
+            resources.HatchRenderData is not { } hatch ||
             resourceCache.Factory is null ||
             bounds.IsEmpty)
         {
             return;
         }
 
-        var hatch = new CadTransientHatchFill(
-            resources.HatchFillStyle.ForegroundColor,
-            resources.HatchFillStyle.HatchScale,
-            resources.HatchFillStyle.HatchAngle,
-            resources.HatchFillStyle.HatchOrigin,
-            resources.HatchPattern.Lines.ToArray());
         Direct2DHatchRenderer.Draw(context, geometry, bounds, hatch, resources.HatchBrush, viewport);
     }
 
@@ -280,8 +273,7 @@ internal sealed class Direct2DEntityRenderer(
 
     private static void DrawTextClipped(
         ID2D1DeviceContext context,
-        string text,
-        IDWriteTextFormat format,
+        IDWriteTextLayout layout,
         CadPointD origin,
         CadRectD bounds,
         ID2D1Brush brush)
@@ -294,14 +286,9 @@ internal sealed class Direct2DEntityRenderer(
         context.PushAxisAlignedClip(ToRawRect(bounds), AntialiasMode.PerPrimitive);
         try
         {
-            context.DrawText(
-                text,
-                format,
-                Rect.FromLTRB(
-                    (float)origin.X,
-                    (float)origin.Y,
-                    (float)(origin.X + Math.Max(bounds.Width, 1e-6)),
-                    (float)(origin.Y + Math.Max(bounds.Height, 1e-6))),
+            context.DrawTextLayout(
+                ToVector2(origin),
+                layout,
                 brush,
                 DrawTextOptions.Clip);
         }

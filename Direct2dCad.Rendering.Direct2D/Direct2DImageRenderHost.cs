@@ -10,11 +10,12 @@ using Vortice.Mathematics;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
-public sealed class Direct2DImageRenderHost : IDisposable
+public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
 {
     private const double PartialRenderMaxAreaRatio = 0.65;
     private readonly ImageSourceDirect2DResource _target = new();
     private readonly Direct2DSceneRender _renderer = new();
+    private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
     private ID3D11ImageSource? _imageSource;
     private CadDocument? _document;
     private CadViewport? _viewport;
@@ -26,7 +27,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
     private Color4 _clearBrushColor;
     private bool _disposed;
 
-    public ICadGeometryResourceManager GeometryResourceManager => _renderer;
+    public ICadGeometryResourceManager GeometryResourceManager => this;
 
     public int TargetWidth => _target.Width;
 
@@ -39,11 +40,20 @@ public sealed class Direct2DImageRenderHost : IDisposable
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(document);
 
-        var changedIds = new List<EntityId>();
-        foreach (var text in document.Entities.Values.OfType<CadText>())
+        if (_pendingTextMeasurementIds.Count == 0)
+            return CadDocumentChangeSet.Empty;
+
+        var changedIds = new List<EntityId>(_pendingTextMeasurementIds.Count);
+        foreach (var entityId in _pendingTextMeasurementIds.ToArray())
         {
-            if (text.IsErased || !text.RequiresBoundsMeasurement)
+            if (!document.TryGetEntity(entityId, out var entity) ||
+                entity is not CadText text ||
+                text.IsErased ||
+                !text.RequiresBoundsMeasurement)
+            {
+                _pendingTextMeasurementIds.Remove(entityId);
                 continue;
+            }
 
             if (Direct2DTextServices.TryMeasureTextBounds(
                     _target.DwriteFactory,
@@ -53,6 +63,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
                 text.SetLocalBounds(localBounds))
             {
                 changedIds.Add(text.Id);
+                _pendingTextMeasurementIds.Remove(entityId);
             }
         }
 
@@ -102,7 +113,44 @@ public sealed class Direct2DImageRenderHost : IDisposable
 
         _document = document ?? throw new ArgumentNullException(nameof(document));
         _viewport = viewport ?? throw new ArgumentNullException(nameof(viewport));
+        RefreshPendingTextMeasurements(document);
         ResetRendererDeviceResources();
+    }
+
+    public void RebuildAll(CadDocument document)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(document);
+
+        RefreshPendingTextMeasurements(document);
+        _renderer.RebuildAll(document);
+    }
+
+    public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(changes);
+
+        TrackPendingTextMeasurements(document, changes);
+        _renderer.ApplyChanges(document, changes);
+    }
+
+    public void RebuildEntity(CadDocument document, EntityId entityId)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(document);
+
+        TrackPendingTextMeasurement(document, entityId);
+        _renderer.RebuildEntity(document, entityId);
+    }
+
+    public void RemoveEntity(EntityId entityId)
+    {
+        ThrowIfDisposed();
+
+        _pendingTextMeasurementIds.Remove(entityId);
+        _renderer.RemoveEntity(entityId);
     }
 
     public void SetTransientScene(CadTransientScene? transientScene)
@@ -272,7 +320,10 @@ public sealed class Direct2DImageRenderHost : IDisposable
 
         var normalizedInvalidation = CadRenderInvalidation.FromScreenRects(rects);
 
-        var area = normalizedInvalidation.DirtyScreenRects.Sum(static rect => (double)rect.Area);
+        var area = 0.0;
+        foreach (var rect in normalizedInvalidation.DirtyScreenRects)
+            area += rect.Area;
+
         var targetArea = (double)_target.Width * _target.Height;
         return targetArea > 0 && area / targetArea >= PartialRenderMaxAreaRatio
             ? CadRenderInvalidation.Full
@@ -306,7 +357,8 @@ public sealed class Direct2DImageRenderHost : IDisposable
             KeepStrokeWidthScreenConstant = _renderOptions.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = _renderOptions.MinimumScreenStrokeWidth,
             HiddenEntityIds = _renderOptions.HiddenEntityIds,
-            DirtyWorldBounds = dirtyWorldBounds
+            DirtyWorldBounds = dirtyWorldBounds,
+            EntityBoundsQuery = _renderOptions.EntityBoundsQuery
         };
     }
 
@@ -376,6 +428,39 @@ public sealed class Direct2DImageRenderHost : IDisposable
             color.A / 255.0f);
     }
 
+    private void TrackPendingTextMeasurements(
+        CadDocument document,
+        CadDocumentChangeSet changes)
+    {
+        foreach (var change in changes.EntityChanges)
+            TrackPendingTextMeasurement(document, change.EntityId);
+    }
+
+    private void TrackPendingTextMeasurement(
+        CadDocument document,
+        EntityId entityId)
+    {
+        if (document.TryGetEntity(entityId, out var entity) &&
+            entity is CadText { IsErased: false, RequiresBoundsMeasurement: true })
+        {
+            _pendingTextMeasurementIds.Add(entityId);
+        }
+        else
+        {
+            _pendingTextMeasurementIds.Remove(entityId);
+        }
+    }
+
+    private void RefreshPendingTextMeasurements(CadDocument document)
+    {
+        _pendingTextMeasurementIds.Clear();
+        foreach (var text in document.Entities.Values.OfType<CadText>())
+        {
+            if (!text.IsErased && text.RequiresBoundsMeasurement)
+                _pendingTextMeasurementIds.Add(text.Id);
+        }
+    }
+
     private void ResetRendererDeviceResources()
     {
         if (!_target.IsTargetReady)
@@ -402,6 +487,7 @@ public sealed class Direct2DImageRenderHost : IDisposable
         _viewport = null;
         _transientScene = null;
         _handleScene = null;
+        _pendingTextMeasurementIds.Clear();
         _disposed = true;
     }
 

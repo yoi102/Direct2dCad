@@ -13,11 +13,19 @@ using DXGIFormat = Vortice.DXGI.Format;
 
 namespace Direct2dCad.Rendering.Direct2D;
 
-internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) : IDisposable
+internal sealed class Direct2DOleRenderer(
+    Direct2DResourceCache resourceCache,
+    Direct2DEntityOrderCache entityOrderCache) : IDisposable
 {
     private const int TilePixelSide = 1024;
     private const int MaxLogicalPixelSide = 1_048_576;
     private readonly Direct2DOleBitmapCache _cache = new();
+    private readonly Dictionary<EntityId, byte[]> _entityOleBytes = [];
+    private readonly HashSet<Direct2DOleRenderKey> _activeTransientKeys = [];
+    private readonly HashSet<Direct2DOleRenderKey> _cachedTransientKeys = [];
+    private readonly List<Direct2DOleRenderKey> _staleTransientKeys = [];
+    private CadTransientScene? _reconciledTransientScene;
+    private long _reconciledTransientVersion = -1;
     private bool _suppressDrawDuringFrame;
 
     public Direct2DOleDrawCallback? DrawCallback { get; set; }
@@ -36,10 +44,23 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
 
         var transform = CreateViewportTransform(viewport);
         foreach (var ole in Direct2DEntityVisibility
-                     .Enumerate(document, viewport, options, resourceCache)
-                     .OfType<CadOleObject>())
+                     .Enumerate(
+                         document,
+                         viewport,
+                         options,
+                         resourceCache,
+                         entityOrderCache.GetOrderedOleEntities(
+                             document,
+                             options.ActiveOwnerBlockId))
+                     .Cast<CadOleObject>())
         {
-            PrepareTiles(context, Direct2DOleRenderKey.ForEntity(ole.Id), ole.Bounds, ole.CopyOleBytes(), viewport, transform);
+            PrepareTiles(
+                context,
+                Direct2DOleRenderKey.ForEntity(ole.Id),
+                ole.Bounds,
+                GetEntityBytes(ole),
+                viewport,
+                transform);
         }
 
         if (transientScene is not null)
@@ -58,7 +79,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
             context,
             Direct2DOleRenderKey.ForEntity(ole.Id),
             ole.Bounds,
-            ole.CopyOleBytes(),
+            GetEntityBytes(ole),
             ole.Opacity,
             viewport,
             allowDraw);
@@ -76,7 +97,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
             context,
             Direct2DOleRenderKey.ForEntity(ole.Id),
             ole.Bounds,
-            ole.CopyOleBytes(),
+            GetEntityBytes(ole),
             viewport,
             transform);
     }
@@ -132,27 +153,49 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
 
     public void ReconcileTransient(CadTransientScene scene)
     {
-        var activeKeys = EnumerateTransientItems(scene.Items)
-            .OfType<CadTransientOleObject>()
-            .Where(item => item.SourceEntityId is null)
-            .Select(item => Direct2DOleRenderKey.ForTransient(item.RenderId))
-            .ToHashSet();
-        foreach (var key in _cache.Keys.Where(key => key.IsTransient).ToArray())
+        if (ReferenceEquals(_reconciledTransientScene, scene) &&
+            _reconciledTransientVersion == scene.Version)
         {
-            if (activeKeys.Contains(key))
-                continue;
+            return;
+        }
+
+        _reconciledTransientScene = scene;
+        _reconciledTransientVersion = scene.Version;
+        _activeTransientKeys.Clear();
+        CollectTransientKeys(scene.Items);
+        _staleTransientKeys.Clear();
+        foreach (var key in _cachedTransientKeys)
+        {
+            if (!_activeTransientKeys.Contains(key))
+                _staleTransientKeys.Add(key);
+        }
+
+        foreach (var key in _staleTransientKeys)
+        {
             _cache.Remove(key);
+            _cachedTransientKeys.Remove(key);
             ReleaseCallback?.Invoke(key);
         }
+
+        _activeTransientKeys.Clear();
     }
 
     public void ClearTransient()
     {
-        foreach (var key in _cache.Keys.Where(key => key.IsTransient).ToArray())
+        _reconciledTransientScene = null;
+        _reconciledTransientVersion = -1;
+        if (_cachedTransientKeys.Count == 0)
+            return;
+
+        _staleTransientKeys.Clear();
+        _staleTransientKeys.AddRange(_cachedTransientKeys);
+
+        foreach (var key in _staleTransientKeys)
         {
             _cache.Remove(key);
             ReleaseCallback?.Invoke(key);
         }
+        _cachedTransientKeys.Clear();
     }
 
     private void PrepareTransientItems(
@@ -191,7 +234,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
                         context,
                         Direct2DOleRenderKey.ForEntity(ole.Id),
                         ole.Bounds.Translate(reference.Offset),
-                        ole.CopyOleBytes(),
+                        GetEntityBytes(ole),
                         viewport,
                         transform);
                     break;
@@ -199,16 +242,20 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
         }
     }
 
-    private static IEnumerable<CadTransientItem> EnumerateTransientItems(IEnumerable<CadTransientItem> items)
+    private void CollectTransientKeys(IReadOnlyList<CadTransientItem> items)
     {
         foreach (var item in items)
         {
-            yield return item;
-            if (item is not CadTransientGroup group)
-                continue;
-
-            foreach (var child in EnumerateTransientItems(group.Items))
-                yield return child;
+            switch (item)
+            {
+                case CadTransientOleObject { SourceEntityId: null } ole:
+                    _activeTransientKeys.Add(
+                        Direct2DOleRenderKey.ForTransient(ole.RenderId));
+                    break;
+                case CadTransientGroup group:
+                    CollectTransientKeys(group.Items);
+                    break;
+            }
         }
     }
 
@@ -230,7 +277,8 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
                 continue;
             }
 
-            if ((change.Kind & CadEntityChangeKind.Appearance) != 0 &&
+            if ((change.Kind &
+                 (CadEntityChangeKind.Appearance | CadEntityChangeKind.EmbeddedData)) != 0 &&
                 document.TryGetEntity(change.EntityId, out var entity) &&
                 entity is CadOleObject)
             {
@@ -239,7 +287,11 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
         }
     }
 
-    public void RemoveEntity(EntityId entityId) => _cache.Remove(Direct2DOleRenderKey.ForEntity(entityId));
+    public void RemoveEntity(EntityId entityId)
+    {
+        _entityOleBytes.Remove(entityId);
+        _cache.Remove(Direct2DOleRenderKey.ForEntity(entityId));
+    }
 
     public void CompleteFrame()
     {
@@ -249,6 +301,12 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
 
     public void Clear()
     {
+        _entityOleBytes.Clear();
+        _activeTransientKeys.Clear();
+        _cachedTransientKeys.Clear();
+        _staleTransientKeys.Clear();
+        _reconciledTransientScene = null;
+        _reconciledTransientVersion = -1;
         _cache.Clear();
         _suppressDrawDuringFrame = false;
     }
@@ -283,7 +341,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
             return;
         }
 
-        _cache.Set(key, replacement);
+        SetCacheEntry(key, replacement);
         active?.Dispose();
     }
 
@@ -313,7 +371,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
                 return;
             }
 
-            _cache.Set(key, initial);
+            SetCacheEntry(key, initial);
             DrawTiles(context, full, initial, tiles, opacity);
             return;
         }
@@ -353,7 +411,7 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
             return;
         }
 
-        _cache.Set(key, replacement);
+        SetCacheEntry(key, replacement);
         DrawTiles(context, full, replacement, replacementTiles, opacity);
         _cache.Retire(active);
     }
@@ -474,18 +532,45 @@ internal sealed class Direct2DOleRenderer(Direct2DResourceCache resourceCache) :
 
     private static RawRectF TransformWorldBoundsToDeviceRect(CadRectD bounds, Matrix3x2 transform)
     {
-        var points = new[]
-        {
+        Span<Vector2> points =
+        [
             Vector2.Transform(new Vector2((float)bounds.MinX, (float)bounds.MaxY), transform),
             Vector2.Transform(new Vector2((float)bounds.MaxX, (float)bounds.MaxY), transform),
             Vector2.Transform(new Vector2((float)bounds.MinX, (float)bounds.MinY), transform),
             Vector2.Transform(new Vector2((float)bounds.MaxX, (float)bounds.MinY), transform)
-        };
-        return new RawRectF(
-            points.Min(point => point.X),
-            points.Min(point => point.Y),
-            points.Max(point => point.X),
-            points.Max(point => point.Y));
+        ];
+        var minX = points[0].X;
+        var minY = points[0].Y;
+        var maxX = minX;
+        var maxY = minY;
+        for (var index = 1; index < points.Length; index++)
+        {
+            minX = Math.Min(minX, points[index].X);
+            minY = Math.Min(minY, points[index].Y);
+            maxX = Math.Max(maxX, points[index].X);
+            maxY = Math.Max(maxY, points[index].Y);
+        }
+
+        return new RawRectF(minX, minY, maxX, maxY);
+    }
+
+    private byte[] GetEntityBytes(CadOleObject ole)
+    {
+        if (_entityOleBytes.TryGetValue(ole.Id, out var bytes))
+            return bytes;
+
+        bytes = ole.CopyOleBytes();
+        _entityOleBytes.Add(ole.Id, bytes);
+        return bytes;
+    }
+
+    private void SetCacheEntry(
+        Direct2DOleRenderKey key,
+        Direct2DOleBitmapCache.Entry entry)
+    {
+        _cache.Set(key, entry);
+        if (key.IsTransient)
+            _cachedTransientKeys.Add(key);
     }
 
     private static (int Width, int Height) ResolveRenderSize(float width, float height)

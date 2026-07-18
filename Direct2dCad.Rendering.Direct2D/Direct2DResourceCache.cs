@@ -5,6 +5,7 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
@@ -69,12 +70,6 @@ internal sealed class Direct2DResourceCache : IDisposable
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(changes);
         ThrowIfDisposed();
-
-        if (changes.AffectsDocumentStructure)
-        {
-            RebuildAll(document);
-            return;
-        }
 
         foreach (var change in changes.EntityChanges)
         {
@@ -195,6 +190,12 @@ internal sealed class Direct2DResourceCache : IDisposable
                                                       pattern is not null:
                         bucket.HatchFillStyle = hatch;
                         bucket.HatchPattern = pattern;
+                        bucket.HatchRenderData = new CadTransientHatchFill(
+                            hatch.ForegroundColor,
+                            hatch.HatchScale,
+                            hatch.HatchAngle,
+                            hatch.HatchOrigin,
+                            pattern.Lines);
                         if (!hatch.ForegroundColor.IsTransparent)
                             bucket.HatchBrushLease = _styleResources.AcquireBrush(hatch.ForegroundColor);
                         break;
@@ -202,7 +203,16 @@ internal sealed class Direct2DResourceCache : IDisposable
             }
 
             if (entity is CadText text)
+            {
                 bucket.TextFormatLease = _textFormatResources.Acquire(document, text);
+                if (WriteFactory is not null && bucket.TextFormat is not null)
+                {
+                    bucket.TextLayout = Direct2DTextServices.CreateTextLayout(
+                        WriteFactory,
+                        text.Text,
+                        bucket.TextFormat);
+                }
+            }
 
             if (entity is CadImage image)
             {
@@ -563,8 +573,10 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1Brush? HatchBrush => HatchBrushLease?.Resource;
         public CadHatchFillStyle? HatchFillStyle { get; set; }
         public CadHatchPatternDefinition? HatchPattern { get; set; }
+        public CadTransientHatchFill? HatchRenderData { get; set; }
         internal ResourceLease<IDWriteTextFormat>? TextFormatLease { get; set; }
         public IDWriteTextFormat? TextFormat => TextFormatLease?.Resource;
+        public IDWriteTextLayout? TextLayout { get; set; }
         internal ResourceLease<ID2D1Bitmap>? BitmapLease { get; set; }
         public ID2D1Bitmap? Bitmap => BitmapLease?.Resource;
         public ID2D1BitmapBrush? BitmapBrush { get; set; }
@@ -577,6 +589,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             FillBrush is null &&
             HatchBrush is null &&
             TextFormat is null &&
+            TextLayout is null &&
             Bitmap is null &&
             BitmapBrush is null;
 
@@ -592,6 +605,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             StrokeStyleLease?.Dispose();
             FillBrushLease?.Dispose();
             HatchBrushLease?.Dispose();
+            TextLayout?.Dispose();
             TextFormatLease?.Dispose();
             BitmapBrush?.Dispose();
             BitmapLease?.Dispose();
@@ -602,6 +616,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             HatchBrushLease = null;
             HatchFillStyle = null;
             HatchPattern = null;
+            HatchRenderData = null;
+            TextLayout = null;
             TextFormatLease = null;
             BitmapBrush = null;
             BitmapLease = null;

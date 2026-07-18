@@ -1,4 +1,5 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Indexing;
@@ -14,4 +15,6 @@ public interface ICadSpatialIndex
     IReadOnlyList<EntityId> Query(CadRectD area);
 
     void Clear();
+
+    void Rebuild(CadDocument document);
 }

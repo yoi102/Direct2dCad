@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels;
 
@@ -7,6 +8,10 @@ namespace Direct2dCad.wpf.Controls;
 
 public partial class CadCanvas : IDisposable
 {
+    private CadPointD _pendingPointerScreen;
+    private bool _pointerMovePending;
+    private bool _pointerRenderScheduled;
+
     public CadCanvas()
     {
         InitializeComponent();
@@ -109,23 +114,26 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
+        var screen = ToCadPoint(e.GetPosition(this));
+        FlushPendingPointerMove(screen);
+
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
         {
             ApplyInteractionResult(
-                DocumentViewModel.HandleDoubleClick(ToCadPoint(e.GetPosition(this))),
+                DocumentViewModel.HandleDoubleClick(screen),
                 e);
             if (e.Handled)
                 return;
 
             ApplyInteractionResult(
-                DocumentViewModel.OpenOleObjectAt(ToCadPoint(e.GetPosition(this))),
+                DocumentViewModel.OpenOleObjectAt(screen),
                 e);
             if (e.Handled)
                 return;
         }
 
         var result = DocumentViewModel.PointerDown(
-            ToCadPoint(e.GetPosition(this)),
+            screen,
             ToPointerButton(e.ChangedButton),
             forcePan: false,
             modifiers: ToInputModifiers(Keyboard.Modifiers));
@@ -138,8 +146,10 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
-        var result = DocumentViewModel.PointerMove(ToCadPoint(e.GetPosition(this)));
-        ApplyInteractionResult(result, e);
+        _pendingPointerScreen = ToCadPoint(e.GetPosition(this));
+        _pointerMovePending = true;
+        SchedulePointerMove();
+        e.Handled = true;
     }
 
     private void CadCanvas_MouseUp(object sender, MouseButtonEventArgs e)
@@ -147,8 +157,10 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
+        var screen = ToCadPoint(e.GetPosition(this));
+        FlushPendingPointerMove(screen);
         var result = DocumentViewModel.PointerUp(
-            ToCadPoint(e.GetPosition(this)),
+            screen,
             ToPointerButton(e.ChangedButton));
 
         ApplyInteractionResult(result, e);
@@ -159,7 +171,9 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
-        var result = DocumentViewModel.MouseWheel(ToCadPoint(e.GetPosition(this)), e.Delta);
+        var screen = ToCadPoint(e.GetPosition(this));
+        FlushPendingPointerMove(screen);
+        var result = DocumentViewModel.MouseWheel(screen, e.Delta);
         ApplyInteractionResult(result, e);
     }
 
@@ -253,6 +267,14 @@ public partial class CadCanvas : IDisposable
 
     private void ApplyInteractionResult(CadCanvasInteractionResult result, RoutedEventArgs e)
     {
+        ApplyInteractionResult(result);
+
+        if (result.Handled)
+            e.Handled = true;
+    }
+
+    private void ApplyInteractionResult(CadCanvasInteractionResult result)
+    {
         if (result.CaptureMouse)
             CaptureMouse();
 
@@ -261,9 +283,44 @@ public partial class CadCanvas : IDisposable
 
         if (result.Cursor is { } cursor)
             UpdateCursor(cursor);
+    }
 
-        if (result.Handled)
-            e.Handled = true;
+    private void SchedulePointerMove()
+    {
+        if (_pointerRenderScheduled)
+            return;
+
+        _pointerRenderScheduled = true;
+        CompositionTarget.Rendering += OnCompositionTargetRendering;
+    }
+
+    private void OnCompositionTargetRendering(object? sender, EventArgs e)
+    {
+        UnschedulePointerMove();
+        FlushPendingPointerMove();
+    }
+
+    private void FlushPendingPointerMove(CadPointD? latestScreen = null)
+    {
+        UnschedulePointerMove();
+        if (!_pointerMovePending)
+            return;
+
+        if (latestScreen is { } screen)
+            _pendingPointerScreen = screen;
+
+        _pointerMovePending = false;
+        if (DocumentViewModel is { } viewModel)
+            ApplyInteractionResult(viewModel.PointerMove(_pendingPointerScreen));
+    }
+
+    private void UnschedulePointerMove()
+    {
+        if (!_pointerRenderScheduled)
+            return;
+
+        CompositionTarget.Rendering -= OnCompositionTargetRendering;
+        _pointerRenderScheduled = false;
     }
 
     private void UpdateCursor(CadCanvasCursorKind cursor)
@@ -301,6 +358,7 @@ public partial class CadCanvas : IDisposable
 
     public void Dispose()
     {
+        UnschedulePointerMove();
         d3d11ImageSource.Dispose();
     }
 }

@@ -10,6 +10,7 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
 {
     private readonly Dictionary<Direct2DTextFormatKey, Entry> _entries = [];
     private readonly HashSet<Direct2DTextFormatKey> _usedThisFrame = [];
+    private readonly HashSet<Direct2DTextFormatKey> _unleasedEntries = [];
     private IDWriteFactory? _writeFactory;
     private int _frameDepth;
     private bool _disposed;
@@ -34,13 +35,15 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
         if (_frameDepth == 0 || --_frameDepth > 0)
             return;
 
-        foreach (var key in _entries
-                     .Where(pair => pair.Value.ReferenceCount == 0 && !_usedThisFrame.Contains(pair.Key))
-                     .Select(pair => pair.Key)
-                     .ToArray())
+        _unleasedEntries.RemoveWhere(key =>
         {
-            RemoveEntry(key);
-        }
+            if (_usedThisFrame.Contains(key))
+                return false;
+
+            if (_entries.Remove(key, out var entry))
+                entry.Format.Dispose();
+            return true;
+        });
     }
 
     public ResourceLease<IDWriteTextFormat>? Acquire(
@@ -62,6 +65,7 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
         var key = Direct2DTextServices.CreateTextFormatKey(document, textStyleId, height);
         var entry = GetOrCreate(key);
         entry.ReferenceCount++;
+        _unleasedEntries.Remove(key);
         return new ResourceLease<IDWriteTextFormat>(entry.Format, () => Release(key));
     }
 
@@ -100,6 +104,7 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
 
         entry = new Entry(Direct2DTextServices.CreateTextFormat(_writeFactory!, key));
         _entries.Add(key, entry);
+        _unleasedEntries.Add(key);
         return entry;
     }
 
@@ -110,12 +115,19 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
 
         if (entry.ReferenceCount > 0)
             entry.ReferenceCount--;
-        if (entry.ReferenceCount == 0 && _frameDepth == 0)
+        if (entry.ReferenceCount != 0)
+            return;
+
+        if (_frameDepth == 0)
             RemoveEntry(key);
+        else
+            _unleasedEntries.Add(key);
     }
 
     private void RemoveEntry(Direct2DTextFormatKey key)
     {
+        _unleasedEntries.Remove(key);
+        _usedThisFrame.Remove(key);
         if (_entries.Remove(key, out var entry))
             entry.Format.Dispose();
     }
@@ -126,6 +138,7 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
             entry.Format.Dispose();
         _entries.Clear();
         _usedThisFrame.Clear();
+        _unleasedEntries.Clear();
         _frameDepth = 0;
     }
 

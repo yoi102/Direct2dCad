@@ -8,6 +8,7 @@ using Vortice.Direct3D11;
 using Vortice.Direct3D9;
 using Vortice.DirectWrite;
 using Vortice.DXGI;
+using Vortice.Mathematics;
 
 using D3D9Api = Vortice.Direct3D9.D3D9;
 using D3D9Format = Vortice.Direct3D9.Format;
@@ -194,6 +195,35 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             {
                 if (_d3dContext is null || _d3d11RenderTarget is null || _d3d11BackBuffer is null)
                     return;
+
+                if (dirtyRects is { Count: > 0 })
+                {
+                    var copiedAnyRegion = false;
+                    foreach (var dirtyRect in dirtyRects)
+                    {
+                        var left = Math.Clamp(dirtyRect.X, 0, _width);
+                        var top = Math.Clamp(dirtyRect.Y, 0, _height);
+                        var right = Math.Clamp(dirtyRect.X + dirtyRect.Width, left, _width);
+                        var bottom = Math.Clamp(dirtyRect.Y + dirtyRect.Height, top, _height);
+                        if (right <= left || bottom <= top)
+                            continue;
+
+                        _d3dContext.CopySubresourceRegion(
+                            _d3d11RenderTarget,
+                            0,
+                            (uint)left,
+                            (uint)top,
+                            0,
+                            _d3d11BackBuffer,
+                            0,
+                            new Box(left, top, 0, right, bottom, 1));
+                        copiedAnyRegion = true;
+                    }
+
+                    if (copiedAnyRegion)
+                        _d3dContext.Flush();
+                    return;
+                }
 
                 _d3dContext.CopyResource(_d3d11RenderTarget, _d3d11BackBuffer);
                 _d3dContext.Flush();

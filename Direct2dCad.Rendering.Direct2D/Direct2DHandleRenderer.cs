@@ -62,13 +62,13 @@ internal sealed class Direct2DHandleRenderer(Direct2DStyleResourceCache styleRes
         ID2D1Brush strokeBrush,
         float strokeWidth)
     {
-        var points = new[]
-        {
+        Span<Vector2> points =
+        [
             new Vector2((float)bounds.Center.X, (float)bounds.MinY),
             new Vector2((float)bounds.MaxX, (float)bounds.Center.Y),
             new Vector2((float)bounds.Center.X, (float)bounds.MaxY),
             new Vector2((float)bounds.MinX, (float)bounds.Center.Y)
-        };
+        ];
 
         if (fillBrush is not null && styleResources.GetUnitDiamondGeometry(factory) is { } geometry)
         {

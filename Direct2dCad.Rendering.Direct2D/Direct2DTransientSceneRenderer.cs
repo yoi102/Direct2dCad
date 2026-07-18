@@ -22,7 +22,10 @@ internal sealed class Direct2DTransientSceneRenderer(
     {
         if (scene is null || scene.IsEmpty)
         {
-            imageCache.Clear();
+            if (scene is not null)
+                imageCache.Reconcile(scene);
+            else
+                imageCache.Clear();
             return;
         }
 

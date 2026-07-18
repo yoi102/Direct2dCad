@@ -10,8 +10,11 @@ namespace Direct2dCad.Rendering.Direct2D;
 internal sealed class Direct2DBlockReferenceRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DEntityRenderer entityRenderer,
-    Direct2DOleRenderer oleRenderer)
+    Direct2DOleRenderer oleRenderer,
+    Direct2DEntityOrderCache entityOrderCache)
 {
+    private readonly HashSet<BlockId> _visitedBlocks = [];
+
     public void Draw(
         ID2D1DeviceContext context,
         CadDocument document,
@@ -19,6 +22,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
         CadBlockReference reference,
         CadRenderOptions options)
     {
+        _visitedBlocks.Clear();
         Draw(
             context,
             document,
@@ -29,7 +33,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
             reference.ScaleX,
             reference.ScaleY,
             options,
-            []);
+            _visitedBlocks);
     }
 
     public void Draw(
@@ -43,6 +47,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
         double scaleY,
         CadRenderOptions options)
     {
+        _visitedBlocks.Clear();
         Draw(
             context,
             document,
@@ -53,7 +58,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
             scaleX,
             scaleY,
             options,
-            []);
+            _visitedBlocks);
     }
 
     private void Draw(
@@ -84,12 +89,11 @@ internal sealed class Direct2DBlockReferenceRenderer(
             scaleY) * previousTransform;
         try
         {
-            foreach (var child in document.GetEntitiesInBlock(definitionBlockId)
-                         .Where(entity => IsVisible(document, entity, options))
-                         .OrderBy(entity => document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
-                         .ThenBy(entity => entity.ZIndex)
-                         .ThenBy(entity => entity.Id.Value))
+            foreach (var child in entityOrderCache.GetOrderedEntities(document, definitionBlockId))
             {
+                if (!IsVisible(document, child, options))
+                    continue;
+
                 if (child is CadBlockReference nested)
                 {
                     Draw(

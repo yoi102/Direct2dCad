@@ -12,6 +12,12 @@ internal sealed class Direct2DTransientImageCache : IDisposable
 {
     private readonly Dictionary<EntityId, EntityBitmapEntry> _entityBitmaps = [];
     private readonly Dictionary<byte[], ID2D1Bitmap> _pixelBitmaps = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<EntityId> _activeEntityImages = [];
+    private readonly HashSet<byte[]> _activePixelImages = new(ReferenceEqualityComparer.Instance);
+    private readonly List<EntityId> _staleEntityIds = [];
+    private readonly List<byte[]> _stalePixelSources = [];
+    private CadTransientScene? _reconciledScene;
+    private long _reconciledVersion = -1;
 
     public ID2D1Bitmap? GetOrCreate(ID2D1DeviceContext? deviceContext, CadTransientImage image)
     {
@@ -70,44 +76,65 @@ internal sealed class Direct2DTransientImageCache : IDisposable
 
     public void Reconcile(CadTransientScene scene)
     {
-        var transientItems = EnumerateItems(scene.Items).ToArray();
-        var activeEntityImages = transientItems
-            .OfType<CadTransientImage>()
-            .Where(image => image.SourceEntityId is not null)
-            .Select(image => image.SourceEntityId!.Value)
-            .ToHashSet();
-        var activeImages = transientItems
-            .OfType<CadTransientImage>()
-            .Where(image => image.SourceEntityId is null)
-            .Select(image => image.Pixels)
-            .ToHashSet(ReferenceEqualityComparer.Instance);
-
-        if (activeEntityImages.Count == 0 && activeImages.Count == 0)
+        if (ReferenceEquals(_reconciledScene, scene) &&
+            _reconciledVersion == scene.Version)
         {
-            Clear();
             return;
         }
 
-        foreach (var entityId in _entityBitmaps.Keys.ToArray())
-        {
-            if (activeEntityImages.Contains(entityId))
-                continue;
+        _reconciledScene = scene;
+        _reconciledVersion = scene.Version;
+        if (_entityBitmaps.Count == 0 && _pixelBitmaps.Count == 0)
+            return;
 
+        _activeEntityImages.Clear();
+        _activePixelImages.Clear();
+        CollectActiveImages(scene.Items);
+
+        if (_activeEntityImages.Count == 0 && _activePixelImages.Count == 0)
+        {
+            ClearBitmaps();
+            return;
+        }
+
+        _staleEntityIds.Clear();
+        foreach (var entityId in _entityBitmaps.Keys)
+        {
+            if (!_activeEntityImages.Contains(entityId))
+                _staleEntityIds.Add(entityId);
+        }
+        foreach (var entityId in _staleEntityIds)
+        {
             _entityBitmaps[entityId].Bitmap.Dispose();
             _entityBitmaps.Remove(entityId);
         }
 
-        foreach (var pixels in _pixelBitmaps.Keys.ToArray())
+        _stalePixelSources.Clear();
+        foreach (var pixels in _pixelBitmaps.Keys)
         {
-            if (activeImages.Contains(pixels))
-                continue;
-
+            if (!_activePixelImages.Contains(pixels))
+                _stalePixelSources.Add(pixels);
+        }
+        foreach (var pixels in _stalePixelSources)
+        {
             _pixelBitmaps[pixels].Dispose();
             _pixelBitmaps.Remove(pixels);
         }
+
+        _activeEntityImages.Clear();
+        _activePixelImages.Clear();
     }
 
     public void Clear()
+    {
+        ClearBitmaps();
+        _reconciledScene = null;
+        _reconciledVersion = -1;
+    }
+
+    public void Dispose() => Clear();
+
+    private void ClearBitmaps()
     {
         foreach (var entry in _entityBitmaps.Values)
             entry.Bitmap.Dispose();
@@ -117,20 +144,28 @@ internal sealed class Direct2DTransientImageCache : IDisposable
 
         _entityBitmaps.Clear();
         _pixelBitmaps.Clear();
+        _activeEntityImages.Clear();
+        _activePixelImages.Clear();
+        _staleEntityIds.Clear();
+        _stalePixelSources.Clear();
     }
 
-    public void Dispose() => Clear();
-
-    private static IEnumerable<CadTransientItem> EnumerateItems(IEnumerable<CadTransientItem> items)
+    private void CollectActiveImages(IReadOnlyList<CadTransientItem> items)
     {
         foreach (var item in items)
         {
-            yield return item;
-            if (item is not CadTransientGroup group)
-                continue;
-
-            foreach (var child in EnumerateItems(group.Items))
-                yield return child;
+            switch (item)
+            {
+                case CadTransientImage { SourceEntityId: { } entityId }:
+                    _activeEntityImages.Add(entityId);
+                    break;
+                case CadTransientImage image:
+                    _activePixelImages.Add(image.Pixels);
+                    break;
+                case CadTransientGroup group:
+                    CollectActiveImages(group.Items);
+                    break;
+            }
         }
     }
 

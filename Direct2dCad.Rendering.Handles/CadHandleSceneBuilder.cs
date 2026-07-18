@@ -17,12 +17,23 @@ public sealed class CadHandleSceneBuilder
 
         options ??= CadHandleSceneBuildOptions.Default;
 
-        var items = new List<CadHandleItem>();
+        selectedEntityIds.TryGetNonEnumeratedCount(out var selectedEntityCount);
+        var items = new List<CadHandleItem>(selectedEntityCount);
+        var selectedEntities = new List<CadEntity>(selectedEntityCount);
         foreach (var entityId in selectedEntityIds)
         {
             if (!TryGetSelectableEntity(document, entityId, out var entity))
                 continue;
 
+            selectedEntities.Add(entity);
+        }
+
+        var includeIndividualGrips =
+            options.IncludeGripHandles &&
+            selectedEntities.Count <= Math.Max(0, options.MaximumIndividualGripEntityCount);
+
+        foreach (var entity in selectedEntities)
+        {
             if (options.IncludeSelectionOutline)
             {
                 items.Add(new CadSelectionEntityReference(
@@ -31,14 +42,52 @@ public sealed class CadHandleSceneBuilder
                     options.SelectionOutlineStyle));
             }
 
-            if (options.IncludeGripHandles &&
+            if (includeIndividualGrips &&
                 (!entity.IsLocked || options.IncludeLockedEntityGripHandles))
             {
                 AddEntityGripHandles(items, document, entity, options.GripStyle, options.RotationHandleOffset);
             }
         }
 
+        if (options.IncludeGripHandles &&
+            !includeIndividualGrips &&
+            options.IncludeAggregateMoveGripForLargeSelection)
+        {
+            AddAggregateMoveGrip(items, selectedEntities, options);
+        }
+
         return items;
+    }
+
+    private static void AddAggregateMoveGrip(
+        List<CadHandleItem> items,
+        IReadOnlyList<CadEntity> selectedEntities,
+        CadHandleSceneBuildOptions options)
+    {
+        CadEntity? representative = null;
+        var bounds = CadRectD.Empty;
+
+        foreach (var entity in selectedEntities)
+        {
+            if ((entity.IsLocked && !options.IncludeLockedEntityGripHandles) ||
+                !SupportsCenterGrip(entity))
+            {
+                continue;
+            }
+
+            representative ??= entity;
+            bounds = bounds.Union(entity.Bounds);
+        }
+
+        if (representative is null || bounds.IsEmpty)
+            return;
+
+        AddGrip(
+            items,
+            representative.Id,
+            bounds.Center,
+            CadHandleType.Center,
+            options.GripStyle);
     }
 
     public static bool SupportsCenterGrip(CadEntity entity)

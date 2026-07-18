@@ -15,6 +15,8 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     private readonly Dictionary<StrokeStyleKey, ResourceEntry<ID2D1StrokeStyle>> _strokeStyles = [];
     private readonly HashSet<CadColor> _usedBrushes = [];
     private readonly HashSet<StrokeStyleKey> _usedStrokeStyles = [];
+    private readonly HashSet<CadColor> _unleasedBrushes = [];
+    private readonly HashSet<StrokeStyleKey> _unleasedStrokeStyles = [];
     private ID2D1DeviceContext? _deviceContext;
     private ID2D1Factory? _factory;
     private ID2D1PathGeometry? _unitDiamondGeometry;
@@ -65,6 +67,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
 
         var entry = GetOrCreateBrush(color);
         entry.ReferenceCount++;
+        _unleasedBrushes.Remove(color);
         return new ResourceLease<ID2D1SolidColorBrush>(entry.Resource, () => ReleaseBrush(color));
     }
 
@@ -112,6 +115,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             ToD2DDashStyle(style.DashStyle));
         var entry = GetOrCreateStrokeStyle(key);
         entry.ReferenceCount++;
+        _unleasedStrokeStyles.Remove(key);
         return new ResourceLease<ID2D1StrokeStyle>(entry.Resource, () => ReleaseStrokeStyle(key));
     }
 
@@ -184,6 +188,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             color.A / 255.0f));
         entry = new ResourceEntry<ID2D1SolidColorBrush>(brush);
         _brushes.Add(color, entry);
+        _unleasedBrushes.Add(color);
         return entry;
     }
 
@@ -202,6 +207,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         });
         entry = new ResourceEntry<ID2D1StrokeStyle>(strokeStyle);
         _strokeStyles.Add(key, entry);
+        _unleasedStrokeStyles.Add(key);
         return entry;
     }
 
@@ -212,8 +218,13 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
 
         if (entry.ReferenceCount > 0)
             entry.ReferenceCount--;
-        if (entry.ReferenceCount == 0 && _frameDepth == 0)
+        if (entry.ReferenceCount != 0)
+            return;
+
+        if (_frameDepth == 0)
             RemoveBrush(color);
+        else
+            _unleasedBrushes.Add(color);
     }
 
     private void ReleaseStrokeStyle(StrokeStyleKey key)
@@ -223,37 +234,50 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
 
         if (entry.ReferenceCount > 0)
             entry.ReferenceCount--;
-        if (entry.ReferenceCount == 0 && _frameDepth == 0)
+        if (entry.ReferenceCount != 0)
+            return;
+
+        if (_frameDepth == 0)
             RemoveStrokeStyle(key);
+        else
+            _unleasedStrokeStyles.Add(key);
     }
 
     private void RemoveUnusedResources()
     {
-        foreach (var color in _brushes
-                     .Where(pair => pair.Value.ReferenceCount == 0 && !_usedBrushes.Contains(pair.Key))
-                     .Select(pair => pair.Key)
-                     .ToArray())
+        _unleasedBrushes.RemoveWhere(color =>
         {
-            RemoveBrush(color);
-        }
+            if (_usedBrushes.Contains(color))
+                return false;
 
-        foreach (var key in _strokeStyles
-                     .Where(pair => pair.Value.ReferenceCount == 0 && !_usedStrokeStyles.Contains(pair.Key))
-                     .Select(pair => pair.Key)
-                     .ToArray())
+            if (_brushes.Remove(color, out var entry))
+                entry.Resource.Dispose();
+            return true;
+        });
+
+        _unleasedStrokeStyles.RemoveWhere(key =>
         {
-            RemoveStrokeStyle(key);
-        }
+            if (_usedStrokeStyles.Contains(key))
+                return false;
+
+            if (_strokeStyles.Remove(key, out var entry))
+                entry.Resource.Dispose();
+            return true;
+        });
     }
 
     private void RemoveBrush(CadColor color)
     {
+        _unleasedBrushes.Remove(color);
+        _usedBrushes.Remove(color);
         if (_brushes.Remove(color, out var entry))
             entry.Resource.Dispose();
     }
 
     private void RemoveStrokeStyle(StrokeStyleKey key)
     {
+        _unleasedStrokeStyles.Remove(key);
+        _usedStrokeStyles.Remove(key);
         if (_strokeStyles.Remove(key, out var entry))
             entry.Resource.Dispose();
     }
@@ -282,6 +306,8 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         ClearFactoryResources();
         _usedBrushes.Clear();
         _usedStrokeStyles.Clear();
+        _unleasedBrushes.Clear();
+        _unleasedStrokeStyles.Clear();
         _deviceContext = null;
         _factory = null;
         _frameDepth = 0;
@@ -292,6 +318,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         foreach (var entry in _brushes.Values)
             entry.Resource.Dispose();
         _brushes.Clear();
+        _unleasedBrushes.Clear();
     }
 
     private void ClearFactoryResources()
@@ -299,6 +326,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         foreach (var entry in _strokeStyles.Values)
             entry.Resource.Dispose();
         _strokeStyles.Clear();
+        _unleasedStrokeStyles.Clear();
         _unitDiamondGeometry?.Dispose();
         _unitDiamondGeometry = null;
     }

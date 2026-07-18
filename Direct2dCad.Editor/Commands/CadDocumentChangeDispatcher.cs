@@ -117,17 +117,6 @@ public sealed class CadDocumentChangeDispatcher
         if (_spatialIndex is null)
             return;
 
-        if (result.AffectsDocumentStructure)
-        {
-            _spatialIndex.Clear();
-            foreach (var entity in _document.Entities.Values)
-            {
-                if (!entity.IsErased && entity.IsVisible)
-                    _spatialIndex.Update(entity.Id, entity.Bounds);
-            }
-            return;
-        }
-
         foreach (var change in result.EntityChanges)
         {
             if (!_document.TryGetEntity(change.EntityId, out var entity) || entity is null)

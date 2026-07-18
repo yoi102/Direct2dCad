@@ -30,9 +30,11 @@ public sealed class SetLayerStateCommand : ICadCommand
         ArgumentNullException.ThrowIfNull(document);
 
         var layer = document.GetLayer(_layerId);
-        _previousState ??= LayerState.From(layer);
-        Apply(layer, new LayerState(_isVisible, _isLocked, _isFrozen));
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        var current = LayerState.From(layer);
+        _previousState ??= current;
+        var target = new LayerState(_isVisible, _isLocked, _isFrozen);
+        Apply(layer, target);
+        return CreateChangeSet(document, current, target);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -42,8 +44,28 @@ public sealed class SetLayerStateCommand : ICadCommand
         if (_previousState is not { } previousState)
             return CadDocumentChangeSet.Empty;
 
-        Apply(document.GetLayer(_layerId), previousState);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        var layer = document.GetLayer(_layerId);
+        var current = LayerState.From(layer);
+        Apply(layer, previousState);
+        return CreateChangeSet(document, current, previousState);
+    }
+
+    private CadDocumentChangeSet CreateChangeSet(
+        CadDocument document,
+        LayerState previous,
+        LayerState current)
+    {
+        if (previous.IsVisible == current.IsVisible &&
+            previous.IsFrozen == current.IsFrozen)
+        {
+            return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        }
+
+        return CadDocumentChangeSet
+            .ForEntities(
+                document.GetEntityIdsOnLayer(_layerId),
+                CadEntityChangeKind.Appearance)
+            .WithDocumentStructureChanged();
     }
 
     private static void Apply(CadLayer layer, LayerState state)

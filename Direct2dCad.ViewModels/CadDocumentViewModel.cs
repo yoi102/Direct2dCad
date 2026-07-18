@@ -460,14 +460,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         {
             _gripDrag.UpdatePointer(ScreenToSnappedWorld, screen);
             if (requiresFullRender)
-                RequestRender();
+                RequestRender(CadRenderInvalidation.Full, updateHandleScene: true);
             else
-                RequestOverlayRender();
+                RequestOverlayRender(updateHandleScene: true);
             return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Hand);
         }
 
         if (requiresFullRender)
-            RequestRender();
+            RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
         else
             RequestOverlayRender();
         return CadCanvasInteractionResult.HandledOnly;
@@ -547,7 +547,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestRender(
             CadRenderInvalidation.Full,
             drawGripHandles: true,
-            updateHandleScene: true);
+            updateHandleScene:
+                CadEditor.Selection.EntityIds.Count <=
+                CadHandleSceneBuildOptions.DefaultMaximumIndividualGripEntityCount);
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -1260,14 +1262,16 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestRender(CadRenderInvalidation.Full);
     }
 
-    private void RequestOverlayRender()
+    private void RequestOverlayRender(bool updateHandleScene = false)
     {
         if (IsLayoutViewportActive)
         {
-            RequestRender(CadRenderInvalidation.Full);
+            RequestRender(CadRenderInvalidation.Full, updateHandleScene: updateHandleScene);
             return;
         }
-        RequestRender(CadRenderInvalidation.FromScreenRect(default));
+        RequestRender(
+            CadRenderInvalidation.FromScreenRect(default),
+            updateHandleScene: updateHandleScene);
     }
 
     private void RequestRender(
@@ -1496,7 +1500,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             DrawGripHandles = drawGripHandles,
             IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
-            HiddenEntityIds = _gripDrag.ResolveHiddenEntityIds(CadEditor).ToHashSet()
+            EntityBoundsQuery = CadEditor.SpatialIndex.Query,
+            HiddenEntityIds = _gripDrag.IsActive
+                ? _gripDrag.ResolveHiddenEntityIds(CadEditor).ToHashSet()
+                : CadRenderOptions.NoHiddenEntities
         };
     }
 
@@ -1749,6 +1756,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void AddGripDragPreview(List<CadTransientItem> items)
     {
+        if (!_gripDrag.IsActive)
+            return;
+
         CreateGripDragPreviewBuilder().AddPreview(items, _gripDrag.ActiveDrag);
     }
 
@@ -1775,7 +1785,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadCanvasInteractionResult KeepActiveGripDragAfterRelease(CadPointD screen)
     {
         _gripDrag.UpdatePointer(ScreenToSnappedWorld, screen);
-        RequestOverlayRender();
+        RequestOverlayRender(updateHandleScene: true);
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
@@ -1789,11 +1799,17 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void AddPastePreview(List<CadTransientItem> items, CadPointD mouseWorld)
     {
+        if (!_paste.IsPreviewActive)
+            return;
+
         _paste.AddPreview(CreateClipboardInteractionService(), items, mouseWorld, PasteTargetLayerId);
     }
 
     private void AddSelectionWindowPreview(List<CadTransientItem> items, CadPointD mousePoint)
     {
+        if (!_selectionDrag.IsDragging)
+            return;
+
         _selectionDrag.AddPreview(CreateSelectionInteractionService(), items, mousePoint);
     }
 
@@ -2006,6 +2022,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void AddDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
     {
+        if (CadCanvasToolMode is
+            CadCanvasToolMode.Select or
+            CadCanvasToolMode.InsertBlock or
+            CadCanvasToolMode.LayoutViewport)
+        {
+            return;
+        }
+
         CreateDrawingPreviewDispatcher().AddPreview(items, mouseWorld);
     }
 

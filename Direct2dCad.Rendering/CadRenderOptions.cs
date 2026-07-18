@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Geometry;
 
@@ -5,6 +6,9 @@ namespace Direct2dCad.Rendering;
 
 public sealed class CadRenderOptions
 {
+    public static IReadOnlySet<EntityId> NoHiddenEntities { get; } =
+        FrozenSet<EntityId>.Empty;
+
     public BlockId ActiveOwnerBlockId { get; init; } = BlockId.ModelSpace;
     public LayoutId? ActiveLayoutId { get; init; }
     public LayoutViewportId? ActiveLayoutViewportId { get; init; }
@@ -15,6 +19,7 @@ public sealed class CadRenderOptions
     public bool IsTextAntialiasingEnabled { get; init; } = true;
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;
-    public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = new HashSet<EntityId>();
+    public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = NoHiddenEntities;
     public CadRectD? DirtyWorldBounds { get; init; }
+    public Func<CadRectD, IReadOnlyList<EntityId>>? EntityBoundsQuery { get; init; }
 }
