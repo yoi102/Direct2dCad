@@ -18,7 +18,8 @@ internal sealed class Direct2DSelectionRenderer(
     Direct2DTransientRenderer transientRenderer,
     Direct2DStyleResourceCache styleResources,
     Direct2DHandleRenderer handleRenderer,
-    Direct2DEntityOrderCache entityOrderCache)
+    Direct2DEntityOrderCache entityOrderCache,
+    Direct2DRenderStatisticsCollector statistics)
 {
     private const byte SelectedSolidFillMaximumAlpha = 64;
     private const int SpatiallyIndexedSelectionThreshold = 256;
@@ -190,6 +191,8 @@ internal sealed class Direct2DSelectionRenderer(
     {
         if (!IntersectsRenderBounds(entity, offset, viewport, dirtyWorldBounds))
             return;
+
+        statistics.RecordSelectionEntity();
 
         var detail = Direct2DEntityLevelOfDetail.ResolveSelection(
             entity,
@@ -402,6 +405,8 @@ internal sealed class Direct2DSelectionRenderer(
         if (resources?.Geometry is null)
             return false;
 
+        if (options.IsLevelOfDetailEnabled)
+            resourceCache.EnsureLevelOfDetailGeometries(entity, resources);
         var geometry = Direct2DEntityLevelOfDetail.ResolveGeometry(
             entity,
             resources,
@@ -413,10 +418,24 @@ internal sealed class Direct2DSelectionRenderer(
         var brush = styleResources.GetBrush(context, style.StrokeColor);
         var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
         var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
+        var strokeWidthChangesWithScale = style.KeepStrokeWidthScreenConstant ||
+                                          Math.Abs(strokeWidth - style.StrokeWidth) >
+                                          Math.Max(1e-6, Math.Abs(style.StrokeWidth) * 1e-5);
         if (offset == CadVectorD.Zero)
         {
-            DrawCachedFill(context, geometry, entity.Bounds, style, viewport, options);
-            context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
+            DrawCachedFill(context, entity, resources, geometry, entity.Bounds, style, viewport, options);
+            if (!resourceCache.TryDrawStrokedGeometry(
+                    context,
+                    entity,
+                    resources,
+                    geometry,
+                    brush,
+                    strokeWidth,
+                    strokeStyle,
+                    strokeWidthChangesWithScale))
+            {
+                context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
+            }
             return true;
         }
 
@@ -426,8 +445,19 @@ internal sealed class Direct2DSelectionRenderer(
             (float)offset.Y) * previousTransform;
         try
         {
-            DrawCachedFill(context, geometry, entity.Bounds, style, viewport, options);
-            context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
+            DrawCachedFill(context, entity, resources, geometry, entity.Bounds, style, viewport, options);
+            if (!resourceCache.TryDrawStrokedGeometry(
+                    context,
+                    entity,
+                    resources,
+                    geometry,
+                    brush,
+                    strokeWidth,
+                    strokeStyle,
+                    strokeWidthChangesWithScale))
+            {
+                context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
+            }
         }
         finally
         {
@@ -439,6 +469,8 @@ internal sealed class Direct2DSelectionRenderer(
 
     private void DrawCachedFill(
         ID2D1DeviceContext context,
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket resources,
         ID2D1Geometry geometry,
         CadRectD bounds,
         CadTransientStyle style,
@@ -448,7 +480,15 @@ internal sealed class Direct2DSelectionRenderer(
         if (style.FillColor is { IsTransparent: false } fillColor)
         {
             var fillBrush = styleResources.GetBrush(context, fillColor);
-            context.FillGeometry(geometry, fillBrush);
+            if (!resourceCache.TryDrawFilledGeometry(
+                    context,
+                    entity,
+                    resources,
+                    geometry,
+                    fillBrush))
+            {
+                context.FillGeometry(geometry, fillBrush);
+            }
         }
 
         if (style.HatchFill is not { ForegroundColor.IsTransparent: false } hatchFill || bounds.IsEmpty)

@@ -8,10 +8,9 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 internal sealed class CadPasteInteractionController
 {
     private readonly ICadClipboardStore _clipboardStore;
-    private bool _hasUserCopySnapshot;
 
     public bool IsPreviewActive { get; private set; }
-    public bool HasUserCopySnapshot => _hasUserCopySnapshot && _clipboardStore.Snapshot is not null;
+    public bool HasUserCopySnapshot => _clipboardStore.HasUserCopySnapshot;
     public CadClipboardSnapshot? Snapshot => _clipboardStore.Snapshot;
 
     public CadPasteInteractionController(ICadClipboardStore clipboardStore)
@@ -22,8 +21,7 @@ internal sealed class CadPasteInteractionController
     public CadClipboardSnapshot? Copy(CadClipboardInteractionService clipboardService)
     {
         var snapshot = clipboardService.CreateSelectionSnapshot();
-        _clipboardStore.Set(snapshot);
-        _hasUserCopySnapshot = snapshot is not null;
+        _clipboardStore.Set(snapshot, isUserCopySnapshot: true);
         return snapshot;
     }
 
@@ -43,9 +41,8 @@ internal sealed class CadPasteInteractionController
     {
         ArgumentNullException.ThrowIfNull(snapshot);
 
-        _clipboardStore.Set(snapshot);
+        _clipboardStore.Set(snapshot, isUserCopySnapshot: false);
         IsPreviewActive = true;
-        _hasUserCopySnapshot = false;
     }
 
     public IReadOnlyList<EntityId> Commit(
@@ -61,7 +58,7 @@ internal sealed class CadPasteInteractionController
         if (prepareSnapshot is not null)
         {
             snapshot = prepareSnapshot(snapshot);
-            _clipboardStore.Set(snapshot);
+            _clipboardStore.Set(snapshot, _clipboardStore.HasUserCopySnapshot);
         }
 
         var createdIds = clipboardService.CommitPaste(snapshot, target, targetLayerId);
@@ -83,9 +80,6 @@ internal sealed class CadPasteInteractionController
         IsPreviewActive = false;
 
         if (clearClipboard)
-        {
             _clipboardStore.Clear();
-            _hasUserCopySnapshot = false;
-        }
     }
 }

@@ -30,7 +30,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private readonly Direct2DEntityReferenceRenderer _entityReferenceRenderer;
     private readonly Direct2DBlockReferenceRenderer _blockReferenceRenderer;
     private readonly Direct2DEntityOrderCache _entityOrderCache = new();
+    private readonly Direct2DRenderStatisticsCollector _statistics = new();
+    private readonly Direct2DCommandListChunkCache _commandListCache;
+    private readonly Direct2DSceneTileCache _tileCache;
     private bool _disposed;
+
+    public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
 
     public Direct2DSceneRender()
     {
@@ -52,7 +57,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             transientRenderer,
             _styleResources,
             handleRenderer,
-            _entityOrderCache);
+            _entityOrderCache,
+            _statistics);
         _entityRenderer = new Direct2DEntityRenderer(
             _resourceCache,
             geometryFactory,
@@ -71,7 +77,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _entityRenderer,
             _oleRenderer,
             _styleResources,
-            _entityOrderCache);
+            _entityOrderCache,
+            _statistics);
+        _commandListCache = new Direct2DCommandListChunkCache(
+            _resourceCache,
+            _entityOrderCache,
+            _statistics);
+        _tileCache = new Direct2DSceneTileCache(_statistics);
     }
 
     public Direct2DOleDrawCallback? OleDrawCallback
@@ -91,6 +103,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(changes);
         ThrowIfDisposed();
+        _tileCache.ApplyChanges(document, changes);
+        _commandListCache.ApplyChanges(document, changes);
         if (AffectsEntityOrder(changes))
             _entityOrderCache.Invalidate();
         _resourceCache.ApplyChanges(document, changes);
@@ -104,6 +118,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadDocument? document = null)
     {
         ThrowIfDisposed();
+        _tileCache.Clear();
+        _commandListCache.Clear();
         _entityOrderCache.Invalidate();
         _transientSceneRenderer.Clear();
         _oleRenderer.Clear();
@@ -118,6 +134,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
+        _tileCache.Clear();
+        _commandListCache.Clear();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildAll(document);
     }
@@ -126,6 +144,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
+        _tileCache.InvalidateEntity(document, entityId);
+        _commandListCache.InvalidateEntity(entityId);
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildEntityResources(document, entityId);
     }
@@ -133,6 +153,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     public void RemoveEntity(EntityId entityId)
     {
         ThrowIfDisposed();
+        _tileCache.RemoveEntity(entityId);
+        _commandListCache.Clear();
         _entityOrderCache.Invalidate();
         _resourceCache.RemoveEntity(entityId);
         _oleRenderer.RemoveEntity(entityId);
@@ -141,12 +163,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     public void InvalidateOleBitmap(EntityId entityId)
     {
         ThrowIfDisposed();
+        _tileCache.InvalidateEntity(entityId);
         _oleRenderer.RemoveEntity(entityId);
     }
 
-    public void BeginFrame()
+    public void BeginFrame(bool isFullFrame = true, int dirtyRegionCount = 1)
     {
         ThrowIfDisposed();
+        _statistics.BeginFrame(isFullFrame, dirtyRegionCount);
+        _resourceCache.BeginFrame();
         _styleResources.BeginFrame();
         _textFormatResources.BeginFrame();
     }
@@ -156,18 +181,26 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         try
         {
-            _oleRenderer.CompleteFrame();
-        }
-        finally
-        {
             try
             {
-                _styleResources.CompleteFrame();
+                _oleRenderer.CompleteFrame();
             }
             finally
             {
-                _textFormatResources.CompleteFrame();
+                try
+                {
+                    _styleResources.CompleteFrame();
+                }
+                finally
+                {
+                    _textFormatResources.CompleteFrame();
+                }
             }
+        }
+        finally
+        {
+            RenderStatistics = _statistics.Snapshot();
+            _statistics.EndFrame();
         }
     }
 
@@ -241,6 +274,43 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
     }
 
+    public bool PrepareRenderCaches(
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions? options = null,
+        bool buildStep = true)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(viewport);
+        ThrowIfDisposed();
+        if (_resourceCache.DeviceContext is not { } context)
+            return false;
+
+        options ??= new CadRenderOptions();
+        var orderedEntities = _entityOrderCache.GetOrderedEntities(
+            document,
+            options.ActiveOwnerBlockId);
+        var commandListBuildPending = _commandListCache.Prepare(
+            context,
+            document,
+            viewport,
+            options,
+            orderedEntities,
+            DrawEntityCore,
+            buildStep);
+        if (commandListBuildPending)
+            return true;
+
+        return _tileCache.Prepare(
+            context,
+            document,
+            viewport,
+            options,
+            orderedEntities.Count,
+            DrawRetainedScene,
+            buildStep);
+    }
+
     public override void Render(CadDocument document, CadViewport viewport, CadRenderOptions? options = null)
     {
         Render(document, viewport, null, null, options);
@@ -262,6 +332,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return;
 
         options ??= new CadRenderOptions();
+        _statistics.RecordScenePass();
 
         var previousTransform = deviceContext.Transform;
         var previousAntialiasMode = deviceContext.AntialiasMode;
@@ -436,6 +507,40 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadViewport viewport,
         CadRenderOptions options)
     {
+        var entityCount = _entityOrderCache
+            .GetOrderedEntities(document, options.ActiveOwnerBlockId)
+            .Count;
+        if (_tileCache.TryDraw(
+                context,
+                viewport,
+                options,
+                entityCount,
+                out var missingTileBounds))
+        {
+            foreach (var missingBounds in missingTileBounds)
+                DrawMissingTile(context, document, viewport, options, missingBounds);
+            return;
+        }
+
+        DrawRetainedOrImmediate(context, document, viewport, options);
+    }
+
+    private void DrawRetainedOrImmediate(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        if (_commandListCache.TryDraw(
+                context,
+                document,
+                viewport,
+                options,
+                DrawEntityCore))
+        {
+            return;
+        }
+
         foreach (var entity in Direct2DEntityVisibility.Enumerate(
                      document,
                      viewport,
@@ -444,25 +549,96 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                      _entityOrderCache.GetOrderedEntities(document, options.ActiveOwnerBlockId),
                      _entityOrderCache))
         {
-            if (entity is CadBlockReference blockReference)
-            {
-                _blockReferenceRenderer.Draw(context, document, viewport, blockReference, options);
-                continue;
-            }
-            if (entity is CadOleObject oleObject)
-            {
-                _oleRenderer.DrawEntity(
-                    context,
-                    document,
-                    oleObject,
-                    viewport,
-                    options);
-                continue;
-            }
-
-            if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) && resources is not null)
-                _entityRenderer.Draw(context, document, entity, resources, viewport, options);
+            _statistics.RecordVisibleEntity();
+            _statistics.RecordEntitySubmission();
+            DrawEntityCore(context, document, entity, viewport, options);
         }
+    }
+
+    private void DrawMissingTile(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options,
+        CadRectD tileBounds)
+    {
+        var renderBounds = options.DirtyWorldBounds is { } dirtyBounds
+            ? dirtyBounds.Intersection(tileBounds)
+            : tileBounds;
+        if (renderBounds.IsEmpty)
+            return;
+
+        context.PushAxisAlignedClip(ToRawRect(renderBounds), AntialiasMode.Aliased);
+        try
+        {
+            DrawRetainedOrImmediate(
+                context,
+                document,
+                viewport,
+                CreateRegionOptions(options, renderBounds));
+        }
+        finally
+        {
+            context.PopAxisAlignedClip();
+        }
+    }
+
+    private static CadRenderOptions CreateRegionOptions(
+        CadRenderOptions source,
+        CadRectD dirtyWorldBounds) => new()
+    {
+        ActiveOwnerBlockId = source.ActiveOwnerBlockId,
+        ActiveLayoutId = source.ActiveLayoutId,
+        ActiveLayoutViewportId = source.ActiveLayoutViewportId,
+        DrawGrid = false,
+        DrawOrigin = false,
+        DrawGripHandles = false,
+        IsAntialiasingEnabled = source.IsAntialiasingEnabled,
+        IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
+        IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
+        AllowApproximateScaleFallback = source.AllowApproximateScaleFallback,
+        KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
+        MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+        HiddenEntityIds = source.HiddenEntityIds,
+        DirtyWorldBounds = dirtyWorldBounds,
+        EntityBoundsQuery = source.EntityBoundsQuery
+    };
+
+    private bool DrawRetainedScene(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        return _commandListCache.TryDraw(
+            context,
+            document,
+            viewport,
+            options,
+            DrawEntityCore);
+    }
+
+    private void DrawEntityCore(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadEntity entity,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        if (entity is CadBlockReference blockReference)
+        {
+            _statistics.RecordBlockReference();
+            _blockReferenceRenderer.Draw(context, document, viewport, blockReference, options);
+            return;
+        }
+        if (entity is CadOleObject oleObject)
+        {
+            _oleRenderer.DrawEntity(context, document, oleObject, viewport, options);
+            return;
+        }
+
+        if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) && resources is not null)
+            _entityRenderer.Draw(context, document, entity, resources, viewport, options);
     }
 
     private static System.Numerics.Matrix3x2 CreateModelToPaperTransform(
@@ -502,6 +678,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsAntialiasingEnabled = options.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
+        AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
         EntityBoundsQuery = options.EntityBoundsQuery,
@@ -522,6 +699,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsAntialiasingEnabled = options.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
+        AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
         HiddenEntityIds = options.HiddenEntityIds,
@@ -607,6 +785,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (_disposed)
             return;
 
+        _tileCache.Dispose();
+        _commandListCache.Dispose();
         _resourceCache.Dispose();
         _transientSceneRenderer.Dispose();
         _oleRenderer.Dispose();

@@ -45,7 +45,8 @@ internal sealed class CadClipboardInteractionService(
                 targetLayer,
                 editor.Document,
                 blockDefinitions,
-                []);
+                [],
+                parentStyle: null);
         }
     }
 
@@ -65,18 +66,18 @@ internal sealed class CadClipboardInteractionService(
         CadLayer? targetLayer,
         CadDocument document,
         IReadOnlyDictionary<BlockId, CadBlockDefinitionClipboardSnapshot> blockDefinitions,
-        HashSet<BlockId> visitingBlocks)
+        HashSet<BlockId> visitingBlocks,
+        PastePreviewBlockStyleContext? parentStyle)
     {
-        var effectiveLayer = targetLayer ?? document.Layers.Values.FirstOrDefault(layer =>
-            string.Equals(layer.Name, item.Layer.Name, StringComparison.OrdinalIgnoreCase));
+        var effectiveLayer = ResolvePreviewLayer(item.Layer, targetLayer, document, parentStyle);
         if (!item.Entity.State.IsVisible ||
-            effectiveLayer is { IsVisible: false } or { IsFrozen: true } ||
-            effectiveLayer is null && (!item.Layer.IsVisible || item.Layer.IsFrozen))
+            !effectiveLayer.IsVisible ||
+            effectiveLayer.IsFrozen)
         {
             return;
         }
 
-        var style = CreatePreviewStyle(item, effectiveLayer, document);
+        var style = CreatePreviewStyle(item, effectiveLayer, document, parentStyle);
         switch (item.Entity)
         {
             case CadBlockReferenceClipboardSnapshot blockReference:
@@ -87,7 +88,8 @@ internal sealed class CadClipboardInteractionService(
                     style,
                     document,
                     blockDefinitions,
-                    visitingBlocks);
+                    visitingBlocks,
+                    new PastePreviewBlockStyleContext(effectiveLayer, style.StrokeColor));
                 break;
 
             case CadLineClipboardSnapshot line:
@@ -203,7 +205,8 @@ internal sealed class CadClipboardInteractionService(
         CadTransientStyle style,
         CadDocument document,
         IReadOnlyDictionary<BlockId, CadBlockDefinitionClipboardSnapshot> blockDefinitions,
-        HashSet<BlockId> visitingBlocks)
+        HashSet<BlockId> visitingBlocks,
+        PastePreviewBlockStyleContext blockStyle)
     {
         if (!blockDefinitions.TryGetValue(reference.SourceDefinitionBlockId, out var definition) ||
             !visitingBlocks.Add(reference.SourceDefinitionBlockId))
@@ -223,7 +226,8 @@ internal sealed class CadClipboardInteractionService(
                     null,
                     document,
                     blockDefinitions,
-                    visitingBlocks);
+                    visitingBlocks,
+                    blockStyle);
             }
 
             var transform = CadMatrixD.CreateTranslation(-definition.BasePoint.X, -definition.BasePoint.Y) *
@@ -242,17 +246,21 @@ internal sealed class CadClipboardInteractionService(
 
     private static CadTransientStyle CreatePreviewStyle(
         CadClipboardEntityItem item,
-        CadLayer? targetLayer,
-        CadDocument document)
+        PastePreviewLayerContext effectiveLayer,
+        CadDocument document,
+        PastePreviewBlockStyleContext? parentStyle)
     {
         var graphic = item.GraphicStyle as CadGraphicStyleClipboardSnapshot;
-        var layerColor = targetLayer is not null
-            ? ResolveLayerStrokeColor(document, targetLayer)
-            : item.Layer.Color;
-        var strokeColor = item.Entity.State.ColorSource == CadColorSource.Explicit
-            ? graphic?.StrokeColor ?? layerColor
-            : layerColor;
-        var strokeWidth = ResolveStrokeWidth(item, graphic, targetLayer);
+        var layerColor = effectiveLayer.Layer is not null
+            ? ResolveLayerStrokeColor(document, effectiveLayer.Layer)
+            : effectiveLayer.Snapshot.DefaultGraphicStyle?.StrokeColor ?? effectiveLayer.Snapshot.Color;
+        var strokeColor = item.Entity.State.ColorSource switch
+        {
+            CadColorSource.Explicit => graphic?.StrokeColor ?? layerColor,
+            CadColorSource.ByBlock when parentStyle is { } containingBlock => containingBlock.ReferenceColor,
+            _ => layerColor
+        };
+        var strokeWidth = ResolveStrokeWidth(item, graphic, effectiveLayer);
 
         return new CadTransientStyle(
             strokeColor,
@@ -265,10 +273,10 @@ internal sealed class CadClipboardInteractionService(
     private static double ResolveStrokeWidth(
         CadClipboardEntityItem item,
         CadGraphicStyleClipboardSnapshot? graphic,
-        CadLayer? targetLayer)
+        PastePreviewLayerContext effectiveLayer)
     {
         if (item.Entity.State.UseLayerLineWeight)
-            return ResolveLineWeight(targetLayer?.LineWeight ?? item.Layer.LineWeight);
+            return ResolveLineWeight(effectiveLayer.Layer?.LineWeight ?? effectiveLayer.Snapshot.LineWeight);
 
         if (item.Entity.State.LineWeight is { } entityLineWeight)
             return ResolveLineWeight(entityLineWeight);
@@ -276,7 +284,31 @@ internal sealed class CadClipboardInteractionService(
         if (graphic is not null)
             return ResolveLineWeight(graphic.LineWeight);
 
-        return ResolveLineWeight(item.Layer.LineWeight);
+        return ResolveLineWeight(effectiveLayer.Layer?.LineWeight ?? effectiveLayer.Snapshot.LineWeight);
+    }
+
+    private static PastePreviewLayerContext ResolvePreviewLayer(
+        CadLayerClipboardSnapshot snapshot,
+        CadLayer? targetLayer,
+        CadDocument document,
+        PastePreviewBlockStyleContext? parentStyle)
+    {
+        if (targetLayer is not null)
+            return PastePreviewLayerContext.FromLayer(targetLayer, snapshot);
+
+        if (snapshot.IsDefault && parentStyle is { } containingBlock)
+            return containingBlock.EffectiveLayer;
+
+        CadLayer? resolvedLayer = null;
+        if (snapshot.IsDefault)
+            document.TryGetLayer(LayerId.Default, out resolvedLayer);
+        else
+            resolvedLayer = document.Layers.Values.FirstOrDefault(layer =>
+                string.Equals(layer.Name, snapshot.Name, StringComparison.OrdinalIgnoreCase));
+
+        return resolvedLayer is not null
+            ? PastePreviewLayerContext.FromLayer(resolvedLayer, snapshot)
+            : new PastePreviewLayerContext(null, snapshot);
     }
 
     private static CadColor ResolveLayerStrokeColor(CadDocument document, CadLayer layer)
@@ -325,4 +357,21 @@ internal sealed class CadClipboardInteractionService(
                 hatch.Pattern.Lines)
             : null;
     }
+
+    private readonly record struct PastePreviewLayerContext(
+        CadLayer? Layer,
+        CadLayerClipboardSnapshot Snapshot)
+    {
+        public bool IsVisible => Layer?.IsVisible ?? Snapshot.IsVisible;
+        public bool IsFrozen => Layer?.IsFrozen ?? Snapshot.IsFrozen;
+
+        public static PastePreviewLayerContext FromLayer(
+            CadLayer layer,
+            CadLayerClipboardSnapshot fallbackSnapshot) =>
+            new(layer, fallbackSnapshot);
+    }
+
+    private readonly record struct PastePreviewBlockStyleContext(
+        PastePreviewLayerContext EffectiveLayer,
+        CadColor ReferenceColor);
 }

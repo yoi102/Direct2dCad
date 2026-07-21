@@ -21,6 +21,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     private readonly Direct2DStyleResourceCache _styleResources;
     private readonly Direct2DTextFormatResourceCache _textFormatResources;
     private readonly Direct2DImageBitmapResourceCache _imageBitmapResources;
+    private readonly Direct2DGeometryRealizationCache _geometryRealizations = new();
     private bool _disposed;
 
     public Direct2DResourceCache(
@@ -33,6 +34,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         _styleResources = styleResources;
         _textFormatResources = textFormatResources;
         _imageBitmapResources = new Direct2DImageBitmapResourceCache(deviceContext);
+        _geometryRealizations.Reset(deviceContext);
         Factory = d2D1Factory;
         WriteFactory = writeFactory;
         DeviceContext = deviceContext;
@@ -52,6 +54,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         ClearEntityResources();
         _imageBitmapResources.Reset(deviceContext);
+        _geometryRealizations.Reset(deviceContext);
         Factory = d2D1Factory;
         WriteFactory = writeFactory;
         DeviceContext = deviceContext;
@@ -64,6 +67,54 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         ThrowIfDisposed();
         return _entityResources.TryGetValue(entityId, out bucket);
+    }
+
+    public void BeginFrame()
+    {
+        ThrowIfDisposed();
+        _geometryRealizations.BeginFrame();
+    }
+
+    public IDisposable PushGeometryRealizationScale(double scaleMultiplier)
+    {
+        ThrowIfDisposed();
+        return _geometryRealizations.PushScaleMultiplier(scaleMultiplier);
+    }
+
+    public bool TryDrawFilledGeometry(
+        ID2D1DeviceContext context,
+        CadEntity entity,
+        EntityResourceBucket resources,
+        ID2D1Geometry geometry,
+        ID2D1Brush brush)
+    {
+        return _geometryRealizations.TryDrawFill(
+            context,
+            entity,
+            resources,
+            geometry,
+            brush);
+    }
+
+    public bool TryDrawStrokedGeometry(
+        ID2D1DeviceContext context,
+        CadEntity entity,
+        EntityResourceBucket resources,
+        ID2D1Geometry geometry,
+        ID2D1Brush brush,
+        float strokeWidth,
+        ID2D1StrokeStyle? strokeStyle,
+        bool strokeWidthChangesWithScale)
+    {
+        return _geometryRealizations.TryDrawStroke(
+            context,
+            entity,
+            resources,
+            geometry,
+            brush,
+            strokeWidth,
+            strokeStyle,
+            strokeWidthChangesWithScale);
     }
 
     public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
@@ -207,8 +258,6 @@ internal sealed class Direct2DResourceCache : IDisposable
 
             var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
             bucket.Geometry = CreateGeometry(entity, fillStyle is CadHatchFillStyle);
-            (bucket.MediumDetailGeometry, bucket.LowDetailGeometry) =
-                CreateGeometryLods(entity);
 
             if (hasFillStyle)
             {
@@ -295,6 +344,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             throw;
         }
 
+        bucket.GeometryRealizations?.ClearStroke();
         bucket.StrokeBrushLease?.Dispose();
         bucket.StrokeStyleLease?.Dispose();
         bucket.StrokeBrushLease = strokeBrushLease;
@@ -333,27 +383,53 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
 
         ID2D1Geometry? geometry = null;
-        ID2D1Geometry? mediumDetailGeometry = null;
-        ID2D1Geometry? lowDetailGeometry = null;
         try
         {
             geometry = CreateGeometry(entity, bucket.HatchFillStyle is CadHatchFillStyle);
-            (mediumDetailGeometry, lowDetailGeometry) = CreateGeometryLods(entity);
         }
         catch
         {
             geometry?.Dispose();
-            mediumDetailGeometry?.Dispose();
-            lowDetailGeometry?.Dispose();
             throw;
         }
 
+        bucket.GeometryRealizations?.Clear();
         bucket.Geometry?.Dispose();
         bucket.MediumDetailGeometry?.Dispose();
         bucket.LowDetailGeometry?.Dispose();
         bucket.Geometry = geometry;
-        bucket.MediumDetailGeometry = mediumDetailGeometry;
-        bucket.LowDetailGeometry = lowDetailGeometry;
+        bucket.MediumDetailGeometry = null;
+        bucket.LowDetailGeometry = null;
+        bucket.AreLevelOfDetailGeometriesInitialized = false;
+    }
+
+    internal void EnsureLevelOfDetailGeometries(
+        CadEntity entity,
+        EntityResourceBucket bucket)
+    {
+        ThrowIfDisposed();
+        if (bucket.AreLevelOfDetailGeometriesInitialized ||
+            entity is not (CadPolyline or CadSpline) ||
+            Factory is null)
+        {
+            return;
+        }
+
+        ID2D1Geometry? medium = null;
+        ID2D1Geometry? low = null;
+        try
+        {
+            (medium, low) = CreateGeometryLods(entity);
+            bucket.MediumDetailGeometry = medium;
+            bucket.LowDetailGeometry = low;
+            bucket.AreLevelOfDetailGeometriesInitialized = true;
+        }
+        catch
+        {
+            medium?.Dispose();
+            low?.Dispose();
+            throw;
+        }
     }
 
     private void UpdateTextResources(
@@ -792,6 +868,7 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         ClearCache();
         _imageBitmapResources.Dispose();
+        _geometryRealizations.Dispose();
         _disposed = true;
     }
 
@@ -812,6 +889,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1Geometry? Geometry { get; set; }
         public ID2D1Geometry? MediumDetailGeometry { get; set; }
         public ID2D1Geometry? LowDetailGeometry { get; set; }
+        public bool AreLevelOfDetailGeometriesInitialized { get; set; }
+        public Direct2DGeometryRealizationCache.EntityCache? GeometryRealizations { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? StrokeBrushLease { get; set; }
         internal ResourceLease<ID2D1StrokeStyle>? StrokeStyleLease { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? FillBrushLease { get; set; }
@@ -851,6 +930,7 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         public void Dispose()
         {
+            GeometryRealizations?.Dispose();
             Geometry?.Dispose();
             MediumDetailGeometry?.Dispose();
             LowDetailGeometry?.Dispose();
@@ -865,6 +945,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             Geometry = null;
             MediumDetailGeometry = null;
             LowDetailGeometry = null;
+            AreLevelOfDetailGeometriesInitialized = false;
+            GeometryRealizations = null;
             StrokeBrushLease = null;
             StrokeStyleLease = null;
             FillBrushLease = null;

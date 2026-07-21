@@ -17,6 +17,9 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
 {
     private const double PartialRenderMaxAreaRatio = 0.65;
+    private const int DirtyRegionCostOptimizationThreshold = 4;
+    private const double DirtyRegionMergeCostTolerance = 1.15;
+    private const double DirtyRegionPassPenalty = 96.0;
     private const double InteractionPreviewMaxExposedAreaRatio = 0.55;
     private const double FrameRateWindowSeconds = 0.5;
     private const int FrameRateSampleResetMilliseconds = 750;
@@ -52,6 +55,10 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     public double AverageFrameRenderTimeMilliseconds { get; private set; }
 
     public double LastFullFrameRenderTimeMilliseconds { get; private set; }
+
+    public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
+
+    public event EventHandler? RenderCacheBuildRequested;
 
     public bool IsViewportInteractionActive => _viewportInteractionSnapshot is not null;
 
@@ -459,6 +466,19 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         RenderCore(invalidation, retryAfterDeviceResourceRecreation: true);
     }
 
+    public bool PrepareRenderCacheStep()
+    {
+        ThrowIfDisposed();
+        return _document is not null &&
+               _viewport is not null &&
+               _target.IsTargetReady &&
+               _renderer.PrepareRenderCaches(
+                   _document,
+                   _viewport,
+                   _renderOptions,
+                   buildStep: true);
+    }
+
     private void RenderCore(
         CadRenderInvalidation? invalidation,
         bool retryAfterDeviceResourceRecreation)
@@ -477,10 +497,15 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             ? FallbackBackgroundColor
             : ToColor4(_document.ViewSettings.BackgroundColor);
         var frameStartTimestamp = Stopwatch.GetTimestamp();
+        var renderCacheBuildPending = false;
 
         try
         {
-            _renderer.BeginFrame();
+            _renderer.BeginFrame(
+                effectiveInvalidation.IsFull,
+                effectiveInvalidation.IsFull
+                    ? 1
+                    : effectiveInvalidation.DirtyScreenRects.Count);
             try
             {
                 if (_document is not null && _viewport is not null)
@@ -490,6 +515,11 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                         _viewport,
                         _transientScene,
                         _renderOptions);
+                    renderCacheBuildPending = _renderer.PrepareRenderCaches(
+                        _document,
+                        _viewport,
+                        _renderOptions,
+                        buildStep: false);
                 }
 
                 _target.DrawFrame(context =>
@@ -540,7 +570,15 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             }
 
             _hasRenderedFrame = true;
+            RenderStatistics = _renderer.RenderStatistics with
+            {
+                RenderDurationMilliseconds = Stopwatch
+                    .GetElapsedTime(frameStartTimestamp)
+                    .TotalMilliseconds
+            };
             RecordRenderedFrame(frameStartTimestamp, effectiveInvalidation.IsFull);
+            if (renderCacheBuildPending)
+                RenderCacheBuildRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Direct2DDeviceResourcesRecreatedException) when (retryAfterDeviceResourceRecreation)
         {
@@ -569,6 +607,20 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             return CadRenderInvalidation.FromScreenRect(default);
 
         var normalizedInvalidation = CadRenderInvalidation.FromScreenRects(rects);
+        if (normalizedInvalidation.DirtyScreenRects.Count >=
+            DirtyRegionCostOptimizationThreshold)
+        {
+            var aggregateInvalidation = CadRenderInvalidation.FromScreenRect(
+                normalizedInvalidation.DirtyScreenRect);
+            var separateCost = 0.0;
+            foreach (var rect in normalizedInvalidation.DirtyScreenRects)
+                separateCost += EstimateDirtyRegionCost(rect);
+
+            var aggregateCost = EstimateDirtyRegionCost(
+                aggregateInvalidation.DirtyScreenRect);
+            if (aggregateCost <= separateCost * DirtyRegionMergeCostTolerance)
+                normalizedInvalidation = aggregateInvalidation;
+        }
 
         var area = 0.0;
         foreach (var rect in normalizedInvalidation.DirtyScreenRects)
@@ -578,6 +630,24 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         return targetArea > 0 && area / targetArea >= PartialRenderMaxAreaRatio
             ? CadRenderInvalidation.Full
             : normalizedInvalidation;
+    }
+
+    private double EstimateDirtyRegionCost(CadScreenRect rect)
+    {
+        if (rect.IsEmpty)
+            return 0;
+
+        if (_viewport is not null &&
+            _renderOptions.EntityBoundsQuery is { } query)
+        {
+            var padding = 64.0 / Math.Max(_viewport.Zoom, double.Epsilon);
+            var worldBounds = ScreenRectToWorldBounds(rect, _viewport).Inflate(padding);
+            return query(worldBounds).Count + DirtyRegionPassPenalty;
+        }
+
+        var targetArea = Math.Max(1.0, (double)_target.Width * _target.Height);
+        var entityCount = Math.Max(1, _document?.Entities.Count ?? 1);
+        return rect.Area / targetArea * entityCount + DirtyRegionPassPenalty;
     }
 
     private CadScreenRect ClampToTarget(CadScreenRect rect)
@@ -605,6 +675,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             IsAntialiasingEnabled = _renderOptions.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = _renderOptions.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = _renderOptions.IsLevelOfDetailEnabled,
+            AllowApproximateScaleFallback = _renderOptions.AllowApproximateScaleFallback,
             KeepStrokeWidthScreenConstant = _renderOptions.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = _renderOptions.MinimumScreenStrokeWidth,
             HiddenEntityIds = _renderOptions.HiddenEntityIds,

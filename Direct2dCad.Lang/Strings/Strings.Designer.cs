@@ -31,7 +31,7 @@ namespace Direct2dCad.Lang.Strings {
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Strings() {
         }
-        
+
         /// <summary>
         ///   返回此类使用的缓存的 ResourceManager 实例。
         /// </summary>
@@ -168,6 +168,15 @@ namespace Direct2dCad.Lang.Strings {
             }
         }
         
+        /// <summary>
+        ///   查找类似 Allow nearby zoom cache fallback 的本地化字符串。
+        /// </summary>
+        public static string ApproximateScaleFallback {
+            get {
+                return ResourceManager.GetString("ApproximateScaleFallback", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Arc 的本地化字符串。
         /// </summary>

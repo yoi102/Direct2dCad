@@ -1137,6 +1137,9 @@
   <data name="AcceleratedViewportInteraction" xml:space="preserve">
     <value>加速画布平移和缩放</value>
   </data>
+  <data name="ApproximateScaleFallback" xml:space="preserve">
+    <value>允许使用邻近缩放缓存临时显示</value>
+  </data>
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>启用细节层级优化</value>
   </data>

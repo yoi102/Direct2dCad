@@ -59,7 +59,7 @@ internal static class Direct2DEntityLevelOfDetail
         double screenScale,
         CadRenderOptions options)
     {
-        if (!options.IsLevelOfDetailEnabled)
+        if (!options.IsLevelOfDetailEnabled || entity is CadImage)
             return Direct2DEntityRenderDetail.Full;
 
         if (entity is CadText or CadShapeText)
@@ -133,7 +133,7 @@ internal static class Direct2DEntityLevelOfDetail
         Matrix3x2 transform,
         CadRenderOptions options)
     {
-        if (!options.IsLevelOfDetailEnabled)
+        if (!options.IsLevelOfDetailEnabled || entity is CadImage)
             return Direct2DEntityRenderDetail.Full;
 
         if (entity is CadText or CadShapeText)
@@ -172,7 +172,6 @@ internal static class Direct2DEntityLevelOfDetail
         var maximumExtent = Math.Max(screenWidth, screenHeight);
         return entity switch
         {
-            CadImage => Math.Min(screenWidth, screenHeight) < SimplifiedGeometryScreenExtent,
             CadSpline => maximumExtent < SimplifiedGeometryScreenExtent,
             CadPolyline polyline when polyline.Points.Count > 8 =>
                 maximumExtent < SimplifiedGeometryScreenExtent,

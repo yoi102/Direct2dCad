@@ -23,7 +23,7 @@ internal static class Direct2DEntityVisibility
         if (renderWorldBounds is not { } bounds ||
             options.EntityBoundsQuery is not { } query)
         {
-            return EnumerateOrdered(
+            return EnumerateOrderedSubset(
                 document,
                 viewport,
                 options,
@@ -37,7 +37,7 @@ internal static class Direct2DEntityVisibility
         if (candidateIds.Count > 0 &&
             candidateIds.Count >= orderedEntities.Count / 2)
         {
-            return EnumerateOrdered(
+            return EnumerateOrderedSubset(
                 document,
                 viewport,
                 options,
@@ -62,7 +62,7 @@ internal static class Direct2DEntityVisibility
         candidates.Sort(entityOrderCache.GetComparer(
             document,
             options.ActiveOwnerBlockId));
-        return EnumerateOrdered(
+        return EnumerateOrderedSubset(
             document,
             viewport,
             options,
@@ -71,7 +71,7 @@ internal static class Direct2DEntityVisibility
             bounds);
     }
 
-    private static IEnumerable<CadEntity> EnumerateOrdered(
+    internal static IEnumerable<CadEntity> EnumerateOrderedSubset(
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options,
@@ -111,7 +111,7 @@ internal static class Direct2DEntityVisibility
         }
     }
 
-    private static CadRectD? ResolveRenderWorldBounds(
+    internal static CadRectD? ResolveRenderWorldBounds(
         CadViewport viewport,
         CadRenderOptions options)
     {

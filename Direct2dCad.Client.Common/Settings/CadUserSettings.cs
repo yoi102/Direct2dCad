@@ -51,7 +51,9 @@ public sealed class CadUserSettings
             ShowFramesPerSecond = source.Rendering.ShowFramesPerSecond,
             IsViewportInteractionPreviewEnabled =
                 source.Rendering.IsViewportInteractionPreviewEnabled,
-            IsLevelOfDetailEnabled = source.Rendering.IsLevelOfDetailEnabled
+            IsLevelOfDetailEnabled = source.Rendering.IsLevelOfDetailEnabled,
+            AllowApproximateScaleFallback =
+                source.Rendering.AllowApproximateScaleFallback
         };
         Interaction = new CadInteractionUserSettings
         {
@@ -99,6 +101,7 @@ public sealed class CadRenderingUserSettings
     public bool ShowFramesPerSecond { get; set; } = true;
     public bool IsViewportInteractionPreviewEnabled { get; set; } = false;
     public bool IsLevelOfDetailEnabled { get; set; } = true;
+    public bool AllowApproximateScaleFallback { get; set; } = false;
 
     internal void Normalize()
     {

@@ -18,6 +18,7 @@ public sealed class CadRenderOptions
     public bool IsAntialiasingEnabled { get; init; } = true;
     public bool IsTextAntialiasingEnabled { get; init; } = true;
     public bool IsLevelOfDetailEnabled { get; init; }
+    public bool AllowApproximateScaleFallback { get; init; }
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;
     public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = NoHiddenEntities;

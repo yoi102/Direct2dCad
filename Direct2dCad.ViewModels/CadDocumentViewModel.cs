@@ -1604,6 +1604,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = UserSettings.Rendering.IsLevelOfDetailEnabled,
+            AllowApproximateScaleFallback =
+                UserSettings.Rendering.AllowApproximateScaleFallback,
             EntityBoundsQuery = CadEditor.SpatialIndex.Query,
             HiddenEntityIds = _gripDrag.IsActive
                 ? _gripDrag.ResolveHiddenEntityIds(CadEditor).ToHashSet()

@@ -4,7 +4,7 @@ namespace Direct2dCad.Rendering;
 
 public sealed class CadViewport
 {
-    public const double DefaultZoom = 0.7;
+    public const double DefaultZoom = 1;
     private const double MinZoom = 1e-6;
     private const double MaxZoom = 1e6;
 

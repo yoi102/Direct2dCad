@@ -20,6 +20,7 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         IsViewportInteractionPreviewEnabled =
             settings.IsViewportInteractionPreviewEnabled;
         IsLevelOfDetailEnabled = settings.IsLevelOfDetailEnabled;
+        AllowApproximateScaleFallback = settings.AllowApproximateScaleFallback;
     }
 
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
@@ -34,6 +35,9 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     [ObservableProperty]
     public partial bool IsLevelOfDetailEnabled { get; set; }
 
+    [ObservableProperty]
+    public partial bool AllowApproximateScaleFallback { get; set; }
+
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
@@ -42,6 +46,8 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         settings.Rendering.IsViewportInteractionPreviewEnabled =
             IsViewportInteractionPreviewEnabled;
         settings.Rendering.IsLevelOfDetailEnabled = IsLevelOfDetailEnabled;
+        settings.Rendering.AllowApproximateScaleFallback =
+            AllowApproximateScaleFallback;
         return true;
     }
 

@@ -13,6 +13,8 @@ public partial class CadCanvas : IDisposable
     private bool _pointerMovePending;
     private bool _pointerRenderScheduled;
     private bool _viewportPresentationScheduled;
+    private bool _renderCacheBuildScheduled;
+    private bool _renderCacheBuildDeferred;
     private bool _disposed;
     private readonly DispatcherTimer _viewportInteractionCompletionTimer;
 
@@ -80,12 +82,16 @@ public partial class CadCanvas : IDisposable
             canvas._viewportInteractionCompletionTimer.Stop();
             oldViewModel.CancelViewportInteractionPreview();
             oldViewModel.PropertyChanged -= canvas.OnDocumentViewModelPropertyChanged;
+            oldViewModel.Direct2DImageRenderHost.RenderCacheBuildRequested -=
+                canvas.OnRenderCacheBuildRequested;
             oldViewModel.DetachRenderResources();
         }
 
         if (e.NewValue is CadDocumentViewModel newViewModel)
         {
             newViewModel.PropertyChanged += canvas.OnDocumentViewModelPropertyChanged;
+            newViewModel.Direct2DImageRenderHost.RenderCacheBuildRequested +=
+                canvas.OnRenderCacheBuildRequested;
             newViewModel.Direct2DImageRenderHost.AttachImageSource(canvas.d3d11ImageSource);
             newViewModel.AttachRenderResources();
             canvas.UpdateViewportSize();
@@ -195,6 +201,41 @@ public partial class CadCanvas : IDisposable
             ScheduleViewportInteractionCompletion();
             ScheduleViewportPresentation();
         }
+    }
+
+    private void OnRenderCacheBuildRequested(object? sender, EventArgs e)
+    {
+        if (_viewportInteractionCompletionTimer.IsEnabled)
+        {
+            _renderCacheBuildDeferred = true;
+            return;
+        }
+
+        if (_renderCacheBuildScheduled || _disposed)
+            return;
+
+        _renderCacheBuildScheduled = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            _renderCacheBuildScheduled = false;
+            if (_disposed ||
+                DocumentViewModel is not { } viewModel ||
+                !ReferenceEquals(sender, viewModel.Direct2DImageRenderHost))
+            {
+                return;
+            }
+
+            if (_viewportInteractionCompletionTimer.IsEnabled)
+            {
+                _renderCacheBuildDeferred = true;
+                return;
+            }
+
+            if (viewModel.Direct2DImageRenderHost.PrepareRenderCacheStep())
+                OnRenderCacheBuildRequested(sender, EventArgs.Empty);
+            else
+                viewModel.RequestRender();
+        });
     }
 
     private void CadCanvas_KeyDown(object sender, KeyEventArgs e)
@@ -334,13 +375,22 @@ public partial class CadCanvas : IDisposable
     private void CompletePendingViewportInteraction()
     {
         _viewportInteractionCompletionTimer.Stop();
-        DocumentViewModel?.CompleteViewportInteractionPreview();
+        var viewModel = DocumentViewModel;
+        viewModel?.CompleteViewportInteractionPreview();
         ScheduleViewportPresentation();
+        if (_renderCacheBuildDeferred && viewModel is not null)
+        {
+            _renderCacheBuildDeferred = false;
+            OnRenderCacheBuildRequested(
+                viewModel.Direct2DImageRenderHost,
+                EventArgs.Empty);
+        }
     }
 
     private void CancelPendingViewportInteraction()
     {
         _viewportInteractionCompletionTimer.Stop();
+        _renderCacheBuildDeferred = false;
         DocumentViewModel?.CancelViewportInteractionPreview();
     }
 
@@ -423,6 +473,11 @@ public partial class CadCanvas : IDisposable
             return;
 
         _disposed = true;
+        if (DocumentViewModel is { } viewModel)
+        {
+            viewModel.Direct2DImageRenderHost.RenderCacheBuildRequested -=
+                OnRenderCacheBuildRequested;
+        }
         CancelPendingViewportInteraction();
         UnschedulePointerMove();
         d3d11ImageSource.Dispose();

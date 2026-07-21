@@ -68,7 +68,10 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 _createdBlockIds.Count > 0);
         }
 
-        var context = new PasteEntityContext(document, _snapshot.BlockDefinitions);
+        var context = new PasteEntityContext(
+            document,
+            _snapshot.BlockDefinitions,
+            _snapshot.SourceDocumentToken);
         foreach (var item in _snapshot.Items)
         {
             if (TryCreateEntity(
@@ -313,7 +316,8 @@ public sealed class PasteEntitiesCommand : ICadCommand
 
     private sealed class PasteEntityContext(
         CadDocument document,
-        IReadOnlyList<CadBlockDefinitionClipboardSnapshot> blockDefinitions)
+        IReadOnlyList<CadBlockDefinitionClipboardSnapshot> blockDefinitions,
+        Guid sourceDocumentToken)
     {
         private readonly Dictionary<CadLayerClipboardSnapshot, LayerId> _layers = [];
         private readonly Dictionary<CadStyleClipboardSnapshot, StyleId?> _styles = [];
@@ -333,12 +337,24 @@ public sealed class PasteEntitiesCommand : ICadCommand
             if (!_blockDefinitionSnapshots.TryGetValue(sourceBlockId, out var snapshot))
                 throw new InvalidOperationException($"Clipboard block definition is missing: {sourceBlockId}");
 
-            var existing = Document.Blocks.Values.FirstOrDefault(block =>
-                string.Equals(block.Name, snapshot.Name, StringComparison.OrdinalIgnoreCase));
-            if (existing is not null)
+            var isSameDocument = sourceDocumentToken != Guid.Empty &&
+                                 sourceDocumentToken == CadClipboardSnapshotFactory.GetDocumentToken(Document);
+            if (isSameDocument &&
+                Document.TryGetBlock(sourceBlockId, out var sourceDefinition) &&
+                sourceDefinition is not null)
             {
-                _blockDefinitions[sourceBlockId] = existing.Id;
-                return existing.Id;
+                _blockDefinitions[sourceBlockId] = sourceDefinition.Id;
+                return sourceDefinition.Id;
+            }
+
+            if (CadClipboardBlockImportRegistry.TryResolve(
+                    Document,
+                    sourceDocumentToken,
+                    sourceBlockId,
+                    out var importedBlockId))
+            {
+                _blockDefinitions[sourceBlockId] = importedBlockId;
+                return importedBlockId;
             }
 
             if (!_resolvingBlockDefinitions.Add(sourceBlockId))
@@ -353,7 +369,9 @@ public sealed class PasteEntitiesCommand : ICadCommand
                     ResolveBlockDefinition(nestedReference.SourceDefinitionBlockId);
                 }
 
-                var blockId = Document.CreateBlockDefinition(snapshot.Name, snapshot.BasePoint);
+                var blockId = Document.CreateBlockDefinition(
+                    CreateUniqueBlockName(Document, snapshot.Name),
+                    snapshot.BasePoint);
                 _blockDefinitions[sourceBlockId] = blockId;
                 CreatedBlockIds.Add(blockId);
 
@@ -372,6 +390,12 @@ public sealed class PasteEntitiesCommand : ICadCommand
                     }
                 }
 
+                CadClipboardBlockImportRegistry.Register(
+                    Document,
+                    sourceDocumentToken,
+                    sourceBlockId,
+                    blockId);
+
                 return blockId;
             }
             finally
@@ -387,6 +411,14 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 overrideLayer is not null)
             {
                 return overrideLayerId;
+            }
+
+            if (snapshot.IsDefault &&
+                Document.TryGetLayer(LayerId.Default, out var defaultLayer) &&
+                defaultLayer is not null)
+            {
+                _layers[snapshot] = LayerId.Default;
+                return LayerId.Default;
             }
 
             if (_layers.TryGetValue(snapshot, out var cached))
@@ -405,6 +437,8 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 snapshot.Color,
                 snapshot.LineWeight);
             var layer = Document.GetLayer(layerId);
+            if (ResolveStyle(snapshot.DefaultGraphicStyle) is { } defaultGraphicStyleId)
+                Document.SetLayerDefaultGraphicStyle(layerId, defaultGraphicStyleId);
             layer.SetVisible(snapshot.IsVisible);
             layer.SetLocked(snapshot.IsLocked);
             layer.SetFrozen(snapshot.IsFrozen);
@@ -557,6 +591,13 @@ public sealed class PasteEntitiesCommand : ICadCommand
             string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)));
     }
 
+    private static string CreateUniqueBlockName(CadDocument document, string baseName)
+    {
+        baseName = string.IsNullOrWhiteSpace(baseName) ? "Pasted Block" : baseName.Trim();
+        return CreateUniqueName(baseName, name => document.Blocks.Values.Any(x =>
+            string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)));
+    }
+
     private static string CreateUniqueHatchPatternName(CadDocument document, string baseName)
     {
         baseName = string.IsNullOrWhiteSpace(baseName) ? "Pasted Hatch" : baseName.Trim();
@@ -576,4 +617,5 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 return name;
         }
     }
+
 }

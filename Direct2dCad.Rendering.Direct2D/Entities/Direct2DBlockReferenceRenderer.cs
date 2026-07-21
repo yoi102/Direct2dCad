@@ -16,7 +16,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
     Direct2DEntityRenderer entityRenderer,
     Direct2DOleRenderer oleRenderer,
     Direct2DStyleResourceCache styleResources,
-    Direct2DEntityOrderCache entityOrderCache)
+    Direct2DEntityOrderCache entityOrderCache,
+    Direct2DRenderStatisticsCollector statistics)
 {
     private readonly HashSet<BlockId> _visitedBlocks = [];
 
@@ -105,8 +106,12 @@ internal sealed class Direct2DBlockReferenceRenderer(
                 if (!IsVisible(document, child, referenceStyle, options))
                     continue;
 
+                statistics.RecordExpandedBlockEntity();
+                statistics.RecordEntitySubmission();
+
                 if (child is CadBlockReference nested)
                 {
+                    statistics.RecordBlockReference();
                     if (TryDrawProxy(context, document, nested, options, referenceStyle))
                         continue;
 

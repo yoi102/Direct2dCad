@@ -5,6 +5,7 @@ using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
+using System.Runtime.CompilerServices;
 
 namespace Direct2dCad.Commands.Clipboard;
 
@@ -16,6 +17,7 @@ public sealed record CadClipboardSnapshot(
     public bool IsEmpty => Items.Count == 0;
 
     public IReadOnlyList<CadBlockDefinitionClipboardSnapshot> BlockDefinitions { get; init; } = [];
+    public Guid SourceDocumentToken { get; init; }
 }
 
 public sealed record CadBlockDefinitionClipboardSnapshot(
@@ -37,7 +39,9 @@ public sealed record CadLayerClipboardSnapshot(
     CadLineWeight LineWeight,
     bool IsVisible,
     bool IsLocked,
-    bool IsFrozen);
+    bool IsFrozen,
+    bool IsDefault = false,
+    CadGraphicStyleClipboardSnapshot? DefaultGraphicStyle = null);
 
 public sealed record CadEntityStateClipboardSnapshot(
     string Name,
@@ -196,6 +200,14 @@ public sealed record CadHatchPatternClipboardSnapshot(
 
 public static class CadClipboardSnapshotFactory
 {
+    private static readonly ConditionalWeakTable<CadDocument, DocumentToken> DocumentTokens = new();
+
+    internal static Guid GetDocumentToken(CadDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return DocumentTokens.GetValue(document, static _ => new DocumentToken(Guid.NewGuid())).Value;
+    }
+
     public static CadClipboardSnapshot? Create(CadDocument document, IEnumerable<EntityId> entityIds)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -232,6 +244,7 @@ public static class CadClipboardSnapshotFactory
             ? null
             : new CadClipboardSnapshot(items, bounds.Center, bounds)
             {
+                SourceDocumentToken = GetDocumentToken(document),
                 BlockDefinitions = blockDefinitionOrder
                     .Select(blockId => blockDefinitions[blockId])
                     .ToArray()
@@ -271,7 +284,9 @@ public static class CadClipboardSnapshotFactory
             layer.LineWeight,
             layer.IsVisible,
             layer.IsLocked,
-            layer.IsFrozen);
+            layer.IsFrozen,
+            layer.Id.Equals(LayerId.Default),
+            CreateStyleSnapshot(document, layer.DefaultGraphicStyleId) as CadGraphicStyleClipboardSnapshot);
 
         item = new CadClipboardEntityItem(
             entitySnapshot,
@@ -509,4 +524,6 @@ public static class CadClipboardSnapshotFactory
 
     private static StyleId? ResolveTextStyleId(CadEntity entity)
         => entity is CadText text ? text.TextStyleId : null;
+
+    private sealed record DocumentToken(Guid Value);
 }

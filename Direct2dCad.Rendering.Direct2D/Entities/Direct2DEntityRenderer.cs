@@ -46,10 +46,22 @@ internal sealed class Direct2DEntityRenderer(
         {
             FillBounds(context, shapeText.InvertedBackgroundBounds, strokeBrush);
             var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
-            context.DrawGeometry(
-                resources.Geometry,
-                invertedBrush,
-                ResolveStrokeWidth(strokeWidth, viewport, options));
+            var resolvedStrokeWidth = ResolveStrokeWidth(strokeWidth, viewport, options);
+            if (!resourceCache.TryDrawStrokedGeometry(
+                    context,
+                    entity,
+                    resources,
+                    resources.Geometry,
+                    invertedBrush,
+                    resolvedStrokeWidth,
+                    strokeStyle: null,
+                    StrokeWidthChangesWithScale(strokeWidth, resolvedStrokeWidth, options)))
+            {
+                context.DrawGeometry(
+                    resources.Geometry,
+                    invertedBrush,
+                    resolvedStrokeWidth);
+            }
             return;
         }
 
@@ -99,24 +111,39 @@ internal sealed class Direct2DEntityRenderer(
                 return;
         }
 
+        if (options.IsLevelOfDetailEnabled)
+            resourceCache.EnsureLevelOfDetailGeometries(entity, resources);
         var geometry = Direct2DEntityLevelOfDetail.ResolveGeometry(
             entity,
             resources,
             context.Transform,
             options);
         if (geometry is not null)
-            DrawFill(context, geometry, entity.Bounds, resources, viewport, options);
+            DrawFill(context, entity, geometry, entity.Bounds, resources, viewport, options);
         if (geometry is not null && strokeBrush is not null)
         {
-            context.DrawGeometry(
-                geometry,
-                strokeBrush,
-                ResolveStrokeWidth(strokeWidth, viewport, options),
-                Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
+            var resolvedStrokeWidth = ResolveStrokeWidth(strokeWidth, viewport, options);
+            var strokeStyle = Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
+                entity,
+                resources.StrokeStyle,
+                context.Transform,
+                options);
+            if (!resourceCache.TryDrawStrokedGeometry(
+                    context,
                     entity,
-                    resources.StrokeStyle,
-                    context.Transform,
-                    options));
+                    resources,
+                    geometry,
+                    strokeBrush,
+                    resolvedStrokeWidth,
+                    strokeStyle,
+                    StrokeWidthChangesWithScale(strokeWidth, resolvedStrokeWidth, options)))
+            {
+                context.DrawGeometry(
+                    geometry,
+                    strokeBrush,
+                    resolvedStrokeWidth,
+                    strokeStyle);
+            }
         }
 
         if (entity is CadText text && resources.TextLayout is not null && strokeBrush is not null)
@@ -253,6 +280,7 @@ internal sealed class Direct2DEntityRenderer(
         {
             DrawFill(
                 context,
+                entity,
                 resources.Geometry,
                 CadRectD.FromCenter(
                     new CadPointD(ellipse.Point.X, ellipse.Point.Y),
@@ -301,7 +329,7 @@ internal sealed class Direct2DEntityRenderer(
             var rounded = geometryFactory.CreateRoundedRectangle(bounds, radiusX, radiusY);
             if (resources.HatchBrush is not null && resources.Geometry is not null)
             {
-                DrawFill(context, resources.Geometry, bounds, resources, viewport, options);
+                DrawFill(context, rectangle, resources.Geometry, bounds, resources, viewport, options);
             }
             else if (resources.FillBrush is not null)
             {
@@ -328,7 +356,7 @@ internal sealed class Direct2DEntityRenderer(
         var rect = ToRawRect(bounds);
         if (resources.HatchBrush is not null && resources.Geometry is not null)
         {
-            DrawFill(context, resources.Geometry, bounds, resources, viewport, options);
+            DrawFill(context, rectangle, resources.Geometry, bounds, resources, viewport, options);
         }
         else if (resources.FillBrush is not null)
         {
@@ -480,14 +508,23 @@ internal sealed class Direct2DEntityRenderer(
 
     private void DrawFill(
         ID2D1DeviceContext context,
+        CadEntity entity,
         ID2D1Geometry geometry,
         CadRectD bounds,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadViewport viewport,
         CadRenderOptions options)
     {
-        if (resources.FillBrush is not null)
+        if (resources.FillBrush is not null &&
+            !resourceCache.TryDrawFilledGeometry(
+                context,
+                entity,
+                resources,
+                geometry,
+                resources.FillBrush))
+        {
             context.FillGeometry(geometry, resources.FillBrush);
+        }
         if (resources.HatchBrush is null ||
             resources.HatchRenderData is not { } hatch ||
             resourceCache.Factory is null ||
@@ -545,6 +582,16 @@ internal sealed class Direct2DEntityRenderer(
         var zoom = Math.Max((float)viewport.Zoom, float.Epsilon);
         var width = options.KeepStrokeWidthScreenConstant ? modelWidth / zoom : modelWidth;
         return Math.Max(width, (float)options.MinimumScreenStrokeWidth / zoom);
+    }
+
+    private static bool StrokeWidthChangesWithScale(
+        float modelWidth,
+        float resolvedWidth,
+        CadRenderOptions options)
+    {
+        return options.KeepStrokeWidthScreenConstant ||
+               Math.Abs(resolvedWidth - modelWidth) >
+               Math.Max(1e-6f, Math.Abs(modelWidth) * 1e-5f);
     }
 
     private static Matrix3x2 CreateWorldRotationTransform(double rotation, CadPointD center, Matrix3x2 transform)
