@@ -243,25 +243,27 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
-        if (e.Key == Key.Escape)
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+
+        if (key == Key.Escape)
         {
             ApplyInteractionResult(DocumentViewModel.Escape(), e);
             return;
         }
 
-        if (e.Key == Key.Enter)
+        if (key == Key.Enter)
         {
             ApplyInteractionResult(DocumentViewModel.CompleteCurrentDrawing(), e);
             return;
         }
 
-        if (e.Key == Key.Delete)
+        if (key == Key.Delete)
         {
             ApplyInteractionResult(DocumentViewModel.DeleteSelection(), e);
             return;
         }
 
-        if (e.Key == Key.Tab &&
+        if (key == Key.Tab &&
             (Keyboard.Modifiers & ~ModifierKeys.Shift) == ModifierKeys.None)
         {
             ApplyInteractionResult(
@@ -271,18 +273,18 @@ public partial class CadCanvas : IDisposable
             return;
         }
 
+        if (key == Key.A &&
+            Keyboard.Modifiers is ModifierKeys.Control or ModifierKeys.Alt)
+        {
+            ApplyInteractionResult(DocumentViewModel.SelectAllEntities(), e);
+            return;
+        }
+
         if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
             return;
 
-        switch (e.Key)
+        switch (key)
         {
-            case Key.A:
-                if (Keyboard.Modifiers != ModifierKeys.Control)
-                    break;
-
-                ApplyInteractionResult(DocumentViewModel.SelectAllEntities(), e);
-                break;
-
             case Key.Z:
                 DocumentViewModel.Undo();
                 e.Handled = true;
