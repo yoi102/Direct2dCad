@@ -642,7 +642,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         {
             var padding = 64.0 / Math.Max(_viewport.Zoom, double.Epsilon);
             var worldBounds = ScreenRectToWorldBounds(rect, _viewport).Inflate(padding);
-            return query(worldBounds).Count + DirtyRegionPassPenalty;
+            return query(_renderOptions.ActiveOwnerBlockId, worldBounds).Count +
+                   DirtyRegionPassPenalty;
         }
 
         var targetArea = Math.Max(1.0, (double)_target.Width * _target.Height);

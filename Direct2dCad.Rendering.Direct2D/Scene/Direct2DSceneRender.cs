@@ -107,8 +107,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _commandListCache.ApplyChanges(document, changes);
         if (AffectsEntityOrder(changes))
             _entityOrderCache.Invalidate();
-        else if (AffectsRenderWorkEstimate(document, changes))
-            _entityOrderCache.InvalidateRenderWorkEstimates();
+        else if (AffectsOwnerMetrics(changes))
+            _entityOrderCache.InvalidateOwnerMetrics();
         _resourceCache.ApplyChanges(document, changes);
         _oleRenderer.ApplyChanges(document, changes);
     }
@@ -734,30 +734,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         return changes.EntityChanges.Any(change => (change.Kind & orderChanges) != 0);
     }
 
-    private static bool AffectsRenderWorkEstimate(
-        CadDocument document,
-        CadDocumentChangeSet changes)
+    private static bool AffectsOwnerMetrics(CadDocumentChangeSet changes)
     {
         const CadEntityChangeKind relevantChanges =
             CadEntityChangeKind.Geometry |
             CadEntityChangeKind.Visibility;
-        foreach (var change in changes.EntityChanges)
-        {
-            if ((change.Kind & relevantChanges) == 0 ||
-                !document.TryGetEntity(change.EntityId, out var entity) ||
-                entity is null)
-            {
-                continue;
-            }
-
-            if (entity is CadBlockReference ||
-                !entity.OwnerBlockId.Equals(BlockId.ModelSpace))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return changes.EntityChanges.Any(change =>
+            (change.Kind & relevantChanges) != 0);
     }
 
     private void DrawTransients(

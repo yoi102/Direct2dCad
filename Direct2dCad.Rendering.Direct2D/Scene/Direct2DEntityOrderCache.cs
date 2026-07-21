@@ -1,6 +1,7 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
 
@@ -10,6 +11,7 @@ internal sealed class Direct2DEntityOrderCache
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _entitiesByOwner = [];
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _oleEntitiesByOwner = [];
     private readonly Dictionary<BlockId, IComparer<CadEntity>> _comparersByOwner = [];
+    private readonly Dictionary<BlockId, CadRectD> _boundsByOwner = [];
     private readonly Dictionary<BlockId, int> _estimatedRenderWorkByOwner = [];
     private CadDocument? _document;
 
@@ -25,20 +27,38 @@ internal sealed class Direct2DEntityOrderCache
             _entitiesByOwner.Clear();
             _oleEntitiesByOwner.Clear();
             _comparersByOwner.Clear();
+            _boundsByOwner.Clear();
             _estimatedRenderWorkByOwner.Clear();
         }
 
         if (_entitiesByOwner.TryGetValue(ownerBlockId, out var entities))
             return entities;
 
-        entities = document.Entities.Values
-            .Where(entity => entity.OwnerBlockId.Equals(ownerBlockId))
+        var ownerEntities = ResolveOwnerEntities(document, ownerBlockId);
+        entities = ownerEntities
             .OrderBy(entity =>
                 document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
             .ThenBy(entity => entity.ZIndex)
             .ThenBy(entity => entity.Id.Value)
             .ToArray();
         _entitiesByOwner[ownerBlockId] = entities;
+        return entities;
+    }
+
+    private static IEnumerable<CadEntity> ResolveOwnerEntities(
+        CadDocument document,
+        BlockId ownerBlockId)
+    {
+        if (!document.TryGetBlock(ownerBlockId, out var owner) || owner is null)
+            return [];
+
+        var entities = new List<CadEntity>(owner.EntityIds.Count);
+        foreach (var entityId in owner.EntityIds)
+        {
+            if (document.TryGetEntity(entityId, out var entity) && entity is not null)
+                entities.Add(entity);
+        }
+
         return entities;
     }
 
@@ -88,14 +108,38 @@ internal sealed class Direct2DEntityOrderCache
         return EstimateOwnerRenderWork(document, ownerBlockId, []);
     }
 
-    public void InvalidateRenderWorkEstimates() => _estimatedRenderWorkByOwner.Clear();
+    public void InvalidateOwnerMetrics()
+    {
+        _boundsByOwner.Clear();
+        _estimatedRenderWorkByOwner.Clear();
+    }
 
     public void Invalidate()
     {
         _entitiesByOwner.Clear();
         _oleEntitiesByOwner.Clear();
         _comparersByOwner.Clear();
+        _boundsByOwner.Clear();
         _estimatedRenderWorkByOwner.Clear();
+    }
+
+    public CadRectD GetOwnerBounds(CadDocument document, BlockId ownerBlockId)
+    {
+        if (_boundsByOwner.TryGetValue(ownerBlockId, out var bounds) &&
+            ReferenceEquals(_document, document))
+        {
+            return bounds;
+        }
+
+        bounds = CadRectD.Empty;
+        foreach (var entity in GetOrderedEntities(document, ownerBlockId))
+        {
+            if (!entity.IsErased && entity.IsVisible)
+                bounds = bounds.Union(entity.Bounds);
+        }
+
+        _boundsByOwner[ownerBlockId] = bounds;
+        return bounds;
     }
 
     private int EstimateOwnerRenderWork(

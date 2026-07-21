@@ -12,6 +12,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
     private readonly CadSelectionMode _mode;
     private readonly bool _clearWhenMiss;
     private readonly Func<CadEntity, bool> _selectionFilter;
+    private readonly BlockId _ownerBlockId;
 
     public override string Name => "Click Select";
     public IReadOnlyList<EntityId> HitEntityIds { get; private set; } = [];
@@ -22,7 +23,8 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         double tolerance,
         CadSelectionMode mode = CadSelectionMode.Replace,
         bool clearWhenMiss = true,
-        Func<CadEntity, bool>? selectionFilter = null)
+        Func<CadEntity, bool>? selectionFilter = null,
+        BlockId? ownerBlockId = null)
     {
         if (tolerance < 0 || double.IsNaN(tolerance) || double.IsInfinity(tolerance))
             throw new ArgumentOutOfRangeException(nameof(tolerance));
@@ -32,6 +34,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         _mode = mode;
         _clearWhenMiss = clearWhenMiss;
         _selectionFilter = selectionFilter ?? (_ => true);
+        _ownerBlockId = ownerBlockId ?? BlockId.ModelSpace;
     }
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
@@ -58,7 +61,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
             queryPadding * 2,
             queryPadding * 2);
 
-        var candidateIds = context.SpatialIndex.Query(queryArea);
+        var candidateIds = context.SpatialIndex.Query(_ownerBlockId, queryArea);
         var candidates = new List<HitCandidate>(candidateIds.Count);
         foreach (var entityId in candidateIds)
         {

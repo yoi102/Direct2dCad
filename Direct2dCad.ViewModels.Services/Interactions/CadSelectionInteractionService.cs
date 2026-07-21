@@ -28,7 +28,8 @@ internal sealed class CadSelectionInteractionService(
                 screenToWorld(endScreen),
                 6.0 / Math.Max(zoom, double.Epsilon),
                 selectionMode,
-                selectionFilter: selectionFilter);
+                selectionFilter: selectionFilter,
+                ownerBlockId: editor.ActiveOwnerBlockId);
             editor.Execute(command);
             return command.SelectedEntityId is null
                 ? null
@@ -47,7 +48,8 @@ internal sealed class CadSelectionInteractionService(
                 selectionMode,
                 requireContained,
                 selectionFilter,
-                zoom));
+                zoom,
+                editor.ActiveOwnerBlockId));
         }
         else
         {
@@ -56,7 +58,8 @@ internal sealed class CadSelectionInteractionService(
                 selectionMode,
                 requireContained,
                 selectionFilter,
-                zoom));
+                zoom,
+                editor.ActiveOwnerBlockId));
         }
         return null;
     }

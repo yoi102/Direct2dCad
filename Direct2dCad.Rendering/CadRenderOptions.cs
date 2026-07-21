@@ -23,5 +23,5 @@ public sealed class CadRenderOptions
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;
     public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = NoHiddenEntities;
     public CadRectD? DirtyWorldBounds { get; init; }
-    public Func<CadRectD, IReadOnlyList<EntityId>>? EntityBoundsQuery { get; init; }
+    public Func<BlockId, CadRectD, IReadOnlyList<EntityId>>? EntityBoundsQuery { get; init; }
 }

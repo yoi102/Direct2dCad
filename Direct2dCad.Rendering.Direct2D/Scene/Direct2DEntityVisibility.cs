@@ -36,7 +36,22 @@ internal static class Direct2DEntityVisibility
         }
 
         var broadPhasePadding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
-        var candidateIds = query(bounds.Inflate(broadPhasePadding));
+        var queryBounds = bounds.Inflate(broadPhasePadding);
+        var ownerBounds = entityOrderCache.GetOwnerBounds(
+            document,
+            options.ActiveOwnerBlockId);
+        if (!ownerBounds.IsEmpty && queryBounds.Contains(ownerBounds))
+        {
+            return EnumerateOrderedSubset(
+                document,
+                viewport,
+                options,
+                resourceCache,
+                orderedEntities,
+                bounds);
+        }
+
+        var candidateIds = query(options.ActiveOwnerBlockId, queryBounds);
         if (candidateIds.Count > 0 &&
             candidateIds.Count >= orderedEntities.Count / 2)
         {

@@ -101,7 +101,13 @@ internal sealed class Direct2DBlockReferenceRenderer(
             reference.ScaleY) * previousTransform;
         try
         {
-            foreach (var child in entityOrderCache.GetOrderedEntities(document, reference.DefinitionBlockId))
+            foreach (var child in Direct2DBlockEntityVisibility.Resolve(
+                         document,
+                         reference.DefinitionBlockId,
+                         context.Transform,
+                         viewport,
+                         options,
+                         entityOrderCache))
             {
                 if (!IsVisible(document, child, referenceStyle, options))
                     continue;

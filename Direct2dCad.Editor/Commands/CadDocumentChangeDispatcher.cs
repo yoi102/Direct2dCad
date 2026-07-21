@@ -170,7 +170,7 @@ public sealed class CadDocumentChangeDispatcher
                      change.Kind.HasFlag(CadEntityChangeKind.Created) ||
                      change.Kind.HasFlag(CadEntityChangeKind.Visibility) ||
                      change.Kind.HasFlag(CadEntityChangeKind.Layer))
-                _spatialIndex.Update(entity.Id, entity.Bounds);
+                _spatialIndex.Update(entity.Id, entity.OwnerBlockId, entity.Bounds);
         }
     }
 }

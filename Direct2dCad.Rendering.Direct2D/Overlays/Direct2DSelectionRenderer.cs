@@ -101,7 +101,9 @@ internal sealed class Direct2DSelectionRenderer(
         CadRectD renderWorldBounds)
     {
         var padding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
-        foreach (var entityId in options.EntityBoundsQuery!(renderWorldBounds.Inflate(padding)))
+        foreach (var entityId in options.EntityBoundsQuery!(
+                     options.ActiveOwnerBlockId,
+                     renderWorldBounds.Inflate(padding)))
         {
             if (!scene.TryGetSelectionReference(entityId, out var reference) ||
                 reference is null)

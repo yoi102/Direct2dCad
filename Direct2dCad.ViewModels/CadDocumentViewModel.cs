@@ -1206,7 +1206,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         var world = ScreenToWorld(screen, snapToGrid: false);
         var queryBounds = CadRectD.FromCenter(world, 1e-6, 1e-6);
-        var oleObject = CadEditor.SpatialIndex.Query(queryBounds)
+        var oleObject = CadEditor.SpatialIndex.Query(CadEditor.ActiveOwnerBlockId, queryBounds)
             .Select(entityId => CadEditor.Document.TryGetEntity(entityId, out var entity) ? entity : null)
             .OfType<CadOleObject>()
             .Where(entity =>
