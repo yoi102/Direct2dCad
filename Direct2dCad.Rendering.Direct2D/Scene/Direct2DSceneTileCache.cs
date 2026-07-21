@@ -47,13 +47,13 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options,
-        int entityCount,
+        int estimatedRenderWork,
         Func<ID2D1DeviceContext, CadDocument, CadViewport, CadRenderOptions, bool> drawScene,
         bool buildStep)
     {
         ThrowIfDisposed();
         EnsureDocument(document);
-        if (!CanUse(options, entityCount))
+        if (!CanUse(options, estimatedRenderWork))
             return false;
 
         var key = TileProfileKey.Create(options, viewport.Zoom);
@@ -111,12 +111,11 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         ID2D1DeviceContext context,
         CadViewport viewport,
         CadRenderOptions options,
-        int entityCount,
         out IReadOnlyList<CadRectD> missingWorldBounds)
     {
         ThrowIfDisposed();
         missingWorldBounds = [];
-        if (!CanUse(options, entityCount) || options.HiddenEntityIds.Count > 0)
+        if (options.ActiveLayoutId is not null || options.HiddenEntityIds.Count > 0)
             return false;
 
         var key = TileProfileKey.Create(options, viewport.Zoom);

@@ -106,11 +106,18 @@ internal sealed class Direct2DBlockReferenceRenderer(
                 if (!IsVisible(document, child, referenceStyle, options))
                     continue;
 
-                statistics.RecordExpandedBlockEntity();
-                statistics.RecordEntitySubmission();
-
                 if (child is CadBlockReference nested)
                 {
+                    var detail = Direct2DEntityLevelOfDetail.Resolve(
+                        nested,
+                        resources: null,
+                        context.Transform,
+                        options);
+                    if (detail == Direct2DEntityRenderDetail.Skip)
+                        continue;
+
+                    statistics.RecordExpandedBlockEntity();
+                    statistics.RecordEntitySubmission();
                     statistics.RecordBlockReference();
                     if (TryDrawProxy(context, document, nested, options, referenceStyle))
                         continue;
@@ -128,6 +135,16 @@ internal sealed class Direct2DBlockReferenceRenderer(
 
                 if (child is CadOleObject oleObject)
                 {
+                    if (Direct2DEntityLevelOfDetail.ResolveOle(
+                            oleObject.Bounds,
+                            context.Transform,
+                            options) == Direct2DEntityRenderDetail.Skip)
+                    {
+                        continue;
+                    }
+
+                    statistics.RecordExpandedBlockEntity();
+                    statistics.RecordEntitySubmission();
                     CadColor? proxyColor = child.LayerId.Equals(LayerId.Default)
                         ? referenceStyle.ReferenceColor
                         : null;
@@ -143,13 +160,25 @@ internal sealed class Direct2DBlockReferenceRenderer(
 
                 if (!resourceCache.TryGetEntityResources(child.Id, out var resources) || resources is null)
                     continue;
+                float? strokeWidthOverride = child.UseLayerLineWeight && child.LayerId.Equals(LayerId.Default)
+                    ? ResolveLayerStrokeWidth(referenceStyle.EffectiveLayer)
+                    : null;
+                if (Direct2DEntityLevelOfDetail.Resolve(
+                        child,
+                        resources,
+                        context.Transform,
+                        options,
+                        strokeWidthOverride) == Direct2DEntityRenderDetail.Skip)
+                {
+                    continue;
+                }
+
+                statistics.RecordExpandedBlockEntity();
+                statistics.RecordEntitySubmission();
 
                 var colorOverride = ResolveChildStrokeColor(document, child, referenceStyle);
                 var brushOverride = colorOverride is { } color
                     ? styleResources.GetBrush(context, color)
-                    : null;
-                float? strokeWidthOverride = child.UseLayerLineWeight && child.LayerId.Equals(LayerId.Default)
-                    ? ResolveLayerStrokeWidth(referenceStyle.EffectiveLayer)
                     : null;
 
                 entityRenderer.Draw(

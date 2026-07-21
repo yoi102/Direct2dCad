@@ -6,9 +6,11 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 internal sealed class Direct2DEntityOrderCache
 {
+    private const int MaximumEstimatedRenderWork = 1_000_000;
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _entitiesByOwner = [];
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _oleEntitiesByOwner = [];
     private readonly Dictionary<BlockId, IComparer<CadEntity>> _comparersByOwner = [];
+    private readonly Dictionary<BlockId, int> _estimatedRenderWorkByOwner = [];
     private CadDocument? _document;
 
     public IReadOnlyList<CadEntity> GetOrderedEntities(
@@ -23,6 +25,7 @@ internal sealed class Direct2DEntityOrderCache
             _entitiesByOwner.Clear();
             _oleEntitiesByOwner.Clear();
             _comparersByOwner.Clear();
+            _estimatedRenderWorkByOwner.Clear();
         }
 
         if (_entitiesByOwner.TryGetValue(ownerBlockId, out var entities))
@@ -76,11 +79,67 @@ internal sealed class Direct2DEntityOrderCache
         return oleEntities;
     }
 
+    public int GetEstimatedRenderWork(CadDocument document, BlockId ownerBlockId)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        GetOrderedEntities(document, ownerBlockId);
+        if (_estimatedRenderWorkByOwner.TryGetValue(ownerBlockId, out var cached))
+            return cached;
+        return EstimateOwnerRenderWork(document, ownerBlockId, []);
+    }
+
+    public void InvalidateRenderWorkEstimates() => _estimatedRenderWorkByOwner.Clear();
+
     public void Invalidate()
     {
         _entitiesByOwner.Clear();
         _oleEntitiesByOwner.Clear();
         _comparersByOwner.Clear();
+        _estimatedRenderWorkByOwner.Clear();
+    }
+
+    private int EstimateOwnerRenderWork(
+        CadDocument document,
+        BlockId ownerBlockId,
+        HashSet<BlockId> visitingBlocks)
+    {
+        if (_estimatedRenderWorkByOwner.TryGetValue(ownerBlockId, out var cached))
+            return cached;
+        if (!visitingBlocks.Add(ownerBlockId))
+            return 1;
+
+        long total = 0;
+        try
+        {
+            foreach (var entity in GetOrderedEntities(document, ownerBlockId))
+            {
+                if (entity.IsErased || !entity.IsVisible)
+                    continue;
+
+                total++;
+                if (entity is CadBlockReference reference)
+                {
+                    total += EstimateOwnerRenderWork(
+                        document,
+                        reference.DefinitionBlockId,
+                        visitingBlocks);
+                }
+
+                if (total >= MaximumEstimatedRenderWork)
+                {
+                    total = MaximumEstimatedRenderWork;
+                    break;
+                }
+            }
+        }
+        finally
+        {
+            visitingBlocks.Remove(ownerBlockId);
+        }
+
+        var estimate = (int)total;
+        _estimatedRenderWorkByOwner[ownerBlockId] = estimate;
+        return estimate;
     }
 
     private sealed class EntityRankComparer(

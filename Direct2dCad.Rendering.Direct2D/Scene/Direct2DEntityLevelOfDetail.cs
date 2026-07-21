@@ -48,16 +48,23 @@ internal static class Direct2DEntityLevelOfDetail
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket? resources,
         Matrix3x2 transform,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        float? strokeWidthOverride = null)
     {
-        return Resolve(entity, resources, ResolveMaximumScreenScale(transform), options);
+        return Resolve(
+            entity,
+            resources,
+            ResolveMaximumScreenScale(transform),
+            options,
+            strokeWidthOverride);
     }
 
     private static Direct2DEntityRenderDetail Resolve(
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket? resources,
         double screenScale,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        float? strokeWidthOverride = null)
     {
         if (!options.IsLevelOfDetailEnabled || entity is CadImage)
             return Direct2DEntityRenderDetail.Full;
@@ -83,7 +90,11 @@ internal static class Direct2DEntityLevelOfDetail
             return Direct2DEntityRenderDetail.Full;
 
         if (maximumExtent < MinimumGeometryScreenExtent &&
-            ResolveScreenStrokeWidth(resources, screenScale, options) < ThickStrokeScreenWidth)
+            ResolveScreenStrokeWidth(
+                resources,
+                screenScale,
+                options,
+                strokeWidthOverride) < ThickStrokeScreenWidth)
         {
             return Direct2DEntityRenderDetail.Skip;
         }
@@ -246,14 +257,16 @@ internal static class Direct2DEntityLevelOfDetail
     private static double ResolveScreenStrokeWidth(
         Direct2DResourceCache.EntityResourceBucket? resources,
         double zoom,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        float? strokeWidthOverride)
     {
         if (resources?.StrokeBrush is null)
             return 0;
 
+        var strokeWidth = strokeWidthOverride ?? resources.StrokeWidth;
         var screenWidth = options.KeepStrokeWidthScreenConstant
-            ? resources.StrokeWidth
-            : resources.StrokeWidth * zoom;
+            ? strokeWidth
+            : strokeWidth * zoom;
         return Math.Max(screenWidth, options.MinimumScreenStrokeWidth);
     }
 

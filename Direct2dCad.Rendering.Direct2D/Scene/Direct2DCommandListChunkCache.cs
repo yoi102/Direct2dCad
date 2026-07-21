@@ -45,12 +45,13 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         CadViewport viewport,
         CadRenderOptions options,
         IReadOnlyList<CadEntity> orderedEntities,
+        int estimatedRenderWork,
         Action<ID2D1DeviceContext, CadDocument, CadEntity, CadViewport, CadRenderOptions> drawEntity,
         bool buildStep)
     {
         ThrowIfDisposed();
         EnsureDocument(document);
-        if (!CanUse(options, orderedEntities.Count))
+        if (!CanUse(options, estimatedRenderWork))
             return false;
 
         if (!buildStep && !_profiles.ContainsKey(RenderProfileKey.Create(options, viewport.Zoom)))
@@ -108,7 +109,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         ThrowIfDisposed();
         EnsureDocument(document);
         var key = RenderProfileKey.Create(options, viewport.Zoom);
-        if (!CanUse(options, document.Entities.Count) ||
+        if (options.ActiveLayoutId is not null ||
             !_profiles.TryGetValue(key, out var profile))
         {
             return false;
@@ -156,7 +157,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
-        if (AffectsChunkPlan(changes))
+        if (AffectsChunkPlan(document, changes))
         {
             ClearProfiles();
             return;
@@ -192,6 +193,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         var pending = new List<CadEntity>(EntitiesPerChunk);
         var blockCacheability = new Dictionary<BlockId, bool>();
         var blockDependencies = new Dictionary<BlockId, IReadOnlyList<EntityId>>();
+        var visitingBlocks = new HashSet<BlockId>();
 
         void FlushCacheable()
         {
@@ -208,7 +210,8 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
         foreach (var entity in orderedEntities)
         {
-            if (IsCacheable(document, entity, blockCacheability, []))
+            visitingBlocks.Clear();
+            if (IsCacheable(document, entity, blockCacheability, visitingBlocks))
             {
                 pending.Add(entity);
                 if (pending.Count >= EntitiesPerChunk)
@@ -272,26 +275,34 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         }
         if (blockCacheability.TryGetValue(reference.DefinitionBlockId, out var cached))
             return cached;
-        if (!visitingBlocks.Add(reference.DefinitionBlockId) ||
-            !document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
-            definition is null)
-        {
+        if (!visitingBlocks.Add(reference.DefinitionBlockId))
             return false;
-        }
 
-        var cacheable = true;
-        foreach (var child in _entityOrderCache.GetOrderedEntities(document, definition.Id))
+        try
         {
-            if (!IsCacheable(document, child, blockCacheability, visitingBlocks))
+            if (!document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
+                definition is null)
             {
-                cacheable = false;
-                break;
+                return false;
             }
-        }
 
-        visitingBlocks.Remove(reference.DefinitionBlockId);
-        blockCacheability[reference.DefinitionBlockId] = cacheable;
-        return cacheable;
+            var cacheable = true;
+            foreach (var child in _entityOrderCache.GetOrderedEntities(document, definition.Id))
+            {
+                if (!IsCacheable(document, child, blockCacheability, visitingBlocks))
+                {
+                    cacheable = false;
+                    break;
+                }
+            }
+
+            blockCacheability[reference.DefinitionBlockId] = cacheable;
+            return cacheable;
+        }
+        finally
+        {
+            visitingBlocks.Remove(reference.DefinitionBlockId);
+        }
     }
 
     private IReadOnlyList<EntityId> ResolveBlockDependencies(
@@ -452,7 +463,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         return false;
     }
 
-    private static bool AffectsChunkPlan(CadDocumentChangeSet changes)
+    private static bool AffectsChunkPlan(
+        CadDocument document,
+        CadDocumentChangeSet changes)
     {
         if (changes.AffectsDocumentStructure || changes.AffectsViewSettings)
             return true;
@@ -463,7 +476,20 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             CadEntityChangeKind.DrawOrder |
             CadEntityChangeKind.Layer |
             CadEntityChangeKind.Fill;
-        return changes.EntityChanges.Any(change => (change.Kind & planChanges) != 0);
+        foreach (var change in changes.EntityChanges)
+        {
+            if ((change.Kind & planChanges) != 0)
+                return true;
+            if ((change.Kind & (CadEntityChangeKind.Geometry | CadEntityChangeKind.Metadata)) ==
+                (CadEntityChangeKind.Geometry | CadEntityChangeKind.Metadata) &&
+                document.TryGetEntity(change.EntityId, out var entity) &&
+                entity is CadBlockReference)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void EnsureDocument(CadDocument document)

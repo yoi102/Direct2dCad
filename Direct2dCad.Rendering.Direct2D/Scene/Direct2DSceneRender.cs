@@ -107,6 +107,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _commandListCache.ApplyChanges(document, changes);
         if (AffectsEntityOrder(changes))
             _entityOrderCache.Invalidate();
+        else if (AffectsRenderWorkEstimate(document, changes))
+            _entityOrderCache.InvalidateRenderWorkEstimates();
         _resourceCache.ApplyChanges(document, changes);
         _oleRenderer.ApplyChanges(document, changes);
     }
@@ -290,12 +292,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         var orderedEntities = _entityOrderCache.GetOrderedEntities(
             document,
             options.ActiveOwnerBlockId);
+        var estimatedRenderWork = _entityOrderCache.GetEstimatedRenderWork(
+            document,
+            options.ActiveOwnerBlockId);
         var commandListBuildPending = _commandListCache.Prepare(
             context,
             document,
             viewport,
             options,
             orderedEntities,
+            estimatedRenderWork,
             DrawEntityCore,
             buildStep);
         if (commandListBuildPending)
@@ -306,7 +312,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             document,
             viewport,
             options,
-            orderedEntities.Count,
+            estimatedRenderWork,
             DrawRetainedScene,
             buildStep);
     }
@@ -507,14 +513,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadViewport viewport,
         CadRenderOptions options)
     {
-        var entityCount = _entityOrderCache
-            .GetOrderedEntities(document, options.ActiveOwnerBlockId)
-            .Count;
         if (_tileCache.TryDraw(
                 context,
                 viewport,
                 options,
-                entityCount,
                 out var missingTileBounds))
         {
             foreach (var missingBounds in missingTileBounds)
@@ -730,6 +732,32 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             CadEntityChangeKind.DrawOrder |
             CadEntityChangeKind.Layer;
         return changes.EntityChanges.Any(change => (change.Kind & orderChanges) != 0);
+    }
+
+    private static bool AffectsRenderWorkEstimate(
+        CadDocument document,
+        CadDocumentChangeSet changes)
+    {
+        const CadEntityChangeKind relevantChanges =
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Visibility;
+        foreach (var change in changes.EntityChanges)
+        {
+            if ((change.Kind & relevantChanges) == 0 ||
+                !document.TryGetEntity(change.EntityId, out var entity) ||
+                entity is null)
+            {
+                continue;
+            }
+
+            if (entity is CadBlockReference ||
+                !entity.OwnerBlockId.Equals(BlockId.ModelSpace))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void DrawTransients(

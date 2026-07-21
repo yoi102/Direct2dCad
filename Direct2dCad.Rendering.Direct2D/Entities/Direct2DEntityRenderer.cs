@@ -30,12 +30,21 @@ internal sealed class Direct2DEntityRenderer(
     {
         var strokeBrush = strokeBrushOverride ?? resources.StrokeBrush;
         var strokeWidth = strokeWidthOverride ?? resources.StrokeWidth;
+        var renderDetail = Direct2DEntityLevelOfDetail.Resolve(
+            entity,
+            resources,
+            context.Transform,
+            options,
+            strokeWidthOverride);
+        if (renderDetail == Direct2DEntityRenderDetail.Skip)
+            return;
         if (TryDrawSimplified(
                 context,
                 entity,
                 resources,
                 options,
-                strokeBrush))
+                strokeBrush,
+                renderDetail))
         {
             return;
         }
@@ -155,13 +164,10 @@ internal sealed class Direct2DEntityRenderer(
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadRenderOptions options,
-        ID2D1Brush? strokeBrush)
+        ID2D1Brush? strokeBrush,
+        Direct2DEntityRenderDetail renderDetail)
     {
-        if (Direct2DEntityLevelOfDetail.Resolve(
-                entity,
-                resources,
-                context.Transform,
-                options) != Direct2DEntityRenderDetail.Simplified)
+        if (renderDetail != Direct2DEntityRenderDetail.Simplified)
         {
             return false;
         }

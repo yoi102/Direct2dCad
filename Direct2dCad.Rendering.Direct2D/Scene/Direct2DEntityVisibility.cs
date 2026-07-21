@@ -8,6 +8,9 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 internal static class Direct2DEntityVisibility
 {
+    private const int MinimumOrderedScanEntityCount = 256;
+    private const int OrderedScanCandidateDivisor = 8;
+
     public static IEnumerable<CadEntity> Enumerate(
         CadDocument document,
         CadViewport viewport,
@@ -43,6 +46,27 @@ internal static class Direct2DEntityVisibility
                 options,
                 resourceCache,
                 orderedEntities,
+                bounds);
+        }
+
+        if (orderedEntities.Count >= MinimumOrderedScanEntityCount &&
+            candidateIds.Count >= orderedEntities.Count / OrderedScanCandidateDivisor)
+        {
+            var candidateSet = candidateIds.ToHashSet();
+            var orderedCandidates = new List<CadEntity>(
+                Math.Min(candidateSet.Count, orderedEntities.Count));
+            foreach (var entity in orderedEntities)
+            {
+                if (candidateSet.Contains(entity.Id))
+                    orderedCandidates.Add(entity);
+            }
+
+            return EnumerateOrderedSubset(
+                document,
+                viewport,
+                options,
+                resourceCache,
+                orderedCandidates,
                 bounds);
         }
 
