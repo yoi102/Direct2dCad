@@ -23,7 +23,8 @@ internal enum Direct2DTextRenderDetail
 
 internal static class Direct2DEntityLevelOfDetail
 {
-    private const double MinimumGeometryScreenExtent = 0.35;
+    private const double MinimumGeometryScreenExtent = 0.5;
+    private const double MinimumPaintedGeometryScreenExtent = 0.75;
     private const double ThickStrokeScreenWidth = 1.0;
     private const double PerceptibleStrokeScreenWidth = 0.25;
     private const double MinimumFillScreenThickness = 0.05;
@@ -36,6 +37,7 @@ internal static class Direct2DEntityLevelOfDetail
     private const double MinimumTextScreenArea = 0.125;
     private const double TextSummaryScreenHeight = 0.5;
     private const double FullTextScreenHeight = 1.0;
+    private const double CompactGeometryProxyScreenExtent = 1.25;
     private const double BlockProxyScreenExtent = 3.0;
     private const double OleProxyMinimumScreenExtent = 8.0;
     private const double LowDetailGeometryScreenExtent = 128.0;
@@ -266,6 +268,13 @@ internal static class Direct2DEntityLevelOfDetail
         CadEntity entity,
         Direct2DProjectedEntityMetrics metrics)
     {
+        if (entity is not (CadImage or CadOleObject or CadText or CadShapeText) &&
+            metrics.MaximumExtent < CompactGeometryProxyScreenExtent &&
+            metrics.ScreenStrokeWidth < ThickStrokeScreenWidth)
+        {
+            return true;
+        }
+
         return entity switch
         {
             CadSpline => metrics.MaximumExtent < SimplifiedGeometryScreenExtent,
@@ -396,8 +405,8 @@ internal static class Direct2DEntityLevelOfDetail
         Direct2DResourceCache.EntityResourceBucket? resources,
         Direct2DProjectedEntityMetrics metrics)
     {
-        if (metrics.MaximumExtent < MinimumGeometryScreenExtent &&
-            metrics.ScreenStrokeWidth < ThickStrokeScreenWidth)
+        if (metrics.MaximumExtent + metrics.ScreenStrokeWidth <
+            MinimumPaintedGeometryScreenExtent)
         {
             return true;
         }

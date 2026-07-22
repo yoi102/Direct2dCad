@@ -24,7 +24,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private const int TileBitmapPixelSize = TilePixelSize + TileGutterPixels * 2;
     private const int MaximumProfiles = 3;
     private const int MaximumTilesPerProfile = 64;
-    private const int MaximumTilesTotal = 128;
+    internal const long CacheBudgetBytes = 128L * 1024 * 1024;
     private const int MaximumFailedTilesPerProfile = 64;
     private const double MaximumFallbackZoomRatio = 2.0;
     private const int MaximumMissingTilesForPartialReplay = 1;
@@ -48,6 +48,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         _statistics = statistics;
     }
+
+    public long EstimatedBytes => _profiles.Values.Sum(static profile => profile.EstimatedBytes);
 
     public bool Prepare(
         ID2D1DeviceContext context,
@@ -333,6 +335,14 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         var visible = viewport.VisibleWorldBounds;
         FillTiles(visible, profileZoom, result);
+        if (!visible.IsEmpty && profileZoom > double.Epsilon)
+        {
+            var worldSize = TilePixelSize / profileZoom;
+            PrioritizeCenterTiles(
+                result,
+                visible.Center.X / worldSize,
+                visible.Center.Y / worldSize);
+        }
     }
 
     private static void FillRenderTiles(
@@ -369,6 +379,40 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             for (var x = minX; x <= maxX; x++)
                 result.Add(new TileCoordinate(x, y));
         }
+    }
+
+    private static void PrioritizeCenterTiles(
+        List<TileCoordinate> tiles,
+        double centerX,
+        double centerY)
+    {
+        for (var destination = 0; destination < tiles.Count - 1; destination++)
+        {
+            var nearest = destination;
+            var nearestDistance = DistanceSquared(tiles[destination], centerX, centerY);
+            for (var candidate = destination + 1; candidate < tiles.Count; candidate++)
+            {
+                var distance = DistanceSquared(tiles[candidate], centerX, centerY);
+                if (distance >= nearestDistance)
+                    continue;
+
+                nearest = candidate;
+                nearestDistance = distance;
+            }
+
+            if (nearest != destination)
+                (tiles[destination], tiles[nearest]) = (tiles[nearest], tiles[destination]);
+        }
+    }
+
+    private static double DistanceSquared(
+        TileCoordinate tile,
+        double centerX,
+        double centerY)
+    {
+        var deltaX = tile.X + 0.5 - centerX;
+        var deltaY = tile.Y + 0.5 - centerY;
+        return deltaX * deltaX + deltaY * deltaY;
     }
 
     private static CadRectD ResolveWorldBounds(TileCoordinate coordinate, double zoom)
@@ -641,9 +685,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         TileProfile protectedProfile,
         IReadOnlyCollection<TileCoordinate> protectedTiles)
     {
-        var overflow = _profiles.Values.Sum(static profile => profile.Tiles.Count) -
-                       MaximumTilesTotal;
-        if (overflow <= 0)
+        var overflowBytes = EstimatedBytes - CacheBudgetBytes;
+        if (overflowBytes <= 0)
             return;
 
         var protectedSet = protectedTiles as IReadOnlySet<TileCoordinate> ??
@@ -659,10 +702,15 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                 !ReferenceEquals(candidate.Profile, protectedProfile) ||
                 !protectedSet.Contains(candidate.Coordinate))
             .OrderBy(static candidate => candidate.Tile.LastUsed)
-            .Take(overflow)
             .ToArray();
         foreach (var candidate in candidates)
+        {
+            if (overflowBytes <= 0)
+                break;
+            overflowBytes -= candidate.Tile.EstimatedBytes;
             candidate.Profile.RemoveTile(candidate.Coordinate);
+            _statistics.RecordGpuCacheEviction();
+        }
     }
 
     private void TrimProfiles(TileProfileKey currentKey)
@@ -758,6 +806,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         public Dictionary<TileCoordinate, SceneTile> Tiles { get; } = [];
         public HashSet<TileCoordinate> FailedTiles { get; } = [];
         public long LastUsed { get; set; }
+        public long EstimatedBytes => Tiles.Values.Sum(static tile => tile.EstimatedBytes);
 
         public void Dispose()
         {
@@ -831,6 +880,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         public ID2D1Bitmap1 Bitmap { get; } = bitmap;
         public CadRectD WorldBounds { get; } = worldBounds;
         public long LastUsed { get; set; }
+        public long EstimatedBytes { get; } = (long)TileBitmapPixelSize * TileBitmapPixelSize * 4;
         public void Dispose() => Bitmap.Dispose();
     }
 }

@@ -28,16 +28,22 @@ internal delegate void Direct2DSelectionReferenceDrawCallback(
 internal sealed class Direct2DSelectionCommandListCache : IDisposable
 {
     private const int MinimumSelectionCount = 512;
+    private const int MinimumSpatialChunkReferenceCount = 48;
     private const int ReferencesPerChunk = 256;
     private const int MaximumProfiles = 3;
     private const double BuildBudgetMilliseconds = 4.0;
+    private const double PlanBuildBudgetMilliseconds = 1.5;
+    internal const long CacheBudgetBytes = 32L * 1024 * 1024;
 
     private readonly Direct2DResourceCache _resourceCache;
     private readonly Direct2DRenderStatisticsCollector _statistics;
     private readonly Dictionary<SelectionProfileKey, SelectionProfile> _profiles = [];
+    private IReadOnlyList<SelectionChunkPlan>? _chunkPlans;
+    private SelectionChunkPlanBuilder? _planBuilder;
     private CadDocument? _document;
     private long _selectionVersion = long.MinValue;
     private long _usageStamp;
+    private long _estimatedBytes;
     private bool _disposed;
 
     public Direct2DSelectionCommandListCache(
@@ -47,6 +53,8 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         _resourceCache = resourceCache;
         _statistics = statistics;
     }
+
+    public long EstimatedBytes => Math.Max(0, _estimatedBytes);
 
     public bool Prepare(
         ID2D1DeviceContext context,
@@ -68,7 +76,18 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
 
         if (!_profiles.TryGetValue(key, out var profile))
         {
-            profile = BuildProfile(document, key, scene!.SelectionReferences);
+            if (_chunkPlans is null)
+            {
+                _planBuilder ??= new SelectionChunkPlanBuilder(
+                    this,
+                    document,
+                    scene!.SelectionReferences.ToArray());
+                if (!_planBuilder.BuildStep(PlanBuildBudgetMilliseconds))
+                    return true;
+                _chunkPlans = _planBuilder.Plans;
+                _planBuilder = null;
+            }
+            profile = BuildProfile(key, _chunkPlans);
             _profiles.Add(key, profile);
             TrimProfiles(key);
         }
@@ -81,25 +100,45 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
 
         var buildOptions = CreateBuildOptions(options, viewport.Zoom);
         var started = Stopwatch.GetTimestamp();
-        foreach (var chunk in profile.Chunks)
+        var visibleWorldBounds = viewport.VisibleWorldBounds;
+        for (var pass = 0; pass < 2; pass++)
         {
-            if (!chunk.IsCacheable || chunk.CommandList is not null || chunk.BuildFailed)
-                continue;
+            var buildVisibleChunks = pass == 0;
+            foreach (var chunk in profile.Chunks)
+            {
+                if (!chunk.IsCacheable ||
+                    chunk.CommandList is not null ||
+                    chunk.BuildFailed ||
+                    chunk.WasBudgetEvicted ||
+                    IntersectsRenderBounds(chunk.Bounds, visibleWorldBounds, viewport.Zoom) !=
+                    buildVisibleChunks)
+                {
+                    continue;
+                }
 
-            chunk.CommandList = RecordChunk(
-                context,
-                document,
-                viewport,
-                buildOptions,
-                chunk,
-                drawReference);
-            if (chunk.CommandList is not null)
-                _statistics.RecordSelectionCommandListBuild();
-            else
-                chunk.BuildFailed = true;
+                chunk.CommandList = RecordChunk(
+                    context,
+                    document,
+                    viewport,
+                    buildOptions,
+                    chunk,
+                    drawReference);
+                if (chunk.CommandList is not null)
+                {
+                    chunk.EstimatedBytes = EstimateCommandListBytes(chunk);
+                    chunk.LastUsed = ++_usageStamp;
+                    _statistics.RecordSelectionCommandListBuild();
+                    TrimToBudget(chunk);
+                }
+                else
+                    chunk.BuildFailed = true;
 
-            if (Stopwatch.GetElapsedTime(started).TotalMilliseconds >= BuildBudgetMilliseconds)
-                break;
+                if (Stopwatch.GetElapsedTime(started).TotalMilliseconds >=
+                    BuildBudgetMilliseconds)
+                {
+                    return profile.HasPendingBuilds;
+                }
+            }
         }
 
         return profile.HasPendingBuilds;
@@ -141,6 +180,7 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
                     CompositeMode.SourceOver);
                 _statistics.RecordSelectionCommandListReplay();
                 _statistics.RecordSelectionEntities(chunk.RecordedReferenceCount);
+                chunk.LastUsed = ++_usageStamp;
                 continue;
             }
 
@@ -167,9 +207,12 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         if (changes.AffectsDocumentStructure ||
             changes.AffectsViewSettings ||
             changes.EntityChanges.Any(static change =>
-                (change.Kind & CadEntityChangeKind.Fill) != 0))
+                (change.Kind & (CadEntityChangeKind.Fill |
+                                CadEntityChangeKind.Geometry |
+                                CadEntityChangeKind.Deleted |
+                                CadEntityChangeKind.Rotation)) != 0))
         {
-            ClearProfiles();
+            ClearSelectionCaches();
             return;
         }
 
@@ -194,53 +237,27 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
     public void Clear()
     {
         ThrowIfDisposed();
-        ClearProfiles();
+        ClearSelectionCaches();
         _document = null;
         _selectionVersion = long.MinValue;
     }
 
     private SelectionProfile BuildProfile(
-        CadDocument document,
         SelectionProfileKey key,
-        IReadOnlyList<CadSelectionEntityReference> references)
+        IReadOnlyList<SelectionChunkPlan> plans)
     {
-        var chunks = new List<SelectionChunk>();
-        var pending = new List<CadSelectionEntityReference>(ReferencesPerChunk);
-        var blockCacheability = new Dictionary<BlockId, bool>();
-        var blockDependencies = new Dictionary<BlockId, IReadOnlyList<EntityId>>();
-
-        void FlushCacheable()
+        var chunks = new SelectionChunk[plans.Count];
+        for (var index = 0; index < plans.Count; index++)
         {
-            if (pending.Count == 0)
-                return;
-
-            chunks.Add(CreateChunk(
-                document,
-                pending.ToArray(),
-                isCacheable: true,
-                blockDependencies));
-            pending.Clear();
+            var plan = plans[index];
+            chunks[index] = new SelectionChunk(
+                plan.References,
+                plan.DependencyEntityIds,
+                plan.Bounds,
+                plan.IsCacheable,
+                AdjustEstimatedBytes);
         }
 
-        foreach (var reference in references)
-        {
-            if (IsCacheable(document, reference.EntityId, blockCacheability, []))
-            {
-                pending.Add(reference);
-                if (pending.Count >= ReferencesPerChunk)
-                    FlushCacheable();
-                continue;
-            }
-
-            FlushCacheable();
-            chunks.Add(CreateChunk(
-                document,
-                [reference],
-                isCacheable: false,
-                blockDependencies));
-        }
-
-        FlushCacheable();
         return new SelectionProfile(key, chunks);
     }
 
@@ -365,7 +382,7 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         }
     }
 
-    private SelectionChunk CreateChunk(
+    private SelectionChunkPlan CreateChunkPlan(
         CadDocument document,
         IReadOnlyList<CadSelectionEntityReference> references,
         bool isCacheable,
@@ -393,7 +410,7 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
             }
         }
 
-        return new SelectionChunk(
+        return new SelectionChunkPlan(
             references,
             dependencies.ToArray(),
             bounds,
@@ -477,6 +494,33 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
                renderBounds.Contains(paintBounds);
     }
 
+    private static long EstimateCommandListBytes(SelectionChunk chunk) =>
+        4L * 1024 +
+        chunk.RecordedReferenceCount * 192L +
+        chunk.DependencyEntityIds.Count * 32L;
+
+    private void TrimToBudget(SelectionChunk protectedChunk)
+    {
+        var overflow = EstimatedBytes - CacheBudgetBytes;
+        if (overflow <= 0)
+            return;
+
+        foreach (var chunk in _profiles.Values
+                     .SelectMany(static profile => profile.Chunks)
+                     .Where(chunk =>
+                         !ReferenceEquals(chunk, protectedChunk) &&
+                         chunk.CommandList is not null)
+                     .OrderBy(static chunk => chunk.LastUsed)
+                     .ToArray())
+        {
+            if (overflow <= 0)
+                break;
+            overflow -= chunk.EstimatedBytes;
+            chunk.EvictForBudget();
+            _statistics.RecordGpuCacheEviction();
+        }
+    }
+
     private void EnsureState(CadDocument document, CadHandleScene? scene)
     {
         var selectionVersion = scene?.SelectionVersion ?? long.MinValue;
@@ -486,7 +530,7 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
             return;
         }
 
-        ClearProfiles();
+        ClearSelectionCaches();
         _document = document;
         _selectionVersion = selectionVersion;
     }
@@ -508,13 +552,26 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         foreach (var profile in _profiles.Values)
             profile.Dispose();
         _profiles.Clear();
+        _estimatedBytes = 0;
+    }
+
+    private void ClearSelectionCaches()
+    {
+        ClearProfiles();
+        _chunkPlans = null;
+        _planBuilder = null;
+    }
+
+    private void AdjustEstimatedBytes(long delta)
+    {
+        _estimatedBytes = Math.Max(0, _estimatedBytes + delta);
     }
 
     public void Dispose()
     {
         if (_disposed)
             return;
-        ClearProfiles();
+        ClearSelectionCaches();
         _document = null;
         _disposed = true;
     }
@@ -549,6 +606,113 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
 
     }
 
+    private sealed record SelectionChunkPlan(
+        IReadOnlyList<CadSelectionEntityReference> References,
+        IReadOnlyList<EntityId> DependencyEntityIds,
+        CadRectD Bounds,
+        bool IsCacheable);
+
+    private sealed class SelectionChunkPlanBuilder
+    {
+        private readonly Direct2DSelectionCommandListCache _owner;
+        private readonly CadDocument _document;
+        private readonly IReadOnlyList<CadSelectionEntityReference> _references;
+        private readonly List<SelectionChunkPlan> _plans = [];
+        private readonly List<CadSelectionEntityReference> _pending = new(ReferencesPerChunk);
+        private readonly Dictionary<BlockId, bool> _blockCacheability = [];
+        private readonly Dictionary<BlockId, IReadOnlyList<EntityId>> _blockDependencies = [];
+        private readonly HashSet<BlockId> _visitingBlocks = [];
+        private CadRectD _pendingBounds = CadRectD.Empty;
+        private double _pendingFootprint;
+        private int _nextReferenceIndex;
+
+        public IReadOnlyList<SelectionChunkPlan> Plans => _plans;
+        public bool IsComplete { get; private set; }
+
+        public SelectionChunkPlanBuilder(
+            Direct2DSelectionCommandListCache owner,
+            CadDocument document,
+            IReadOnlyList<CadSelectionEntityReference> references)
+        {
+            _owner = owner;
+            _document = document;
+            _references = references;
+        }
+
+        public bool BuildStep(double budgetMilliseconds)
+        {
+            if (IsComplete)
+                return true;
+
+            var started = Stopwatch.GetTimestamp();
+            var processed = 0;
+            while (_nextReferenceIndex < _references.Count)
+            {
+                Process(_references[_nextReferenceIndex++]);
+                processed++;
+                if (processed > 0 &&
+                    Stopwatch.GetElapsedTime(started).TotalMilliseconds >= budgetMilliseconds)
+                {
+                    return false;
+                }
+            }
+
+            FlushCacheable();
+            IsComplete = true;
+            return true;
+        }
+
+        private void Process(CadSelectionEntityReference reference)
+        {
+            _visitingBlocks.Clear();
+            if (_owner.IsCacheable(
+                    _document,
+                    reference.EntityId,
+                    _blockCacheability,
+                    _visitingBlocks))
+            {
+                var referenceBounds = reference.EntityBounds.Translate(reference.Offset);
+                if (Direct2DAdaptiveChunkPlanner.ShouldFlushBefore(
+                        _pending.Count,
+                        MinimumSpatialChunkReferenceCount,
+                        ReferencesPerChunk,
+                        _pendingBounds,
+                        _pendingFootprint,
+                        referenceBounds))
+                {
+                    FlushCacheable();
+                }
+
+                _pending.Add(reference);
+                _pendingBounds = _pendingBounds.Union(referenceBounds);
+                _pendingFootprint += Direct2DAdaptiveChunkPlanner.EstimateFootprint(referenceBounds);
+                return;
+            }
+
+            FlushCacheable();
+            _plans.Add(_owner.CreateChunkPlan(
+                _document,
+                [reference],
+                isCacheable: false,
+                _blockDependencies));
+        }
+
+        private void FlushCacheable()
+        {
+            if (_pending.Count == 0)
+                return;
+
+            _plans.Add(_owner.CreateChunkPlan(
+                _document,
+                _pending.ToArray(),
+                isCacheable: true,
+                _blockDependencies));
+            _pending.Clear();
+            _pendingBounds = CadRectD.Empty;
+            _pendingFootprint = 0;
+        }
+    }
+
     private sealed class SelectionProfile : IDisposable
     {
         private readonly Dictionary<EntityId, List<SelectionChunk>> _chunksByDependency = [];
@@ -557,9 +721,11 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         public IReadOnlyList<SelectionChunk> Chunks { get; }
         public bool HasCacheableChunks { get; }
         public bool HasPendingBuilds => Chunks.Any(static chunk =>
-            chunk.IsCacheable && chunk.CommandList is null && !chunk.BuildFailed);
+            chunk.IsCacheable &&
+            chunk.CommandList is null &&
+            !chunk.BuildFailed &&
+            !chunk.WasBudgetEvicted);
         public long LastUsed { get; set; }
-
         public SelectionProfile(
             SelectionProfileKey key,
             IReadOnlyList<SelectionChunk> chunks)
@@ -601,8 +767,11 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         IReadOnlyList<CadSelectionEntityReference> references,
         IReadOnlyList<EntityId> dependencyEntityIds,
         CadRectD bounds,
-        bool isCacheable) : IDisposable
+        bool isCacheable,
+        Action<long> estimatedBytesChanged) : IDisposable
     {
+        private long _estimatedBytes;
+
         public IReadOnlyList<CadSelectionEntityReference> References { get; } = references;
         public IReadOnlyList<EntityId> DependencyEntityIds { get; } = dependencyEntityIds;
         public CadRectD Bounds { get; } = bounds;
@@ -610,6 +779,19 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         public ID2D1CommandList? CommandList { get; set; }
         public int RecordedReferenceCount { get; set; }
         public bool BuildFailed { get; set; }
+        public bool WasBudgetEvicted { get; private set; }
+        public long EstimatedBytes
+        {
+            get => _estimatedBytes;
+            set
+            {
+                var normalized = Math.Max(0, value);
+                var delta = normalized - _estimatedBytes;
+                _estimatedBytes = normalized;
+                estimatedBytesChanged(delta);
+            }
+        }
+        public long LastUsed { get; set; }
 
         public void Invalidate()
         {
@@ -617,6 +799,17 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
             CommandList = null;
             RecordedReferenceCount = 0;
             BuildFailed = false;
+            WasBudgetEvicted = false;
+            EstimatedBytes = 0;
+        }
+
+        public void EvictForBudget()
+        {
+            CommandList?.Dispose();
+            CommandList = null;
+            RecordedReferenceCount = 0;
+            EstimatedBytes = 0;
+            WasBudgetEvicted = true;
         }
 
         public void Dispose()

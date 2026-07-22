@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -9,6 +10,7 @@ namespace Direct2dCad.wpf.Controls;
 
 public partial class CadCanvas : IDisposable
 {
+    private const double RenderCacheIdleBuildBudgetMilliseconds = 9.0;
     private CadPointD _pendingPointerScreen;
     private bool _pointerMovePending;
     private bool _pointerRenderScheduled;
@@ -231,7 +233,17 @@ public partial class CadCanvas : IDisposable
                 return;
             }
 
-            if (viewModel.Direct2DImageRenderHost.PrepareRenderCacheStep())
+            var started = Stopwatch.GetTimestamp();
+            var buildPending = false;
+            do
+            {
+                buildPending = viewModel.Direct2DImageRenderHost.PrepareRenderCacheStep();
+            }
+            while (buildPending &&
+                   Stopwatch.GetElapsedTime(started).TotalMilliseconds <
+                   RenderCacheIdleBuildBudgetMilliseconds);
+
+            if (buildPending)
                 OnRenderCacheBuildRequested(sender, EventArgs.Empty);
             else
                 viewModel.RequestRender();

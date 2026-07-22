@@ -17,16 +17,22 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 internal sealed class Direct2DCommandListChunkCache : IDisposable
 {
     private const int MinimumEntityCount = 1024;
+    private const int MinimumSpatialChunkEntityCount = 64;
     private const int EntitiesPerChunk = 384;
     private const int MaximumProfiles = 4;
     private const double BuildBudgetMilliseconds = 5.0;
+    private const double PlanBuildBudgetMilliseconds = 2.0;
+    internal const long CacheBudgetBytes = 64L * 1024 * 1024;
 
     private readonly Direct2DResourceCache _resourceCache;
     private readonly Direct2DEntityOrderCache _entityOrderCache;
     private readonly Direct2DRenderStatisticsCollector _statistics;
     private readonly Dictionary<RenderProfileKey, RenderProfile> _profiles = [];
+    private readonly Dictionary<BlockId, IReadOnlyList<RenderChunkPlan>> _chunkPlans = [];
+    private readonly Dictionary<BlockId, RenderChunkPlanBuilder> _planBuilders = [];
     private CadDocument? _document;
     private long _usageStamp;
+    private long _estimatedBytes;
     private bool _disposed;
 
     public Direct2DCommandListChunkCache(
@@ -38,6 +44,8 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         _entityOrderCache = entityOrderCache;
         _statistics = statistics;
     }
+
+    public long EstimatedBytes => Math.Max(0, _estimatedBytes);
 
     public bool Prepare(
         ID2D1DeviceContext context,
@@ -60,43 +68,79 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         var key = RenderProfileKey.Create(options, viewport.Zoom);
         if (!_profiles.TryGetValue(key, out var profile))
         {
-            profile = BuildProfile(document, key, orderedEntities);
+            if (!_chunkPlans.TryGetValue(key.OwnerBlockId, out var chunkPlans))
+            {
+                if (!_planBuilders.TryGetValue(key.OwnerBlockId, out var planBuilder))
+                {
+                    planBuilder = new RenderChunkPlanBuilder(
+                        this,
+                        document,
+                        key.OwnerBlockId,
+                        orderedEntities);
+                    _planBuilders.Add(key.OwnerBlockId, planBuilder);
+                }
+
+                if (!planBuilder.BuildStep(PlanBuildBudgetMilliseconds))
+                    return true;
+
+                chunkPlans = planBuilder.Plans;
+                _chunkPlans.Add(key.OwnerBlockId, chunkPlans);
+                _planBuilders.Remove(key.OwnerBlockId);
+            }
+
+            profile = BuildProfile(key, chunkPlans);
             _profiles.Add(key, profile);
             TrimProfiles(key);
         }
 
         profile.LastUsed = ++_usageStamp;
         if (!buildStep)
-        {
-            return profile.Chunks.Any(static chunk =>
-                chunk.IsCacheable && chunk.CommandList is null && !chunk.BuildFailed);
-        }
+            return profile.HasPendingBuilds;
 
         var buildOptions = CreateBuildOptions(options, viewport.Zoom);
         var started = Stopwatch.GetTimestamp();
-        foreach (var chunk in profile.Chunks)
+        var visibleWorldBounds = viewport.VisibleWorldBounds;
+        for (var pass = 0; pass < 2; pass++)
         {
-            if (!chunk.IsCacheable || chunk.CommandList is not null || chunk.BuildFailed)
-                continue;
+            var buildVisibleChunks = pass == 0;
+            foreach (var chunk in profile.Chunks)
+            {
+                if (!chunk.IsCacheable ||
+                    chunk.CommandList is not null ||
+                    chunk.BuildFailed ||
+                    chunk.WasBudgetEvicted ||
+                    IntersectsRenderBounds(chunk.Bounds, visibleWorldBounds, viewport.Zoom) !=
+                    buildVisibleChunks)
+                {
+                    continue;
+                }
 
-            chunk.CommandList = RecordChunk(
-                context,
-                document,
-                viewport,
-                buildOptions,
-                chunk,
-                drawEntity);
-            if (chunk.CommandList is not null)
-                _statistics.RecordCommandListBuild();
-            else
-                chunk.BuildFailed = true;
+                chunk.CommandList = RecordChunk(
+                    context,
+                    document,
+                    viewport,
+                    buildOptions,
+                    chunk,
+                    drawEntity);
+                if (chunk.CommandList is not null)
+                {
+                    chunk.EstimatedBytes = EstimateCommandListBytes(chunk);
+                    chunk.LastUsed = ++_usageStamp;
+                    _statistics.RecordCommandListBuild();
+                    TrimToBudget(chunk);
+                }
+                else
+                    chunk.BuildFailed = true;
 
-            if (Stopwatch.GetElapsedTime(started).TotalMilliseconds >= BuildBudgetMilliseconds)
-                break;
+                if (Stopwatch.GetElapsedTime(started).TotalMilliseconds >=
+                    BuildBudgetMilliseconds)
+                {
+                    return profile.HasPendingBuilds;
+                }
+            }
         }
 
-        return profile.Chunks.Any(static chunk =>
-            chunk.IsCacheable && chunk.CommandList is null && !chunk.BuildFailed);
+        return profile.HasPendingBuilds;
     }
 
     public bool TryDraw(
@@ -134,10 +178,11 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                     CompositeMode.SourceOver);
                 _statistics.RecordCommandListReplay();
                 _statistics.RecordVisibleEntities(chunk.RecordedEntityCount);
+                chunk.LastUsed = ++_usageStamp;
                 continue;
             }
 
-            foreach (var entity in Direct2DEntityVisibility.EnumerateOrderedSubset(
+            foreach (var visible in Direct2DEntityVisibility.EnumerateOrderedSubset(
                          document,
                          viewport,
                          options,
@@ -148,7 +193,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                 _statistics.RecordVisibleEntity();
                 _statistics.RecordEntitySubmission();
                 _statistics.RecordFallbackEntity();
-                drawEntity(context, document, entity, viewport, options);
+                drawEntity(context, document, visible.Entity, viewport, options);
             }
         }
 
@@ -161,7 +206,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         EnsureDocument(document);
         if (AffectsChunkPlan(document, changes))
         {
-            ClearProfiles();
+            ClearChunkCaches();
             return;
         }
 
@@ -191,65 +236,37 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     public void Clear()
     {
         ThrowIfDisposed();
-        ClearProfiles();
+        ClearChunkCaches();
         _document = null;
     }
 
     private RenderProfile BuildProfile(
-        CadDocument document,
         RenderProfileKey key,
-        IReadOnlyList<CadEntity> orderedEntities)
+        IReadOnlyList<RenderChunkPlan> plans)
     {
-        var chunks = new List<RenderChunk>();
-        var pending = new List<CadEntity>(EntitiesPerChunk);
-        var blockCacheability = new Dictionary<BlockId, bool>();
-        var blockDependencies = new Dictionary<BlockId, IReadOnlyList<EntityId>>();
-        var visitingBlocks = new HashSet<BlockId>();
-
-        void FlushCacheable()
+        var chunks = new RenderChunk[plans.Count];
+        for (var index = 0; index < plans.Count; index++)
         {
-            if (pending.Count == 0)
-                return;
-
-            chunks.Add(CreateChunk(
-                document,
-                pending.ToArray(),
-                isCacheable: true,
-                blockDependencies));
-            pending.Clear();
+            var plan = plans[index];
+            chunks[index] = new RenderChunk(
+                plan.Entities,
+                plan.DependencyEntityIds,
+                plan.Bounds,
+                plan.IsCacheable,
+                AdjustEstimatedBytes);
         }
 
-        foreach (var entity in orderedEntities)
-        {
-            visitingBlocks.Clear();
-            if (IsCacheable(document, entity, blockCacheability, visitingBlocks))
-            {
-                pending.Add(entity);
-                if (pending.Count >= EntitiesPerChunk)
-                    FlushCacheable();
-                continue;
-            }
-
-            FlushCacheable();
-            chunks.Add(CreateChunk(
-                document,
-                [entity],
-                isCacheable: false,
-                blockDependencies));
-        }
-
-        FlushCacheable();
         return new RenderProfile(key, chunks);
     }
 
-    private RenderChunk CreateChunk(
+    private RenderChunkPlan CreateChunkPlan(
         CadDocument document,
         IReadOnlyList<CadEntity> entities,
         bool isCacheable,
         Dictionary<BlockId, IReadOnlyList<EntityId>> blockDependencies)
     {
-        var bounds = CadRectD.Empty;
         var dependencies = new HashSet<EntityId>();
+        var bounds = CadRectD.Empty;
         foreach (var entity in entities)
         {
             bounds = bounds.Union(entity.Bounds);
@@ -267,7 +284,11 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             }
         }
 
-        return new RenderChunk(entities, dependencies.ToArray(), bounds, isCacheable);
+        return new RenderChunkPlan(
+            entities,
+            dependencies.ToArray(),
+            bounds,
+            isCacheable);
     }
 
     private bool IsCacheable(
@@ -493,6 +514,33 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         return true;
     }
 
+    private static long EstimateCommandListBytes(RenderChunk chunk) =>
+        4L * 1024 +
+        chunk.RecordedEntityCount * 256L +
+        chunk.DependencyEntityIds.Count * 32L;
+
+    private void TrimToBudget(RenderChunk protectedChunk)
+    {
+        var overflow = EstimatedBytes - CacheBudgetBytes;
+        if (overflow <= 0)
+            return;
+
+        foreach (var chunk in _profiles.Values
+                     .SelectMany(static profile => profile.Chunks)
+                     .Where(chunk =>
+                         !ReferenceEquals(chunk, protectedChunk) &&
+                         chunk.CommandList is not null)
+                     .OrderBy(static chunk => chunk.LastUsed)
+                     .ToArray())
+        {
+            if (overflow <= 0)
+                break;
+            overflow -= chunk.EstimatedBytes;
+            chunk.EvictForBudget();
+            _statistics.RecordGpuCacheEviction();
+        }
+    }
+
     private static bool AffectsChunkPlan(
         CadDocument document,
         CadDocumentChangeSet changes)
@@ -526,7 +574,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         if (ReferenceEquals(_document, document))
             return;
-        ClearProfiles();
+        ClearChunkCaches();
         _document = document;
     }
 
@@ -548,13 +596,26 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         foreach (var profile in _profiles.Values)
             profile.Dispose();
         _profiles.Clear();
+        _estimatedBytes = 0;
+    }
+
+    private void ClearChunkCaches()
+    {
+        ClearProfiles();
+        _chunkPlans.Clear();
+        _planBuilders.Clear();
+    }
+
+    private void AdjustEstimatedBytes(long delta)
+    {
+        _estimatedBytes = Math.Max(0, _estimatedBytes + delta);
     }
 
     public void Dispose()
     {
         if (_disposed)
             return;
-        ClearProfiles();
+        ClearChunkCaches();
         _document = null;
         _disposed = true;
     }
@@ -589,14 +650,131 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
     }
 
+    private sealed record RenderChunkPlan(
+        IReadOnlyList<CadEntity> Entities,
+        IReadOnlyList<EntityId> DependencyEntityIds,
+        CadRectD Bounds,
+        bool IsCacheable);
+
+    private sealed class RenderChunkPlanBuilder
+    {
+        private readonly Direct2DCommandListChunkCache _owner;
+        private readonly CadDocument _document;
+        private readonly IReadOnlyList<CadEntity> _orderedEntities;
+        private readonly IReadOnlySet<EntityId>? _preparedChunkBreaks;
+        private readonly List<RenderChunkPlan> _plans = [];
+        private readonly List<CadEntity> _pending = new(EntitiesPerChunk);
+        private readonly Dictionary<BlockId, bool> _blockCacheability = [];
+        private readonly Dictionary<BlockId, IReadOnlyList<EntityId>> _blockDependencies = [];
+        private readonly HashSet<BlockId> _visitingBlocks = [];
+        private CadRectD _pendingBounds = CadRectD.Empty;
+        private double _pendingFootprint;
+        private int _nextEntityIndex;
+
+        public IReadOnlyList<RenderChunkPlan> Plans => _plans;
+        public bool IsComplete { get; private set; }
+
+        public RenderChunkPlanBuilder(
+            Direct2DCommandListChunkCache owner,
+            CadDocument document,
+            BlockId ownerBlockId,
+            IReadOnlyList<CadEntity> orderedEntities)
+        {
+            _owner = owner;
+            _document = document;
+            _orderedEntities = orderedEntities;
+            _preparedChunkBreaks = owner._entityOrderCache.GetAdaptiveChunkBreakEntityIds(
+                document,
+                ownerBlockId);
+        }
+
+        public bool BuildStep(double budgetMilliseconds)
+        {
+            if (IsComplete)
+                return true;
+
+            var started = Stopwatch.GetTimestamp();
+            var processed = 0;
+            while (_nextEntityIndex < _orderedEntities.Count)
+            {
+                Process(_orderedEntities[_nextEntityIndex++]);
+                processed++;
+                if (processed > 0 &&
+                    Stopwatch.GetElapsedTime(started).TotalMilliseconds >= budgetMilliseconds)
+                {
+                    return false;
+                }
+            }
+
+            FlushCacheable();
+            IsComplete = true;
+            return true;
+        }
+
+        private void Process(CadEntity entity)
+        {
+            _visitingBlocks.Clear();
+            if (_owner.IsCacheable(
+                    _document,
+                    entity,
+                    _blockCacheability,
+                    _visitingBlocks))
+            {
+                if (_pending.Count > 0 && _preparedChunkBreaks?.Contains(entity.Id) == true)
+                    FlushCacheable();
+                if (Direct2DAdaptiveChunkPlanner.ShouldFlushBefore(
+                        _pending.Count,
+                        MinimumSpatialChunkEntityCount,
+                        EntitiesPerChunk,
+                        _pendingBounds,
+                        _pendingFootprint,
+                        entity.Bounds))
+                {
+                    FlushCacheable();
+                }
+
+                _pending.Add(entity);
+                _pendingBounds = _pendingBounds.Union(entity.Bounds);
+                _pendingFootprint += Direct2DAdaptiveChunkPlanner.EstimateFootprint(entity.Bounds);
+                return;
+            }
+
+            FlushCacheable();
+            _plans.Add(_owner.CreateChunkPlan(
+                _document,
+                [entity],
+                isCacheable: false,
+                _blockDependencies));
+        }
+
+        private void FlushCacheable()
+        {
+            if (_pending.Count == 0)
+                return;
+
+            _plans.Add(_owner.CreateChunkPlan(
+                _document,
+                _pending.ToArray(),
+                isCacheable: true,
+                _blockDependencies));
+            _pending.Clear();
+            _pendingBounds = CadRectD.Empty;
+            _pendingFootprint = 0;
+        }
+    }
+
     private sealed class RenderProfile : IDisposable
     {
         private readonly Dictionary<EntityId, List<RenderChunk>> _chunksByDependency = [];
 
         public RenderProfileKey Key { get; }
         public IReadOnlyList<RenderChunk> Chunks { get; }
+        public bool HasPendingBuilds => Chunks.Any(static chunk =>
+            chunk.IsCacheable &&
+            chunk.CommandList is null &&
+            !chunk.BuildFailed &&
+            !chunk.WasBudgetEvicted);
         public long LastUsed { get; set; }
-
         public RenderProfile(RenderProfileKey key, IReadOnlyList<RenderChunk> chunks)
         {
             Key = key;
@@ -634,6 +812,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
     private sealed class RenderChunk : IDisposable
     {
+        private readonly Action<long> _estimatedBytesChanged;
+        private long _estimatedBytes;
+
         public IReadOnlyList<CadEntity> Entities { get; }
         public IReadOnlyList<EntityId> DependencyEntityIds { get; }
         public CadRectD Bounds { get; private set; }
@@ -641,17 +822,32 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         public ID2D1CommandList? CommandList { get; set; }
         public int RecordedEntityCount { get; set; }
         public bool BuildFailed { get; set; }
+        public bool WasBudgetEvicted { get; private set; }
+        public long EstimatedBytes
+        {
+            get => _estimatedBytes;
+            set
+            {
+                var normalized = Math.Max(0, value);
+                var delta = normalized - _estimatedBytes;
+                _estimatedBytes = normalized;
+                _estimatedBytesChanged(delta);
+            }
+        }
+        public long LastUsed { get; set; }
 
         public RenderChunk(
             IReadOnlyList<CadEntity> entities,
             IReadOnlyList<EntityId> dependencyEntityIds,
             CadRectD bounds,
-            bool isCacheable)
+            bool isCacheable,
+            Action<long> estimatedBytesChanged)
         {
             Entities = entities;
             DependencyEntityIds = dependencyEntityIds;
             Bounds = bounds;
             IsCacheable = isCacheable;
+            _estimatedBytesChanged = estimatedBytesChanged;
         }
 
         public void Invalidate()
@@ -660,9 +856,20 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             CommandList = null;
             RecordedEntityCount = 0;
             BuildFailed = false;
+            WasBudgetEvicted = false;
+            EstimatedBytes = 0;
             Bounds = CadRectD.Empty;
             foreach (var entity in Entities)
                 Bounds = Bounds.Union(entity.Bounds);
+        }
+
+        public void EvictForBudget()
+        {
+            CommandList?.Dispose();
+            CommandList = null;
+            RecordedEntityCount = 0;
+            EstimatedBytes = 0;
+            WasBudgetEvicted = true;
         }
 
         public void Dispose() => Invalidate();

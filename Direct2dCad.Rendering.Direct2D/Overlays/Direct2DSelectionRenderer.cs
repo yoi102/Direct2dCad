@@ -29,6 +29,9 @@ internal sealed class Direct2DSelectionRenderer(
         resourceCache,
         statistics);
 
+    public long EstimatedCacheBytes => _commandListCache.EstimatedBytes;
+    public static long CacheBudgetBytes => Direct2DSelectionCommandListCache.CacheBudgetBytes;
+
     public bool PrepareCache(
         ID2D1DeviceContext context,
         CadDocument document,
@@ -362,20 +365,20 @@ internal sealed class Direct2DSelectionRenderer(
                     style);
                 break;
             case CadPolyline polyline:
-                transientRenderer.DrawPolyline(
+                DrawTranslatedPolyline(
                     context,
                     viewport,
-                    polyline.Points.Select(point => point + offset).ToArray(),
-                    polyline.Closed,
+                    polyline,
+                    offset,
                     style,
                     options.IsLevelOfDetailEnabled);
                 break;
             case CadSpline spline:
-                transientRenderer.DrawSpline(
+                DrawTranslatedSpline(
                     context,
                     viewport,
-                    spline.FitPoints.Select(point => point + offset).ToArray(),
-                    spline.Closed,
+                    spline,
+                    offset,
                     style,
                     options.IsLevelOfDetailEnabled);
                 break;
@@ -404,6 +407,62 @@ internal sealed class Direct2DSelectionRenderer(
                     style,
                     isLevelOfDetailEnabled: options.IsLevelOfDetailEnabled);
                 break;
+        }
+    }
+
+    private void DrawTranslatedPolyline(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadPolyline polyline,
+        CadVectorD offset,
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateTranslation(
+            (float)offset.X,
+            (float)offset.Y) * previousTransform;
+        try
+        {
+            transientRenderer.DrawPolyline(
+                context,
+                viewport,
+                polyline.Points,
+                polyline.Closed,
+                style,
+                isLevelOfDetailEnabled);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
+    }
+
+    private void DrawTranslatedSpline(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadSpline spline,
+        CadVectorD offset,
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateTranslation(
+            (float)offset.X,
+            (float)offset.Y) * previousTransform;
+        try
+        {
+            transientRenderer.DrawSpline(
+                context,
+                viewport,
+                spline.FitPoints,
+                spline.Closed,
+                style,
+                isLevelOfDetailEnabled);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
         }
     }
 
@@ -591,6 +650,8 @@ internal sealed class Direct2DSelectionRenderer(
             hatchBrush,
             viewport,
             options.IsLevelOfDetailEnabled,
+            options.TransformScaleMultiplier,
+            resourceCache.HatchTiles,
             statistics);
     }
 

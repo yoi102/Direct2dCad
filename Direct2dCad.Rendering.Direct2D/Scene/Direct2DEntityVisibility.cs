@@ -11,7 +11,7 @@ internal static class Direct2DEntityVisibility
     private const int MinimumOrderedScanEntityCount = 256;
     private const int OrderedScanCandidateDivisor = 8;
 
-    public static IEnumerable<CadEntity> Enumerate(
+    public static IEnumerable<Direct2DVisibleEntity> Enumerate(
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options,
@@ -20,7 +20,8 @@ internal static class Direct2DEntityVisibility
         Direct2DEntityOrderCache entityOrderCache,
         List<EntityId>? candidateIdBuffer = null,
         HashSet<EntityId>? candidateSetBuffer = null,
-        List<CadEntity>? candidateEntityBuffer = null)
+        List<CadEntity>? candidateEntityBuffer = null,
+        List<Direct2DEntityOrderCache.RankedEntity>? rankedEntityBuffer = null)
     {
         if (orderedEntities.Count == 0)
             return [];
@@ -121,9 +122,11 @@ internal static class Direct2DEntityVisibility
             candidates.Add(entity);
         }
 
-        candidates.Sort(entityOrderCache.GetComparer(
+        entityOrderCache.SortCandidates(
             document,
-            options.ActiveOwnerBlockId));
+            options.ActiveOwnerBlockId,
+            candidates,
+            rankedEntityBuffer ?? []);
         return EnumerateOrderedSubset(
             document,
             viewport,
@@ -144,7 +147,7 @@ internal static class Direct2DEntityVisibility
         return result;
     }
 
-    internal static IEnumerable<CadEntity> EnumerateOrderedSubset(
+    internal static IEnumerable<Direct2DVisibleEntity> EnumerateOrderedSubset(
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options,
@@ -159,6 +162,12 @@ internal static class Direct2DEntityVisibility
                 options.HiddenEntityIds.Contains(entity.Id) ||
                 !document.TryGetLayer(entity.LayerId, out var layer) ||
                 layer is not { IsVisible: true, IsFrozen: false })
+            {
+                continue;
+            }
+
+            if (renderWorldBounds is { } coarseBounds &&
+                !MayIntersectRenderBounds(entity, coarseBounds, viewport))
             {
                 continue;
             }
@@ -180,7 +189,7 @@ internal static class Direct2DEntityVisibility
                 continue;
             }
 
-            yield return entity;
+            yield return new Direct2DVisibleEntity(entity, resources);
         }
     }
 
@@ -207,18 +216,26 @@ internal static class Direct2DEntityVisibility
         CadRenderOptions options,
         Direct2DResourceCache.EntityResourceBucket? resources)
     {
-        var broadPhasePadding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
-        var entityBounds = entity.Bounds;
-        if (!entityBounds.IsEmpty &&
-            !entityBounds.Inflate(broadPhasePadding).Intersects(renderWorldBounds))
-        {
-            return false;
-        }
-
         var bounds = ResolvePaintBounds(entity, resources, viewport, options);
         return bounds.Intersects(renderWorldBounds) ||
                bounds.Contains(renderWorldBounds.Center) ||
                renderWorldBounds.Contains(bounds);
+    }
+
+    private static bool MayIntersectRenderBounds(
+        CadEntity entity,
+        CadRectD renderWorldBounds,
+        CadViewport viewport)
+    {
+        var entityBounds = entity.Bounds;
+        if (entityBounds.IsEmpty)
+            return true;
+
+        var broadPhasePadding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
+        var paddedBounds = entityBounds.Inflate(broadPhasePadding);
+        return paddedBounds.Intersects(renderWorldBounds) ||
+               paddedBounds.Contains(renderWorldBounds.Center) ||
+               renderWorldBounds.Contains(paddedBounds);
     }
 
     private static CadRectD ResolvePaintBounds(
@@ -279,3 +296,7 @@ internal static class Direct2DEntityVisibility
         return Math.Max(strokeWidth, (float)options.MinimumScreenStrokeWidth / zoom);
     }
 }
+
+internal readonly record struct Direct2DVisibleEntity(
+    CadEntity Entity,
+    Direct2DResourceCache.EntityResourceBucket? Resources);

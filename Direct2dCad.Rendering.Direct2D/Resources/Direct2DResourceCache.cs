@@ -7,6 +7,7 @@ using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Entities;
+using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;
@@ -18,16 +19,19 @@ namespace Direct2dCad.Rendering.Direct2D.Resources;
 
 internal sealed class Direct2DResourceCache : IDisposable
 {
+    internal const long GeometryRealizationCacheBudgetBytes = 128L * 1024 * 1024;
     private readonly Dictionary<EntityId, EntityResourceBucket> _entityResources = [];
     private readonly Direct2DStyleResourceCache _styleResources;
     private readonly Direct2DTextFormatResourceCache _textFormatResources;
     private readonly Direct2DImageBitmapResourceCache _imageBitmapResources;
     private readonly Direct2DGeometryRealizationCache _geometryRealizations = new();
+    private readonly Direct2DHatchTileCache _hatchTiles;
     private bool _disposed;
 
     public Direct2DResourceCache(
         Direct2DStyleResourceCache styleResources,
         Direct2DTextFormatResourceCache textFormatResources,
+        Direct2DRenderStatisticsCollector statistics,
         ID2D1Factory? d2D1Factory = null,
         IDWriteFactory? writeFactory = null,
         ID2D1DeviceContext? deviceContext = null)
@@ -35,6 +39,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         _styleResources = styleResources;
         _textFormatResources = textFormatResources;
         _imageBitmapResources = new Direct2DImageBitmapResourceCache(deviceContext);
+        _hatchTiles = new Direct2DHatchTileCache(statistics, deviceContext);
         _geometryRealizations.Reset(deviceContext);
         Factory = d2D1Factory;
         WriteFactory = writeFactory;
@@ -44,6 +49,45 @@ internal sealed class Direct2DResourceCache : IDisposable
     public ID2D1Factory? Factory { get; private set; }
     public IDWriteFactory? WriteFactory { get; private set; }
     public ID2D1DeviceContext? DeviceContext { get; private set; }
+    internal Direct2DHatchTileCache HatchTiles => _hatchTiles;
+    public long GeometryRealizationEstimatedBytes => _geometryRealizations.EstimatedBytes;
+    public long HatchTileEstimatedBytes => _hatchTiles.EstimatedBytes;
+    public long ImageBitmapEstimatedBytes => _imageBitmapResources.EstimatedBytes;
+    public static long HatchTileCacheBudgetBytes => Direct2DHatchTileCache.CacheBudgetBytes;
+
+    public int EnforceGeometryRealizationBudget()
+    {
+        ThrowIfDisposed();
+        var estimatedBytes = GeometryRealizationEstimatedBytes;
+        if (estimatedBytes <= GeometryRealizationCacheBudgetBytes)
+            return 0;
+
+        var evictionCount = 0;
+        var candidates = new PriorityQueue<
+            (Direct2DGeometryRealizationCache.EntityCache Cache,
+             Direct2DGeometryRealizationCache.Profile Profile),
+            long>();
+        foreach (var bucket in _entityResources.Values)
+        {
+            var cache = bucket.GeometryRealizations;
+            if (cache is not null && cache.TryGetOldestProfile(out var profile))
+                candidates.Enqueue((cache, profile), profile.LastUsed);
+        }
+
+        while (estimatedBytes > GeometryRealizationCacheBudgetBytes &&
+               candidates.TryDequeue(out var candidate, out _))
+        {
+            if (!candidate.Cache.EvictProfile(candidate.Profile))
+                continue;
+
+            evictionCount++;
+            estimatedBytes = GeometryRealizationEstimatedBytes;
+            if (candidate.Cache.TryGetOldestProfile(out var nextProfile))
+                candidates.Enqueue((candidate.Cache, nextProfile), nextProfile.LastUsed);
+        }
+
+        return evictionCount;
+    }
 
     public IReadOnlyDictionary<EntityId, EntityResourceBucket> EntityResources => _entityResources;
 
@@ -55,6 +99,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         ClearEntityResources();
         _imageBitmapResources.Reset(deviceContext);
+        _hatchTiles.Reset(deviceContext);
         _geometryRealizations.Reset(deviceContext);
         Factory = d2D1Factory;
         WriteFactory = writeFactory;
@@ -907,6 +952,7 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         ClearCache();
         _imageBitmapResources.Dispose();
+        _hatchTiles.Dispose();
         _geometryRealizations.Dispose();
         _disposed = true;
     }

@@ -8,13 +8,15 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 internal sealed class Direct2DEntityOrderCache
 {
-    private const int MaximumEstimatedRenderWork = 1_000_000;
+    internal const int MaximumEstimatedRenderWork = 1_000_000;
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _entitiesByOwner = [];
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _oleEntitiesByOwner = [];
-    private readonly Dictionary<BlockId, IComparer<CadEntity>> _comparersByOwner = [];
+    private readonly Dictionary<BlockId, IReadOnlyDictionary<EntityId, int>> _ranksByOwner = [];
     private readonly Dictionary<BlockId, CadRectD> _boundsByOwner = [];
     private readonly Dictionary<BlockId, int> _estimatedRenderWorkByOwner = [];
+    private readonly Direct2DBackgroundPreparationService _backgroundPreparation = new();
     private CadDocument? _document;
+    private long _preparationVersion;
 
     public IReadOnlyList<CadEntity> GetOrderedEntities(
         CadDocument document,
@@ -22,26 +24,25 @@ internal sealed class Direct2DEntityOrderCache
     {
         ArgumentNullException.ThrowIfNull(document);
 
-        if (!ReferenceEquals(_document, document))
-        {
-            _document = document;
-            _entitiesByOwner.Clear();
-            _oleEntitiesByOwner.Clear();
-            _comparersByOwner.Clear();
-            _boundsByOwner.Clear();
-            _estimatedRenderWorkByOwner.Clear();
-        }
+        EnsureDocument(document);
 
         if (_entitiesByOwner.TryGetValue(ownerBlockId, out var entities))
             return entities;
 
-        var ownerEntities = ResolveOwnerEntities(document, ownerBlockId);
-        entities = ownerEntities
-            .OrderBy(entity =>
-                document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
-            .ThenBy(entity => entity.ZIndex)
-            .ThenBy(entity => entity.Id.Value)
-            .ToArray();
+        if (TryGetPreparedOwner(document, ownerBlockId, out var prepared))
+        {
+            entities = prepared.OrderedEntities;
+        }
+        else
+        {
+            var ownerEntities = ResolveOwnerEntities(document, ownerBlockId);
+            entities = ownerEntities
+                .OrderBy(entity =>
+                    document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
+                .ThenBy(entity => entity.ZIndex)
+                .ThenBy(entity => entity.Id.Value)
+                .ToArray();
+        }
         _entitiesByOwner[ownerBlockId] = entities;
         return entities;
     }
@@ -63,24 +64,50 @@ internal sealed class Direct2DEntityOrderCache
         return entities;
     }
 
-    public IComparer<CadEntity> GetComparer(
+    public void SortCandidates(
+        CadDocument document,
+        BlockId ownerBlockId,
+        List<CadEntity> candidates,
+        List<RankedEntity> rankedBuffer)
+    {
+        ArgumentNullException.ThrowIfNull(candidates);
+        ArgumentNullException.ThrowIfNull(rankedBuffer);
+        if (candidates.Count < 2)
+            return;
+
+        var ranks = GetEntityRanks(document, ownerBlockId);
+        rankedBuffer.Clear();
+        if (rankedBuffer.Capacity < candidates.Count)
+            rankedBuffer.Capacity = candidates.Count;
+        foreach (var entity in candidates)
+        {
+            rankedBuffer.Add(new RankedEntity(
+                ranks.GetValueOrDefault(entity.Id, int.MaxValue),
+                entity));
+        }
+
+        rankedBuffer.Sort(RankedEntityComparer.Instance);
+        candidates.Clear();
+        foreach (var ranked in rankedBuffer)
+            candidates.Add(ranked.Entity);
+    }
+
+    private IReadOnlyDictionary<EntityId, int> GetEntityRanks(
         CadDocument document,
         BlockId ownerBlockId)
     {
-        if (_comparersByOwner.TryGetValue(ownerBlockId, out var comparer) &&
+        if (_ranksByOwner.TryGetValue(ownerBlockId, out var ranks) &&
             ReferenceEquals(_document, document))
         {
-            return comparer;
+            return ranks;
         }
 
         var entities = GetOrderedEntities(document, ownerBlockId);
-        var ranks = new Dictionary<EntityId, int>(entities.Count);
+        var created = new Dictionary<EntityId, int>(entities.Count);
         for (var index = 0; index < entities.Count; index++)
-            ranks[entities[index].Id] = index;
-
-        comparer = new EntityRankComparer(ranks);
-        _comparersByOwner[ownerBlockId] = comparer;
-        return comparer;
+            created[entities[index].Id] = index;
+        _ranksByOwner[ownerBlockId] = created;
+        return created;
     }
 
     public IReadOnlyList<CadEntity> GetOrderedOleEntities(
@@ -106,22 +133,77 @@ internal sealed class Direct2DEntityOrderCache
         GetOrderedEntities(document, ownerBlockId);
         if (_estimatedRenderWorkByOwner.TryGetValue(ownerBlockId, out var cached))
             return cached;
+        if (TryGetPreparedOwner(document, ownerBlockId, out var prepared))
+        {
+            _estimatedRenderWorkByOwner[ownerBlockId] = prepared.EstimatedRenderWork;
+            return prepared.EstimatedRenderWork;
+        }
         return EstimateOwnerRenderWork(document, ownerBlockId, []);
+    }
+
+    public IReadOnlySet<EntityId>? GetAdaptiveChunkBreakEntityIds(
+        CadDocument document,
+        BlockId ownerBlockId) =>
+        TryGetPreparedOwner(document, ownerBlockId, out var prepared)
+            ? prepared.AdaptiveChunkBreakEntityIds
+            : null;
+
+    public IReadOnlySet<EntityId>? GetPreparedDependencyEntityIds(
+        CadDocument document,
+        BlockId ownerBlockId) =>
+        TryGetPreparedOwner(document, ownerBlockId, out var prepared)
+            ? prepared.DependencyEntityIds
+            : null;
+
+    public void ScheduleBackgroundPreparation(CadDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        EnsureDocument(document);
+        if (!_backgroundPreparation.NeedsSchedule(document, _preparationVersion))
+            return;
+
+        var owners = new List<OwnerPreparationSnapshot>(document.Blocks.Count);
+        foreach (var block in document.Blocks.Values)
+        {
+            var entities = new List<EntityPreparationSnapshot>(block.EntityIds.Count);
+            foreach (var entityId in block.EntityIds)
+            {
+                if (!document.TryGetEntity(entityId, out var entity) || entity is null)
+                    continue;
+                entities.Add(new EntityPreparationSnapshot(
+                    entity,
+                    document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId),
+                    entity.ZIndex,
+                    entity.Bounds,
+                    entity.IsErased,
+                    entity.IsVisible,
+                    EstimateEntityRenderWork(document, entity),
+                    entity is CadBlockReference reference
+                        ? reference.DefinitionBlockId
+                        : null));
+            }
+
+            owners.Add(new OwnerPreparationSnapshot(block.Id, entities));
+        }
+
+        _backgroundPreparation.Schedule(document, _preparationVersion, owners);
     }
 
     public void InvalidateOwnerMetrics()
     {
         _boundsByOwner.Clear();
         _estimatedRenderWorkByOwner.Clear();
+        InvalidatePreparedPlan();
     }
 
     public void Invalidate()
     {
         _entitiesByOwner.Clear();
         _oleEntitiesByOwner.Clear();
-        _comparersByOwner.Clear();
+        _ranksByOwner.Clear();
         _boundsByOwner.Clear();
         _estimatedRenderWorkByOwner.Clear();
+        InvalidatePreparedPlan();
     }
 
     public CadRectD GetOwnerBounds(CadDocument document, BlockId ownerBlockId)
@@ -130,6 +212,12 @@ internal sealed class Direct2DEntityOrderCache
             ReferenceEquals(_document, document))
         {
             return bounds;
+        }
+
+        if (TryGetPreparedOwner(document, ownerBlockId, out var prepared))
+        {
+            _boundsByOwner[ownerBlockId] = prepared.Bounds;
+            return prepared.Bounds;
         }
 
         bounds = CadRectD.Empty;
@@ -256,24 +344,50 @@ internal sealed class Direct2DEntityOrderCache
         return false;
     }
 
-    private sealed class EntityRankComparer(
-        IReadOnlyDictionary<EntityId, int> ranks) : IComparer<CadEntity>
+    private void EnsureDocument(CadDocument document)
     {
-        public int Compare(CadEntity? left, CadEntity? right)
-        {
-            if (ReferenceEquals(left, right))
-                return 0;
-            if (left is null)
-                return -1;
-            if (right is null)
-                return 1;
+        if (ReferenceEquals(_document, document))
+            return;
 
-            var leftRank = ranks.GetValueOrDefault(left.Id, int.MaxValue);
-            var rightRank = ranks.GetValueOrDefault(right.Id, int.MaxValue);
-            var result = leftRank.CompareTo(rightRank);
+        _document = document;
+        _entitiesByOwner.Clear();
+        _oleEntitiesByOwner.Clear();
+        _ranksByOwner.Clear();
+        _boundsByOwner.Clear();
+        _estimatedRenderWorkByOwner.Clear();
+        InvalidatePreparedPlan();
+    }
+
+    private bool TryGetPreparedOwner(
+        CadDocument document,
+        BlockId ownerBlockId,
+        out PreparedOwnerPlan prepared)
+    {
+        var plan = _backgroundPreparation.TryGet(document, _preparationVersion);
+        if (plan is not null && plan.Owners.TryGetValue(ownerBlockId, out prepared!))
+            return true;
+        prepared = null!;
+        return false;
+    }
+
+    private void InvalidatePreparedPlan()
+    {
+        _preparationVersion++;
+        _backgroundPreparation.Invalidate();
+    }
+
+    internal readonly record struct RankedEntity(int Rank, CadEntity Entity);
+
+    private sealed class RankedEntityComparer : IComparer<RankedEntity>
+    {
+        public static RankedEntityComparer Instance { get; } = new();
+
+        public int Compare(RankedEntity left, RankedEntity right)
+        {
+            var result = left.Rank.CompareTo(right.Rank);
             return result != 0
                 ? result
-                : left.Id.Value.CompareTo(right.Id.Value);
+                : left.Entity.Id.Value.CompareTo(right.Entity.Id.Value);
         }
     }
 }

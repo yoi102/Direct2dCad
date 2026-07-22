@@ -47,6 +47,12 @@ public sealed class CadCommandLineService : ICadCommandLineService
         Register("STATUS", "ST", "STATUS", "Show document and interaction status.", request => Success(
             $"Document: {request.Context.DocumentName} | Entities: {request.Context.EntityCount} | " +
             $"Selected: {request.Context.SelectionCount} | Mode: {request.Context.ToolMode}"));
+        Register(
+            "RENDERSTATS",
+            "RS",
+            "RENDERSTATS",
+            "Show renderer workload, retained-cache, and GPU-memory statistics.",
+            ExecuteRenderStatistics);
         Register("UNDO", "U", "UNDO", "Undo the last document command.", ExecuteUndo);
         Register("REDO", "", "REDO", "Redo the last undone document command.", ExecuteRedo);
         Register("FIT", "ZE", "FIT", "Fit visible content to the viewport.", ExecuteFit);
@@ -174,6 +180,57 @@ public sealed class CadCommandLineService : ICadCommandLineService
         return count > 0
             ? Success($"Deleted {count} entities.")
             : Failure("Nothing is selected.");
+    }
+
+    private static CadCommandLineResult ExecuteRenderStatistics(CadCommandLineRequest request)
+    {
+        if (request.Context.GetRenderStatistics() is not { } statistics)
+            return Failure("Render statistics are not available yet.");
+
+        return Success(string.Join(Environment.NewLine,
+            $"Frame: {statistics.FramesPerSecond:F1} FPS | avg {statistics.AverageFrameMilliseconds:F2} ms | " +
+            $"last {statistics.LastRenderMilliseconds:F2} ms | " +
+            $"{(statistics.IsFullFrame ? "full" : "partial")} ({statistics.DirtyRegionCount} dirty)",
+            $"Scene: passes {statistics.ScenePassCount} | visible {statistics.VisibleEntityCount} | " +
+            $"submissions {statistics.EntitySubmissionCount} | fallback {statistics.FallbackEntityCount}",
+            $"Blocks: refs {statistics.BlockReferenceCount} | expanded {statistics.ExpandedBlockEntityCount} | " +
+            $"definition CL replay/build {statistics.BlockDefinitionCommandListReplayCount}/" +
+            $"{statistics.BlockDefinitionCommandListBuildCount}",
+            $"Retained: scene CL replay/build {statistics.CommandListReplayCount}/{statistics.CommandListBuildCount} | " +
+            $"selection {statistics.SelectionCommandListReplayCount}/{statistics.SelectionCommandListBuildCount} | " +
+            $"tiles {statistics.TileReplayCount}/{statistics.TileBuildCount}",
+            $"Geometry realization: fill {statistics.GeometryRealizationFillDrawCount} | " +
+            $"stroke {statistics.GeometryRealizationStrokeDrawCount} | " +
+            $"build/fallback {statistics.GeometryRealizationBuildCount}/{statistics.GeometryRealizationFallbackCount}",
+            $"Hatch/OLE: lines {statistics.HatchLineSubmissionCount} | " +
+            $"simplified families {statistics.HatchSimplifiedLineFamilyCount} | " +
+            $"OLE tile builds {statistics.OleTileBuildCount}",
+            $"GPU cache: {FormatBytes(statistics.GpuCacheBytes)} current | " +
+            $"{FormatBytes(statistics.GpuCachePeakBytes)} peak | " +
+            $"{FormatBytes(statistics.GpuCacheBudgetBytes)} budget | " +
+            $"evictions {statistics.GpuCacheEvictionCount}",
+            $"  scene tiles {FormatBytes(statistics.SceneTileCacheBytes)} | " +
+            $"scene CL {FormatBytes(statistics.CommandListCacheBytes)} | " +
+            $"selection CL {FormatBytes(statistics.SelectionCommandListCacheBytes)} | " +
+            $"block CL {FormatBytes(statistics.BlockDefinitionCacheBytes)}",
+            $"  realizations {FormatBytes(statistics.GeometryRealizationCacheBytes)} | " +
+            $"hatch tiles {FormatBytes(statistics.HatchTileCacheBytes)} | " +
+            $"images {FormatBytes(statistics.ImageBitmapCacheBytes)} | " +
+            $"OLE tiles {FormatBytes(statistics.OleTileCacheBytes)}"));
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        const double kib = 1024.0;
+        const double mib = kib * 1024.0;
+        const double gib = mib * 1024.0;
+        return bytes >= gib
+            ? $"{bytes / gib:F2} GiB"
+            : bytes >= mib
+                ? $"{bytes / mib:F1} MiB"
+                : bytes >= kib
+                    ? $"{bytes / kib:F1} KiB"
+                    : $"{bytes} B";
     }
 
     private static CadCommandLineResult ActivateMode(
@@ -315,5 +372,6 @@ public sealed class CadCommandLineService : ICadCommandLineService
         public CadCommandLineClipboardSummary? BeginPaste() => null;
         public bool SubmitDrawingPoint(CadCommandLinePoint point) => false;
         public bool CompleteCurrentDrawing() => false;
+        public CadCommandLineRenderStatistics? GetRenderStatistics() => null;
     }
 }

@@ -384,7 +384,9 @@ internal sealed class Direct2DTransientRenderer(
             hatchBrush,
             viewport,
             isLevelOfDetailEnabled,
-            statistics);
+            transformScaleMultiplier: 1.0,
+            tileCache: resourceCache.HatchTiles,
+            statistics: statistics);
     }
 
     private static bool HasFill(CadTransientStyle style)

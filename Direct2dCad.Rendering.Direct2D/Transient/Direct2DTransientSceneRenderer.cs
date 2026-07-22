@@ -1,4 +1,5 @@
 using System.Numerics;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Transient;
@@ -9,8 +10,30 @@ namespace Direct2dCad.Rendering.Direct2D.Transient;
 
 internal sealed class Direct2DTransientSceneRenderer(
     Direct2DTransientRenderer primitives,
-    Direct2DTransientImageCache imageCache) : IDisposable
+    Direct2DTransientImageCache imageCache,
+    Direct2DTransientGroupCommandListCache groupCommandListCache) : IDisposable
 {
+    public bool PrepareCache(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadTransientScene? scene,
+        CadRenderOptions options,
+        Action<CadTransientEntityReference> drawEntityReference,
+        Action<CadTransientBlockReference> drawBlockReference,
+        bool buildStep) => groupCommandListCache.Prepare(
+            context,
+            document,
+            viewport,
+            scene,
+            options,
+            drawEntityReference,
+            drawBlockReference,
+            buildStep);
+
+    public void ApplyChanges(CadDocumentChangeSet changes) =>
+        groupCommandListCache.ApplyChanges(changes);
+
     public void Draw(
         ID2D1DeviceContext context,
         CadDocument document,
@@ -192,6 +215,9 @@ internal sealed class Direct2DTransientSceneRenderer(
         Action<CadTransientEntityReference> drawEntityReference,
         Action<CadTransientBlockReference> drawBlockReference)
     {
+        if (groupCommandListCache.TryDraw(context, document, viewport, group, options))
+            return;
+
         var previousTransform = context.Transform;
         context.Transform = ToMatrix3x2(group.Transform) * previousTransform;
         try
@@ -212,9 +238,17 @@ internal sealed class Direct2DTransientSceneRenderer(
         }
     }
 
-    public void Clear() => imageCache.Clear();
+    public void Clear()
+    {
+        imageCache.Clear();
+        groupCommandListCache.Clear();
+    }
 
-    public void Dispose() => imageCache.Dispose();
+    public void Dispose()
+    {
+        imageCache.Dispose();
+        groupCommandListCache.Dispose();
+    }
 
     private void DrawImage(ID2D1DeviceContext context, CadTransientImage image)
     {

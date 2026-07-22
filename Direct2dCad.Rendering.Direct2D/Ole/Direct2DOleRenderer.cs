@@ -24,7 +24,7 @@ internal sealed class Direct2DOleRenderer(
 {
     private const int TilePixelSide = 1024;
     private const int MaxLogicalPixelSide = 1_048_576;
-    private readonly Direct2DOleBitmapCache _cache = new();
+    private readonly Direct2DOleBitmapCache _cache = new(statistics);
     private readonly Dictionary<EntityId, byte[]> _entityOleBytes = [];
     private readonly HashSet<Direct2DOleRenderKey> _activeTransientKeys = [];
     private readonly HashSet<Direct2DOleRenderKey> _cachedTransientKeys = [];
@@ -33,6 +33,9 @@ internal sealed class Direct2DOleRenderer(
     private CadTransientScene? _reconciledTransientScene;
     private long _reconciledTransientVersion = -1;
     private bool _suppressDrawDuringFrame;
+
+    public long EstimatedCacheBytes => _cache.EstimatedBytes;
+    public static long CacheBudgetBytes => Direct2DOleBitmapCache.CacheBudgetBytes;
 
     public Direct2DOleDrawCallback? DrawCallback { get; set; }
 
@@ -54,16 +57,16 @@ internal sealed class Direct2DOleRenderer(
             options.ActiveOwnerBlockId);
         if (orderedOleEntities.Count > 0)
         {
-            foreach (var ole in Direct2DEntityVisibility
-                         .Enumerate(
-                             document,
-                             viewport,
-                             options,
-                             resourceCache,
-                             orderedOleEntities,
-                             entityOrderCache)
-                         .Cast<CadOleObject>())
+            foreach (var visible in Direct2DEntityVisibility.Enumerate(
+                         document,
+                         viewport,
+                         options,
+                         resourceCache,
+                         orderedOleEntities,
+                         entityOrderCache))
             {
+                if (visible.Entity is not CadOleObject ole)
+                    continue;
                 if (Direct2DEntityLevelOfDetail.ResolveOle(ole.Bounds, transform, options) !=
                     Direct2DEntityRenderDetail.Full)
                 {
@@ -545,9 +548,14 @@ internal sealed class Direct2DOleRenderer(
                 complete = false;
                 continue;
             }
-            entry.Tiles[tileKey] = bitmap;
+            var x = tileKey.Column * TilePixelSide;
+            var y = tileKey.Row * TilePixelSide;
+            var width = Math.Min(TilePixelSide, entry.PixelWidth - x);
+            var height = Math.Min(TilePixelSide, entry.PixelHeight - y);
+            entry.SetTile(tileKey, bitmap, checked((long)width * height * 4));
             statistics.RecordOleTileBuild();
         }
+        _cache.TrimToBudget(key);
         return complete;
     }
 

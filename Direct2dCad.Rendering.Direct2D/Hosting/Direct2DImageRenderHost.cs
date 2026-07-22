@@ -17,8 +17,10 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
 {
     private const double PartialRenderMaxAreaRatio = 0.65;
-    private const int DirtyRegionCostOptimizationThreshold = 4;
+    private const int DirtyRegionCostOptimizationThreshold = 2;
+    private const int DirtyRegionPairwiseOptimizationLimit = 8;
     private const double DirtyRegionMergeCostTolerance = 1.15;
+    private const double DirtyRegionMaximumMergeAreaRatio = 2.0;
     private const double DirtyRegionPassPenalty = 96.0;
     private const double InteractionPreviewMaxExposedAreaRatio = 0.55;
     private const double FrameRateWindowSeconds = 0.5;
@@ -29,6 +31,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private readonly Queue<RenderFrameSample> _frameRateSamples = [];
     private readonly List<CadScreenRect> _snapshotExposedRects = new(4);
     private readonly List<CadScreenRect> _normalizedDirtyRects = new(8);
+    private readonly List<double> _normalizedDirtyCosts = new(8);
     private readonly List<EntityId> _dirtyCostCandidateIds = new(256);
     private ID3D11ImageSource? _imageSource;
     private CadDocument? _document;
@@ -483,7 +486,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                    _viewport,
                    _renderOptions,
                    buildStep: true,
-                   handleScene: _handleScene);
+                   handleScene: _handleScene,
+                   transientScene: _transientScene);
     }
 
     private void RenderCore(
@@ -527,7 +531,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                         _viewport,
                         _renderOptions,
                         buildStep: false,
-                        handleScene: _handleScene);
+                        handleScene: _handleScene,
+                        transientScene: _transientScene);
                 }
 
                 _target.DrawFrame(context =>
@@ -621,16 +626,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (normalizedInvalidation.DirtyScreenRects.Count >=
             DirtyRegionCostOptimizationThreshold)
         {
-            var aggregateInvalidation = CadRenderInvalidation.FromScreenRect(
-                normalizedInvalidation.DirtyScreenRect);
-            var separateCost = 0.0;
-            foreach (var rect in normalizedInvalidation.DirtyScreenRects)
-                separateCost += EstimateDirtyRegionCost(rect);
-
-            var aggregateCost = EstimateDirtyRegionCost(
-                aggregateInvalidation.DirtyScreenRect);
-            if (aggregateCost <= separateCost * DirtyRegionMergeCostTolerance)
-                normalizedInvalidation = aggregateInvalidation;
+            normalizedInvalidation = OptimizeDirtyRegions(normalizedInvalidation);
         }
 
         var area = 0.0;
@@ -641,6 +637,119 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         return targetArea > 0 && area / targetArea >= PartialRenderMaxAreaRatio
             ? CadRenderInvalidation.Full
             : normalizedInvalidation;
+    }
+
+    private CadRenderInvalidation OptimizeDirtyRegions(CadRenderInvalidation invalidation)
+    {
+        _normalizedDirtyRects.Clear();
+        _normalizedDirtyCosts.Clear();
+        foreach (var rect in invalidation.DirtyScreenRects)
+        {
+            _normalizedDirtyRects.Add(rect);
+            _normalizedDirtyCosts.Add(EstimateDirtyRegionCost(rect));
+        }
+
+        if (_normalizedDirtyRects.Count > DirtyRegionPairwiseOptimizationLimit)
+        {
+            CompactDirtyRegionsToPairwiseLimit();
+        }
+
+        while (_normalizedDirtyRects.Count > 1)
+        {
+            var bestLeft = -1;
+            var bestRight = -1;
+            var bestUnion = default(CadScreenRect);
+            var bestUnionCost = 0.0;
+            var bestSaving = double.NegativeInfinity;
+
+            for (var left = 0; left < _normalizedDirtyRects.Count - 1; left++)
+            {
+                for (var right = left + 1; right < _normalizedDirtyRects.Count; right++)
+                {
+                    var sourceCost = _normalizedDirtyCosts[left] +
+                                     _normalizedDirtyCosts[right];
+                    var union = _normalizedDirtyRects[left].Union(
+                        _normalizedDirtyRects[right]);
+                    var sourceArea = _normalizedDirtyRects[left].Area +
+                                     _normalizedDirtyRects[right].Area;
+                    if (union.Area > sourceArea * DirtyRegionMaximumMergeAreaRatio)
+                        continue;
+
+                    var unionCost = EstimateDirtyRegionCost(union);
+                    if (unionCost > sourceCost * DirtyRegionMergeCostTolerance)
+                        continue;
+
+                    var saving = sourceCost - unionCost;
+                    if (saving <= bestSaving)
+                        continue;
+
+                    bestLeft = left;
+                    bestRight = right;
+                    bestUnion = union;
+                    bestUnionCost = unionCost;
+                    bestSaving = saving;
+                }
+            }
+
+            if (bestLeft < 0)
+                break;
+
+            _normalizedDirtyRects[bestLeft] = bestUnion;
+            _normalizedDirtyCosts[bestLeft] = bestUnionCost;
+            _normalizedDirtyRects.RemoveAt(bestRight);
+            _normalizedDirtyCosts.RemoveAt(bestRight);
+        }
+
+        return CadRenderInvalidation.FromScreenRects(_normalizedDirtyRects);
+    }
+
+    private void CompactDirtyRegionsToPairwiseLimit()
+    {
+        while (_normalizedDirtyRects.Count > DirtyRegionPairwiseOptimizationLimit)
+        {
+            var bestLeft = -1;
+            var bestRight = -1;
+            var bestUnion = default(CadScreenRect);
+            var bestWaste = long.MaxValue;
+            for (var left = 0; left < _normalizedDirtyRects.Count - 1; left++)
+            {
+                for (var right = left + 1; right < _normalizedDirtyRects.Count; right++)
+                {
+                    var first = _normalizedDirtyRects[left];
+                    var second = _normalizedDirtyRects[right];
+                    var sourceArea = first.Area + second.Area;
+                    var union = first.Union(second);
+                    if (union.Area > sourceArea * DirtyRegionMaximumMergeAreaRatio)
+                        continue;
+
+                    var waste = Math.Max(0, union.Area - sourceArea);
+                    if (waste > bestWaste ||
+                        waste == bestWaste && union.Area >= bestUnion.Area)
+                    {
+                        continue;
+                    }
+
+                    bestLeft = left;
+                    bestRight = right;
+                    bestUnion = union;
+                    bestWaste = waste;
+                }
+            }
+
+            if (bestLeft < 0)
+                return;
+
+            var sourceCost = _normalizedDirtyCosts[bestLeft] +
+                             _normalizedDirtyCosts[bestRight];
+            var unionCost = EstimateDirtyRegionCost(bestUnion);
+            if (unionCost > sourceCost * DirtyRegionMergeCostTolerance)
+                return;
+
+            _normalizedDirtyRects[bestLeft] = bestUnion;
+            _normalizedDirtyCosts[bestLeft] = unionCost;
+            _normalizedDirtyRects.RemoveAt(bestRight);
+            _normalizedDirtyCosts.RemoveAt(bestRight);
+        }
     }
 
     private double EstimateDirtyRegionCost(CadScreenRect rect)

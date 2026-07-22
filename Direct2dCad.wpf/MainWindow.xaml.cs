@@ -44,11 +44,14 @@ public partial class MainWindow
         {
             if (h.IsDark)
             {
-                dockManager.Theme = new ArcDarkTheme();
+                if (dockManager.Theme is not ArcDarkTheme)
+                    dockManager.Theme = new ArcDarkTheme();
+
             }
             else
             {
-                dockManager.Theme = new ArcLightTheme();
+                if (dockManager.Theme is not ArcLightTheme)
+                    dockManager.Theme = new ArcLightTheme();
             }
         });
         Closing += OnWindowClosing;

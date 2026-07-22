@@ -29,7 +29,11 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
     private int _strokeDrawCount;
     private int _buildCount;
     private int _fallbackCount;
+    private int _cacheEvictionCount;
+    private long _estimatedBytes;
     private bool _disposed;
+
+    public long EstimatedBytes => Math.Max(0, _estimatedBytes);
 
     public void Reset(ID2D1DeviceContext? deviceContext)
     {
@@ -41,6 +45,8 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         _strokeDrawCount = 0;
         _buildCount = 0;
         _fallbackCount = 0;
+        _cacheEvictionCount = 0;
+        _estimatedBytes = 0;
         BeginFrame();
     }
 
@@ -74,11 +80,13 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             _fillDrawCount,
             _strokeDrawCount,
             _buildCount,
-            _fallbackCount);
+            _fallbackCount,
+            _cacheEvictionCount);
         _fillDrawCount = 0;
         _strokeDrawCount = 0;
         _buildCount = 0;
         _fallbackCount = 0;
+        _cacheEvictionCount = 0;
         return result;
     }
 
@@ -104,14 +112,16 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
                 return false;
             }
 
-            entityCache ??= new EntityCache();
+            entityCache ??= new EntityCache(AdjustEstimatedBytes);
             resources.GeometryRealizations = entityCache;
             profile = entityCache.GetOrCreateFill(geometry, scaleProfile);
-            CreateFillRealization(profile, geometry, entity);
+            CreateFillRealization(profile, geometry, entity, resources);
+            _cacheEvictionCount += entityCache.TrimToBudget(profile);
         }
         else if (profile.Fill is null && TryReserveBuild())
         {
-            CreateFillRealization(profile, geometry, entity);
+            CreateFillRealization(profile, geometry, entity, resources);
+            _cacheEvictionCount += entityCache!.TrimToBudget(profile);
         }
 
         if (profile.Fill is null)
@@ -163,7 +173,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             }
 
             buildReserved = true;
-            entityCache ??= new EntityCache();
+            entityCache ??= new EntityCache(AdjustEstimatedBytes);
             resources.GeometryRealizations = entityCache;
             profile = entityCache.GetOrCreateStroke(geometry, scaleProfile);
         }
@@ -183,12 +193,14 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
                     strokeStyle);
                 profile.StrokeWidth = realizationStrokeWidth;
                 profile.StrokeStyleKey = strokeStyleKey;
+                profile.StrokeEstimatedBytes = EstimateRealizationBytes(entity, resources);
                 _buildCount++;
             }
             finally
             {
                 RecordBuildDuration(started);
             }
+            _cacheEvictionCount += entityCache!.TrimToBudget(profile);
         }
 
         if (profile.Stroke is null)
@@ -217,7 +229,8 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
     private void CreateFillRealization(
         Profile profile,
         ID2D1Geometry geometry,
-        CadEntity entity)
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket resources)
     {
         var started = Stopwatch.GetTimestamp();
         try
@@ -229,6 +242,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
                     entity is CadSpline { Closed: true }
                         ? ClosedSplineFillFlatteningTolerance
                         : DefaultFlatteningTolerance));
+            profile.FillEstimatedBytes = EstimateRealizationBytes(entity, resources);
             _buildCount++;
         }
         finally
@@ -237,11 +251,30 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         }
     }
 
+    private static long EstimateRealizationBytes(
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket resources)
+    {
+        var complexity = entity switch
+        {
+            CadPolyline polyline => polyline.Points.Count,
+            CadSpline spline => spline.FitPoints.Count * 4,
+            CadShapeText => resources.GeometryComplexity,
+            _ => Math.Max(resources.GeometryComplexity, 1)
+        };
+        return 4L * 1024 + Math.Max(complexity, 1) * 96L;
+    }
+
     private void RecordBuildDuration(long started)
     {
         _buildElapsedMilliseconds += Stopwatch
             .GetElapsedTime(started)
             .TotalMilliseconds;
+    }
+
+    private void AdjustEstimatedBytes(long delta)
+    {
+        _estimatedBytes = Math.Max(0, _estimatedBytes + delta);
     }
 
     private static bool CanRealize(
@@ -343,9 +376,19 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
     internal sealed class EntityCache : IDisposable
     {
         private const int MaximumProfiles = 3;
+        private const long CacheBudgetBytes = 2L * 1024 * 1024;
+        private static long _globalUsageStamp;
         private readonly Dictionary<int, Profile> _fillProfiles = [];
         private readonly Dictionary<int, Profile> _strokeProfiles = [];
-        private long _usageStamp;
+        private readonly Action<long> _estimatedBytesChanged;
+        private long _estimatedBytes;
+
+        public long EstimatedBytes => Math.Max(0, _estimatedBytes);
+
+        public EntityCache(Action<long> estimatedBytesChanged)
+        {
+            _estimatedBytesChanged = estimatedBytesChanged;
+        }
 
         public bool TryGetFill(
             ID2D1Geometry geometry,
@@ -378,7 +421,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             if (profiles.TryGetValue(scaleProfile.Key, out profile!) &&
                 ReferenceEquals(profile.Geometry, geometry))
             {
-                profile.LastUsed = ++_usageStamp;
+                profile.LastUsed = Interlocked.Increment(ref _globalUsageStamp);
                 return true;
             }
 
@@ -395,7 +438,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             {
                 if (ReferenceEquals(profile.Geometry, geometry))
                 {
-                    profile.LastUsed = ++_usageStamp;
+                    profile.LastUsed = Interlocked.Increment(ref _globalUsageStamp);
                     return profile;
                 }
 
@@ -403,9 +446,9 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
                 profiles.Remove(scaleProfile.Key);
             }
 
-            profile = new Profile(geometry, scaleProfile.AnchorScale)
+            profile = new Profile(geometry, scaleProfile.AnchorScale, AdjustEstimatedBytes)
             {
-                LastUsed = ++_usageStamp
+                LastUsed = Interlocked.Increment(ref _globalUsageStamp)
             };
             profiles.Add(scaleProfile.Key, profile);
             TrimProfiles(profiles, scaleProfile.Key);
@@ -415,6 +458,113 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         public void ClearStroke()
         {
             DisposeProfiles(_strokeProfiles);
+        }
+
+        public int TrimToBudget(Profile protectedProfile)
+        {
+            var evictionCount = 0;
+            while (EstimatedBytes > CacheBudgetBytes)
+            {
+                Dictionary<int, Profile>? candidateProfiles = null;
+                var candidateKey = 0;
+                Profile? candidateProfile = null;
+                FindOldestCandidate(
+                    _fillProfiles,
+                    protectedProfile,
+                    ref candidateProfiles,
+                    ref candidateKey,
+                    ref candidateProfile);
+                FindOldestCandidate(
+                    _strokeProfiles,
+                    protectedProfile,
+                    ref candidateProfiles,
+                    ref candidateKey,
+                    ref candidateProfile);
+                if (candidateProfiles is null || candidateProfile is null)
+                    break;
+
+                candidateProfile.Dispose();
+                candidateProfiles.Remove(candidateKey);
+                evictionCount++;
+            }
+
+            return evictionCount;
+        }
+
+        public bool TryGetOldestProfile(out Profile profile)
+        {
+            Profile? oldest = null;
+            FindOldestProfile(_fillProfiles, ref oldest);
+            FindOldestProfile(_strokeProfiles, ref oldest);
+            profile = oldest!;
+            return oldest is not null;
+        }
+
+        public bool EvictProfile(Profile profile)
+        {
+            if (TryRemoveProfile(_fillProfiles, profile) ||
+                TryRemoveProfile(_strokeProfiles, profile))
+            {
+                profile.Dispose();
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void FindOldestCandidate(
+            Dictionary<int, Profile> profiles,
+            Profile protectedProfile,
+            ref Dictionary<int, Profile>? candidateProfiles,
+            ref int candidateKey,
+            ref Profile? candidateProfile)
+        {
+            foreach (var pair in profiles)
+            {
+                if (ReferenceEquals(pair.Value, protectedProfile) ||
+                    candidateProfile is not null &&
+                    pair.Value.LastUsed >= candidateProfile.LastUsed)
+                {
+                    continue;
+                }
+
+                candidateProfiles = profiles;
+                candidateKey = pair.Key;
+                candidateProfile = pair.Value;
+            }
+        }
+
+        private static void FindOldestProfile(
+            IReadOnlyDictionary<int, Profile> profiles,
+            ref Profile? oldest)
+        {
+            foreach (var candidate in profiles.Values)
+            {
+                if (candidate.EstimatedBytes <= 0 ||
+                    oldest is not null && candidate.LastUsed >= oldest.LastUsed)
+                {
+                    continue;
+                }
+
+                oldest = candidate;
+            }
+        }
+
+        private static bool TryRemoveProfile(
+            Dictionary<int, Profile> profiles,
+            Profile profile)
+        {
+            int? key = null;
+            foreach (var pair in profiles)
+            {
+                if (ReferenceEquals(pair.Value, profile))
+                {
+                    key = pair.Key;
+                    break;
+                }
+            }
+
+            return key is not null && profiles.Remove(key.Value);
         }
 
         public void Clear()
@@ -444,23 +594,60 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             profiles.Clear();
         }
 
+        private void AdjustEstimatedBytes(long delta)
+        {
+            _estimatedBytes = Math.Max(0, _estimatedBytes + delta);
+            _estimatedBytesChanged(delta);
+        }
+
         public void Dispose() => Clear();
     }
 
     internal sealed class Profile : IDisposable
     {
+        private readonly Action<long> _estimatedBytesChanged;
+        private long _fillEstimatedBytes;
+        private long _strokeEstimatedBytes;
+
         public ID2D1Geometry Geometry { get; }
         public double AnchorScale { get; }
         public long LastUsed { get; set; }
         public ID2D1GeometryRealization? Fill { get; set; }
         public ID2D1GeometryRealization? Stroke { get; set; }
+        public long FillEstimatedBytes
+        {
+            get => _fillEstimatedBytes;
+            set
+            {
+                var normalized = Math.Max(0, value);
+                var delta = normalized - _fillEstimatedBytes;
+                _fillEstimatedBytes = normalized;
+                _estimatedBytesChanged(delta);
+            }
+        }
+        public long StrokeEstimatedBytes
+        {
+            get => _strokeEstimatedBytes;
+            set
+            {
+                var normalized = Math.Max(0, value);
+                var delta = normalized - _strokeEstimatedBytes;
+                _strokeEstimatedBytes = normalized;
+                _estimatedBytesChanged(delta);
+            }
+        }
+        public long EstimatedBytes => FillEstimatedBytes + StrokeEstimatedBytes;
         public float StrokeWidth { get; set; }
         public Direct2DStrokeRealizationStyleKey StrokeStyleKey { get; set; }
 
-        public Profile(ID2D1Geometry geometry, double anchorScale)
+        public Profile(
+            ID2D1Geometry geometry,
+            double anchorScale,
+            Action<long> estimatedBytesChanged)
         {
             Geometry = geometry;
             AnchorScale = anchorScale;
+            _estimatedBytesChanged = estimatedBytesChanged;
         }
 
         public bool MatchesStroke(
@@ -477,6 +664,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         {
             Stroke?.Dispose();
             Stroke = null;
+            StrokeEstimatedBytes = 0;
             StrokeWidth = 0.0f;
             StrokeStyleKey = default;
         }
@@ -485,6 +673,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         {
             Fill?.Dispose();
             Fill = null;
+            FillEstimatedBytes = 0;
             ClearStroke();
         }
     }
@@ -494,4 +683,5 @@ internal readonly record struct Direct2DGeometryRealizationStatistics(
     int FillDrawCount,
     int StrokeDrawCount,
     int BuildCount,
-    int FallbackCount);
+    int FallbackCount,
+    int CacheEvictionCount);

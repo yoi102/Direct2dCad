@@ -22,7 +22,8 @@ internal static class Direct2DBlockEntityVisibility
         List<EntityId> candidateIdsBuffer,
         List<CadEntity> candidatesBuffer,
         List<CadEntity> orderedCandidatesBuffer,
-        HashSet<EntityId> candidateSetBuffer)
+        HashSet<EntityId> candidateSetBuffer,
+        List<Direct2DEntityOrderCache.RankedEntity> rankedEntityBuffer)
     {
         var orderedEntities = entityOrderCache.GetOrderedEntities(document, ownerBlockId);
         if (orderedEntities.Count < MinimumIndexedEntityCount ||
@@ -88,7 +89,11 @@ internal static class Direct2DBlockEntityVisibility
             return orderedCandidatesBuffer;
         }
 
-        candidatesBuffer.Sort(entityOrderCache.GetComparer(document, ownerBlockId));
+        entityOrderCache.SortCandidates(
+            document,
+            ownerBlockId,
+            candidatesBuffer,
+            rankedEntityBuffer);
         return candidatesBuffer;
     }
 

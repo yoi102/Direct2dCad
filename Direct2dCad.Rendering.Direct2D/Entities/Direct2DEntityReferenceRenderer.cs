@@ -1,6 +1,7 @@
 using System.Numerics;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Ole;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Direct2D.Transient;
@@ -84,20 +85,20 @@ internal sealed class Direct2DEntityReferenceRenderer(
                     reference.Style);
                 break;
             case CadPolyline polyline:
-                transientRenderer.DrawPolyline(
+                DrawTranslatedPolyline(
                     context,
                     viewport,
-                    polyline.Points.Select(point => point + reference.Offset).ToArray(),
-                    polyline.Closed,
+                    polyline,
+                    reference.Offset,
                     reference.Style,
                     options.IsLevelOfDetailEnabled);
                 break;
             case CadSpline spline:
-                transientRenderer.DrawSpline(
+                DrawTranslatedSpline(
                     context,
                     viewport,
-                    spline.FitPoints.Select(point => point + reference.Offset).ToArray(),
-                    spline.Closed,
+                    spline,
+                    reference.Offset,
                     reference.Style,
                     options.IsLevelOfDetailEnabled);
                 break;
@@ -183,5 +184,61 @@ internal sealed class Direct2DEntityReferenceRenderer(
         }
 
         return true;
+    }
+
+    private void DrawTranslatedPolyline(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadPolyline polyline,
+        CadVectorD offset,
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateTranslation(
+            (float)offset.X,
+            (float)offset.Y) * previousTransform;
+        try
+        {
+            transientRenderer.DrawPolyline(
+                context,
+                viewport,
+                polyline.Points,
+                polyline.Closed,
+                style,
+                isLevelOfDetailEnabled);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
+    }
+
+    private void DrawTranslatedSpline(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadSpline spline,
+        CadVectorD offset,
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateTranslation(
+            (float)offset.X,
+            (float)offset.Y) * previousTransform;
+        try
+        {
+            transientRenderer.DrawSpline(
+                context,
+                viewport,
+                spline.FitPoints,
+                spline.Closed,
+                style,
+                isLevelOfDetailEnabled);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
     }
 }

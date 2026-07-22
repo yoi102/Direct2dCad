@@ -150,12 +150,46 @@ public sealed class CadRenderInvalidation
         rects.Add(rectToAdd);
 
         if (rects.Count > MaxDirtyScreenRectCount)
-        {
-            var aggregate = CalculateAggregate(rects);
-            rects.Clear();
-            rects.Add(aggregate);
-        }
+            MergeLowestWastePair(rects);
     }
+
+    private static void MergeLowestWastePair(List<CadScreenRect> rects)
+    {
+        if (rects.Count < 2)
+            return;
+
+        var bestLeft = 0;
+        var bestRight = 1;
+        var bestUnion = rects[0].Union(rects[1]);
+        var bestWaste = CalculateMergeWaste(rects[0], rects[1], bestUnion);
+
+        for (var left = 0; left < rects.Count - 1; left++)
+        {
+            for (var right = left + 1; right < rects.Count; right++)
+            {
+                var union = rects[left].Union(rects[right]);
+                var waste = CalculateMergeWaste(rects[left], rects[right], union);
+                if (waste > bestWaste ||
+                    waste == bestWaste && union.Area >= bestUnion.Area)
+                {
+                    continue;
+                }
+
+                bestLeft = left;
+                bestRight = right;
+                bestUnion = union;
+                bestWaste = waste;
+            }
+        }
+
+        rects[bestLeft] = bestUnion;
+        rects.RemoveAt(bestRight);
+    }
+
+    private static long CalculateMergeWaste(
+        CadScreenRect first,
+        CadScreenRect second,
+        CadScreenRect union) => Math.Max(0, union.Area - first.Area - second.Area);
 
     private static bool ShouldMerge(CadScreenRect first, CadScreenRect second)
     {

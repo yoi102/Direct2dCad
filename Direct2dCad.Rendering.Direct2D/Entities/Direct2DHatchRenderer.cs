@@ -2,6 +2,7 @@ using System.Numerics;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Scene;
+using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;
@@ -25,6 +26,8 @@ internal static class Direct2DHatchRenderer
         ID2D1Brush hatchBrush,
         CadViewport viewport,
         bool isLevelOfDetailEnabled,
+        double transformScaleMultiplier = 1.0,
+        Direct2DHatchTileCache? tileCache = null,
         Direct2DRenderStatisticsCollector? statistics = null)
     {
         if (hatchFill.Lines.Count == 0 || geometryBounds.IsEmpty)
@@ -33,6 +36,16 @@ internal static class Direct2DHatchRenderer
         if (isLevelOfDetailEnabled && ShouldRenderAsSolidFill(hatchFill, viewport))
         {
             deviceContext.FillGeometry(geometry, hatchBrush);
+            return;
+        }
+
+        if (tileCache?.TryFill(
+                deviceContext,
+                geometry,
+                geometryBounds,
+                hatchFill,
+                transformScaleMultiplier) == true)
+        {
             return;
         }
 

@@ -13,7 +13,10 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
     private readonly Dictionary<ImageBitmapKey, Entry> _entries = [];
     private readonly Action<ImageBitmapKey> _release;
     private ID2D1DeviceContext? _deviceContext;
+    private long _estimatedBytes;
     private bool _disposed;
+
+    public long EstimatedBytes => Math.Max(0, _estimatedBytes);
 
     public Direct2DImageBitmapResourceCache(ID2D1DeviceContext? deviceContext = null)
     {
@@ -37,8 +40,11 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
         var key = new ImageBitmapKey(image.Id, image.Pixels);
         if (!_entries.TryGetValue(key, out var entry))
         {
-            entry = new Entry(CreateBitmap(_deviceContext, image));
+            entry = new Entry(
+                CreateBitmap(_deviceContext, image),
+                checked((long)image.Stride * image.PixelHeight));
             _entries.Add(key, entry);
+            _estimatedBytes += entry.EstimatedBytes;
         }
 
         entry.ReferenceCount++;
@@ -101,6 +107,7 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
             return;
 
         _entries.Remove(key);
+        _estimatedBytes -= entry.EstimatedBytes;
         entry.Bitmap.Dispose();
     }
 
@@ -109,6 +116,7 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
         foreach (var entry in _entries.Values)
             entry.Bitmap.Dispose();
         _entries.Clear();
+        _estimatedBytes = 0;
     }
 
     private void ThrowIfDisposed()
@@ -119,9 +127,10 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
 
     internal readonly record struct ImageBitmapKey(EntityId EntityId, IReadOnlyList<byte> PixelSource);
 
-    private sealed class Entry(ID2D1Bitmap bitmap)
+    private sealed class Entry(ID2D1Bitmap bitmap, long estimatedBytes)
     {
         public ID2D1Bitmap Bitmap { get; } = bitmap;
+        public long EstimatedBytes { get; } = estimatedBytes;
         public int ReferenceCount { get; set; }
     }
 }

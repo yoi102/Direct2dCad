@@ -2571,6 +2571,51 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     bool ICadCommandLineContext.CompleteCurrentDrawing() => CompleteCurrentDrawing().Handled;
 
+    CadCommandLineRenderStatistics? ICadCommandLineContext.GetRenderStatistics()
+    {
+        var statistics = Direct2DImageRenderHost.RenderStatistics;
+        return new CadCommandLineRenderStatistics(
+            Direct2DImageRenderHost.FramesPerSecond,
+            Direct2DImageRenderHost.AverageFrameRenderTimeMilliseconds,
+            statistics.RenderDurationMilliseconds,
+            statistics.IsFullFrame,
+            statistics.DirtyRegionCount,
+            statistics.ScenePassCount,
+            statistics.VisibleEntityCount,
+            statistics.EntitySubmissionCount,
+            statistics.BlockReferenceCount,
+            statistics.ExpandedBlockEntityCount,
+            statistics.BlockDefinitionCommandListReplayCount,
+            statistics.BlockDefinitionCommandListBuildCount,
+            statistics.SelectionEntityCount,
+            statistics.SelectionCommandListReplayCount,
+            statistics.SelectionCommandListBuildCount,
+            statistics.CommandListReplayCount,
+            statistics.CommandListBuildCount,
+            statistics.TileReplayCount,
+            statistics.TileBuildCount,
+            statistics.FallbackEntityCount,
+            statistics.GeometryRealizationFillDrawCount,
+            statistics.GeometryRealizationStrokeDrawCount,
+            statistics.GeometryRealizationBuildCount,
+            statistics.GeometryRealizationFallbackCount,
+            statistics.HatchLineSubmissionCount,
+            statistics.HatchSimplifiedLineFamilyCount,
+            statistics.OleTileBuildCount,
+            statistics.SceneTileCacheBytes,
+            statistics.CommandListCacheBytes,
+            statistics.SelectionCommandListCacheBytes,
+            statistics.BlockDefinitionCacheBytes,
+            statistics.GeometryRealizationCacheBytes,
+            statistics.HatchTileCacheBytes,
+            statistics.ImageBitmapCacheBytes,
+            statistics.OleTileCacheBytes,
+            statistics.GpuCacheBytes,
+            statistics.GpuCachePeakBytes,
+            statistics.GpuCacheBudgetBytes,
+            statistics.GpuCacheEvictionCount);
+    }
+
     private static CadCommandLineClipboardSummary? CreateClipboardSummary(CadClipboardSnapshot? snapshot)
     {
         return snapshot is null

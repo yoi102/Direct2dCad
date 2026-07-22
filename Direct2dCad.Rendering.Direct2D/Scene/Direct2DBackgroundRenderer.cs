@@ -10,8 +10,11 @@ using Vortice.Mathematics;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
 
-internal sealed class Direct2DBackgroundRenderer(Direct2DStyleResourceCache styleResources)
+internal sealed class Direct2DBackgroundRenderer(
+    Direct2DStyleResourceCache styleResources) : IDisposable
 {
+    private readonly Direct2DGridTileCache _gridTileCache = new();
+
     public void DrawGrid(
         ID2D1DeviceContext deviceContext,
         CadDocument document,
@@ -60,16 +63,58 @@ internal sealed class Direct2DBackgroundRenderer(Direct2DStyleResourceCache styl
         switch (grid.Type)
         {
             case CadGridType.Dots:
-                DrawGridDots(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
+                if (!_gridTileCache.TryDraw(
+                        deviceContext,
+                        grid.Type,
+                        bounds,
+                        origin,
+                        spacingX,
+                        spacingY,
+                        majorX,
+                        majorY,
+                        viewport.Zoom,
+                        rasterization.ResolveColor(palette.MinorColor, palette.MinorStrokeWidth, major: false),
+                        rasterization.ResolveColor(palette.MajorColor, palette.MajorStrokeWidth, major: true),
+                        rasterization.MinorScreenStroke,
+                        rasterization.MajorScreenStroke,
+                        rasterization.ResolveDotScreenSize(major: false),
+                        rasterization.ResolveDotScreenSize(major: true),
+                        rasterization.IsAliased))
+                {
+                    DrawGridDots(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
+                }
                 break;
             case CadGridType.Cross:
-                DrawGridCrosses(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
+                if (!_gridTileCache.TryDraw(
+                        deviceContext,
+                        grid.Type,
+                        bounds,
+                        origin,
+                        spacingX,
+                        spacingY,
+                        majorX,
+                        majorY,
+                        viewport.Zoom,
+                        rasterization.ResolveColor(palette.MinorColor, palette.MinorStrokeWidth, major: false),
+                        rasterization.ResolveColor(palette.MajorColor, palette.MajorStrokeWidth, major: true),
+                        rasterization.MinorScreenStroke,
+                        rasterization.MajorScreenStroke,
+                        rasterization.ResolveDotScreenSize(major: false),
+                        rasterization.ResolveDotScreenSize(major: true),
+                        rasterization.IsAliased))
+                {
+                    DrawGridCrosses(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
+                }
                 break;
             default:
                 DrawGridLines(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
                 break;
         }
     }
+
+    public void Clear() => _gridTileCache.Clear();
+
+    public void Dispose() => _gridTileCache.Dispose();
 
     public void DrawOrigin(
         ID2D1DeviceContext deviceContext,
@@ -552,6 +597,9 @@ internal sealed class Direct2DBackgroundRenderer(Direct2DStyleResourceCache styl
             var factor = major ? 1.7 : 1.25;
             return ResolveWorldStroke(major) * factor;
         }
+
+        public double ResolveDotScreenSize(bool major) =>
+            ResolveDotHalfSize(major) * 2.0 * Math.Max(Viewport.Zoom, double.Epsilon);
 
         private int ResolvePixelSpan(bool major)
         {

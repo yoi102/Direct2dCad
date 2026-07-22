@@ -8,17 +8,22 @@ internal sealed class Direct2DRenderStatisticsCollector
     private bool _isFrameActive;
     private int _dirtyRegionCount;
     private int _pendingCommandListBuildCount;
+    private int _pendingBlockDefinitionCommandListBuildCount;
     private int _pendingSelectionCommandListBuildCount;
     private int _pendingTileBuildCount;
     private long _pendingHatchLineSubmissionCount;
     private int _pendingHatchSimplifiedLineFamilyCount;
     private int _pendingOleTileBuildCount;
+    private int _pendingGpuCacheEvictionCount;
+    private long _gpuCachePeakBytes;
 
     public int ScenePassCount { get; private set; }
     public int VisibleEntityCount { get; private set; }
     public int EntitySubmissionCount { get; private set; }
     public int BlockReferenceCount { get; private set; }
     public int ExpandedBlockEntityCount { get; private set; }
+    public int BlockDefinitionCommandListReplayCount { get; private set; }
+    public int BlockDefinitionCommandListBuildCount { get; private set; }
     public int SelectionEntityCount { get; private set; }
     public int SelectionCommandListReplayCount { get; private set; }
     public int SelectionCommandListBuildCount { get; private set; }
@@ -34,6 +39,18 @@ internal sealed class Direct2DRenderStatisticsCollector
     public long HatchLineSubmissionCount { get; private set; }
     public int HatchSimplifiedLineFamilyCount { get; private set; }
     public int OleTileBuildCount { get; private set; }
+    public long SceneTileCacheBytes { get; private set; }
+    public long CommandListCacheBytes { get; private set; }
+    public long SelectionCommandListCacheBytes { get; private set; }
+    public long BlockDefinitionCacheBytes { get; private set; }
+    public long GeometryRealizationCacheBytes { get; private set; }
+    public long HatchTileCacheBytes { get; private set; }
+    public long ImageBitmapCacheBytes { get; private set; }
+    public long OleTileCacheBytes { get; private set; }
+    public long GpuCacheBytes { get; private set; }
+    public long GpuCachePeakBytes => _gpuCachePeakBytes;
+    public long GpuCacheBudgetBytes { get; private set; }
+    public int GpuCacheEvictionCount { get; private set; }
 
     public void BeginFrame(bool isFullFrame, int dirtyRegionCount)
     {
@@ -45,6 +62,8 @@ internal sealed class Direct2DRenderStatisticsCollector
         EntitySubmissionCount = 0;
         BlockReferenceCount = 0;
         ExpandedBlockEntityCount = 0;
+        BlockDefinitionCommandListReplayCount = 0;
+        BlockDefinitionCommandListBuildCount = _pendingBlockDefinitionCommandListBuildCount;
         SelectionEntityCount = 0;
         SelectionCommandListReplayCount = 0;
         SelectionCommandListBuildCount = _pendingSelectionCommandListBuildCount;
@@ -60,12 +79,15 @@ internal sealed class Direct2DRenderStatisticsCollector
         HatchLineSubmissionCount = _pendingHatchLineSubmissionCount;
         HatchSimplifiedLineFamilyCount = _pendingHatchSimplifiedLineFamilyCount;
         OleTileBuildCount = _pendingOleTileBuildCount;
+        GpuCacheEvictionCount = _pendingGpuCacheEvictionCount;
         _pendingCommandListBuildCount = 0;
+        _pendingBlockDefinitionCommandListBuildCount = 0;
         _pendingSelectionCommandListBuildCount = 0;
         _pendingTileBuildCount = 0;
         _pendingHatchLineSubmissionCount = 0;
         _pendingHatchSimplifiedLineFamilyCount = 0;
         _pendingOleTileBuildCount = 0;
+        _pendingGpuCacheEvictionCount = 0;
     }
 
     public void EndFrame() => _isFrameActive = false;
@@ -76,6 +98,17 @@ internal sealed class Direct2DRenderStatisticsCollector
     public void RecordEntitySubmission() => EntitySubmissionCount++;
     public void RecordBlockReference() => BlockReferenceCount++;
     public void RecordExpandedBlockEntity() => ExpandedBlockEntityCount++;
+    public void RecordExpandedBlockEntities(int count) =>
+        ExpandedBlockEntityCount += Math.Max(0, count);
+    public void RecordBlockDefinitionCommandListReplay() =>
+        BlockDefinitionCommandListReplayCount++;
+    public void RecordBlockDefinitionCommandListBuild()
+    {
+        if (_isFrameActive)
+            BlockDefinitionCommandListBuildCount++;
+        else
+            _pendingBlockDefinitionCommandListBuildCount++;
+    }
     public void RecordSelectionEntity() => SelectionEntityCount++;
     public void RecordSelectionEntities(int count) => SelectionEntityCount += Math.Max(0, count);
     public void RecordSelectionCommandListReplay() => SelectionCommandListReplayCount++;
@@ -126,6 +159,45 @@ internal sealed class Direct2DRenderStatisticsCollector
         else
             _pendingOleTileBuildCount++;
     }
+    public void RecordGpuCacheEviction(int count = 1)
+    {
+        if (count <= 0)
+            return;
+        if (_isFrameActive)
+            GpuCacheEvictionCount += count;
+        else
+            _pendingGpuCacheEvictionCount += count;
+    }
+    public void SetGpuCacheMemory(
+        long sceneTileBytes,
+        long commandListBytes,
+        long selectionCommandListBytes,
+        long blockDefinitionBytes,
+        long geometryRealizationBytes,
+        long hatchTileBytes,
+        long imageBitmapBytes,
+        long oleTileBytes,
+        long budgetBytes)
+    {
+        SceneTileCacheBytes = Math.Max(0, sceneTileBytes);
+        CommandListCacheBytes = Math.Max(0, commandListBytes);
+        SelectionCommandListCacheBytes = Math.Max(0, selectionCommandListBytes);
+        BlockDefinitionCacheBytes = Math.Max(0, blockDefinitionBytes);
+        GeometryRealizationCacheBytes = Math.Max(0, geometryRealizationBytes);
+        HatchTileCacheBytes = Math.Max(0, hatchTileBytes);
+        ImageBitmapCacheBytes = Math.Max(0, imageBitmapBytes);
+        OleTileCacheBytes = Math.Max(0, oleTileBytes);
+        GpuCacheBytes = SceneTileCacheBytes +
+                        CommandListCacheBytes +
+                        SelectionCommandListCacheBytes +
+                        BlockDefinitionCacheBytes +
+                        GeometryRealizationCacheBytes +
+                        HatchTileCacheBytes +
+                        ImageBitmapCacheBytes +
+                        OleTileCacheBytes;
+        _gpuCachePeakBytes = Math.Max(_gpuCachePeakBytes, GpuCacheBytes);
+        GpuCacheBudgetBytes = Math.Max(0, budgetBytes);
+    }
     public void RecordGeometryRealizations(
         Direct2DGeometryRealizationStatistics statistics)
     {
@@ -133,6 +205,7 @@ internal sealed class Direct2DRenderStatisticsCollector
         GeometryRealizationStrokeDrawCount += statistics.StrokeDrawCount;
         GeometryRealizationBuildCount += statistics.BuildCount;
         GeometryRealizationFallbackCount += statistics.FallbackCount;
+        RecordGpuCacheEviction(statistics.CacheEvictionCount);
     }
 
     public CadRenderStatistics Snapshot(double renderDurationMilliseconds = 0) => new(
@@ -143,6 +216,8 @@ internal sealed class Direct2DRenderStatisticsCollector
         EntitySubmissionCount,
         BlockReferenceCount,
         ExpandedBlockEntityCount,
+        BlockDefinitionCommandListReplayCount,
+        BlockDefinitionCommandListBuildCount,
         SelectionEntityCount,
         SelectionCommandListReplayCount,
         SelectionCommandListBuildCount,
@@ -158,5 +233,17 @@ internal sealed class Direct2DRenderStatisticsCollector
         HatchLineSubmissionCount,
         HatchSimplifiedLineFamilyCount,
         OleTileBuildCount,
+        SceneTileCacheBytes,
+        CommandListCacheBytes,
+        SelectionCommandListCacheBytes,
+        BlockDefinitionCacheBytes,
+        GeometryRealizationCacheBytes,
+        HatchTileCacheBytes,
+        ImageBitmapCacheBytes,
+        OleTileCacheBytes,
+        GpuCacheBytes,
+        GpuCachePeakBytes,
+        GpuCacheBudgetBytes,
+        GpuCacheEvictionCount,
         renderDurationMilliseconds);
 }

@@ -649,6 +649,8 @@ internal sealed class Direct2DEntityRenderer(
             resources.HatchBrush,
             viewport,
             options.IsLevelOfDetailEnabled,
+            options.TransformScaleMultiplier,
+            resourceCache.HatchTiles,
             statistics);
     }
 
