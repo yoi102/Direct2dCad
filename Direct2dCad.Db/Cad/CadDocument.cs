@@ -17,7 +17,9 @@ public sealed class CadDocument : IEquatable<CadDocument>
     private readonly Dictionary<LayerId, CadLayer> _layers = [];
     private readonly Dictionary<BlockId, CadBlockDefinition> _blocks = [];
     private readonly Dictionary<EntityId, CadEntity> _entities = [];
+    private readonly Dictionary<LayerId, HashSet<EntityId>> _entityIdsByLayer = [];
     private readonly HashSet<EntityId> _blockReferenceIds = [];
+    private readonly Dictionary<BlockId, HashSet<EntityId>> _blockReferenceIdsByDefinition = [];
     private readonly Dictionary<StyleId, CadStyle> _styles = [];
     private readonly Dictionary<HatchPatternId, CadHatchPatternDefinition> _hatchPatterns = [];
     private readonly Dictionary<LayoutId, CadLayout> _layouts = [];
@@ -197,8 +199,14 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
         EnsureLayerCanBeRemoved(layerId);
 
-        foreach (var entity in _entities.Values.Where(x => x.LayerId.Equals(layerId)).ToArray())
-            entity.Erase();
+        if (_entityIdsByLayer.TryGetValue(layerId, out var entityIds))
+        {
+            foreach (var entityId in entityIds)
+            {
+                if (_entities.TryGetValue(entityId, out var entity))
+                    entity.Erase();
+            }
+        }
 
         _layers.Remove(layerId);
         return true;
@@ -219,9 +227,13 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
         ValidateLayer(targetLayerId);
 
-        foreach (var entity in _entities.Values.Where(x => x.LayerId.Equals(layerId)).ToArray())
+        if (_entityIdsByLayer.TryGetValue(layerId, out var entityIds))
         {
-            entity.ChangeLayerInternal(targetLayerId);
+            foreach (var entityId in entityIds.ToArray())
+            {
+                if (_entities.TryGetValue(entityId, out var entity))
+                    ChangeEntityLayerCore(entity, targetLayerId);
+            }
         }
 
         _layers.Remove(layerId);
@@ -230,15 +242,46 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public bool HasEntitiesOnLayer(LayerId layerId)
     {
-        return _entities.Values.Any(x => x.LayerId.Equals(layerId) && !x.IsErased);
+        if (!_entityIdsByLayer.TryGetValue(layerId, out var entityIds))
+            return false;
+
+        foreach (var entityId in entityIds)
+        {
+            if (_entities.TryGetValue(entityId, out var entity) && !entity.IsErased)
+                return true;
+        }
+
+        return false;
     }
 
     public IReadOnlyList<EntityId> GetEntityIdsOnLayer(LayerId layerId)
     {
-        return _entities.Values
-            .Where(x => x.LayerId.Equals(layerId) && !x.IsErased)
-            .Select(x => x.Id)
-            .ToArray();
+        if (!_entityIdsByLayer.TryGetValue(layerId, out var entityIds))
+            return [];
+
+        var result = new List<EntityId>(entityIds.Count);
+        foreach (var entityId in entityIds)
+        {
+            if (_entities.TryGetValue(entityId, out var entity) && !entity.IsErased)
+                result.Add(entityId);
+        }
+
+        return result;
+    }
+
+    public int GetEntityCountOnLayer(LayerId layerId)
+    {
+        if (!_entityIdsByLayer.TryGetValue(layerId, out var entityIds))
+            return 0;
+
+        var count = 0;
+        foreach (var entityId in entityIds)
+        {
+            if (_entities.TryGetValue(entityId, out var entity) && !entity.IsErased)
+                count++;
+        }
+
+        return count;
     }
 
     private void EnsureLayerCanBeRemoved(LayerId layerId)
@@ -325,8 +368,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         foreach (var entity in entities)
         {
             _entities.Remove(entity.Id);
-            if (entity is CadBlockReference)
-                _blockReferenceIds.Remove(entity.Id);
+            UnindexEntity(entity);
         }
         _blocks.Remove(blockId);
         return new CadDetachedBlockDefinition(block, entities);
@@ -343,11 +385,13 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public bool IsBlockReferenced(BlockId blockId)
     {
-        foreach (var entityId in _blockReferenceIds)
+        if (!_blockReferenceIdsByDefinition.TryGetValue(blockId, out var entityIds))
+            return false;
+
+        foreach (var entityId in entityIds)
         {
             if (_entities.TryGetValue(entityId, out var entity) &&
-                entity is CadBlockReference { IsErased: false } reference &&
-                reference.DefinitionBlockId.Equals(blockId))
+                entity is CadBlockReference { IsErased: false })
             {
                 return true;
             }
@@ -358,18 +402,38 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     public IReadOnlyList<EntityId> GetBlockReferenceIds(BlockId definitionBlockId)
     {
-        var result = new List<EntityId>();
-        foreach (var entityId in _blockReferenceIds)
+        if (!_blockReferenceIdsByDefinition.TryGetValue(definitionBlockId, out var entityIds))
+            return [];
+
+        var result = new List<EntityId>(entityIds.Count);
+        foreach (var entityId in entityIds)
         {
             if (_entities.TryGetValue(entityId, out var entity) &&
-                entity is CadBlockReference { IsErased: false } reference &&
-                reference.DefinitionBlockId.Equals(definitionBlockId))
+                entity is CadBlockReference { IsErased: false })
             {
                 result.Add(entityId);
             }
         }
 
         return result;
+    }
+
+    public int GetBlockReferenceCount(BlockId definitionBlockId)
+    {
+        if (!_blockReferenceIdsByDefinition.TryGetValue(definitionBlockId, out var entityIds))
+            return 0;
+
+        var count = 0;
+        foreach (var entityId in entityIds)
+        {
+            if (_entities.TryGetValue(entityId, out var entity) &&
+                entity is CadBlockReference { IsErased: false })
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private void EnsureBlockCanBeRemoved(BlockId blockId)
@@ -1256,8 +1320,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
             return false;
 
         _entities.Remove(entityId);
-        if (entity is CadBlockReference)
-            _blockReferenceIds.Remove(entityId);
+        UnindexEntity(entity);
 
         if (_blocks.TryGetValue(entity.OwnerBlockId, out var ownerBlock))
             ownerBlock.RemoveEntity(entityId);
@@ -1268,7 +1331,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     public void ChangeEntityLayer(EntityId entityId, LayerId layerId)
     {
         ValidateLayer(layerId);
-        GetEntity(entityId).ChangeLayerInternal(layerId);
+        ChangeEntityLayerCore(GetEntity(entityId), layerId);
     }
 
     public void SetTextEntityStyle(EntityId entityId, StyleId? textStyleId)
@@ -1291,7 +1354,12 @@ public sealed class CadDocument : IEquatable<CadDocument>
         EnsureDefinitionCanBeReferenced(definitionBlockId);
         EnsureBlockReferenceDoesNotCreateCycle(reference.OwnerBlockId, definitionBlockId);
 
+        if (reference.DefinitionBlockId.Equals(definitionBlockId))
+            return;
+
+        RemoveBlockReferenceDefinitionIndex(reference.Id, reference.DefinitionBlockId);
         reference.SetDefinitionBlockInternal(definitionBlockId);
+        GetOrCreateBlockReferenceDefinitionIndex(definitionBlockId).Add(reference.Id);
         RefreshBlockReferenceBounds();
     }
 
@@ -1364,6 +1432,18 @@ public sealed class CadDocument : IEquatable<CadDocument>
         }
     }
 
+    public IEnumerable<CadEntity> GetEntitiesInBlockReverse(BlockId blockId)
+    {
+        if (!_blocks.TryGetValue(blockId, out var block))
+            yield break;
+
+        for (var index = block.EntityIds.Count - 1; index >= 0; index--)
+        {
+            if (_entities.TryGetValue(block.EntityIds[index], out var entity))
+                yield return entity;
+        }
+    }
+
     public CadRectD GetBlockBounds(BlockId blockId)
     {
         ValidateBlock(blockId);
@@ -1396,6 +1476,69 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return changed;
     }
 
+    public IReadOnlyList<EntityId> RefreshAffectedBlockReferenceBounds(
+        IEnumerable<EntityId> changedEntityIds)
+    {
+        ArgumentNullException.ThrowIfNull(changedEntityIds);
+        if (_blockReferenceIds.Count == 0)
+            return [];
+
+        var affectedReferenceIds = new List<EntityId>();
+        var affectedReferenceSet = new HashSet<EntityId>();
+        var pendingBlockIds = new Queue<BlockId>();
+        var queuedBlockIds = new HashSet<BlockId>();
+        var blockBounds = new Dictionary<BlockId, CadRectD>();
+
+        void EnqueueBlock(BlockId blockId)
+        {
+            if (queuedBlockIds.Add(blockId))
+                pendingBlockIds.Enqueue(blockId);
+        }
+
+        foreach (var entityId in changedEntityIds)
+        {
+            if (!_entities.TryGetValue(entityId, out var entity))
+                return RefreshBlockReferenceBounds();
+
+            if (entity is CadBlockReference reference && !reference.IsErased)
+            {
+                var bounds = ResolveBlockReferenceBounds(reference, [], blockBounds);
+                if (reference.SetResolvedBounds(bounds) && affectedReferenceSet.Add(reference.Id))
+                    affectedReferenceIds.Add(reference.Id);
+            }
+
+            EnqueueBlock(entity.OwnerBlockId);
+        }
+
+        while (pendingBlockIds.TryDequeue(out var changedBlockId))
+        {
+            if (!_blockReferenceIdsByDefinition.TryGetValue(
+                    changedBlockId,
+                    out var referenceIds))
+            {
+                continue;
+            }
+
+            foreach (var referenceId in referenceIds)
+            {
+                if (!_entities.TryGetValue(referenceId, out var entity) ||
+                    entity is not CadBlockReference { IsErased: false } reference)
+                {
+                    continue;
+                }
+
+                var bounds = ResolveBlockReferenceBounds(reference, [], blockBounds);
+                reference.SetResolvedBounds(bounds);
+                if (affectedReferenceSet.Add(reference.Id))
+                    affectedReferenceIds.Add(reference.Id);
+
+                EnqueueBlock(reference.OwnerBlockId);
+            }
+        }
+
+        return affectedReferenceIds;
+    }
+
     #endregion Query
 
     #region Internal Add For Storage
@@ -1411,6 +1554,27 @@ public sealed class CadDocument : IEquatable<CadDocument>
         ValidateGraphicStyle(layer.DefaultGraphicStyleId, allowNull: true);
         _layers.Add(layer.Id, layer);
         _ids.RegisterExisting(layer.Id);
+    }
+
+    internal void EnsureCapacityForImport(
+        int layerCount,
+        int blockCount,
+        int entityCount,
+        int styleCount,
+        int hatchPatternCount,
+        int layoutCount,
+        int blockReferenceCount)
+    {
+        _layers.EnsureCapacity(Math.Max(_layers.Count, layerCount));
+        _blocks.EnsureCapacity(Math.Max(_blocks.Count, blockCount));
+        _entities.EnsureCapacity(Math.Max(_entities.Count, entityCount));
+        _entityIdsByLayer.EnsureCapacity(Math.Max(_entityIdsByLayer.Count, layerCount));
+        _blockReferenceIds.EnsureCapacity(Math.Max(_blockReferenceIds.Count, blockReferenceCount));
+        _blockReferenceIdsByDefinition.EnsureCapacity(
+            Math.Max(_blockReferenceIdsByDefinition.Count, blockCount));
+        _styles.EnsureCapacity(Math.Max(_styles.Count, styleCount));
+        _hatchPatterns.EnsureCapacity(Math.Max(_hatchPatterns.Count, hatchPatternCount));
+        _layouts.EnsureCapacity(Math.Max(_layouts.Count, layoutCount));
     }
 
     internal void AddBlockCore(CadBlockDefinition block)
@@ -1461,10 +1625,79 @@ public sealed class CadDocument : IEquatable<CadDocument>
             throw new InvalidOperationException($"Owner block does not exist: {entity.OwnerBlockId}");
 
         _entities.Add(entity.Id, entity);
-        if (entity is CadBlockReference)
-            _blockReferenceIds.Add(entity.Id);
+        IndexEntity(entity);
         ownerBlock.AddEntity(entity.Id);
         _ids.RegisterExisting(entity.Id);
+    }
+
+    private void IndexEntity(CadEntity entity)
+    {
+        GetOrCreateLayerEntityIndex(entity.LayerId).Add(entity.Id);
+        if (entity is not CadBlockReference reference)
+            return;
+
+        _blockReferenceIds.Add(reference.Id);
+        GetOrCreateBlockReferenceDefinitionIndex(reference.DefinitionBlockId).Add(reference.Id);
+    }
+
+    private void UnindexEntity(CadEntity entity)
+    {
+        RemoveLayerEntityIndex(entity.Id, entity.LayerId);
+        if (entity is not CadBlockReference reference)
+            return;
+
+        _blockReferenceIds.Remove(reference.Id);
+        RemoveBlockReferenceDefinitionIndex(reference.Id, reference.DefinitionBlockId);
+    }
+
+    private void ChangeEntityLayerCore(CadEntity entity, LayerId layerId)
+    {
+        if (entity.LayerId.Equals(layerId))
+            return;
+
+        RemoveLayerEntityIndex(entity.Id, entity.LayerId);
+        entity.ChangeLayerInternal(layerId);
+        GetOrCreateLayerEntityIndex(layerId).Add(entity.Id);
+    }
+
+    private HashSet<EntityId> GetOrCreateLayerEntityIndex(LayerId layerId)
+    {
+        if (_entityIdsByLayer.TryGetValue(layerId, out var entityIds))
+            return entityIds;
+
+        entityIds = [];
+        _entityIdsByLayer.Add(layerId, entityIds);
+        return entityIds;
+    }
+
+    private void RemoveLayerEntityIndex(EntityId entityId, LayerId layerId)
+    {
+        if (!_entityIdsByLayer.TryGetValue(layerId, out var entityIds))
+            return;
+
+        entityIds.Remove(entityId);
+        if (entityIds.Count == 0)
+            _entityIdsByLayer.Remove(layerId);
+    }
+
+    private HashSet<EntityId> GetOrCreateBlockReferenceDefinitionIndex(BlockId definitionBlockId)
+    {
+        if (_blockReferenceIdsByDefinition.TryGetValue(definitionBlockId, out var entityIds))
+            return entityIds;
+
+        entityIds = [];
+        _blockReferenceIdsByDefinition.Add(definitionBlockId, entityIds);
+        return entityIds;
+    }
+
+    private void RemoveBlockReferenceDefinitionIndex(EntityId entityId, BlockId definitionBlockId)
+    {
+        if (!_blockReferenceIdsByDefinition.TryGetValue(definitionBlockId, out var entityIds))
+            return;
+
+        entityIds.Remove(entityId);
+        if (entityIds.Count == 0)
+            _blockReferenceIdsByDefinition.Remove(definitionBlockId);
     }
 
     #endregion Internal Add For Storage

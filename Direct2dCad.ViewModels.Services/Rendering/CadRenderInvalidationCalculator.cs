@@ -178,14 +178,18 @@ internal sealed class CadRenderInvalidationCalculator(
         if (bounds.IsEmpty)
             return CadRenderInvalidation.Empty;
 
-        var padding = ResolveTransientGroupPadding(
-            group.Items,
-            ResolveMaximumScale(group.Transform));
+        var transformScale = ResolveMaximumScale(group.Transform);
+        var padding = group.LocalBounds is not null
+            ? ResolveTransientInvalidationPadding(group.Style, 24.0) * transformScale
+            : ResolveTransientGroupPadding(group.Items, transformScale);
         return CreateWorldBoundsInvalidation(bounds, Math.Max(24.0, padding));
     }
 
     private CadRectD ResolveTransientGroupBounds(CadTransientGroup group)
     {
+        if (group.LocalBounds is { } localBounds)
+            return localBounds.Transform(group.Transform);
+
         var bounds = CadRectD.Empty;
         foreach (var child in group.Items)
             bounds = bounds.Union(ResolveTransientItemBounds(child));

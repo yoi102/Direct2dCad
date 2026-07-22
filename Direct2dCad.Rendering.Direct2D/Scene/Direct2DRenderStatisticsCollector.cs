@@ -1,3 +1,5 @@
+using Direct2dCad.Rendering.Direct2D.Resources;
+
 namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 internal sealed class Direct2DRenderStatisticsCollector
@@ -19,6 +21,10 @@ internal sealed class Direct2DRenderStatisticsCollector
     public int TileReplayCount { get; private set; }
     public int TileBuildCount { get; private set; }
     public int FallbackEntityCount { get; private set; }
+    public int GeometryRealizationFillDrawCount { get; private set; }
+    public int GeometryRealizationStrokeDrawCount { get; private set; }
+    public int GeometryRealizationBuildCount { get; private set; }
+    public int GeometryRealizationFallbackCount { get; private set; }
 
     public void BeginFrame(bool isFullFrame, int dirtyRegionCount)
     {
@@ -36,6 +42,10 @@ internal sealed class Direct2DRenderStatisticsCollector
         TileReplayCount = 0;
         TileBuildCount = _pendingTileBuildCount;
         FallbackEntityCount = 0;
+        GeometryRealizationFillDrawCount = 0;
+        GeometryRealizationStrokeDrawCount = 0;
+        GeometryRealizationBuildCount = 0;
+        GeometryRealizationFallbackCount = 0;
         _pendingCommandListBuildCount = 0;
         _pendingTileBuildCount = 0;
     }
@@ -66,6 +76,14 @@ internal sealed class Direct2DRenderStatisticsCollector
             _pendingTileBuildCount++;
     }
     public void RecordFallbackEntity() => FallbackEntityCount++;
+    public void RecordGeometryRealizations(
+        Direct2DGeometryRealizationStatistics statistics)
+    {
+        GeometryRealizationFillDrawCount += statistics.FillDrawCount;
+        GeometryRealizationStrokeDrawCount += statistics.StrokeDrawCount;
+        GeometryRealizationBuildCount += statistics.BuildCount;
+        GeometryRealizationFallbackCount += statistics.FallbackCount;
+    }
 
     public CadRenderStatistics Snapshot(double renderDurationMilliseconds = 0) => new(
         _isFullFrame,
@@ -81,5 +99,9 @@ internal sealed class Direct2DRenderStatisticsCollector
         TileReplayCount,
         TileBuildCount,
         FallbackEntityCount,
+        GeometryRealizationFillDrawCount,
+        GeometryRealizationStrokeDrawCount,
+        GeometryRealizationBuildCount,
+        GeometryRealizationFallbackCount,
         renderDurationMilliseconds);
 }

@@ -677,11 +677,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             IsTextAntialiasingEnabled = _renderOptions.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = _renderOptions.IsLevelOfDetailEnabled,
             AllowApproximateScaleFallback = _renderOptions.AllowApproximateScaleFallback,
+            TransformScaleMultiplier = _renderOptions.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = _renderOptions.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = _renderOptions.MinimumScreenStrokeWidth,
             HiddenEntityIds = _renderOptions.HiddenEntityIds,
             DirtyWorldBounds = dirtyWorldBounds,
-            EntityBoundsQuery = _renderOptions.EntityBoundsQuery
+            EntityBoundsQuery = _renderOptions.EntityBoundsQuery,
+            EntityBoundsQueryInto = _renderOptions.EntityBoundsQueryInto
         };
     }
 

@@ -6,6 +6,8 @@ namespace Direct2dCad.Db.Data.Entities;
 public sealed class CadShapeText : CadEntity
 {
     public const double DefaultInvertedMarginFactor = CadText.DefaultInvertedMarginFactor;
+    private IReadOnlyList<CadStrokeTextSegment>? _strokeSegments;
+    private CadRectD _textBounds;
 
     public string Text { get; private set; }
     public CadPointD Position { get; private set; }
@@ -19,15 +21,7 @@ public sealed class CadShapeText : CadEntity
     public double InvertedMarginFactor { get; private set; }
     public CadShapeFontId ShapeFontId { get; private set; }
 
-    public CadRectD TextBounds => CadShapeFontMetrics.MeasureBounds(
-        Text,
-        Position,
-        Height,
-        WidthFactor,
-        CharacterSpacingFactor,
-        ObliqueAngleRadians,
-        RotationRadians,
-        ShapeFontId);
+    public CadRectD TextBounds => _textBounds;
     public CadRectD InvertedBackgroundBounds => TextBounds.Inflate(GetInvertedMargin());
 
     public override CadRectD Bounds => IsInverted ? InvertedBackgroundBounds : TextBounds;
@@ -59,11 +53,12 @@ public sealed class CadShapeText : CadEntity
         IsInverted = isInverted;
         InvertedMarginFactor = GuardNonNegative(invertedMarginFactor, nameof(invertedMarginFactor));
         ShapeFontId = CadShapeFontRegistry.GetOrDefault(shapeFontId).Id;
+        RebuildDerivedGeometry();
     }
 
     public IReadOnlyList<CadStrokeTextSegment> CreateStrokeSegments()
     {
-        return CadStrokeFont.CreateSegments(
+        return _strokeSegments ??= CadStrokeFont.CreateSegments(
             Text,
             Position,
             Height,
@@ -77,24 +72,43 @@ public sealed class CadShapeText : CadEntity
     public void SetText(string text)
     {
         Text = text ?? string.Empty;
+        RebuildDerivedGeometry();
     }
 
-    public void SetPosition(CadPointD position) => Position = position;
+    public void SetPosition(CadPointD position)
+    {
+        Position = position;
+        RebuildDerivedGeometry();
+    }
 
-    public void SetHeight(double height) => Height = GuardPositive(height, nameof(height));
+    public void SetHeight(double height)
+    {
+        Height = GuardPositive(height, nameof(height));
+        RebuildDerivedGeometry();
+    }
 
-    public void SetRotation(double rotationRadians) => RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
+    public void SetRotation(double rotationRadians)
+    {
+        RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
+        RebuildDerivedGeometry();
+    }
 
-    public void SetWidthFactor(double widthFactor) => WidthFactor = GuardPositive(widthFactor, nameof(widthFactor));
+    public void SetWidthFactor(double widthFactor)
+    {
+        WidthFactor = GuardPositive(widthFactor, nameof(widthFactor));
+        RebuildDerivedGeometry();
+    }
 
     public void SetCharacterSpacingFactor(double characterSpacingFactor)
     {
         CharacterSpacingFactor = GuardNonNegative(characterSpacingFactor, nameof(characterSpacingFactor));
+        RebuildDerivedGeometry();
     }
 
     public void SetObliqueAngle(double obliqueAngleRadians)
     {
         ObliqueAngleRadians = GuardFinite(obliqueAngleRadians, nameof(obliqueAngleRadians));
+        RebuildDerivedGeometry();
     }
 
     public void SetInverted(bool isInverted) => IsInverted = isInverted;
@@ -102,6 +116,7 @@ public sealed class CadShapeText : CadEntity
     public void SetShapeFont(CadShapeFontId shapeFontId)
     {
         ShapeFontId = CadShapeFontRegistry.GetOrDefault(shapeFontId).Id;
+        RebuildDerivedGeometry();
     }
 
     public void SetInvertedMarginFactor(double invertedMarginFactor)
@@ -128,9 +143,35 @@ public sealed class CadShapeText : CadEntity
         WidthFactor = GuardPositive(widthFactor, nameof(widthFactor));
         CharacterSpacingFactor = GuardNonNegative(characterSpacingFactor, nameof(characterSpacingFactor));
         ObliqueAngleRadians = GuardFinite(obliqueAngleRadians, nameof(obliqueAngleRadians));
+        RebuildDerivedGeometry();
     }
 
     public void SetGraphicStyleInternal(StyleId? styleId) => GraphicStyleId = styleId;
+
+    private void RebuildDerivedGeometry()
+    {
+        _strokeSegments = CadStrokeFont.CreateSegments(
+            Text,
+            Position,
+            Height,
+            WidthFactor,
+            CharacterSpacingFactor,
+            ObliqueAngleRadians,
+            RotationRadians,
+            ShapeFontId);
+
+        var bounds = CadRectD.Empty;
+        foreach (var segment in _strokeSegments)
+        {
+            bounds = bounds
+                .ExpandToInclude(segment.Start)
+                .ExpandToInclude(segment.End);
+        }
+
+        _textBounds = bounds.IsEmpty
+            ? CadRectD.FromCenter(Position, Height, Height)
+            : bounds;
+    }
 
     private static double GuardPositive(double value, string paramName)
     {

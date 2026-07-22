@@ -12,6 +12,7 @@ public enum CadBlockKind
 public sealed class CadBlockDefinition : IEquatable<CadBlockDefinition>
 {
     private readonly List<EntityId> _entityIds = new();
+    private readonly HashSet<EntityId> _entityIdSet = [];
 
     public BlockId Id { get; } 
     public string Name { get; private set; }
@@ -41,11 +42,16 @@ public sealed class CadBlockDefinition : IEquatable<CadBlockDefinition>
 
     internal void AddEntity(EntityId entityId)
     {
-        if (!_entityIds.Contains(entityId))
+        if (_entityIdSet.Add(entityId))
             _entityIds.Add(entityId);
     }
 
-    internal bool RemoveEntity(EntityId entityId) => _entityIds.Remove(entityId);
+    internal bool RemoveEntity(EntityId entityId)
+    {
+        if (!_entityIdSet.Remove(entityId))
+            return false;
+        return _entityIds.Remove(entityId);
+    }
 
     public bool Equals(CadBlockDefinition? other) => other is not null && Id.Equals(other.Id);
     public override bool Equals(object? obj) => obj is CadBlockDefinition other && Equals(other);

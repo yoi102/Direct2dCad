@@ -12,17 +12,23 @@ namespace Direct2dCad.Rendering.Direct2D.Resources;
 internal sealed class Direct2DGeometryRealizationCache : IDisposable
 {
     private const float DefaultFlatteningTolerance = 0.25f;
+    private const float ClosedSplineFillFlatteningTolerance = 0.10f;
     private const double MaximumScalePerProfile = 2.0;
+    private const int StrokeScaleProfilesPerOctave = 16;
     private const double BuildBudgetMilliseconds = 2.0;
-    private const int MaximumBuildsPerFrame = 32;
+    private const int MaximumBuildsPerBatch = 128;
     private const int MinimumPolylinePointCount = 16;
     private const int MinimumSplineFitPointCount = 4;
-    private const int MinimumShapeTextLength = 4;
+    private const int MinimumShapeTextSegmentCount = 8;
 
     private ID2D1DeviceContext1? _deviceContext;
     private double _buildElapsedMilliseconds;
     private int _remainingBuilds;
     private double _scaleMultiplier = 1.0;
+    private int _fillDrawCount;
+    private int _strokeDrawCount;
+    private int _buildCount;
+    private int _fallbackCount;
     private bool _disposed;
 
     public void Reset(ID2D1DeviceContext? deviceContext)
@@ -31,6 +37,10 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         _deviceContext?.Dispose();
         _deviceContext = deviceContext?.QueryInterface<ID2D1DeviceContext1>();
         _scaleMultiplier = 1.0;
+        _fillDrawCount = 0;
+        _strokeDrawCount = 0;
+        _buildCount = 0;
+        _fallbackCount = 0;
         BeginFrame();
     }
 
@@ -47,8 +57,29 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
     public void BeginFrame()
     {
         ThrowIfDisposed();
+        BeginBuildBatch();
+    }
+
+    public void BeginBuildBatch()
+    {
+        ThrowIfDisposed();
         _buildElapsedMilliseconds = 0.0;
-        _remainingBuilds = MaximumBuildsPerFrame;
+        _remainingBuilds = MaximumBuildsPerBatch;
+    }
+
+    public Direct2DGeometryRealizationStatistics CaptureStatistics()
+    {
+        ThrowIfDisposed();
+        var result = new Direct2DGeometryRealizationStatistics(
+            _fillDrawCount,
+            _strokeDrawCount,
+            _buildCount,
+            _fallbackCount);
+        _fillDrawCount = 0;
+        _strokeDrawCount = 0;
+        _buildCount = 0;
+        _fallbackCount = 0;
+        return result;
     }
 
     public bool TryDrawFill(
@@ -59,31 +90,38 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         ID2D1Brush brush)
     {
         ThrowIfDisposed();
-        if (_deviceContext is null || !CanRealize(entity))
+        if (_deviceContext is null || !CanRealize(entity, resources, geometry))
             return false;
 
-        var scaleProfile = ResolveScaleProfile(context.Transform, _scaleMultiplier);
+        var scaleProfile = ResolveFillScaleProfile(context.Transform, _scaleMultiplier);
         var entityCache = resources.GeometryRealizations;
         if (entityCache is null ||
-            !entityCache.TryGet(geometry, scaleProfile, out var profile))
+            !entityCache.TryGetFill(geometry, scaleProfile, out var profile))
         {
             if (!TryReserveBuild())
+            {
+                _fallbackCount++;
                 return false;
+            }
 
             entityCache ??= new EntityCache();
             resources.GeometryRealizations = entityCache;
-            profile = entityCache.GetOrCreate(geometry, scaleProfile);
-            CreateFillRealization(profile, geometry);
+            profile = entityCache.GetOrCreateFill(geometry, scaleProfile);
+            CreateFillRealization(profile, geometry, entity);
         }
         else if (profile.Fill is null && TryReserveBuild())
         {
-            CreateFillRealization(profile, geometry);
+            CreateFillRealization(profile, geometry, entity);
         }
 
         if (profile.Fill is null)
+        {
+            _fallbackCount++;
             return false;
+        }
 
         _deviceContext.DrawGeometryRealization(profile.Fill, brush);
+        _fillDrawCount++;
         return true;
     }
 
@@ -95,33 +133,42 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         ID2D1Brush brush,
         float strokeWidth,
         ID2D1StrokeStyle? strokeStyle,
+        Direct2DStrokeRealizationStyleKey strokeStyleKey,
         bool strokeWidthChangesWithScale)
     {
         ThrowIfDisposed();
         if (_deviceContext is null ||
-            strokeWidthChangesWithScale ||
             strokeWidth <= 0.0f ||
-            !CanRealize(entity))
+            !CanRealize(entity, resources, geometry))
         {
             return false;
         }
 
-        var scaleProfile = ResolveScaleProfile(context.Transform, _scaleMultiplier);
+        var screenScale = ResolveScreenScale(context.Transform, _scaleMultiplier);
+        var scaleProfile = ResolveStrokeScaleProfile(
+            screenScale,
+            strokeWidthChangesWithScale);
+        var realizationStrokeWidth = strokeWidthChangesWithScale
+            ? (float)(strokeWidth * screenScale / scaleProfile.AnchorScale)
+            : strokeWidth;
         var entityCache = resources.GeometryRealizations;
         var buildReserved = false;
         if (entityCache is null ||
-            !entityCache.TryGet(geometry, scaleProfile, out var profile))
+            !entityCache.TryGetStroke(geometry, scaleProfile, out var profile))
         {
             if (!TryReserveBuild())
+            {
+                _fallbackCount++;
                 return false;
+            }
 
             buildReserved = true;
             entityCache ??= new EntityCache();
             resources.GeometryRealizations = entityCache;
-            profile = entityCache.GetOrCreate(geometry, scaleProfile);
+            profile = entityCache.GetOrCreateStroke(geometry, scaleProfile);
         }
 
-        if (!profile.MatchesStroke(strokeWidth, strokeStyle))
+        if (!profile.MatchesStroke(realizationStrokeWidth, strokeStyleKey))
             profile.ClearStroke();
 
         if (profile.Stroke is null && (buildReserved || TryReserveBuild()))
@@ -132,10 +179,11 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
                 profile.Stroke = _deviceContext.CreateStrokedGeometryRealization(
                     geometry,
                     ResolveFlatteningTolerance(profile.AnchorScale),
-                    strokeWidth,
+                    realizationStrokeWidth,
                     strokeStyle);
-                profile.StrokeWidth = strokeWidth;
-                profile.StrokeStyle = strokeStyle;
+                profile.StrokeWidth = realizationStrokeWidth;
+                profile.StrokeStyleKey = strokeStyleKey;
+                _buildCount++;
             }
             finally
             {
@@ -144,9 +192,13 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         }
 
         if (profile.Stroke is null)
+        {
+            _fallbackCount++;
             return false;
+        }
 
         _deviceContext.DrawGeometryRealization(profile.Stroke, brush);
+        _strokeDrawCount++;
         return true;
     }
 
@@ -162,14 +214,22 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         return true;
     }
 
-    private void CreateFillRealization(Profile profile, ID2D1Geometry geometry)
+    private void CreateFillRealization(
+        Profile profile,
+        ID2D1Geometry geometry,
+        CadEntity entity)
     {
         var started = Stopwatch.GetTimestamp();
         try
         {
             profile.Fill = _deviceContext!.CreateFilledGeometryRealization(
                 geometry,
-                ResolveFlatteningTolerance(profile.AnchorScale));
+                ResolveFlatteningTolerance(
+                    profile.AnchorScale,
+                    entity is CadSpline { Closed: true }
+                        ? ClosedSplineFillFlatteningTolerance
+                        : DefaultFlatteningTolerance));
+            _buildCount++;
         }
         finally
         {
@@ -184,28 +244,64 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             .TotalMilliseconds;
     }
 
-    private static bool CanRealize(CadEntity entity) => entity switch
+    private static bool CanRealize(
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        ID2D1Geometry geometry)
     {
-        CadPolyline polyline => polyline.Points.Count >= MinimumPolylinePointCount,
-        CadSpline spline => spline.FitPoints.Count >= MinimumSplineFitPointCount,
-        CadShapeText shapeText => shapeText.Text.Length >= MinimumShapeTextLength,
-        _ => false
-    };
+        if (!ReferenceEquals(resources.Geometry, geometry))
+            return false;
 
-    private static ScaleProfile ResolveScaleProfile(
+        return entity switch
+        {
+            CadPolyline polyline => polyline.Points.Count >= MinimumPolylinePointCount,
+            CadSpline spline => spline.FitPoints.Count >= MinimumSplineFitPointCount,
+            CadShapeText => resources.GeometryComplexity >= MinimumShapeTextSegmentCount,
+            _ => false
+        };
+    }
+
+    private static ScaleProfile ResolveFillScaleProfile(
+        System.Numerics.Matrix3x2 transform,
+        double scaleMultiplier)
+    {
+        var screenScale = ResolveScreenScale(transform, scaleMultiplier);
+        var exponent = (int)Math.Floor(Math.Log2(screenScale));
+        return new ScaleProfile(exponent, Math.Pow(2.0, exponent));
+    }
+
+    private static ScaleProfile ResolveStrokeScaleProfile(
+        double screenScale,
+        bool strokeWidthChangesWithScale)
+    {
+        if (!strokeWidthChangesWithScale)
+        {
+            var exponent = (int)Math.Floor(Math.Log2(screenScale));
+            return new ScaleProfile(exponent, Math.Pow(2.0, exponent));
+        }
+
+        var bucket = (int)Math.Round(
+            Math.Log2(screenScale) * StrokeScaleProfilesPerOctave,
+            MidpointRounding.AwayFromZero);
+        return new ScaleProfile(
+            bucket,
+            Math.Pow(2.0, (double)bucket / StrokeScaleProfilesPerOctave));
+    }
+
+    private static double ResolveScreenScale(
         System.Numerics.Matrix3x2 transform,
         double scaleMultiplier)
     {
         var screenScale = Direct2DEntityLevelOfDetail.ResolveMaximumScreenScale(transform) *
                           scaleMultiplier;
-        screenScale = Math.Clamp(screenScale, Math.Pow(2.0, -40.0), Math.Pow(2.0, 40.0));
-        var exponent = (int)Math.Floor(Math.Log2(screenScale));
-        return new ScaleProfile(exponent, Math.Pow(2.0, exponent));
+        return Math.Clamp(screenScale, Math.Pow(2.0, -40.0), Math.Pow(2.0, 40.0));
     }
 
-    private static float ResolveFlatteningTolerance(double anchorScale)
+    private static float ResolveFlatteningTolerance(
+        double anchorScale,
+        float screenTolerance = DefaultFlatteningTolerance)
     {
-        var tolerance = DefaultFlatteningTolerance /
+        var tolerance = screenTolerance /
                         (anchorScale * MaximumScalePerProfile);
         return (float)Math.Clamp(tolerance, 1e-7, 1e7);
     }
@@ -242,20 +338,44 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         }
     }
 
-    internal readonly record struct ScaleProfile(int Exponent, double AnchorScale);
+    internal readonly record struct ScaleProfile(int Key, double AnchorScale);
 
     internal sealed class EntityCache : IDisposable
     {
         private const int MaximumProfiles = 3;
-        private readonly Dictionary<int, Profile> _profiles = [];
+        private readonly Dictionary<int, Profile> _fillProfiles = [];
+        private readonly Dictionary<int, Profile> _strokeProfiles = [];
         private long _usageStamp;
 
-        public bool TryGet(
+        public bool TryGetFill(
+            ID2D1Geometry geometry,
+            ScaleProfile scaleProfile,
+            out Profile profile) =>
+            TryGet(_fillProfiles, geometry, scaleProfile, out profile);
+
+        public bool TryGetStroke(
+            ID2D1Geometry geometry,
+            ScaleProfile scaleProfile,
+            out Profile profile) =>
+            TryGet(_strokeProfiles, geometry, scaleProfile, out profile);
+
+        public Profile GetOrCreateFill(
+            ID2D1Geometry geometry,
+            ScaleProfile scaleProfile) =>
+            GetOrCreate(_fillProfiles, geometry, scaleProfile);
+
+        public Profile GetOrCreateStroke(
+            ID2D1Geometry geometry,
+            ScaleProfile scaleProfile) =>
+            GetOrCreate(_strokeProfiles, geometry, scaleProfile);
+
+        private bool TryGet(
+            Dictionary<int, Profile> profiles,
             ID2D1Geometry geometry,
             ScaleProfile scaleProfile,
             out Profile profile)
         {
-            if (_profiles.TryGetValue(scaleProfile.Exponent, out profile!) &&
+            if (profiles.TryGetValue(scaleProfile.Key, out profile!) &&
                 ReferenceEquals(profile.Geometry, geometry))
             {
                 profile.LastUsed = ++_usageStamp;
@@ -266,9 +386,12 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             return false;
         }
 
-        public Profile GetOrCreate(ID2D1Geometry geometry, ScaleProfile scaleProfile)
+        private Profile GetOrCreate(
+            Dictionary<int, Profile> profiles,
+            ID2D1Geometry geometry,
+            ScaleProfile scaleProfile)
         {
-            if (_profiles.TryGetValue(scaleProfile.Exponent, out var profile))
+            if (profiles.TryGetValue(scaleProfile.Key, out var profile))
             {
                 if (ReferenceEquals(profile.Geometry, geometry))
                 {
@@ -277,41 +400,48 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
                 }
 
                 profile.Dispose();
-                _profiles.Remove(scaleProfile.Exponent);
+                profiles.Remove(scaleProfile.Key);
             }
 
             profile = new Profile(geometry, scaleProfile.AnchorScale)
             {
                 LastUsed = ++_usageStamp
             };
-            _profiles.Add(scaleProfile.Exponent, profile);
-            TrimProfiles(scaleProfile.Exponent);
+            profiles.Add(scaleProfile.Key, profile);
+            TrimProfiles(profiles, scaleProfile.Key);
             return profile;
         }
 
         public void ClearStroke()
         {
-            foreach (var profile in _profiles.Values)
-                profile.ClearStroke();
+            DisposeProfiles(_strokeProfiles);
         }
 
         public void Clear()
         {
-            foreach (var profile in _profiles.Values)
-                profile.Dispose();
-            _profiles.Clear();
+            DisposeProfiles(_fillProfiles);
+            DisposeProfiles(_strokeProfiles);
         }
 
-        private void TrimProfiles(int currentExponent)
+        private static void TrimProfiles(
+            Dictionary<int, Profile> profiles,
+            int currentKey)
         {
-            while (_profiles.Count > MaximumProfiles)
+            while (profiles.Count > MaximumProfiles)
             {
-                var oldest = _profiles
-                    .Where(pair => pair.Key != currentExponent)
+                var oldest = profiles
+                    .Where(pair => pair.Key != currentKey)
                     .MinBy(static pair => pair.Value.LastUsed);
                 oldest.Value.Dispose();
-                _profiles.Remove(oldest.Key);
+                profiles.Remove(oldest.Key);
             }
+        }
+
+        private static void DisposeProfiles(Dictionary<int, Profile> profiles)
+        {
+            foreach (var profile in profiles.Values)
+                profile.Dispose();
+            profiles.Clear();
         }
 
         public void Dispose() => Clear();
@@ -325,7 +455,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         public ID2D1GeometryRealization? Fill { get; set; }
         public ID2D1GeometryRealization? Stroke { get; set; }
         public float StrokeWidth { get; set; }
-        public ID2D1StrokeStyle? StrokeStyle { get; set; }
+        public Direct2DStrokeRealizationStyleKey StrokeStyleKey { get; set; }
 
         public Profile(ID2D1Geometry geometry, double anchorScale)
         {
@@ -333,12 +463,14 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             AnchorScale = anchorScale;
         }
 
-        public bool MatchesStroke(float strokeWidth, ID2D1StrokeStyle? strokeStyle)
+        public bool MatchesStroke(
+            float strokeWidth,
+            Direct2DStrokeRealizationStyleKey strokeStyleKey)
         {
             return Stroke is not null &&
                    Math.Abs(StrokeWidth - strokeWidth) <=
                    Math.Max(1e-6f, Math.Abs(strokeWidth) * 1e-5f) &&
-                   ReferenceEquals(StrokeStyle, strokeStyle);
+                   StrokeStyleKey == strokeStyleKey;
         }
 
         public void ClearStroke()
@@ -346,7 +478,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
             Stroke?.Dispose();
             Stroke = null;
             StrokeWidth = 0.0f;
-            StrokeStyle = null;
+            StrokeStyleKey = default;
         }
 
         public void Dispose()
@@ -357,3 +489,9 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         }
     }
 }
+
+internal readonly record struct Direct2DGeometryRealizationStatistics(
+    int FillDrawCount,
+    int StrokeDrawCount,
+    int BuildCount,
+    int FallbackCount);

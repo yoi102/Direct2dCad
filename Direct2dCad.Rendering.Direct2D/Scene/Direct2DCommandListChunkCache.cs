@@ -72,7 +72,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                 chunk.IsCacheable && chunk.CommandList is null && !chunk.BuildFailed);
         }
 
-        var buildOptions = CreateBuildOptions(options);
+        var buildOptions = CreateBuildOptions(options, viewport.Zoom);
         var started = Stopwatch.GetTimestamp();
         foreach (var chunk in profile.Chunks)
         {
@@ -412,7 +412,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                layer is { IsVisible: true, IsFrozen: false };
     }
 
-    private static CadRenderOptions CreateBuildOptions(CadRenderOptions options) => new()
+    private static CadRenderOptions CreateBuildOptions(
+        CadRenderOptions options,
+        double viewportZoom) => new()
     {
         ActiveOwnerBlockId = options.ActiveOwnerBlockId,
         DrawGrid = false,
@@ -422,6 +424,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
         AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
+        TransformScaleMultiplier = viewportZoom,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
         HiddenEntityIds = CadRenderOptions.NoHiddenEntities

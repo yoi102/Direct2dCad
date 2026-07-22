@@ -20,6 +20,8 @@ public interface ICadSpatialIndex
 
     IReadOnlyList<EntityId> Query(BlockId ownerBlockId, CadRectD area);
 
+    void Query(BlockId ownerBlockId, CadRectD area, List<EntityId> results);
+
     void Clear();
 
     void Rebuild(CadDocument document);

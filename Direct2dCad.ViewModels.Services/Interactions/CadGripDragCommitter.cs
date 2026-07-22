@@ -79,9 +79,8 @@ internal sealed class CadGripDragCommitter(
 
     private void CommitMoveGripDrag(GripDragState drag)
     {
-        var entityIds = CadGripDragEntityResolver.ResolveMoveEntityIds(editor, drag).ToArray();
-        if (entityIds.Length > 0)
-            editor.MoveEntities(entityIds, drag.Delta);
+        if (drag.HiddenEntityIds.Count > 0)
+            editor.MoveEntities(drag.HiddenEntityIds, drag.Delta);
     }
 
     private void CommitLineGripDrag(CadLine line, GripDragState drag)

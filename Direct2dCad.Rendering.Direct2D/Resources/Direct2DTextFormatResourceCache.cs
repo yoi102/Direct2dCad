@@ -11,9 +11,15 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
     private readonly Dictionary<Direct2DTextFormatKey, Entry> _entries = [];
     private readonly HashSet<Direct2DTextFormatKey> _usedThisFrame = [];
     private readonly HashSet<Direct2DTextFormatKey> _unleasedEntries = [];
+    private readonly Action<Direct2DTextFormatKey> _release;
     private IDWriteFactory? _writeFactory;
     private int _frameDepth;
     private bool _disposed;
+
+    public Direct2DTextFormatResourceCache()
+    {
+        _release = Release;
+    }
 
     public void Reset(IDWriteFactory? writeFactory)
     {
@@ -46,14 +52,14 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
         });
     }
 
-    public ResourceLease<IDWriteTextFormat>? Acquire(
+    public KeyedResourceLease<IDWriteTextFormat, Direct2DTextFormatKey>? Acquire(
         CadDocument document,
         CadText text)
     {
         return Acquire(document, text.TextStyleId, text.Height);
     }
 
-    public ResourceLease<IDWriteTextFormat>? Acquire(
+    public KeyedResourceLease<IDWriteTextFormat, Direct2DTextFormatKey>? Acquire(
         CadDocument document,
         StyleId? textStyleId,
         double height)
@@ -66,7 +72,10 @@ internal sealed class Direct2DTextFormatResourceCache : IDisposable
         var entry = GetOrCreate(key);
         entry.ReferenceCount++;
         _unleasedEntries.Remove(key);
-        return new ResourceLease<IDWriteTextFormat>(entry.Format, () => Release(key));
+        return new KeyedResourceLease<IDWriteTextFormat, Direct2DTextFormatKey>(
+            entry.Format,
+            key,
+            _release);
     }
 
     public IDWriteTextFormat? GetForFrame(

@@ -18,11 +18,15 @@ internal static class Direct2DBlockEntityVisibility
         Matrix3x2 localToScreen,
         CadViewport viewport,
         CadRenderOptions options,
-        Direct2DEntityOrderCache entityOrderCache)
+        Direct2DEntityOrderCache entityOrderCache,
+        List<EntityId> candidateIdsBuffer,
+        List<CadEntity> candidatesBuffer,
+        List<CadEntity> orderedCandidatesBuffer,
+        HashSet<EntityId> candidateSetBuffer)
     {
         var orderedEntities = entityOrderCache.GetOrderedEntities(document, ownerBlockId);
         if (orderedEntities.Count < MinimumIndexedEntityCount ||
-            options.EntityBoundsQuery is not { } query ||
+            options.EntityBoundsQueryInto is null && options.EntityBoundsQuery is null ||
             !TryResolveVisibleLocalBounds(localToScreen, viewport, out var visibleBounds))
         {
             return orderedEntities;
@@ -34,43 +38,58 @@ internal static class Direct2DBlockEntityVisibility
         if (!ownerBounds.IsEmpty && queryBounds.Contains(ownerBounds))
             return orderedEntities;
 
-        var candidateIds = query(ownerBlockId, queryBounds);
+        IReadOnlyList<EntityId> candidateIds;
+        if (options.EntityBoundsQueryInto is { } bufferedQuery)
+        {
+            candidateIdsBuffer.Clear();
+            bufferedQuery(ownerBlockId, queryBounds, candidateIdsBuffer);
+            candidateIds = candidateIdsBuffer;
+        }
+        else
+        {
+            candidateIds = options.EntityBoundsQuery!(ownerBlockId, queryBounds);
+        }
         if (candidateIds.Count == 0)
             return [];
 
-        var candidates = new List<CadEntity>(Math.Min(candidateIds.Count, orderedEntities.Count));
+        candidatesBuffer.Clear();
+        var candidateCapacity = Math.Min(candidateIds.Count, orderedEntities.Count);
+        if (candidatesBuffer.Capacity < candidateCapacity)
+            candidatesBuffer.Capacity = candidateCapacity;
         foreach (var entityId in candidateIds)
         {
             if (document.TryGetEntity(entityId, out var entity) &&
                 entity is not null &&
                 entity.OwnerBlockId.Equals(ownerBlockId))
             {
-                candidates.Add(entity);
+                candidatesBuffer.Add(entity);
             }
         }
 
-        if (candidates.Count == 0)
+        if (candidatesBuffer.Count == 0)
             return [];
 
         if (orderedEntities.Count >= MinimumIndexedEntityCount &&
-            candidates.Count >= orderedEntities.Count / OrderedScanCandidateDivisor)
+            candidatesBuffer.Count >= orderedEntities.Count / OrderedScanCandidateDivisor)
         {
-            var candidateSet = new HashSet<EntityId>(candidates.Count);
-            foreach (var candidate in candidates)
-                candidateSet.Add(candidate.Id);
+            candidateSetBuffer.Clear();
+            foreach (var candidate in candidatesBuffer)
+                candidateSetBuffer.Add(candidate.Id);
 
-            var orderedCandidates = new List<CadEntity>(candidates.Count);
+            orderedCandidatesBuffer.Clear();
+            if (orderedCandidatesBuffer.Capacity < candidatesBuffer.Count)
+                orderedCandidatesBuffer.Capacity = candidatesBuffer.Count;
             foreach (var entity in orderedEntities)
             {
-                if (candidateSet.Contains(entity.Id))
-                    orderedCandidates.Add(entity);
+                if (candidateSetBuffer.Contains(entity.Id))
+                    orderedCandidatesBuffer.Add(entity);
             }
 
-            return orderedCandidates;
+            return orderedCandidatesBuffer;
         }
 
-        candidates.Sort(entityOrderCache.GetComparer(document, ownerBlockId));
-        return candidates;
+        candidatesBuffer.Sort(entityOrderCache.GetComparer(document, ownerBlockId));
+        return candidatesBuffer;
     }
 
     private static bool TryResolveVisibleLocalBounds(

@@ -83,10 +83,7 @@ public sealed class CadDocumentChangeDispatcher
 
     private CadDocumentChangeSet ExpandBlockReferenceChanges(CadDocumentChangeSet result)
     {
-        if (!MayAffectBlockReferenceBounds(result))
-            return result;
-
-        var affectedReferenceIds = _document.RefreshBlockReferenceBounds();
+        var affectedReferenceIds = ResolveAffectedBlockReferenceIds(result);
         if (affectedReferenceIds.Count == 0)
             return result;
 
@@ -113,35 +110,35 @@ public sealed class CadDocumentChangeDispatcher
         };
     }
 
-    private bool MayAffectBlockReferenceBounds(CadDocumentChangeSet result)
+    private IReadOnlyList<EntityId> ResolveAffectedBlockReferenceIds(
+        CadDocumentChangeSet result)
     {
         if (result.AffectsDocumentStructure)
-            return true;
+            return _document.RefreshBlockReferenceBounds();
 
         const CadEntityChangeKind relevantChanges =
             CadEntityChangeKind.Created |
             CadEntityChangeKind.Deleted |
             CadEntityChangeKind.Geometry |
             CadEntityChangeKind.Rotation;
+        List<EntityId>? changedEntityIds = null;
         foreach (var change in result.EntityChanges)
         {
             if ((change.Kind & relevantChanges) == 0)
                 continue;
 
-            if (change.Kind.HasFlag(CadEntityChangeKind.Deleted))
-                return true;
-
             if (!_document.TryGetEntity(change.EntityId, out var entity) || entity is null)
-                return true;
+                return _document.RefreshBlockReferenceBounds();
 
-            if (entity is CadBlockReference ||
+            var isDeleted = change.Kind.HasFlag(CadEntityChangeKind.Deleted);
+            if ((!isDeleted && entity is CadBlockReference) ||
                 _document.IsBlockReferenced(entity.OwnerBlockId))
-            {
-                return true;
-            }
+                (changedEntityIds ??= []).Add(change.EntityId);
         }
 
-        return false;
+        return changedEntityIds is null
+            ? []
+            : _document.RefreshAffectedBlockReferenceBounds(changedEntityIds);
     }
 
     private void UpdateGeometryResources(CadDocumentChangeSet result)

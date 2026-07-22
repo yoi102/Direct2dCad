@@ -209,7 +209,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
                     Blocks.Add(new BlockItemViewModel(
                         this,
                         block,
-                        document.GetBlockReferenceIds(block.Id).Count));
+                        document.GetBlockReferenceCount(block.Id)));
                 }
             }
 

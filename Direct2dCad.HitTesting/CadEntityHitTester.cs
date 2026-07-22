@@ -774,7 +774,7 @@ public static class CadEntityHitTester
                 blockReference,
                 worldTolerance);
 
-            foreach (var child in document.GetEntitiesInBlock(blockReference.DefinitionBlockId).Reverse())
+            foreach (var child in document.GetEntitiesInBlockReverse(blockReference.DefinitionBlockId))
             {
                 if (HitTestEdgeCore(
                         document,
@@ -817,7 +817,7 @@ public static class CadEntityHitTester
                 blockReference,
                 worldPoint);
 
-            foreach (var child in document.GetEntitiesInBlock(blockReference.DefinitionBlockId).Reverse())
+            foreach (var child in document.GetEntitiesInBlockReverse(blockReference.DefinitionBlockId))
             {
                 if (HitTestFillCore(
                         document,

@@ -110,7 +110,11 @@ internal sealed class Direct2DOleRenderer(
         {
             var color = proxyColorOverride ?? ResolveLayerColor(document, ole.LayerId);
             var brush = styleResources.GetBrush(context, color);
-            Direct2DEntityRenderer.DrawRectangularProxy(context, ole.Bounds, brush);
+            Direct2DEntityRenderer.DrawRectangularProxy(
+                context,
+                ole.Bounds,
+                brush,
+                options.TransformScaleMultiplier);
             return;
         }
 
@@ -203,7 +207,11 @@ internal sealed class Direct2DOleRenderer(
         if (detail == Direct2DEntityRenderDetail.Simplified)
         {
             var brush = styleResources.GetBrush(context, ole.Style.StrokeColor);
-            Direct2DEntityRenderer.DrawRectangularProxy(context, ole.Bounds, brush);
+            Direct2DEntityRenderer.DrawRectangularProxy(
+                context,
+                ole.Bounds,
+                brush,
+                options.TransformScaleMultiplier);
             return;
         }
 

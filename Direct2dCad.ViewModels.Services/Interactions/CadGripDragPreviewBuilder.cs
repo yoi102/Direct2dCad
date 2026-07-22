@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
@@ -88,32 +89,76 @@ internal sealed class CadGripDragPreviewBuilder(
         List<CadTransientItem> items,
         GripDragState drag)
     {
-        foreach (var entityId in CadGripDragEntityResolver.ResolveMoveEntityIds(editor, drag))
+        var previewItems = drag.MovePreviewItems;
+        if (previewItems is null)
         {
-            if (editor.Document.TryGetEntity(entityId, out var entity) &&
-                entity is not null &&
-                !entity.IsErased)
+            var createdItems = new List<CadTransientItem>(drag.HiddenEntityIds.Count);
+            var previewBounds = CadRectD.Empty;
+            CadTransientStyle? maximumStyle = null;
+            foreach (var entityId in drag.HiddenEntityIds)
             {
-                var style = styleService.CreateEntityPreviewStyle(entity);
-                if (entity is CadBlockReference reference)
+                if (editor.Document.TryGetEntity(entityId, out var entity) &&
+                    entity is not null &&
+                    !entity.IsErased)
                 {
-                    items.Add(new CadTransientBlockReference(
-                        reference.DefinitionBlockId,
-                        reference.Position + drag.Delta,
-                        reference.RotationRadians,
-                        reference.ScaleX,
-                        reference.ScaleY,
-                        reference.LayerId,
-                        reference.ColorSource,
-                        reference.GraphicStyleId,
-                        style));
-                }
-                else
-                {
-                    items.Add(new CadTransientEntityReference(entityId, drag.Delta, style));
+                    var style = styleService.CreateEntityPreviewStyle(entity);
+                    previewBounds = previewBounds.Union(entity.Bounds);
+                    maximumStyle = ResolveMaximumPaddingStyle(maximumStyle, style);
+                    if (entity is CadBlockReference reference)
+                    {
+                        createdItems.Add(new CadTransientBlockReference(
+                            reference.DefinitionBlockId,
+                            reference.Position,
+                            reference.RotationRadians,
+                            reference.ScaleX,
+                            reference.ScaleY,
+                            reference.LayerId,
+                            reference.ColorSource,
+                            reference.GraphicStyleId,
+                            style));
+                    }
+                    else
+                    {
+                        createdItems.Add(new CadTransientEntityReference(
+                            entityId,
+                            CadVectorD.Zero,
+                            style));
+                    }
                 }
             }
+
+            previewItems = createdItems;
+            drag.MovePreviewItems = previewItems;
+            drag.MovePreviewBounds = previewBounds;
+            drag.MovePreviewStyle = maximumStyle ?? default;
         }
+
+        if (previewItems.Count > 0)
+            items.Add(new CadTransientGroup(
+                previewItems,
+                CadMatrixD.CreateTranslation(drag.Delta),
+                drag.MovePreviewStyle,
+                drag.MovePreviewBounds));
+    }
+
+    private static CadTransientStyle ResolveMaximumPaddingStyle(
+        CadTransientStyle? current,
+        CadTransientStyle candidate)
+    {
+        if (current is not { } resolved)
+            return candidate;
+
+        return resolved with
+        {
+            StrokeWidth = Math.Max(resolved.StrokeWidth, candidate.StrokeWidth),
+            MinimumScreenStrokeWidth = Math.Max(
+                resolved.MinimumScreenStrokeWidth,
+                candidate.MinimumScreenStrokeWidth),
+            LinePattern = resolved.LinePattern == CadTransientLinePattern.Solid &&
+                          candidate.LinePattern == CadTransientLinePattern.Solid
+                ? CadTransientLinePattern.Solid
+                : CadTransientLinePattern.Dash
+        };
     }
 
     private static void AddLineGripPreview(

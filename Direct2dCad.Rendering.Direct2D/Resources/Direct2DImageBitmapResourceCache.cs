@@ -11,12 +11,14 @@ namespace Direct2dCad.Rendering.Direct2D.Resources;
 internal sealed class Direct2DImageBitmapResourceCache : IDisposable
 {
     private readonly Dictionary<ImageBitmapKey, Entry> _entries = [];
+    private readonly Action<ImageBitmapKey> _release;
     private ID2D1DeviceContext? _deviceContext;
     private bool _disposed;
 
     public Direct2DImageBitmapResourceCache(ID2D1DeviceContext? deviceContext = null)
     {
         _deviceContext = deviceContext;
+        _release = Release;
     }
 
     public void Reset(ID2D1DeviceContext? deviceContext)
@@ -26,7 +28,7 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
         _deviceContext = deviceContext;
     }
 
-    public ResourceLease<ID2D1Bitmap>? Acquire(CadImage image)
+    public KeyedResourceLease<ID2D1Bitmap, ImageBitmapKey>? Acquire(CadImage image)
     {
         ThrowIfDisposed();
         if (_deviceContext is null)
@@ -40,7 +42,10 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
         }
 
         entry.ReferenceCount++;
-        return new ResourceLease<ID2D1Bitmap>(entry.Bitmap, () => Release(key));
+        return new KeyedResourceLease<ID2D1Bitmap, ImageBitmapKey>(
+            entry.Bitmap,
+            key,
+            _release);
     }
 
     public void Clear()
@@ -112,7 +117,7 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
             throw new ObjectDisposedException(nameof(Direct2DImageBitmapResourceCache));
     }
 
-    private readonly record struct ImageBitmapKey(EntityId EntityId, IReadOnlyList<byte> PixelSource);
+    internal readonly record struct ImageBitmapKey(EntityId EntityId, IReadOnlyList<byte> PixelSource);
 
     private sealed class Entry(ID2D1Bitmap bitmap)
     {

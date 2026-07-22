@@ -272,7 +272,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
                     this,
                     layer,
                     document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id),
-                    document.GetEntityIdsOnLayer(layer.Id).Count));
+                    document.GetEntityCountOnLayer(layer.Id)));
             }
         }
 

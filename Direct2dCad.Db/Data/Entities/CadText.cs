@@ -8,6 +8,7 @@ public sealed class CadText : CadEntity
     public const double DefaultInvertedMarginFactor = 0.12;
 
     private CadRectD _localBounds;
+    private CadRectD _bounds;
     private bool _requiresBoundsMeasurement;
 
     public string Text { get; private set; }
@@ -24,8 +25,7 @@ public sealed class CadText : CadEntity
     public CadRectD InvertedBackgroundBounds => TextBounds.Inflate(GetInvertedMargin());
     public bool RequiresBoundsMeasurement => _requiresBoundsMeasurement;
 
-    public override CadRectD Bounds => CalculateRotatedBounds(
-        IsInverted ? InvertedBackgroundBounds : TextBounds);
+    public override CadRectD Bounds => _bounds;
 
     internal CadText(
         EntityId id,
@@ -57,7 +57,11 @@ public sealed class CadText : CadEntity
         MarkBoundsForMeasurement();
     }
 
-    public void SetPosition(CadPointD position) => Position = position;
+    public void SetPosition(CadPointD position)
+    {
+        Position = position;
+        RebuildBounds();
+    }
 
     public void SetHeight(double height)
     {
@@ -65,18 +69,27 @@ public sealed class CadText : CadEntity
         MarkBoundsForMeasurement();
     }
 
-    public void SetRotation(double rotationRadians) => RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
+    public void SetRotation(double rotationRadians)
+    {
+        RotationRadians = GuardFinite(rotationRadians, nameof(rotationRadians));
+        RebuildBounds();
+    }
 
     public CadPointD WorldToTextSpace(CadPointD point)
     {
         return RotateAround(point, Position, -RotationRadians);
     }
 
-    public void SetInverted(bool isInverted) => IsInverted = isInverted;
+    public void SetInverted(bool isInverted)
+    {
+        IsInverted = isInverted;
+        RebuildBounds();
+    }
 
     public void SetInvertedMarginFactor(double invertedMarginFactor)
     {
         InvertedMarginFactor = GuardNonNegative(invertedMarginFactor, nameof(invertedMarginFactor));
+        RebuildBounds();
     }
 
     public double GetInvertedMargin()
@@ -110,6 +123,7 @@ public sealed class CadText : CadEntity
 
         _localBounds = bounds;
         _requiresBoundsMeasurement = false;
+        RebuildBounds();
         return true;
     }
 
@@ -117,6 +131,7 @@ public sealed class CadText : CadEntity
     {
         _localBounds = CreateUnmeasuredLocalBounds(Height);
         _requiresBoundsMeasurement = true;
+        RebuildBounds();
     }
 
     public static CadRectD CreateUnmeasuredBounds(CadPointD position, double height)
@@ -156,6 +171,12 @@ public sealed class CadText : CadEntity
         rotatedBounds = rotatedBounds.ExpandToInclude(RotateAround(new CadPointD(bounds.MaxX, bounds.MaxY), Position, RotationRadians));
         rotatedBounds = rotatedBounds.ExpandToInclude(RotateAround(new CadPointD(bounds.MinX, bounds.MaxY), Position, RotationRadians));
         return rotatedBounds;
+    }
+
+    private void RebuildBounds()
+    {
+        _bounds = CalculateRotatedBounds(
+            IsInverted ? InvertedBackgroundBounds : TextBounds);
     }
 
     private static CadPointD RotateAround(CadPointD point, CadPointD center, double angleRadians)

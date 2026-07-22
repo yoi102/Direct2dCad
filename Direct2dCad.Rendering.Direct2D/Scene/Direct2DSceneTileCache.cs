@@ -33,6 +33,10 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private readonly Direct2DRenderStatisticsCollector _statistics;
     private readonly Dictionary<TileProfileKey, TileProfile> _profiles = [];
     private readonly Dictionary<EntityId, EntitySnapshot> _entitySnapshots = [];
+    private readonly List<TileCoordinate> _requiredTiles = new(16);
+    private readonly List<TileCoordinate> _availableTiles = new(16);
+    private readonly List<CadRectD> _missingWorldBounds = new(4);
+    private readonly List<TileProfile> _candidateProfiles = new(MaximumProfiles);
     private CadDocument? _document;
     private long _usageStamp;
     private bool _disposed;
@@ -68,14 +72,11 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         }
 
         profile.LastUsed = ++_usageStamp;
-        var requiredTiles = ResolveVisibleTiles(viewport, profile.Zoom);
+        FillVisibleTiles(viewport, profile.Zoom, _requiredTiles);
         if (!buildStep)
-        {
-            return requiredTiles.Any(tileKey =>
-                !profile.Tiles.ContainsKey(tileKey) && !profile.FailedTiles.Contains(tileKey));
-        }
+            return HasPendingTiles(profile, _requiredTiles);
 
-        foreach (var tileKey in requiredTiles)
+        foreach (var tileKey in _requiredTiles)
         {
             if (profile.Tiles.ContainsKey(tileKey) || profile.FailedTiles.Contains(tileKey))
                 continue;
@@ -96,15 +97,14 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             {
                 tile.LastUsed = ++_usageStamp;
                 profile.Tiles.Add(tileKey, tile);
-                profile.TrimTiles(MaximumTilesPerProfile, requiredTiles);
-                TrimTilesGlobally(profile, requiredTiles);
+                profile.TrimTiles(MaximumTilesPerProfile, _requiredTiles);
+                TrimTilesGlobally(profile, _requiredTiles);
                 _statistics.RecordTileBuild();
             }
             break;
         }
 
-        return requiredTiles.Any(tileKey =>
-            !profile.Tiles.ContainsKey(tileKey) && !profile.FailedTiles.Contains(tileKey));
+        return HasPendingTiles(profile, _requiredTiles);
     }
 
     public bool TryDraw(
@@ -130,10 +130,13 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             return false;
         }
 
-        missingWorldBounds = requiredTiles
-            .Where(tileKey => !profile.Tiles.ContainsKey(tileKey))
-            .Select(tileKey => ResolveWorldBounds(tileKey, profile.Zoom))
-            .ToArray();
+        _missingWorldBounds.Clear();
+        foreach (var tileKey in requiredTiles)
+        {
+            if (!profile.Tiles.ContainsKey(tileKey))
+                _missingWorldBounds.Add(ResolveWorldBounds(tileKey, profile.Zoom));
+        }
+        missingWorldBounds = _missingWorldBounds;
 
         profile.LastUsed = ++_usageStamp;
         var previousTransform = context.Transform;
@@ -319,27 +322,29 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         }
     }
 
-    private static IReadOnlyList<TileCoordinate> ResolveVisibleTiles(
+    private static void FillVisibleTiles(
         CadViewport viewport,
-        double profileZoom)
+        double profileZoom,
+        List<TileCoordinate> result)
     {
+        result.Clear();
         var visible = viewport.VisibleWorldBounds;
         if (visible.IsEmpty || profileZoom <= double.Epsilon)
-            return [];
+            return;
 
         var worldSize = TilePixelSize / profileZoom;
         var minX = FloorToInt(visible.MinX / worldSize);
         var maxX = FloorToInt(Math.BitDecrement(visible.MaxX) / worldSize);
         var minY = FloorToInt(visible.MinY / worldSize);
         var maxY = FloorToInt(Math.BitDecrement(visible.MaxY) / worldSize);
-        var result = new List<TileCoordinate>(Math.Max(1, (maxX - minX + 1) * (maxY - minY + 1)));
+        var requiredCapacity = Math.Max(1, (maxX - minX + 1) * (maxY - minY + 1));
+        if (result.Capacity < requiredCapacity)
+            result.Capacity = requiredCapacity;
         for (var y = minY; y <= maxY; y++)
         {
             for (var x = minX; x <= maxX; x++)
                 result.Add(new TileCoordinate(x, y));
         }
-
-        return result;
     }
 
     private static CadRectD ResolveWorldBounds(TileCoordinate coordinate, double zoom)
@@ -373,11 +378,13 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
         AllowApproximateScaleFallback = source.AllowApproximateScaleFallback,
+        TransformScaleMultiplier = source.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
         HiddenEntityIds = CadRenderOptions.NoHiddenEntities,
         DirtyWorldBounds = worldBounds.Inflate(TileGutterPixels / zoom),
-        EntityBoundsQuery = source.EntityBoundsQuery
+        EntityBoundsQuery = source.EntityBoundsQuery,
+        EntityBoundsQueryInto = source.EntityBoundsQueryInto
     };
 
     private static bool CanUse(CadRenderOptions options, int entityCount)
@@ -503,26 +510,28 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         bool allowApproximateScaleFallback,
         out TileProfile profile,
         out IReadOnlyList<TileCoordinate> requiredTiles,
-        out TileCoordinate[] availableTiles)
+        out IReadOnlyList<TileCoordinate> availableTiles)
     {
-        foreach (var candidate in EnumerateCandidateProfiles(
-                     requestedKey,
-                     viewport.Zoom,
-                     allowApproximateScaleFallback))
+        FillCandidateProfiles(requestedKey, viewport.Zoom, allowApproximateScaleFallback);
+        foreach (var candidate in _candidateProfiles)
         {
-            requiredTiles = ResolveVisibleTiles(viewport, candidate.Zoom);
-            availableTiles = requiredTiles
-                .Where(candidate.Tiles.ContainsKey)
-                .ToArray();
-            if (availableTiles.Length == 0)
+            FillVisibleTiles(viewport, candidate.Zoom, _requiredTiles);
+            _availableTiles.Clear();
+            foreach (var tileKey in _requiredTiles)
+            {
+                if (candidate.Tiles.ContainsKey(tileKey))
+                    _availableTiles.Add(tileKey);
+            }
+
+            if (_availableTiles.Count == 0)
                 continue;
 
-            var missingTileCount = requiredTiles.Count - availableTiles.Length;
+            var missingTileCount = _requiredTiles.Count - _availableTiles.Count;
             var isExactProfile = candidate.Key.Equals(requestedKey);
             if (!isExactProfile && missingTileCount > 0)
                 continue;
 
-            var coverage = (double)availableTiles.Length / requiredTiles.Count;
+            var coverage = (double)_availableTiles.Count / _requiredTiles.Count;
             if (isExactProfile &&
                 missingTileCount > 0 &&
                 (missingTileCount > MaximumMissingTilesForPartialReplay ||
@@ -532,6 +541,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             }
 
             profile = candidate;
+            requiredTiles = _requiredTiles;
+            availableTiles = _availableTiles;
             return true;
         }
 
@@ -541,30 +552,56 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         return false;
     }
 
-    private IEnumerable<TileProfile> EnumerateCandidateProfiles(
+    private void FillCandidateProfiles(
         TileProfileKey requestedKey,
         double zoom,
         bool allowApproximateScaleFallback)
     {
+        _candidateProfiles.Clear();
         _profiles.TryGetValue(requestedKey, out var exact);
         if (exact is { Tiles.Count: > 0 })
-            yield return exact;
+            _candidateProfiles.Add(exact);
 
         if (!allowApproximateScaleFallback)
-            yield break;
+            return;
 
-        foreach (var candidate in _profiles.Values
-                     .Where(profile =>
-                         !ReferenceEquals(profile, exact) &&
-                         profile.Tiles.Count > 0 &&
-                         profile.Key.IsCompatibleWith(requestedKey) &&
-                         ResolveZoomRatio(profile.Zoom, zoom) <= MaximumFallbackZoomRatio)
-                     .OrderBy(profile => Math.Abs(Math.Log2(
-                         profile.Zoom / Math.Max(zoom, 1e-9)))))
+        var fallbackStart = _candidateProfiles.Count;
+        foreach (var candidate in _profiles.Values)
         {
-            yield return candidate;
+            if (ReferenceEquals(candidate, exact) ||
+                candidate.Tiles.Count == 0 ||
+                !candidate.Key.IsCompatibleWith(requestedKey) ||
+                ResolveZoomRatio(candidate.Zoom, zoom) > MaximumFallbackZoomRatio)
+            {
+                continue;
+            }
+
+            var candidateDistance = ResolveProfileDistance(candidate.Zoom, zoom);
+            var insertIndex = _candidateProfiles.Count;
+            while (insertIndex > fallbackStart &&
+                   ResolveProfileDistance(_candidateProfiles[insertIndex - 1].Zoom, zoom) > candidateDistance)
+            {
+                insertIndex--;
+            }
+            _candidateProfiles.Insert(insertIndex, candidate);
         }
     }
+
+    private static bool HasPendingTiles(
+        TileProfile profile,
+        IReadOnlyList<TileCoordinate> requiredTiles)
+    {
+        foreach (var tileKey in requiredTiles)
+        {
+            if (!profile.Tiles.ContainsKey(tileKey) && !profile.FailedTiles.Contains(tileKey))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static double ResolveProfileDistance(double profileZoom, double requestedZoom) =>
+        Math.Abs(Math.Log2(profileZoom / Math.Max(requestedZoom, 1e-9)));
 
     private static double ResolveZoomRatio(double left, double right) =>
         Math.Max(left, right) / Math.Max(Math.Min(left, right), 1e-9);

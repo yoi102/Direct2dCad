@@ -11,6 +11,8 @@ namespace Direct2dCad.Rendering.Direct2D.Resources;
 
 internal sealed class Direct2DStyleResourceCache : IDisposable
 {
+    private const float DefaultMiterLimit = 10.0f;
+    private const float LevelOfDetailMiterLimit = 2.0f;
     private readonly Dictionary<CadColor, ResourceEntry<ID2D1SolidColorBrush>> _brushes = [];
     private readonly Dictionary<StrokeStyleKey, ResourceEntry<ID2D1StrokeStyle>> _strokeStyles = [];
     private readonly HashSet<CadColor> _usedBrushes = [];
@@ -18,6 +20,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     private readonly HashSet<CadColor> _unleasedBrushes = [];
     private readonly HashSet<StrokeStyleKey> _unleasedStrokeStyles = [];
     private readonly Action<CadColor> _releaseBrush;
+    private readonly Action<StrokeStyleKey> _releaseStrokeStyle;
     private ID2D1DeviceContext? _deviceContext;
     private ID2D1Factory? _factory;
     private ID2D1PathGeometry? _unitDiamondGeometry;
@@ -27,6 +30,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     public Direct2DStyleResourceCache()
     {
         _releaseBrush = ReleaseBrush;
+        _releaseStrokeStyle = ReleaseStrokeStyle;
     }
 
     public void Reset(ID2D1Factory? factory, ID2D1DeviceContext? deviceContext)
@@ -110,7 +114,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         return GetStrokeStyleForFrame(factory, StrokeStyleKey.CreateDefault(dashStyle));
     }
 
-    public ResourceLease<ID2D1StrokeStyle>? AcquireStrokeStyle(CadStrokeStyle style)
+    public KeyedResourceLease<ID2D1StrokeStyle, StrokeStyleKey>? AcquireStrokeStyle(CadStrokeStyle style)
     {
         ThrowIfDisposed();
         if (style == CadStrokeStyle.Default || _factory is null)
@@ -121,11 +125,36 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             ToD2DCapStyle(style.EndCap),
             ToD2DCapStyle(style.DashCap),
             ToD2DLineJoin(style.LineJoin),
-            ToD2DDashStyle(style.DashStyle));
+            ToD2DDashStyle(style.DashStyle),
+            DefaultMiterLimit);
         var entry = GetOrCreateStrokeStyle(key);
         entry.ReferenceCount++;
         _unleasedStrokeStyles.Remove(key);
-        return new ResourceLease<ID2D1StrokeStyle>(entry.Resource, () => ReleaseStrokeStyle(key));
+        return new KeyedResourceLease<ID2D1StrokeStyle, StrokeStyleKey>(
+            entry.Resource,
+            key,
+            _releaseStrokeStyle);
+    }
+
+    public ID2D1StrokeStyle? GetLevelOfDetailStrokeStyle(
+        ID2D1Factory? factory,
+        CadStrokeStyle style)
+    {
+        if (factory is null)
+            return null;
+
+        var lineJoin = ToD2DLineJoin(style.LineJoin);
+        if (lineJoin == LineJoin.Miter)
+            lineJoin = LineJoin.MiterOrBevel;
+
+        var key = new StrokeStyleKey(
+            ToD2DCapStyle(style.StartCap),
+            ToD2DCapStyle(style.EndCap),
+            CapStyle.Flat,
+            lineJoin,
+            DashStyle.Solid,
+            LevelOfDetailMiterLimit);
+        return GetStrokeStyleForFrame(factory, key);
     }
 
     public ID2D1PathGeometry? GetUnitDiamondGeometry(ID2D1Factory? factory)
@@ -212,6 +241,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             EndCap = key.EndCap,
             DashCap = key.DashCap,
             LineJoin = key.LineJoin,
+            MiterLimit = key.MiterLimit,
             DashStyle = key.DashStyle
         });
         entry = new ResourceEntry<ID2D1StrokeStyle>(strokeStyle);
@@ -380,19 +410,21 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         };
     }
 
-    private readonly record struct StrokeStyleKey(
+    internal readonly record struct StrokeStyleKey(
         CapStyle StartCap,
         CapStyle EndCap,
         CapStyle DashCap,
         LineJoin LineJoin,
-        DashStyle DashStyle)
+        DashStyle DashStyle,
+        float MiterLimit)
     {
         public static StrokeStyleKey CreateDefault(DashStyle dashStyle) => new(
             CapStyle.Flat,
             CapStyle.Flat,
             CapStyle.Flat,
             LineJoin.Miter,
-            dashStyle);
+            dashStyle,
+            DefaultMiterLimit);
     }
 
     private sealed class ResourceEntry<T>(T resource) where T : IDisposable

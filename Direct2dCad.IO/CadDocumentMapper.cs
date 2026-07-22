@@ -453,6 +453,29 @@ internal static class CadDocumentMapper
             documentInfo.Name,
             new CadIdGenerator());
 
+        var entityCount = checked(
+            lines.Lines.Count +
+            circles.Circles.Count +
+            ellipses.Ellipses.Count +
+            (ellipses.EllipseArcs?.Count ?? 0) +
+            arcs.Arcs.Count +
+            rectangles.Rectangles.Count +
+            polylines.Polylines.Count +
+            splines.Splines.Count +
+            texts.Texts.Count +
+            shapeTexts.ShapeTexts.Count +
+            images.Images.Count +
+            oleObjects.OleObjects.Count +
+            blockReferences.BlockReferences.Count);
+        document.EnsureCapacityForImport(
+            layers.Layers.Count + 1,
+            blocks.Blocks.Count + layouts.Layouts.Count + 2,
+            entityCount,
+            styles.Styles.Count + 1,
+            (styles.HatchPatterns?.Count ?? 0),
+            layouts.Layouts.Count + 1,
+            blockReferences.BlockReferences.Count);
+
         ApplySettings(document, settings);
         ApplyStyles(document, styles);
         ApplyLayers(document, layers);

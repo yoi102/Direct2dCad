@@ -6,6 +6,9 @@ public sealed class CadEllipseArc : Curve
 {
     private const double TwoPi = Math.PI * 2.0;
     private const double Epsilon = 1e-12;
+    private CadPointD _startPoint;
+    private CadPointD _endPoint;
+    private CadRectD _bounds;
 
     public CadPointD Center { get; private set; }
     public double RadiusX { get; private set; }
@@ -15,8 +18,8 @@ public sealed class CadEllipseArc : Curve
     public StyleId? GraphicStyleId { get; private set; }
 
     public double EndAngleRadians => StartAngleRadians + SweepAngleRadians;
-    public CadPointD StartPoint => GetPointAtAngle(StartAngleRadians);
-    public CadPointD EndPoint => GetPointAtAngle(EndAngleRadians);
+    public CadPointD StartPoint => _startPoint;
+    public CadPointD EndPoint => _endPoint;
     public override bool IsClosed => false;
     public override double Length => ApproximateLength();
 
@@ -25,7 +28,7 @@ public sealed class CadEllipseArc : Curve
             ? CadCurveOrientation.Clockwise
             : CadCurveOrientation.CounterClockwise;
 
-    public override CadRectD Bounds => CalculateBounds();
+    public override CadRectD Bounds => _bounds;
 
     internal CadEllipseArc(
         EntityId id,
@@ -44,6 +47,7 @@ public sealed class CadEllipseArc : Curve
         RadiusY = GuardRadius(radiusY, nameof(radiusY));
         StartAngleRadians = GuardAngle(startAngleRadians, nameof(startAngleRadians));
         SweepAngleRadians = GuardSweepAngle(sweepAngleRadians);
+        RebuildDerivedGeometry();
     }
 
     public double StartAngleDegrees => CadArc.RadiansToDegrees(StartAngleRadians);
@@ -57,7 +61,11 @@ public sealed class CadEllipseArc : Curve
             Center.Y + Math.Sin(angleRadians) * RadiusY);
     }
 
-    public void SetCenter(CadPointD center) => Center = center;
+    public void SetCenter(CadPointD center)
+    {
+        Center = center;
+        RebuildDerivedGeometry();
+    }
 
     public void SetGeometry(
         CadPointD center,
@@ -71,6 +79,7 @@ public sealed class CadEllipseArc : Curve
         RadiusY = GuardRadius(radiusY, nameof(radiusY));
         StartAngleRadians = GuardAngle(startAngleRadians, nameof(startAngleRadians));
         SweepAngleRadians = GuardSweepAngle(sweepAngleRadians);
+        RebuildDerivedGeometry();
     }
 
     public void SetGraphicStyleInternal(StyleId? styleId) => GraphicStyleId = styleId;
@@ -88,6 +97,13 @@ public sealed class CadEllipseArc : Curve
         }
 
         return bounds;
+    }
+
+    private void RebuildDerivedGeometry()
+    {
+        _startPoint = GetPointAtAngle(StartAngleRadians);
+        _endPoint = GetPointAtAngle(EndAngleRadians);
+        _bounds = CalculateBounds();
     }
 
     private bool ContainsAngle(double angleRadians)

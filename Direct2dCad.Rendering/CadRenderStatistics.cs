@@ -14,6 +14,10 @@ public sealed record CadRenderStatistics(
     int TileReplayCount,
     int TileBuildCount,
     int FallbackEntityCount,
+    int GeometryRealizationFillDrawCount,
+    int GeometryRealizationStrokeDrawCount,
+    int GeometryRealizationBuildCount,
+    int GeometryRealizationFallbackCount,
     double RenderDurationMilliseconds)
 {
     public static CadRenderStatistics Empty { get; } = new(
@@ -30,5 +34,9 @@ public sealed record CadRenderStatistics(
         TileReplayCount: 0,
         TileBuildCount: 0,
         FallbackEntityCount: 0,
+        GeometryRealizationFillDrawCount: 0,
+        GeometryRealizationStrokeDrawCount: 0,
+        GeometryRealizationBuildCount: 0,
+        GeometryRealizationFallbackCount: 0,
         RenderDurationMilliseconds: 0);
 }

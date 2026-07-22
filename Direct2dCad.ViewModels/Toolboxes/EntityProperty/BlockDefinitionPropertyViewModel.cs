@@ -65,7 +65,7 @@ public partial class BlockDefinitionPropertyViewModel : ObservableObject
         {
             Name = block.Name;
             EntityCount = block.EntityIds.Count;
-            ReferenceCount = _documentViewModel.CadEditor.Document.GetBlockReferenceIds(BlockId).Count;
+            ReferenceCount = _documentViewModel.CadEditor.Document.GetBlockReferenceCount(BlockId);
             BasePointX = block.BasePoint.X;
             BasePointY = block.BasePoint.Y;
             IsEditable = !block.IsReadOnly && !block.IsSystem;

@@ -20,6 +20,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
     Direct2DRenderStatisticsCollector statistics)
 {
     private readonly HashSet<BlockId> _visitedBlocks = [];
+    private readonly List<BlockVisibilityBuffers> _visibilityBuffers = [];
 
     public void Draw(
         ID2D1DeviceContext context,
@@ -39,7 +40,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
             ReferenceRenderState.From(reference),
             options,
             parentStyle: null,
-            _visitedBlocks);
+            _visitedBlocks,
+            depth: 0);
     }
 
     public void Draw(
@@ -72,7 +74,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
                 graphicStyleId),
             options,
             parentStyle: null,
-            _visitedBlocks);
+            _visitedBlocks,
+            depth: 0);
     }
 
     private void Draw(
@@ -82,7 +85,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
         ReferenceRenderState reference,
         CadRenderOptions options,
         BlockRenderStyleContext? parentStyle,
-        HashSet<BlockId> visited)
+        HashSet<BlockId> visited,
+        int depth)
     {
         if (!visited.Add(reference.DefinitionBlockId) ||
             !document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
@@ -101,13 +105,18 @@ internal sealed class Direct2DBlockReferenceRenderer(
             reference.ScaleY) * previousTransform;
         try
         {
+            var visibilityBuffers = GetVisibilityBuffers(depth);
             foreach (var child in Direct2DBlockEntityVisibility.Resolve(
                          document,
                          reference.DefinitionBlockId,
                          context.Transform,
                          viewport,
                          options,
-                         entityOrderCache))
+                         entityOrderCache,
+                         visibilityBuffers.CandidateIds,
+                         visibilityBuffers.Candidates,
+                         visibilityBuffers.OrderedCandidates,
+                         visibilityBuffers.CandidateSet))
             {
                 if (!IsVisible(document, child, referenceStyle, options))
                     continue;
@@ -135,7 +144,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
                         ReferenceRenderState.From(nested),
                         options,
                         referenceStyle,
-                        visited);
+                        visited,
+                        depth + 1);
                     continue;
                 }
 
@@ -195,7 +205,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
                     viewport,
                     options,
                     brushOverride,
-                    strokeWidthOverride);
+                    strokeWidthOverride,
+                    colorOverride);
             }
         }
         finally
@@ -227,7 +238,11 @@ internal sealed class Direct2DBlockReferenceRenderer(
         }
 
         var brush = styleResources.GetBrush(context, referenceStyle.ReferenceColor);
-        Direct2DEntityRenderer.DrawRectangularProxy(context, reference.Bounds, brush);
+        Direct2DEntityRenderer.DrawRectangularProxy(
+            context,
+            reference.Bounds,
+            brush,
+            options.TransformScaleMultiplier);
         return true;
     }
 
@@ -326,6 +341,21 @@ internal sealed class Direct2DBlockReferenceRenderer(
                Matrix3x2.CreateScale((float)scaleX, (float)scaleY) *
                Matrix3x2.CreateRotation((float)rotationRadians) *
                Matrix3x2.CreateTranslation((float)position.X, (float)position.Y);
+    }
+
+    private BlockVisibilityBuffers GetVisibilityBuffers(int depth)
+    {
+        while (_visibilityBuffers.Count <= depth)
+            _visibilityBuffers.Add(new BlockVisibilityBuffers());
+        return _visibilityBuffers[depth];
+    }
+
+    private sealed class BlockVisibilityBuffers
+    {
+        public List<EntityId> CandidateIds { get; } = new(256);
+        public List<CadEntity> Candidates { get; } = new(256);
+        public List<CadEntity> OrderedCandidates { get; } = new(256);
+        public HashSet<EntityId> CandidateSet { get; } = [];
     }
 
     private readonly record struct BlockRenderStyleContext(

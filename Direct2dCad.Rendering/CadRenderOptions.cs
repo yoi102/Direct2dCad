@@ -19,9 +19,11 @@ public sealed class CadRenderOptions
     public bool IsTextAntialiasingEnabled { get; init; } = true;
     public bool IsLevelOfDetailEnabled { get; init; }
     public bool AllowApproximateScaleFallback { get; init; }
+    public double TransformScaleMultiplier { get; init; } = 1.0;
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;
     public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = NoHiddenEntities;
     public CadRectD? DirtyWorldBounds { get; init; }
     public Func<BlockId, CadRectD, IReadOnlyList<EntityId>>? EntityBoundsQuery { get; init; }
+    public Action<BlockId, CadRectD, List<EntityId>>? EntityBoundsQueryInto { get; init; }
 }

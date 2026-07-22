@@ -131,7 +131,11 @@ internal static class CadGripDragGeometryFactory
 
         var localHandle = drag.Handle with { Position = image.WorldToFrame(drag.Handle.Position) };
         var localTarget = image.WorldToFrame(drag.DraggedGripPosition);
-        var localDrag = new GripDragState(localHandle, localHandle.Position, drag.PointIndex)
+        var localDrag = new GripDragState(
+            localHandle,
+            localHandle.Position,
+            drag.PointIndex,
+            drag.HiddenEntityIds)
         {
             CurrentPointerWorld = localTarget
         };

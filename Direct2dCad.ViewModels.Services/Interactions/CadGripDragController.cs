@@ -10,9 +10,13 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal sealed class CadGripDragController(CadHandleHitTester hitTester)
 {
+    private static readonly IReadOnlySet<EntityId> EmptyEntityIds = new HashSet<EntityId>();
+
     public GripDragState? ActiveDrag { get; private set; }
 
     public bool IsActive => ActiveDrag is not null;
+    public IReadOnlySet<EntityId> HiddenEntityIds =>
+        ActiveDrag?.HiddenEntityIds ?? EmptyEntityIds;
 
     public bool TryBegin(
         CadEditor editor,
@@ -34,7 +38,8 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
         ActiveDrag = new GripDragState(
             grip,
             screenToWorld(screen),
-            ResolveGripPointIndex(editor, grip));
+            ResolveGripPointIndex(editor, grip),
+            CadGripDragEntityResolver.ResolveMoveEntityIds(editor, grip));
         return true;
     }
 
@@ -68,13 +73,6 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
 
         committer.Commit(drag);
         return true;
-    }
-
-    public IEnumerable<EntityId> ResolveHiddenEntityIds(CadEditor editor)
-    {
-        return ActiveDrag is null
-            ? []
-            : CadGripDragEntityResolver.ResolveMoveEntityIds(editor, ActiveDrag);
     }
 
     public IReadOnlyList<CadHandleItem>? CreateActiveHandleItems(

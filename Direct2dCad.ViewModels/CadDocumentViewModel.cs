@@ -283,8 +283,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
         ShowFramesPerSecond = UserSettings.Rendering.ShowFramesPerSecond;
-        if (!UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
-            CancelViewportInteractionPreview();
         RequestRender();
     }
 
@@ -468,7 +466,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var requiresFullRender = false;
 
         if (_pan.IsPanning &&
-            UserSettings.Rendering.IsViewportInteractionPreviewEnabled &&
             !Direct2DImageRenderHost.IsViewportInteractionActive)
         {
             Direct2DImageRenderHost.BeginViewportInteraction();
@@ -484,7 +481,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             _gripDrag.UpdatePointer(ScreenToSnappedWorld, screen);
             if (requiresFullRender)
             {
-                if (!RenderViewportInteractionPreview())
+                if (!RenderPanInteractionPreview())
                     RequestRender(CadRenderInvalidation.Full, updateHandleScene: true);
             }
             else if (!Direct2DImageRenderHost.IsViewportInteractionActive)
@@ -496,7 +493,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (requiresFullRender)
         {
-            if (!RenderViewportInteractionPreview())
+            if (!RenderPanInteractionPreview())
                 RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
         }
         else if (!Direct2DImageRenderHost.IsViewportInteractionActive)
@@ -580,7 +577,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _viewportInteractionRequiresHandleSceneUpdate = true;
         CadEditor.Execute(new ZoomViewportCommand(screen, factor));
         UpdatePointerWorldStatus(screen);
-        if (!RenderViewportInteractionPreview())
+        if (!RenderZoomInteractionPreview())
         {
             Direct2DImageRenderHost.EndViewportInteraction();
             _viewportInteractionRequiresHandleSceneUpdate = false;
@@ -1412,8 +1409,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         else
         {
             _pan.Begin(screen);
-            if (UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
-                Direct2DImageRenderHost.BeginViewportInteraction();
+            Direct2DImageRenderHost.BeginViewportInteraction();
             _viewportInteractionRequiresHandleSceneUpdate = false;
         }
         OnPropertyChanged(nameof(IsPanning));
@@ -1458,11 +1454,19 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
     }
 
+    private bool RenderPanInteractionPreview()
+    {
+        return RenderViewportInteractionPreview();
+    }
+
+    private bool RenderZoomInteractionPreview()
+    {
+        return UserSettings.Rendering.IsViewportInteractionPreviewEnabled &&
+               RenderViewportInteractionPreview();
+    }
+
     private bool RenderViewportInteractionPreview()
     {
-        if (!UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
-            return false;
-
         if (!Direct2DImageRenderHost.RenderViewportInteractionPreview())
             return false;
 
@@ -1607,9 +1611,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             AllowApproximateScaleFallback =
                 UserSettings.Rendering.AllowApproximateScaleFallback,
             EntityBoundsQuery = CadEditor.SpatialIndex.Query,
-            HiddenEntityIds = _gripDrag.IsActive
-                ? _gripDrag.ResolveHiddenEntityIds(CadEditor).ToHashSet()
-                : CadRenderOptions.NoHiddenEntities
+            EntityBoundsQueryInto = CadEditor.SpatialIndex.Query,
+            HiddenEntityIds = _gripDrag.HiddenEntityIds
         };
     }
 

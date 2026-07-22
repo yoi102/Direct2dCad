@@ -86,6 +86,15 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         return index.Query(area);
     }
 
+    public void Query(BlockId ownerBlockId, CadRectD area, List<EntityId> results)
+    {
+        ArgumentNullException.ThrowIfNull(results);
+        if (area.IsEmpty || !_indexesByOwner.TryGetValue(ownerBlockId, out var index))
+            return;
+
+        index.Query(area, results);
+    }
+
     public void Clear()
     {
         _entries.Clear();
@@ -97,10 +106,19 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         ArgumentNullException.ThrowIfNull(document);
 
         Clear();
+        _entries.EnsureCapacity(document.Entities.Count);
+        _indexesByOwner.EnsureCapacity(document.Blocks.Count);
         foreach (var entity in document.Entities.Values)
         {
             if (!entity.IsErased && entity.IsVisible)
-                Add(entity.Id, entity.OwnerBlockId, entity.Bounds);
+            {
+                var bounds = entity.Bounds;
+                if (bounds.IsEmpty || !IsFinite(bounds))
+                    continue;
+
+                _entries.Add(entity.Id, new SpatialEntry(entity.OwnerBlockId, bounds));
+                GetOrCreateOwnerIndex(document, entity.OwnerBlockId).Add(entity.Id, bounds);
+            }
         }
 
         foreach (var index in _indexesByOwner.Values)
@@ -113,6 +131,19 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
             return index;
 
         index = new OwnerIndex();
+        _indexesByOwner.Add(ownerBlockId, index);
+        return index;
+    }
+
+    private OwnerIndex GetOrCreateOwnerIndex(CadDocument document, BlockId ownerBlockId)
+    {
+        if (_indexesByOwner.TryGetValue(ownerBlockId, out var index))
+            return index;
+
+        var capacity = document.TryGetBlock(ownerBlockId, out var owner) && owner is not null
+            ? owner.EntityIds.Count
+            : 0;
+        index = new OwnerIndex(capacity);
         _indexesByOwner.Add(ownerBlockId, index);
         return index;
     }
@@ -139,6 +170,12 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         private readonly Dictionary<EntityId, CadRectD> _boundsByEntity = [];
         private readonly HashSet<EntityId> _pendingChanges = [];
         private BvhNode? _root;
+
+        public OwnerIndex(int capacity = 0)
+        {
+            if (capacity > 0)
+                _boundsByEntity.EnsureCapacity(capacity);
+        }
 
         public int Count => _boundsByEntity.Count;
 

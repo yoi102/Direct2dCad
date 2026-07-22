@@ -11,7 +11,8 @@ public abstract record CadTransientItem(CadTransientStyle Style);
 public sealed record CadTransientGroup(
     IReadOnlyList<CadTransientItem> Items,
     CadMatrixD Transform,
-    CadTransientStyle Style = default)
+    CadTransientStyle Style = default,
+    CadRectD? LocalBounds = null)
     : CadTransientItem(Style);
 
 public sealed record CadTransientLine(

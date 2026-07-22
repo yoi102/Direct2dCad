@@ -1135,7 +1135,7 @@
     <value>フレームレートを表示</value>
   </data>
   <data name="AcceleratedViewportInteraction" xml:space="preserve">
-    <value>パンとズームを高速化</value>
+    <value>ズームプレビューを高速化</value>
   </data>
   <data name="ApproximateScaleFallback" xml:space="preserve">
     <value>近いズームキャッシュによる代替表示を許可</value>

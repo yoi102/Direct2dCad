@@ -33,6 +33,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private readonly Direct2DRenderStatisticsCollector _statistics = new();
     private readonly Direct2DCommandListChunkCache _commandListCache;
     private readonly Direct2DSceneTileCache _tileCache;
+    private readonly List<EntityId> _visibleEntityIds = new(256);
+    private readonly HashSet<EntityId> _visibleEntityIdSet = [];
+    private readonly List<CadEntity> _visibleEntities = new(256);
     private bool _disposed;
 
     public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
@@ -201,6 +204,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
         finally
         {
+            _statistics.RecordGeometryRealizations(
+                _resourceCache.CaptureGeometryRealizationStatistics());
             RenderStatistics = _statistics.Snapshot();
             _statistics.EndFrame();
         }
@@ -289,6 +294,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return false;
 
         options ??= new CadRenderOptions();
+        if (buildStep)
+            _resourceCache.BeginGeometryRealizationBuildBatch();
         var orderedEntities = _entityOrderCache.GetOrderedEntities(
             document,
             options.ActiveOwnerBlockId);
@@ -458,9 +465,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                              modelOptions,
                              _resourceCache,
                              _entityOrderCache.GetOrderedEntities(
-                                 document,
-                                 modelOptions.ActiveOwnerBlockId),
-                             _entityOrderCache))
+                                  document,
+                                  modelOptions.ActiveOwnerBlockId),
+                              _entityOrderCache,
+                              _visibleEntityIds,
+                              _visibleEntityIdSet,
+                              _visibleEntities))
                 {
                     if (entity is CadBlockReference blockReference)
                     {
@@ -549,7 +559,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                      options,
                      _resourceCache,
                      _entityOrderCache.GetOrderedEntities(document, options.ActiveOwnerBlockId),
-                     _entityOrderCache))
+                     _entityOrderCache,
+                     _visibleEntityIds,
+                     _visibleEntityIdSet,
+                     _visibleEntities))
         {
             _statistics.RecordVisibleEntity();
             _statistics.RecordEntitySubmission();
@@ -599,11 +612,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
         AllowApproximateScaleFallback = source.AllowApproximateScaleFallback,
+        TransformScaleMultiplier = source.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
         HiddenEntityIds = source.HiddenEntityIds,
         DirtyWorldBounds = dirtyWorldBounds,
-        EntityBoundsQuery = source.EntityBoundsQuery
+        EntityBoundsQuery = source.EntityBoundsQuery,
+        EntityBoundsQueryInto = source.EntityBoundsQueryInto
     };
 
     private bool DrawRetainedScene(
@@ -681,9 +696,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
         AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
+        TransformScaleMultiplier = options.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
         EntityBoundsQuery = options.EntityBoundsQuery,
+        EntityBoundsQueryInto = options.EntityBoundsQueryInto,
         HiddenEntityIds = includeHiddenEntities
             ? options.HiddenEntityIds
             : CadRenderOptions.NoHiddenEntities
@@ -702,11 +719,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
         AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
+        TransformScaleMultiplier = options.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
         HiddenEntityIds = options.HiddenEntityIds,
         DirtyWorldBounds = options.DirtyWorldBounds,
-        EntityBoundsQuery = options.EntityBoundsQuery
+        EntityBoundsQuery = options.EntityBoundsQuery,
+        EntityBoundsQueryInto = options.EntityBoundsQueryInto
     };
 
     private static RawRectF ToRawRect(CadRectD bounds) => new(

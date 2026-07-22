@@ -4,6 +4,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Transient;
@@ -75,6 +76,18 @@ internal sealed class Direct2DResourceCache : IDisposable
         _geometryRealizations.BeginFrame();
     }
 
+    public void BeginGeometryRealizationBuildBatch()
+    {
+        ThrowIfDisposed();
+        _geometryRealizations.BeginBuildBatch();
+    }
+
+    public Direct2DGeometryRealizationStatistics CaptureGeometryRealizationStatistics()
+    {
+        ThrowIfDisposed();
+        return _geometryRealizations.CaptureStatistics();
+    }
+
     public IDisposable PushGeometryRealizationScale(double scaleMultiplier)
     {
         ThrowIfDisposed();
@@ -104,6 +117,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         ID2D1Brush brush,
         float strokeWidth,
         ID2D1StrokeStyle? strokeStyle,
+        Direct2DStrokeRealizationStyleKey strokeStyleKey,
         bool strokeWidthChangesWithScale)
     {
         return _geometryRealizations.TryDrawStroke(
@@ -114,6 +128,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             brush,
             strokeWidth,
             strokeStyle,
+            strokeStyleKey,
             strokeWidthChangesWithScale);
     }
 
@@ -250,14 +265,20 @@ internal sealed class Direct2DResourceCache : IDisposable
                 layer.LineWeight);
             if (UsesStrokeBrush(entity))
             {
-                bucket.StrokeBrushLease = _styleResources.AcquireBrush(
-                    ResolveStrokeColor(document, entity, layer, graphic));
+                var strokeColor = ResolveStrokeColor(document, entity, layer, graphic);
+                if (!strokeColor.IsTransparent)
+                {
+                    bucket.StrokeColor = strokeColor;
+                    bucket.StrokeBrushLease = _styleResources.AcquireBrush(strokeColor);
+                }
             }
             if (UsesStrokeStyle(entity))
                 bucket.StrokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
 
             var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
-            bucket.Geometry = CreateGeometry(entity, fillStyle is CadHatchFillStyle);
+            (bucket.Geometry, bucket.GeometryComplexity) = CreateGeometry(
+                entity,
+                fillStyle is CadHatchFillStyle);
 
             if (hasFillStyle)
             {
@@ -326,13 +347,18 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         var graphic = ResolveGraphicStyle(document, entity, layer);
         KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? strokeBrushLease = null;
-        ResourceLease<ID2D1StrokeStyle>? strokeStyleLease = null;
+        KeyedResourceLease<ID2D1StrokeStyle, Direct2DStyleResourceCache.StrokeStyleKey>? strokeStyleLease = null;
+        CadColor? strokeColor = null;
         try
         {
             if (UsesStrokeBrush(entity))
             {
-                strokeBrushLease = _styleResources.AcquireBrush(
-                    ResolveStrokeColor(document, entity, layer, graphic));
+                var resolvedStrokeColor = ResolveStrokeColor(document, entity, layer, graphic);
+                if (!resolvedStrokeColor.IsTransparent)
+                {
+                    strokeColor = resolvedStrokeColor;
+                    strokeBrushLease = _styleResources.AcquireBrush(resolvedStrokeColor);
+                }
             }
             if (UsesStrokeStyle(entity))
                 strokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
@@ -347,6 +373,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         bucket.GeometryRealizations?.ClearStroke();
         bucket.StrokeBrushLease?.Dispose();
         bucket.StrokeStyleLease?.Dispose();
+        bucket.StrokeColor = strokeColor;
         bucket.StrokeBrushLease = strokeBrushLease;
         bucket.StrokeStyleLease = strokeStyleLease;
         bucket.StrokeWidth = ResolveStrokeWidth(
@@ -383,9 +410,12 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
 
         ID2D1Geometry? geometry = null;
+        var geometryComplexity = 0;
         try
         {
-            geometry = CreateGeometry(entity, bucket.HatchFillStyle is CadHatchFillStyle);
+            (geometry, geometryComplexity) = CreateGeometry(
+                entity,
+                bucket.HatchFillStyle is CadHatchFillStyle);
         }
         catch
         {
@@ -398,6 +428,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         bucket.MediumDetailGeometry?.Dispose();
         bucket.LowDetailGeometry?.Dispose();
         bucket.Geometry = geometry;
+        bucket.GeometryComplexity = geometryComplexity;
         bucket.MediumDetailGeometry = null;
         bucket.LowDetailGeometry = null;
         bucket.AreLevelOfDetailGeometriesInitialized = false;
@@ -437,7 +468,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         CadText text,
         EntityResourceBucket bucket)
     {
-        ResourceLease<IDWriteTextFormat>? textFormatLease = null;
+        KeyedResourceLease<IDWriteTextFormat, Direct2DTextFormatKey>? textFormatLease = null;
         IDWriteTextLayout? textLayout = null;
         try
         {
@@ -463,27 +494,29 @@ internal sealed class Direct2DResourceCache : IDisposable
         bucket.TextLayout = textLayout;
     }
 
-    private ID2D1Geometry? CreateGeometry(CadEntity entity, bool includePrimitiveFillGeometry)
+    private (ID2D1Geometry? Geometry, int Complexity) CreateGeometry(
+        CadEntity entity,
+        bool includePrimitiveFillGeometry)
     {
         return entity switch
         {
-            CadLine => null,
-            CadCircle circle when includePrimitiveFillGeometry => Factory!.CreateEllipseGeometry(
-                new Ellipse(ToVector2(circle.Center), (float)circle.Radius, (float)circle.Radius)),
-            CadCircle => null,
-            CadEllipse ellipse when includePrimitiveFillGeometry => Factory!.CreateEllipseGeometry(
-                new Ellipse(ToVector2(ellipse.Center), (float)ellipse.RadiusX, (float)ellipse.RadiusY)),
-            CadEllipse => null,
-            CadEllipseArc ellipseArc => CreateEllipseArcPathGeometry(ellipseArc),
-            CadRectangle rectangle when includePrimitiveFillGeometry => CreateRectangleGeometry(rectangle),
-            CadRectangle => null,
-            CadArc arc => arc.IsFullCircle ? null : CreateArcPathGeometry(arc),
-            CadPolyline polyline => CreatePolylineGeometry(polyline.Points, polyline.Closed),
-            CadSpline spline => CreateSplineGeometry(spline.FitPoints, spline.Closed),
-            CadShapeText shapeText => CreateShapeTextGeometry(shapeText),
-            CadText => null,
-            CadBlockReference => null,
-            _ => null
+            CadCircle circle when includePrimitiveFillGeometry => (
+                Factory!.CreateEllipseGeometry(
+                    new Ellipse(ToVector2(circle.Center), (float)circle.Radius, (float)circle.Radius)),
+                0),
+            CadEllipse ellipse when includePrimitiveFillGeometry => (
+                Factory!.CreateEllipseGeometry(
+                    new Ellipse(ToVector2(ellipse.Center), (float)ellipse.RadiusX, (float)ellipse.RadiusY)),
+                0),
+            CadEllipseArc ellipseArc => (CreateEllipseArcPathGeometry(ellipseArc), 0),
+            CadRectangle rectangle when includePrimitiveFillGeometry => (CreateRectangleGeometry(rectangle), 0),
+            CadArc arc when !arc.IsFullCircle => (CreateArcPathGeometry(arc), 0),
+            CadPolyline polyline => (
+                CreatePolylineGeometry(polyline.Points, polyline.Closed),
+                polyline.Points.Count),
+            CadSpline spline => CreateSplineGeometry(spline.GetBezierSegments(), spline.Closed),
+            CadShapeText shapeText => CreateShapeTextGeometry(shapeText.CreateStrokeSegments()),
+            _ => (null, 0)
         };
     }
 
@@ -499,10 +532,14 @@ internal sealed class Direct2DResourceCache : IDisposable
                 closed = polyline.Closed;
                 sourceComplexity = polyline.Points.Count;
                 break;
+            case CadSpline { Closed: true, FillStyleId: not null }:
+                // RDP preserves distance but not winding topology. A simplified closed
+                // fill can therefore grow thin spikes around self-intersections.
+                return (null, null);
             case CadSpline spline when spline.FitPoints.Count > 16:
                 points = spline.EnumerateFlattenedPoints(6).ToArray();
                 closed = spline.Closed;
-                sourceComplexity = spline.FitPoints.Count;
+                sourceComplexity = points.Count;
                 break;
             default:
                 return (null, null);
@@ -586,12 +623,13 @@ internal sealed class Direct2DResourceCache : IDisposable
         return geometry;
     }
 
-    private ID2D1PathGeometry CreateSplineGeometry(IReadOnlyList<CadPointD> fitPoints, bool closed)
+    private (ID2D1Geometry Geometry, int Complexity) CreateSplineGeometry(
+        IReadOnlyList<CadBezierSegmentD> segments,
+        bool closed)
     {
         var geometry = Factory!.CreatePathGeometry();
-        var segments = CadSpline.CreateBezierSegments(fitPoints, closed);
         if (segments.Count == 0)
-            return geometry;
+            return (geometry, 0);
 
         using var sink = geometry.Open();
         sink.BeginFigure(ToVector2(segments[0].Start), closed ? FigureBegin.Filled : FigureBegin.Hollow);
@@ -606,15 +644,16 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
         sink.Close();
-        return geometry;
+        return (geometry, segments.Count);
     }
 
-    private ID2D1PathGeometry CreateShapeTextGeometry(CadShapeText text)
+    private (ID2D1Geometry Geometry, int Complexity) CreateShapeTextGeometry(
+        IReadOnlyList<CadStrokeTextSegment> segments)
     {
         var geometry = Factory!.CreatePathGeometry();
         using var sink = geometry.Open();
 
-        foreach (var segment in text.CreateStrokeSegments())
+        foreach (var segment in segments)
         {
             sink.BeginFigure(ToVector2(segment.Start), FigureBegin.Hollow);
             sink.AddLine(ToVector2(segment.End));
@@ -622,7 +661,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
 
         sink.Close();
-        return geometry;
+        return (geometry, segments.Count);
     }
 
     private ID2D1PathGeometry CreateArcPathGeometry(CadArc arc)
@@ -890,22 +929,24 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1Geometry? MediumDetailGeometry { get; set; }
         public ID2D1Geometry? LowDetailGeometry { get; set; }
         public bool AreLevelOfDetailGeometriesInitialized { get; set; }
+        public int GeometryComplexity { get; set; }
         public Direct2DGeometryRealizationCache.EntityCache? GeometryRealizations { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? StrokeBrushLease { get; set; }
-        internal ResourceLease<ID2D1StrokeStyle>? StrokeStyleLease { get; set; }
+        internal KeyedResourceLease<ID2D1StrokeStyle, Direct2DStyleResourceCache.StrokeStyleKey>? StrokeStyleLease { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? FillBrushLease { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? HatchBrushLease { get; set; }
         public ID2D1Brush? StrokeBrush => StrokeBrushLease?.Resource;
+        public CadColor? StrokeColor { get; set; }
         public ID2D1StrokeStyle? StrokeStyle => StrokeStyleLease?.Resource;
         public ID2D1Brush? FillBrush => FillBrushLease?.Resource;
         public ID2D1Brush? HatchBrush => HatchBrushLease?.Resource;
         public CadHatchFillStyle? HatchFillStyle { get; set; }
         public CadHatchPatternDefinition? HatchPattern { get; set; }
         public CadTransientHatchFill? HatchRenderData { get; set; }
-        internal ResourceLease<IDWriteTextFormat>? TextFormatLease { get; set; }
+        internal KeyedResourceLease<IDWriteTextFormat, Direct2DTextFormatKey>? TextFormatLease { get; set; }
         public IDWriteTextFormat? TextFormat => TextFormatLease?.Resource;
         public IDWriteTextLayout? TextLayout { get; set; }
-        internal ResourceLease<ID2D1Bitmap>? BitmapLease { get; set; }
+        internal KeyedResourceLease<ID2D1Bitmap, Direct2DImageBitmapResourceCache.ImageBitmapKey>? BitmapLease { get; set; }
         public ID2D1Bitmap? Bitmap => BitmapLease?.Resource;
         public ID2D1BitmapBrush? BitmapBrush { get; set; }
         public float StrokeWidth { get; set; }
@@ -946,7 +987,9 @@ internal sealed class Direct2DResourceCache : IDisposable
             MediumDetailGeometry = null;
             LowDetailGeometry = null;
             AreLevelOfDetailGeometriesInitialized = false;
+            GeometryComplexity = 0;
             GeometryRealizations = null;
+            StrokeColor = null;
             StrokeBrushLease = null;
             StrokeStyleLease = null;
             FillBrushLease = null;

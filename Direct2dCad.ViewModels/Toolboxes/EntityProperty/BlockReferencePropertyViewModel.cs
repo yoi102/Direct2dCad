@@ -98,7 +98,7 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
                 option.BlockId.Equals(reference.DefinitionBlockId));
             var definition = document.GetBlock(reference.DefinitionBlockId);
             DefinitionEntityCount = definition.EntityIds.Count;
-            ReferenceCount = document.GetBlockReferenceIds(definition.Id).Count;
+            ReferenceCount = document.GetBlockReferenceCount(definition.Id);
             PositionX = reference.Position.X;
             PositionY = reference.Position.Y;
             RotationDegrees = reference.RotationRadians * 180.0 / Math.PI;

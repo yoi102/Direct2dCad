@@ -11,6 +11,9 @@ public sealed class CadArc : Curve
 {
     private const double TwoPi = Math.PI * 2.0;
     private const double Epsilon = 1e-12;
+    private CadPointD _startPoint;
+    private CadPointD _endPoint;
+    private CadRectD _bounds;
 
     public CadPointD Center { get; private set; }
     public double Radius { get; private set; }
@@ -28,8 +31,8 @@ public sealed class CadArc : Curve
 
     public double EndAngleRadians => StartAngleRadians + SweepAngleRadians;
 
-    public CadPointD StartPoint => GetPointAtAngle(StartAngleRadians);
-    public CadPointD EndPoint => GetPointAtAngle(EndAngleRadians);
+    public CadPointD StartPoint => _startPoint;
+    public CadPointD EndPoint => _endPoint;
 
     public bool IsClockwise => SweepAngleRadians < 0;
     public bool IsCounterClockwise => SweepAngleRadians > 0;
@@ -43,7 +46,7 @@ public sealed class CadArc : Curve
             ? CadCurveOrientation.Clockwise
             : CadCurveOrientation.CounterClockwise;
 
-    public override CadRectD Bounds => CalculateBounds();
+    public override CadRectD Bounds => _bounds;
 
     internal CadArc(
         EntityId id,
@@ -60,6 +63,7 @@ public sealed class CadArc : Curve
         Radius = GuardRadius(radius);
         StartAngleRadians = GuardAngle(startAngleRadians, nameof(startAngleRadians));
         SweepAngleRadians = GuardSweepAngle(sweepAngleRadians);
+        RebuildDerivedGeometry();
     }
 
     public static double DegreesToRadians(double degrees)
@@ -86,17 +90,20 @@ public sealed class CadArc : Curve
     public void SetCenter(CadPointD center)
     {
         Center = center;
+        RebuildDerivedGeometry();
     }
 
     public void SetRadius(double radius)
     {
         Radius = GuardRadius(radius);
+        RebuildDerivedGeometry();
     }
 
     public void SetAngles(double startAngleRadians, double sweepAngleRadians)
     {
         StartAngleRadians = GuardAngle(startAngleRadians, nameof(startAngleRadians));
         SweepAngleRadians = GuardSweepAngle(sweepAngleRadians);
+        RebuildDerivedGeometry();
     }
 
     public void SetGeometry(
@@ -109,6 +116,7 @@ public sealed class CadArc : Curve
         Radius = GuardRadius(radius);
         StartAngleRadians = GuardAngle(startAngleRadians, nameof(startAngleRadians));
         SweepAngleRadians = GuardSweepAngle(sweepAngleRadians);
+        RebuildDerivedGeometry();
     }
 
     public void SetGeometryDegrees(
@@ -156,6 +164,13 @@ public sealed class CadArc : Curve
         }
 
         return bounds;
+    }
+
+    private void RebuildDerivedGeometry()
+    {
+        _startPoint = GetPointAtAngle(StartAngleRadians);
+        _endPoint = GetPointAtAngle(EndAngleRadians);
+        _bounds = CalculateBounds();
     }
 
     private bool ContainsAngle(double angleRadians)

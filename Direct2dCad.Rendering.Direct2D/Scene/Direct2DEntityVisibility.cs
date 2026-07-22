@@ -17,14 +17,19 @@ internal static class Direct2DEntityVisibility
         CadRenderOptions options,
         Direct2DResourceCache resourceCache,
         IReadOnlyList<CadEntity> orderedEntities,
-        Direct2DEntityOrderCache entityOrderCache)
+        Direct2DEntityOrderCache entityOrderCache,
+        List<EntityId>? candidateIdBuffer = null,
+        HashSet<EntityId>? candidateSetBuffer = null,
+        List<CadEntity>? candidateEntityBuffer = null)
     {
         if (orderedEntities.Count == 0)
             return [];
 
         var renderWorldBounds = ResolveRenderWorldBounds(viewport, options);
+        var canUseBufferedQuery = candidateIdBuffer is not null &&
+                                  options.EntityBoundsQueryInto is not null;
         if (renderWorldBounds is not { } bounds ||
-            options.EntityBoundsQuery is not { } query)
+            !canUseBufferedQuery && options.EntityBoundsQuery is null)
         {
             return EnumerateOrderedSubset(
                 document,
@@ -51,7 +56,20 @@ internal static class Direct2DEntityVisibility
                 bounds);
         }
 
-        var candidateIds = query(options.ActiveOwnerBlockId, queryBounds);
+        IReadOnlyList<EntityId> candidateIds;
+        if (canUseBufferedQuery)
+        {
+            candidateIdBuffer!.Clear();
+            options.EntityBoundsQueryInto!(
+                options.ActiveOwnerBlockId,
+                queryBounds,
+                candidateIdBuffer);
+            candidateIds = candidateIdBuffer;
+        }
+        else
+        {
+            candidateIds = options.EntityBoundsQuery!(options.ActiveOwnerBlockId, queryBounds);
+        }
         if (candidateIds.Count > 0 &&
             candidateIds.Count >= orderedEntities.Count / 2)
         {
@@ -67,8 +85,13 @@ internal static class Direct2DEntityVisibility
         if (orderedEntities.Count >= MinimumOrderedScanEntityCount &&
             candidateIds.Count >= orderedEntities.Count / OrderedScanCandidateDivisor)
         {
-            var candidateSet = candidateIds.ToHashSet();
-            var orderedCandidates = new List<CadEntity>(
+            var candidateSet = candidateSetBuffer ?? new HashSet<EntityId>();
+            candidateSet.Clear();
+            foreach (var entityId in candidateIds)
+                candidateSet.Add(entityId);
+
+            var orderedCandidates = PrepareEntityBuffer(
+                candidateEntityBuffer,
                 Math.Min(candidateSet.Count, orderedEntities.Count));
             foreach (var entity in orderedEntities)
             {
@@ -85,7 +108,7 @@ internal static class Direct2DEntityVisibility
                 bounds);
         }
 
-        var candidates = new List<CadEntity>(candidateIds.Count);
+        var candidates = PrepareEntityBuffer(candidateEntityBuffer, candidateIds.Count);
         foreach (var entityId in candidateIds)
         {
             if (!document.TryGetEntity(entityId, out var entity) ||
@@ -108,6 +131,17 @@ internal static class Direct2DEntityVisibility
             resourceCache,
             candidates,
             bounds);
+    }
+
+    private static List<CadEntity> PrepareEntityBuffer(
+        List<CadEntity>? buffer,
+        int capacity)
+    {
+        var result = buffer ?? new List<CadEntity>(capacity);
+        result.Clear();
+        if (result.Capacity < capacity)
+            result.Capacity = capacity;
+        return result;
     }
 
     internal static IEnumerable<CadEntity> EnumerateOrderedSubset(

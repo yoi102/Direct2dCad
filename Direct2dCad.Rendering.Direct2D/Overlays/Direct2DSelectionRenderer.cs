@@ -24,6 +24,7 @@ internal sealed class Direct2DSelectionRenderer(
     private const byte SelectedSolidFillMaximumAlpha = 64;
     private const int SpatiallyIndexedSelectionThreshold = 256;
     private readonly HashSet<BlockId> _visitedBlocks = [];
+    private readonly List<EntityId> _selectionCandidateIds = new(256);
 
     public void Draw(
         ID2D1DeviceContext context,
@@ -89,7 +90,8 @@ internal sealed class Direct2DSelectionRenderer(
         return scene.SelectionReferenceCount >= SpatiallyIndexedSelectionThreshold &&
                !scene.HasTranslatedSelectionReferences &&
                !renderWorldBounds.IsEmpty &&
-               options.EntityBoundsQuery is not null;
+               (options.EntityBoundsQueryInto is not null ||
+                options.EntityBoundsQuery is not null);
     }
 
     private void DrawSpatiallyQueriedSelections(
@@ -101,9 +103,20 @@ internal sealed class Direct2DSelectionRenderer(
         CadRectD renderWorldBounds)
     {
         var padding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
-        foreach (var entityId in options.EntityBoundsQuery!(
-                     options.ActiveOwnerBlockId,
-                     renderWorldBounds.Inflate(padding)))
+        var queryBounds = renderWorldBounds.Inflate(padding);
+        IReadOnlyList<EntityId> candidateIds;
+        if (options.EntityBoundsQueryInto is { } bufferedQuery)
+        {
+            _selectionCandidateIds.Clear();
+            bufferedQuery(options.ActiveOwnerBlockId, queryBounds, _selectionCandidateIds);
+            candidateIds = _selectionCandidateIds;
+        }
+        else
+        {
+            candidateIds = options.EntityBoundsQuery!(options.ActiveOwnerBlockId, queryBounds);
+        }
+
+        foreach (var entityId in candidateIds)
         {
             if (!scene.TryGetSelectionReference(entityId, out var reference) ||
                 reference is null)
@@ -206,7 +219,7 @@ internal sealed class Direct2DSelectionRenderer(
         {
             var brush = styleResources.GetBrush(context, selectionStyle.StrokeColor);
             var bounds = entity.Bounds.Translate(offset);
-            Direct2DEntityRenderer.DrawBoundsProxy(context, bounds, brush);
+            Direct2DEntityRenderer.DrawRectangularProxy(context, bounds, brush);
             return;
         }
 
@@ -418,7 +431,20 @@ internal sealed class Direct2DSelectionRenderer(
             return false;
 
         var brush = styleResources.GetBrush(context, style.StrokeColor);
-        var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
+        var geometrySimplified = !ReferenceEquals(geometry, resources.Geometry);
+        var useLevelOfDetailStrokeStyle = geometrySimplified ||
+                                          Direct2DEntityLevelOfDetail.ShouldSimplifyStrokeStyle(
+                                              entity,
+                                              context.Transform,
+                                              options);
+        var strokeStyle = useLevelOfDetailStrokeStyle
+            ? styleResources.GetLevelOfDetailStrokeStyle(
+                resourceCache.Factory,
+                entity.StrokeStyle)
+            : styleResources.GetStrokeStyle(resourceCache.Factory, style);
+        var strokeStyleKey = useLevelOfDetailStrokeStyle
+            ? Direct2DStrokeRealizationStyleKey.ForLevelOfDetail(entity.StrokeStyle)
+            : Direct2DStrokeRealizationStyleKey.ForTransient(style.LinePattern);
         var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
         var strokeWidthChangesWithScale = style.KeepStrokeWidthScreenConstant ||
                                           Math.Abs(strokeWidth - style.StrokeWidth) >
@@ -434,6 +460,7 @@ internal sealed class Direct2DSelectionRenderer(
                     brush,
                     strokeWidth,
                     strokeStyle,
+                    strokeStyleKey,
                     strokeWidthChangesWithScale))
             {
                 context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);
@@ -456,6 +483,7 @@ internal sealed class Direct2DSelectionRenderer(
                     brush,
                     strokeWidth,
                     strokeStyle,
+                    strokeStyleKey,
                     strokeWidthChangesWithScale))
             {
                 context.DrawGeometry(geometry, brush, strokeWidth, strokeStyle);

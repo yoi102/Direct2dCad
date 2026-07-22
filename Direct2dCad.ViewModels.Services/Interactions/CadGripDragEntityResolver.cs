@@ -7,23 +7,33 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 
 internal static class CadGripDragEntityResolver
 {
-    public static IEnumerable<EntityId> ResolveMoveEntityIds(CadEditor editor, GripDragState drag)
+    public static IReadOnlySet<EntityId> ResolveMoveEntityIds(
+        CadEditor editor,
+        CadGripHandle handle)
     {
-        if (drag.Handle.Type != CadHandleType.Center)
-            return [drag.Handle.EntityId];
+        var result = new HashSet<EntityId>();
+        if (handle.Type != CadHandleType.Center)
+        {
+            result.Add(handle.EntityId);
+            return result;
+        }
 
         var selectedEntityIds = editor.Selection.EntityIds;
-        if (!selectedEntityIds.Contains(drag.Handle.EntityId))
-            return [drag.Handle.EntityId];
+        if (!selectedEntityIds.Contains(handle.EntityId))
+        {
+            result.Add(handle.EntityId);
+            return result;
+        }
 
-        var movableSelectedEntityIds = selectedEntityIds
-            .Where(entityId => IsMovableByCenterGrip(editor, entityId))
-            .Distinct()
-            .ToArray();
+        foreach (var entityId in selectedEntityIds)
+        {
+            if (IsMovableByCenterGrip(editor, entityId))
+                result.Add(entityId);
+        }
 
-        return movableSelectedEntityIds.Length > 0
-            ? movableSelectedEntityIds
-            : [drag.Handle.EntityId];
+        if (result.Count == 0)
+            result.Add(handle.EntityId);
+        return result;
     }
 
     private static bool IsMovableByCenterGrip(CadEditor editor, EntityId entityId)

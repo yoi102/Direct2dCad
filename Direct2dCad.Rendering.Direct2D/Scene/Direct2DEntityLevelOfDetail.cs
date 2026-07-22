@@ -25,9 +25,15 @@ internal static class Direct2DEntityLevelOfDetail
 {
     private const double MinimumGeometryScreenExtent = 0.35;
     private const double ThickStrokeScreenWidth = 1.0;
+    private const double PerceptibleStrokeScreenWidth = 0.25;
+    private const double MinimumFillScreenThickness = 0.05;
+    private const double MinimumFillScreenArea = 0.25;
+    private const double MinimumSurfaceScreenArea = 0.25;
     private const double SimplifiedGeometryScreenExtent = 2.0;
     private const double SimplifiedStrokeStyleScreenExtent = 8.0;
     private const double MinimumTextScreenHeight = 0.1;
+    private const double MinimumTextScreenExtent = 0.35;
+    private const double MinimumTextScreenArea = 0.125;
     private const double TextSummaryScreenHeight = 0.5;
     private const double FullTextScreenHeight = 1.0;
     private const double BlockProxyScreenExtent = 3.0;
@@ -41,7 +47,9 @@ internal static class Direct2DEntityLevelOfDetail
         CadViewport viewport,
         CadRenderOptions options)
     {
-        return Resolve(entity, resources, Math.Max(viewport.Zoom, double.Epsilon), options);
+        var screenScale = Math.Max(viewport.Zoom, double.Epsilon) *
+                          ResolveTransformScaleMultiplier(options);
+        return Resolve(entity, resources, screenScale, options);
     }
 
     public static Direct2DEntityRenderDetail Resolve(
@@ -51,12 +59,41 @@ internal static class Direct2DEntityLevelOfDetail
         CadRenderOptions options,
         float? strokeWidthOverride = null)
     {
-        return Resolve(
-            entity,
+        if (entity is CadImage { Opacity: <= 0.0 })
+            return Direct2DEntityRenderDetail.Skip;
+        if (!options.IsLevelOfDetailEnabled)
+            return Direct2DEntityRenderDetail.Full;
+
+        var screenScale = ResolveEffectiveScreenScale(transform, options);
+        var screenStrokeWidth = ResolveScreenStrokeWidth(
             resources,
-            ResolveMaximumScreenScale(transform),
+            screenScale,
             options,
             strokeWidthOverride);
+        var bounds = entity.Bounds;
+        var metricsTransform = transform;
+        if (entity is CadImage image)
+        {
+            bounds = image.FrameBounds;
+            metricsTransform = Matrix3x2.CreateRotation(
+                                   (float)image.RotationRadians,
+                                   new Vector2(
+                                       (float)image.FrameBounds.Center.X,
+                                       (float)image.FrameBounds.Center.Y)) *
+                               transform;
+        }
+
+        if (!Direct2DProjectedEntityMetrics.TryCreate(
+                bounds,
+                metricsTransform,
+                ResolveTransformScaleMultiplier(options),
+                screenStrokeWidth,
+                out var metrics))
+        {
+            return Direct2DEntityRenderDetail.Full;
+        }
+
+        return Resolve(entity, resources, metrics, screenScale);
     }
 
     private static Direct2DEntityRenderDetail Resolve(
@@ -66,12 +103,46 @@ internal static class Direct2DEntityLevelOfDetail
         CadRenderOptions options,
         float? strokeWidthOverride = null)
     {
-        if (!options.IsLevelOfDetailEnabled || entity is CadImage)
+        if (entity is CadImage { Opacity: <= 0.0 })
+            return Direct2DEntityRenderDetail.Skip;
+        if (!options.IsLevelOfDetailEnabled)
             return Direct2DEntityRenderDetail.Full;
 
+        var screenStrokeWidth = ResolveScreenStrokeWidth(
+            resources,
+            screenScale,
+            options,
+            strokeWidthOverride);
+        Direct2DProjectedEntityMetrics metrics;
+        var hasMetrics = entity is CadImage image
+            ? Direct2DProjectedEntityMetrics.TryCreate(
+                image.FrameBounds,
+                Matrix3x2.CreateRotation((float)image.RotationRadians),
+                screenScale,
+                screenStrokeWidth,
+                out metrics)
+            : Direct2DProjectedEntityMetrics.TryCreate(
+                entity.Bounds,
+                screenScale,
+                screenStrokeWidth,
+                out metrics);
+        if (!hasMetrics)
+        {
+            return Direct2DEntityRenderDetail.Full;
+        }
+
+        return Resolve(entity, resources, metrics, screenScale);
+    }
+
+    private static Direct2DEntityRenderDetail Resolve(
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket? resources,
+        Direct2DProjectedEntityMetrics metrics,
+        double screenScale)
+    {
         if (entity is CadText or CadShapeText)
         {
-            return ResolveText(entity, screenScale) switch
+            return ResolveText(entity, metrics, screenScale) switch
             {
                 Direct2DTextRenderDetail.Skip => Direct2DEntityRenderDetail.Skip,
                 Direct2DTextRenderDetail.Full => Direct2DEntityRenderDetail.Full,
@@ -79,27 +150,15 @@ internal static class Direct2DEntityLevelOfDetail
             };
         }
 
-        var bounds = entity.Bounds;
-        if (bounds.IsEmpty)
-            return Direct2DEntityRenderDetail.Full;
+        if (entity is CadImage)
+            return ShouldSkipSurface(metrics)
+                ? Direct2DEntityRenderDetail.Skip
+                : Direct2DEntityRenderDetail.Full;
 
-        var screenWidth = Math.Abs(bounds.Width) * screenScale;
-        var screenHeight = Math.Abs(bounds.Height) * screenScale;
-        var maximumExtent = Math.Max(screenWidth, screenHeight);
-        if (!double.IsFinite(maximumExtent))
-            return Direct2DEntityRenderDetail.Full;
-
-        if (maximumExtent < MinimumGeometryScreenExtent &&
-            ResolveScreenStrokeWidth(
-                resources,
-                screenScale,
-                options,
-                strokeWidthOverride) < ThickStrokeScreenWidth)
-        {
+        if (ShouldSkipGeometry(resources, metrics))
             return Direct2DEntityRenderDetail.Skip;
-        }
 
-        return ShouldUseSimplifiedRendering(entity, screenWidth, screenHeight)
+        return ShouldUseSimplifiedRendering(entity, metrics)
             ? Direct2DEntityRenderDetail.Simplified
             : Direct2DEntityRenderDetail.Full;
     }
@@ -112,7 +171,18 @@ internal static class Direct2DEntityLevelOfDetail
         if (!options.IsLevelOfDetailEnabled)
             return Direct2DTextRenderDetail.Full;
 
-        return ResolveText(entity, ResolveMaximumScreenScale(transform));
+        var screenScale = ResolveEffectiveScreenScale(transform, options);
+        if (!Direct2DProjectedEntityMetrics.TryCreate(
+                entity.Bounds,
+                transform,
+                ResolveTransformScaleMultiplier(options),
+                0.0,
+                out var metrics))
+        {
+            return Direct2DTextRenderDetail.Full;
+        }
+
+        return ResolveText(entity, metrics, screenScale);
     }
 
     public static Direct2DEntityRenderDetail ResolveOle(
@@ -126,15 +196,19 @@ internal static class Direct2DEntityLevelOfDetail
         if (bounds.IsEmpty)
             return Direct2DEntityRenderDetail.Full;
 
-        var screenScale = ResolveMaximumScreenScale(transform);
-        var screenWidth = Math.Abs(bounds.Width) * screenScale;
-        var screenHeight = Math.Abs(bounds.Height) * screenScale;
-        var maximumExtent = Math.Max(screenWidth, screenHeight);
-        if (!double.IsFinite(maximumExtent))
+        if (!Direct2DProjectedEntityMetrics.TryCreate(
+                bounds,
+                transform,
+                ResolveTransformScaleMultiplier(options),
+                0.0,
+                out var metrics))
+        {
             return Direct2DEntityRenderDetail.Full;
-        if (maximumExtent < MinimumGeometryScreenExtent)
+        }
+
+        if (ShouldSkipSurface(metrics))
             return Direct2DEntityRenderDetail.Skip;
-        return Math.Min(screenWidth, screenHeight) < OleProxyMinimumScreenExtent
+        return metrics.MinimumExtent < OleProxyMinimumScreenExtent
             ? Direct2DEntityRenderDetail.Simplified
             : Direct2DEntityRenderDetail.Full;
     }
@@ -144,75 +218,83 @@ internal static class Direct2DEntityLevelOfDetail
         Matrix3x2 transform,
         CadRenderOptions options)
     {
-        if (!options.IsLevelOfDetailEnabled || entity is CadImage)
+        if (!options.IsLevelOfDetailEnabled)
             return Direct2DEntityRenderDetail.Full;
-
-        if (entity is CadText or CadShapeText)
-        {
-            return ResolveText(entity, transform, options) switch
-            {
-                Direct2DTextRenderDetail.Skip => Direct2DEntityRenderDetail.Skip,
-                Direct2DTextRenderDetail.Full => Direct2DEntityRenderDetail.Full,
-                _ => Direct2DEntityRenderDetail.Simplified
-            };
-        }
 
         var bounds = entity.Bounds;
         if (bounds.IsEmpty)
             return Direct2DEntityRenderDetail.Full;
 
-        var screenScale = ResolveMaximumScreenScale(transform);
-        var screenWidth = Math.Abs(bounds.Width) * screenScale;
-        var screenHeight = Math.Abs(bounds.Height) * screenScale;
-        var maximumExtent = Math.Max(screenWidth, screenHeight);
-        if (!double.IsFinite(maximumExtent))
+        if (!Direct2DProjectedEntityMetrics.TryCreate(
+                bounds,
+                transform,
+                ResolveTransformScaleMultiplier(options),
+                0.0,
+                out var metrics))
+        {
             return Direct2DEntityRenderDetail.Full;
-        if (maximumExtent < MinimumGeometryScreenExtent)
-            return Direct2DEntityRenderDetail.Skip;
+        }
 
-        return ShouldUseSimplifiedRendering(entity, screenWidth, screenHeight)
+        if (entity is CadText or CadShapeText)
+        {
+            return ResolveText(
+                    entity,
+                    metrics,
+                    ResolveEffectiveScreenScale(transform, options)) switch
+                {
+                    Direct2DTextRenderDetail.Full => Direct2DEntityRenderDetail.Full,
+                    _ => Direct2DEntityRenderDetail.Simplified
+                };
+        }
+
+        if (entity is CadImage)
+        {
+            return ShouldSkipSurface(metrics)
+                ? Direct2DEntityRenderDetail.Simplified
+                : Direct2DEntityRenderDetail.Full;
+        }
+
+        if (metrics.MaximumExtent < MinimumGeometryScreenExtent)
+            return Direct2DEntityRenderDetail.Simplified;
+
+        return ShouldUseSimplifiedRendering(entity, metrics)
             ? Direct2DEntityRenderDetail.Simplified
             : Direct2DEntityRenderDetail.Full;
     }
 
     private static bool ShouldUseSimplifiedRendering(
         CadEntity entity,
-        double screenWidth,
-        double screenHeight)
+        Direct2DProjectedEntityMetrics metrics)
     {
-        var maximumExtent = Math.Max(screenWidth, screenHeight);
         return entity switch
         {
-            CadSpline => maximumExtent < SimplifiedGeometryScreenExtent,
+            CadSpline => metrics.MaximumExtent < SimplifiedGeometryScreenExtent,
             CadPolyline polyline when polyline.Points.Count > 8 =>
-                maximumExtent < SimplifiedGeometryScreenExtent,
-            CadBlockReference => maximumExtent < BlockProxyScreenExtent,
-            CadOleObject => Math.Min(screenWidth, screenHeight) < OleProxyMinimumScreenExtent,
+                metrics.MaximumExtent < SimplifiedGeometryScreenExtent,
+            CadBlockReference => metrics.MaximumExtent < BlockProxyScreenExtent,
+            CadOleObject => metrics.MinimumExtent < OleProxyMinimumScreenExtent,
             _ => false
         };
     }
 
-    public static ID2D1StrokeStyle? ResolveStrokeStyle(
+    public static bool ShouldSimplifyStrokeStyle(
         CadEntity entity,
-        ID2D1StrokeStyle? strokeStyle,
         Matrix3x2 transform,
         CadRenderOptions options)
     {
         if (!options.IsLevelOfDetailEnabled ||
-            strokeStyle is null ||
             entity.Bounds.IsEmpty)
         {
-            return strokeStyle;
+            return false;
         }
 
-        var screenScale = ResolveMaximumScreenScale(transform);
-        var maximumExtent = Math.Max(
-            Math.Abs(entity.Bounds.Width) * screenScale,
-            Math.Abs(entity.Bounds.Height) * screenScale);
-        return double.IsFinite(maximumExtent) &&
-               maximumExtent < SimplifiedStrokeStyleScreenExtent
-            ? null
-            : strokeStyle;
+        return Direct2DProjectedEntityMetrics.TryCreate(
+                   entity.Bounds,
+                   transform,
+                   ResolveTransformScaleMultiplier(options),
+                   0.0,
+                   out var metrics) &&
+               metrics.MaximumExtent < SimplifiedStrokeStyleScreenExtent;
     }
 
     public static double ResolveMaximumScreenScale(Matrix3x2 transform)
@@ -221,6 +303,14 @@ internal static class Direct2DEntityLevelOfDetail
         var scaleY = Math.Sqrt(transform.M21 * transform.M21 + transform.M22 * transform.M22);
         var scale = Math.Max(scaleX, scaleY);
         return double.IsFinite(scale) && scale > double.Epsilon ? scale : 1.0;
+    }
+
+    public static double ResolveEffectiveScreenScale(
+        Matrix3x2 transform,
+        CadRenderOptions options)
+    {
+        return ResolveMaximumScreenScale(transform) *
+               ResolveTransformScaleMultiplier(options);
     }
 
     public static ID2D1Geometry? ResolveGeometry(
@@ -237,18 +327,23 @@ internal static class Direct2DEntityLevelOfDetail
             return geometry;
         }
 
-        var bounds = entity.Bounds;
-        var maximumScreenExtent = Math.Max(bounds.Width, bounds.Height) *
-                                  ResolveMaximumScreenScale(transform);
-        if (!double.IsFinite(maximumScreenExtent))
+        if (!Direct2DProjectedEntityMetrics.TryCreate(
+                entity.Bounds,
+                transform,
+                ResolveTransformScaleMultiplier(options),
+                0.0,
+                out var metrics))
+        {
             return geometry;
-        if (maximumScreenExtent <= LowDetailGeometryScreenExtent &&
+        }
+
+        if (metrics.MaximumExtent <= LowDetailGeometryScreenExtent &&
             resources.LowDetailGeometry is not null)
         {
             return resources.LowDetailGeometry;
         }
 
-        return maximumScreenExtent <= MediumDetailGeometryScreenExtent &&
+        return metrics.MaximumExtent <= MediumDetailGeometryScreenExtent &&
                resources.MediumDetailGeometry is not null
             ? resources.MediumDetailGeometry
             : geometry;
@@ -272,6 +367,7 @@ internal static class Direct2DEntityLevelOfDetail
 
     private static Direct2DTextRenderDetail ResolveText(
         CadEntity entity,
+        Direct2DProjectedEntityMetrics metrics,
         double screenScale)
     {
         var modelHeight = entity switch
@@ -283,12 +379,53 @@ internal static class Direct2DEntityLevelOfDetail
         var screenHeight = Math.Abs(modelHeight) * screenScale;
         if (!double.IsFinite(screenHeight))
             return Direct2DTextRenderDetail.Full;
-        if (screenHeight < MinimumTextScreenHeight)
+        if (metrics.MaximumExtent < MinimumTextScreenExtent ||
+            screenHeight < MinimumTextScreenHeight &&
+            metrics.ProjectedArea < MinimumTextScreenArea)
+        {
             return Direct2DTextRenderDetail.Skip;
+        }
         if (screenHeight < TextSummaryScreenHeight)
             return Direct2DTextRenderDetail.Baseline;
         return screenHeight < FullTextScreenHeight
             ? Direct2DTextRenderDetail.Summary
             : Direct2DTextRenderDetail.Full;
+    }
+
+    private static bool ShouldSkipGeometry(
+        Direct2DResourceCache.EntityResourceBucket? resources,
+        Direct2DProjectedEntityMetrics metrics)
+    {
+        if (metrics.MaximumExtent < MinimumGeometryScreenExtent &&
+            metrics.ScreenStrokeWidth < ThickStrokeScreenWidth)
+        {
+            return true;
+        }
+
+        var hasFill = resources is { FillBrush: not null } or { HatchBrush: not null };
+        if (!hasFill)
+            return false;
+
+        var hasPerceptibleStroke = resources?.StrokeBrush is not null &&
+                                   metrics.MaximumExtent >= MinimumGeometryScreenExtent &&
+                                   metrics.ScreenStrokeWidth >= PerceptibleStrokeScreenWidth;
+        return !hasPerceptibleStroke &&
+               metrics.MinimumExtent < MinimumFillScreenThickness &&
+               metrics.ProjectedArea < MinimumFillScreenArea;
+    }
+
+    private static bool ShouldSkipSurface(Direct2DProjectedEntityMetrics metrics)
+    {
+        return metrics.MaximumExtent < MinimumGeometryScreenExtent ||
+               (metrics.MinimumExtent < MinimumFillScreenThickness &&
+                metrics.ProjectedArea < MinimumSurfaceScreenArea);
+    }
+
+    private static double ResolveTransformScaleMultiplier(CadRenderOptions options)
+    {
+        var multiplier = options.TransformScaleMultiplier;
+        return double.IsFinite(multiplier) && multiplier > double.Epsilon
+            ? multiplier
+            : 1.0;
     }
 }

@@ -18,6 +18,11 @@ internal sealed class Direct2DEntityRenderer(
     Direct2DGeometryFactory geometryFactory,
     Direct2DStyleResourceCache styleResources)
 {
+    private const float BaselineProxyScreenStrokeWidth = 0.55f;
+    private const float SummaryProxyScreenStrokeWidth = 0.50f;
+    private const double BaselineProxyOpacity = 0.65;
+    private const double SummaryProxyOpacity = 0.55;
+
     public void Draw(
         ID2D1DeviceContext context,
         CadDocument document,
@@ -26,7 +31,8 @@ internal sealed class Direct2DEntityRenderer(
         CadViewport viewport,
         CadRenderOptions options,
         ID2D1Brush? strokeBrushOverride = null,
-        float? strokeWidthOverride = null)
+        float? strokeWidthOverride = null,
+        CadColor? strokeColorOverride = null)
     {
         var strokeBrush = strokeBrushOverride ?? resources.StrokeBrush;
         var strokeWidth = strokeWidthOverride ?? resources.StrokeWidth;
@@ -44,6 +50,7 @@ internal sealed class Direct2DEntityRenderer(
                 resources,
                 options,
                 strokeBrush,
+                strokeColorOverride ?? resources.StrokeColor,
                 renderDetail))
         {
             return;
@@ -64,6 +71,7 @@ internal sealed class Direct2DEntityRenderer(
                     invertedBrush,
                     resolvedStrokeWidth,
                     strokeStyle: null,
+                    Direct2DStrokeRealizationStyleKey.Default,
                     StrokeWidthChangesWithScale(strokeWidth, resolvedStrokeWidth, options)))
             {
                 context.DrawGeometry(
@@ -132,11 +140,18 @@ internal sealed class Direct2DEntityRenderer(
         if (geometry is not null && strokeBrush is not null)
         {
             var resolvedStrokeWidth = ResolveStrokeWidth(strokeWidth, viewport, options);
-            var strokeStyle = Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
+            var geometrySimplified = !ReferenceEquals(geometry, resources.Geometry);
+            var useLevelOfDetailStrokeStyle = geometrySimplified ||
+                                              Direct2DEntityLevelOfDetail.ShouldSimplifyStrokeStyle(
+                                                  entity,
+                                                  context.Transform,
+                                                  options);
+            var strokeStyle = ResolveStrokeStyle(
+                context,
                 entity,
-                resources.StrokeStyle,
-                context.Transform,
-                options);
+                resources,
+                options,
+                geometrySimplified);
             if (!resourceCache.TryDrawStrokedGeometry(
                     context,
                     entity,
@@ -145,6 +160,9 @@ internal sealed class Direct2DEntityRenderer(
                     strokeBrush,
                     resolvedStrokeWidth,
                     strokeStyle,
+                    useLevelOfDetailStrokeStyle
+                        ? Direct2DStrokeRealizationStyleKey.ForLevelOfDetail(entity.StrokeStyle)
+                        : Direct2DStrokeRealizationStyleKey.ForEntity(entity.StrokeStyle),
                     StrokeWidthChangesWithScale(strokeWidth, resolvedStrokeWidth, options)))
             {
                 context.DrawGeometry(
@@ -159,12 +177,13 @@ internal sealed class Direct2DEntityRenderer(
             DrawText(context, document, text, resources, strokeBrush);
     }
 
-    private static bool TryDrawSimplified(
+    private bool TryDrawSimplified(
         ID2D1DeviceContext context,
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket resources,
         CadRenderOptions options,
         ID2D1Brush? strokeBrush,
+        CadColor? strokeColor,
         Direct2DEntityRenderDetail renderDetail)
     {
         if (renderDetail != Direct2DEntityRenderDetail.Simplified)
@@ -172,62 +191,86 @@ internal sealed class Direct2DEntityRenderer(
             return false;
         }
 
-        var brush = strokeBrush ?? resources.FillBrush ?? resources.HatchBrush ?? resources.BitmapBrush;
-        if (brush is null)
-            return true;
-
         var textDetail = Direct2DEntityLevelOfDetail.ResolveText(
             entity,
             context.Transform,
             options);
+        var brush = strokeBrush ?? resources.FillBrush ?? resources.HatchBrush ?? resources.BitmapBrush;
+        if (entity is CadText or CadShapeText && strokeColor is { } color)
+        {
+            brush = styleResources.GetBrush(
+                context,
+                ResolveTextProxyColor(color, textDetail));
+        }
+        if (brush is null)
+            return true;
+
         switch (entity)
         {
             case CadText text:
-                DrawTextProxy(context, text, textDetail, brush);
+                DrawTextProxy(
+                    context,
+                    text,
+                    textDetail,
+                    brush,
+                    options.TransformScaleMultiplier);
                 return true;
             case CadShapeText shapeText:
-                DrawShapeTextProxy(context, shapeText, textDetail, brush);
+                DrawShapeTextProxy(
+                    context,
+                    shapeText,
+                    textDetail,
+                    brush,
+                    options.TransformScaleMultiplier);
                 return true;
         }
 
-        DrawBoundsProxy(context, entity.Bounds, brush);
+        DrawPointProxy(
+            context,
+            entity.Bounds,
+            brush,
+            options.TransformScaleMultiplier);
         return true;
     }
 
-    internal static void DrawBoundsProxy(
+    internal static void DrawPointProxy(
         ID2D1DeviceContext context,
         CadRectD bounds,
-        ID2D1Brush brush)
+        ID2D1Brush brush,
+        double transformScaleMultiplier = 1.0)
     {
         if (bounds.IsEmpty)
             return;
 
-        var screenScale = Math.Max(
-            (float)Direct2DEntityLevelOfDetail.ResolveMaximumScreenScale(context.Transform),
-            float.Epsilon);
-        var start = new Vector2((float)bounds.MinX, (float)bounds.MinY);
-        var end = new Vector2((float)bounds.MaxX, (float)bounds.MaxY);
-        if (start == end)
-            end.X += 1.0f / screenScale;
-
-        context.DrawLine(start, end, brush, 1.0f / screenScale);
+        var halfSize = 0.5f / ResolveEffectiveScreenScale(
+            context,
+            transformScaleMultiplier);
+        var center = ToVector2(bounds.Center);
+        context.FillRectangle(
+            new RawRectF(
+                center.X - halfSize,
+                center.Y - halfSize,
+                center.X + halfSize,
+                center.Y + halfSize),
+            brush);
     }
 
     internal static void DrawRectangularProxy(
         ID2D1DeviceContext context,
         CadRectD bounds,
-        ID2D1Brush brush)
+        ID2D1Brush brush,
+        double transformScaleMultiplier = 1.0)
     {
         if (bounds.IsEmpty)
             return;
 
-        var screenScale = Math.Max(
-            (float)Direct2DEntityLevelOfDetail.ResolveMaximumScreenScale(context.Transform),
-            float.Epsilon);
+        var screenScale = ResolveEffectiveScreenScale(
+            context,
+            transformScaleMultiplier);
         context.DrawRectangle(ToRawRect(bounds), brush, 1.0f / screenScale);
     }
 
-    private static void DrawLine(
+    private void DrawLine(
         ID2D1DeviceContext context,
         CadLine line,
         Direct2DResourceCache.EntityResourceBucket resources,
@@ -243,11 +286,7 @@ internal sealed class Direct2DEntityRenderer(
             ToVector2(line.End),
             strokeBrush,
             ResolveStrokeWidth(strokeWidth, viewport, options),
-            Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
-                line,
-                resources.StrokeStyle,
-                context.Transform,
-                options));
+            ResolveStrokeStyle(context, line, resources, options));
     }
 
     private static void DrawImage(
@@ -307,11 +346,7 @@ internal sealed class Direct2DEntityRenderer(
                 ellipse,
                 strokeBrush,
                 ResolveStrokeWidth(strokeWidth, viewport, options),
-                Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
-                    entity,
-                    resources.StrokeStyle,
-                    context.Transform,
-                    options));
+                ResolveStrokeStyle(context, entity, resources, options));
         }
     }
 
@@ -345,10 +380,10 @@ internal sealed class Direct2DEntityRenderer(
             if (strokeBrush is not null)
             {
                 var resolvedStrokeWidth = ResolveStrokeWidth(strokeWidth, viewport, options);
-                var strokeStyle = Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
+                var strokeStyle = ResolveStrokeStyle(
+                    context,
                     rectangle,
-                    resources.StrokeStyle,
-                    context.Transform,
+                    resources,
                     options);
                 if (strokeStyle is null)
                     context.DrawRoundedRectangle(rounded, strokeBrush, resolvedStrokeWidth);
@@ -375,19 +410,37 @@ internal sealed class Direct2DEntityRenderer(
                 rect,
                 strokeBrush,
                 ResolveStrokeWidth(strokeWidth, viewport, options),
-                Direct2DEntityLevelOfDetail.ResolveStrokeStyle(
-                    rectangle,
-                    resources.StrokeStyle,
-                    context.Transform,
-                    options));
+                ResolveStrokeStyle(context, rectangle, resources, options));
         }
+    }
+
+    private ID2D1StrokeStyle? ResolveStrokeStyle(
+        ID2D1DeviceContext context,
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket resources,
+        CadRenderOptions options,
+        bool geometrySimplified = false)
+    {
+        if (!geometrySimplified &&
+            !Direct2DEntityLevelOfDetail.ShouldSimplifyStrokeStyle(
+                entity,
+                context.Transform,
+                options))
+        {
+            return resources.StrokeStyle;
+        }
+
+        return styleResources.GetLevelOfDetailStrokeStyle(
+            resourceCache.Factory,
+            entity.StrokeStyle);
     }
 
     private static void DrawTextProxy(
         ID2D1DeviceContext context,
         CadText text,
         Direct2DTextRenderDetail detail,
-        ID2D1Brush brush)
+        ID2D1Brush brush,
+        double transformScaleMultiplier)
     {
         if (detail is Direct2DTextRenderDetail.Skip or Direct2DTextRenderDetail.Full ||
             text.TextBounds.IsEmpty)
@@ -402,7 +455,12 @@ internal sealed class Direct2DEntityRenderer(
             previousTransform);
         try
         {
-            DrawHorizontalTextProxy(context, text.TextBounds, detail, brush);
+            DrawHorizontalTextProxy(
+                context,
+                text.TextBounds,
+                detail,
+                brush,
+                transformScaleMultiplier);
         }
         finally
         {
@@ -414,7 +472,8 @@ internal sealed class Direct2DEntityRenderer(
         ID2D1DeviceContext context,
         CadShapeText text,
         Direct2DTextRenderDetail detail,
-        ID2D1Brush brush)
+        ID2D1Brush brush,
+        double transformScaleMultiplier)
     {
         var bounds = text.TextBounds;
         if (detail is Direct2DTextRenderDetail.Skip or Direct2DTextRenderDetail.Full ||
@@ -429,7 +488,10 @@ internal sealed class Direct2DEntityRenderer(
         var normal = new Vector2(-direction.Y, direction.X);
         var halfLength = ResolveContainedHalfLength(bounds, direction) * 0.9f;
         var center = ToVector2(bounds.Center);
-        var strokeWidth = ResolveProxyStrokeWidth(context);
+        var strokeWidth = ResolveProxyStrokeWidth(
+            context,
+            transformScaleMultiplier,
+            detail);
 
         if (detail == Direct2DTextRenderDetail.Summary)
         {
@@ -446,11 +508,15 @@ internal sealed class Direct2DEntityRenderer(
         ID2D1DeviceContext context,
         CadRectD bounds,
         Direct2DTextRenderDetail detail,
-        ID2D1Brush brush)
+        ID2D1Brush brush,
+        double transformScaleMultiplier)
     {
         var left = (float)bounds.MinX;
         var right = (float)bounds.MaxX;
-        var strokeWidth = ResolveProxyStrokeWidth(context);
+        var strokeWidth = ResolveProxyStrokeWidth(
+            context,
+            transformScaleMultiplier,
+            detail);
         if (detail == Direct2DTextRenderDetail.Summary)
         {
             var lower = (float)(bounds.MinY + bounds.Height * 0.35);
@@ -478,10 +544,45 @@ internal sealed class Direct2DEntityRenderer(
         return float.IsFinite(result) ? result : Math.Max(halfWidth, halfHeight);
     }
 
-    private static float ResolveProxyStrokeWidth(ID2D1DeviceContext context)
+    private static float ResolveProxyStrokeWidth(
+        ID2D1DeviceContext context,
+        double transformScaleMultiplier,
+        Direct2DTextRenderDetail detail)
     {
-        return 1.0f / Math.Max(
-            (float)Direct2DEntityLevelOfDetail.ResolveMaximumScreenScale(context.Transform),
+        var screenStrokeWidth = detail == Direct2DTextRenderDetail.Summary
+            ? SummaryProxyScreenStrokeWidth
+            : BaselineProxyScreenStrokeWidth;
+        return screenStrokeWidth /
+               ResolveEffectiveScreenScale(context, transformScaleMultiplier);
+    }
+
+    private static CadColor ResolveTextProxyColor(
+        CadColor color,
+        Direct2DTextRenderDetail detail)
+    {
+        var opacity = detail == Direct2DTextRenderDetail.Summary
+            ? SummaryProxyOpacity
+            : BaselineProxyOpacity;
+        var alpha = (byte)Math.Clamp(
+            (int)Math.Round(color.A * opacity),
+            0,
+            byte.MaxValue);
+        return CadColor.FromArgb(alpha, color.R, color.G, color.B);
+    }
+
+    private static float ResolveEffectiveScreenScale(
+        ID2D1DeviceContext context,
+        double transformScaleMultiplier)
+    {
+        if (!double.IsFinite(transformScaleMultiplier) ||
+            transformScaleMultiplier <= double.Epsilon)
+        {
+            transformScaleMultiplier = 1.0;
+        }
+
+        return Math.Max(
+            (float)(Direct2DEntityLevelOfDetail.ResolveMaximumScreenScale(context.Transform) *
+                    transformScaleMultiplier),
             float.Epsilon);
     }
 

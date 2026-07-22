@@ -1356,7 +1356,7 @@
     <value>Show frames per second</value>
   </data>
   <data name="AcceleratedViewportInteraction" xml:space="preserve">
-    <value>Accelerated pan and zoom</value>
+    <value>Accelerated zoom preview</value>
   </data>
   <data name="ApproximateScaleFallback" xml:space="preserve">
     <value>Allow nearby zoom cache fallback</value>
