@@ -1,6 +1,7 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
@@ -160,7 +161,7 @@ internal sealed class Direct2DEntityOrderCache
                 if (entity.IsErased || !entity.IsVisible)
                     continue;
 
-                total++;
+                total += EstimateEntityRenderWork(document, entity);
                 if (entity is CadBlockReference reference)
                 {
                     total += EstimateOwnerRenderWork(
@@ -184,6 +185,75 @@ internal sealed class Direct2DEntityOrderCache
         var estimate = (int)total;
         _estimatedRenderWorkByOwner[ownerBlockId] = estimate;
         return estimate;
+    }
+
+    private static int EstimateEntityRenderWork(CadDocument document, CadEntity entity)
+    {
+        var work = entity switch
+        {
+            CadPolyline polyline => Math.Max(1, polyline.Points.Count / 8),
+            CadSpline spline => Math.Max(1, spline.FitPoints.Count / 2),
+            CadShapeText shapeText => Math.Max(1, shapeText.Text.Length / 4),
+            CadText => 2,
+            _ => 1
+        };
+
+        if (!TryResolveHatchStyle(document, entity, out var hatchStyle) ||
+            !document.TryGetHatchPattern(hatchStyle.PatternId, out var pattern) ||
+            pattern is null)
+        {
+            return work;
+        }
+
+        var extent = Math.Max(entity.Bounds.Width, entity.Bounds.Height);
+        var hatchScale = hatchStyle.HatchScale;
+        if (!double.IsFinite(extent) || extent <= 0.0 ||
+            !double.IsFinite(hatchScale) || hatchScale <= double.Epsilon)
+        {
+            return work;
+        }
+
+        double hatchWork = 0.0;
+        foreach (var line in pattern.Lines)
+        {
+            var spacing = Math.Max(line.Offset.Length * hatchScale, hatchScale * 0.01);
+            var lineCount = Math.Max(1.0, extent / spacing);
+            var dashFactor = line.IsSolidLine
+                ? 1
+                : Math.Clamp(line.DashPattern.Count, 1, 8);
+            hatchWork += lineCount * dashFactor;
+        }
+
+        return Math.Max(
+            work,
+            (int)Math.Clamp(Math.Ceiling(hatchWork), 1.0, MaximumEstimatedRenderWork));
+    }
+
+    private static bool TryResolveHatchStyle(
+        CadDocument document,
+        CadEntity entity,
+        out CadHatchFillStyle hatchStyle)
+    {
+        var fillStyleId = entity switch
+        {
+            CadCircle circle => circle.FillStyleId,
+            CadEllipse ellipse => ellipse.FillStyleId,
+            CadRectangle rectangle => rectangle.FillStyleId,
+            CadPolyline { Closed: true } polyline => polyline.FillStyleId,
+            CadSpline { Closed: true } spline => spline.FillStyleId,
+            _ => null
+        };
+
+        if (fillStyleId is { } styleId &&
+            document.TryGetStyle(styleId, out var style) &&
+            style is CadHatchFillStyle resolved)
+        {
+            hatchStyle = resolved;
+            return true;
+        }
+
+        hatchStyle = null!;
+        return false;
     }
 
     private sealed class EntityRankComparer(

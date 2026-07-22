@@ -19,7 +19,8 @@ namespace Direct2dCad.Rendering.Direct2D.Ole;
 internal sealed class Direct2DOleRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DEntityOrderCache entityOrderCache,
-    Direct2DStyleResourceCache styleResources) : IDisposable
+    Direct2DStyleResourceCache styleResources,
+    Direct2DRenderStatisticsCollector statistics) : IDisposable
 {
     private const int TilePixelSide = 1024;
     private const int MaxLogicalPixelSide = 1_048_576;
@@ -484,28 +485,40 @@ internal sealed class Direct2DOleRenderer(
                 return;
             }
 
-            var drewFallback = DrawTiles(context, full, active, tiles, opacity);
             if (!allowDraw)
+            {
+                DrawTiles(context, full, active, tiles, opacity);
                 return;
-            if (drewFallback)
-                context.Flush(out _, out _);
+            }
+
             _ = TryPopulateTiles(context, key, bytes, active, tiles);
             DrawTiles(context, full, active, tiles, opacity);
             active.RetainTiles(tiles);
             return;
         }
 
-        var fallbackTiles = ResolveVisibleTiles(full, visible, active);
-        if (DrawTiles(context, full, active, fallbackTiles, opacity))
-            context.Flush(out _, out _);
         if (!allowDraw)
+        {
+            DrawTiles(
+                context,
+                full,
+                active,
+                ResolveVisibleTiles(full, visible, active),
+                opacity);
             return;
+        }
 
         var replacement = new Direct2DOleBitmapCache.Entry(size.Width, size.Height);
         var replacementTiles = ResolveVisibleTiles(full, visible, replacement);
         if (!TryPopulateTiles(context, key, bytes, replacement, replacementTiles))
         {
             replacement.Dispose();
+            DrawTiles(
+                context,
+                full,
+                active,
+                ResolveVisibleTiles(full, visible, active),
+                opacity);
             return;
         }
 
@@ -533,6 +546,7 @@ internal sealed class Direct2DOleRenderer(
                 continue;
             }
             entry.Tiles[tileKey] = bitmap;
+            statistics.RecordOleTileBuild();
         }
         return complete;
     }

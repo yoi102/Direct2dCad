@@ -20,6 +20,9 @@ public sealed record CadRenderStatistics(
     int GeometryRealizationStrokeDrawCount,
     int GeometryRealizationBuildCount,
     int GeometryRealizationFallbackCount,
+    long HatchLineSubmissionCount,
+    int HatchSimplifiedLineFamilyCount,
+    int OleTileBuildCount,
     double RenderDurationMilliseconds)
 {
     public static CadRenderStatistics Empty { get; } = new(
@@ -42,5 +45,8 @@ public sealed record CadRenderStatistics(
         GeometryRealizationStrokeDrawCount: 0,
         GeometryRealizationBuildCount: 0,
         GeometryRealizationFallbackCount: 0,
+        HatchLineSubmissionCount: 0,
+        HatchSimplifiedLineFamilyCount: 0,
+        OleTileBuildCount: 0,
         RenderDurationMilliseconds: 0);
 }

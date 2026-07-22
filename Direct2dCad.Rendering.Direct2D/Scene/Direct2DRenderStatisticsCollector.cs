@@ -10,6 +10,9 @@ internal sealed class Direct2DRenderStatisticsCollector
     private int _pendingCommandListBuildCount;
     private int _pendingSelectionCommandListBuildCount;
     private int _pendingTileBuildCount;
+    private long _pendingHatchLineSubmissionCount;
+    private int _pendingHatchSimplifiedLineFamilyCount;
+    private int _pendingOleTileBuildCount;
 
     public int ScenePassCount { get; private set; }
     public int VisibleEntityCount { get; private set; }
@@ -28,6 +31,9 @@ internal sealed class Direct2DRenderStatisticsCollector
     public int GeometryRealizationStrokeDrawCount { get; private set; }
     public int GeometryRealizationBuildCount { get; private set; }
     public int GeometryRealizationFallbackCount { get; private set; }
+    public long HatchLineSubmissionCount { get; private set; }
+    public int HatchSimplifiedLineFamilyCount { get; private set; }
+    public int OleTileBuildCount { get; private set; }
 
     public void BeginFrame(bool isFullFrame, int dirtyRegionCount)
     {
@@ -51,9 +57,15 @@ internal sealed class Direct2DRenderStatisticsCollector
         GeometryRealizationStrokeDrawCount = 0;
         GeometryRealizationBuildCount = 0;
         GeometryRealizationFallbackCount = 0;
+        HatchLineSubmissionCount = _pendingHatchLineSubmissionCount;
+        HatchSimplifiedLineFamilyCount = _pendingHatchSimplifiedLineFamilyCount;
+        OleTileBuildCount = _pendingOleTileBuildCount;
         _pendingCommandListBuildCount = 0;
         _pendingSelectionCommandListBuildCount = 0;
         _pendingTileBuildCount = 0;
+        _pendingHatchLineSubmissionCount = 0;
+        _pendingHatchSimplifiedLineFamilyCount = 0;
+        _pendingOleTileBuildCount = 0;
     }
 
     public void EndFrame() => _isFrameActive = false;
@@ -91,6 +103,29 @@ internal sealed class Direct2DRenderStatisticsCollector
             _pendingTileBuildCount++;
     }
     public void RecordFallbackEntity() => FallbackEntityCount++;
+    public void RecordHatchLineSubmissions(int count)
+    {
+        if (count <= 0)
+            return;
+        if (_isFrameActive)
+            HatchLineSubmissionCount += count;
+        else
+            _pendingHatchLineSubmissionCount += count;
+    }
+    public void RecordHatchSimplifiedLineFamily()
+    {
+        if (_isFrameActive)
+            HatchSimplifiedLineFamilyCount++;
+        else
+            _pendingHatchSimplifiedLineFamilyCount++;
+    }
+    public void RecordOleTileBuild()
+    {
+        if (_isFrameActive)
+            OleTileBuildCount++;
+        else
+            _pendingOleTileBuildCount++;
+    }
     public void RecordGeometryRealizations(
         Direct2DGeometryRealizationStatistics statistics)
     {
@@ -120,5 +155,8 @@ internal sealed class Direct2DRenderStatisticsCollector
         GeometryRealizationStrokeDrawCount,
         GeometryRealizationBuildCount,
         GeometryRealizationFallbackCount,
+        HatchLineSubmissionCount,
+        HatchSimplifiedLineFamilyCount,
+        OleTileBuildCount,
         renderDurationMilliseconds);
 }

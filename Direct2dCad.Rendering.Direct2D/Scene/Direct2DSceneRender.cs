@@ -49,7 +49,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _resourceCache,
             geometryFactory,
             _styleResources,
-            _textFormatResources);
+            _textFormatResources,
+            _statistics);
         var handleRenderer = new Direct2DHandleRenderer(_styleResources);
 
         _backgroundRenderer = new Direct2DBackgroundRenderer(_styleResources);
@@ -66,11 +67,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _entityRenderer = new Direct2DEntityRenderer(
             _resourceCache,
             geometryFactory,
-            _styleResources);
+            _styleResources,
+            _statistics);
         _oleRenderer = new Direct2DOleRenderer(
             _resourceCache,
             _entityOrderCache,
-            _styleResources);
+            _styleResources,
+            _statistics);
         _entityReferenceRenderer = new Direct2DEntityReferenceRenderer(
             _resourceCache,
             _entityRenderer,
@@ -869,7 +872,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         const CadEntityChangeKind relevantChanges =
             CadEntityChangeKind.Geometry |
-            CadEntityChangeKind.Visibility;
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.Fill;
         return changes.EntityChanges.Any(change =>
             (change.Kind & relevantChanges) != 0);
     }

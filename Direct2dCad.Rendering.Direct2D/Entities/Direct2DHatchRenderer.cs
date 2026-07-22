@@ -1,6 +1,7 @@
 using System.Numerics;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;
@@ -13,6 +14,8 @@ internal static class Direct2DHatchRenderer
 {
     private const double SolidLodPixelThreshold = 1.0;
     private const int MaxLineSetsPerFamily = 4096;
+    private const int MaximumLodDashSubmissionsPerFamily = 16_384;
+    private const int MaximumDashSubmissionsPerFamily = 65_536;
 
     public static void Draw(
         ID2D1DeviceContext deviceContext,
@@ -21,7 +24,8 @@ internal static class Direct2DHatchRenderer
         CadTransientHatchFill hatchFill,
         ID2D1Brush hatchBrush,
         CadViewport viewport,
-        bool isLevelOfDetailEnabled)
+        bool isLevelOfDetailEnabled,
+        Direct2DRenderStatisticsCollector? statistics = null)
     {
         if (hatchFill.Lines.Count == 0 || geometryBounds.IsEmpty)
             return;
@@ -60,7 +64,7 @@ internal static class Direct2DHatchRenderer
             var strokeWidth = 1.0f / Math.Max((float)viewport.Zoom, float.Epsilon);
             foreach (var line in hatchFill.Lines)
             {
-                DrawLineSet(
+                var result = DrawLineSet(
                     deviceContext,
                     hatchBounds,
                     hatchFill,
@@ -70,6 +74,9 @@ internal static class Direct2DHatchRenderer
                     strokeWidth,
                     viewport.Zoom,
                     isLevelOfDetailEnabled);
+                statistics?.RecordHatchLineSubmissions(result.LineSubmissions);
+                if (result.WasSimplified)
+                    statistics?.RecordHatchSimplifiedLineFamily();
             }
         }
         finally
@@ -85,7 +92,7 @@ internal static class Direct2DHatchRenderer
         }
     }
 
-    private static void DrawLineSet(
+    private static HatchLineSetResult DrawLineSet(
         ID2D1DeviceContext deviceContext,
         CadRectD bounds,
         CadTransientHatchFill hatchStyle,
@@ -100,7 +107,7 @@ internal static class Direct2DHatchRenderer
         var angleRadians = DegreesToRadians(line.Angle + hatchStyle.HatchAngle);
         var direction = new CadVectorD(Math.Cos(angleRadians), Math.Sin(angleRadians)).Normalize();
         if (direction.LengthSquared <= double.Epsilon)
-            return;
+            return default;
 
         var normal = new CadVectorD(-direction.Y, direction.X);
         var offset = Rotate(line.Offset, hatchRotation) * hatchStyle.HatchScale;
@@ -154,6 +161,20 @@ internal static class Direct2DHatchRenderer
                               dashPatternLength * Math.Max(zoom, double.Epsilon) <=
                               SolidLodPixelThreshold;
         var alongStep = offset.Dot(direction);
+        if (!drawAsSolidLine)
+        {
+            var renderedLineSetCount = Math.Ceiling(lineSetCount / indexStep);
+            var alongSpan = Math.Max(0.0, maxAlongOrigin - minAlongOrigin + margin * 2.0);
+            var estimatedDashSubmissions = renderedLineSetCount *
+                                           Math.Ceiling(alongSpan / Math.Max(dashPatternLength, 1e-6)) *
+                                           Math.Max(1, line.DashPattern.Count);
+            var submissionBudget = isLevelOfDetailEnabled
+                ? MaximumLodDashSubmissionsPerFamily
+                : MaximumDashSubmissionsPerFamily;
+            drawAsSolidLine = estimatedDashSubmissions > submissionBudget;
+        }
+
+        var lineSubmissions = 0;
 
         for (var index = startIndex; index <= endIndex;)
         {
@@ -168,10 +189,11 @@ internal static class Direct2DHatchRenderer
                     ToVector2(basePoint + direction * endDistance),
                     brush,
                     strokeWidth);
+                lineSubmissions++;
             }
             else
             {
-                DrawDashedLine(
+                lineSubmissions += DrawDashedLine(
                     deviceContext,
                     basePoint,
                     direction,
@@ -190,9 +212,13 @@ internal static class Direct2DHatchRenderer
 
             index = nextIndex;
         }
+
+        return new HatchLineSetResult(
+            lineSubmissions,
+            !line.IsSolidLine && drawAsSolidLine);
     }
 
-    private static void DrawDashedLine(
+    private static int DrawDashedLine(
         ID2D1DeviceContext deviceContext,
         CadPointD basePoint,
         CadVectorD direction,
@@ -205,8 +231,9 @@ internal static class Direct2DHatchRenderer
         float strokeWidth)
     {
         if (endDistance <= startDistance || patternLength <= 1e-6)
-            return;
+            return 0;
 
+        var lineSubmissions = 0;
         var absoluteScale = Math.Abs(scale);
         var position = startDistance;
         var cyclePosition = PositiveModulo(position, patternLength);
@@ -252,6 +279,7 @@ internal static class Direct2DHatchRenderer
                         ToVector2(point + direction * Math.Max(strokeWidth, 0.01f)),
                         brush,
                         strokeWidth);
+                    lineSubmissions++;
                 }
 
                 segmentIndex = (segmentIndex + 1) % dashPattern.Count;
@@ -267,12 +295,15 @@ internal static class Direct2DHatchRenderer
                     ToVector2(basePoint + direction * next),
                     brush,
                     strokeWidth);
+                lineSubmissions++;
             }
 
             position = next;
             segmentIndex = (segmentIndex + 1) % dashPattern.Count;
             segmentOffset = 0.0;
         }
+
+        return lineSubmissions;
     }
 
     private static bool ShouldRenderAsSolidFill(CadTransientHatchFill hatchFill, CadViewport viewport)
@@ -415,4 +446,8 @@ internal static class Direct2DHatchRenderer
     }
 
     private static Vector2 ToVector2(CadPointD point) => new((float)point.X, (float)point.Y);
+
+    private readonly record struct HatchLineSetResult(
+        int LineSubmissions,
+        bool WasSimplified);
 }

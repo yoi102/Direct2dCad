@@ -536,7 +536,7 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
     {
         public static SelectionProfileKey Create(CadRenderOptions options, double zoom)
         {
-            var quantizedZoom = QuantizeZoom(zoom);
+            var quantizedZoom = Direct2DRenderScaleBucket.Quantize(zoom);
             return new SelectionProfileKey(
                 options.ActiveOwnerBlockId,
                 BitConverter.DoubleToInt64Bits(quantizedZoom),
@@ -547,11 +547,6 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
         }
 
-        private static double QuantizeZoom(double zoom)
-        {
-            zoom = Math.Max(zoom, 1e-9);
-            return Math.Pow(2.0, Math.Round(Math.Log2(zoom) * 64.0) / 64.0);
-        }
     }
 
     private sealed class SelectionProfile : IDisposable

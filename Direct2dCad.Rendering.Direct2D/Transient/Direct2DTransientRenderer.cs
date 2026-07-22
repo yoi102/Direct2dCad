@@ -6,6 +6,7 @@ using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Direct2D.Resources;
+using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;
@@ -19,7 +20,8 @@ internal sealed class Direct2DTransientRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DGeometryFactory geometryFactory,
     Direct2DStyleResourceCache styleResources,
-    Direct2DTextFormatResourceCache textFormatResources)
+    Direct2DTextFormatResourceCache textFormatResources,
+    Direct2DRenderStatisticsCollector statistics)
 {
     public void DrawLine(
         ID2D1DeviceContext context,
@@ -381,7 +383,8 @@ internal sealed class Direct2DTransientRenderer(
             hatchFill,
             hatchBrush,
             viewport,
-            isLevelOfDetailEnabled);
+            isLevelOfDetailEnabled,
+            statistics);
     }
 
     private static bool HasFill(CadTransientStyle style)

@@ -590,7 +590,8 @@ internal sealed class Direct2DSelectionRenderer(
             hatchFill,
             hatchBrush,
             viewport,
-            options.IsLevelOfDetailEnabled);
+            options.IsLevelOfDetailEnabled,
+            statistics);
     }
 
     private void DrawImageFrame(

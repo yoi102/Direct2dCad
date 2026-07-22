@@ -121,6 +121,8 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         {
             if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, viewport.Zoom))
                 continue;
+            if (AreAllTopLevelEntitiesHidden(chunk, options.HiddenEntityIds))
+                continue;
 
             if (chunk.CommandList is not null && !ContainsHiddenDependency(chunk, options.HiddenEntityIds))
             {
@@ -475,6 +477,22 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         return false;
     }
 
+    private static bool AreAllTopLevelEntitiesHidden(
+        RenderChunk chunk,
+        IReadOnlySet<EntityId> hiddenEntityIds)
+    {
+        if (hiddenEntityIds.Count == 0 || chunk.Entities.Count == 0)
+            return false;
+
+        foreach (var entity in chunk.Entities)
+        {
+            if (!hiddenEntityIds.Contains(entity.Id))
+                return false;
+        }
+
+        return true;
+    }
+
     private static bool AffectsChunkPlan(
         CadDocument document,
         CadDocumentChangeSet changes)
@@ -558,7 +576,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         public static RenderProfileKey Create(CadRenderOptions options, double zoom)
         {
-            var quantizedZoom = QuantizeZoom(zoom);
+            var quantizedZoom = Direct2DRenderScaleBucket.Quantize(zoom);
             return new RenderProfileKey(
                 options.ActiveOwnerBlockId,
                 BitConverter.DoubleToInt64Bits(quantizedZoom),
@@ -569,11 +587,6 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
         }
 
-        private static double QuantizeZoom(double zoom)
-        {
-            zoom = Math.Max(zoom, 1e-9);
-            return Math.Pow(2.0, Math.Round(Math.Log2(zoom) * 64.0) / 64.0);
-        }
     }
 
     private sealed class RenderProfile : IDisposable

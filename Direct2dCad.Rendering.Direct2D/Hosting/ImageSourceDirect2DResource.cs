@@ -19,6 +19,9 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 
 internal sealed class ImageSourceDirect2DResource : IDisposable
 {
+    private readonly List<IntRect> _presentDirtyRects = new(8);
+    private readonly CadScreenRect[] _singleDirtyRect = new CadScreenRect[1];
+    private readonly Action _presentBackBuffer;
     private ID2D1Factory1? _d2dFactory;
     private ID2D1Device? _d2dDevice;
     private ID2D1DeviceContext? _d2dContext;
@@ -51,6 +54,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     private bool _usingWarp;
     private bool _disposed;
     private bool _isDrawing;
+    private IReadOnlyList<CadScreenRect>? _pendingPresentDirtyRects;
 
     public int Width => _width;
     public int Height => _height;
@@ -95,6 +99,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     public ImageSourceDirect2DResource()
     {
+        _presentBackBuffer = PresentBackBuffer;
         CreateD2DFactory();
         CreateD3D11Device();
         CreateD2DDeviceAndContext();
@@ -163,9 +168,14 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     public void EndDraw(CadScreenRect? dirtyRect = null)
     {
-        EndDraw(dirtyRect is { IsEmpty: false } rect
-            ? new[] { rect }
-            : null);
+        if (dirtyRect is not { IsEmpty: false } rect)
+        {
+            EndDraw((IReadOnlyList<CadScreenRect>?)null);
+            return;
+        }
+
+        _singleDirtyRect[0] = rect;
+        EndDraw(_singleDirtyRect);
     }
 
     public void EndDraw(IReadOnlyList<CadScreenRect>? dirtyRects)
@@ -194,49 +204,22 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
                 result.CheckError();
             }
 
-
-            void PresentBackBuffer()
+            _pendingPresentDirtyRects = dirtyRects;
+            try
             {
-                if (_d3dContext is null || _d3d11RenderTarget is null || _d3d11BackBuffer is null)
-                    return;
-
-                if (dirtyRects is { Count: > 0 })
-                {
-                    var copiedAnyRegion = false;
-                    foreach (var dirtyRect in dirtyRects)
-                    {
-                        var left = Math.Clamp(dirtyRect.X, 0, _width);
-                        var top = Math.Clamp(dirtyRect.Y, 0, _height);
-                        var right = Math.Clamp(dirtyRect.X + dirtyRect.Width, left, _width);
-                        var bottom = Math.Clamp(dirtyRect.Y + dirtyRect.Height, top, _height);
-                        if (right <= left || bottom <= top)
-                            continue;
-
-                        _d3dContext.CopySubresourceRegion(
-                            _d3d11RenderTarget,
-                            0,
-                            (uint)left,
-                            (uint)top,
-                            0,
-                            _d3d11BackBuffer,
-                            0,
-                            new Box(left, top, 0, right, bottom, 1));
-                        copiedAnyRegion = true;
-                    }
-
-                    if (copiedAnyRegion)
-                        _d3dContext.Flush();
-                    return;
-                }
-
-                _d3dContext.CopyResource(_d3d11RenderTarget, _d3d11BackBuffer);
-                _d3dContext.Flush();
+                if (_imageSource is not null)
+                    _imageSource.Present(
+                        _presentBackBuffer,
+                        dirtyRects is { Count: > 0 }
+                            ? PrepareIntRects(dirtyRects)
+                            : null);
+                else
+                    PresentBackBuffer();
             }
-
-            if (_imageSource is not null)
-                _imageSource.Present(PresentBackBuffer, dirtyRects is { Count: > 0 } ? ToIntRects(dirtyRects) : null);
-            else
-                PresentBackBuffer();
+            finally
+            {
+                _pendingPresentDirtyRects = null;
+            }
         }
         finally
         {
@@ -393,16 +376,56 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         _interactionSnapshotTexture = null;
     }
 
-    private static IntRect[] ToIntRects(IReadOnlyList<CadScreenRect> dirtyRects)
+    private IReadOnlyList<IntRect> PrepareIntRects(IReadOnlyList<CadScreenRect> dirtyRects)
     {
-        var rects = new IntRect[dirtyRects.Count];
+        _presentDirtyRects.Clear();
+        if (_presentDirtyRects.Capacity < dirtyRects.Count)
+            _presentDirtyRects.Capacity = dirtyRects.Count;
         for (var i = 0; i < dirtyRects.Count; i++)
         {
             var rect = dirtyRects[i];
-            rects[i] = new IntRect(rect.X, rect.Y, rect.Width, rect.Height);
+            _presentDirtyRects.Add(new IntRect(rect.X, rect.Y, rect.Width, rect.Height));
         }
 
-        return rects;
+        return _presentDirtyRects;
+    }
+
+    private void PresentBackBuffer()
+    {
+        if (_d3dContext is null || _d3d11RenderTarget is null || _d3d11BackBuffer is null)
+            return;
+
+        if (_pendingPresentDirtyRects is { Count: > 0 } dirtyRects)
+        {
+            var copiedAnyRegion = false;
+            foreach (var dirtyRect in dirtyRects)
+            {
+                var left = Math.Clamp(dirtyRect.X, 0, _width);
+                var top = Math.Clamp(dirtyRect.Y, 0, _height);
+                var right = Math.Clamp(dirtyRect.X + dirtyRect.Width, left, _width);
+                var bottom = Math.Clamp(dirtyRect.Y + dirtyRect.Height, top, _height);
+                if (right <= left || bottom <= top)
+                    continue;
+
+                _d3dContext.CopySubresourceRegion(
+                    _d3d11RenderTarget,
+                    0,
+                    (uint)left,
+                    (uint)top,
+                    0,
+                    _d3d11BackBuffer,
+                    0,
+                    new Box(left, top, 0, right, bottom, 1));
+                copiedAnyRegion = true;
+            }
+
+            if (copiedAnyRegion)
+                _d3dContext.Flush();
+            return;
+        }
+
+        _d3dContext.CopyResource(_d3d11RenderTarget, _d3d11BackBuffer);
+        _d3dContext.Flush();
     }
 
     public void Clear(float r, float g, float b, float a)

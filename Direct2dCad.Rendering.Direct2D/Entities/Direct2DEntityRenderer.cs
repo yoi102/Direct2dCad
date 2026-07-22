@@ -16,7 +16,8 @@ namespace Direct2dCad.Rendering.Direct2D.Entities;
 internal sealed class Direct2DEntityRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DGeometryFactory geometryFactory,
-    Direct2DStyleResourceCache styleResources)
+    Direct2DStyleResourceCache styleResources,
+    Direct2DRenderStatisticsCollector statistics)
 {
     private const float BaselineProxyScreenStrokeWidth = 0.55f;
     private const float SummaryProxyScreenStrokeWidth = 0.50f;
@@ -647,7 +648,8 @@ internal sealed class Direct2DEntityRenderer(
             hatch,
             resources.HatchBrush,
             viewport,
-            options.IsLevelOfDetailEnabled);
+            options.IsLevelOfDetailEnabled,
+            statistics);
     }
 
     private static void FillBounds(ID2D1DeviceContext context, CadRectD bounds, ID2D1Brush brush)

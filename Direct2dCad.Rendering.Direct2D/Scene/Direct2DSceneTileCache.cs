@@ -37,6 +37,9 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private readonly List<TileCoordinate> _availableTiles = new(16);
     private readonly List<CadRectD> _missingWorldBounds = new(4);
     private readonly List<TileProfile> _candidateProfiles = new(MaximumProfiles);
+    private readonly HashSet<BlockId> _affectedBlocks = [];
+    private readonly HashSet<BlockId> _visitedBlocks = [];
+    private readonly Queue<BlockId> _pendingBlocks = [];
     private CadDocument? _document;
     private long _usageStamp;
     private bool _disposed;
@@ -122,6 +125,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         if (!TryResolveDrawableProfile(
                 key,
                 viewport,
+                options.DirtyWorldBounds,
                 options.AllowApproximateTileScaleFallback,
                 out var profile,
                 out var requiredTiles,
@@ -203,25 +207,25 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             return;
         }
 
-        var affectedBlocks = new HashSet<BlockId>();
+        _affectedBlocks.Clear();
         foreach (var change in changes.EntityChanges)
-            InvalidateChangedEntity(document, change, affectedBlocks);
+            InvalidateChangedEntity(document, change, _affectedBlocks);
 
-        if (affectedBlocks.Count > 0)
-            InvalidateBlockInstances(document, affectedBlocks);
+        if (_affectedBlocks.Count > 0)
+            InvalidateBlockInstances(document, _affectedBlocks);
     }
 
     public void InvalidateEntity(CadDocument document, EntityId entityId)
     {
         ThrowIfDisposed();
         EnsureDocument(document);
-        var affectedBlocks = new HashSet<BlockId>();
+        _affectedBlocks.Clear();
         InvalidateChangedEntity(
             document,
             new CadEntityChange(entityId, CadEntityChangeKind.Geometry),
-            affectedBlocks);
-        if (affectedBlocks.Count > 0)
-            InvalidateBlockInstances(document, affectedBlocks);
+            _affectedBlocks);
+        if (_affectedBlocks.Count > 0)
+            InvalidateBlockInstances(document, _affectedBlocks);
     }
 
     public void RemoveEntity(EntityId entityId)
@@ -327,8 +331,28 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         double profileZoom,
         List<TileCoordinate> result)
     {
-        result.Clear();
         var visible = viewport.VisibleWorldBounds;
+        FillTiles(visible, profileZoom, result);
+    }
+
+    private static void FillRenderTiles(
+        CadViewport viewport,
+        CadRectD? renderWorldBounds,
+        double profileZoom,
+        List<TileCoordinate> result)
+    {
+        var visible = viewport.VisibleWorldBounds;
+        if (renderWorldBounds is { IsEmpty: false } dirty && !visible.IsEmpty)
+            visible = visible.Intersection(dirty);
+        FillTiles(visible, profileZoom, result);
+    }
+
+    private static void FillTiles(
+        CadRectD visible,
+        double profileZoom,
+        List<TileCoordinate> result)
+    {
+        result.Clear();
         if (visible.IsEmpty || profileZoom <= double.Epsilon)
             return;
 
@@ -474,11 +498,14 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         CadDocument document,
         IReadOnlyCollection<BlockId> changedBlockIds)
     {
-        var pending = new Queue<BlockId>(changedBlockIds);
-        var visited = new HashSet<BlockId>();
-        while (pending.TryDequeue(out var changedBlockId))
+        _pendingBlocks.Clear();
+        _visitedBlocks.Clear();
+        foreach (var changedBlockId in changedBlockIds)
+            _pendingBlocks.Enqueue(changedBlockId);
+
+        while (_pendingBlocks.TryDequeue(out var changedBlockId))
         {
-            if (!visited.Add(changedBlockId))
+            if (!_visitedBlocks.Add(changedBlockId))
                 continue;
 
             foreach (var referenceId in document.GetBlockReferenceIds(changedBlockId))
@@ -497,7 +524,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                 _entitySnapshots[reference.Id] = current;
 
                 if (!reference.OwnerBlockId.Equals(BlockId.ModelSpace))
-                    pending.Enqueue(reference.OwnerBlockId);
+                    _pendingBlocks.Enqueue(reference.OwnerBlockId);
             }
         }
     }
@@ -505,6 +532,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private bool TryResolveDrawableProfile(
         TileProfileKey requestedKey,
         CadViewport viewport,
+        CadRectD? renderWorldBounds,
         bool allowApproximateTileScaleFallback,
         out TileProfile profile,
         out IReadOnlyList<TileCoordinate> requiredTiles,
@@ -513,7 +541,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         FillCandidateProfiles(requestedKey, viewport.Zoom, allowApproximateTileScaleFallback);
         foreach (var candidate in _candidateProfiles)
         {
-            FillVisibleTiles(viewport, candidate.Zoom, _requiredTiles);
+            FillRenderTiles(viewport, renderWorldBounds, candidate.Zoom, _requiredTiles);
             _availableTiles.Clear();
             foreach (var tileKey in _requiredTiles)
             {
@@ -703,7 +731,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
 
         public static TileProfileKey Create(CadRenderOptions options, double zoom)
         {
-            var quantizedZoom = QuantizeZoom(zoom);
+            var quantizedZoom = Direct2DRenderScaleBucket.Quantize(zoom);
             return new TileProfileKey(
                 options.ActiveOwnerBlockId,
                 BitConverter.DoubleToInt64Bits(quantizedZoom),
@@ -712,12 +740,6 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                 options.IsLevelOfDetailEnabled,
                 options.KeepStrokeWidthScreenConstant,
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
-        }
-
-        private static double QuantizeZoom(double zoom)
-        {
-            zoom = Math.Max(zoom, 1e-9);
-            return Math.Pow(2.0, Math.Round(Math.Log2(zoom) * 64.0) / 64.0);
         }
 
         public bool IsCompatibleWith(TileProfileKey other) =>
