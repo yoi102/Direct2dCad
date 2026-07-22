@@ -4,7 +4,7 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
-internal sealed class CadOriginPositionPreviewBuilder(
+internal readonly struct CadOriginPositionPreviewBuilder(
     CadOriginSettings origin,
     double zoom)
 {

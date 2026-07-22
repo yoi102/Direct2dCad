@@ -64,6 +64,8 @@ internal sealed class Direct2DOleBitmapCache : IDisposable
 
     internal sealed class Entry(int pixelWidth, int pixelHeight) : IDisposable
     {
+        private readonly List<TileKey> _staleTileKeys = [];
+
         public int PixelWidth { get; } = pixelWidth;
 
         public int PixelHeight { get; } = pixelHeight;
@@ -88,11 +90,15 @@ internal sealed class Direct2DOleBitmapCache : IDisposable
 
         public void RetainTiles(IReadOnlySet<TileKey> retainedTiles)
         {
-            foreach (var key in Tiles.Keys.ToArray())
+            _staleTileKeys.Clear();
+            foreach (var key in Tiles.Keys)
             {
-                if (retainedTiles.Contains(key))
-                    continue;
+                if (!retainedTiles.Contains(key))
+                    _staleTileKeys.Add(key);
+            }
 
+            foreach (var key in _staleTileKeys)
+            {
                 Tiles[key].Dispose();
                 Tiles.Remove(key);
             }

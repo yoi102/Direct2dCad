@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -156,10 +157,38 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         return true;
     }
 
-    public void Invalidate()
+    public void ApplyChanges(CadDocumentChangeSet changes)
     {
         ThrowIfDisposed();
-        ClearProfiles();
+        ArgumentNullException.ThrowIfNull(changes);
+        if (!changes.DocumentChanged)
+            return;
+
+        if (changes.AffectsDocumentStructure ||
+            changes.AffectsViewSettings ||
+            changes.EntityChanges.Any(static change =>
+                (change.Kind & CadEntityChangeKind.Fill) != 0))
+        {
+            ClearProfiles();
+            return;
+        }
+
+        const CadEntityChangeKind visualChanges =
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.Layer |
+            CadEntityChangeKind.Deleted |
+            CadEntityChangeKind.EmbeddedData |
+            CadEntityChangeKind.Opacity |
+            CadEntityChangeKind.Rotation;
+        foreach (var change in changes.EntityChanges)
+        {
+            if ((change.Kind & visualChanges) == 0)
+                continue;
+            foreach (var profile in _profiles.Values)
+                profile.Invalidate(change.EntityId);
+        }
     }
 
     public void Clear()
@@ -178,13 +207,18 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         var chunks = new List<SelectionChunk>();
         var pending = new List<CadSelectionEntityReference>(ReferencesPerChunk);
         var blockCacheability = new Dictionary<BlockId, bool>();
+        var blockDependencies = new Dictionary<BlockId, IReadOnlyList<EntityId>>();
 
         void FlushCacheable()
         {
             if (pending.Count == 0)
                 return;
 
-            chunks.Add(CreateChunk(pending.ToArray(), isCacheable: true));
+            chunks.Add(CreateChunk(
+                document,
+                pending.ToArray(),
+                isCacheable: true,
+                blockDependencies));
             pending.Clear();
         }
 
@@ -199,7 +233,11 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
             }
 
             FlushCacheable();
-            chunks.Add(CreateChunk([reference], isCacheable: false));
+            chunks.Add(CreateChunk(
+                document,
+                [reference],
+                isCacheable: false,
+                blockDependencies));
         }
 
         FlushCacheable();
@@ -327,14 +365,72 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         }
     }
 
-    private static SelectionChunk CreateChunk(
+    private SelectionChunk CreateChunk(
+        CadDocument document,
         IReadOnlyList<CadSelectionEntityReference> references,
-        bool isCacheable)
+        bool isCacheable,
+        Dictionary<BlockId, IReadOnlyList<EntityId>> blockDependencies)
     {
         var bounds = CadRectD.Empty;
+        var dependencies = new HashSet<EntityId>();
         foreach (var reference in references)
+        {
             bounds = bounds.Union(reference.EntityBounds.Translate(reference.Offset));
-        return new SelectionChunk(references, bounds, isCacheable);
+            dependencies.Add(reference.EntityId);
+            if (!document.TryGetEntity(reference.EntityId, out var entity) ||
+                entity is not CadBlockReference blockReference)
+            {
+                continue;
+            }
+
+            foreach (var dependency in ResolveBlockDependencies(
+                         document,
+                         blockReference.DefinitionBlockId,
+                         blockDependencies,
+                         []))
+            {
+                dependencies.Add(dependency);
+            }
+        }
+
+        return new SelectionChunk(
+            references,
+            dependencies.ToArray(),
+            bounds,
+            isCacheable);
+    }
+
+    private IReadOnlyList<EntityId> ResolveBlockDependencies(
+        CadDocument document,
+        BlockId blockId,
+        Dictionary<BlockId, IReadOnlyList<EntityId>> cache,
+        HashSet<BlockId> visitingBlocks)
+    {
+        if (cache.TryGetValue(blockId, out var cached))
+            return cached;
+        if (!visitingBlocks.Add(blockId))
+            return [];
+
+        var dependencies = new HashSet<EntityId>();
+        foreach (var child in document.GetEntitiesInBlock(blockId))
+        {
+            dependencies.Add(child.Id);
+            if (child is not CadBlockReference nested)
+                continue;
+            foreach (var dependency in ResolveBlockDependencies(
+                         document,
+                         nested.DefinitionBlockId,
+                         cache,
+                         visitingBlocks))
+            {
+                dependencies.Add(dependency);
+            }
+        }
+
+        visitingBlocks.Remove(blockId);
+        cached = dependencies.ToArray();
+        cache[blockId] = cached;
+        return cached;
     }
 
     private static CadRenderOptions CreateBuildOptions(
@@ -458,16 +554,46 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         }
     }
 
-    private sealed class SelectionProfile(
-        SelectionProfileKey key,
-        IReadOnlyList<SelectionChunk> chunks) : IDisposable
+    private sealed class SelectionProfile : IDisposable
     {
-        public SelectionProfileKey Key { get; } = key;
-        public IReadOnlyList<SelectionChunk> Chunks { get; } = chunks;
-        public bool HasCacheableChunks { get; } = chunks.Any(static chunk => chunk.IsCacheable);
+        private readonly Dictionary<EntityId, List<SelectionChunk>> _chunksByDependency = [];
+
+        public SelectionProfileKey Key { get; }
+        public IReadOnlyList<SelectionChunk> Chunks { get; }
+        public bool HasCacheableChunks { get; }
         public bool HasPendingBuilds => Chunks.Any(static chunk =>
             chunk.IsCacheable && chunk.CommandList is null && !chunk.BuildFailed);
         public long LastUsed { get; set; }
+
+        public SelectionProfile(
+            SelectionProfileKey key,
+            IReadOnlyList<SelectionChunk> chunks)
+        {
+            Key = key;
+            Chunks = chunks;
+            HasCacheableChunks = chunks.Any(static chunk => chunk.IsCacheable);
+            foreach (var chunk in chunks)
+            {
+                foreach (var entityId in chunk.DependencyEntityIds)
+                {
+                    if (!_chunksByDependency.TryGetValue(entityId, out var dependentChunks))
+                    {
+                        dependentChunks = [];
+                        _chunksByDependency.Add(entityId, dependentChunks);
+                    }
+
+                    dependentChunks.Add(chunk);
+                }
+            }
+        }
+
+        public void Invalidate(EntityId entityId)
+        {
+            if (!_chunksByDependency.TryGetValue(entityId, out var chunks))
+                return;
+            foreach (var chunk in chunks)
+                chunk.Invalidate();
+        }
 
         public void Dispose()
         {
@@ -478,20 +604,29 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
 
     private sealed class SelectionChunk(
         IReadOnlyList<CadSelectionEntityReference> references,
+        IReadOnlyList<EntityId> dependencyEntityIds,
         CadRectD bounds,
         bool isCacheable) : IDisposable
     {
         public IReadOnlyList<CadSelectionEntityReference> References { get; } = references;
+        public IReadOnlyList<EntityId> DependencyEntityIds { get; } = dependencyEntityIds;
         public CadRectD Bounds { get; } = bounds;
         public bool IsCacheable { get; } = isCacheable;
         public ID2D1CommandList? CommandList { get; set; }
         public int RecordedReferenceCount { get; set; }
         public bool BuildFailed { get; set; }
 
-        public void Dispose()
+        public void Invalidate()
         {
             CommandList?.Dispose();
             CommandList = null;
+            RecordedReferenceCount = 0;
+            BuildFailed = false;
+        }
+
+        public void Dispose()
+        {
+            Invalidate();
         }
     }
 }

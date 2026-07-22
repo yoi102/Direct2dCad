@@ -10,7 +10,7 @@ using static Direct2dCad.ViewModels.Services.Geometry.CadGripDragGeometryFactory
 
 namespace Direct2dCad.ViewModels.Services.Interactions;
 
-internal sealed class CadGripDragPreviewBuilder(
+internal readonly struct CadGripDragPreviewBuilder(
     CadEditor editor,
     CadPreviewStyleService styleService,
     CadTextMeasurementService textMeasurementService)

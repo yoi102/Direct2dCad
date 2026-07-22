@@ -163,8 +163,17 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             return;
         }
 
+        const CadEntityChangeKind visualChanges =
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.EmbeddedData |
+            CadEntityChangeKind.Opacity |
+            CadEntityChangeKind.Rotation;
         foreach (var change in changes.EntityChanges)
         {
+            if ((change.Kind & visualChanges) == 0)
+                continue;
             foreach (var profile in _profiles.Values)
                 profile.Invalidate(change.EntityId);
         }

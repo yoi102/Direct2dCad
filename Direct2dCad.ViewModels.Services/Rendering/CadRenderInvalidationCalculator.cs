@@ -10,7 +10,7 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Rendering;
 
-internal sealed class CadRenderInvalidationCalculator(
+internal readonly struct CadRenderInvalidationCalculator(
     CadDocument document,
     CadViewport viewport,
     int targetWidth,

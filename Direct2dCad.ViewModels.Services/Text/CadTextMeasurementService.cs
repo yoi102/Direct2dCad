@@ -8,7 +8,7 @@ using Direct2dCad.Rendering.Direct2D.Hosting;
 
 namespace Direct2dCad.ViewModels.Services.Text;
 
-internal sealed class CadTextMeasurementService(
+internal readonly struct CadTextMeasurementService(
     CadDocument document,
     Direct2DImageRenderHost renderHost,
     CadViewport viewport)

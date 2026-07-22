@@ -9,7 +9,7 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Styling;
 
-internal sealed class CadPreviewStyleService(
+internal readonly struct CadPreviewStyleService(
     CadDocument document,
     CadUserSettings userSettings)
 {

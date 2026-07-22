@@ -9,7 +9,7 @@ using Direct2dCad.ViewModels.Services.Styling;
 
 namespace Direct2dCad.ViewModels.Services.Interactions;
 
-internal sealed class CadSelectionInteractionService(
+internal readonly struct CadSelectionInteractionService(
     CadEditor editor,
     Func<CadPointD, CadPointD> screenToWorld,
     double zoom,

@@ -1,4 +1,5 @@
 using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Rendering.Transient;
@@ -8,6 +9,11 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 internal sealed class CadPasteInteractionController
 {
     private readonly ICadClipboardStore _clipboardStore;
+    private readonly List<CadTransientItem> _previewTemplateItems = [];
+    private CadClipboardSnapshot? _previewTemplateSnapshot;
+    private CadDocument? _previewTemplateDocument;
+    private LayerId _previewTemplateLayerId;
+    private CadTransientStyle _previewTemplateStyle = CadTransientStyle.PastePreview;
 
     public bool IsPreviewActive { get; private set; }
     public bool HasUserCopySnapshot => _clipboardStore.HasUserCopySnapshot;
@@ -42,6 +48,7 @@ internal sealed class CadPasteInteractionController
         ArgumentNullException.ThrowIfNull(snapshot);
 
         _clipboardStore.Set(snapshot, isUserCopySnapshot: false);
+        InvalidatePreviewTemplate();
         IsPreviewActive = true;
     }
 
@@ -72,7 +79,27 @@ internal sealed class CadPasteInteractionController
         CadPointD mouseWorld,
         LayerId targetLayerId)
     {
-        clipboardService.AddPastePreview(items, _clipboardStore.Snapshot, IsPreviewActive, mouseWorld, targetLayerId);
+        var snapshot = _clipboardStore.Snapshot;
+        if (!IsPreviewActive || snapshot is null)
+            return;
+
+        EnsurePreviewTemplate(clipboardService, snapshot, targetLayerId);
+        if (_previewTemplateItems.Count == 0)
+            return;
+
+        var delta = mouseWorld - snapshot.BasePoint;
+        items.Add(new CadTransientGroup(
+            _previewTemplateItems,
+            CadMatrixD.CreateTranslation(delta.X, delta.Y),
+            _previewTemplateStyle,
+            snapshot.Bounds));
+    }
+
+    public void InvalidatePreviewTemplate()
+    {
+        _previewTemplateSnapshot = null;
+        _previewTemplateDocument = null;
+        _previewTemplateItems.Clear();
     }
 
     public void Clear(bool clearClipboard)
@@ -80,6 +107,51 @@ internal sealed class CadPasteInteractionController
         IsPreviewActive = false;
 
         if (clearClipboard)
+        {
             _clipboardStore.Clear();
+            InvalidatePreviewTemplate();
+        }
+    }
+
+    private void EnsurePreviewTemplate(
+        CadClipboardInteractionService clipboardService,
+        CadClipboardSnapshot snapshot,
+        LayerId targetLayerId)
+    {
+        var document = clipboardService.Document;
+        if (ReferenceEquals(_previewTemplateSnapshot, snapshot) &&
+            ReferenceEquals(_previewTemplateDocument, document) &&
+            _previewTemplateLayerId.Equals(targetLayerId))
+        {
+            return;
+        }
+
+        _previewTemplateItems.Clear();
+        clipboardService.AddPastePreview(
+            _previewTemplateItems,
+            snapshot,
+            isPastePreviewActive: true,
+            snapshot.BasePoint,
+            targetLayerId);
+        _previewTemplateStyle = CadTransientStyle.PastePreview with
+        {
+            StrokeWidth = ResolveMaximumStrokeWidth(_previewTemplateItems)
+        };
+        _previewTemplateSnapshot = snapshot;
+        _previewTemplateDocument = document;
+        _previewTemplateLayerId = targetLayerId;
+    }
+
+    private static double ResolveMaximumStrokeWidth(IReadOnlyList<CadTransientItem> items)
+    {
+        var maximum = CadTransientStyle.PastePreview.StrokeWidth;
+        foreach (var item in items)
+        {
+            maximum = Math.Max(maximum, item.Style.StrokeWidth);
+            if (item is CadTransientGroup group)
+                maximum = Math.Max(maximum, ResolveMaximumStrokeWidth(group.Items));
+        }
+
+        return maximum;
     }
 }

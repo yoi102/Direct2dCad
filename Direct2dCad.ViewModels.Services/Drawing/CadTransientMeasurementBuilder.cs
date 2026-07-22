@@ -6,7 +6,7 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
-internal sealed class CadTransientMeasurementBuilder(
+internal readonly struct CadTransientMeasurementBuilder(
     CadDocument document,
     CadViewport viewport)
 {

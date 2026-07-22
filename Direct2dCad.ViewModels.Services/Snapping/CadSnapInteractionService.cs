@@ -6,7 +6,7 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Snapping;
 
-internal sealed class CadSnapInteractionService(
+internal readonly struct CadSnapInteractionService(
     CadDocument document,
     CadViewport viewport)
 {

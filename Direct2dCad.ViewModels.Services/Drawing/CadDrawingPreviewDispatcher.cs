@@ -8,7 +8,7 @@ using Direct2dCad.ViewModels.Services.Text;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
-internal sealed class CadDrawingPreviewDispatcher(
+internal readonly struct CadDrawingPreviewDispatcher(
     CadCanvasToolMode toolMode,
     CadDrawingSessionState state,
     ICadDrawingDefaults defaults,

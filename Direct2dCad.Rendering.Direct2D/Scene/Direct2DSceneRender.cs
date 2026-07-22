@@ -19,6 +19,7 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager, IDisposable
 {
+    private const int MaximumPreparedLayoutViewports = 4;
     private readonly Direct2DStyleResourceCache _styleResources = new();
     private readonly Direct2DTextFormatResourceCache _textFormatResources = new();
     private readonly Direct2DResourceCache _resourceCache;
@@ -302,6 +303,20 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         options ??= new CadRenderOptions();
         if (buildStep)
             _resourceCache.BeginGeometryRealizationBuildBatch();
+        if (options.ActiveLayoutId is { } layoutId &&
+            document.TryGetLayout(layoutId, out var activeLayout) &&
+            activeLayout is not null)
+        {
+            return PrepareLayoutViewportCaches(
+                context,
+                document,
+                viewport,
+                activeLayout,
+                handleScene,
+                options,
+                buildStep);
+        }
+
         var selectionBuildPending = _selectionRenderer.PrepareCache(
             context,
             document,
@@ -474,37 +489,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     options,
                     includeHiddenEntities: isActiveViewport);
 
-                foreach (var entity in Direct2DEntityVisibility.Enumerate(
-                             document,
-                             modelViewport,
-                             modelOptions,
-                             _resourceCache,
-                             _entityOrderCache.GetOrderedEntities(
-                                  document,
-                                  modelOptions.ActiveOwnerBlockId),
-                              _entityOrderCache,
-                              _visibleEntityIds,
-                              _visibleEntityIdSet,
-                              _visibleEntities))
-                {
-                    if (entity is CadBlockReference blockReference)
-                    {
-                        _blockReferenceRenderer.Draw(context, document, modelViewport, blockReference, modelOptions);
-                        continue;
-                    }
-                    if (entity is CadOleObject ole)
-                    {
-                        _oleRenderer.DrawEntity(
-                            context,
-                            document,
-                            ole,
-                            paperViewport,
-                            modelOptions);
-                        continue;
-                    }
-                    if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) && resources is not null)
-                        _entityRenderer.Draw(context, document, entity, resources, modelViewport, modelOptions);
-                }
+                DrawRetainedOrImmediate(
+                    context,
+                    document,
+                    modelViewport,
+                    modelOptions);
 
                 if (isActiveViewport)
                 {
@@ -550,6 +539,114 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
 
         DrawRetainedOrImmediate(context, document, viewport, options);
+    }
+
+    private bool PrepareLayoutViewportCaches(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport paperViewport,
+        CadLayout layout,
+        CadHandleScene? handleScene,
+        CadRenderOptions options,
+        bool buildStep)
+    {
+        var preparedViewportCount = 0;
+        if (options.ActiveLayoutViewportId is { } activeViewportId)
+        {
+            foreach (var layoutViewport in layout.Viewports)
+            {
+                if (!layoutViewport.IsVisible || layoutViewport.Id != activeViewportId)
+                    continue;
+
+                if (PrepareLayoutViewportCache(
+                        context,
+                        document,
+                        paperViewport,
+                        layoutViewport,
+                        handleScene,
+                        options,
+                        isActiveViewport: true,
+                        buildStep: buildStep))
+                {
+                    return true;
+                }
+
+                preparedViewportCount++;
+                break;
+            }
+        }
+
+        foreach (var layoutViewport in layout.Viewports)
+        {
+            if (preparedViewportCount >= MaximumPreparedLayoutViewports)
+                break;
+            if (!layoutViewport.IsVisible ||
+                options.ActiveLayoutViewportId == layoutViewport.Id)
+            {
+                continue;
+            }
+
+            if (PrepareLayoutViewportCache(
+                    context,
+                    document,
+                    paperViewport,
+                    layoutViewport,
+                    handleScene: null,
+                    options: options,
+                    isActiveViewport: false,
+                    buildStep: buildStep))
+            {
+                return true;
+            }
+
+            preparedViewportCount++;
+        }
+
+        return false;
+    }
+
+    private bool PrepareLayoutViewportCache(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport paperViewport,
+        CadLayoutViewport layoutViewport,
+        CadHandleScene? handleScene,
+        CadRenderOptions options,
+        bool isActiveViewport,
+        bool buildStep)
+    {
+        var modelViewport = CreateModelViewport(paperViewport, layoutViewport);
+        var modelOptions = CreateModelViewportOptions(
+            options,
+            drawGripHandles: isActiveViewport,
+            includeHiddenEntities: isActiveViewport);
+        if (isActiveViewport &&
+            _selectionRenderer.PrepareCache(
+                context,
+                document,
+                modelViewport,
+                handleScene,
+                modelOptions,
+                buildStep))
+        {
+            return true;
+        }
+
+        var orderedEntities = _entityOrderCache.GetOrderedEntities(
+            document,
+            modelOptions.ActiveOwnerBlockId);
+        var estimatedRenderWork = _entityOrderCache.GetEstimatedRenderWork(
+            document,
+            modelOptions.ActiveOwnerBlockId);
+        return _commandListCache.Prepare(
+            context,
+            document,
+            modelViewport,
+            modelOptions,
+            orderedEntities,
+            estimatedRenderWork,
+            DrawEntityCore,
+            buildStep);
     }
 
     private void DrawRetainedOrImmediate(

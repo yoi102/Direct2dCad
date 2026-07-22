@@ -27,6 +27,9 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private readonly Direct2DSceneRender _renderer = new();
     private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
     private readonly Queue<RenderFrameSample> _frameRateSamples = [];
+    private readonly List<CadScreenRect> _snapshotExposedRects = new(4);
+    private readonly List<CadScreenRect> _normalizedDirtyRects = new(8);
+    private readonly List<EntityId> _dirtyCostCandidateIds = new(256);
     private ID3D11ImageSource? _imageSource;
     private CadDocument? _document;
     private CadViewport? _viewport;
@@ -383,7 +386,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (coveredRight <= coveredLeft || coveredBottom <= coveredTop)
             return null;
 
-        var result = new List<CadScreenRect>(4);
+        _snapshotExposedRects.Clear();
+        var result = _snapshotExposedRects;
         if (coveredTop > 0)
             result.Add(new CadScreenRect(0, 0, _target.Width, coveredTop));
         if (coveredBottom < _target.Height)
@@ -413,7 +417,9 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 middleHeight));
         }
 
-        var exposedArea = result.Sum(static rect => rect.Area);
+        long exposedArea = 0;
+        foreach (var rect in result)
+            exposedArea += rect.Area;
         var targetArea = (double)_target.Width * _target.Height;
         if (targetArea > 0 &&
             exposedArea / targetArea > InteractionPreviewMaxExposedAreaRatio)
@@ -597,18 +603,21 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (_target.Width <= 0 || _target.Height <= 0)
             return CadRenderInvalidation.Full;
 
-        var rects = new List<CadScreenRect>(invalidation.DirtyScreenRects.Count);
+        _normalizedDirtyRects.Clear();
+        if (_normalizedDirtyRects.Capacity < invalidation.DirtyScreenRects.Count)
+            _normalizedDirtyRects.Capacity = invalidation.DirtyScreenRects.Count;
         foreach (var dirtyRect in invalidation.DirtyScreenRects)
         {
             var rect = ClampToTarget(dirtyRect);
             if (!rect.IsEmpty)
-                rects.Add(rect);
+                _normalizedDirtyRects.Add(rect);
         }
 
-        if (rects.Count == 0)
+        if (_normalizedDirtyRects.Count == 0)
             return CadRenderInvalidation.FromScreenRect(default);
 
-        var normalizedInvalidation = CadRenderInvalidation.FromScreenRects(rects);
+        var normalizedInvalidation = CadRenderInvalidation.FromScreenRects(
+            _normalizedDirtyRects);
         if (normalizedInvalidation.DirtyScreenRects.Count >=
             DirtyRegionCostOptimizationThreshold)
         {
@@ -639,13 +648,25 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (rect.IsEmpty)
             return 0;
 
-        if (_viewport is not null &&
-            _renderOptions.EntityBoundsQuery is { } query)
+        if (_viewport is not null)
         {
             var padding = 64.0 / Math.Max(_viewport.Zoom, double.Epsilon);
             var worldBounds = ScreenRectToWorldBounds(rect, _viewport).Inflate(padding);
-            return query(_renderOptions.ActiveOwnerBlockId, worldBounds).Count +
-                   DirtyRegionPassPenalty;
+            if (_renderOptions.EntityBoundsQueryInto is { } bufferedQuery)
+            {
+                _dirtyCostCandidateIds.Clear();
+                bufferedQuery(
+                    _renderOptions.ActiveOwnerBlockId,
+                    worldBounds,
+                    _dirtyCostCandidateIds);
+                return _dirtyCostCandidateIds.Count + DirtyRegionPassPenalty;
+            }
+
+            if (_renderOptions.EntityBoundsQuery is { } query)
+            {
+                return query(_renderOptions.ActiveOwnerBlockId, worldBounds).Count +
+                       DirtyRegionPassPenalty;
+            }
         }
 
         var targetArea = Math.Max(1.0, (double)_target.Width * _target.Height);

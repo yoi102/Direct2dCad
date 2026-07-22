@@ -28,6 +28,7 @@ internal sealed class Direct2DOleRenderer(
     private readonly HashSet<Direct2DOleRenderKey> _activeTransientKeys = [];
     private readonly HashSet<Direct2DOleRenderKey> _cachedTransientKeys = [];
     private readonly List<Direct2DOleRenderKey> _staleTransientKeys = [];
+    private readonly HashSet<Direct2DOleBitmapCache.TileKey> _visibleTileKeys = [];
     private CadTransientScene? _reconciledTransientScene;
     private long _reconciledTransientVersion = -1;
     private bool _suppressDrawDuringFrame;
@@ -476,7 +477,7 @@ internal sealed class Direct2DOleRenderer(
         if (active.CanReuseFor(size.Width, size.Height))
         {
             var tiles = ResolveVisibleTiles(full, visible, active);
-            if (tiles.All(active.Tiles.ContainsKey))
+            if (ContainsAllTiles(active, tiles))
             {
                 DrawTiles(context, full, active, tiles, opacity);
                 active.RetainTiles(tiles);
@@ -681,7 +682,7 @@ internal sealed class Direct2DOleRenderer(
         return (Math.Max(1, (int)Math.Round(pixelWidth * scale)), Math.Max(1, (int)Math.Round(pixelHeight * scale)));
     }
 
-    private static HashSet<Direct2DOleBitmapCache.TileKey> ResolveVisibleTiles(
+    private IReadOnlySet<Direct2DOleBitmapCache.TileKey> ResolveVisibleTiles(
         RawRectF full,
         RawRectF visible,
         Direct2DOleBitmapCache.Entry entry)
@@ -692,11 +693,24 @@ internal sealed class Direct2DOleRenderer(
         var minY = Math.Clamp((int)Math.Floor((visible.Top - full.Top) / height * entry.PixelHeight), 0, entry.PixelHeight - 1);
         var maxX = Math.Clamp((int)Math.Ceiling((visible.Right - full.Left) / width * entry.PixelWidth), minX + 1, entry.PixelWidth);
         var maxY = Math.Clamp((int)Math.Ceiling((visible.Bottom - full.Top) / height * entry.PixelHeight), minY + 1, entry.PixelHeight);
-        var result = new HashSet<Direct2DOleBitmapCache.TileKey>();
+        _visibleTileKeys.Clear();
         for (var row = minY / TilePixelSide; row <= (maxY - 1) / TilePixelSide; row++)
         for (var column = minX / TilePixelSide; column <= (maxX - 1) / TilePixelSide; column++)
-            result.Add(new Direct2DOleBitmapCache.TileKey(column, row));
-        return result;
+            _visibleTileKeys.Add(new Direct2DOleBitmapCache.TileKey(column, row));
+        return _visibleTileKeys;
+    }
+
+    private static bool ContainsAllTiles(
+        Direct2DOleBitmapCache.Entry entry,
+        IReadOnlySet<Direct2DOleBitmapCache.TileKey> tiles)
+    {
+        foreach (var key in tiles)
+        {
+            if (!entry.Tiles.ContainsKey(key))
+                return false;
+        }
+
+        return true;
     }
 
     private static RawRectF CreateTileDestination(

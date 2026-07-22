@@ -5,7 +5,7 @@ using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
-internal sealed class CadCircleDrawingPreviewBuilder(
+internal readonly struct CadCircleDrawingPreviewBuilder(
     CadCanvasToolMode toolMode,
     CadTransientMeasurementBuilder measurementBuilder)
 {

@@ -49,8 +49,7 @@ internal sealed class Direct2DSelectionRenderer(
 
     public void ApplyChanges(CadDocumentChangeSet changes)
     {
-        if (changes.DocumentChanged)
-            _commandListCache.Invalidate();
+        _commandListCache.ApplyChanges(changes);
     }
 
     public void ClearCache() => _commandListCache.Clear();

@@ -9,9 +9,11 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Interactions;
 
-internal sealed class CadClipboardInteractionService(
+internal readonly struct CadClipboardInteractionService(
     CadEditor editor)
 {
+    public CadDocument Document => editor.Document;
+
     public CadClipboardSnapshot? CreateSelectionSnapshot()
     {
         if (editor.Selection.Count == 0)

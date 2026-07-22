@@ -7,7 +7,7 @@ using Direct2dCad.ViewModels.Services.Styling;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
-internal sealed class CadDrawingStyleResolver(
+internal readonly struct CadDrawingStyleResolver(
     CadDocument document,
     CadLayer layer,
     ICadDrawingDefaults defaults,

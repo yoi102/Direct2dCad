@@ -6,7 +6,7 @@ using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
-internal sealed class CadArcDrawingPreviewBuilder(
+internal readonly struct CadArcDrawingPreviewBuilder(
     CadCanvasToolMode toolMode,
     CadTransientMeasurementBuilder measurementBuilder)
 {

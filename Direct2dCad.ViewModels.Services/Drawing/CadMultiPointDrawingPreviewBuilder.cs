@@ -5,7 +5,7 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
-internal sealed class CadMultiPointDrawingPreviewBuilder(
+internal readonly struct CadMultiPointDrawingPreviewBuilder(
     CadDocument document,
     CadViewport viewport,
     CadDrawingStyleResolver styleResolver)

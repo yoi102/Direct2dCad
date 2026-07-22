@@ -13,7 +13,11 @@ public sealed class CadTransientScene
         ArgumentNullException.ThrowIfNull(items);
 
         _items.Clear();
-        _items.AddRange(items.Where(x => x is not null));
+        foreach (var item in items)
+        {
+            if (item is not null)
+                _items.Add(item);
+        }
         unchecked
         {
             Version++;
