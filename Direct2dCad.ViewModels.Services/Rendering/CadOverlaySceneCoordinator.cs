@@ -8,6 +8,7 @@ namespace Direct2dCad.ViewModels.Services.Rendering;
 internal sealed class CadOverlaySceneCoordinator
 {
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
+    private readonly CadHandleSceneBuildBuffer _handleSceneBuildBuffer = new();
     private CadRenderInvalidation _lastTransientInvalidation = CadRenderInvalidation.FromScreenRect(default);
     private CadRenderInvalidation _lastHandleInvalidation = CadRenderInvalidation.FromScreenRect(default);
 
@@ -98,6 +99,7 @@ internal sealed class CadOverlaySceneCoordinator
         var items = _handleSceneBuilder.BuildSelectionHandles(
             editor.Document,
             editor.Selection.EntityIds,
+            _handleSceneBuildBuffer,
             effectiveOptions);
         HandleScene.Replace(items);
     }

@@ -61,15 +61,6 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Accelerated zoom preview 的本地化字符串。
-        /// </summary>
-        public static string AcceleratedViewportInteraction {
-            get {
-                return ResourceManager.GetString("AcceleratedViewportInteraction", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   查找类似 Add after 的本地化字符串。
         /// </summary>
         public static string AddAfter {
@@ -169,11 +160,11 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Allow nearby zoom cache fallback 的本地化字符串。
+        ///   查找类似 Allow nearby tile-scale fallback 的本地化字符串。
         /// </summary>
-        public static string ApproximateScaleFallback {
+        public static string ApproximateTileScaleFallback {
             get {
-                return ResourceManager.GetString("ApproximateScaleFallback", resourceCulture);
+                return ResourceManager.GetString("ApproximateTileScaleFallback", resourceCulture);
             }
         }
         
@@ -3135,6 +3126,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Y {
             get {
                 return ResourceManager.GetString("Y", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Zoom snapshot preview 的本地化字符串。
+        /// </summary>
+        public static string ZoomSnapshotPreview {
+            get {
+                return ResourceManager.GetString("ZoomSnapshotPreview", resourceCulture);
             }
         }
     }

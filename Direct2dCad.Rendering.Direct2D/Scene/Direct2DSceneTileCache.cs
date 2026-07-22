@@ -122,7 +122,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         if (!TryResolveDrawableProfile(
                 key,
                 viewport,
-                options.AllowApproximateScaleFallback,
+                options.AllowApproximateTileScaleFallback,
                 out var profile,
                 out var requiredTiles,
                 out var availableTiles))
@@ -377,7 +377,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         IsAntialiasingEnabled = source.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
-        AllowApproximateScaleFallback = source.AllowApproximateScaleFallback,
+        AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
         TransformScaleMultiplier = source.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
@@ -474,23 +474,21 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         CadDocument document,
         IReadOnlyCollection<BlockId> changedBlockIds)
     {
-        var referencesByDefinition = document.Entities.Values
-            .OfType<CadBlockReference>()
-            .Where(static reference => !reference.IsErased)
-            .GroupBy(static reference => reference.DefinitionBlockId)
-            .ToDictionary(static group => group.Key, static group => group.ToArray());
         var pending = new Queue<BlockId>(changedBlockIds);
         var visited = new HashSet<BlockId>();
         while (pending.TryDequeue(out var changedBlockId))
         {
-            if (!visited.Add(changedBlockId) ||
-                !referencesByDefinition.TryGetValue(changedBlockId, out var references))
-            {
+            if (!visited.Add(changedBlockId))
                 continue;
-            }
 
-            foreach (var reference in references)
+            foreach (var referenceId in document.GetBlockReferenceIds(changedBlockId))
             {
+                if (!document.TryGetEntity(referenceId, out var entity) ||
+                    entity is not CadBlockReference reference)
+                {
+                    continue;
+                }
+
                 _entitySnapshots.TryGetValue(reference.Id, out var previous);
                 var current = CreateSnapshot(reference);
                 if (previous.IsValid)
@@ -507,12 +505,12 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private bool TryResolveDrawableProfile(
         TileProfileKey requestedKey,
         CadViewport viewport,
-        bool allowApproximateScaleFallback,
+        bool allowApproximateTileScaleFallback,
         out TileProfile profile,
         out IReadOnlyList<TileCoordinate> requiredTiles,
         out IReadOnlyList<TileCoordinate> availableTiles)
     {
-        FillCandidateProfiles(requestedKey, viewport.Zoom, allowApproximateScaleFallback);
+        FillCandidateProfiles(requestedKey, viewport.Zoom, allowApproximateTileScaleFallback);
         foreach (var candidate in _candidateProfiles)
         {
             FillVisibleTiles(viewport, candidate.Zoom, _requiredTiles);
@@ -555,14 +553,14 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private void FillCandidateProfiles(
         TileProfileKey requestedKey,
         double zoom,
-        bool allowApproximateScaleFallback)
+        bool allowApproximateTileScaleFallback)
     {
         _candidateProfiles.Clear();
         _profiles.TryGetValue(requestedKey, out var exact);
         if (exact is { Tiles.Count: > 0 })
             _candidateProfiles.Add(exact);
 
-        if (!allowApproximateScaleFallback)
+        if (!allowApproximateTileScaleFallback)
             return;
 
         var fallbackStart = _candidateProfiles.Count;

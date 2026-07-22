@@ -1355,11 +1355,11 @@
   <data name="ShowFramesPerSecond" xml:space="preserve">
     <value>Show frames per second</value>
   </data>
-  <data name="AcceleratedViewportInteraction" xml:space="preserve">
-    <value>Accelerated zoom preview</value>
+  <data name="ZoomSnapshotPreview" xml:space="preserve">
+    <value>Zoom snapshot preview</value>
   </data>
-  <data name="ApproximateScaleFallback" xml:space="preserve">
-    <value>Allow nearby zoom cache fallback</value>
+  <data name="ApproximateTileScaleFallback" xml:space="preserve">
+    <value>Allow nearby tile-scale fallback</value>
   </data>
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>Level of detail optimization</value>

@@ -572,7 +572,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return CadCanvasInteractionResult.HandledOnly;
         }
 
-        if (UserSettings.Rendering.IsViewportInteractionPreviewEnabled)
+        if (UserSettings.Rendering.IsZoomSnapshotPreviewEnabled)
             Direct2DImageRenderHost.BeginViewportInteraction();
         _viewportInteractionRequiresHandleSceneUpdate = true;
         CadEditor.Execute(new ZoomViewportCommand(screen, factor));
@@ -1461,7 +1461,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private bool RenderZoomInteractionPreview()
     {
-        return UserSettings.Rendering.IsViewportInteractionPreviewEnabled &&
+        return UserSettings.Rendering.IsZoomSnapshotPreviewEnabled &&
                RenderViewportInteractionPreview();
     }
 
@@ -1608,8 +1608,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = UserSettings.Rendering.IsLevelOfDetailEnabled,
-            AllowApproximateScaleFallback =
-                UserSettings.Rendering.AllowApproximateScaleFallback,
+            AllowApproximateTileScaleFallback =
+                UserSettings.Rendering.AllowApproximateTileScaleFallback,
             EntityBoundsQuery = CadEditor.SpatialIndex.Query,
             EntityBoundsQueryInto = CadEditor.SpatialIndex.Query,
             HiddenEntityIds = _gripDrag.HiddenEntityIds

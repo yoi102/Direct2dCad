@@ -20,11 +20,11 @@
                   Content="{I18N {x:Static r:UserSettingsLangKeys.ShowFramesPerSecond}}"
                   IsChecked="{Binding ShowFramesPerSecond}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.AcceleratedViewportInteraction}}"
-                  IsChecked="{Binding IsViewportInteractionPreviewEnabled}" />
+                  Content="{I18N {x:Static r:UserSettingsLangKeys.ZoomSnapshotPreview}}"
+                  IsChecked="{Binding IsZoomSnapshotPreviewEnabled}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.ApproximateScaleFallback}}"
-                  IsChecked="{Binding AllowApproximateScaleFallback}" />
+                  Content="{I18N {x:Static r:UserSettingsLangKeys.ApproximateTileScaleFallback}}"
+                  IsChecked="{Binding AllowApproximateTileScaleFallback}" />
         <CheckBox Margin="0,0,0,12"
                   Content="{I18N {x:Static r:UserSettingsLangKeys.LevelOfDetailOptimization}}"
                   IsChecked="{Binding IsLevelOfDetailEnabled}" />

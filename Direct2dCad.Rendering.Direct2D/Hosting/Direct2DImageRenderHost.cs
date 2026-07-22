@@ -476,7 +476,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                    _document,
                    _viewport,
                    _renderOptions,
-                   buildStep: true);
+                   buildStep: true,
+                   handleScene: _handleScene);
     }
 
     private void RenderCore(
@@ -519,7 +520,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                         _document,
                         _viewport,
                         _renderOptions,
-                        buildStep: false);
+                        buildStep: false,
+                        handleScene: _handleScene);
                 }
 
                 _target.DrawFrame(context =>
@@ -676,7 +678,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             IsAntialiasingEnabled = _renderOptions.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = _renderOptions.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = _renderOptions.IsLevelOfDetailEnabled,
-            AllowApproximateScaleFallback = _renderOptions.AllowApproximateScaleFallback,
+            AllowApproximateTileScaleFallback = _renderOptions.AllowApproximateTileScaleFallback,
             TransformScaleMultiplier = _renderOptions.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = _renderOptions.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = _renderOptions.MinimumScreenStrokeWidth,

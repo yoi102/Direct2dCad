@@ -1134,11 +1134,11 @@
   <data name="ShowFramesPerSecond" xml:space="preserve">
     <value>フレームレートを表示</value>
   </data>
-  <data name="AcceleratedViewportInteraction" xml:space="preserve">
-    <value>ズームプレビューを高速化</value>
+  <data name="ZoomSnapshotPreview" xml:space="preserve">
+    <value>ズームスナップショットプレビュー</value>
   </data>
-  <data name="ApproximateScaleFallback" xml:space="preserve">
-    <value>近いズームキャッシュによる代替表示を許可</value>
+  <data name="ApproximateTileScaleFallback" xml:space="preserve">
+    <value>近いズームレベルのタイルキャッシュ代替を許可</value>
   </data>
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>LOD 最適化を有効にする</value>

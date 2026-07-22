@@ -17,10 +17,10 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         IsAntialiasingEnabled = settings.IsAntialiasingEnabled;
         IsTextAntialiasingEnabled = settings.IsTextAntialiasingEnabled;
         ShowFramesPerSecond = settings.ShowFramesPerSecond;
-        IsViewportInteractionPreviewEnabled =
-            settings.IsViewportInteractionPreviewEnabled;
+        IsZoomSnapshotPreviewEnabled =
+            settings.IsZoomSnapshotPreviewEnabled;
         IsLevelOfDetailEnabled = settings.IsLevelOfDetailEnabled;
-        AllowApproximateScaleFallback = settings.AllowApproximateScaleFallback;
+        AllowApproximateTileScaleFallback = settings.AllowApproximateTileScaleFallback;
     }
 
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
@@ -30,24 +30,24 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     [ObservableProperty] public partial bool ShowFramesPerSecond { get; set; }
 
     [ObservableProperty]
-    public partial bool IsViewportInteractionPreviewEnabled { get; set; }
+    public partial bool IsZoomSnapshotPreviewEnabled { get; set; }
 
     [ObservableProperty]
     public partial bool IsLevelOfDetailEnabled { get; set; }
 
     [ObservableProperty]
-    public partial bool AllowApproximateScaleFallback { get; set; }
+    public partial bool AllowApproximateTileScaleFallback { get; set; }
 
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
         settings.Rendering.IsTextAntialiasingEnabled = IsTextAntialiasingEnabled;
         settings.Rendering.ShowFramesPerSecond = ShowFramesPerSecond;
-        settings.Rendering.IsViewportInteractionPreviewEnabled =
-            IsViewportInteractionPreviewEnabled;
+        settings.Rendering.IsZoomSnapshotPreviewEnabled =
+            IsZoomSnapshotPreviewEnabled;
         settings.Rendering.IsLevelOfDetailEnabled = IsLevelOfDetailEnabled;
-        settings.Rendering.AllowApproximateScaleFallback =
-            AllowApproximateScaleFallback;
+        settings.Rendering.AllowApproximateTileScaleFallback =
+            AllowApproximateTileScaleFallback;
         return true;
     }
 

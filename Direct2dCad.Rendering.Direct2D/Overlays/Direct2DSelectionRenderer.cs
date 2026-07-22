@@ -19,12 +19,41 @@ internal sealed class Direct2DSelectionRenderer(
     Direct2DStyleResourceCache styleResources,
     Direct2DHandleRenderer handleRenderer,
     Direct2DEntityOrderCache entityOrderCache,
-    Direct2DRenderStatisticsCollector statistics)
+    Direct2DRenderStatisticsCollector statistics) : IDisposable
 {
     private const byte SelectedSolidFillMaximumAlpha = 64;
     private const int SpatiallyIndexedSelectionThreshold = 256;
     private readonly HashSet<BlockId> _visitedBlocks = [];
     private readonly List<EntityId> _selectionCandidateIds = new(256);
+    private readonly Direct2DSelectionCommandListCache _commandListCache = new(
+        resourceCache,
+        statistics);
+
+    public bool PrepareCache(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadHandleScene? scene,
+        CadRenderOptions options,
+        bool buildStep)
+    {
+        return _commandListCache.Prepare(
+            context,
+            document,
+            viewport,
+            scene,
+            options,
+            DrawSelectionReferenceForCache,
+            buildStep);
+    }
+
+    public void ApplyChanges(CadDocumentChangeSet changes)
+    {
+        if (changes.DocumentChanged)
+            _commandListCache.Invalidate();
+    }
+
+    public void ClearCache() => _commandListCache.Clear();
 
     public void Draw(
         ID2D1DeviceContext context,
@@ -40,6 +69,17 @@ internal sealed class Direct2DSelectionRenderer(
         var renderWorldBounds = options.DirtyWorldBounds is { IsEmpty: false } dirty
             ? dirty
             : viewport.VisibleWorldBounds;
+        if (_commandListCache.TryDraw(
+                context,
+                document,
+                viewport,
+                scene,
+                options,
+                DrawSelectionReferenceForCache))
+        {
+            DrawNonSelectionItems(context, viewport, scene.NonSelectionItems, options);
+            return;
+        }
         if (CanUseSpatialSelectionQuery(scene, options, renderWorldBounds))
         {
             DrawSpatiallyQueriedSelections(
@@ -191,6 +231,25 @@ internal sealed class Direct2DSelectionRenderer(
             dirtyWorldBounds,
             options,
             visitedBlocks);
+    }
+
+    private void DrawSelectionReferenceForCache(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadSelectionEntityReference reference,
+        CadRectD? renderWorldBounds,
+        CadRenderOptions options)
+    {
+        _visitedBlocks.Clear();
+        DrawSelectionReference(
+            context,
+            document,
+            viewport,
+            reference,
+            renderWorldBounds,
+            options,
+            _visitedBlocks);
     }
 
     private void DrawSelectionEntity(
@@ -625,4 +684,6 @@ internal sealed class Direct2DSelectionRenderer(
             color.G,
             color.B);
     }
+
+    public void Dispose() => _commandListCache.Dispose();
 }

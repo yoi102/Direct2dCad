@@ -8,8 +8,8 @@ public static class UserSettingsLangKeys
     public const string Interaction = nameof(Interaction);
     public const string Antialiasing = nameof(Antialiasing);
     public const string ShowFramesPerSecond = nameof(ShowFramesPerSecond);
-    public const string AcceleratedViewportInteraction = nameof(AcceleratedViewportInteraction);
-    public const string ApproximateScaleFallback = nameof(ApproximateScaleFallback);
+    public const string ZoomSnapshotPreview = nameof(ZoomSnapshotPreview);
+    public const string ApproximateTileScaleFallback = nameof(ApproximateTileScaleFallback);
     public const string LevelOfDetailOptimization = nameof(LevelOfDetailOptimization);
     public const string SelectedEntity = nameof(SelectedEntity);
     public const string Grip = nameof(Grip);

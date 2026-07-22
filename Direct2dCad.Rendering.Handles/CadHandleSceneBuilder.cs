@@ -20,6 +20,52 @@ public sealed class CadHandleSceneBuilder
         selectedEntityIds.TryGetNonEnumeratedCount(out var selectedEntityCount);
         var items = new List<CadHandleItem>(selectedEntityCount);
         var selectedEntities = new List<CadEntity>(selectedEntityCount);
+        BuildSelectionHandlesCore(
+            document,
+            selectedEntityIds,
+            options,
+            items,
+            selectedEntities);
+        return items;
+    }
+
+    public IReadOnlyList<CadHandleItem> BuildSelectionHandles(
+        CadDocument document,
+        IEnumerable<EntityId> selectedEntityIds,
+        CadHandleSceneBuildBuffer buffer,
+        CadHandleSceneBuildOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(selectedEntityIds);
+        ArgumentNullException.ThrowIfNull(buffer);
+
+        options ??= CadHandleSceneBuildOptions.Default;
+        buffer.Items.Clear();
+        buffer.SelectedEntities.Clear();
+        if (selectedEntityIds.TryGetNonEnumeratedCount(out var selectedEntityCount))
+        {
+            if (buffer.Items.Capacity < selectedEntityCount)
+                buffer.Items.Capacity = selectedEntityCount;
+            if (buffer.SelectedEntities.Capacity < selectedEntityCount)
+                buffer.SelectedEntities.Capacity = selectedEntityCount;
+        }
+
+        BuildSelectionHandlesCore(
+            document,
+            selectedEntityIds,
+            options,
+            buffer.Items,
+            buffer.SelectedEntities);
+        return buffer.Items;
+    }
+
+    private static void BuildSelectionHandlesCore(
+        CadDocument document,
+        IEnumerable<EntityId> selectedEntityIds,
+        CadHandleSceneBuildOptions options,
+        List<CadHandleItem> items,
+        List<CadEntity> selectedEntities)
+    {
         foreach (var entityId in selectedEntityIds)
         {
             if (!TryGetSelectableEntity(document, entityId, out var entity))
@@ -56,8 +102,6 @@ public sealed class CadHandleSceneBuilder
         {
             AddAggregateMoveGrip(items, selectedEntities, options);
         }
-
-        return items;
     }
 
     private static void AddAggregateMoveGrip(

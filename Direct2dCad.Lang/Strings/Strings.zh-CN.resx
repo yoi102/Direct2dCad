@@ -1134,11 +1134,11 @@
   <data name="ShowFramesPerSecond" xml:space="preserve">
     <value>显示帧率</value>
   </data>
-  <data name="AcceleratedViewportInteraction" xml:space="preserve">
-    <value>加速缩放预览</value>
+  <data name="ZoomSnapshotPreview" xml:space="preserve">
+    <value>缩放快照预览</value>
   </data>
-  <data name="ApproximateScaleFallback" xml:space="preserve">
-    <value>允许使用邻近缩放缓存临时显示</value>
+  <data name="ApproximateTileScaleFallback" xml:space="preserve">
+    <value>允许使用邻近缩放级别的图块缓存</value>
   </data>
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>启用细节层级优化</value>

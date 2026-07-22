@@ -108,6 +108,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _tileCache.ApplyChanges(document, changes);
         _commandListCache.ApplyChanges(document, changes);
+        _selectionRenderer.ApplyChanges(changes);
         if (AffectsEntityOrder(changes))
             _entityOrderCache.Invalidate();
         else if (AffectsOwnerMetrics(changes))
@@ -125,6 +126,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _tileCache.Clear();
         _commandListCache.Clear();
+        _selectionRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _transientSceneRenderer.Clear();
         _oleRenderer.Clear();
@@ -141,6 +143,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _tileCache.Clear();
         _commandListCache.Clear();
+        _selectionRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildAll(document);
     }
@@ -151,6 +154,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _tileCache.InvalidateEntity(document, entityId);
         _commandListCache.InvalidateEntity(entityId);
+        _selectionRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildEntityResources(document, entityId);
     }
@@ -160,6 +164,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _tileCache.RemoveEntity(entityId);
         _commandListCache.Clear();
+        _selectionRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _resourceCache.RemoveEntity(entityId);
         _oleRenderer.RemoveEntity(entityId);
@@ -285,7 +290,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions? options = null,
-        bool buildStep = true)
+        bool buildStep = true,
+        CadHandleScene? handleScene = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(viewport);
@@ -296,6 +302,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         options ??= new CadRenderOptions();
         if (buildStep)
             _resourceCache.BeginGeometryRealizationBuildBatch();
+        var selectionBuildPending = _selectionRenderer.PrepareCache(
+            context,
+            document,
+            viewport,
+            handleScene,
+            options,
+            buildStep);
+        if (selectionBuildPending)
+            return true;
         var orderedEntities = _entityOrderCache.GetOrderedEntities(
             document,
             options.ActiveOwnerBlockId);
@@ -611,7 +626,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsAntialiasingEnabled = source.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
-        AllowApproximateScaleFallback = source.AllowApproximateScaleFallback,
+        AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
         TransformScaleMultiplier = source.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
@@ -695,7 +710,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsAntialiasingEnabled = options.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
-        AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
+        AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
         TransformScaleMultiplier = options.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
@@ -718,7 +733,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IsAntialiasingEnabled = options.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
-        AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
+        AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
         TransformScaleMultiplier = options.TransformScaleMultiplier,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
@@ -817,6 +832,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
         _tileCache.Dispose();
         _commandListCache.Dispose();
+        _selectionRenderer.Dispose();
         _resourceCache.Dispose();
         _transientSceneRenderer.Dispose();
         _oleRenderer.Dispose();

@@ -8,6 +8,7 @@ internal sealed class Direct2DRenderStatisticsCollector
     private bool _isFrameActive;
     private int _dirtyRegionCount;
     private int _pendingCommandListBuildCount;
+    private int _pendingSelectionCommandListBuildCount;
     private int _pendingTileBuildCount;
 
     public int ScenePassCount { get; private set; }
@@ -16,6 +17,8 @@ internal sealed class Direct2DRenderStatisticsCollector
     public int BlockReferenceCount { get; private set; }
     public int ExpandedBlockEntityCount { get; private set; }
     public int SelectionEntityCount { get; private set; }
+    public int SelectionCommandListReplayCount { get; private set; }
+    public int SelectionCommandListBuildCount { get; private set; }
     public int CommandListReplayCount { get; private set; }
     public int CommandListBuildCount { get; private set; }
     public int TileReplayCount { get; private set; }
@@ -37,6 +40,8 @@ internal sealed class Direct2DRenderStatisticsCollector
         BlockReferenceCount = 0;
         ExpandedBlockEntityCount = 0;
         SelectionEntityCount = 0;
+        SelectionCommandListReplayCount = 0;
+        SelectionCommandListBuildCount = _pendingSelectionCommandListBuildCount;
         CommandListReplayCount = 0;
         CommandListBuildCount = _pendingCommandListBuildCount;
         TileReplayCount = 0;
@@ -47,6 +52,7 @@ internal sealed class Direct2DRenderStatisticsCollector
         GeometryRealizationBuildCount = 0;
         GeometryRealizationFallbackCount = 0;
         _pendingCommandListBuildCount = 0;
+        _pendingSelectionCommandListBuildCount = 0;
         _pendingTileBuildCount = 0;
     }
 
@@ -59,6 +65,15 @@ internal sealed class Direct2DRenderStatisticsCollector
     public void RecordBlockReference() => BlockReferenceCount++;
     public void RecordExpandedBlockEntity() => ExpandedBlockEntityCount++;
     public void RecordSelectionEntity() => SelectionEntityCount++;
+    public void RecordSelectionEntities(int count) => SelectionEntityCount += Math.Max(0, count);
+    public void RecordSelectionCommandListReplay() => SelectionCommandListReplayCount++;
+    public void RecordSelectionCommandListBuild()
+    {
+        if (_isFrameActive)
+            SelectionCommandListBuildCount++;
+        else
+            _pendingSelectionCommandListBuildCount++;
+    }
     public void RecordCommandListReplay() => CommandListReplayCount++;
     public void RecordCommandListBuild()
     {
@@ -94,6 +109,8 @@ internal sealed class Direct2DRenderStatisticsCollector
         BlockReferenceCount,
         ExpandedBlockEntityCount,
         SelectionEntityCount,
+        SelectionCommandListReplayCount,
+        SelectionCommandListBuildCount,
         CommandListReplayCount,
         CommandListBuildCount,
         TileReplayCount,

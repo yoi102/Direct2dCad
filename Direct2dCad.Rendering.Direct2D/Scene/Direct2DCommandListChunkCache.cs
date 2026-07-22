@@ -423,7 +423,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         IsAntialiasingEnabled = options.IsAntialiasingEnabled,
         IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
         IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
-        AllowApproximateScaleFallback = options.AllowApproximateScaleFallback,
+        AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
         TransformScaleMultiplier = viewportZoom,
         KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
         MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,

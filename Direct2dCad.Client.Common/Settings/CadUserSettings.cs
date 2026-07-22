@@ -49,11 +49,11 @@ public sealed class CadUserSettings
             IsAntialiasingEnabled = source.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = source.Rendering.IsTextAntialiasingEnabled,
             ShowFramesPerSecond = source.Rendering.ShowFramesPerSecond,
-            IsViewportInteractionPreviewEnabled =
-                source.Rendering.IsViewportInteractionPreviewEnabled,
+            IsZoomSnapshotPreviewEnabled =
+                source.Rendering.IsZoomSnapshotPreviewEnabled,
             IsLevelOfDetailEnabled = source.Rendering.IsLevelOfDetailEnabled,
-            AllowApproximateScaleFallback =
-                source.Rendering.AllowApproximateScaleFallback
+            AllowApproximateTileScaleFallback =
+                source.Rendering.AllowApproximateTileScaleFallback
         };
         Interaction = new CadInteractionUserSettings
         {
@@ -99,9 +99,9 @@ public sealed class CadRenderingUserSettings
     public bool IsAntialiasingEnabled { get; set; } = true;
     public bool IsTextAntialiasingEnabled { get; set; } = true;
     public bool ShowFramesPerSecond { get; set; } = true;
-    public bool IsViewportInteractionPreviewEnabled { get; set; } = false;
+    public bool IsZoomSnapshotPreviewEnabled { get; set; } = false;
     public bool IsLevelOfDetailEnabled { get; set; } = true;
-    public bool AllowApproximateScaleFallback { get; set; } = false;
+    public bool AllowApproximateTileScaleFallback { get; set; } = false;
 
     internal void Normalize()
     {
