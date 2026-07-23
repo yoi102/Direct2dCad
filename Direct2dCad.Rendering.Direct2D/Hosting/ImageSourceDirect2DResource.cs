@@ -37,6 +37,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     private ID3D11Texture2D? _d3d11BackBuffer;
     private IDXGISurface? _dxgiSurface;
     private ID2D1Bitmap1? _targetBitmap;
+    private ID3D11Texture2D? _baseSceneTexture;
     private ID3D11Texture2D? _interactionSnapshotTexture;
     private IDXGISurface? _interactionSnapshotSurface;
     private ID2D1Bitmap1? _interactionSnapshotBitmap;
@@ -96,6 +97,8 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         _d3d11BackBuffer != null &&
         _targetBitmap != null &&
         _sharedSurface9 != null;
+
+    public bool HasBaseSceneSnapshot => _baseSceneTexture is not null;
 
     public ImageSourceDirect2DResource()
     {
@@ -166,19 +169,21 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         _isDrawing = true;
     }
 
-    public void EndDraw(CadScreenRect? dirtyRect = null)
+    public void EndDraw(CadScreenRect? dirtyRect = null, bool present = true)
     {
         if (dirtyRect is not { IsEmpty: false } rect)
         {
-            EndDraw((IReadOnlyList<CadScreenRect>?)null);
+            EndDraw((IReadOnlyList<CadScreenRect>?)null, present);
             return;
         }
 
         _singleDirtyRect[0] = rect;
-        EndDraw(_singleDirtyRect);
+        EndDraw(_singleDirtyRect, present);
     }
 
-    public void EndDraw(IReadOnlyList<CadScreenRect>? dirtyRects)
+    public void EndDraw(
+        IReadOnlyList<CadScreenRect>? dirtyRects,
+        bool present = true)
     {
         ThrowIfDisposed();
 
@@ -204,6 +209,9 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
                 result.CheckError();
             }
 
+            if (!present)
+                return;
+
             _pendingPresentDirtyRects = dirtyRects;
             try
             {
@@ -227,7 +235,10 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         }
     }
 
-    public void DrawFrame(Action<ID2D1DeviceContext> drawAction, CadScreenRect? dirtyRect = null)
+    public void DrawFrame(
+        Action<ID2D1DeviceContext> drawAction,
+        CadScreenRect? dirtyRect = null,
+        bool present = true)
     {
         if (drawAction == null)
             throw new ArgumentNullException(nameof(drawAction));
@@ -236,10 +247,13 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         BeginDraw();
         drawAction(_d2dContext);
-        EndDraw(dirtyRect);
+        EndDraw(dirtyRect, present);
     }
 
-    public void DrawFrame(Action<ID2D1DeviceContext> drawAction, IReadOnlyList<CadScreenRect>? dirtyRects)
+    public void DrawFrame(
+        Action<ID2D1DeviceContext> drawAction,
+        IReadOnlyList<CadScreenRect>? dirtyRects,
+        bool present = true)
     {
         if (drawAction == null)
             throw new ArgumentNullException(nameof(drawAction));
@@ -248,7 +262,122 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         BeginDraw();
         drawAction(_d2dContext);
-        EndDraw(dirtyRects);
+        EndDraw(dirtyRects, present);
+    }
+
+    public bool CaptureBaseScene(IReadOnlyList<CadScreenRect>? dirtyRects)
+    {
+        ThrowIfDisposed();
+        EnsureTargetReady();
+        if (_isDrawing || _d3dDevice is null || _d3dContext is null)
+            return false;
+
+        try
+        {
+            EnsureBaseSceneResources();
+            CopyTextureRegions(
+                _d3d11BackBuffer!,
+                _baseSceneTexture,
+                dirtyRects);
+            return true;
+        }
+        catch
+        {
+            ReleaseBaseScene();
+            return false;
+        }
+    }
+
+    public bool RestoreBaseScene(IReadOnlyList<CadScreenRect>? dirtyRects)
+    {
+        ThrowIfDisposed();
+        EnsureTargetReady();
+        if (_isDrawing || _d3dContext is null || _baseSceneTexture is null)
+            return false;
+
+        try
+        {
+            CopyTextureRegions(
+                _baseSceneTexture,
+                _d3d11BackBuffer!,
+                dirtyRects);
+            return true;
+        }
+        catch
+        {
+            ReleaseBaseScene();
+            return false;
+        }
+    }
+
+    [MemberNotNull(nameof(_baseSceneTexture))]
+    private void EnsureBaseSceneResources()
+    {
+        if (_baseSceneTexture is not null)
+            return;
+        if (_d3dDevice is null)
+            throw new InvalidOperationException("Direct3D device resources are not ready.");
+
+        _baseSceneTexture = _d3dDevice.CreateTexture2D(new Texture2DDescription
+        {
+            Width = (uint)_width,
+            Height = (uint)_height,
+            MipLevels = 1,
+            ArraySize = 1,
+            Format = DXGIFormat.B8G8R8A8_UNorm,
+            SampleDescription = new SampleDescription(1, 0),
+            Usage = ResourceUsage.Default,
+            BindFlags = BindFlags.None,
+            CPUAccessFlags = CpuAccessFlags.None,
+            MiscFlags = ResourceOptionFlags.None
+        });
+    }
+
+    private void CopyTextureRegions(
+        ID3D11Texture2D source,
+        ID3D11Texture2D destination,
+        IReadOnlyList<CadScreenRect>? dirtyRects)
+    {
+        if (_d3dContext is null)
+            throw new InvalidOperationException("Direct3D device context is not ready.");
+
+        if (dirtyRects is not { Count: > 0 })
+        {
+            _d3dContext.CopyResource(destination, source);
+            _d3dContext.Flush();
+            return;
+        }
+
+        var copiedAnyRegion = false;
+        foreach (var dirtyRect in dirtyRects)
+        {
+            var left = Math.Clamp(dirtyRect.X, 0, _width);
+            var top = Math.Clamp(dirtyRect.Y, 0, _height);
+            var right = (int)Math.Clamp(
+                (long)dirtyRect.X + dirtyRect.Width,
+                left,
+                _width);
+            var bottom = (int)Math.Clamp(
+                (long)dirtyRect.Y + dirtyRect.Height,
+                top,
+                _height);
+            if (right <= left || bottom <= top)
+                continue;
+
+            _d3dContext.CopySubresourceRegion(
+                destination,
+                0,
+                (uint)left,
+                (uint)top,
+                0,
+                source,
+                0,
+                new Box(left, top, 0, right, bottom, 1));
+            copiedAnyRegion = true;
+        }
+
+        if (copiedAnyRegion)
+            _d3dContext.Flush();
     }
 
     public bool CaptureFrameSnapshot()
@@ -374,6 +503,12 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         _interactionSnapshotTexture?.Dispose();
         _interactionSnapshotTexture = null;
+    }
+
+    public void ReleaseBaseScene()
+    {
+        _baseSceneTexture?.Dispose();
+        _baseSceneTexture = null;
     }
 
     private IReadOnlyList<IntRect> PrepareIntRects(IReadOnlyList<CadScreenRect> dirtyRects)
@@ -718,6 +853,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     private void ReleaseImageTarget()
     {
+        ReleaseBaseScene();
         ReleaseFrameSnapshot();
 
         if (_d2dContext != null)

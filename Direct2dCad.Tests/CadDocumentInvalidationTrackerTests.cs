@@ -106,6 +106,47 @@ public sealed class CadDocumentInvalidationTrackerTests
     }
 
     [Fact]
+    public void MovingBlockReference_InvalidatesScaledDefinitionStrokeExtent()
+    {
+        var document = CadDocument.Create("Block dirty regions");
+        var child = document.AddLine(
+            new CadPointD(0, 0),
+            new CadPointD(20, 0));
+        var definitionId = document.CreateBlockDefinition(
+            "Wide block",
+            CadPointD.Origin);
+        document.MoveEntityToBlock(child.Id, definitionId);
+        var reference = document.AddBlockReference(
+            definitionId,
+            new CadPointD(400, 400),
+            scaleX: 10,
+            scaleY: 10);
+        var viewport = CreateViewport();
+        var calculator = new CadRenderInvalidationCalculator(
+            document,
+            viewport,
+            1000,
+            1000,
+            entity => new CadTransientStyle(
+                CadColor.FromRgb(255, 255, 255),
+                entity.Id.Equals(child.Id) ? 40.0 : 1.0));
+        var tracker = new CadDocumentInvalidationTracker();
+        tracker.Reset(document, calculator);
+
+        reference.SetPosition(new CadPointD(500, 400));
+        document.RefreshBlockReferenceBounds();
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.ForEntity(
+                reference.Id,
+                CadEntityChangeKind.Geometry),
+            calculator);
+
+        Assert.False(invalidation.IsFull);
+        Assert.True(invalidation.DirtyScreenRect.Height >= 400);
+    }
+
+    [Fact]
     public void LayoutStructureChange_RequiresFullRender()
     {
         var document = CadDocument.Create("Dirty regions");

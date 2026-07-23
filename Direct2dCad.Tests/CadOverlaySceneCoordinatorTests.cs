@@ -184,6 +184,60 @@ public sealed class CadOverlaySceneCoordinatorTests
         Assert.True(invalidation.DirtyScreenRect.Height >= 400);
     }
 
+    [Fact]
+    public void BlockMovePreview_WithLocalBounds_UsesDefinitionStrokeExtent()
+    {
+        var document = CadDocument.Create("Block transient dirty regions");
+        var child = document.AddLine(
+            new CadPointD(0, 0),
+            new CadPointD(20, 0));
+        var definitionId = document.CreateBlockDefinition(
+            "Wide transient block",
+            CadPointD.Origin);
+        document.MoveEntityToBlock(child.Id, definitionId);
+        var reference = document.AddBlockReference(
+            definitionId,
+            new CadPointD(400, 400),
+            scaleX: 10,
+            scaleY: 10);
+        var editor = CreateEditor(document);
+        var calculator = new CadRenderInvalidationCalculator(
+            document,
+            editor.Viewport,
+            1000,
+            1000,
+            entity => new CadTransientStyle(
+                CadColor.FromRgb(255, 255, 255),
+                entity.Id.Equals(child.Id) ? 40.0 : 1.0));
+        var style = new CadTransientStyle(
+            CadColor.FromRgb(64, 255, 128),
+            1.0);
+        var preview = new CadTransientBlockReference(
+            reference.DefinitionBlockId,
+            reference.Position,
+            reference.RotationRadians,
+            reference.ScaleX,
+            reference.ScaleY,
+            reference.LayerId,
+            reference.ColorSource,
+            reference.GraphicStyleId,
+            style);
+        var scene = new CadTransientScene();
+        scene.Replace(
+        [
+            new CadTransientGroup(
+                [preview],
+                CadMatrixD.CreateTranslation(new CadVectorD(100, 0)),
+                style,
+                reference.Bounds)
+        ]);
+
+        var invalidation = calculator.CreateTransientSceneInvalidation(scene);
+
+        Assert.False(invalidation.IsFull);
+        Assert.True(invalidation.DirtyScreenRect.Height >= 400);
+    }
+
     private static CadEditor CreateEditor(CadDocument document)
     {
         var editor = new CadEditor(document);

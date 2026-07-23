@@ -14,10 +14,12 @@ public partial class CadCanvas : IDisposable
     private CadPointD _pendingPointerScreen;
     private bool _pointerMovePending;
     private bool _pointerRenderScheduled;
+    private bool _renderFlushScheduled;
     private bool _viewportPresentationScheduled;
     private bool _renderCacheBuildScheduled;
     private bool _renderCacheBuildDeferred;
     private bool _disposed;
+    private Action? _pendingRenderFlush;
     private readonly DispatcherTimer _viewportInteractionCompletionTimer;
 
     public CadCanvas()
@@ -83,6 +85,7 @@ public partial class CadCanvas : IDisposable
         {
             canvas._viewportInteractionCompletionTimer.Stop();
             oldViewModel.CancelViewportInteractionPreview();
+            oldViewModel.SetRenderScheduler(null);
             oldViewModel.PropertyChanged -= canvas.OnDocumentViewModelPropertyChanged;
             oldViewModel.Direct2DImageRenderHost.RenderCacheBuildRequested -=
                 canvas.OnRenderCacheBuildRequested;
@@ -91,6 +94,7 @@ public partial class CadCanvas : IDisposable
 
         if (e.NewValue is CadDocumentViewModel newViewModel)
         {
+            newViewModel.SetRenderScheduler(canvas.ScheduleRenderFlush);
             newViewModel.PropertyChanged += canvas.OnDocumentViewModelPropertyChanged;
             newViewModel.Direct2DImageRenderHost.RenderCacheBuildRequested +=
                 canvas.OnRenderCacheBuildRequested;
@@ -246,7 +250,7 @@ public partial class CadCanvas : IDisposable
             if (buildPending)
                 OnRenderCacheBuildRequested(sender, EventArgs.Empty);
             else
-                viewModel.RequestRender();
+                viewModel.RequestRenderCacheRefresh();
         });
     }
 
@@ -369,6 +373,36 @@ public partial class CadCanvas : IDisposable
         CompositionTarget.Rendering += OnCompositionTargetRendering;
     }
 
+    private void ScheduleRenderFlush(Action flush)
+    {
+        if (_disposed)
+            return;
+
+        _pendingRenderFlush = flush ?? throw new ArgumentNullException(nameof(flush));
+        if (_renderFlushScheduled)
+            return;
+
+        _renderFlushScheduled = true;
+        CompositionTarget.Rendering += OnRenderFlush;
+    }
+
+    private void OnRenderFlush(object? sender, EventArgs e)
+    {
+        UnscheduleRenderFlush();
+        var flush = _pendingRenderFlush;
+        _pendingRenderFlush = null;
+        flush?.Invoke();
+    }
+
+    private void UnscheduleRenderFlush()
+    {
+        if (!_renderFlushScheduled)
+            return;
+
+        CompositionTarget.Rendering -= OnRenderFlush;
+        _renderFlushScheduled = false;
+    }
+
     private void OnCompositionTargetRendering(object? sender, EventArgs e)
     {
         UnschedulePointerMove();
@@ -489,11 +523,14 @@ public partial class CadCanvas : IDisposable
         _disposed = true;
         if (DocumentViewModel is { } viewModel)
         {
+            viewModel.SetRenderScheduler(null);
             viewModel.Direct2DImageRenderHost.RenderCacheBuildRequested -=
                 OnRenderCacheBuildRequested;
         }
         CancelPendingViewportInteraction();
         UnschedulePointerMove();
+        UnscheduleRenderFlush();
+        _pendingRenderFlush = null;
         d3d11ImageSource.Dispose();
     }
 }

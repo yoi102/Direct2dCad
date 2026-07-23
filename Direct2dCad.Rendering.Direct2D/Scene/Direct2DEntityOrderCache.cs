@@ -1,3 +1,4 @@
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -9,16 +10,20 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 internal sealed class Direct2DEntityOrderCache : IDisposable
 {
     internal const int MaximumEstimatedRenderWork = 1_000_000;
-    private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _entitiesByOwner = [];
+    private readonly Dictionary<BlockId, Direct2DOwnerRenderPacket> _packetsByOwner = [];
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _oleEntitiesByOwner = [];
-    private readonly Dictionary<BlockId, IReadOnlyDictionary<EntityId, int>> _ranksByOwner = [];
-    private readonly Dictionary<BlockId, CadRectD> _boundsByOwner = [];
     private readonly Dictionary<BlockId, int> _estimatedRenderWorkByOwner = [];
+    private readonly HashSet<Direct2DOwnerRenderPacket> _updatedPackets = [];
     private readonly Direct2DBackgroundPreparationService _backgroundPreparation = new();
     private CadDocument? _document;
     private long _preparationVersion;
 
     public IReadOnlyList<CadEntity> GetOrderedEntities(
+        CadDocument document,
+        BlockId ownerBlockId) =>
+        GetRenderPacket(document, ownerBlockId).Entities;
+
+    public Direct2DOwnerRenderPacket GetRenderPacket(
         CadDocument document,
         BlockId ownerBlockId)
     {
@@ -26,9 +31,10 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
 
         EnsureDocument(document);
 
-        if (_entitiesByOwner.TryGetValue(ownerBlockId, out var entities))
-            return entities;
+        if (_packetsByOwner.TryGetValue(ownerBlockId, out var packet))
+            return packet;
 
+        IReadOnlyList<CadEntity> entities;
         if (TryGetPreparedOwner(document, ownerBlockId, out var prepared))
         {
             entities = prepared.OrderedEntities;
@@ -43,8 +49,13 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
                 .ThenBy(entity => entity.Id.Value)
                 .ToArray();
         }
-        _entitiesByOwner[ownerBlockId] = entities;
-        return entities;
+        packet = new Direct2DOwnerRenderPacket(
+            document,
+            ownerBlockId,
+            entities,
+            _preparationVersion);
+        _packetsByOwner[ownerBlockId] = packet;
+        return packet;
     }
 
     private static IEnumerable<CadEntity> ResolveOwnerEntities(
@@ -75,14 +86,14 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         if (candidates.Count < 2)
             return;
 
-        var ranks = GetEntityRanks(document, ownerBlockId);
+        var packet = GetRenderPacket(document, ownerBlockId);
         rankedBuffer.Clear();
         if (rankedBuffer.Capacity < candidates.Count)
             rankedBuffer.Capacity = candidates.Count;
         foreach (var entity in candidates)
         {
             rankedBuffer.Add(new RankedEntity(
-                ranks.GetValueOrDefault(entity.Id, int.MaxValue),
+                packet.GetRank(entity.Id),
                 entity));
         }
 
@@ -90,24 +101,6 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         candidates.Clear();
         foreach (var ranked in rankedBuffer)
             candidates.Add(ranked.Entity);
-    }
-
-    private IReadOnlyDictionary<EntityId, int> GetEntityRanks(
-        CadDocument document,
-        BlockId ownerBlockId)
-    {
-        if (_ranksByOwner.TryGetValue(ownerBlockId, out var ranks) &&
-            ReferenceEquals(_document, document))
-        {
-            return ranks;
-        }
-
-        var entities = GetOrderedEntities(document, ownerBlockId);
-        var created = new Dictionary<EntityId, int>(entities.Count);
-        for (var index = 0; index < entities.Count; index++)
-            created[entities[index].Id] = index;
-        _ranksByOwner[ownerBlockId] = created;
-        return created;
     }
 
     public IReadOnlyList<CadEntity> GetOrderedOleEntities(
@@ -191,44 +184,86 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
 
     public void InvalidateOwnerMetrics()
     {
-        _boundsByOwner.Clear();
         _estimatedRenderWorkByOwner.Clear();
         InvalidatePreparedPlan();
     }
 
     public void Invalidate()
     {
-        _entitiesByOwner.Clear();
+        _packetsByOwner.Clear();
         _oleEntitiesByOwner.Clear();
-        _ranksByOwner.Clear();
-        _boundsByOwner.Clear();
+        _estimatedRenderWorkByOwner.Clear();
+        InvalidatePreparedPlan();
+    }
+
+    public void ApplyChanges(
+        CadDocument document,
+        CadDocumentChangeSet changes)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(changes);
+        EnsureDocument(document);
+
+        const CadEntityChangeKind orderChanges =
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Deleted |
+            CadEntityChangeKind.DrawOrder |
+            CadEntityChangeKind.Layer;
+        if (changes.AffectsDocumentStructure ||
+            changes.EntityChanges.Any(change => (change.Kind & orderChanges) != 0))
+        {
+            Invalidate();
+            return;
+        }
+
+        const CadEntityChangeKind packetChanges =
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.Rotation;
+        const CadEntityChangeKind metricChanges =
+            packetChanges |
+            CadEntityChangeKind.Fill;
+        var metricsChanged = false;
+        _updatedPackets.Clear();
+        foreach (var change in changes.EntityChanges)
+        {
+            metricsChanged |= (change.Kind & metricChanges) != 0;
+            if ((change.Kind & packetChanges) == 0)
+                continue;
+
+            foreach (var packet in _packetsByOwner.Values)
+            {
+                if (!packet.TryGetIndex(change.EntityId, out _))
+                    continue;
+
+                if (!packet.TryUpdate(
+                        document,
+                        change.EntityId,
+                        unchecked(_preparationVersion + 1)))
+                {
+                    Invalidate();
+                    return;
+                }
+
+                _updatedPackets.Add(packet);
+                break;
+            }
+        }
+
+        foreach (var packet in _updatedPackets)
+            packet.RecalculateBounds();
+        _updatedPackets.Clear();
+
+        if (!metricsChanged)
+            return;
+
         _estimatedRenderWorkByOwner.Clear();
         InvalidatePreparedPlan();
     }
 
     public CadRectD GetOwnerBounds(CadDocument document, BlockId ownerBlockId)
     {
-        if (_boundsByOwner.TryGetValue(ownerBlockId, out var bounds) &&
-            ReferenceEquals(_document, document))
-        {
-            return bounds;
-        }
-
-        if (TryGetPreparedOwner(document, ownerBlockId, out var prepared))
-        {
-            _boundsByOwner[ownerBlockId] = prepared.Bounds;
-            return prepared.Bounds;
-        }
-
-        bounds = CadRectD.Empty;
-        foreach (var entity in GetOrderedEntities(document, ownerBlockId))
-        {
-            if (!entity.IsErased && entity.IsVisible)
-                bounds = bounds.Union(entity.Bounds);
-        }
-
-        _boundsByOwner[ownerBlockId] = bounds;
-        return bounds;
+        return GetRenderPacket(document, ownerBlockId).Bounds;
     }
 
     private int EstimateOwnerRenderWork(
@@ -350,10 +385,8 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
             return;
 
         _document = document;
-        _entitiesByOwner.Clear();
+        _packetsByOwner.Clear();
         _oleEntitiesByOwner.Clear();
-        _ranksByOwner.Clear();
-        _boundsByOwner.Clear();
         _estimatedRenderWorkByOwner.Clear();
         InvalidatePreparedPlan();
     }

@@ -169,6 +169,13 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             _resourceCache,
             viewport,
             options);
+        if (options.IsLevelOfDetailEnabled &&
+            profile.EntityCount >= 1024 &&
+            profile.HasPendingBuilds)
+        {
+            return false;
+        }
+
         foreach (var chunk in profile.Chunks)
         {
             if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, renderPadding))
@@ -190,18 +197,27 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                 continue;
             }
 
-            foreach (var visible in Direct2DEntityVisibility.EnumerateOrderedSubset(
-                         document,
-                         viewport,
-                         options,
-                         _resourceCache,
-                         chunk.Entities,
-                         renderBounds))
+            var fallbackStarted = Stopwatch.GetTimestamp();
+            try
             {
-                _statistics.RecordVisibleEntity();
-                _statistics.RecordEntitySubmission();
-                _statistics.RecordFallbackEntity();
-                drawEntity(context, document, visible.Entity, viewport, options);
+                foreach (var visible in Direct2DEntityVisibility.EnumerateOrderedSubset(
+                             document,
+                             viewport,
+                             options,
+                             _resourceCache,
+                             chunk.Entities,
+                             renderBounds))
+                {
+                    _statistics.RecordVisibleEntity();
+                    _statistics.RecordEntitySubmission();
+                    _statistics.RecordFallbackEntity();
+                    drawEntity(context, document, visible.Entity, viewport, options);
+                }
+            }
+            finally
+            {
+                _statistics.RecordCpuEntitySubmission(
+                    Stopwatch.GetElapsedTime(fallbackStarted).TotalMilliseconds);
             }
         }
 
@@ -776,6 +792,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
         public RenderProfileKey Key { get; }
         public IReadOnlyList<RenderChunk> Chunks { get; }
+        public int EntityCount { get; }
         public bool HasPendingBuilds
         {
             get
@@ -801,6 +818,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             Chunks = chunks;
             foreach (var chunk in chunks)
             {
+                EntityCount += chunk.Entities.Count;
                 foreach (var entityId in chunk.DependencyEntityIds)
                 {
                     if (!_chunksByDependency.TryGetValue(entityId, out var dependentChunks))

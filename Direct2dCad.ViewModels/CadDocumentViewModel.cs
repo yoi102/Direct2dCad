@@ -80,6 +80,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private bool _layoutPanHasMoved;
     private bool _viewportInteractionRequiresHandleSceneUpdate;
     private CadRenderInvalidation _deferredDocumentInvalidation = CadRenderInvalidation.Empty;
+    private CadRenderInvalidation _pendingRenderInvalidation = CadRenderInvalidation.Empty;
+    private Action<Action>? _renderScheduler;
+    private bool _hasPendingRender;
+    private bool _renderScheduled;
+    private bool _pendingDrawGripHandles = true;
+    private bool _pendingUpdateHandleScene;
+    private bool _pendingBaseSceneChanged;
+    private long _renderSchedulerVersion;
     private bool _fitToWindowPending;
     private BlockId? _insertBlockDefinitionId;
     private double _insertBlockRotationRadians;
@@ -1347,22 +1355,107 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RequestRender(CadRenderInvalidation.Full);
     }
 
+    public void RequestRenderCacheRefresh()
+    {
+        RequestRender();
+    }
+
+    public void SetRenderScheduler(Action<Action>? scheduler)
+    {
+        if (_disposed)
+            return;
+        _renderScheduler = scheduler;
+        _renderScheduled = false;
+        _renderSchedulerVersion = unchecked(_renderSchedulerVersion + 1);
+        if (scheduler is not null)
+            SchedulePendingRender();
+    }
+
     private void RequestOverlayRender(bool updateHandleScene = false)
     {
         if (IsLayoutViewportActive)
         {
-            RequestRender(CadRenderInvalidation.Full, updateHandleScene: updateHandleScene);
+            RequestRender(
+                CadRenderInvalidation.Full,
+                updateHandleScene: updateHandleScene,
+                baseSceneChanged: false);
             return;
         }
+
         RequestRender(
             CadRenderInvalidation.FromScreenRect(default),
-            updateHandleScene: updateHandleScene);
+            updateHandleScene: updateHandleScene,
+            baseSceneChanged: false);
     }
 
     private void RequestRender(
         CadRenderInvalidation? invalidation,
         bool drawGripHandles = true,
-        bool updateHandleScene = true)
+        bool updateHandleScene = true,
+        bool baseSceneChanged = true)
+    {
+        var requestedInvalidation = invalidation ?? CadRenderInvalidation.Full;
+        if (_hasPendingRender)
+            _pendingRenderInvalidation = _pendingRenderInvalidation.Union(requestedInvalidation);
+        else
+            _pendingRenderInvalidation = requestedInvalidation;
+
+        _hasPendingRender = true;
+        _pendingDrawGripHandles = drawGripHandles;
+        _pendingUpdateHandleScene |= updateHandleScene;
+        _pendingBaseSceneChanged |= baseSceneChanged;
+        SchedulePendingRender();
+    }
+
+    private void SchedulePendingRender()
+    {
+        if (!_hasPendingRender || _renderScheduled)
+            return;
+
+        if (_renderScheduler is null)
+        {
+            FlushPendingRender();
+            return;
+        }
+
+        _renderScheduled = true;
+        var schedulerVersion = _renderSchedulerVersion;
+        _renderScheduler(() =>
+        {
+            if (_disposed || schedulerVersion != _renderSchedulerVersion)
+                return;
+
+            _renderScheduled = false;
+            FlushPendingRender();
+        });
+    }
+
+    private void FlushPendingRender()
+    {
+        if (!_hasPendingRender || _disposed)
+            return;
+
+        var invalidation = _pendingRenderInvalidation;
+        var drawGripHandles = _pendingDrawGripHandles;
+        var updateHandleScene = _pendingUpdateHandleScene;
+        var baseSceneChanged = _pendingBaseSceneChanged;
+        _hasPendingRender = false;
+        _pendingRenderInvalidation = CadRenderInvalidation.Empty;
+        _pendingUpdateHandleScene = false;
+        _pendingBaseSceneChanged = false;
+
+        RenderCore(
+            invalidation,
+            drawGripHandles,
+            updateHandleScene,
+            baseSceneChanged);
+    }
+
+    private void RenderCore(
+        CadRenderInvalidation? invalidation,
+        bool drawGripHandles,
+        bool updateHandleScene,
+        bool baseSceneChanged)
     {
         var interruptedViewportInteraction =
             Direct2DImageRenderHost.IsViewportInteractionActive;
@@ -1421,7 +1514,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         }
 
         Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions(drawGripHandles));
-        Direct2DImageRenderHost.Render(effectiveInvalidation);
+        Direct2DImageRenderHost.Render(effectiveInvalidation, baseSceneChanged);
         RenderFrameTimeMilliseconds = Direct2DImageRenderHost.AverageFrameRenderTimeMilliseconds;
         var framesPerSecond = Direct2DImageRenderHost.FramesPerSecond;
         if (!RenderFramesPerSecond.Equals(framesPerSecond))
@@ -2686,6 +2779,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return;
 
         _disposed = true;
+        _renderScheduler = null;
+        _hasPendingRender = false;
+        _renderScheduled = false;
+        _renderSchedulerVersion = unchecked(_renderSchedulerVersion + 1);
         DetachRenderResources();
         _oleHostService.EndEditSessions(_oleEditSessionId);
         _oleHostService.ReleaseRenderSessions(_oleEditSessionId);

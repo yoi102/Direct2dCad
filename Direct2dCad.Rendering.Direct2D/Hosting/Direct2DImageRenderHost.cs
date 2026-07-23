@@ -36,6 +36,10 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private ID2D1SolidColorBrush? _clearBrush;
     private Color4 _clearBrushColor;
     private ViewportInteractionSnapshot? _viewportInteractionSnapshot;
+    private BaseSceneState _baseSceneState;
+    private CadDocument? _baseSceneDocument;
+    private bool _baseSceneValid;
+    private bool _baseSceneDirty = true;
     private bool _hasRenderedFrame;
     private bool _disposed;
 
@@ -134,6 +138,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _imageSource = imageSource ?? throw new ArgumentNullException(nameof(imageSource));
         _target.SetTarget(_imageSource);
         _hasRenderedFrame = false;
+        InvalidateBaseScene(releaseSnapshot: true);
         EndViewportInteraction();
         ResetRendererDeviceResources();
     }
@@ -145,6 +150,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _document = document ?? throw new ArgumentNullException(nameof(document));
         _viewport = viewport ?? throw new ArgumentNullException(nameof(viewport));
         _hasRenderedFrame = false;
+        InvalidateBaseScene(releaseSnapshot: true);
         EndViewportInteraction();
         RefreshPendingTextMeasurements(document);
         ResetRendererDeviceResources();
@@ -156,6 +162,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ArgumentNullException.ThrowIfNull(document);
 
         RefreshPendingTextMeasurements(document);
+        _baseSceneDirty = true;
         _renderer.RebuildAll(document);
     }
 
@@ -166,6 +173,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ArgumentNullException.ThrowIfNull(changes);
 
         TrackPendingTextMeasurements(document, changes);
+        _baseSceneDirty |= changes.DocumentChanged;
         _renderer.ApplyChanges(document, changes);
     }
 
@@ -175,6 +183,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ArgumentNullException.ThrowIfNull(document);
 
         TrackPendingTextMeasurement(document, entityId);
+        _baseSceneDirty = true;
         _renderer.RebuildEntity(document, entityId);
     }
 
@@ -183,6 +192,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ThrowIfDisposed();
 
         _pendingTextMeasurementIds.Remove(entityId);
+        _baseSceneDirty = true;
         _renderer.RemoveEntity(entityId);
     }
 
@@ -232,10 +242,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (width <= 0 || height <= 0)
             return;
 
+        var sizeChanged = width != _target.Width || height != _target.Height;
         _imageSource?.SetSize(width, height);
 
         if (_imageSource is not null)
             _target.SetSize(width, height);
+        if (sizeChanged)
+            InvalidateBaseScene(releaseSnapshot: false);
     }
 
     public bool BeginViewportInteraction()
@@ -460,9 +473,14 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _target.ReleaseFrameSnapshot();
     }
 
-    public void Render(CadRenderInvalidation? invalidation = null)
+    public void Render(
+        CadRenderInvalidation? invalidation = null,
+        bool baseSceneChanged = true)
     {
-        RenderCore(invalidation, retryAfterDeviceResourceRecreation: true);
+        RenderCore(
+            invalidation,
+            baseSceneChanged,
+            retryAfterDeviceResourceRecreation: true);
     }
 
     public bool PrepareRenderCacheStep()
@@ -482,6 +500,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
     private void RenderCore(
         CadRenderInvalidation? invalidation,
+        bool baseSceneChanged,
         bool retryAfterDeviceResourceRecreation)
     {
         ThrowIfDisposed();
@@ -490,13 +509,35 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (!_target.IsTargetReady)
             return;
 
+        var requestedInvalidation = invalidation;
+        var baseSceneState = CreateBaseSceneState();
+        var baseStateChanged =
+            !_baseSceneValid ||
+            !_target.HasBaseSceneSnapshot ||
+            !ReferenceEquals(_baseSceneDocument, _document) ||
+            !_baseSceneState.Equals(baseSceneState);
+        baseSceneChanged |= _baseSceneDirty || baseStateChanged;
+        if (baseStateChanged)
+            requestedInvalidation = CadRenderInvalidation.Full;
+
+        var dirtyPlanningStarted = Stopwatch.GetTimestamp();
         var effectiveInvalidation = _dirtyRegionPlanner.Normalize(
-            invalidation,
+            requestedInvalidation,
             _target.Width,
             _target.Height,
             EstimateDirtyRegionCost);
         if (effectiveInvalidation.IsEmpty)
             return;
+
+        if (!baseSceneChanged &&
+            !_target.RestoreBaseScene(
+                effectiveInvalidation.IsFull
+                    ? null
+                    : effectiveInvalidation.DirtyScreenRects))
+        {
+            baseSceneChanged = true;
+            effectiveInvalidation = CadRenderInvalidation.Full;
+        }
 
         var background = _document is null
             ? FallbackBackgroundColor
@@ -512,6 +553,9 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         using var combinedDirtyRegionMask = combineDirtyRegionPasses
             ? CreateDirtyRegionMask(effectiveInvalidation.DirtyScreenRects)
             : null;
+        var dirtyPlanningMilliseconds = Stopwatch
+            .GetElapsedTime(dirtyPlanningStarted)
+            .TotalMilliseconds;
 
         try
         {
@@ -519,7 +563,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 effectiveInvalidation.IsFull,
                 effectiveInvalidation.IsFull || combinedDirtyRegionMask is not null
                     ? 1
-                    : effectiveInvalidation.DirtyScreenRects.Count);
+                    : effectiveInvalidation.DirtyScreenRects.Count,
+                dirtyPlanningMilliseconds);
             try
             {
                 if (_document is not null && _viewport is not null)
@@ -560,6 +605,64 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 var surfaceStarted = Stopwatch.GetTimestamp();
                 try
                 {
+                    if (baseSceneChanged)
+                    {
+                        _target.DrawFrame(context =>
+                        {
+                            if (!effectiveInvalidation.IsFull)
+                            {
+                                if (combinedDirtyRegionMask is not null)
+                                {
+                                    DrawCombinedDirtyRegions(
+                                        context,
+                                        combinedDirtyRegionMask,
+                                        combinedDirtyRegionBounds,
+                                        background,
+                                        drawBase: true,
+                                        effectiveInvalidation.DirtyScreenRects);
+                                }
+                                else
+                                {
+                                    foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
+                                    {
+                                        DrawDirtyRegion(
+                                            context,
+                                            dirty,
+                                            background,
+                                            drawBase: true);
+                                    }
+                                }
+
+                                return;
+                            }
+
+                            context.Clear(background);
+
+                            if (_document is not null && _viewport is not null)
+                            {
+                                _renderer.RenderBase(
+                                    _document,
+                                    _viewport,
+                                    _renderOptions);
+                            }
+                        },
+                        effectiveInvalidation.IsFull
+                            ? null
+                            : effectiveInvalidation.DirtyScreenRects,
+                        present: false);
+
+                        _baseSceneValid = _target.CaptureBaseScene(
+                            effectiveInvalidation.IsFull
+                                ? null
+                                : effectiveInvalidation.DirtyScreenRects);
+                        if (_baseSceneValid)
+                        {
+                            _baseSceneDocument = _document;
+                            _baseSceneState = baseSceneState;
+                            _baseSceneDirty = false;
+                        }
+                    }
+
                     _target.DrawFrame(context =>
                     {
                         if (!effectiveInvalidation.IsFull)
@@ -570,22 +673,28 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                                     context,
                                     combinedDirtyRegionMask,
                                     combinedDirtyRegionBounds,
-                                    background);
+                                    background,
+                                    drawBase: false,
+                                    effectiveInvalidation.DirtyScreenRects);
                             }
                             else
                             {
                                 foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
-                                    DrawDirtyRegion(context, dirty, background);
+                                {
+                                    DrawDirtyRegion(
+                                        context,
+                                        dirty,
+                                        background,
+                                        drawBase: false);
+                                }
                             }
 
                             return;
                         }
 
-                        context.Clear(background);
-
                         if (_document is not null && _viewport is not null)
                         {
-                            _renderer.Render(
+                            _renderer.RenderOverlays(
                                 _document,
                                 _viewport,
                                 _transientScene,
@@ -619,14 +728,18 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         catch (Direct2DDeviceResourcesRecreatedException) when (retryAfterDeviceResourceRecreation)
         {
             ResetRendererDeviceResources();
-            RenderCore(CadRenderInvalidation.Full, retryAfterDeviceResourceRecreation: false);
+            RenderCore(
+                CadRenderInvalidation.Full,
+                baseSceneChanged: true,
+                retryAfterDeviceResourceRecreation: false);
         }
     }
 
     private void DrawDirtyRegion(
         ID2D1DeviceContext context,
         CadScreenRect dirty,
-        Color4 background)
+        Color4 background,
+        bool drawBase)
     {
         var clip = ToRawRectF(dirty);
         var previousTransform = context.Transform;
@@ -634,16 +747,26 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
         try
         {
-            FillScreenRect(context, clip, background);
+            if (drawBase)
+                FillScreenRect(context, clip, background);
             if (_document is null || _viewport is null)
                 return;
 
-            _renderer.Render(
-                _document,
-                _viewport,
-                _transientScene,
-                _handleScene,
-                CreateRenderOptions(ScreenRectToWorldBounds(dirty, _viewport)));
+            var options = CreateRenderOptions(
+                ScreenRectToWorldBounds(dirty, _viewport));
+            if (drawBase)
+            {
+                _renderer.RenderBase(_document, _viewport, options);
+            }
+            else
+            {
+                _renderer.RenderOverlays(
+                    _document,
+                    _viewport,
+                    _transientScene,
+                    _handleScene,
+                    options);
+            }
         }
         finally
         {
@@ -656,10 +779,18 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ID2D1DeviceContext context,
         ID2D1Geometry dirtyRegionMask,
         CadScreenRect combinedBounds,
-        Color4 background)
+        Color4 background,
+        bool drawBase,
+        IReadOnlyList<CadScreenRect> dirtyRects)
     {
         var previousTransform = context.Transform;
         context.Transform = Matrix3x2.Identity;
+        if (drawBase)
+        {
+            foreach (var dirtyRect in dirtyRects)
+                FillScreenRect(context, ToRawRectF(dirtyRect), background);
+        }
+
         var layerParameters = new LayerParameters1
         {
             ContentBounds = ToRawRectF(combinedBounds),
@@ -675,16 +806,24 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         {
             context.PushLayer(ref layerParameters, null!);
             layerPushed = true;
-            FillScreenRect(context, ToRawRectF(combinedBounds), background);
             if (_document is null || _viewport is null)
                 return;
 
-            _renderer.Render(
-                _document,
-                _viewport,
-                _transientScene,
-                _handleScene,
-                CreateRenderOptions(ScreenRectToWorldBounds(combinedBounds, _viewport)));
+            var options = CreateRenderOptions(
+                ScreenRectToWorldBounds(combinedBounds, _viewport));
+            if (drawBase)
+            {
+                _renderer.RenderBase(_document, _viewport, options);
+            }
+            else
+            {
+                _renderer.RenderOverlays(
+                    _document,
+                    _viewport,
+                    _transientScene,
+                    _handleScene,
+                    options);
+            }
         }
         finally
         {
@@ -883,6 +1022,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     {
         EndViewportInteraction();
         _hasRenderedFrame = false;
+        InvalidateBaseScene(releaseSnapshot: true);
         if (!_target.IsTargetReady)
             return;
 
@@ -916,6 +1056,75 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private readonly record struct ViewportInteractionSnapshot(
         double Zoom,
         CadPointD Offset);
+
+    private BaseSceneState CreateBaseSceneState()
+    {
+        var hiddenHash = new HashCode();
+        var hiddenCount = 0;
+        foreach (var entityId in _renderOptions.HiddenEntityIds)
+        {
+            hiddenHash.Add(entityId);
+            hiddenCount++;
+        }
+
+        return new BaseSceneState(
+            _viewport?.Zoom ?? 0,
+            _viewport?.Offset ?? CadPointD.Origin,
+            _viewport?.ViewWidth ?? 0,
+            _viewport?.ViewHeight ?? 0,
+            _target.Width,
+            _target.Height,
+            _renderOptions.ActiveOwnerBlockId,
+            _renderOptions.ActiveLayoutId,
+            _renderOptions.ActiveLayoutViewportId,
+            _renderOptions.DrawGrid,
+            _renderOptions.DrawOrigin,
+            _renderOptions.IsAntialiasingEnabled,
+            _renderOptions.IsTextAntialiasingEnabled,
+            _renderOptions.IsLevelOfDetailEnabled,
+            _renderOptions.AllowApproximateTileScaleFallback,
+            _renderOptions.TransformScaleMultiplier,
+            _renderOptions.KeepStrokeWidthScreenConstant,
+            _renderOptions.MinimumScreenStrokeWidth,
+            hiddenCount,
+            hiddenHash.ToHashCode(),
+            _document is null
+                ? FallbackBackgroundColor.GetHashCode()
+                : _document.ViewSettings.BackgroundColor.GetHashCode());
+    }
+
+    private void InvalidateBaseScene(bool releaseSnapshot)
+    {
+        _baseSceneValid = false;
+        _baseSceneDirty = true;
+        _baseSceneDocument = null;
+        _baseSceneState = default;
+        if (releaseSnapshot)
+            _target.ReleaseBaseScene();
+    }
+
+    private readonly record struct BaseSceneState(
+        double Zoom,
+        CadPointD Offset,
+        double ViewWidth,
+        double ViewHeight,
+        int TargetWidth,
+        int TargetHeight,
+        BlockId ActiveOwnerBlockId,
+        LayoutId? ActiveLayoutId,
+        LayoutViewportId? ActiveLayoutViewportId,
+        bool DrawGrid,
+        bool DrawOrigin,
+        bool IsAntialiasingEnabled,
+        bool IsTextAntialiasingEnabled,
+        bool IsLevelOfDetailEnabled,
+        bool AllowApproximateTileScaleFallback,
+        double TransformScaleMultiplier,
+        bool KeepStrokeWidthScreenConstant,
+        double MinimumScreenStrokeWidth,
+        int HiddenEntityCount,
+        int HiddenEntityHash,
+        int BackgroundColorHash);
 
     private void ThrowIfDisposed()
     {

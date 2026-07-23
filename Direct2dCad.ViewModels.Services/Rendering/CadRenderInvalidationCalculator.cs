@@ -19,6 +19,8 @@ internal readonly struct CadRenderInvalidationCalculator(
     private const int MaxPathDirtyBounds = 16;
     private const int LargeHandleSceneAggregationThreshold = 512;
     private const double Direct2DDefaultMiterLimit = 10.0;
+    private readonly Dictionary<BlockInvalidationPaddingKey, double>
+        _blockInvalidationPaddingCache = [];
 
     public CadRenderInvalidation CreateTransientSceneInvalidation(
         CadTransientScene transientScene)
@@ -127,13 +129,7 @@ internal readonly struct CadRenderInvalidationCalculator(
         var style = isRenderable ? createEntityPreviewStyle(entity) : default;
         snapshot = new CadEntityInvalidationSnapshot(
             entity.Bounds,
-            style.StrokeWidth,
-            style.KeepStrokeWidthScreenConstant,
-            style.MinimumScreenStrokeWidth,
-            EntityUsesStrokeWidth(entity),
-            ResolveEntityStrokeExtentMultiplier(entity),
-            entity is CadBlockReference,
-            style.HatchFill is not null,
+            isRenderable ? ResolveEntityInvalidationPadding(entity, style) : 0,
             isRenderable);
         return true;
     }
@@ -232,9 +228,15 @@ internal readonly struct CadRenderInvalidationCalculator(
             return CadRenderInvalidation.Empty;
 
         var transformScale = ResolveMaximumScale(group.Transform);
-        var padding = group.LocalBounds is not null
-            ? ResolveTransientInvalidationPadding(group.Style, 24.0) * transformScale
-            : ResolveTransientGroupPadding(group.Items, transformScale);
+        var padding =
+            ResolveTransientInvalidationPadding(group.Style, 24.0) *
+            transformScale;
+        if (group.Items.Count > 0)
+        {
+            padding = Math.Max(
+                padding,
+                ResolveTransientGroupPadding(group.Items, transformScale));
+        }
         return CreateWorldBoundsInvalidation(bounds, Math.Max(24.0, padding));
     }
 
@@ -312,6 +314,16 @@ internal readonly struct CadRenderInvalidationCalculator(
                 continue;
             }
 
+            if (item is CadTransientBlockReference blockReference)
+            {
+                maximum = Math.Max(
+                    maximum,
+                    ResolveTransientBlockReferenceInvalidationPadding(
+                        blockReference,
+                        accumulatedScale));
+                continue;
+            }
+
             var minimumPadding = item is CadTransientImage or CadTransientOleObject ? 4.0 : 12.0;
             maximum = Math.Max(
                 maximum,
@@ -348,10 +360,11 @@ internal readonly struct CadRenderInvalidationCalculator(
             reference.ScaleX,
             reference.ScaleY,
             localBounds);
-        return CreateTransientBoundsInvalidation(
+        return CreateWorldBoundsInvalidation(
             worldBounds,
-            reference.Style,
-            minimumPaddingPixels: 24.0);
+            ResolveTransientBlockReferenceInvalidationPadding(
+                reference,
+                accumulatedScale: 1.0));
     }
 
     private CadRenderInvalidation CreateTransientBoundsInvalidation(
@@ -428,9 +441,9 @@ internal readonly struct CadRenderInvalidationCalculator(
     private CadRenderInvalidation CreateSelectionReferenceInvalidation(
         CadSelectionEntityReference reference)
     {
-        var minimumPadding = document.TryGetEntity(reference.EntityId, out var entity) &&
-                             entity is CadBlockReference
-            ? 64.0
+        document.TryGetEntity(reference.EntityId, out var entity);
+        var minimumPadding = entity is CadBlockReference blockReference
+            ? ResolveBlockReferenceInvalidationPadding(blockReference)
             : 16.0;
         return CreateWorldBoundsInvalidation(
             reference.EntityBounds.Translate(reference.Offset),
@@ -561,9 +574,17 @@ internal readonly struct CadRenderInvalidationCalculator(
     private double ResolveEntityInvalidationPadding(CadEntity entity)
     {
         var style = createEntityPreviewStyle(entity);
-        var minimumPadding = entity is CadBlockReference
-            ? 64.0
-            : style.HatchFill is null ? 8.0 : 16.0;
+        return ResolveEntityInvalidationPadding(entity, style);
+    }
+
+    private double ResolveEntityInvalidationPadding(
+        CadEntity entity,
+        CadTransientStyle style)
+    {
+        if (entity is CadBlockReference blockReference)
+            return ResolveBlockReferenceInvalidationPadding(blockReference, style);
+
+        var minimumPadding = style.HatchFill is null ? 8.0 : 16.0;
         return ResolveTransientInvalidationPadding(
             style,
             minimumPadding,
@@ -573,15 +594,7 @@ internal readonly struct CadRenderInvalidationCalculator(
     private double ResolveEntityInvalidationPadding(
         CadEntityInvalidationSnapshot snapshot)
     {
-        var minimumPadding = snapshot.IsBlockReference
-            ? 64.0
-            : snapshot.HasHatchFill ? 16.0 : 8.0;
-        return snapshot.UsesStrokeWidth
-            ? ResolveStrokeInvalidationPadding(
-                ResolveSnapshotScreenStrokeWidth(snapshot),
-                minimumPadding,
-                snapshot.StrokeExtentMultiplier)
-            : minimumPadding;
+        return Math.Max(0.0, snapshot.InvalidationPaddingPixels);
     }
 
     private double ResolveStyleWorldStrokeWidth(CadTransientStyle style)
@@ -600,15 +613,151 @@ internal readonly struct CadRenderInvalidationCalculator(
             Math.Max(style.MinimumScreenStrokeWidth, 0.0));
     }
 
-    private double ResolveSnapshotScreenStrokeWidth(
-        CadEntityInvalidationSnapshot snapshot)
+    private double ResolveBlockReferenceInvalidationPadding(
+        CadBlockReference reference)
     {
-        var strokeScreenWidth = snapshot.KeepStrokeWidthScreenConstant
-            ? snapshot.StrokeWidth
-            : snapshot.StrokeWidth * viewport.Zoom;
+        return ResolveBlockReferenceInvalidationPadding(
+            reference,
+            createEntityPreviewStyle(reference));
+    }
+
+    private double ResolveBlockReferenceInvalidationPadding(
+        CadBlockReference reference,
+        CadTransientStyle referenceStyle)
+    {
+        var scale = ResolveMaximumScale(reference.ScaleX, reference.ScaleY);
+        var referencePadding = ResolveScaledTransientInvalidationPadding(
+            referenceStyle,
+            scale,
+            minimumPaddingPixels: 64.0,
+            ResolveEntityStrokeExtentMultiplier(reference));
         return Math.Max(
-            strokeScreenWidth,
-            Math.Max(snapshot.MinimumScreenStrokeWidth, 0.0));
+            64.0,
+            Math.Max(
+                referencePadding,
+                ResolveBlockDefinitionInvalidationPadding(
+                    reference.DefinitionBlockId,
+                    scale,
+                    [])));
+    }
+
+    private double ResolveTransientBlockReferenceInvalidationPadding(
+        CadTransientBlockReference reference,
+        double accumulatedScale)
+    {
+        var scale =
+            accumulatedScale *
+            ResolveMaximumScale(reference.ScaleX, reference.ScaleY);
+        var referencePadding = ResolveScaledTransientInvalidationPadding(
+            reference.Style,
+            scale,
+            minimumPaddingPixels: 24.0);
+        return Math.Max(
+            referencePadding,
+            ResolveBlockDefinitionInvalidationPadding(
+                reference.DefinitionBlockId,
+                scale,
+                []));
+    }
+
+    private double ResolveBlockDefinitionInvalidationPadding(
+        BlockId definitionBlockId,
+        double accumulatedScale,
+        HashSet<BlockId> visitedBlocks)
+    {
+        var cacheKey = new BlockInvalidationPaddingKey(
+            definitionBlockId,
+            BitConverter.DoubleToInt64Bits(accumulatedScale));
+        if (_blockInvalidationPaddingCache.TryGetValue(cacheKey, out var cached))
+            return cached;
+
+        if (!double.IsFinite(accumulatedScale) ||
+            accumulatedScale <= 0 ||
+            !visitedBlocks.Add(definitionBlockId) ||
+            !document.TryGetBlock(definitionBlockId, out var definition) ||
+            definition is null)
+        {
+            return 0;
+        }
+
+        var maximum = 0.0;
+        try
+        {
+            foreach (var child in document.GetEntitiesInBlock(definitionBlockId))
+            {
+                if (!IsEntityRenderable(child))
+                    continue;
+
+                if (child is CadBlockReference nested)
+                {
+                    var nestedScale =
+                        accumulatedScale *
+                        ResolveMaximumScale(nested.ScaleX, nested.ScaleY);
+                    maximum = Math.Max(
+                        maximum,
+                        ResolveScaledTransientInvalidationPadding(
+                            createEntityPreviewStyle(nested),
+                            nestedScale,
+                            minimumPaddingPixels: 8.0,
+                            ResolveEntityStrokeExtentMultiplier(nested)));
+                    maximum = Math.Max(
+                        maximum,
+                        ResolveBlockDefinitionInvalidationPadding(
+                            nested.DefinitionBlockId,
+                            nestedScale,
+                            visitedBlocks));
+                    continue;
+                }
+
+                if (!EntityUsesStrokeWidth(child))
+                    continue;
+
+                var style = createEntityPreviewStyle(child);
+                maximum = Math.Max(
+                    maximum,
+                    ResolveStrokeInvalidationPadding(
+                        ResolveStyleScreenStrokeWidth(style) * accumulatedScale,
+                        minimumPaddingPixels: 8.0,
+                        ResolveEntityStrokeExtentMultiplier(child),
+                        style.LinePattern != CadTransientLinePattern.Solid));
+            }
+        }
+        finally
+        {
+            visitedBlocks.Remove(definitionBlockId);
+        }
+
+        _blockInvalidationPaddingCache[cacheKey] = maximum;
+        return maximum;
+    }
+
+    private bool IsEntityRenderable(CadEntity entity)
+    {
+        if (entity.IsErased || !entity.IsVisible)
+            return false;
+        if (entity.LayerId.Equals(LayerId.Default))
+            return true;
+        return document.TryGetLayer(entity.LayerId, out var layer) &&
+               layer is { IsVisible: true, IsFrozen: false };
+    }
+
+    private double ResolveScaledTransientInvalidationPadding(
+        CadTransientStyle style,
+        double scale,
+        double minimumPaddingPixels,
+        double strokeExtentMultiplier = 0.5)
+    {
+        return ResolveStrokeInvalidationPadding(
+            ResolveStyleScreenStrokeWidth(style) * Math.Max(scale, double.Epsilon),
+            minimumPaddingPixels,
+            strokeExtentMultiplier,
+            style.LinePattern != CadTransientLinePattern.Solid);
+    }
+
+    private static double ResolveMaximumScale(double scaleX, double scaleY)
+    {
+        var scale = Math.Max(Math.Abs(scaleX), Math.Abs(scaleY));
+        return double.IsFinite(scale) ? Math.Max(scale, double.Epsilon) : 1.0;
     }
 
     private static bool EntityUsesStrokeWidth(CadEntity entity)
@@ -750,15 +899,13 @@ internal readonly struct CadRenderInvalidationCalculator(
 
         return result;
     }
+
+    private readonly record struct BlockInvalidationPaddingKey(
+        BlockId DefinitionBlockId,
+        long ScaleBits);
 }
 
 internal readonly record struct CadEntityInvalidationSnapshot(
     CadRectD Bounds,
-    double StrokeWidth,
-    bool KeepStrokeWidthScreenConstant,
-    double MinimumScreenStrokeWidth,
-    bool UsesStrokeWidth,
-    double StrokeExtentMultiplier,
-    bool IsBlockReference,
-    bool HasHatchFill,
+    double InvalidationPaddingPixels,
     bool IsRenderable);

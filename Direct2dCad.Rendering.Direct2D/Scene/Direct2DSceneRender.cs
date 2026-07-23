@@ -33,12 +33,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private readonly Direct2DBlockReferenceRenderer _blockReferenceRenderer;
     private readonly Direct2DEntityOrderCache _entityOrderCache = new();
     private readonly Direct2DRenderStatisticsCollector _statistics = new();
+    private readonly Direct2DMicroEntityAggregator _microEntityAggregator = new();
     private readonly Direct2DCommandListChunkCache _commandListCache;
     private readonly Direct2DSceneTileCache _tileCache;
     private readonly List<EntityId> _visibleEntityIds = new(256);
     private readonly HashSet<EntityId> _visibleEntityIdSet = [];
-    private readonly List<CadEntity> _visibleEntities = new(256);
-    private readonly List<Direct2DEntityOrderCache.RankedEntity> _visibleRankedEntities = new(256);
+    private readonly List<int> _visiblePacketIndices = new(256);
     private bool _disposed;
 
     public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
@@ -123,10 +123,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _blockReferenceRenderer.ApplyChanges(document, changes);
         _selectionRenderer.ApplyChanges(changes);
         _transientSceneRenderer.ApplyChanges(changes);
-        if (AffectsEntityOrder(changes))
-            _entityOrderCache.Invalidate();
-        else if (AffectsOwnerMetrics(changes))
-            _entityOrderCache.InvalidateOwnerMetrics();
+        _entityOrderCache.ApplyChanges(document, changes);
         _resourceCache.ApplyChanges(document, changes);
         _oleRenderer.ApplyChanges(document, changes);
     }
@@ -196,10 +193,16 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _oleRenderer.RemoveEntity(entityId);
     }
 
-    public void BeginFrame(bool isFullFrame = true, int dirtyRegionCount = 1)
+    public void BeginFrame(
+        bool isFullFrame = true,
+        int dirtyRegionCount = 1,
+        double dirtyPlanningMilliseconds = 0)
     {
         ThrowIfDisposed();
-        _statistics.BeginFrame(isFullFrame, dirtyRegionCount);
+        _statistics.BeginFrame(
+            isFullFrame,
+            dirtyRegionCount,
+            dirtyPlanningMilliseconds);
         _resourceCache.BeginFrame();
         _styleResources.BeginFrame();
         _textFormatResources.BeginFrame();
@@ -537,7 +540,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     public override void Render(CadDocument document, CadViewport viewport, CadRenderOptions? options = null)
     {
-        Render(document, viewport, null, null, options);
+        Render(document, viewport, null, null, options, Direct2DScenePasses.All);
     }
 
     public void Render(
@@ -546,6 +549,53 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadTransientScene? transientScene,
         CadHandleScene? handleScene = null,
         CadRenderOptions? options = null)
+    {
+        Render(
+            document,
+            viewport,
+            transientScene,
+            handleScene,
+            options,
+            Direct2DScenePasses.All);
+    }
+
+    internal void RenderBase(
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        Render(
+            document,
+            viewport,
+            transientScene: null,
+            handleScene: null,
+            options,
+            Direct2DScenePasses.Base);
+    }
+
+    internal void RenderOverlays(
+        CadDocument document,
+        CadViewport viewport,
+        CadTransientScene? transientScene,
+        CadHandleScene? handleScene,
+        CadRenderOptions options)
+    {
+        Render(
+            document,
+            viewport,
+            transientScene,
+            handleScene,
+            options,
+            Direct2DScenePasses.Overlays);
+    }
+
+    private void Render(
+        CadDocument document,
+        CadViewport viewport,
+        CadTransientScene? transientScene,
+        CadHandleScene? handleScene,
+        CadRenderOptions? options,
+        Direct2DScenePasses passes)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(viewport);
@@ -580,32 +630,46 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
             if (activeLayout is not null)
             {
-                var backgroundStarted = Stopwatch.GetTimestamp();
-                DrawPaper(deviceContext, activeLayout);
-                _statistics.RecordBackgroundRender(ElapsedMilliseconds(backgroundStarted));
-                DrawLayoutViewports(
-                    deviceContext,
-                    document,
-                    viewport,
-                    activeLayout,
-                    transientScene,
-                    handleScene,
-                    options);
-                var entityStarted = Stopwatch.GetTimestamp();
-                try
+                if ((passes & Direct2DScenePasses.Base) != 0)
                 {
-                    DrawEntities(
+                    var backgroundStarted = Stopwatch.GetTimestamp();
+                    DrawPaper(deviceContext, activeLayout);
+                    _statistics.RecordBackgroundRender(ElapsedMilliseconds(backgroundStarted));
+                    DrawLayoutViewportsBase(
                         deviceContext,
                         document,
                         viewport,
-                        CreatePaperSpaceOptions(activeLayout, options));
+                        activeLayout,
+                        options);
+                    var entityStarted = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        DrawEntities(
+                            deviceContext,
+                            document,
+                            viewport,
+                            CreatePaperSpaceOptions(activeLayout, options));
+                    }
+                    finally
+                    {
+                        _statistics.RecordEntityRender(ElapsedMilliseconds(entityStarted));
+                    }
                 }
-                finally
+
+                if ((passes & Direct2DScenePasses.Overlays) != 0 &&
+                    options.ActiveLayoutViewportId is not null)
                 {
-                    _statistics.RecordEntityRender(ElapsedMilliseconds(entityStarted));
+                    DrawLayoutViewportOverlays(
+                        deviceContext,
+                        document,
+                        viewport,
+                        activeLayout,
+                        transientScene,
+                        handleScene,
+                        options);
                 }
             }
-            else
+            else if ((passes & Direct2DScenePasses.Base) != 0)
             {
                 var backgroundStarted = Stopwatch.GetTimestamp();
                 try
@@ -645,7 +709,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 }
             }
 
-            if (activeLayout is null || options.ActiveLayoutViewportId is null)
+            if ((passes & Direct2DScenePasses.Overlays) != 0 &&
+                (activeLayout is null || options.ActiveLayoutViewportId is null))
             {
                 var transientStarted = Stopwatch.GetTimestamp();
                 try
@@ -691,13 +756,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             0.75f / Math.Max((float)CadEditorZoom(context), 1e-6f));
     }
 
-    private void DrawLayoutViewports(
+    private void DrawLayoutViewportsBase(
         ID2D1DeviceContext context,
         CadDocument document,
         CadViewport paperViewport,
         CadLayout layout,
-        CadTransientScene? transientScene,
-        CadHandleScene? handleScene,
         CadRenderOptions options)
     {
         var paperTransform = context.Transform;
@@ -735,34 +798,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     _statistics.RecordEntityRender(ElapsedMilliseconds(entityStarted));
                 }
 
-                if (isActiveViewport)
-                {
-                    var activeModelOptions = CreateModelViewportOptions(options, drawGripHandles: true);
-                    var transientStarted = Stopwatch.GetTimestamp();
-                    try
-                    {
-                        DrawTransients(context, document, modelViewport, transientScene, activeModelOptions);
-                    }
-                    finally
-                    {
-                        _statistics.RecordTransientRender(ElapsedMilliseconds(transientStarted));
-                    }
-
-                    var selectionStarted = Stopwatch.GetTimestamp();
-                    try
-                    {
-                        _selectionRenderer.Draw(
-                            context,
-                            document,
-                            modelViewport,
-                            handleScene,
-                            activeModelOptions);
-                    }
-                    finally
-                    {
-                        _statistics.RecordSelectionRender(ElapsedMilliseconds(selectionStarted));
-                    }
-                }
             }
             finally
             {
@@ -790,11 +825,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 options,
                 out var missingTileBounds))
         {
+            _statistics.RecordRenderCacheHit();
             foreach (var missingBounds in missingTileBounds)
                 DrawMissingTile(context, document, viewport, options, missingBounds);
             return;
         }
 
+        _statistics.RecordRenderCacheMiss();
         DrawRetainedOrImmediate(context, document, viewport, options);
     }
 
@@ -1022,30 +1059,126 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 options,
                 DrawEntityCore))
         {
+            _statistics.RecordRenderCacheHit();
             return;
         }
 
-        foreach (var visible in Direct2DEntityVisibility.Enumerate(
-                     document,
-                     viewport,
-                     options,
-                     _resourceCache,
-                     _entityOrderCache.GetOrderedEntities(document, options.ActiveOwnerBlockId),
-                     _entityOrderCache,
-                     _visibleEntityIds,
-                     _visibleEntityIdSet,
-                     _visibleEntities,
-                     _visibleRankedEntities))
+        _statistics.RecordRenderCacheMiss();
+        var submissionStarted = Stopwatch.GetTimestamp();
+        try
         {
-            _statistics.RecordVisibleEntity();
-            _statistics.RecordEntitySubmission();
-            DrawEntityCore(
-                context,
+            var renderPacket = _entityOrderCache.GetRenderPacket(
                 document,
-                visible.Entity,
+                options.ActiveOwnerBlockId);
+            var visibleEntities = Direct2DEntityVisibility.Enumerate(
+                document,
                 viewport,
                 options,
-                visible.Resources);
+                _resourceCache,
+                renderPacket,
+                _visibleEntityIds,
+                _visibleEntityIdSet,
+                _visiblePacketIndices,
+                _statistics);
+            var entitiesToDraw = visibleEntities;
+            if (Direct2DMicroEntityAggregator.ShouldAggregate(
+                    renderPacket,
+                    options))
+            {
+                entitiesToDraw = _microEntityAggregator.Aggregate(
+                    visibleEntities,
+                    renderPacket,
+                    viewport,
+                    options,
+                    out var microCandidateCount,
+                    out var microRepresentativeCount);
+                _statistics.RecordMicroEntityAggregation(
+                    microCandidateCount,
+                    microRepresentativeCount);
+            }
+            foreach (var visible in entitiesToDraw)
+            {
+                _statistics.RecordVisibleEntity();
+                _statistics.RecordEntitySubmission();
+                DrawEntityCore(
+                    context,
+                    document,
+                    visible.Entity,
+                    viewport,
+                    options,
+                    visible.Resources);
+            }
+        }
+        finally
+        {
+            _statistics.RecordCpuEntitySubmission(
+                ElapsedMilliseconds(submissionStarted));
+        }
+    }
+
+    private void DrawLayoutViewportOverlays(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport paperViewport,
+        CadLayout layout,
+        CadTransientScene? transientScene,
+        CadHandleScene? handleScene,
+        CadRenderOptions options)
+    {
+        if (options.ActiveLayoutViewportId is not { } activeViewportId)
+            return;
+
+        var layoutViewport = layout.Viewports.FirstOrDefault(
+            viewport => viewport.Id == activeViewportId && viewport.IsVisible);
+        if (layoutViewport is null)
+            return;
+
+        var paperTransform = context.Transform;
+        context.PushAxisAlignedClip(ToRawRect(layoutViewport.Bounds), AntialiasMode.PerPrimitive);
+        try
+        {
+            context.Transform =
+                CreateModelToPaperTransform(layoutViewport) * paperTransform;
+            var modelViewport = CreateModelViewport(paperViewport, layoutViewport);
+            var activeModelOptions = CreateModelViewportOptions(
+                options,
+                drawGripHandles: true,
+                includeHiddenEntities: true);
+
+            var transientStarted = Stopwatch.GetTimestamp();
+            try
+            {
+                DrawTransients(
+                    context,
+                    document,
+                    modelViewport,
+                    transientScene,
+                    activeModelOptions);
+            }
+            finally
+            {
+                _statistics.RecordTransientRender(ElapsedMilliseconds(transientStarted));
+            }
+
+            var selectionStarted = Stopwatch.GetTimestamp();
+            try
+            {
+                _selectionRenderer.Draw(
+                    context,
+                    document,
+                    modelViewport,
+                    handleScene,
+                    activeModelOptions);
+            }
+            finally
+            {
+                _statistics.RecordSelectionRender(ElapsedMilliseconds(selectionStarted));
+            }
+        }
+        finally
+        {
+            context.PopAxisAlignedClip();
+            context.Transform = paperTransform;
         }
     }
 
@@ -1234,29 +1367,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private static double ElapsedMilliseconds(long started) =>
         Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
-    private static bool AffectsEntityOrder(CadDocumentChangeSet changes)
-    {
-        if (changes.AffectsDocumentStructure)
-            return true;
-
-        const CadEntityChangeKind orderChanges =
-            CadEntityChangeKind.Created |
-            CadEntityChangeKind.Deleted |
-            CadEntityChangeKind.DrawOrder |
-            CadEntityChangeKind.Layer;
-        return changes.EntityChanges.Any(change => (change.Kind & orderChanges) != 0);
-    }
-
-    private static bool AffectsOwnerMetrics(CadDocumentChangeSet changes)
-    {
-        const CadEntityChangeKind relevantChanges =
-            CadEntityChangeKind.Geometry |
-            CadEntityChangeKind.Visibility |
-            CadEntityChangeKind.Fill;
-        return changes.EntityChanges.Any(change =>
-            (change.Kind & relevantChanges) != 0);
-    }
-
     private void DrawTransients(
         ID2D1DeviceContext deviceContext,
         CadDocument document,
@@ -1365,4 +1475,12 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (_disposed)
             throw new ObjectDisposedException(nameof(Direct2DSceneRender));
     }
+}
+
+[Flags]
+internal enum Direct2DScenePasses
+{
+    Base = 1,
+    Overlays = 2,
+    All = Base | Overlays
 }

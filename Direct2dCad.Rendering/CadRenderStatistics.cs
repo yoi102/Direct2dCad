@@ -37,6 +37,15 @@ public sealed record CadRenderStatistics(
     long GpuCachePeakBytes,
     long GpuCacheBudgetBytes,
     int GpuCacheEvictionCount,
+    int RenderCacheHitCount,
+    int RenderCacheMissCount,
+    int MicroEntityCandidateCount,
+    int MicroEntityRepresentativeCount,
+    int LargeSelectionFallbackCount,
+    double DirtyPlanningMilliseconds,
+    double VisibilityQueryMilliseconds,
+    double CandidateSortingMilliseconds,
+    double CpuEntitySubmissionMilliseconds,
     double CachePreparationMilliseconds,
     double BackgroundRenderMilliseconds,
     double EntityRenderMilliseconds,
@@ -46,6 +55,12 @@ public sealed record CadRenderStatistics(
     double SurfaceDrawMilliseconds,
     double RenderDurationMilliseconds)
 {
+    public double RenderCacheHitRatio =>
+        RenderCacheHitCount + RenderCacheMissCount == 0
+            ? 0
+            : (double)RenderCacheHitCount /
+              (RenderCacheHitCount + RenderCacheMissCount);
+
     public static CadRenderStatistics Empty { get; } = new(
         IsFullFrame: true,
         DirtyRegionCount: 0,
@@ -83,6 +98,15 @@ public sealed record CadRenderStatistics(
         GpuCachePeakBytes: 0,
         GpuCacheBudgetBytes: 0,
         GpuCacheEvictionCount: 0,
+        RenderCacheHitCount: 0,
+        RenderCacheMissCount: 0,
+        MicroEntityCandidateCount: 0,
+        MicroEntityRepresentativeCount: 0,
+        LargeSelectionFallbackCount: 0,
+        DirtyPlanningMilliseconds: 0,
+        VisibilityQueryMilliseconds: 0,
+        CandidateSortingMilliseconds: 0,
+        CpuEntitySubmissionMilliseconds: 0,
         CachePreparationMilliseconds: 0,
         BackgroundRenderMilliseconds: 0,
         EntityRenderMilliseconds: 0,

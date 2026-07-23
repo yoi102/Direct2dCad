@@ -153,7 +153,8 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         CadViewport viewport,
         CadHandleScene scene,
         CadRenderOptions options,
-        Direct2DSelectionReferenceDrawCallback drawReference)
+        Direct2DSelectionReferenceDrawCallback drawReference,
+        bool requireCompleteCache = false)
     {
         ThrowIfDisposed();
         EnsureState(document, scene);
@@ -171,6 +172,18 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         var renderPadding = Direct2DSelectionRenderer.ResolveSelectionRenderPadding(
             scene,
             viewport.Zoom);
+        if (requireCompleteCache &&
+            profile.Chunks.Any(chunk =>
+                chunk.IsCacheable &&
+                chunk.CommandList is null &&
+                IntersectsRenderBounds(
+                    chunk.Bounds,
+                    renderBounds,
+                    renderPadding)))
+        {
+            return false;
+        }
+
         foreach (var chunk in profile.Chunks)
         {
             if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, renderPadding))

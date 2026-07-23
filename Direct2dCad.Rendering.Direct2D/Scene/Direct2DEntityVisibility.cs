@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -18,12 +19,141 @@ internal static class Direct2DEntityVisibility
         CadViewport viewport,
         CadRenderOptions options,
         Direct2DResourceCache resourceCache,
+        Direct2DOwnerRenderPacket renderPacket,
+        List<EntityId> candidateIdBuffer,
+        HashSet<EntityId> candidateSetBuffer,
+        List<int> candidateIndexBuffer,
+        Direct2DRenderStatisticsCollector? statistics = null)
+    {
+        if (renderPacket.Entries.Count == 0)
+            return [];
+
+        var renderWorldBounds = ResolveRenderWorldBounds(viewport, options);
+        if (renderWorldBounds is not { } bounds ||
+            options.EntityBoundsQueryInto is null &&
+            options.EntityBoundsQuery is null)
+        {
+            return EnumeratePacketSubset(
+                viewport,
+                options,
+                resourceCache,
+                renderPacket.Entries,
+                renderWorldBounds);
+        }
+
+        var broadPhasePadding = ResolveBroadPhasePadding(
+            resourceCache,
+            viewport,
+            options);
+        var queryBounds = bounds.Inflate(broadPhasePadding);
+        if (!renderPacket.Bounds.IsEmpty &&
+            queryBounds.Contains(renderPacket.Bounds))
+        {
+            return EnumeratePacketSubset(
+                viewport,
+                options,
+                resourceCache,
+                renderPacket.Entries,
+                bounds);
+        }
+
+        IReadOnlyList<EntityId> candidateIds;
+        var queryStarted = Stopwatch.GetTimestamp();
+        try
+        {
+            if (options.EntityBoundsQueryInto is { } bufferedQuery)
+            {
+                candidateIdBuffer.Clear();
+                bufferedQuery(
+                    options.ActiveOwnerBlockId,
+                    queryBounds,
+                    candidateIdBuffer);
+                candidateIds = candidateIdBuffer;
+            }
+            else
+            {
+                candidateIds = options.EntityBoundsQuery!(
+                    options.ActiveOwnerBlockId,
+                    queryBounds);
+            }
+        }
+        finally
+        {
+            statistics?.RecordVisibilityQuery(
+                Stopwatch.GetElapsedTime(queryStarted).TotalMilliseconds);
+        }
+
+        if (candidateIds.Count >= renderPacket.Entries.Count / 2)
+        {
+            return EnumeratePacketSubset(
+                viewport,
+                options,
+                resourceCache,
+                renderPacket.Entries,
+                bounds);
+        }
+
+        candidateIndexBuffer.Clear();
+        if (candidateIndexBuffer.Capacity < candidateIds.Count)
+            candidateIndexBuffer.Capacity = candidateIds.Count;
+
+        if (renderPacket.Entries.Count >= MinimumOrderedScanEntityCount &&
+            candidateIds.Count >=
+            renderPacket.Entries.Count / OrderedScanCandidateDivisor)
+        {
+            candidateSetBuffer.Clear();
+            foreach (var entityId in candidateIds)
+                candidateSetBuffer.Add(entityId);
+            for (var index = 0; index < renderPacket.Entries.Count; index++)
+            {
+                if (candidateSetBuffer.Contains(
+                        renderPacket.Entries[index].Entity.Id))
+                {
+                    candidateIndexBuffer.Add(index);
+                }
+            }
+        }
+        else
+        {
+            foreach (var entityId in candidateIds)
+            {
+                if (renderPacket.TryGetIndex(entityId, out var index))
+                    candidateIndexBuffer.Add(index);
+            }
+
+            var sortingStarted = Stopwatch.GetTimestamp();
+            try
+            {
+                candidateIndexBuffer.Sort();
+            }
+            finally
+            {
+                statistics?.RecordCandidateSorting(
+                    Stopwatch.GetElapsedTime(sortingStarted).TotalMilliseconds);
+            }
+        }
+
+        return EnumeratePacketIndices(
+            viewport,
+            options,
+            resourceCache,
+            renderPacket.Entries,
+            candidateIndexBuffer,
+            bounds);
+    }
+
+    public static IEnumerable<Direct2DVisibleEntity> Enumerate(
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
         IReadOnlyList<CadEntity> orderedEntities,
         Direct2DEntityOrderCache entityOrderCache,
         List<EntityId>? candidateIdBuffer = null,
         HashSet<EntityId>? candidateSetBuffer = null,
         List<CadEntity>? candidateEntityBuffer = null,
-        List<Direct2DEntityOrderCache.RankedEntity>? rankedEntityBuffer = null)
+        List<Direct2DEntityOrderCache.RankedEntity>? rankedEntityBuffer = null,
+        Direct2DRenderStatisticsCollector? statistics = null)
     {
         if (orderedEntities.Count == 0)
             return [];
@@ -63,18 +193,27 @@ internal static class Direct2DEntityVisibility
         }
 
         IReadOnlyList<EntityId> candidateIds;
-        if (canUseBufferedQuery)
+        var queryStarted = Stopwatch.GetTimestamp();
+        try
         {
-            candidateIdBuffer!.Clear();
-            options.EntityBoundsQueryInto!(
-                options.ActiveOwnerBlockId,
-                queryBounds,
-                candidateIdBuffer);
-            candidateIds = candidateIdBuffer;
+            if (canUseBufferedQuery)
+            {
+                candidateIdBuffer!.Clear();
+                options.EntityBoundsQueryInto!(
+                    options.ActiveOwnerBlockId,
+                    queryBounds,
+                    candidateIdBuffer);
+                candidateIds = candidateIdBuffer;
+            }
+            else
+            {
+                candidateIds = options.EntityBoundsQuery!(options.ActiveOwnerBlockId, queryBounds);
+            }
         }
-        else
+        finally
         {
-            candidateIds = options.EntityBoundsQuery!(options.ActiveOwnerBlockId, queryBounds);
+            statistics?.RecordVisibilityQuery(
+                Stopwatch.GetElapsedTime(queryStarted).TotalMilliseconds);
         }
         if (candidateIds.Count > 0 &&
             candidateIds.Count >= orderedEntities.Count / 2)
@@ -127,11 +266,20 @@ internal static class Direct2DEntityVisibility
             candidates.Add(entity);
         }
 
-        entityOrderCache.SortCandidates(
-            document,
-            options.ActiveOwnerBlockId,
-            candidates,
-            rankedEntityBuffer ?? []);
+        var sortingStarted = Stopwatch.GetTimestamp();
+        try
+        {
+            entityOrderCache.SortCandidates(
+                document,
+                options.ActiveOwnerBlockId,
+                candidates,
+                rankedEntityBuffer ?? []);
+        }
+        finally
+        {
+            statistics?.RecordCandidateSorting(
+                Stopwatch.GetElapsedTime(sortingStarted).TotalMilliseconds);
+        }
         return EnumerateOrderedSubset(
             document,
             viewport,
@@ -150,6 +298,108 @@ internal static class Direct2DEntityVisibility
         if (result.Capacity < capacity)
             result.Capacity = capacity;
         return result;
+    }
+
+    private static IEnumerable<Direct2DVisibleEntity> EnumeratePacketSubset(
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
+        IReadOnlyList<Direct2DEntityRenderPacket> entries,
+        CadRectD? renderWorldBounds)
+    {
+        var broadPhasePadding = ResolveBroadPhasePadding(
+            resourceCache,
+            viewport,
+            options);
+        foreach (var entry in entries)
+        {
+            if (TryResolveVisiblePacket(
+                    viewport,
+                    options,
+                    resourceCache,
+                    entry,
+                    renderWorldBounds,
+                    broadPhasePadding,
+                    out var visible))
+            {
+                yield return visible;
+            }
+        }
+    }
+
+    private static IEnumerable<Direct2DVisibleEntity> EnumeratePacketIndices(
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
+        IReadOnlyList<Direct2DEntityRenderPacket> entries,
+        IReadOnlyList<int> indices,
+        CadRectD? renderWorldBounds)
+    {
+        var broadPhasePadding = ResolveBroadPhasePadding(
+            resourceCache,
+            viewport,
+            options);
+        foreach (var index in indices)
+        {
+            if ((uint)index >= (uint)entries.Count)
+                continue;
+            if (TryResolveVisiblePacket(
+                    viewport,
+                    options,
+                    resourceCache,
+                    entries[index],
+                    renderWorldBounds,
+                    broadPhasePadding,
+                    out var visible))
+            {
+                yield return visible;
+            }
+        }
+    }
+
+    private static bool TryResolveVisiblePacket(
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
+        Direct2DEntityRenderPacket entry,
+        CadRectD? renderWorldBounds,
+        double broadPhasePadding,
+        out Direct2DVisibleEntity visible)
+    {
+        var entity = entry.Entity;
+        if (!entry.IsRenderable ||
+            options.HiddenEntityIds.Contains(entity.Id) ||
+            renderWorldBounds is { } coarseBounds &&
+            !MayIntersectRenderBounds(
+                entry.Bounds,
+                coarseBounds,
+                broadPhasePadding))
+        {
+            visible = default;
+            return false;
+        }
+
+        resourceCache.TryGetEntityResources(entity.Id, out var resources);
+        if (Direct2DEntityLevelOfDetail.Resolve(
+                entity,
+                resources,
+                viewport,
+                options) == Direct2DEntityRenderDetail.Skip ||
+            renderWorldBounds is { } bounds &&
+            !IntersectsRenderBounds(
+                entity,
+                bounds,
+                viewport,
+                options,
+                resources,
+                broadPhasePadding))
+        {
+            visible = default;
+            return false;
+        }
+
+        visible = new Direct2DVisibleEntity(entity, resources);
+        return true;
     }
 
     internal static IEnumerable<Direct2DVisibleEntity> EnumerateOrderedSubset(
@@ -246,7 +496,17 @@ internal static class Direct2DEntityVisibility
         CadRectD renderWorldBounds,
         double broadPhasePadding)
     {
-        var entityBounds = entity.Bounds;
+        return MayIntersectRenderBounds(
+            entity.Bounds,
+            renderWorldBounds,
+            broadPhasePadding);
+    }
+
+    private static bool MayIntersectRenderBounds(
+        CadRectD entityBounds,
+        CadRectD renderWorldBounds,
+        double broadPhasePadding)
+    {
         if (entityBounds.IsEmpty)
             return true;
 

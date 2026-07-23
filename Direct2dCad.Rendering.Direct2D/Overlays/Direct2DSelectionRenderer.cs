@@ -23,6 +23,8 @@ internal sealed class Direct2DSelectionRenderer(
 {
     private const byte SelectedSolidFillMaximumAlpha = 64;
     private const int SpatiallyIndexedSelectionThreshold = 256;
+    private const int LargeSelectionFallbackThreshold = 4096;
+    private const int ForcedLargeSelectionFallbackThreshold = 8192;
     private readonly HashSet<BlockId> _visitedBlocks = [];
     private readonly List<EntityId> _selectionCandidateIds = new(256);
     private readonly Direct2DSelectionCommandListCache _commandListCache = new(
@@ -71,15 +73,32 @@ internal sealed class Direct2DSelectionRenderer(
         var renderWorldBounds = options.DirtyWorldBounds is { IsEmpty: false } dirty
             ? dirty
             : viewport.VisibleWorldBounds;
+        var useLargeSelectionFallback =
+            ShouldUseLargeSelectionFallback(scene, options);
         if (_commandListCache.TryDraw(
                 context,
                 document,
                 viewport,
                 scene,
                 options,
-                DrawSelectionReferenceForCache))
+                DrawSelectionReferenceForCache,
+                requireCompleteCache: useLargeSelectionFallback))
         {
+            statistics.RecordRenderCacheHit();
             DrawNonSelectionItems(context, viewport, scene.NonSelectionItems, options);
+            return;
+        }
+        statistics.RecordRenderCacheMiss();
+        if (useLargeSelectionFallback)
+        {
+            DrawLargeSelectionFallback(
+                context,
+                viewport,
+                scene,
+                options);
+            DrawNonSelectionItems(context, viewport, scene.NonSelectionItems, options);
+            statistics.RecordSelectionEntities(scene.SelectionReferenceCount);
+            statistics.RecordLargeSelectionFallback();
             return;
         }
         if (CanUseSpatialSelectionQuery(scene, options, renderWorldBounds))
@@ -122,6 +141,36 @@ internal sealed class Direct2DSelectionRenderer(
                     break;
             }
         }
+    }
+
+    private static bool ShouldUseLargeSelectionFallback(
+        CadHandleScene scene,
+        CadRenderOptions options)
+    {
+        return scene.SelectionReferenceCount >= ForcedLargeSelectionFallbackThreshold ||
+               options.IsLevelOfDetailEnabled &&
+               scene.SelectionReferenceCount >= LargeSelectionFallbackThreshold;
+    }
+
+    private void DrawLargeSelectionFallback(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadHandleScene scene,
+        CadRenderOptions options)
+    {
+        if (scene.SelectionWorldBounds.IsEmpty ||
+            scene.SelectionReferences.Count == 0)
+        {
+            return;
+        }
+
+        var style = scene.SelectionReferences[^1].Style;
+        var brush = styleResources.GetBrush(context, style.StrokeColor);
+        Direct2DEntityRenderer.DrawRectangularProxy(
+            context,
+            scene.SelectionWorldBounds,
+            brush,
+            options.TransformScaleMultiplier);
     }
 
     private static bool CanUseSpatialSelectionQuery(

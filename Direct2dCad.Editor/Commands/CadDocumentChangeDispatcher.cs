@@ -120,6 +120,13 @@ public sealed class CadDocumentChangeDispatcher
             CadEntityChangeKind.Created |
             CadEntityChangeKind.Deleted |
             CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.Layer |
+            CadEntityChangeKind.DrawOrder |
+            CadEntityChangeKind.Fill |
+            CadEntityChangeKind.EmbeddedData |
+            CadEntityChangeKind.Opacity |
             CadEntityChangeKind.Rotation;
         List<EntityId>? changedEntityIds = null;
         foreach (var change in result.EntityChanges)

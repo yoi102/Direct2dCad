@@ -51,6 +51,15 @@ internal sealed class Direct2DRenderStatisticsCollector
     public long GpuCachePeakBytes => _gpuCachePeakBytes;
     public long GpuCacheBudgetBytes { get; private set; }
     public int GpuCacheEvictionCount { get; private set; }
+    public int RenderCacheHitCount { get; private set; }
+    public int RenderCacheMissCount { get; private set; }
+    public int MicroEntityCandidateCount { get; private set; }
+    public int MicroEntityRepresentativeCount { get; private set; }
+    public int LargeSelectionFallbackCount { get; private set; }
+    public double DirtyPlanningMilliseconds { get; private set; }
+    public double VisibilityQueryMilliseconds { get; private set; }
+    public double CandidateSortingMilliseconds { get; private set; }
+    public double CpuEntitySubmissionMilliseconds { get; private set; }
     public double CachePreparationMilliseconds { get; private set; }
     public double BackgroundRenderMilliseconds { get; private set; }
     public double EntityRenderMilliseconds { get; private set; }
@@ -59,7 +68,10 @@ internal sealed class Direct2DRenderStatisticsCollector
     public double OlePreparationMilliseconds { get; private set; }
     public double SurfaceDrawMilliseconds { get; private set; }
 
-    public void BeginFrame(bool isFullFrame, int dirtyRegionCount)
+    public void BeginFrame(
+        bool isFullFrame,
+        int dirtyRegionCount,
+        double dirtyPlanningMilliseconds = 0)
     {
         _isFrameActive = true;
         _isFullFrame = isFullFrame;
@@ -87,6 +99,15 @@ internal sealed class Direct2DRenderStatisticsCollector
         HatchSimplifiedLineFamilyCount = _pendingHatchSimplifiedLineFamilyCount;
         OleTileBuildCount = _pendingOleTileBuildCount;
         GpuCacheEvictionCount = _pendingGpuCacheEvictionCount;
+        RenderCacheHitCount = 0;
+        RenderCacheMissCount = 0;
+        MicroEntityCandidateCount = 0;
+        MicroEntityRepresentativeCount = 0;
+        LargeSelectionFallbackCount = 0;
+        DirtyPlanningMilliseconds = NormalizeDuration(dirtyPlanningMilliseconds);
+        VisibilityQueryMilliseconds = 0;
+        CandidateSortingMilliseconds = 0;
+        CpuEntitySubmissionMilliseconds = 0;
         CachePreparationMilliseconds = 0;
         BackgroundRenderMilliseconds = 0;
         EntityRenderMilliseconds = 0;
@@ -182,6 +203,22 @@ internal sealed class Direct2DRenderStatisticsCollector
         else
             _pendingGpuCacheEvictionCount += count;
     }
+    public void RecordRenderCacheHit() => RenderCacheHitCount++;
+    public void RecordRenderCacheMiss() => RenderCacheMissCount++;
+    public void RecordMicroEntityAggregation(
+        int candidateCount,
+        int representativeCount)
+    {
+        MicroEntityCandidateCount += Math.Max(0, candidateCount);
+        MicroEntityRepresentativeCount += Math.Max(0, representativeCount);
+    }
+    public void RecordLargeSelectionFallback() => LargeSelectionFallbackCount++;
+    public void RecordVisibilityQuery(double milliseconds) =>
+        VisibilityQueryMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordCandidateSorting(double milliseconds) =>
+        CandidateSortingMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordCpuEntitySubmission(double milliseconds) =>
+        CpuEntitySubmissionMilliseconds += NormalizeDuration(milliseconds);
     public void RecordCachePreparation(double milliseconds) =>
         CachePreparationMilliseconds += NormalizeDuration(milliseconds);
     public void RecordBackgroundRender(double milliseconds) =>
@@ -273,6 +310,15 @@ internal sealed class Direct2DRenderStatisticsCollector
         GpuCachePeakBytes,
         GpuCacheBudgetBytes,
         GpuCacheEvictionCount,
+        RenderCacheHitCount,
+        RenderCacheMissCount,
+        MicroEntityCandidateCount,
+        MicroEntityRepresentativeCount,
+        LargeSelectionFallbackCount,
+        DirtyPlanningMilliseconds,
+        VisibilityQueryMilliseconds,
+        CandidateSortingMilliseconds,
+        CpuEntitySubmissionMilliseconds,
         CachePreparationMilliseconds,
         BackgroundRenderMilliseconds,
         EntityRenderMilliseconds,
