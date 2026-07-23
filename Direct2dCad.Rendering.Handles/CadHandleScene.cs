@@ -26,12 +26,22 @@ public sealed class CadHandleScene
 
         (_selectionReferenceItems, _previousSelectionReferenceItems) =
             (_previousSelectionReferenceItems, _selectionReferenceItems);
+        if (items.TryGetNonEnumeratedCount(out var itemCount))
+        {
+            _items.EnsureCapacity(itemCount);
+            _nonSelectionItems.EnsureCapacity(itemCount);
+            _selectionReferenceItems.EnsureCapacity(itemCount);
+            _selectionReferences.EnsureCapacity(itemCount);
+        }
+
         _items.Clear();
         _nonSelectionItems.Clear();
         _selectionReferences.Clear();
         _selectionReferenceItems.Clear();
         HasTranslatedSelectionReferences = false;
         SelectionWorldBounds = CadRectD.Empty;
+        var selectionChanged = false;
+        var selectionIndex = 0;
         foreach (var item in items)
         {
             if (item is null)
@@ -42,6 +52,10 @@ public sealed class CadHandleScene
             {
                 _selectionReferences[reference.EntityId] = reference;
                 _selectionReferenceItems.Add(reference);
+                selectionChanged |=
+                    selectionIndex >= _previousSelectionReferenceItems.Count ||
+                    _previousSelectionReferenceItems[selectionIndex] != reference;
+                selectionIndex++;
                 HasTranslatedSelectionReferences |= reference.Offset != CadVectorD.Zero;
                 SelectionWorldBounds = SelectionWorldBounds.Union(
                     reference.EntityBounds.Translate(reference.Offset));
@@ -52,12 +66,18 @@ public sealed class CadHandleScene
             }
         }
 
-        if (!SelectionReferencesEqual(
-                _previousSelectionReferenceItems,
-                _selectionReferenceItems))
+        selectionChanged |= selectionIndex != _previousSelectionReferenceItems.Count;
+        if (selectionChanged)
         {
             SelectionVersion = unchecked(SelectionVersion + 1);
         }
+        else
+        {
+            // Keep the published list stable while incremental render-cache builders hold it.
+            (_selectionReferenceItems, _previousSelectionReferenceItems) =
+                (_previousSelectionReferenceItems, _selectionReferenceItems);
+        }
+
         _previousSelectionReferenceItems.Clear();
     }
 
@@ -81,19 +101,4 @@ public sealed class CadHandleScene
         SelectionWorldBounds = CadRectD.Empty;
     }
 
-    private static bool SelectionReferencesEqual(
-        IReadOnlyList<CadSelectionEntityReference> left,
-        IReadOnlyList<CadSelectionEntityReference> right)
-    {
-        if (left.Count != right.Count)
-            return false;
-
-        for (var index = 0; index < left.Count; index++)
-        {
-            if (left[index] != right[index])
-                return false;
-        }
-
-        return true;
-    }
 }

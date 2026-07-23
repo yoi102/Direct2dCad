@@ -17,6 +17,8 @@ public sealed class CadOleObject : CadEntity
 
     public IReadOnlyList<byte> OleBytes => _oleBytes;
 
+    public ReadOnlyMemory<byte> OleMemory => _oleBytes;
+
     internal CadOleObject(
         EntityId id,
         LayerId layerId,

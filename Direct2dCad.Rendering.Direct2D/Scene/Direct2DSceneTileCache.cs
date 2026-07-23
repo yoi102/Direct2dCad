@@ -437,23 +437,23 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         CadRenderOptions source,
         CadRectD worldBounds,
         double zoom) => new()
-    {
-        ActiveOwnerBlockId = source.ActiveOwnerBlockId,
-        DrawGrid = false,
-        DrawOrigin = false,
-        DrawGripHandles = false,
-        IsAntialiasingEnabled = source.IsAntialiasingEnabled,
-        IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
-        IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
-        AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
-        TransformScaleMultiplier = source.TransformScaleMultiplier,
-        KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
-        MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
-        HiddenEntityIds = CadRenderOptions.NoHiddenEntities,
-        DirtyWorldBounds = worldBounds.Inflate(TileGutterPixels / zoom),
-        EntityBoundsQuery = source.EntityBoundsQuery,
-        EntityBoundsQueryInto = source.EntityBoundsQueryInto
-    };
+        {
+            ActiveOwnerBlockId = source.ActiveOwnerBlockId,
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsAntialiasingEnabled = source.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
+            AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
+            TransformScaleMultiplier = source.TransformScaleMultiplier,
+            KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+            HiddenEntityIds = CadRenderOptions.NoHiddenEntities,
+            DirtyWorldBounds = worldBounds.Inflate(TileGutterPixels / zoom),
+            EntityBoundsQuery = source.EntityBoundsQuery,
+            EntityBoundsQueryInto = source.EntityBoundsQueryInto
+        };
 
     private static bool CanUse(CadRenderOptions options, int entityCount)
     {

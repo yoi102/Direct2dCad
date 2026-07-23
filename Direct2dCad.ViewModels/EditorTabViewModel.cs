@@ -1,5 +1,5 @@
-using System.ComponentModel;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;

@@ -11,6 +11,12 @@ public sealed class CadTransientScene
     public void Replace(IEnumerable<CadTransientItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
+        if (_items.Count == 0 &&
+            items.TryGetNonEnumeratedCount(out var itemCount) &&
+            itemCount == 0)
+        {
+            return;
+        }
 
         _items.Clear();
         foreach (var item in items)
@@ -26,6 +32,9 @@ public sealed class CadTransientScene
 
     public void Clear()
     {
+        if (_items.Count == 0)
+            return;
+
         _items.Clear();
         unchecked
         {

@@ -279,19 +279,19 @@ internal sealed class Direct2DBackgroundRenderer(
         GridRasterization rasterization)
     {
         foreach (var x in EnumerateGridCoordinates(bounds.MinX, bounds.MaxX, spacingX, origin.X))
-        foreach (var y in EnumerateGridCoordinates(bounds.MinY, bounds.MaxY, spacingY, origin.Y))
-        {
-            var major = IsNearGridLine(x, origin.X, majorX) && IsNearGridLine(y, origin.Y, majorY);
-            var center = rasterization.AlignDot(new CadPointD(x, y), major);
-            var size = rasterization.ResolveDotHalfSize(major);
-            context.FillRectangle(
-                new RawRectF(
-                    (float)(center.X - size),
-                    (float)(center.Y - size),
-                    (float)(center.X + size),
-                    (float)(center.Y + size)),
-                major ? majorBrush : minorBrush);
-        }
+            foreach (var y in EnumerateGridCoordinates(bounds.MinY, bounds.MaxY, spacingY, origin.Y))
+            {
+                var major = IsNearGridLine(x, origin.X, majorX) && IsNearGridLine(y, origin.Y, majorY);
+                var center = rasterization.AlignDot(new CadPointD(x, y), major);
+                var size = rasterization.ResolveDotHalfSize(major);
+                context.FillRectangle(
+                    new RawRectF(
+                        (float)(center.X - size),
+                        (float)(center.Y - size),
+                        (float)(center.X + size),
+                        (float)(center.Y + size)),
+                    major ? majorBrush : minorBrush);
+            }
     }
 
     private static void DrawGridCrosses(
@@ -309,16 +309,16 @@ internal sealed class Direct2DBackgroundRenderer(
         var armX = spacingX * 0.12;
         var armY = spacingY * 0.12;
         foreach (var x in EnumerateGridCoordinates(bounds.MinX, bounds.MaxX, spacingX, origin.X))
-        foreach (var y in EnumerateGridCoordinates(bounds.MinY, bounds.MaxY, spacingY, origin.Y))
-        {
-            var major = IsNearGridLine(x, origin.X, majorX) && IsNearGridLine(y, origin.Y, majorY);
-            var brush = major ? majorBrush : minorBrush;
-            var stroke = rasterization.ResolveWorldStroke(major);
-            var drawX = rasterization.AlignWorldX(x, major);
-            var drawY = rasterization.AlignWorldY(y, major);
-            context.DrawLine(new Vector2((float)(drawX - armX), (float)drawY), new Vector2((float)(drawX + armX), (float)drawY), brush, stroke);
-            context.DrawLine(new Vector2((float)drawX, (float)(drawY - armY)), new Vector2((float)drawX, (float)(drawY + armY)), brush, stroke);
-        }
+            foreach (var y in EnumerateGridCoordinates(bounds.MinY, bounds.MaxY, spacingY, origin.Y))
+            {
+                var major = IsNearGridLine(x, origin.X, majorX) && IsNearGridLine(y, origin.Y, majorY);
+                var brush = major ? majorBrush : minorBrush;
+                var stroke = rasterization.ResolveWorldStroke(major);
+                var drawX = rasterization.AlignWorldX(x, major);
+                var drawY = rasterization.AlignWorldY(y, major);
+                context.DrawLine(new Vector2((float)(drawX - armX), (float)drawY), new Vector2((float)(drawX + armX), (float)drawY), brush, stroke);
+                context.DrawLine(new Vector2((float)drawX, (float)(drawY - armY)), new Vector2((float)drawX, (float)(drawY + armY)), brush, stroke);
+            }
     }
 
     private static double ResolveGridSpacing(

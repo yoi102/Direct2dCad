@@ -37,6 +37,13 @@ public sealed record CadRenderStatistics(
     long GpuCachePeakBytes,
     long GpuCacheBudgetBytes,
     int GpuCacheEvictionCount,
+    double CachePreparationMilliseconds,
+    double BackgroundRenderMilliseconds,
+    double EntityRenderMilliseconds,
+    double TransientRenderMilliseconds,
+    double SelectionRenderMilliseconds,
+    double OlePreparationMilliseconds,
+    double SurfaceDrawMilliseconds,
     double RenderDurationMilliseconds)
 {
     public static CadRenderStatistics Empty { get; } = new(
@@ -76,5 +83,12 @@ public sealed record CadRenderStatistics(
         GpuCachePeakBytes: 0,
         GpuCacheBudgetBytes: 0,
         GpuCacheEvictionCount: 0,
+        CachePreparationMilliseconds: 0,
+        BackgroundRenderMilliseconds: 0,
+        EntityRenderMilliseconds: 0,
+        TransientRenderMilliseconds: 0,
+        SelectionRenderMilliseconds: 0,
+        OlePreparationMilliseconds: 0,
+        SurfaceDrawMilliseconds: 0,
         RenderDurationMilliseconds: 0);
 }

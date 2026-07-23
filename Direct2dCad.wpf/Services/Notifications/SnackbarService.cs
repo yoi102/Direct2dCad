@@ -1,7 +1,7 @@
+using System.Windows;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.wpf.Assists;
 using MaterialDesignThemes.Wpf;
-using System.Windows;
 
 namespace Direct2dCad.wpf.Services.Notifications;
 

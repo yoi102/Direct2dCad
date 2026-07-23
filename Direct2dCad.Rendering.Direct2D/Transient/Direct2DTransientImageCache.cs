@@ -11,11 +11,11 @@ namespace Direct2dCad.Rendering.Direct2D.Transient;
 internal sealed class Direct2DTransientImageCache : IDisposable
 {
     private readonly Dictionary<EntityId, EntityBitmapEntry> _entityBitmaps = [];
-    private readonly Dictionary<byte[], ID2D1Bitmap> _pixelBitmaps = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<ReadOnlyMemory<byte>, ID2D1Bitmap> _pixelBitmaps = [];
     private readonly HashSet<EntityId> _activeEntityImages = [];
-    private readonly HashSet<byte[]> _activePixelImages = new(ReferenceEqualityComparer.Instance);
+    private readonly HashSet<ReadOnlyMemory<byte>> _activePixelImages = [];
     private readonly List<EntityId> _staleEntityIds = [];
-    private readonly List<byte[]> _stalePixelSources = [];
+    private readonly List<ReadOnlyMemory<byte>> _stalePixelSources = [];
     private CadTransientScene? _reconciledScene;
     private long _reconciledVersion = -1;
 
@@ -23,7 +23,7 @@ internal sealed class Direct2DTransientImageCache : IDisposable
     {
         if (image.SourceEntityId is { } sourceEntityId &&
             _entityBitmaps.TryGetValue(sourceEntityId, out var cachedEntityBitmap) &&
-            ReferenceEquals(cachedEntityBitmap.PixelSource, image.Pixels))
+            cachedEntityBitmap.PixelSource.Equals(image.Pixels))
         {
             return cachedEntityBitmap.Bitmap;
         }
@@ -46,12 +46,15 @@ internal sealed class Direct2DTransientImageCache : IDisposable
             return null;
         }
 
-        var handle = GCHandle.Alloc(image.Pixels, GCHandleType.Pinned);
+        if (!MemoryMarshal.TryGetArray(image.Pixels, out var segment) || segment.Array is null)
+            return null;
+
+        var handle = GCHandle.Alloc(segment.Array, GCHandleType.Pinned);
         try
         {
             var bitmap = deviceContext.CreateBitmap(
                 new SizeI(image.PixelWidth, image.PixelHeight),
-                handle.AddrOfPinnedObject(),
+                IntPtr.Add(handle.AddrOfPinnedObject(), segment.Offset),
                 (uint)image.Stride,
                 new BitmapProperties1
                 {
@@ -169,5 +172,7 @@ internal sealed class Direct2DTransientImageCache : IDisposable
         }
     }
 
-    private sealed record EntityBitmapEntry(byte[] PixelSource, ID2D1Bitmap Bitmap);
+    private sealed record EntityBitmapEntry(
+        ReadOnlyMemory<byte> PixelSource,
+        ID2D1Bitmap Bitmap);
 }

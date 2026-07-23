@@ -35,6 +35,21 @@ public sealed class CadHandleSceneBuilder
         CadHandleSceneBuildBuffer buffer,
         CadHandleSceneBuildOptions? options = null)
     {
+        return BuildSelectionHandles(
+            document,
+            selectedEntityIds,
+            buffer,
+            reusableScene: null,
+            options);
+    }
+
+    public IReadOnlyList<CadHandleItem> BuildSelectionHandles(
+        CadDocument document,
+        IEnumerable<EntityId> selectedEntityIds,
+        CadHandleSceneBuildBuffer buffer,
+        CadHandleScene? reusableScene,
+        CadHandleSceneBuildOptions? options = null)
+    {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(selectedEntityIds);
         ArgumentNullException.ThrowIfNull(buffer);
@@ -55,7 +70,8 @@ public sealed class CadHandleSceneBuilder
             selectedEntityIds,
             options,
             buffer.Items,
-            buffer.SelectedEntities);
+            buffer.SelectedEntities,
+            reusableScene);
         return buffer.Items;
     }
 
@@ -64,7 +80,8 @@ public sealed class CadHandleSceneBuilder
         IEnumerable<EntityId> selectedEntityIds,
         CadHandleSceneBuildOptions options,
         List<CadHandleItem> items,
-        List<CadEntity> selectedEntities)
+        List<CadEntity> selectedEntities,
+        CadHandleScene? reusableScene = null)
     {
         foreach (var entityId in selectedEntityIds)
         {
@@ -82,11 +99,10 @@ public sealed class CadHandleSceneBuilder
         {
             if (options.IncludeSelectionOutline)
             {
-                items.Add(new CadSelectionEntityReference(
-                    entity.Id,
-                    entity.Bounds,
-                    CadVectorD.Zero,
-                    options.SelectionOutlineStyle));
+                items.Add(GetOrCreateSelectionReference(
+                    entity,
+                    options.SelectionOutlineStyle,
+                    reusableScene));
             }
 
             if (includeIndividualGrips &&
@@ -102,6 +118,28 @@ public sealed class CadHandleSceneBuilder
         {
             AddAggregateMoveGrip(items, selectedEntities, options);
         }
+    }
+
+    private static CadSelectionEntityReference GetOrCreateSelectionReference(
+        CadEntity entity,
+        CadHandleStyle style,
+        CadHandleScene? reusableScene)
+    {
+        if (reusableScene is not null &&
+            reusableScene.TryGetSelectionReference(entity.Id, out var existing) &&
+            existing is not null &&
+            existing.EntityBounds == entity.Bounds &&
+            existing.Offset == CadVectorD.Zero &&
+            existing.Style == style)
+        {
+            return existing;
+        }
+
+        return new CadSelectionEntityReference(
+            entity.Id,
+            entity.Bounds,
+            CadVectorD.Zero,
+            style);
     }
 
     private static void AddAggregateMoveGrip(

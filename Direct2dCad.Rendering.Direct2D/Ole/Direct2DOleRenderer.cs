@@ -25,7 +25,7 @@ internal sealed class Direct2DOleRenderer(
     private const int TilePixelSide = 1024;
     private const int MaxLogicalPixelSide = 1_048_576;
     private readonly Direct2DOleBitmapCache _cache = new(statistics);
-    private readonly Dictionary<EntityId, byte[]> _entityOleBytes = [];
+    private readonly Dictionary<EntityId, ReadOnlyMemory<byte>> _entityOleBytes = [];
     private readonly HashSet<Direct2DOleRenderKey> _activeTransientKeys = [];
     private readonly HashSet<Direct2DOleRenderKey> _cachedTransientKeys = [];
     private readonly List<Direct2DOleRenderKey> _staleTransientKeys = [];
@@ -419,7 +419,7 @@ internal sealed class Direct2DOleRenderer(
         ID2D1DeviceContext context,
         Direct2DOleRenderKey key,
         CadRectD bounds,
-        byte[] bytes,
+        ReadOnlyMemory<byte> bytes,
         CadViewport viewport,
         Matrix3x2 transform)
     {
@@ -451,7 +451,7 @@ internal sealed class Direct2DOleRenderer(
         ID2D1DeviceContext context,
         Direct2DOleRenderKey key,
         CadRectD bounds,
-        byte[] bytes,
+        ReadOnlyMemory<byte> bytes,
         double opacity,
         CadViewport viewport,
         bool allowDraw)
@@ -533,7 +533,7 @@ internal sealed class Direct2DOleRenderer(
     private bool TryPopulateTiles(
         ID2D1DeviceContext context,
         Direct2DOleRenderKey key,
-        byte[] bytes,
+        ReadOnlyMemory<byte> bytes,
         Direct2DOleBitmapCache.Entry entry,
         IReadOnlySet<Direct2DOleBitmapCache.TileKey> visibleTiles)
     {
@@ -562,7 +562,7 @@ internal sealed class Direct2DOleRenderer(
     private ID2D1Bitmap? CreateTileBitmap(
         ID2D1DeviceContext context,
         Direct2DOleRenderKey key,
-        byte[] bytes,
+        ReadOnlyMemory<byte> bytes,
         Direct2DOleBitmapCache.Entry entry,
         Direct2DOleBitmapCache.TileKey tileKey)
     {
@@ -674,12 +674,12 @@ internal sealed class Direct2DOleRenderer(
         return new RawRectF(minX, minY, maxX, maxY);
     }
 
-    private byte[] GetEntityBytes(CadOleObject ole)
+    private ReadOnlyMemory<byte> GetEntityBytes(CadOleObject ole)
     {
         if (_entityOleBytes.TryGetValue(ole.Id, out var bytes))
             return bytes;
 
-        bytes = ole.CopyOleBytes();
+        bytes = ole.OleMemory;
         _entityOleBytes.Add(ole.Id, bytes);
         return bytes;
     }
@@ -717,8 +717,8 @@ internal sealed class Direct2DOleRenderer(
         var maxY = Math.Clamp((int)Math.Ceiling((visible.Bottom - full.Top) / height * entry.PixelHeight), minY + 1, entry.PixelHeight);
         _visibleTileKeys.Clear();
         for (var row = minY / TilePixelSide; row <= (maxY - 1) / TilePixelSide; row++)
-        for (var column = minX / TilePixelSide; column <= (maxX - 1) / TilePixelSide; column++)
-            _visibleTileKeys.Add(new Direct2DOleBitmapCache.TileKey(column, row));
+            for (var column = minX / TilePixelSide; column <= (maxX - 1) / TilePixelSide; column++)
+                _visibleTileKeys.Add(new Direct2DOleBitmapCache.TileKey(column, row));
         return _visibleTileKeys;
     }
 

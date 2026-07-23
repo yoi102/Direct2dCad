@@ -1,7 +1,8 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
-using Direct2dCad.Ole.Windows;
 using Direct2dCad.Db;
+using Direct2dCad.Ole.Windows;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
@@ -74,7 +75,7 @@ internal sealed class OleHostService : IOleHostService, IDisposable
         var key = new RenderSessionKey(sessionId, request.EntityId, request.RenderId);
         if (!_renderSessions.TryGetValue(key, out var renderSession))
         {
-            renderSession = CadOleServices.CreateRenderSession(request.OleBytes);
+            renderSession = CadOleServices.CreateRenderSession(GetArray(request.OleBytes));
             _renderSessions[key] = renderSession;
         }
 
@@ -170,6 +171,19 @@ internal sealed class OleHostService : IOleHostService, IDisposable
                 data.PixelHeight,
                 data.Stride,
                 data.Pixels);
+    }
+
+    private static byte[] GetArray(ReadOnlyMemory<byte> memory)
+    {
+        if (MemoryMarshal.TryGetArray(memory, out var segment) &&
+            segment.Array is not null &&
+            segment.Offset == 0 &&
+            segment.Count == segment.Array.Length)
+        {
+            return segment.Array;
+        }
+
+        return memory.ToArray();
     }
 
     private readonly record struct RenderSessionKey(

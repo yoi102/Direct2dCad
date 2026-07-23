@@ -75,7 +75,7 @@ public sealed record CadTransientImage(
     int PixelWidth,
     int PixelHeight,
     int Stride,
-    byte[] Pixels,
+    ReadOnlyMemory<byte> Pixels,
     CadTransientStyle Style,
     EntityId? SourceEntityId = null,
     double Opacity = 1.0,
@@ -84,7 +84,7 @@ public sealed record CadTransientImage(
 
 public sealed record CadTransientOleObject(
     CadRectD Bounds,
-    byte[] OleBytes,
+    ReadOnlyMemory<byte> OleBytes,
     CadTransientStyle Style,
     EntityId? SourceEntityId,
     Guid RenderId,

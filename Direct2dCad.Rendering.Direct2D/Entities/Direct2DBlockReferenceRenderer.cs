@@ -20,7 +20,6 @@ internal sealed class Direct2DBlockReferenceRenderer(
     Direct2DEntityOrderCache entityOrderCache,
     Direct2DRenderStatisticsCollector statistics) : IDisposable
 {
-    private const int MaximumPreparedDefinitionKeys = 128;
     private readonly HashSet<BlockId> _visitedBlocks = [];
     private readonly HashSet<BlockId> _cacheabilityVisitedBlocks = [];
     private readonly HashSet<BlockId> _dependencyVisitedBlocks = [];
@@ -28,11 +27,12 @@ internal sealed class Direct2DBlockReferenceRenderer(
     private readonly List<BlockVisibilityBuffers> _visibilityBuffers = [];
     private readonly Direct2DBlockDefinitionCommandListCache _definitionCache = new(statistics);
     private readonly List<Direct2DBlockDefinitionCacheRequest> _cacheRequests = [];
-    private readonly Dictionary<Direct2DBlockDefinitionCacheKey, RequestCandidate> _requestCandidates = [];
     private readonly Dictionary<BlockId, bool> _definitionCacheability = [];
     private readonly Dictionary<BlockId, IReadOnlySet<EntityId>> _definitionDependencies = [];
+    private readonly HashSet<BlockId> _staleDefinitionIds = [];
+    private Direct2DBlockCacheRequestPlanner? _requestPlanBuilder;
     private CadDocument? _preparedDocument;
-    private BlockCacheRequestProfileKey _preparedProfileKey;
+    private Direct2DBlockCacheRequestProfileKey _preparedProfileKey;
     private bool _hasPreparedProfile;
     private bool _requestsDirty = true;
 
@@ -50,17 +50,18 @@ internal sealed class Direct2DBlockReferenceRenderer(
         if (options.HiddenEntityIds.Count > 0)
             return false;
 
-        var profileKey = BlockCacheRequestProfileKey.Create(options, viewport.Zoom);
-        if (_requestsDirty ||
-            !_hasPreparedProfile ||
-            !ReferenceEquals(_preparedDocument, document) ||
-            !_preparedProfileKey.Equals(profileKey))
+        var profileKey = Direct2DBlockCacheRequestProfileKey.Create(
+            options,
+            viewport.Zoom);
+        if (PrepareRequestPlan(
+                document,
+                viewport,
+                options,
+                orderedEntities,
+                profileKey,
+                buildStep))
         {
-            BuildCacheRequests(document, viewport, options, orderedEntities);
-            _preparedDocument = document;
-            _preparedProfileKey = profileKey;
-            _hasPreparedProfile = true;
-            _requestsDirty = false;
+            return true;
         }
 
         ID2D1CommandList? Record(
@@ -77,24 +78,50 @@ internal sealed class Direct2DBlockReferenceRenderer(
         return _definitionCache.Prepare(_cacheRequests, buildStep, Record);
     }
 
-    public void ApplyChanges(CadDocumentChangeSet changes)
+    public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
     {
+        ArgumentNullException.ThrowIfNull(document);
         _definitionCache.ApplyChanges(changes);
         if (!changes.DocumentChanged)
             return;
 
-        _requestsDirty = true;
-        _definitionCacheability.Clear();
-        _definitionDependencies.Clear();
+        if (changes.AffectsDocumentStructure)
+        {
+            InvalidateAllRequestMetadata();
+            return;
+        }
+
+        foreach (var change in changes.EntityChanges)
+        {
+            if ((change.Kind & (CadEntityChangeKind.Created |
+                                CadEntityChangeKind.Deleted)) != 0)
+            {
+                InvalidateAllRequestMetadata();
+                return;
+            }
+        }
+
+        var hasFillChange = changes.EntityChanges.Any(
+            static change => (change.Kind & CadEntityChangeKind.Fill) != 0);
+        var affectedDefinitionMetadata = InvalidateAffectedDefinitionMetadata(
+            changes.EntityChanges,
+            removeMetadata: hasFillChange);
+
+        var changedBlockReference = changes.EntityChanges.Any(change =>
+            document.TryGetEntity(change.EntityId, out var entity) &&
+            entity is CadBlockReference);
+        if (changedBlockReference || hasFillChange && affectedDefinitionMetadata)
+            MarkRequestPlanDirty();
     }
 
     public void ClearCache()
     {
         _definitionCache.Clear();
         _cacheRequests.Clear();
-        _requestCandidates.Clear();
         _definitionCacheability.Clear();
         _definitionDependencies.Clear();
+        _staleDefinitionIds.Clear();
+        _requestPlanBuilder = null;
         _preparedDocument = null;
         _hasPreparedProfile = false;
         _requestsDirty = true;
@@ -130,7 +157,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
             context,
             document,
             viewport,
-            ReferenceRenderState.From(reference),
+            Direct2DBlockReferenceRenderState.From(reference),
             options,
             parentStyle: null,
             _visitedBlocks,
@@ -156,7 +183,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
             context,
             document,
             viewport,
-            new ReferenceRenderState(
+            new Direct2DBlockReferenceRenderState(
                 definitionBlockId,
                 position,
                 rotationRadians,
@@ -175,7 +202,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
         ID2D1DeviceContext context,
         CadDocument document,
         CadViewport viewport,
-        ReferenceRenderState reference,
+        Direct2DBlockReferenceRenderState reference,
         CadRenderOptions options,
         Direct2DBlockRenderStyle? parentStyle,
         HashSet<BlockId> visited,
@@ -184,7 +211,11 @@ internal sealed class Direct2DBlockReferenceRenderer(
         if (!visited.Add(reference.DefinitionBlockId) ||
             !document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
             definition is null ||
-            !TryResolveReferenceStyle(document, reference, parentStyle, out var referenceStyle))
+            !Direct2DBlockReferenceStyleResolver.TryResolve(
+                document,
+                reference,
+                parentStyle,
+                out var referenceStyle))
         {
             return;
         }
@@ -201,7 +232,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
             if (options.HiddenEntityIds.Count == 0 &&
                 _definitionCache.TryDraw(
                     context,
-                    CreateCacheKey(
+                    Direct2DBlockCacheKeyFactory.Create(
                         reference.DefinitionBlockId,
                         referenceStyle,
                         viewport,
@@ -225,7 +256,11 @@ internal sealed class Direct2DBlockReferenceRenderer(
                          visibilityBuffers.CandidateSet,
                          visibilityBuffers.RankedEntities))
             {
-                if (!IsVisible(document, child, referenceStyle, options))
+                if (!Direct2DBlockReferenceStyleResolver.IsVisible(
+                        document,
+                        child,
+                        referenceStyle,
+                        options))
                     continue;
 
                 if (child is CadBlockReference nested)
@@ -256,7 +291,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
                         context,
                         document,
                         viewport,
-                        ReferenceRenderState.From(nested),
+                        Direct2DBlockReferenceRenderState.From(nested),
                         options,
                         referenceStyle,
                         visited,
@@ -292,7 +327,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
                 if (!resourceCache.TryGetEntityResources(child.Id, out var resources) || resources is null)
                     continue;
                 float? strokeWidthOverride = child.UseLayerLineWeight && child.LayerId.Equals(LayerId.Default)
-                    ? ResolveLayerStrokeWidth(referenceStyle.EffectiveLayer)
+                    ? Direct2DBlockReferenceStyleResolver.ResolveLayerStrokeWidth(
+                        referenceStyle.EffectiveLayer)
                     : null;
                 if (Direct2DEntityLevelOfDetail.Resolve(
                         child,
@@ -307,7 +343,11 @@ internal sealed class Direct2DBlockReferenceRenderer(
                 statistics.RecordExpandedBlockEntity();
                 statistics.RecordEntitySubmission();
 
-                var colorOverride = ResolveChildStrokeColor(document, child, referenceStyle);
+                var colorOverride =
+                    Direct2DBlockReferenceStyleResolver.ResolveChildStrokeColor(
+                        document,
+                        child,
+                        referenceStyle);
                 var brushOverride = colorOverride is { } color
                     ? styleResources.GetBrush(context, color)
                     : null;
@@ -345,9 +385,9 @@ internal sealed class Direct2DBlockReferenceRenderer(
             context.Transform,
             options);
         if (detail != Direct2DEntityRenderDetail.Simplified ||
-            !TryResolveReferenceStyle(
+            !Direct2DBlockReferenceStyleResolver.TryResolve(
                 document,
-                ReferenceRenderState.From(reference),
+                Direct2DBlockReferenceRenderState.From(reference),
                 parentStyle,
                 out var referenceStyle))
         {
@@ -363,90 +403,6 @@ internal sealed class Direct2DBlockReferenceRenderer(
         return true;
     }
 
-    private static bool TryResolveReferenceStyle(
-        CadDocument document,
-        ReferenceRenderState reference,
-        Direct2DBlockRenderStyle? parentStyle,
-        out Direct2DBlockRenderStyle style)
-    {
-        if (!document.TryGetLayer(reference.LayerId, out var ownLayer) || ownLayer is null)
-        {
-            style = default;
-            return false;
-        }
-
-        var effectiveLayer = reference.LayerId.Equals(LayerId.Default) && parentStyle is { } containingStyle
-            ? containingStyle.EffectiveLayer
-            : ownLayer;
-        var layerColor = ResolveLayerStrokeColor(document, effectiveLayer);
-        var referenceColor = reference.ColorSource switch
-        {
-            CadColorSource.Explicit =>
-                ResolveGraphicStrokeColor(document, reference.GraphicStyleId) ?? layerColor,
-            CadColorSource.ByBlock when parentStyle is { } containingReferenceStyle =>
-                containingReferenceStyle.ReferenceColor,
-            _ => layerColor
-        };
-
-        style = new Direct2DBlockRenderStyle(effectiveLayer, referenceColor);
-        return true;
-    }
-
-    private static CadColor? ResolveChildStrokeColor(
-        CadDocument document,
-        CadEntity child,
-        Direct2DBlockRenderStyle referenceStyle)
-    {
-        return child.ColorSource switch
-        {
-            CadColorSource.ByBlock => referenceStyle.ReferenceColor,
-            CadColorSource.ByLayer when child.LayerId.Equals(LayerId.Default) =>
-                ResolveLayerStrokeColor(document, referenceStyle.EffectiveLayer),
-            _ => null
-        };
-    }
-
-    private static bool IsVisible(
-        CadDocument document,
-        CadEntity entity,
-        Direct2DBlockRenderStyle referenceStyle,
-        CadRenderOptions options)
-    {
-        var layer = entity.LayerId.Equals(LayerId.Default)
-            ? referenceStyle.EffectiveLayer
-            : document.TryGetLayer(entity.LayerId, out var childLayer)
-                ? childLayer
-                : null;
-
-        return !entity.IsErased &&
-               entity.IsVisible &&
-               !options.HiddenEntityIds.Contains(entity.Id) &&
-               layer is { IsVisible: true, IsFrozen: false };
-    }
-
-    private static CadColor ResolveLayerStrokeColor(CadDocument document, CadLayer layer)
-    {
-        return ResolveGraphicStrokeColor(document, layer.DefaultGraphicStyleId) ?? layer.Color;
-    }
-
-    private static CadColor? ResolveGraphicStrokeColor(CadDocument document, StyleId? styleId)
-    {
-        return styleId is { } id &&
-               document.TryGetStyle(id, out var style) &&
-               style is CadGraphicStyle graphic
-            ? graphic.StrokeColor
-            : null;
-    }
-
-    private static float ResolveLayerStrokeWidth(CadLayer layer)
-    {
-        var weight = layer.LineWeight;
-        if (weight.IsByLayer || weight.Value <= 0)
-            weight = CadLineWeight.Default;
-
-        return (float)Math.Max(weight.Value, 0.01);
-    }
-
     private static Matrix3x2 CreateTransform(
         CadPointD basePoint,
         CadPointD position,
@@ -460,75 +416,98 @@ internal sealed class Direct2DBlockReferenceRenderer(
                Matrix3x2.CreateTranslation((float)position.X, (float)position.Y);
     }
 
-    private void BuildCacheRequests(
+    private bool PrepareRequestPlan(
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options,
-        IReadOnlyList<CadEntity> orderedEntities)
+        IReadOnlyList<CadEntity> orderedEntities,
+        Direct2DBlockCacheRequestProfileKey profileKey,
+        bool buildStep)
     {
-        _cacheRequests.Clear();
-        _requestCandidates.Clear();
+        var needsBuild = _requestsDirty ||
+                         !_hasPreparedProfile ||
+                         !ReferenceEquals(_preparedDocument, document) ||
+                         !_preparedProfileKey.Equals(profileKey);
+        if (!needsBuild)
+            return false;
 
-        foreach (var entity in orderedEntities)
+        if (_requestPlanBuilder is null ||
+            !_requestPlanBuilder.Matches(document, profileKey, orderedEntities))
         {
-            if (entity is not CadBlockReference reference ||
-                Direct2DEntityLevelOfDetail.Resolve(
-                    reference,
-                    resources: null,
-                    viewport,
-                    options) != Direct2DEntityRenderDetail.Full ||
-                !TryResolveReferenceStyle(
-                    document,
-                    ReferenceRenderState.From(reference),
-                    parentStyle: null,
-                    out var style) ||
-                !IsVisible(document, reference, style, options))
-            {
-                continue;
-            }
-
-            _cacheabilityVisitedBlocks.Clear();
-            if (!IsDefinitionCacheable(document, reference.DefinitionBlockId))
-                continue;
-
-            var key = CreateCacheKey(
-                reference.DefinitionBlockId,
-                style,
+            _requestPlanBuilder = new Direct2DBlockCacheRequestPlanner(
+                document,
                 viewport,
                 options,
-                Math.Abs(reference.ScaleX) * viewport.Zoom * ResolveScaleMultiplier(options),
-                Math.Abs(reference.ScaleY) * viewport.Zoom * ResolveScaleMultiplier(options));
-            if (_requestCandidates.TryGetValue(key, out var candidate))
-            {
-                candidate.ReferenceCount++;
-                continue;
-            }
-
-            _dependencyVisitedBlocks.Clear();
-            var dependencies = ResolveDefinitionDependencies(
-                document,
-                reference.DefinitionBlockId);
-            var buildViewZoom = Direct2DRenderScaleBucket.Quantize(viewport.Zoom);
-            var buildScreenScale = Math.Max(
-                BitConverter.Int64BitsToDouble(key.ScreenScaleXBits),
-                BitConverter.Int64BitsToDouble(key.ScreenScaleYBits));
-            var request = new Direct2DBlockDefinitionCacheRequest(
-                key,
-                style,
-                buildViewZoom,
-                buildScreenScale,
-                dependencies);
-            _requestCandidates.Add(key, new RequestCandidate(request));
+                orderedEntities,
+                profileKey,
+                blockId =>
+                {
+                    _cacheabilityVisitedBlocks.Clear();
+                    return IsDefinitionCacheable(document, blockId);
+                },
+                blockId =>
+                {
+                    _dependencyVisitedBlocks.Clear();
+                    return ResolveDefinitionDependencies(document, blockId);
+                });
         }
 
-        foreach (var candidate in _requestCandidates.Values
-                     .Where(static candidate => candidate.ReferenceCount >= 2)
-                     .OrderByDescending(static candidate => candidate.ReferenceCount)
-                     .ThenBy(static candidate => candidate.Request.Key.DefinitionBlockId.Value)
-                     .Take(MaximumPreparedDefinitionKeys))
+        if (!buildStep)
+            return true;
+        if (!_requestPlanBuilder.BuildStep())
+            return true;
+
+        _cacheRequests.Clear();
+        _cacheRequests.AddRange(_requestPlanBuilder.Requests);
+        _requestPlanBuilder = null;
+        _preparedDocument = document;
+        _preparedProfileKey = profileKey;
+        _hasPreparedProfile = true;
+        _requestsDirty = false;
+        return false;
+    }
+
+    private void MarkRequestPlanDirty()
+    {
+        _requestsDirty = true;
+        _requestPlanBuilder = null;
+    }
+
+    private void InvalidateAllRequestMetadata()
+    {
+        MarkRequestPlanDirty();
+        _definitionCacheability.Clear();
+        _definitionDependencies.Clear();
+        _staleDefinitionIds.Clear();
+    }
+
+    private bool InvalidateAffectedDefinitionMetadata(
+        IReadOnlyList<CadEntityChange> changes,
+        bool removeMetadata)
+    {
+        _staleDefinitionIds.Clear();
+        foreach (var pair in _definitionDependencies)
         {
-            _cacheRequests.Add(candidate.Request);
+            foreach (var change in changes)
+            {
+                if (!pair.Value.Contains(change.EntityId))
+                    continue;
+                _staleDefinitionIds.Add(pair.Key);
+                break;
+            }
         }
+
+        _definitionCache.InvalidateFailures(_staleDefinitionIds);
+        if (!removeMetadata)
+            return _staleDefinitionIds.Count > 0;
+
+        foreach (var blockId in _staleDefinitionIds)
+        {
+            _definitionCacheability.Remove(blockId);
+            _definitionDependencies.Remove(blockId);
+        }
+
+        return _staleDefinitionIds.Count > 0;
     }
 
     private bool IsDefinitionCacheable(CadDocument document, BlockId blockId)
@@ -706,7 +685,11 @@ internal sealed class Direct2DBlockReferenceRenderer(
         {
             foreach (var child in entityOrderCache.GetOrderedEntities(document, definition.Id))
             {
-                if (!IsVisible(document, child, referenceStyle, options))
+                if (!Direct2DBlockReferenceStyleResolver.IsVisible(
+                        document,
+                        child,
+                        referenceStyle,
+                        options))
                     continue;
 
                 if (child is CadBlockReference nested)
@@ -729,9 +712,9 @@ internal sealed class Direct2DBlockReferenceRenderer(
                             options,
                             referenceStyle,
                             detail) ||
-                        !TryResolveReferenceStyle(
+                        !Direct2DBlockReferenceStyleResolver.TryResolve(
                             document,
-                            ReferenceRenderState.From(nested),
+                            Direct2DBlockReferenceRenderState.From(nested),
                             referenceStyle,
                             out var nestedStyle) ||
                         !document.TryGetBlock(nested.DefinitionBlockId, out var nestedDefinition) ||
@@ -776,7 +759,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
 
                 float? strokeWidthOverride = child.UseLayerLineWeight &&
                                              child.LayerId.Equals(LayerId.Default)
-                    ? ResolveLayerStrokeWidth(referenceStyle.EffectiveLayer)
+                    ? Direct2DBlockReferenceStyleResolver.ResolveLayerStrokeWidth(
+                        referenceStyle.EffectiveLayer)
                     : null;
                 if (Direct2DEntityLevelOfDetail.Resolve(
                         child,
@@ -789,7 +773,11 @@ internal sealed class Direct2DBlockReferenceRenderer(
                 }
 
                 recordedEntityCount++;
-                var colorOverride = ResolveChildStrokeColor(document, child, referenceStyle);
+                var colorOverride =
+                    Direct2DBlockReferenceStyleResolver.ResolveChildStrokeColor(
+                        document,
+                        child,
+                        referenceStyle);
                 var brushOverride = colorOverride is { } color
                     ? styleResources.GetBrush(context, color)
                     : null;
@@ -811,59 +799,6 @@ internal sealed class Direct2DBlockReferenceRenderer(
         }
     }
 
-    private static Direct2DBlockDefinitionCacheKey CreateCacheKey(
-        BlockId blockId,
-        Direct2DBlockRenderStyle style,
-        CadViewport viewport,
-        CadRenderOptions options,
-        Matrix3x2 localToTarget)
-    {
-        var multiplier = ResolveScaleMultiplier(options);
-        var scaleX = Math.Sqrt(
-            localToTarget.M11 * localToTarget.M11 +
-            localToTarget.M12 * localToTarget.M12) * multiplier;
-        var scaleY = Math.Sqrt(
-            localToTarget.M21 * localToTarget.M21 +
-            localToTarget.M22 * localToTarget.M22) * multiplier;
-        return CreateCacheKey(blockId, style, viewport, options, scaleX, scaleY);
-    }
-
-    private static Direct2DBlockDefinitionCacheKey CreateCacheKey(
-        BlockId blockId,
-        Direct2DBlockRenderStyle style,
-        CadViewport viewport,
-        CadRenderOptions options,
-        double screenScaleX,
-        double screenScaleY)
-    {
-        var viewZoom = Direct2DRenderScaleBucket.Quantize(viewport.Zoom);
-        var quantizedScaleX = Direct2DRenderScaleBucket.Quantize(
-            Math.Max(screenScaleX, double.Epsilon));
-        var quantizedScaleY = Direct2DRenderScaleBucket.Quantize(
-            Math.Max(screenScaleY, double.Epsilon));
-        return new Direct2DBlockDefinitionCacheKey(
-            blockId,
-            style.EffectiveLayer.Id,
-            style.ReferenceColor,
-            BitConverter.DoubleToInt64Bits(ResolveLayerStrokeWidth(style.EffectiveLayer)),
-            BitConverter.DoubleToInt64Bits(viewZoom),
-            BitConverter.DoubleToInt64Bits(quantizedScaleX),
-            BitConverter.DoubleToInt64Bits(quantizedScaleY),
-            options.IsAntialiasingEnabled,
-            options.IsTextAntialiasingEnabled,
-            options.IsLevelOfDetailEnabled,
-            options.KeepStrokeWidthScreenConstant,
-            BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
-    }
-
-    private static double ResolveScaleMultiplier(CadRenderOptions options)
-    {
-        return double.IsFinite(options.TransformScaleMultiplier) &&
-               options.TransformScaleMultiplier > double.Epsilon
-            ? options.TransformScaleMultiplier
-            : 1.0;
-    }
-
     private static CadViewport CreateBuildViewport(CadViewport source, double zoom)
     {
         var viewport = new CadViewport();
@@ -875,20 +810,20 @@ internal sealed class Direct2DBlockReferenceRenderer(
     private static CadRenderOptions CreateBuildOptions(
         CadRenderOptions source,
         double buildScreenScale) => new()
-    {
-        ActiveOwnerBlockId = source.ActiveOwnerBlockId,
-        DrawGrid = false,
-        DrawOrigin = false,
-        DrawGripHandles = false,
-        IsAntialiasingEnabled = source.IsAntialiasingEnabled,
-        IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
-        IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
-        AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
-        TransformScaleMultiplier = buildScreenScale,
-        KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
-        MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
-        HiddenEntityIds = CadRenderOptions.NoHiddenEntities
-    };
+        {
+            ActiveOwnerBlockId = source.ActiveOwnerBlockId,
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsAntialiasingEnabled = source.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
+            AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
+            TransformScaleMultiplier = buildScreenScale,
+            KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+            HiddenEntityIds = CadRenderOptions.NoHiddenEntities
+        };
 
     private BlockVisibilityBuffers GetVisibilityBuffers(int depth)
     {
@@ -907,55 +842,4 @@ internal sealed class Direct2DBlockReferenceRenderer(
     }
 
     public void Dispose() => _definitionCache.Dispose();
-
-    private sealed class RequestCandidate(Direct2DBlockDefinitionCacheRequest request)
-    {
-        public Direct2DBlockDefinitionCacheRequest Request { get; } = request;
-        public int ReferenceCount { get; set; } = 1;
-    }
-
-    private readonly record struct BlockCacheRequestProfileKey(
-        BlockId OwnerBlockId,
-        long ViewZoomBits,
-        long TransformScaleMultiplierBits,
-        bool IsAntialiasingEnabled,
-        bool IsTextAntialiasingEnabled,
-        bool IsLevelOfDetailEnabled,
-        bool KeepStrokeWidthScreenConstant,
-        long MinimumScreenStrokeWidthBits)
-    {
-        public static BlockCacheRequestProfileKey Create(
-            CadRenderOptions options,
-            double viewportZoom) => new(
-            options.ActiveOwnerBlockId,
-            BitConverter.DoubleToInt64Bits(Direct2DRenderScaleBucket.Quantize(viewportZoom)),
-            BitConverter.DoubleToInt64Bits(
-                Direct2DRenderScaleBucket.Quantize(ResolveScaleMultiplier(options))),
-            options.IsAntialiasingEnabled,
-            options.IsTextAntialiasingEnabled,
-            options.IsLevelOfDetailEnabled,
-            options.KeepStrokeWidthScreenConstant,
-            BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
-    }
-
-    private readonly record struct ReferenceRenderState(
-        BlockId DefinitionBlockId,
-        CadPointD Position,
-        double RotationRadians,
-        double ScaleX,
-        double ScaleY,
-        LayerId LayerId,
-        CadColorSource ColorSource,
-        StyleId? GraphicStyleId)
-    {
-        public static ReferenceRenderState From(CadBlockReference reference) => new(
-            reference.DefinitionBlockId,
-            reference.Position,
-            reference.RotationRadians,
-            reference.ScaleX,
-            reference.ScaleY,
-            reference.LayerId,
-            reference.ColorSource,
-            reference.GraphicStyleId);
-    }
 }

@@ -2,8 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.CommandLine;
-using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Commands;
+using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -13,6 +13,8 @@ using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.Rendering;
+using Direct2dCad.Rendering.Direct2D.Hosting;
+using Direct2dCad.Rendering.Direct2D.Ole;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Drawing;
@@ -20,14 +22,12 @@ using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Services.Drawing;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Interactions;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Rendering;
 using Direct2dCad.ViewModels.Services.Snapping;
 using Direct2dCad.ViewModels.Services.Styling;
 using Direct2dCad.ViewModels.Services.Text;
-using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
-using Direct2dCad.Rendering.Direct2D.Ole;
-using Direct2dCad.Rendering.Direct2D.Hosting;
 
 namespace Direct2dCad.ViewModels;
 
@@ -2362,6 +2362,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
+        _overlayScenes.ApplyDocumentChanges(e, CadEditor.Selection.EntityIds);
         _paste.InvalidatePreviewTemplate();
         EnsureActiveLayoutViewportStillExists();
         if (e.AffectsDocumentStructure)
@@ -2613,7 +2614,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             statistics.GpuCacheBytes,
             statistics.GpuCachePeakBytes,
             statistics.GpuCacheBudgetBytes,
-            statistics.GpuCacheEvictionCount);
+            statistics.GpuCacheEvictionCount,
+            statistics.CachePreparationMilliseconds,
+            statistics.BackgroundRenderMilliseconds,
+            statistics.EntityRenderMilliseconds,
+            statistics.TransientRenderMilliseconds,
+            statistics.SelectionRenderMilliseconds,
+            statistics.OlePreparationMilliseconds,
+            statistics.SurfaceDrawMilliseconds);
     }
 
     private static CadCommandLineClipboardSummary? CreateClipboardSummary(CadClipboardSnapshot? snapshot)

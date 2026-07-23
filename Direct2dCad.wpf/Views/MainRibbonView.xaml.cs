@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Windows;
@@ -11,16 +11,15 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace Direct2dCad.wpf.Views
+namespace Direct2dCad.wpf.Views;
+
+/// <summary>
+/// MainRibbonView.xaml 的交互逻辑
+/// </summary>
+public partial class MainRibbonView : UserControl
 {
-    /// <summary>
-    /// MainRibbonView.xaml 的交互逻辑
-    /// </summary>
-    public partial class MainRibbonView : UserControl
+    public MainRibbonView()
     {
-        public MainRibbonView()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

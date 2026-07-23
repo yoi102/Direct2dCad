@@ -11,6 +11,7 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 internal sealed class CadGripDragController(CadHandleHitTester hitTester)
 {
     private static readonly IReadOnlySet<EntityId> EmptyEntityIds = new HashSet<EntityId>();
+    private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
 
     public GripDragState? ActiveDrag { get; private set; }
 
@@ -95,7 +96,7 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
             {
                 RotationHandleOffset = 28.0 / Math.Max(interactionZoom, double.Epsilon)
             };
-            return new CadHandleSceneBuilder().BuildImageGripHandles(
+            return _handleSceneBuilder.BuildImageGripHandles(
                 image.Id,
                 frameBounds,
                 rotationRadians,
@@ -132,7 +133,7 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
                 {
                     RotationHandleOffset = 28.0 / Math.Max(interactionZoom, double.Epsilon)
                 };
-                return new CadHandleSceneBuilder().BuildBlockReferenceGripHandles(
+                return _handleSceneBuilder.BuildBlockReferenceGripHandles(
                     editor.Document,
                     reference.Id,
                     reference.DefinitionBlockId,

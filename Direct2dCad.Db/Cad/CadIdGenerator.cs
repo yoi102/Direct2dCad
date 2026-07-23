@@ -1,4 +1,4 @@
-﻿namespace Direct2dCad.Db.Cad;
+namespace Direct2dCad.Db.Cad;
 
 /// <summary>
 /// CAD 对象 ID 生成器。

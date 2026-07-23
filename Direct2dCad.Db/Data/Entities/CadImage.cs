@@ -28,6 +28,8 @@ public sealed class CadImage : CadEntity
 
     public IReadOnlyList<byte> Pixels => _pixels;
 
+    public ReadOnlyMemory<byte> PixelMemory => _pixels;
+
     internal CadImage(
         EntityId id,
         LayerId layerId,

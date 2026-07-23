@@ -14,7 +14,7 @@ public sealed class CadBlockDefinition : IEquatable<CadBlockDefinition>
     private readonly List<EntityId> _entityIds = new();
     private readonly HashSet<EntityId> _entityIdSet = [];
 
-    public BlockId Id { get; } 
+    public BlockId Id { get; }
     public string Name { get; private set; }
     public CadPointD BasePoint { get; private set; }
     public CadBlockKind Kind { get; }

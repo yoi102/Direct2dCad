@@ -37,7 +37,7 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
         if (_deviceContext is null)
             return null;
 
-        var key = new ImageBitmapKey(image.Id, image.Pixels);
+        var key = new ImageBitmapKey(image.Id, image.PixelMemory);
         if (!_entries.TryGetValue(key, out var entry))
         {
             entry = new Entry(
@@ -72,13 +72,16 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
 
     private static ID2D1Bitmap CreateBitmap(ID2D1DeviceContext context, CadImage image)
     {
-        var pixels = image.CopyPixels();
-        var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
+        var pixels = image.PixelMemory;
+        if (!MemoryMarshal.TryGetArray(pixels, out var segment) || segment.Array is null)
+            throw new InvalidOperationException("Image pixel memory must be array-backed.");
+
+        var handle = GCHandle.Alloc(segment.Array, GCHandleType.Pinned);
         try
         {
             return context.CreateBitmap(
                 new SizeI(image.PixelWidth, image.PixelHeight),
-                handle.AddrOfPinnedObject(),
+                IntPtr.Add(handle.AddrOfPinnedObject(), segment.Offset),
                 (uint)image.Stride,
                 new BitmapProperties1
                 {
@@ -125,7 +128,9 @@ internal sealed class Direct2DImageBitmapResourceCache : IDisposable
             throw new ObjectDisposedException(nameof(Direct2DImageBitmapResourceCache));
     }
 
-    internal readonly record struct ImageBitmapKey(EntityId EntityId, IReadOnlyList<byte> PixelSource);
+    internal readonly record struct ImageBitmapKey(
+        EntityId EntityId,
+        ReadOnlyMemory<byte> PixelSource);
 
     private sealed class Entry(ID2D1Bitmap bitmap, long estimatedBytes)
     {

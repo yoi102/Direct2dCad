@@ -1,5 +1,5 @@
-using Vortice.Direct2D1;
 using Direct2dCad.Rendering.Direct2D.Scene;
+using Vortice.Direct2D1;
 
 namespace Direct2dCad.Rendering.Direct2D.Ole;
 

@@ -68,4 +68,11 @@ public sealed record CadCommandLineRenderStatistics(
     long GpuCacheBytes,
     long GpuCachePeakBytes,
     long GpuCacheBudgetBytes,
-    int GpuCacheEvictionCount);
+    int GpuCacheEvictionCount,
+    double CachePreparationMilliseconds,
+    double BackgroundRenderMilliseconds,
+    double EntityRenderMilliseconds,
+    double TransientRenderMilliseconds,
+    double SelectionRenderMilliseconds,
+    double OlePreparationMilliseconds,
+    double SurfaceDrawMilliseconds);

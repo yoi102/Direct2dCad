@@ -1,9 +1,9 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using Vanara.PInvoke;
+using static Vanara.PInvoke.Ole32;
 using OleClientSiteInterface = Vanara.PInvoke.Ole32.IOleClientSite;
 using OleContainerInterface = Vanara.PInvoke.Ole32.IOleContainer;
-using static Vanara.PInvoke.Ole32;
 
 namespace Direct2dCad.Ole.Windows;
 

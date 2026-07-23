@@ -1,8 +1,8 @@
 using System.Numerics;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
-using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Direct2D.Resources;
+using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.DCommon;

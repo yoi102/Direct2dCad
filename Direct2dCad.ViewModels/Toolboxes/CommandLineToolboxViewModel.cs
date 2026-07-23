@@ -48,7 +48,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
                 OnInteractionActivity(message);
                 return ValueTask.CompletedTask;
             });
-        
+
         Title = Strings.Terminal;
         Icon = toolboxIconProvider.Terminal;
         Shortcut = "Ctrl+Oem3";

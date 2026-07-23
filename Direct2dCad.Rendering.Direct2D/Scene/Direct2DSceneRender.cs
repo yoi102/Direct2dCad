@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -117,7 +118,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ThrowIfDisposed();
         _tileCache.ApplyChanges(document, changes);
         _commandListCache.ApplyChanges(document, changes);
-        _blockReferenceRenderer.ApplyChanges(changes);
+        _blockReferenceRenderer.ApplyChanges(document, changes);
         _selectionRenderer.ApplyChanges(changes);
         _transientSceneRenderer.ApplyChanges(changes);
         if (AffectsEntityOrder(changes))
@@ -206,6 +207,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _styleResources.BeginFrame();
         _textFormatResources.BeginFrame();
     }
+
+    internal void RecordCachePreparation(double milliseconds) =>
+        _statistics.RecordCachePreparation(milliseconds);
+
+    internal void RecordOlePreparation(double milliseconds) =>
+        _statistics.RecordOlePreparation(milliseconds);
+
+    internal void RecordSurfaceDraw(double milliseconds) =>
+        _statistics.RecordSurfaceDraw(milliseconds);
 
     public void CompleteFrame()
     {
@@ -556,7 +566,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
             if (activeLayout is not null)
             {
+                var backgroundStarted = Stopwatch.GetTimestamp();
                 DrawPaper(deviceContext, activeLayout);
+                _statistics.RecordBackgroundRender(ElapsedMilliseconds(backgroundStarted));
                 DrawLayoutViewports(
                     deviceContext,
                     document,
@@ -565,32 +577,81 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     transientScene,
                     handleScene,
                     options);
-                DrawEntities(
-                    deviceContext,
-                    document,
-                    viewport,
-                    CreatePaperSpaceOptions(activeLayout, options));
+                var entityStarted = Stopwatch.GetTimestamp();
+                try
+                {
+                    DrawEntities(
+                        deviceContext,
+                        document,
+                        viewport,
+                        CreatePaperSpaceOptions(activeLayout, options));
+                }
+                finally
+                {
+                    _statistics.RecordEntityRender(ElapsedMilliseconds(entityStarted));
+                }
             }
-            else if (options.DrawGrid)
-                _backgroundRenderer.DrawGrid(deviceContext, document, viewport, options.DirtyWorldBounds);
-
-            if (activeLayout is null && options.DrawOrigin)
+            else
             {
-                _backgroundRenderer.DrawOrigin(
-                    deviceContext,
-                    _resourceCache.Factory,
-                    document,
-                    viewport,
-                    options.DirtyWorldBounds);
-            }
+                var backgroundStarted = Stopwatch.GetTimestamp();
+                try
+                {
+                    if (options.DrawGrid)
+                    {
+                        _backgroundRenderer.DrawGrid(
+                            deviceContext,
+                            document,
+                            viewport,
+                            options.DirtyWorldBounds);
+                    }
 
-            if (activeLayout is null)
-                DrawEntities(deviceContext, document, viewport, options);
+                    if (options.DrawOrigin)
+                    {
+                        _backgroundRenderer.DrawOrigin(
+                            deviceContext,
+                            _resourceCache.Factory,
+                            document,
+                            viewport,
+                            options.DirtyWorldBounds);
+                    }
+                }
+                finally
+                {
+                    _statistics.RecordBackgroundRender(ElapsedMilliseconds(backgroundStarted));
+                }
+
+                var entityStarted = Stopwatch.GetTimestamp();
+                try
+                {
+                    DrawEntities(deviceContext, document, viewport, options);
+                }
+                finally
+                {
+                    _statistics.RecordEntityRender(ElapsedMilliseconds(entityStarted));
+                }
+            }
 
             if (activeLayout is null || options.ActiveLayoutViewportId is null)
             {
-                DrawTransients(deviceContext, document, viewport, transientScene, options);
-                _selectionRenderer.Draw(deviceContext, document, viewport, handleScene, options);
+                var transientStarted = Stopwatch.GetTimestamp();
+                try
+                {
+                    DrawTransients(deviceContext, document, viewport, transientScene, options);
+                }
+                finally
+                {
+                    _statistics.RecordTransientRender(ElapsedMilliseconds(transientStarted));
+                }
+
+                var selectionStarted = Stopwatch.GetTimestamp();
+                try
+                {
+                    _selectionRenderer.Draw(deviceContext, document, viewport, handleScene, options);
+                }
+                finally
+                {
+                    _statistics.RecordSelectionRender(ElapsedMilliseconds(selectionStarted));
+                }
             }
         }
         finally
@@ -646,22 +707,47 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                     options,
                     includeHiddenEntities: isActiveViewport);
 
-                DrawRetainedOrImmediate(
-                    context,
-                    document,
-                    modelViewport,
-                    modelOptions);
+                var entityStarted = Stopwatch.GetTimestamp();
+                try
+                {
+                    DrawRetainedOrImmediate(
+                        context,
+                        document,
+                        modelViewport,
+                        modelOptions);
+                }
+                finally
+                {
+                    _statistics.RecordEntityRender(ElapsedMilliseconds(entityStarted));
+                }
 
                 if (isActiveViewport)
                 {
                     var activeModelOptions = CreateModelViewportOptions(options, drawGripHandles: true);
-                    DrawTransients(context, document, modelViewport, transientScene, activeModelOptions);
-                    _selectionRenderer.Draw(
-                        context,
-                        document,
-                        modelViewport,
-                        handleScene,
-                        activeModelOptions);
+                    var transientStarted = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        DrawTransients(context, document, modelViewport, transientScene, activeModelOptions);
+                    }
+                    finally
+                    {
+                        _statistics.RecordTransientRender(ElapsedMilliseconds(transientStarted));
+                    }
+
+                    var selectionStarted = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        _selectionRenderer.Draw(
+                            context,
+                            document,
+                            modelViewport,
+                            handleScene,
+                            activeModelOptions);
+                    }
+                    finally
+                    {
+                        _statistics.RecordSelectionRender(ElapsedMilliseconds(selectionStarted));
+                    }
                 }
             }
             finally
@@ -980,25 +1066,25 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private static CadRenderOptions CreateRegionOptions(
         CadRenderOptions source,
         CadRectD dirtyWorldBounds) => new()
-    {
-        ActiveOwnerBlockId = source.ActiveOwnerBlockId,
-        ActiveLayoutId = source.ActiveLayoutId,
-        ActiveLayoutViewportId = source.ActiveLayoutViewportId,
-        DrawGrid = false,
-        DrawOrigin = false,
-        DrawGripHandles = false,
-        IsAntialiasingEnabled = source.IsAntialiasingEnabled,
-        IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
-        IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
-        AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
-        TransformScaleMultiplier = source.TransformScaleMultiplier,
-        KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
-        MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
-        HiddenEntityIds = source.HiddenEntityIds,
-        DirtyWorldBounds = dirtyWorldBounds,
-        EntityBoundsQuery = source.EntityBoundsQuery,
-        EntityBoundsQueryInto = source.EntityBoundsQueryInto
-    };
+        {
+            ActiveOwnerBlockId = source.ActiveOwnerBlockId,
+            ActiveLayoutId = source.ActiveLayoutId,
+            ActiveLayoutViewportId = source.ActiveLayoutViewportId,
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsAntialiasingEnabled = source.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
+            AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
+            TransformScaleMultiplier = source.TransformScaleMultiplier,
+            KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+            HiddenEntityIds = source.HiddenEntityIds,
+            DirtyWorldBounds = dirtyWorldBounds,
+            EntityBoundsQuery = source.EntityBoundsQuery,
+            EntityBoundsQueryInto = source.EntityBoundsQueryInto
+        };
 
     private bool DrawRetainedScene(
         ID2D1DeviceContext context,
@@ -1078,46 +1164,46 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadRenderOptions options,
         bool drawGripHandles = false,
         bool includeHiddenEntities = true) => new()
-    {
-        ActiveOwnerBlockId = BlockId.ModelSpace,
-        DrawGrid = false,
-        DrawOrigin = false,
-        DrawGripHandles = drawGripHandles,
-        IsAntialiasingEnabled = options.IsAntialiasingEnabled,
-        IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
-        IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
-        AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
-        TransformScaleMultiplier = options.TransformScaleMultiplier,
-        KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
-        MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
-        EntityBoundsQuery = options.EntityBoundsQuery,
-        EntityBoundsQueryInto = options.EntityBoundsQueryInto,
-        HiddenEntityIds = includeHiddenEntities
+        {
+            ActiveOwnerBlockId = BlockId.ModelSpace,
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = drawGripHandles,
+            IsAntialiasingEnabled = options.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
+            AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
+            TransformScaleMultiplier = options.TransformScaleMultiplier,
+            KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
+            EntityBoundsQuery = options.EntityBoundsQuery,
+            EntityBoundsQueryInto = options.EntityBoundsQueryInto,
+            HiddenEntityIds = includeHiddenEntities
             ? options.HiddenEntityIds
             : CadRenderOptions.NoHiddenEntities
-    };
+        };
 
     private static CadRenderOptions CreatePaperSpaceOptions(
         CadLayout layout,
         CadRenderOptions options) => new()
-    {
-        ActiveOwnerBlockId = layout.PaperSpaceBlockId,
-        ActiveLayoutId = layout.Id,
-        DrawGrid = false,
-        DrawOrigin = false,
-        DrawGripHandles = options.DrawGripHandles,
-        IsAntialiasingEnabled = options.IsAntialiasingEnabled,
-        IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
-        IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
-        AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
-        TransformScaleMultiplier = options.TransformScaleMultiplier,
-        KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
-        MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
-        HiddenEntityIds = options.HiddenEntityIds,
-        DirtyWorldBounds = options.DirtyWorldBounds,
-        EntityBoundsQuery = options.EntityBoundsQuery,
-        EntityBoundsQueryInto = options.EntityBoundsQueryInto
-    };
+        {
+            ActiveOwnerBlockId = layout.PaperSpaceBlockId,
+            ActiveLayoutId = layout.Id,
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = options.DrawGripHandles,
+            IsAntialiasingEnabled = options.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
+            AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
+            TransformScaleMultiplier = options.TransformScaleMultiplier,
+            KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
+            HiddenEntityIds = options.HiddenEntityIds,
+            DirtyWorldBounds = options.DirtyWorldBounds,
+            EntityBoundsQuery = options.EntityBoundsQuery,
+            EntityBoundsQueryInto = options.EntityBoundsQueryInto
+        };
 
     private static RawRectF ToRawRect(CadRectD bounds) => new(
         (float)bounds.MinX,
@@ -1130,6 +1216,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         var transform = context.Transform;
         return Math.Sqrt(transform.M11 * transform.M11 + transform.M12 * transform.M12);
     }
+
+    private static double ElapsedMilliseconds(long started) =>
+        Stopwatch.GetElapsedTime(started).TotalMilliseconds;
 
     private static bool AffectsEntityOrder(CadDocumentChangeSet changes)
     {

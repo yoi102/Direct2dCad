@@ -81,7 +81,7 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
                 _planBuilder ??= new SelectionChunkPlanBuilder(
                     this,
                     document,
-                    scene!.SelectionReferences.ToArray());
+                    scene!.SelectionReferences);
                 if (!_planBuilder.BuildStep(PlanBuildBudgetMilliseconds))
                     return true;
                 _chunkPlans = _planBuilder.Plans;
@@ -453,28 +453,28 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
     private static CadRenderOptions CreateBuildOptions(
         CadRenderOptions source,
         double viewportZoom) => new()
-    {
-        ActiveOwnerBlockId = source.ActiveOwnerBlockId,
-        DrawGrid = false,
-        DrawOrigin = false,
-        DrawGripHandles = false,
-        IsAntialiasingEnabled = source.IsAntialiasingEnabled,
-        IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
-        IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
-        AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
-        TransformScaleMultiplier = viewportZoom,
-        KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
-        MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
-        HiddenEntityIds = CadRenderOptions.NoHiddenEntities
-    };
+        {
+            ActiveOwnerBlockId = source.ActiveOwnerBlockId,
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsAntialiasingEnabled = source.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
+            AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
+            TransformScaleMultiplier = viewportZoom,
+            KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+            HiddenEntityIds = CadRenderOptions.NoHiddenEntities
+        };
 
     private static bool CanUse(CadHandleScene? scene, CadRenderOptions options)
     {
         return scene is
-               {
-                   SelectionReferenceCount: >= MinimumSelectionCount,
-                   HasTranslatedSelectionReferences: false
-               } &&
+        {
+            SelectionReferenceCount: >= MinimumSelectionCount,
+            HasTranslatedSelectionReferences: false
+        } &&
                options.ActiveLayoutId is null &&
                options.HiddenEntityIds.Count == 0;
     }
@@ -720,11 +720,24 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         public SelectionProfileKey Key { get; }
         public IReadOnlyList<SelectionChunk> Chunks { get; }
         public bool HasCacheableChunks { get; }
-        public bool HasPendingBuilds => Chunks.Any(static chunk =>
-            chunk.IsCacheable &&
-            chunk.CommandList is null &&
-            !chunk.BuildFailed &&
-            !chunk.WasBudgetEvicted);
+        public bool HasPendingBuilds
+        {
+            get
+            {
+                foreach (var chunk in Chunks)
+                {
+                    if (chunk.IsCacheable &&
+                        chunk.CommandList is null &&
+                        !chunk.BuildFailed &&
+                        !chunk.WasBudgetEvicted)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
         public long LastUsed { get; set; }
         public SelectionProfile(
             SelectionProfileKey key,
@@ -732,9 +745,9 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         {
             Key = key;
             Chunks = chunks;
-            HasCacheableChunks = chunks.Any(static chunk => chunk.IsCacheable);
             foreach (var chunk in chunks)
             {
+                HasCacheableChunks |= chunk.IsCacheable;
                 foreach (var entityId in chunk.DependencyEntityIds)
                 {
                     if (!_chunksByDependency.TryGetValue(entityId, out var dependentChunks))

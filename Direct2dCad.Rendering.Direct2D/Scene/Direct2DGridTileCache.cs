@@ -257,21 +257,21 @@ internal sealed class Direct2DGridTileCache : IDisposable
         var minY = (int)Math.Floor(top);
         var maxY = (int)Math.Ceiling(bottom) - 1;
         for (var y = minY; y <= maxY; y++)
-        for (var x = minX; x <= maxX; x++)
-        {
-            var coverageX = Math.Max(0.0, Math.Min(right, x + 1.0) - Math.Max(left, x));
-            var coverageY = Math.Max(0.0, Math.Min(bottom, y + 1.0) - Math.Max(top, y));
-            var coverage = Math.Clamp(coverageX * coverageY, 0.0, 1.0);
-            if (coverage <= 0.0)
-                continue;
-            var wrappedX = PositiveModulo(x, width);
-            var wrappedY = PositiveModulo(y, height);
-            WritePremultipliedPixel(
-                pixels,
-                (wrappedY * width + wrappedX) * 4,
-                color,
-                coverage);
-        }
+            for (var x = minX; x <= maxX; x++)
+            {
+                var coverageX = Math.Max(0.0, Math.Min(right, x + 1.0) - Math.Max(left, x));
+                var coverageY = Math.Max(0.0, Math.Min(bottom, y + 1.0) - Math.Max(top, y));
+                var coverage = Math.Clamp(coverageX * coverageY, 0.0, 1.0);
+                if (coverage <= 0.0)
+                    continue;
+                var wrappedX = PositiveModulo(x, width);
+                var wrappedY = PositiveModulo(y, height);
+                WritePremultipliedPixel(
+                    pixels,
+                    (wrappedY * width + wrappedX) * 4,
+                    color,
+                    coverage);
+            }
     }
 
     private static void WritePremultipliedPixel(

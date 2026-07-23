@@ -447,20 +447,20 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     private static CadRenderOptions CreateBuildOptions(
         CadRenderOptions options,
         double viewportZoom) => new()
-    {
-        ActiveOwnerBlockId = options.ActiveOwnerBlockId,
-        DrawGrid = false,
-        DrawOrigin = false,
-        DrawGripHandles = false,
-        IsAntialiasingEnabled = options.IsAntialiasingEnabled,
-        IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
-        IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
-        AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
-        TransformScaleMultiplier = viewportZoom,
-        KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
-        MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
-        HiddenEntityIds = CadRenderOptions.NoHiddenEntities
-    };
+        {
+            ActiveOwnerBlockId = options.ActiveOwnerBlockId,
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsAntialiasingEnabled = options.IsAntialiasingEnabled,
+            IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
+            IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
+            AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
+            TransformScaleMultiplier = viewportZoom,
+            KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
+            HiddenEntityIds = CadRenderOptions.NoHiddenEntities
+        };
 
     private static bool CanUse(CadRenderOptions options, int entityCount)
     {
@@ -769,11 +769,24 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
         public RenderProfileKey Key { get; }
         public IReadOnlyList<RenderChunk> Chunks { get; }
-        public bool HasPendingBuilds => Chunks.Any(static chunk =>
-            chunk.IsCacheable &&
-            chunk.CommandList is null &&
-            !chunk.BuildFailed &&
-            !chunk.WasBudgetEvicted);
+        public bool HasPendingBuilds
+        {
+            get
+            {
+                foreach (var chunk in Chunks)
+                {
+                    if (chunk.IsCacheable &&
+                        chunk.CommandList is null &&
+                        !chunk.BuildFailed &&
+                        !chunk.WasBudgetEvicted)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+        }
         public long LastUsed { get; set; }
         public RenderProfile(RenderProfileKey key, IReadOnlyList<RenderChunk> chunks)
         {

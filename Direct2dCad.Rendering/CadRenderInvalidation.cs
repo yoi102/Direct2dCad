@@ -76,7 +76,8 @@ public sealed class CadRenderInvalidation
     {
         ArgumentNullException.ThrowIfNull(dirtyScreenRects);
 
-        var merged = new List<CadScreenRect>();
+        dirtyScreenRects.TryGetNonEnumeratedCount(out var dirtyRectCount);
+        var merged = new List<CadScreenRect>(dirtyRectCount);
         foreach (var rect in dirtyScreenRects)
         {
             if (rect.IsEmpty)
@@ -88,8 +89,7 @@ public sealed class CadRenderInvalidation
         if (merged.Count == 0)
             return Empty;
 
-        var aggregate = CalculateAggregate(merged);
-        return new CadRenderInvalidation(false, [.. merged], aggregate);
+        return CreateFromMergedRects(merged);
     }
 
     public static CadRenderInvalidation FromWorldBounds(
@@ -129,7 +129,20 @@ public sealed class CadRenderInvalidation
         if (IsFull || other.IsFull)
             return Full;
 
-        return FromScreenRects(_dirtyScreenRects.Concat(other._dirtyScreenRects));
+        var merged = new List<CadScreenRect>(
+            _dirtyScreenRects.Length + other._dirtyScreenRects.Length);
+        foreach (var rect in _dirtyScreenRects)
+            AddDirtyRect(merged, rect);
+        foreach (var rect in other._dirtyScreenRects)
+            AddDirtyRect(merged, rect);
+
+        return CreateFromMergedRects(merged);
+    }
+
+    private static CadRenderInvalidation CreateFromMergedRects(List<CadScreenRect> merged)
+    {
+        var aggregate = CalculateAggregate(merged);
+        return new CadRenderInvalidation(false, [.. merged], aggregate);
     }
 
     private static void AddDirtyRect(List<CadScreenRect> rects, CadScreenRect rect)

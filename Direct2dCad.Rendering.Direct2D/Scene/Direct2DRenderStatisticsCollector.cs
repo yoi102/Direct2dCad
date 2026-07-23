@@ -51,6 +51,13 @@ internal sealed class Direct2DRenderStatisticsCollector
     public long GpuCachePeakBytes => _gpuCachePeakBytes;
     public long GpuCacheBudgetBytes { get; private set; }
     public int GpuCacheEvictionCount { get; private set; }
+    public double CachePreparationMilliseconds { get; private set; }
+    public double BackgroundRenderMilliseconds { get; private set; }
+    public double EntityRenderMilliseconds { get; private set; }
+    public double TransientRenderMilliseconds { get; private set; }
+    public double SelectionRenderMilliseconds { get; private set; }
+    public double OlePreparationMilliseconds { get; private set; }
+    public double SurfaceDrawMilliseconds { get; private set; }
 
     public void BeginFrame(bool isFullFrame, int dirtyRegionCount)
     {
@@ -80,6 +87,13 @@ internal sealed class Direct2DRenderStatisticsCollector
         HatchSimplifiedLineFamilyCount = _pendingHatchSimplifiedLineFamilyCount;
         OleTileBuildCount = _pendingOleTileBuildCount;
         GpuCacheEvictionCount = _pendingGpuCacheEvictionCount;
+        CachePreparationMilliseconds = 0;
+        BackgroundRenderMilliseconds = 0;
+        EntityRenderMilliseconds = 0;
+        TransientRenderMilliseconds = 0;
+        SelectionRenderMilliseconds = 0;
+        OlePreparationMilliseconds = 0;
+        SurfaceDrawMilliseconds = 0;
         _pendingCommandListBuildCount = 0;
         _pendingBlockDefinitionCommandListBuildCount = 0;
         _pendingSelectionCommandListBuildCount = 0;
@@ -168,6 +182,20 @@ internal sealed class Direct2DRenderStatisticsCollector
         else
             _pendingGpuCacheEvictionCount += count;
     }
+    public void RecordCachePreparation(double milliseconds) =>
+        CachePreparationMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordBackgroundRender(double milliseconds) =>
+        BackgroundRenderMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordEntityRender(double milliseconds) =>
+        EntityRenderMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordTransientRender(double milliseconds) =>
+        TransientRenderMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordSelectionRender(double milliseconds) =>
+        SelectionRenderMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordOlePreparation(double milliseconds) =>
+        OlePreparationMilliseconds += NormalizeDuration(milliseconds);
+    public void RecordSurfaceDraw(double milliseconds) =>
+        SurfaceDrawMilliseconds += NormalizeDuration(milliseconds);
     public void SetGpuCacheMemory(
         long sceneTileBytes,
         long commandListBytes,
@@ -245,5 +273,15 @@ internal sealed class Direct2DRenderStatisticsCollector
         GpuCachePeakBytes,
         GpuCacheBudgetBytes,
         GpuCacheEvictionCount,
+        CachePreparationMilliseconds,
+        BackgroundRenderMilliseconds,
+        EntityRenderMilliseconds,
+        TransientRenderMilliseconds,
+        SelectionRenderMilliseconds,
+        OlePreparationMilliseconds,
+        SurfaceDrawMilliseconds,
         renderDurationMilliseconds);
+
+    private static double NormalizeDuration(double milliseconds) =>
+        double.IsFinite(milliseconds) ? Math.Max(0.0, milliseconds) : 0.0;
 }

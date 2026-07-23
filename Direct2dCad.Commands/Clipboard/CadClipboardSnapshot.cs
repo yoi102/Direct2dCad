@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -5,7 +6,6 @@ using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
-using System.Runtime.CompilerServices;
 
 namespace Direct2dCad.Commands.Clipboard;
 

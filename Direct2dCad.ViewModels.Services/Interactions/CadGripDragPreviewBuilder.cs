@@ -339,7 +339,7 @@ internal readonly struct CadGripDragPreviewBuilder(
             image.PixelWidth,
             image.PixelHeight,
             image.Stride,
-            image.CopyPixels(),
+            image.PixelMemory,
             style,
             image.Id,
             image.Opacity,
@@ -357,7 +357,7 @@ internal readonly struct CadGripDragPreviewBuilder(
 
         items.Add(new CadTransientOleObject(
             bounds,
-            oleObject.CopyOleBytes(),
+            oleObject.OleMemory,
             style,
             oleObject.Id,
             Guid.Empty,

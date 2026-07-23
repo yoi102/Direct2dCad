@@ -5,7 +5,7 @@ namespace Direct2dCad.ViewModels.Services.Platform;
 public sealed record CadOleDrawRequest(
     EntityId? EntityId,
     Guid RenderId,
-    byte[] OleBytes,
+    ReadOnlyMemory<byte> OleBytes,
     int FullPixelWidth,
     int FullPixelHeight,
     int RegionX,

@@ -1,6 +1,6 @@
+using System.Runtime.CompilerServices;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
-using System.Runtime.CompilerServices;
 
 namespace Direct2dCad.Commands.Clipboard;
 

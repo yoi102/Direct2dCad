@@ -40,7 +40,7 @@ public partial class App : System.Windows.Application
         Ioc.Default.ConfigureServices(_serviceProvider);
 
 
-      
+
     }
     protected override void OnStartup(StartupEventArgs e)
     {

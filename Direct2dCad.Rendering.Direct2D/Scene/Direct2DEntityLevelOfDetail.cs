@@ -243,10 +243,10 @@ internal static class Direct2DEntityLevelOfDetail
                     entity,
                     metrics,
                     ResolveEffectiveScreenScale(transform, options)) switch
-                {
-                    Direct2DTextRenderDetail.Full => Direct2DEntityRenderDetail.Full,
-                    _ => Direct2DEntityRenderDetail.Simplified
-                };
+            {
+                Direct2DTextRenderDetail.Full => Direct2DEntityRenderDetail.Full,
+                _ => Direct2DEntityRenderDetail.Simplified
+            };
         }
 
         if (entity is CadImage)

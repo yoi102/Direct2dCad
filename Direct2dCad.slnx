@@ -14,6 +14,9 @@
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="Direct2dCad.Tests/Direct2dCad.Tests.csproj" />
+  </Folder>
   <Project Path="Direct2dCad.Commands/Direct2dCad.Commands.csproj" Id="135b8a89-715a-4c51-90bb-d7c5e3247ae0" />
   <Project Path="Direct2dCad.CommandLine/Direct2dCad.CommandLine.csproj" />
   <Project Path="Direct2dCad.ChangeTracking/Direct2dCad.ChangeTracking.csproj" Id="c04ae8fe-b095-4864-8d25-a3835c21a28a" />

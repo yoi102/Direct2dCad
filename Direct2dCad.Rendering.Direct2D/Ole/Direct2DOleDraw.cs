@@ -15,7 +15,7 @@ public readonly record struct Direct2DOleRenderKey(
 
 public sealed record Direct2DOleDrawRequest(
     Direct2DOleRenderKey RenderKey,
-    byte[] OleBytes,
+    ReadOnlyMemory<byte> OleBytes,
     int FullPixelWidth,
     int FullPixelHeight,
     int RegionX,

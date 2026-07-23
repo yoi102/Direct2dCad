@@ -101,10 +101,7 @@ internal sealed class Direct2DBlockDefinitionCommandListCache(
         ThrowIfDisposed();
         if (!changes.DocumentChanged)
             return;
-        if (changes.AffectsDocumentStructure ||
-            changes.AffectsViewSettings ||
-            changes.AffectsLayouts ||
-            changes.AffectsLayoutStructure)
+        if (changes.AffectsDocumentStructure)
         {
             Clear();
             return;
@@ -124,6 +121,16 @@ internal sealed class Direct2DBlockDefinitionCommandListCache(
             _failedKeys.Clear();
             _budgetEvictedKeys.Clear();
         }
+    }
+
+    public void InvalidateFailures(IReadOnlySet<BlockId> definitionBlockIds)
+    {
+        ThrowIfDisposed();
+        if (definitionBlockIds.Count == 0)
+            return;
+
+        _failedKeys.RemoveWhere(key => definitionBlockIds.Contains(key.DefinitionBlockId));
+        _budgetEvictedKeys.RemoveWhere(key => definitionBlockIds.Contains(key.DefinitionBlockId));
     }
 
     public void Clear()

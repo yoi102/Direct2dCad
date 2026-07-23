@@ -8,12 +8,27 @@ public sealed class CadSelectionSet
 
     public IReadOnlySet<EntityId> EntityIds => _entityIds;
     public int Count => _entityIds.Count;
+    public long Version { get; private set; }
 
     public bool Contains(EntityId entityId) => _entityIds.Contains(entityId);
 
-    public bool Add(EntityId entityId) => _entityIds.Add(entityId);
+    public bool Add(EntityId entityId)
+    {
+        if (!_entityIds.Add(entityId))
+            return false;
 
-    public bool Remove(EntityId entityId) => _entityIds.Remove(entityId);
+        IncrementVersion();
+        return true;
+    }
+
+    public bool Remove(EntityId entityId)
+    {
+        if (!_entityIds.Remove(entityId))
+            return false;
+
+        IncrementVersion();
+        return true;
+    }
 
     public void Replace(IEnumerable<EntityId> entityIds)
     {
@@ -21,10 +36,23 @@ public sealed class CadSelectionSet
         if (ReferenceEquals(entityIds, _entityIds))
             return;
 
+        var replacement = entityIds.ToHashSet();
+        if (_entityIds.SetEquals(replacement))
+            return;
+
         _entityIds.Clear();
-        foreach (var entityId in entityIds)
-            _entityIds.Add(entityId);
+        _entityIds.UnionWith(replacement);
+        IncrementVersion();
     }
 
-    public void Clear() => _entityIds.Clear();
+    public void Clear()
+    {
+        if (_entityIds.Count == 0)
+            return;
+
+        _entityIds.Clear();
+        IncrementVersion();
+    }
+
+    private void IncrementVersion() => Version = unchecked(Version + 1);
 }

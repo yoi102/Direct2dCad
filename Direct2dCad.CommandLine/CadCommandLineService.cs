@@ -193,6 +193,13 @@ public sealed class CadCommandLineService : ICadCommandLineService
             $"{(statistics.IsFullFrame ? "full" : "partial")} ({statistics.DirtyRegionCount} dirty)",
             $"Scene: passes {statistics.ScenePassCount} | visible {statistics.VisibleEntityCount} | " +
             $"submissions {statistics.EntitySubmissionCount} | fallback {statistics.FallbackEntityCount}",
+            $"Timing: cache {statistics.CachePreparationMilliseconds:F2} ms | " +
+            $"background {statistics.BackgroundRenderMilliseconds:F2} ms | " +
+            $"entities {statistics.EntityRenderMilliseconds:F2} ms | " +
+            $"transient {statistics.TransientRenderMilliseconds:F2} ms | " +
+            $"selection {statistics.SelectionRenderMilliseconds:F2} ms",
+            $"Timing I/O: OLE prepare {statistics.OlePreparationMilliseconds:F2} ms | " +
+            $"surface draw {statistics.SurfaceDrawMilliseconds:F2} ms",
             $"Blocks: refs {statistics.BlockReferenceCount} | expanded {statistics.ExpandedBlockEntityCount} | " +
             $"definition CL replay/build {statistics.BlockDefinitionCommandListReplayCount}/" +
             $"{statistics.BlockDefinitionCommandListBuildCount}",

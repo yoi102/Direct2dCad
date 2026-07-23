@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Numerics;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -16,22 +17,14 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 
 public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
 {
-    private const double PartialRenderMaxAreaRatio = 0.65;
-    private const int DirtyRegionCostOptimizationThreshold = 2;
-    private const int DirtyRegionPairwiseOptimizationLimit = 8;
-    private const double DirtyRegionMergeCostTolerance = 1.15;
-    private const double DirtyRegionMaximumMergeAreaRatio = 2.0;
     private const double DirtyRegionPassPenalty = 96.0;
     private const double InteractionPreviewMaxExposedAreaRatio = 0.55;
-    private const double FrameRateWindowSeconds = 0.5;
-    private const int FrameRateSampleResetMilliseconds = 750;
     private readonly ImageSourceDirect2DResource _target = new();
     private readonly Direct2DSceneRender _renderer = new();
+    private readonly Direct2DDirtyRegionPlanner _dirtyRegionPlanner = new();
+    private readonly Direct2DFrameRateTracker _frameRateTracker = new();
     private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
-    private readonly Queue<RenderFrameSample> _frameRateSamples = [];
     private readonly List<CadScreenRect> _snapshotExposedRects = new(4);
-    private readonly List<CadScreenRect> _normalizedDirtyRects = new(8);
-    private readonly List<double> _normalizedDirtyCosts = new(8);
     private readonly List<EntityId> _dirtyCostCandidateIds = new(256);
     private ID3D11ImageSource? _imageSource;
     private CadDocument? _document;
@@ -42,8 +35,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private ID2D1DeviceContext? _clearBrushContext;
     private ID2D1SolidColorBrush? _clearBrush;
     private Color4 _clearBrushColor;
-    private long _lastRenderedFrameTimestamp;
-    private double _renderDurationSecondsTotal;
     private ViewportInteractionSnapshot? _viewportInteractionSnapshot;
     private bool _hasRenderedFrame;
     private bool _disposed;
@@ -54,13 +45,16 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
     public int TargetHeight => _target.Height;
 
-    public double FramesPerSecond { get; private set; }
+    public double FramesPerSecond => _frameRateTracker.FramesPerSecond;
 
-    public double LastFrameRenderTimeMilliseconds { get; private set; }
+    public double LastFrameRenderTimeMilliseconds =>
+        _frameRateTracker.LastFrameRenderTimeMilliseconds;
 
-    public double AverageFrameRenderTimeMilliseconds { get; private set; }
+    public double AverageFrameRenderTimeMilliseconds =>
+        _frameRateTracker.AverageFrameRenderTimeMilliseconds;
 
-    public double LastFullFrameRenderTimeMilliseconds { get; private set; }
+    public double LastFullFrameRenderTimeMilliseconds =>
+        _frameRateTracker.LastFullFrameRenderTimeMilliseconds;
 
     public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
 
@@ -346,7 +340,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                     _viewport.Offset);
             }
 
-            RecordRenderedFrame(frameStartTimestamp, isFullFrame: false);
+            _frameRateTracker.Record(frameStartTimestamp, isFullFrame: false);
             return true;
         }
         catch (Direct2DDeviceResourcesRecreatedException)
@@ -500,7 +494,11 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (!_target.IsTargetReady)
             return;
 
-        var effectiveInvalidation = NormalizeInvalidation(invalidation);
+        var effectiveInvalidation = _dirtyRegionPlanner.Normalize(
+            invalidation,
+            _target.Width,
+            _target.Height,
+            EstimateDirtyRegionCost);
         if (effectiveInvalidation.IsEmpty)
             return;
 
@@ -509,73 +507,102 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             : ToColor4(_document.ViewSettings.BackgroundColor);
         var frameStartTimestamp = Stopwatch.GetTimestamp();
         var renderCacheBuildPending = false;
+        var combineDirtyRegionPasses = _dirtyRegionPlanner.TryGetCombinedBounds(
+            effectiveInvalidation,
+            _target.Width,
+            _target.Height,
+            EstimateDirtyRegionCost,
+            out var combinedDirtyRegionBounds);
+        using var combinedDirtyRegionMask = combineDirtyRegionPasses
+            ? CreateDirtyRegionMask(effectiveInvalidation.DirtyScreenRects)
+            : null;
 
         try
         {
             _renderer.BeginFrame(
                 effectiveInvalidation.IsFull,
-                effectiveInvalidation.IsFull
+                effectiveInvalidation.IsFull || combinedDirtyRegionMask is not null
                     ? 1
                     : effectiveInvalidation.DirtyScreenRects.Count);
             try
             {
                 if (_document is not null && _viewport is not null)
                 {
-                    _renderer.PrepareOleTiles(
-                        _document,
-                        _viewport,
-                        _transientScene,
-                        _renderOptions);
-                    renderCacheBuildPending = _renderer.PrepareRenderCaches(
-                        _document,
-                        _viewport,
-                        _renderOptions,
-                        buildStep: false,
-                        handleScene: _handleScene,
-                        transientScene: _transientScene);
-                }
-
-                _target.DrawFrame(context =>
-                {
-                    if (!effectiveInvalidation.IsFull)
+                    var oleStarted = Stopwatch.GetTimestamp();
+                    try
                     {
-                        foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
-                        {
-                            var clip = ToRawRectF(dirty);
-                            var previousTransform = context.Transform;
-                            context.Transform = System.Numerics.Matrix3x2.Identity;
-                            context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
-
-                            try
-                            {
-                                FillScreenRect(context, clip, background);
-
-                                if (_document is not null && _viewport is not null)
-                                {
-                                    var dirtyWorldBounds = ScreenRectToWorldBounds(dirty, _viewport);
-                                    _renderer.Render(
-                                        _document,
-                                        _viewport,
-                                        _transientScene,
-                                        _handleScene,
-                                        CreateRenderOptions(dirtyWorldBounds));
-                                }
-                            }
-                            finally
-                            {
-                                context.PopAxisAlignedClip();
-                                context.Transform = previousTransform;
-                            }
-                        }
-
-                        return;
+                        _renderer.PrepareOleTiles(
+                            _document,
+                            _viewport,
+                            _transientScene,
+                            _renderOptions);
+                    }
+                    finally
+                    {
+                        _renderer.RecordOlePreparation(
+                            Stopwatch.GetElapsedTime(oleStarted).TotalMilliseconds);
                     }
 
-                    context.Clear(background);
+                    var cacheStarted = Stopwatch.GetTimestamp();
+                    try
+                    {
+                        renderCacheBuildPending = _renderer.PrepareRenderCaches(
+                            _document,
+                            _viewport,
+                            _renderOptions,
+                            buildStep: false,
+                            handleScene: _handleScene,
+                            transientScene: _transientScene);
+                    }
+                    finally
+                    {
+                        _renderer.RecordCachePreparation(
+                            Stopwatch.GetElapsedTime(cacheStarted).TotalMilliseconds);
+                    }
+                }
 
-                    if (_document is not null && _viewport is not null)
-                        _renderer.Render(_document, _viewport, _transientScene, _handleScene, _renderOptions);
-                }, effectiveInvalidation.IsFull ? null : effectiveInvalidation.DirtyScreenRects);
+                var surfaceStarted = Stopwatch.GetTimestamp();
+                try
+                {
+                    _target.DrawFrame(context =>
+                    {
+                        if (!effectiveInvalidation.IsFull)
+                        {
+                            if (combinedDirtyRegionMask is not null)
+                            {
+                                DrawCombinedDirtyRegions(
+                                    context,
+                                    combinedDirtyRegionMask,
+                                    combinedDirtyRegionBounds,
+                                    background);
+                            }
+                            else
+                            {
+                                foreach (var dirty in effectiveInvalidation.DirtyScreenRects)
+                                    DrawDirtyRegion(context, dirty, background);
+                            }
+
+                            return;
+                        }
+
+                        context.Clear(background);
+
+                        if (_document is not null && _viewport is not null)
+                        {
+                            _renderer.Render(
+                                _document,
+                                _viewport,
+                                _transientScene,
+                                _handleScene,
+                                _renderOptions);
+                        }
+                    }, effectiveInvalidation.IsFull ? null : effectiveInvalidation.DirtyScreenRects);
+                }
+                finally
+                {
+                    _renderer.RecordSurfaceDraw(
+                        Stopwatch.GetElapsedTime(surfaceStarted).TotalMilliseconds);
+                }
             }
             finally
             {
@@ -589,7 +616,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                     .GetElapsedTime(frameStartTimestamp)
                     .TotalMilliseconds
             };
-            RecordRenderedFrame(frameStartTimestamp, effectiveInvalidation.IsFull);
+            _frameRateTracker.Record(frameStartTimestamp, effectiveInvalidation.IsFull);
             if (renderCacheBuildPending)
                 RenderCacheBuildRequested?.Invoke(this, EventArgs.Empty);
         }
@@ -600,155 +627,105 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         }
     }
 
-    private CadRenderInvalidation NormalizeInvalidation(CadRenderInvalidation? invalidation)
+    private void DrawDirtyRegion(
+        ID2D1DeviceContext context,
+        CadScreenRect dirty,
+        Color4 background)
     {
-        if (invalidation is null || invalidation.IsFull)
-            return CadRenderInvalidation.Full;
-
-        if (_target.Width <= 0 || _target.Height <= 0)
-            return CadRenderInvalidation.Full;
-
-        _normalizedDirtyRects.Clear();
-        if (_normalizedDirtyRects.Capacity < invalidation.DirtyScreenRects.Count)
-            _normalizedDirtyRects.Capacity = invalidation.DirtyScreenRects.Count;
-        foreach (var dirtyRect in invalidation.DirtyScreenRects)
+        var clip = ToRawRectF(dirty);
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.Identity;
+        context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
+        try
         {
-            var rect = ClampToTarget(dirtyRect);
-            if (!rect.IsEmpty)
-                _normalizedDirtyRects.Add(rect);
-        }
-
-        if (_normalizedDirtyRects.Count == 0)
-            return CadRenderInvalidation.FromScreenRect(default);
-
-        var normalizedInvalidation = CadRenderInvalidation.FromScreenRects(
-            _normalizedDirtyRects);
-        if (normalizedInvalidation.DirtyScreenRects.Count >=
-            DirtyRegionCostOptimizationThreshold)
-        {
-            normalizedInvalidation = OptimizeDirtyRegions(normalizedInvalidation);
-        }
-
-        var area = 0.0;
-        foreach (var rect in normalizedInvalidation.DirtyScreenRects)
-            area += rect.Area;
-
-        var targetArea = (double)_target.Width * _target.Height;
-        return targetArea > 0 && area / targetArea >= PartialRenderMaxAreaRatio
-            ? CadRenderInvalidation.Full
-            : normalizedInvalidation;
-    }
-
-    private CadRenderInvalidation OptimizeDirtyRegions(CadRenderInvalidation invalidation)
-    {
-        _normalizedDirtyRects.Clear();
-        _normalizedDirtyCosts.Clear();
-        foreach (var rect in invalidation.DirtyScreenRects)
-        {
-            _normalizedDirtyRects.Add(rect);
-            _normalizedDirtyCosts.Add(EstimateDirtyRegionCost(rect));
-        }
-
-        if (_normalizedDirtyRects.Count > DirtyRegionPairwiseOptimizationLimit)
-        {
-            CompactDirtyRegionsToPairwiseLimit();
-        }
-
-        while (_normalizedDirtyRects.Count > 1)
-        {
-            var bestLeft = -1;
-            var bestRight = -1;
-            var bestUnion = default(CadScreenRect);
-            var bestUnionCost = 0.0;
-            var bestSaving = double.NegativeInfinity;
-
-            for (var left = 0; left < _normalizedDirtyRects.Count - 1; left++)
-            {
-                for (var right = left + 1; right < _normalizedDirtyRects.Count; right++)
-                {
-                    var sourceCost = _normalizedDirtyCosts[left] +
-                                     _normalizedDirtyCosts[right];
-                    var union = _normalizedDirtyRects[left].Union(
-                        _normalizedDirtyRects[right]);
-                    var sourceArea = _normalizedDirtyRects[left].Area +
-                                     _normalizedDirtyRects[right].Area;
-                    if (union.Area > sourceArea * DirtyRegionMaximumMergeAreaRatio)
-                        continue;
-
-                    var unionCost = EstimateDirtyRegionCost(union);
-                    if (unionCost > sourceCost * DirtyRegionMergeCostTolerance)
-                        continue;
-
-                    var saving = sourceCost - unionCost;
-                    if (saving <= bestSaving)
-                        continue;
-
-                    bestLeft = left;
-                    bestRight = right;
-                    bestUnion = union;
-                    bestUnionCost = unionCost;
-                    bestSaving = saving;
-                }
-            }
-
-            if (bestLeft < 0)
-                break;
-
-            _normalizedDirtyRects[bestLeft] = bestUnion;
-            _normalizedDirtyCosts[bestLeft] = bestUnionCost;
-            _normalizedDirtyRects.RemoveAt(bestRight);
-            _normalizedDirtyCosts.RemoveAt(bestRight);
-        }
-
-        return CadRenderInvalidation.FromScreenRects(_normalizedDirtyRects);
-    }
-
-    private void CompactDirtyRegionsToPairwiseLimit()
-    {
-        while (_normalizedDirtyRects.Count > DirtyRegionPairwiseOptimizationLimit)
-        {
-            var bestLeft = -1;
-            var bestRight = -1;
-            var bestUnion = default(CadScreenRect);
-            var bestWaste = long.MaxValue;
-            for (var left = 0; left < _normalizedDirtyRects.Count - 1; left++)
-            {
-                for (var right = left + 1; right < _normalizedDirtyRects.Count; right++)
-                {
-                    var first = _normalizedDirtyRects[left];
-                    var second = _normalizedDirtyRects[right];
-                    var sourceArea = first.Area + second.Area;
-                    var union = first.Union(second);
-                    if (union.Area > sourceArea * DirtyRegionMaximumMergeAreaRatio)
-                        continue;
-
-                    var waste = Math.Max(0, union.Area - sourceArea);
-                    if (waste > bestWaste ||
-                        waste == bestWaste && union.Area >= bestUnion.Area)
-                    {
-                        continue;
-                    }
-
-                    bestLeft = left;
-                    bestRight = right;
-                    bestUnion = union;
-                    bestWaste = waste;
-                }
-            }
-
-            if (bestLeft < 0)
+            FillScreenRect(context, clip, background);
+            if (_document is null || _viewport is null)
                 return;
 
-            var sourceCost = _normalizedDirtyCosts[bestLeft] +
-                             _normalizedDirtyCosts[bestRight];
-            var unionCost = EstimateDirtyRegionCost(bestUnion);
-            if (unionCost > sourceCost * DirtyRegionMergeCostTolerance)
+            _renderer.Render(
+                _document,
+                _viewport,
+                _transientScene,
+                _handleScene,
+                CreateRenderOptions(ScreenRectToWorldBounds(dirty, _viewport)));
+        }
+        finally
+        {
+            context.PopAxisAlignedClip();
+            context.Transform = previousTransform;
+        }
+    }
+
+    private void DrawCombinedDirtyRegions(
+        ID2D1DeviceContext context,
+        ID2D1Geometry dirtyRegionMask,
+        CadScreenRect combinedBounds,
+        Color4 background)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.Identity;
+        var layerParameters = new LayerParameters1
+        {
+            ContentBounds = ToRawRectF(combinedBounds),
+            GeometricMask = dirtyRegionMask,
+            MaskAntialiasMode = AntialiasMode.Aliased,
+            MaskTransform = Matrix3x2.Identity,
+            Opacity = 1.0f,
+            OpacityBrush = null,
+            LayerOptions = LayerOptions1.None
+        };
+        var layerPushed = false;
+        try
+        {
+            context.PushLayer(ref layerParameters, null!);
+            layerPushed = true;
+            FillScreenRect(context, ToRawRectF(combinedBounds), background);
+            if (_document is null || _viewport is null)
                 return;
 
-            _normalizedDirtyRects[bestLeft] = bestUnion;
-            _normalizedDirtyCosts[bestLeft] = unionCost;
-            _normalizedDirtyRects.RemoveAt(bestRight);
-            _normalizedDirtyCosts.RemoveAt(bestRight);
+            _renderer.Render(
+                _document,
+                _viewport,
+                _transientScene,
+                _handleScene,
+                CreateRenderOptions(ScreenRectToWorldBounds(combinedBounds, _viewport)));
+        }
+        finally
+        {
+            if (layerPushed)
+                context.PopLayer();
+            context.Transform = previousTransform;
+        }
+    }
+
+    private ID2D1PathGeometry CreateDirtyRegionMask(IReadOnlyList<CadScreenRect> dirtyRects)
+    {
+        var factory = _target.Factory ??
+                      throw new InvalidOperationException("Direct2D factory is not created.");
+        var geometry = factory.CreatePathGeometry();
+        try
+        {
+            using var sink = geometry.Open();
+            foreach (var rect in dirtyRects)
+            {
+                var left = rect.X;
+                var top = rect.Y;
+                var right = rect.X + rect.Width;
+                var bottom = rect.Y + rect.Height;
+                sink.BeginFigure(new Vector2(left, top), FigureBegin.Filled);
+                sink.AddLine(new Vector2(right, top));
+                sink.AddLine(new Vector2(right, bottom));
+                sink.AddLine(new Vector2(left, bottom));
+                sink.EndFigure(FigureEnd.Closed);
+            }
+
+            sink.Close();
+            return geometry;
+        }
+        catch
+        {
+            geometry.Dispose();
+            throw;
         }
     }
 
@@ -781,18 +758,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         var targetArea = Math.Max(1.0, (double)_target.Width * _target.Height);
         var entityCount = Math.Max(1, _document?.Entities.Count ?? 1);
         return rect.Area / targetArea * entityCount + DirtyRegionPassPenalty;
-    }
-
-    private CadScreenRect ClampToTarget(CadScreenRect rect)
-    {
-        if (rect.IsEmpty || _target.Width <= 0 || _target.Height <= 0)
-            return default;
-
-        var x = Math.Clamp(rect.X, 0, _target.Width);
-        var y = Math.Clamp(rect.Y, 0, _target.Height);
-        var right = Math.Clamp(rect.X + rect.Width, 0, _target.Width);
-        var bottom = Math.Clamp(rect.Y + rect.Height, 0, _target.Height);
-        return new CadScreenRect(x, y, right - x, bottom - y);
     }
 
     private CadRenderOptions CreateRenderOptions(CadRectD? dirtyWorldBounds)
@@ -908,49 +873,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         }
     }
 
-    private void RecordRenderedFrame(
-        long frameStartTimestamp,
-        bool isFullFrame)
-    {
-        var frameEndTimestamp = Stopwatch.GetTimestamp();
-        var elapsed = Stopwatch.GetElapsedTime(frameStartTimestamp, frameEndTimestamp).TotalSeconds;
-        if (!double.IsFinite(elapsed) || elapsed <= 0)
-            return;
-
-        LastFrameRenderTimeMilliseconds = elapsed * 1000.0;
-        if (isFullFrame)
-            LastFullFrameRenderTimeMilliseconds = LastFrameRenderTimeMilliseconds;
-
-        if (_lastRenderedFrameTimestamp != 0 &&
-            Stopwatch.GetElapsedTime(_lastRenderedFrameTimestamp, frameEndTimestamp).TotalMilliseconds >
-            FrameRateSampleResetMilliseconds)
-        {
-            _frameRateSamples.Clear();
-            _renderDurationSecondsTotal = 0;
-        }
-
-        _lastRenderedFrameTimestamp = frameEndTimestamp;
-        _frameRateSamples.Enqueue(new RenderFrameSample(frameEndTimestamp, elapsed));
-        _renderDurationSecondsTotal += elapsed;
-        while (_frameRateSamples.Count > 1 &&
-               Stopwatch.GetElapsedTime(
-                   _frameRateSamples.Peek().CompletionTimestamp,
-                   frameEndTimestamp).TotalSeconds >
-               FrameRateWindowSeconds)
-        {
-            _renderDurationSecondsTotal -= _frameRateSamples.Dequeue().RenderDurationSeconds;
-        }
-
-        _renderDurationSecondsTotal = Math.Max(0, _renderDurationSecondsTotal);
-        var averageRenderDuration = _frameRateSamples.Count > 0
-            ? _renderDurationSecondsTotal / _frameRateSamples.Count
-            : 0;
-        AverageFrameRenderTimeMilliseconds = averageRenderDuration * 1000.0;
-        FramesPerSecond = averageRenderDuration > 0
-            ? 1.0 / averageRenderDuration
-            : 0;
-    }
-
     private void RefreshPendingTextMeasurements(CadDocument document)
     {
         _pendingTextMeasurementIds.Clear();
@@ -991,19 +913,9 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _transientScene = null;
         _handleScene = null;
         _pendingTextMeasurementIds.Clear();
-        _frameRateSamples.Clear();
-        _lastRenderedFrameTimestamp = 0;
-        _renderDurationSecondsTotal = 0;
-        FramesPerSecond = 0;
-        LastFrameRenderTimeMilliseconds = 0;
-        AverageFrameRenderTimeMilliseconds = 0;
-        LastFullFrameRenderTimeMilliseconds = 0;
+        _frameRateTracker.Reset();
         _disposed = true;
     }
-
-    private readonly record struct RenderFrameSample(
-        long CompletionTimestamp,
-        double RenderDurationSeconds);
 
     private readonly record struct ViewportInteractionSnapshot(
         double Zoom,
