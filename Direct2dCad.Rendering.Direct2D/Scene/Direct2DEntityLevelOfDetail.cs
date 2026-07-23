@@ -33,7 +33,7 @@ internal static class Direct2DEntityLevelOfDetail
     private const double SimplifiedGeometryScreenExtent = 2.0;
     private const double SimplifiedStrokeStyleScreenExtent = 8.0;
     private const double MinimumTextScreenHeight = 0.1;
-    private const double MinimumTextScreenExtent = 0.35;
+    private const double MinimumTextScreenExtent = 0.75;
     private const double MinimumTextScreenArea = 0.125;
     private const double TextSummaryScreenHeight = 0.5;
     private const double FullTextScreenHeight = 1.0;

@@ -191,7 +191,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ThrowIfDisposed();
 
         _transientScene = transientScene;
-        Render(CadRenderInvalidation.Full);
     }
 
     public void SetHandleScene(CadHandleScene? handleScene)
@@ -199,7 +198,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ThrowIfDisposed();
 
         _handleScene = handleScene;
-        Render(CadRenderInvalidation.Full);
     }
 
     public void SetRenderOptions(CadRenderOptions? renderOptions)
@@ -238,8 +236,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
         if (_imageSource is not null)
             _target.SetSize(width, height);
-
-        Render(CadRenderInvalidation.Full);
     }
 
     public bool BeginViewportInteraction()

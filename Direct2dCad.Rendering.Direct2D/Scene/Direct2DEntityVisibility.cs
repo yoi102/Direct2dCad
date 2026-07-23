@@ -10,6 +10,8 @@ internal static class Direct2DEntityVisibility
 {
     private const int MinimumOrderedScanEntityCount = 256;
     private const int OrderedScanCandidateDivisor = 8;
+    private const double DefaultBroadPhasePaddingPixels = 64.0;
+    private const double Direct2DDefaultMiterLimit = 10.0;
 
     public static IEnumerable<Direct2DVisibleEntity> Enumerate(
         CadDocument document,
@@ -41,7 +43,10 @@ internal static class Direct2DEntityVisibility
                 renderWorldBounds);
         }
 
-        var broadPhasePadding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
+        var broadPhasePadding = ResolveBroadPhasePadding(
+            resourceCache,
+            viewport,
+            options);
         var queryBounds = bounds.Inflate(broadPhasePadding);
         var ownerBounds = entityOrderCache.GetOwnerBounds(
             document,
@@ -155,6 +160,10 @@ internal static class Direct2DEntityVisibility
         IReadOnlyList<CadEntity> entities,
         CadRectD? renderWorldBounds)
     {
+        var broadPhasePadding = ResolveBroadPhasePadding(
+            resourceCache,
+            viewport,
+            options);
         foreach (var entity in entities)
         {
             if (entity.IsErased ||
@@ -167,7 +176,10 @@ internal static class Direct2DEntityVisibility
             }
 
             if (renderWorldBounds is { } coarseBounds &&
-                !MayIntersectRenderBounds(entity, coarseBounds, viewport))
+                !MayIntersectRenderBounds(
+                    entity,
+                    coarseBounds,
+                    broadPhasePadding))
             {
                 continue;
             }
@@ -184,7 +196,8 @@ internal static class Direct2DEntityVisibility
                     bounds,
                     viewport,
                     options,
-                    resources))
+                    resources,
+                    broadPhasePadding))
             {
                 continue;
             }
@@ -214,9 +227,15 @@ internal static class Direct2DEntityVisibility
         CadRectD renderWorldBounds,
         CadViewport viewport,
         CadRenderOptions options,
-        Direct2DResourceCache.EntityResourceBucket? resources)
+        Direct2DResourceCache.EntityResourceBucket? resources,
+        double broadPhasePadding)
     {
-        var bounds = ResolvePaintBounds(entity, resources, viewport, options);
+        var bounds = ResolvePaintBounds(
+            entity,
+            resources,
+            viewport,
+            options,
+            broadPhasePadding);
         return bounds.Intersects(renderWorldBounds) ||
                bounds.Contains(renderWorldBounds.Center) ||
                renderWorldBounds.Contains(bounds);
@@ -225,13 +244,12 @@ internal static class Direct2DEntityVisibility
     private static bool MayIntersectRenderBounds(
         CadEntity entity,
         CadRectD renderWorldBounds,
-        CadViewport viewport)
+        double broadPhasePadding)
     {
         var entityBounds = entity.Bounds;
         if (entityBounds.IsEmpty)
             return true;
 
-        var broadPhasePadding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
         var paddedBounds = entityBounds.Inflate(broadPhasePadding);
         return paddedBounds.Intersects(renderWorldBounds) ||
                paddedBounds.Contains(renderWorldBounds.Center) ||
@@ -242,7 +260,8 @@ internal static class Direct2DEntityVisibility
         CadEntity entity,
         Direct2DResourceCache.EntityResourceBucket? resources,
         CadViewport viewport,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        double broadPhasePadding)
     {
         var bounds = entity.Bounds;
         if (bounds.IsEmpty)
@@ -250,7 +269,12 @@ internal static class Direct2DEntityVisibility
 
         var padding = 0.0;
         if (resources?.StrokeBrush is not null && UsesStrokeWidth(entity))
-            padding = Math.Max(padding, ResolveStrokeWidth(resources.StrokeWidth, viewport, options) * 0.5);
+        {
+            padding = Math.Max(
+                padding,
+                ResolveStrokeWidth(resources.StrokeWidth, viewport, options) *
+                ResolveStrokeExtentMultiplier(entity));
+        }
 
         if (resources is { FillBrush: not null } or { HatchBrush: not null })
         {
@@ -261,14 +285,27 @@ internal static class Direct2DEntityVisibility
         }
 
         if (entity is CadBlockReference)
-        {
-            padding = Math.Max(
-                padding,
-                Math.Max(options.MinimumScreenStrokeWidth, 8.0) /
-                Math.Max(viewport.Zoom, double.Epsilon));
-        }
+            padding = Math.Max(padding, broadPhasePadding);
 
         return padding > 0 ? bounds.Inflate(padding) : bounds;
+    }
+
+    internal static double ResolveBroadPhasePadding(
+        Direct2DResourceCache resourceCache,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        var zoom = Math.Max(viewport.Zoom, double.Epsilon);
+        var minimumPadding = DefaultBroadPhasePaddingPixels / zoom;
+        var maximumStrokeWidth = Math.Max(
+            resourceCache.MaximumStrokeWidth,
+            (float)options.MinimumScreenStrokeWidth);
+        var maximumWorldStrokeWidth = options.KeepStrokeWidthScreenConstant
+            ? maximumStrokeWidth / zoom
+            : maximumStrokeWidth;
+        return Math.Max(
+            minimumPadding,
+            maximumWorldStrokeWidth * (Direct2DDefaultMiterLimit * 0.5));
     }
 
     private static bool UsesStrokeWidth(CadEntity entity)
@@ -282,6 +319,28 @@ internal static class Direct2DEntityVisibility
             CadPolyline or
             CadSpline or
             CadShapeText;
+    }
+
+    private static double ResolveStrokeExtentMultiplier(CadEntity entity)
+    {
+        var multiplier = 0.5;
+        if (entity is CadShapeText ||
+            CadEntityCapabilities.SupportsLineJoin(entity) &&
+            entity.StrokeStyle.LineJoin is
+                CadStrokeLineJoin.Miter or CadStrokeLineJoin.MiterOrBevel)
+        {
+            multiplier = Direct2DDefaultMiterLimit * 0.5;
+        }
+
+        if (CadEntityCapabilities.SupportsStartEndCaps(entity) &&
+            (entity.StrokeStyle.StartCap == CadStrokeCap.Triangle ||
+             entity.StrokeStyle.EndCap == CadStrokeCap.Triangle ||
+             entity.StrokeStyle.DashCap == CadStrokeCap.Triangle))
+        {
+            multiplier = Math.Max(multiplier, 1.0);
+        }
+
+        return multiplier;
     }
 
     private static float ResolveStrokeWidth(

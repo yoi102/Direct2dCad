@@ -402,8 +402,14 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             {
                 var left = Math.Clamp(dirtyRect.X, 0, _width);
                 var top = Math.Clamp(dirtyRect.Y, 0, _height);
-                var right = Math.Clamp(dirtyRect.X + dirtyRect.Width, left, _width);
-                var bottom = Math.Clamp(dirtyRect.Y + dirtyRect.Height, top, _height);
+                var right = (int)Math.Clamp(
+                    (long)dirtyRect.X + dirtyRect.Width,
+                    left,
+                    _width);
+                var bottom = (int)Math.Clamp(
+                    (long)dirtyRect.Y + dirtyRect.Height,
+                    top,
+                    _height);
                 if (right <= left || bottom <= top)
                     continue;
 

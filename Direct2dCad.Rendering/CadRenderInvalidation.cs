@@ -18,9 +18,24 @@ public readonly record struct CadScreenRect(int X, int Y, int Width, int Height)
 
         var left = Math.Min(X, other.X);
         var top = Math.Min(Y, other.Y);
-        var right = Math.Max(X + Width, other.X + other.Width);
-        var bottom = Math.Max(Y + Height, other.Y + other.Height);
-        return new CadScreenRect(left, top, right - left, bottom - top);
+        var right = Math.Max((long)X + Width, (long)other.X + other.Width);
+        var bottom = Math.Max((long)Y + Height, (long)other.Y + other.Height);
+        return new CadScreenRect(
+            left,
+            top,
+            SaturateDimension(right - left),
+            SaturateDimension(bottom - top));
+    }
+
+    public bool Intersects(CadScreenRect other)
+    {
+        if (IsEmpty || other.IsEmpty)
+            return false;
+
+        return X < (long)other.X + other.Width &&
+               other.X < (long)X + Width &&
+               Y < (long)other.Y + other.Height &&
+               other.Y < (long)Y + Height;
     }
 
     public bool IntersectsOrTouches(CadScreenRect other)
@@ -28,10 +43,15 @@ public readonly record struct CadScreenRect(int X, int Y, int Width, int Height)
         if (IsEmpty || other.IsEmpty)
             return false;
 
-        return X <= other.X + other.Width &&
-               other.X <= X + Width &&
-               Y <= other.Y + other.Height &&
-               other.Y <= Y + Height;
+        return X <= (long)other.X + other.Width &&
+               other.X <= (long)X + Width &&
+               Y <= (long)other.Y + other.Height &&
+               other.Y <= (long)Y + Height;
+    }
+
+    private static int SaturateDimension(long value)
+    {
+        return (int)Math.Clamp(value, 0L, int.MaxValue);
     }
 }
 
@@ -111,10 +131,18 @@ public sealed class CadRenderInvalidation
         var right = Math.Max(p1.X, p2.X) + paddingPixels;
         var bottom = Math.Max(p1.Y, p2.Y) + paddingPixels;
 
-        var x = Math.Max(0, (int)Math.Floor(left));
-        var y = Math.Max(0, (int)Math.Floor(top));
-        var maxX = Math.Min(surfaceWidth, (int)Math.Ceiling(right));
-        var maxY = Math.Min(surfaceHeight, (int)Math.Ceiling(bottom));
+        if (!double.IsFinite(left) ||
+            !double.IsFinite(top) ||
+            !double.IsFinite(right) ||
+            !double.IsFinite(bottom))
+        {
+            return Full;
+        }
+
+        var x = (int)Math.Floor(Math.Clamp(left, 0.0, surfaceWidth));
+        var y = (int)Math.Floor(Math.Clamp(top, 0.0, surfaceHeight));
+        var maxX = (int)Math.Ceiling(Math.Clamp(right, 0.0, surfaceWidth));
+        var maxY = (int)Math.Ceiling(Math.Clamp(bottom, 0.0, surfaceHeight));
         return FromScreenRect(new CadScreenRect(x, y, maxX - x, maxY - y));
     }
 
@@ -195,8 +223,9 @@ public sealed class CadRenderInvalidation
             }
         }
 
-        rects[bestLeft] = bestUnion;
         rects.RemoveAt(bestRight);
+        rects.RemoveAt(bestLeft);
+        AddDirtyRect(rects, bestUnion);
     }
 
     private static long CalculateMergeWaste(
@@ -206,7 +235,7 @@ public sealed class CadRenderInvalidation
 
     private static bool ShouldMerge(CadScreenRect first, CadScreenRect second)
     {
-        if (first.IntersectsOrTouches(second))
+        if (first.Intersects(second))
             return true;
 
         var union = first.Union(second);

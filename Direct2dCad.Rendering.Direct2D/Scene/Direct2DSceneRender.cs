@@ -96,7 +96,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _resourceCache,
             _entityOrderCache,
             _statistics);
-        _tileCache = new Direct2DSceneTileCache(_statistics);
+        _tileCache = new Direct2DSceneTileCache(
+            _resourceCache,
+            _statistics);
     }
 
     public Direct2DOleDrawCallback? OleDrawCallback
@@ -127,7 +129,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _entityOrderCache.InvalidateOwnerMetrics();
         _resourceCache.ApplyChanges(document, changes);
         _oleRenderer.ApplyChanges(document, changes);
-        _entityOrderCache.ScheduleBackgroundPreparation(document);
     }
 
     public void ResetDeviceResources(
@@ -150,8 +151,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _styleResources.Reset(factory, deviceContext);
         _textFormatResources.Reset(writeFactory);
         _resourceCache.ResetDeviceResources(factory, writeFactory, deviceContext, document);
-        if (document is not null)
-            _entityOrderCache.ScheduleBackgroundPreparation(document);
     }
 
     public void RebuildAll(CadDocument document)
@@ -164,7 +163,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _selectionRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildAll(document);
-        _entityOrderCache.ScheduleBackgroundPreparation(document);
     }
 
     public void RebuildEntity(CadDocument document, EntityId entityId)
@@ -177,7 +175,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _selectionRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildEntityResources(document, entityId);
-        _entityOrderCache.ScheduleBackgroundPreparation(document);
     }
 
     public void RemoveEntity(EntityId entityId)
@@ -346,7 +343,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(viewport);
         ThrowIfDisposed();
-        _entityOrderCache.ScheduleBackgroundPreparation(document);
         if (_resourceCache.DeviceContext is not { } context)
             return false;
 
@@ -357,7 +353,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             document.TryGetLayout(layoutId, out var activeLayout) &&
             activeLayout is not null)
         {
-            return PrepareLayoutViewportCaches(
+            var layoutBuildPending = PrepareLayoutViewportCaches(
                 context,
                 document,
                 viewport,
@@ -366,6 +362,11 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 transientScene,
                 options,
                 buildStep);
+            ScheduleBackgroundPreparationAfterCacheBuild(
+                document,
+                buildStep,
+                layoutBuildPending);
+            return layoutBuildPending;
         }
 
         var orderedEntities = _entityOrderCache.GetOrderedEntities(
@@ -507,6 +508,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 DrawRetainedScene,
                 buildStep: false))
         {
+            ScheduleBackgroundPreparationAfterCacheBuild(
+                document,
+                buildStep,
+                cacheBuildPending: false);
             return false;
         }
 
@@ -519,6 +524,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             DrawRetainedScene,
             buildStep: true);
         return true;
+    }
+
+    private void ScheduleBackgroundPreparationAfterCacheBuild(
+        CadDocument document,
+        bool buildStep,
+        bool cacheBuildPending)
+    {
+        if (buildStep && !cacheBuildPending)
+            _entityOrderCache.ScheduleBackgroundPreparation(document);
     }
 
     public override void Render(CadDocument document, CadViewport viewport, CadRenderOptions? options = null)
@@ -1337,6 +1351,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _backgroundRenderer.Dispose();
         _blockReferenceRenderer.Dispose();
         _selectionRenderer.Dispose();
+        _entityOrderCache.Dispose();
         _resourceCache.Dispose();
         _transientSceneRenderer.Dispose();
         _oleRenderer.Dispose();

@@ -217,8 +217,8 @@ internal sealed class Direct2DDirtyRegionPlanner
 
         var x = Math.Clamp(rect.X, 0, targetWidth);
         var y = Math.Clamp(rect.Y, 0, targetHeight);
-        var right = Math.Clamp(rect.X + rect.Width, 0, targetWidth);
-        var bottom = Math.Clamp(rect.Y + rect.Height, 0, targetHeight);
+        var right = (int)Math.Clamp((long)rect.X + rect.Width, 0L, targetWidth);
+        var bottom = (int)Math.Clamp((long)rect.Y + rect.Height, 0L, targetHeight);
         return new CadScreenRect(x, y, right - x, bottom - y);
     }
 }

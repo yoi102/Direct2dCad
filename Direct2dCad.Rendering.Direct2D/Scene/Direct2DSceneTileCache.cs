@@ -4,6 +4,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Resources;
 using Vortice;
 using Vortice.DCommon;
 using Vortice.Direct2D1;
@@ -29,7 +30,10 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private const double MaximumFallbackZoomRatio = 2.0;
     private const int MaximumMissingTilesForPartialReplay = 1;
     private const double MinimumCoverageForPartialReplay = 0.75;
+    private const double MaximumCachedStrokeExtentPixels = 64.0;
+    private const double MaximumStrokeExtentMultiplier = 5.0;
 
+    private readonly Direct2DResourceCache _resourceCache;
     private readonly Direct2DRenderStatisticsCollector _statistics;
     private readonly Dictionary<TileProfileKey, TileProfile> _profiles = [];
     private readonly Dictionary<EntityId, EntitySnapshot> _entitySnapshots = [];
@@ -44,9 +48,14 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private long _usageStamp;
     private bool _disposed;
 
-    public Direct2DSceneTileCache(Direct2DRenderStatisticsCollector statistics)
+    public Direct2DSceneTileCache(
+        Direct2DResourceCache resourceCache,
+        Direct2DRenderStatisticsCollector statistics)
     {
-        _statistics = statistics;
+        _resourceCache = resourceCache ??
+                         throw new ArgumentNullException(nameof(resourceCache));
+        _statistics = statistics ??
+                      throw new ArgumentNullException(nameof(statistics));
     }
 
     public long EstimatedBytes => _profiles.Values.Sum(static profile => profile.EstimatedBytes);
@@ -62,7 +71,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
-        if (!CanUse(options, estimatedRenderWork))
+        if (!CanUse(options, estimatedRenderWork, viewport.Zoom))
             return false;
 
         var key = TileProfileKey.Create(options, viewport.Zoom);
@@ -120,7 +129,9 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         ThrowIfDisposed();
         missingWorldBounds = [];
-        if (options.ActiveLayoutId is not null || options.HiddenEntityIds.Count > 0)
+        if (options.ActiveLayoutId is not null ||
+            options.HiddenEntityIds.Count > 0 ||
+            !IsStrokeExtentCacheSafe(options, viewport.Zoom))
             return false;
 
         var key = TileProfileKey.Create(options, viewport.Zoom);
@@ -202,6 +213,13 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
+        if (_profiles.Count > 0 && !AreExistingProfileStrokeExtentsCacheSafe())
+        {
+            ClearProfiles();
+            CaptureEntitySnapshots(document);
+            return;
+        }
+
         if (changes.AffectsDocumentStructure || changes.AffectsViewSettings)
         {
             ClearProfiles();
@@ -455,10 +473,58 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             EntityBoundsQueryInto = source.EntityBoundsQueryInto
         };
 
-    private static bool CanUse(CadRenderOptions options, int entityCount)
+    private bool CanUse(
+        CadRenderOptions options,
+        int entityCount,
+        double zoom)
     {
         return options.ActiveLayoutId is null &&
-               entityCount >= MinimumEntityCount;
+               entityCount >= MinimumEntityCount &&
+               IsStrokeExtentCacheSafe(options, zoom);
+    }
+
+    private bool AreExistingProfileStrokeExtentsCacheSafe()
+    {
+        foreach (var profile in _profiles.Values)
+        {
+            var key = profile.Key;
+            if (!IsStrokeExtentCacheSafe(
+                    key.KeepStrokeWidthScreenConstant,
+                    key.Zoom,
+                    BitConverter.Int64BitsToDouble(
+                        key.MinimumScreenStrokeWidthBits)))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool IsStrokeExtentCacheSafe(
+        CadRenderOptions options,
+        double zoom)
+    {
+        return IsStrokeExtentCacheSafe(
+            options.KeepStrokeWidthScreenConstant,
+            zoom,
+            options.MinimumScreenStrokeWidth);
+    }
+
+    private bool IsStrokeExtentCacheSafe(
+        bool keepStrokeWidthScreenConstant,
+        double zoom,
+        double minimumScreenStrokeWidth)
+    {
+        var maximumStrokeWidth = Math.Max(
+            _resourceCache.MaximumStrokeWidth,
+            (float)Math.Max(0.0, minimumScreenStrokeWidth));
+        var screenStrokeWidth = keepStrokeWidthScreenConstant
+            ? maximumStrokeWidth
+            : maximumStrokeWidth * Math.Max(zoom, double.Epsilon);
+        var maximumPaintExtent =
+            screenStrokeWidth * MaximumStrokeExtentMultiplier + 2.0;
+        return maximumPaintExtent <= MaximumCachedStrokeExtentPixels;
     }
 
     private void EnsureDocument(CadDocument document)
@@ -852,7 +918,9 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             if (entityBounds.IsEmpty)
                 return;
 
-            var paintBounds = entityBounds.Inflate(64.0 / Math.Max(Zoom, double.Epsilon));
+            var paintBounds = entityBounds.Inflate(
+                MaximumCachedStrokeExtentPixels /
+                Math.Max(Zoom, double.Epsilon));
             foreach (var pair in Tiles
                          .Where(pair => Intersects(pair.Value.WorldBounds, paintBounds))
                          .ToArray())

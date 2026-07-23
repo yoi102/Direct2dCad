@@ -52,6 +52,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly HashSet<EntityId> _openOleEditEntityIds = [];
     private bool _isApplyingOleHostUpdate;
     private readonly CadOverlaySceneCoordinator _overlayScenes = new();
+    private readonly CadDocumentInvalidationTracker _documentInvalidation = new();
     private readonly CadRenderResourceCoordinator _renderResources = new();
     private readonly CadGripDragController _gripDrag = new(new CadHandleHitTester());
     private readonly CadViewportInitializationState _viewportInitialization = new();
@@ -78,6 +79,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadLayoutViewportSnapshot? _layoutPanInitialSnapshot;
     private bool _layoutPanHasMoved;
     private bool _viewportInteractionRequiresHandleSceneUpdate;
+    private CadRenderInvalidation _deferredDocumentInvalidation = CadRenderInvalidation.Empty;
     private bool _fitToWindowPending;
     private BlockId? _insertBlockDefinitionId;
     private double _insertBlockRotationRadians;
@@ -161,7 +163,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             OnPropertyChanged();
             UpdateDrawingDefaultsForLayerSelection(newLayer);
             RaiseInteractionStateChanged();
-            RequestRender();
+            RequestOverlayRender();
         }
     }
 
@@ -177,7 +179,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             _pasteTargetLayerId = resolvedLayerId;
             OnPropertyChanged();
             RaiseInteractionStateChanged();
-            RequestRender();
+            RequestOverlayRender();
         }
     }
 
@@ -272,6 +274,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public void AttachRenderResources()
     {
         ThrowIfDisposed();
+        _documentInvalidation.Reset(
+            CadEditor.Document,
+            CreateRenderInvalidationCalculator());
+        _deferredDocumentInvalidation = CadRenderInvalidation.Empty;
         _renderResources.Attach(
             CadEditor,
             Direct2DImageRenderHost,
@@ -390,7 +396,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void OnDrawingDefaultsChanged(object? sender, EventArgs e)
     {
         RaiseInteractionStateChanged();
-        RequestRender();
+        RequestOverlayRender();
     }
 
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
@@ -466,7 +472,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             _selectionDrag.Begin(
                 screen,
                 toggleSelection ? CadSelectionMode.Toggle : CadSelectionMode.Replace);
-            RequestRender();
+            RequestOverlayRender();
             return new CadCanvasInteractionResult(true, CaptureMouse: true);
         }
 
@@ -642,7 +648,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return CadCanvasInteractionResult.NotHandled;
         }
 
-        RequestRender();
+        RequestOverlayRender(updateHandleScene: true);
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -675,13 +681,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public void Undo()
     {
         CadEditor.Undo();
-        RequestRender();
     }
 
     public void Redo()
     {
         CadEditor.Redo();
-        RequestRender();
     }
 
     [RelayCommand]
@@ -980,7 +984,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.Selection.Replace(resolvedEntityIds);
         ClearInteractionState(clearClipboard: false, render: false);
         RaiseInteractionStateChanged();
-        RequestRender();
+        RequestOverlayRender(updateHandleScene: true);
     }
 
     public bool PanToEntity(EntityId entityId)
@@ -1036,7 +1040,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         ClearInteractionState(clearClipboard: false, render: false);
         RaiseInteractionStateChanged();
-        RequestRender();
+        RequestOverlayRender(updateHandleScene: true);
         return CadCanvasInteractionResult.HandledOnly;
     }
 
@@ -1069,7 +1073,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (PruneSelectionToFilter())
         {
             RaiseInteractionStateChanged();
-            RequestRender();
+            RequestOverlayRender(updateHandleScene: true);
         }
 
         _selectionFilterChangedPublisher.Publish(new CadSelectionFilterChangedMessage(this));
@@ -1103,7 +1107,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (PruneSelectionToFilter())
         {
             RaiseInteractionStateChanged();
-            RequestRender();
+            RequestOverlayRender(updateHandleScene: true);
         }
 
         _selectionFilterChangedPublisher.Publish(new CadSelectionFilterChangedMessage(this));
@@ -1147,7 +1151,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.Selection.Clear();
         ClearInteractionState(clearClipboard: false, render: false);
         RaiseInteractionStateChanged();
-        RequestRender();
 
         return new CadCanvasInteractionResult(
             true,
@@ -1332,7 +1335,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (CreateDrawingClickHandler().CompleteCurrentDrawing())
         {
-            RequestRender();
+            RequestOverlayRender();
             return CadCanvasInteractionResult.HandledOnly;
         }
 
@@ -1373,6 +1376,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var requestedInvalidation = interruptedViewportInteraction
             ? CadRenderInvalidation.Full
             : invalidation ?? CadRenderInvalidation.Full;
+        if (!_deferredDocumentInvalidation.IsEmpty)
+        {
+            requestedInvalidation =
+                requestedInvalidation.Union(_deferredDocumentInvalidation);
+            _deferredDocumentInvalidation = CadRenderInvalidation.Empty;
+        }
         var interactionZoom = InteractionZoom;
         var handleOptions = CreateHandleSceneBuildOptions();
         var activeHandleItems = _gripDrag.CreateActiveHandleItems(
@@ -1551,7 +1560,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return false;
 
         _lastCommandLineInputPoint = new CadCommandLinePoint(world.X, world.Y);
-        RequestRender();
+        RequestOverlayRender();
         return true;
     }
 
@@ -1563,7 +1572,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 out var cycleSeed))
         {
             _selectionCycle.Begin(cycleSeed);
-            RequestRender();
+            RequestOverlayRender(updateHandleScene: true);
         }
     }
 
@@ -1588,7 +1597,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         OnPropertyChanged(nameof(IsPastePreviewActive));
         OnPropertyChanged(nameof(ActivePasteSnapshot));
-        RequestRender();
+        RequestOverlayRender(updateHandleScene: true);
     }
 
     private CadCanvasInteractionResult BeginPastePreviewCore()
@@ -1601,7 +1610,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         OnPropertyChanged(nameof(ActivePasteSnapshot));
         RaiseInteractionStateChanged();
         PublishInteractionActivity("Begin paste preview");
-        RequestRender();
+        RequestOverlayRender();
         return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
     }
 
@@ -1619,7 +1628,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (render)
         {
-            RequestRender();
+            RequestOverlayRender(updateHandleScene: true);
         }
     }
 
@@ -1817,7 +1826,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.Selection.Replace([entityId]);
         SetToolMode(CadCanvasToolMode.Select);
         RaiseInteractionStateChanged();
-        RequestRender();
     }
 
     private void AddBlockInsertionPreview(List<CadTransientItem> items, CadPointD position)
@@ -1891,7 +1899,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         _selectionDrag.Clear();
         _paste.Clear(clearClipboard: false);
-        RequestRender();
+        RequestOverlayRender(updateHandleScene: true);
         return true;
     }
 
@@ -1910,8 +1918,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void CommitGripDrag(CadPointD screen)
     {
-        _gripDrag.Commit(CadEditor, CreateGripDragCommitter(), _screenToSnappedWorld, screen);
-        RequestRender();
+        if (!_gripDrag.Commit(
+                CadEditor,
+                CreateGripDragCommitter(),
+                _screenToSnappedWorld,
+                screen))
+        {
+            RequestOverlayRender(updateHandleScene: true);
+        }
     }
 
     private CadCanvasInteractionResult CommitActiveGripDrag(CadPointD screen)
@@ -2363,6 +2377,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
         _overlayScenes.ApplyDocumentChanges(e, CadEditor.Selection.EntityIds);
+        var documentInvalidation = CreateDocumentInvalidation(e);
         _paste.InvalidatePreviewTemplate();
         EnsureActiveLayoutViewportStillExists();
         if (e.AffectsDocumentStructure)
@@ -2383,18 +2398,25 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CloseReplacedOleEditSessions(e);
         ReleaseChangedOleRenderSessions(e);
 
-        if (!_renderResources.IsApplyingTextMeasurementChanges)
-            RequestRender(CreateDocumentInvalidation(e));
-
-        if (e.AffectsViewSettings)
-            PublishViewSettingsChanged();
-
         if (e.DocumentChanged)
         {
             if (PruneSelectionToFilter())
                 ClearInteractionState(clearClipboard: false, render: false);
             RaiseInteractionStateChanged();
         }
+
+        if (_renderResources.IsApplyingTextMeasurementChanges)
+        {
+            _deferredDocumentInvalidation =
+                _deferredDocumentInvalidation.Union(documentInvalidation);
+        }
+        else
+        {
+            RequestRender(documentInvalidation);
+        }
+
+        if (e.AffectsViewSettings)
+            PublishViewSettingsChanged();
     }
 
     private void EnsureActiveLayoutViewportStillExists()
@@ -2649,9 +2671,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private CadRenderInvalidation CreateDocumentInvalidation(CadDocumentChangeSet changes)
     {
+        var invalidation = _documentInvalidation.CreateInvalidation(
+            CadEditor.Document,
+            changes,
+            CreateRenderInvalidationCalculator());
         if (ActiveLayoutId is not null)
             return CadRenderInvalidation.Full;
-        return CreateRenderInvalidationCalculator().CreateDocumentInvalidation(changes);
+        return invalidation;
     }
 
     public void Dispose()

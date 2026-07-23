@@ -26,6 +26,8 @@ internal sealed class Direct2DResourceCache : IDisposable
     private readonly Direct2DImageBitmapResourceCache _imageBitmapResources;
     private readonly Direct2DGeometryRealizationCache _geometryRealizations = new();
     private readonly Direct2DHatchTileCache _hatchTiles;
+    private float _maximumStrokeWidth;
+    private bool _maximumStrokeWidthDirty;
     private bool _disposed;
 
     public Direct2DResourceCache(
@@ -54,6 +56,16 @@ internal sealed class Direct2DResourceCache : IDisposable
     public long HatchTileEstimatedBytes => _hatchTiles.EstimatedBytes;
     public long ImageBitmapEstimatedBytes => _imageBitmapResources.EstimatedBytes;
     public static long HatchTileCacheBudgetBytes => Direct2DHatchTileCache.CacheBudgetBytes;
+    public float MaximumStrokeWidth
+    {
+        get
+        {
+            ThrowIfDisposed();
+            if (_maximumStrokeWidthDirty)
+                RecalculateMaximumStrokeWidth();
+            return _maximumStrokeWidth;
+        }
+    }
 
     public int EnforceGeometryRealizationBudget()
     {
@@ -278,14 +290,20 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
 
         _entityResources.Remove(entityId, out var oldBucket);
+        if (oldBucket is not null)
+            RemoveStrokeWidthContribution(oldBucket);
         _entityResources[entityId] = newBucket;
+        AddStrokeWidthContribution(newBucket);
         oldBucket?.Dispose();
     }
 
     public void RemoveEntity(EntityId entityId)
     {
         if (_entityResources.Remove(entityId, out var bucket))
+        {
+            RemoveStrokeWidthContribution(bucket);
             bucket.Dispose();
+        }
     }
 
     public void ClearCache()
@@ -415,6 +433,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             throw;
         }
 
+        RemoveStrokeWidthContribution(bucket);
         bucket.GeometryRealizations?.ClearStroke();
         bucket.StrokeBrushLease?.Dispose();
         bucket.StrokeStyleLease?.Dispose();
@@ -426,6 +445,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             entity.UseLayerLineWeight,
             graphic?.LineWeight,
             layer.LineWeight);
+        AddStrokeWidthContribution(bucket);
     }
 
     private void UpdateGeometryResources(
@@ -943,6 +963,42 @@ internal sealed class Direct2DResourceCache : IDisposable
             bucket.Dispose();
 
         _entityResources.Clear();
+        _maximumStrokeWidth = 0;
+        _maximumStrokeWidthDirty = false;
+    }
+
+    private void AddStrokeWidthContribution(EntityResourceBucket bucket)
+    {
+        var strokeWidth = ResolvePaintedStrokeWidth(bucket);
+        if (strokeWidth > _maximumStrokeWidth)
+            _maximumStrokeWidth = strokeWidth;
+    }
+
+    private void RemoveStrokeWidthContribution(EntityResourceBucket bucket)
+    {
+        var strokeWidth = ResolvePaintedStrokeWidth(bucket);
+        if (strokeWidth > 0 &&
+            strokeWidth >= _maximumStrokeWidth - 1e-6f)
+        {
+            _maximumStrokeWidthDirty = true;
+        }
+    }
+
+    private void RecalculateMaximumStrokeWidth()
+    {
+        var maximum = 0.0f;
+        foreach (var bucket in _entityResources.Values)
+            maximum = Math.Max(maximum, ResolvePaintedStrokeWidth(bucket));
+
+        _maximumStrokeWidth = maximum;
+        _maximumStrokeWidthDirty = false;
+    }
+
+    private static float ResolvePaintedStrokeWidth(EntityResourceBucket bucket)
+    {
+        return bucket.StrokeBrush is null
+            ? 0
+            : Math.Max(0, bucket.StrokeWidth);
     }
 
     public void Dispose()

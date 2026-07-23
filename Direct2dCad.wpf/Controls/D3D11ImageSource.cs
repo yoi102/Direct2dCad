@@ -230,8 +230,14 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
     {
         var x = Math.Clamp(dirtyRect.X, 0, _surfaceWidth);
         var y = Math.Clamp(dirtyRect.Y, 0, _surfaceHeight);
-        var right = Math.Clamp(dirtyRect.X + dirtyRect.Width, 0, _surfaceWidth);
-        var bottom = Math.Clamp(dirtyRect.Y + dirtyRect.Height, 0, _surfaceHeight);
+        var right = (int)Math.Clamp(
+            (long)dirtyRect.X + dirtyRect.Width,
+            0L,
+            _surfaceWidth);
+        var bottom = (int)Math.Clamp(
+            (long)dirtyRect.Y + dirtyRect.Height,
+            0L,
+            _surfaceHeight);
         return new Int32Rect(x, y, right - x, bottom - y);
     }
 

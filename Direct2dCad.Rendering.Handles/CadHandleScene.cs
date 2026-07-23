@@ -18,6 +18,8 @@ public sealed class CadHandleScene
     public long SelectionVersion { get; private set; }
     public bool HasTranslatedSelectionReferences { get; private set; }
     public CadRectD SelectionWorldBounds { get; private set; } = CadRectD.Empty;
+    public double MaximumScreenConstantSelectionStrokeWidth { get; private set; }
+    public double MaximumWorldSelectionStrokeWidth { get; private set; }
     public bool IsEmpty => _items.Count == 0;
 
     public void Replace(IEnumerable<CadHandleItem> items)
@@ -40,6 +42,8 @@ public sealed class CadHandleScene
         _selectionReferenceItems.Clear();
         HasTranslatedSelectionReferences = false;
         SelectionWorldBounds = CadRectD.Empty;
+        MaximumScreenConstantSelectionStrokeWidth = 0;
+        MaximumWorldSelectionStrokeWidth = 0;
         var selectionChanged = false;
         var selectionIndex = 0;
         foreach (var item in items)
@@ -59,6 +63,18 @@ public sealed class CadHandleScene
                 HasTranslatedSelectionReferences |= reference.Offset != CadVectorD.Zero;
                 SelectionWorldBounds = SelectionWorldBounds.Union(
                     reference.EntityBounds.Translate(reference.Offset));
+                if (reference.Style.KeepSizeScreenConstant)
+                {
+                    MaximumScreenConstantSelectionStrokeWidth = Math.Max(
+                        MaximumScreenConstantSelectionStrokeWidth,
+                        Math.Max(0, reference.Style.StrokeWidth));
+                }
+                else
+                {
+                    MaximumWorldSelectionStrokeWidth = Math.Max(
+                        MaximumWorldSelectionStrokeWidth,
+                        Math.Max(0, reference.Style.StrokeWidth));
+                }
             }
             else
             {
@@ -99,6 +115,8 @@ public sealed class CadHandleScene
         _previousSelectionReferenceItems.Clear();
         HasTranslatedSelectionReferences = false;
         SelectionWorldBounds = CadRectD.Empty;
+        MaximumScreenConstantSelectionStrokeWidth = 0;
+        MaximumWorldSelectionStrokeWidth = 0;
     }
 
 }

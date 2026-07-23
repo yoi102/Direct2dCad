@@ -1,4 +1,3 @@
-using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -19,6 +18,7 @@ internal readonly struct CadRenderInvalidationCalculator(
 {
     private const int MaxPathDirtyBounds = 16;
     private const int LargeHandleSceneAggregationThreshold = 512;
+    private const double Direct2DDefaultMiterLimit = 10.0;
 
     public CadRenderInvalidation CreateTransientSceneInvalidation(
         CadTransientScene transientScene)
@@ -67,6 +67,18 @@ internal readonly struct CadRenderInvalidationCalculator(
     {
         var worldBounds = handleScene.SelectionWorldBounds;
         var paddingPixels = 32.0;
+        if (handleScene.SelectionReferences.Count > 0)
+        {
+            paddingPixels = Math.Max(
+                paddingPixels,
+                ResolveStrokeInvalidationPadding(
+                    Math.Max(
+                        handleScene.MaximumScreenConstantSelectionStrokeWidth,
+                        handleScene.MaximumWorldSelectionStrokeWidth *
+                        viewport.Zoom),
+                    16.0,
+                    Direct2DDefaultMiterLimit * 0.5));
+        }
 
         foreach (var item in handleScene.NonSelectionItems)
         {
@@ -82,6 +94,12 @@ internal readonly struct CadRenderInvalidationCalculator(
                     worldBounds = worldBounds
                         .ExpandToInclude(guide.Start)
                         .ExpandToInclude(guide.End);
+                    paddingPixels = Math.Max(
+                        paddingPixels,
+                        ResolveHandleStyleInvalidationPadding(
+                            guide.Style,
+                            12.0,
+                            0.5));
                     break;
             }
         }
@@ -91,34 +109,67 @@ internal readonly struct CadRenderInvalidationCalculator(
             : CreateWorldBoundsInvalidation(worldBounds, paddingPixels);
     }
 
-    public CadRenderInvalidation CreateDocumentInvalidation(CadDocumentChangeSet changes)
+    public bool TryCaptureEntitySnapshot(
+        EntityId entityId,
+        out CadEntityInvalidationSnapshot snapshot)
     {
-        if (changes.AffectsDocumentStructure || changes.AffectsLayouts || changes.AffectsViewSettings)
-            return CadRenderInvalidation.Full;
-
-        var bounds = CadRectD.Empty;
-        foreach (var change in changes.EntityChanges)
+        if (!document.TryGetEntity(entityId, out var entity) || entity is null)
         {
-            if (change.Kind == CadEntityChangeKind.Metadata)
-                continue;
-
-            if (RequiresFullRender(change))
-                return CadRenderInvalidation.Full;
-
-            if (!document.TryGetEntity(change.EntityId, out var entity) ||
-                entity is null ||
-                entity.IsErased ||
-                !entity.IsVisible)
-            {
-                return CadRenderInvalidation.Full;
-            }
-
-            bounds = bounds.Union(ResolveEntityPaintBounds(entity));
+            snapshot = default;
+            return false;
         }
 
-        return bounds.IsEmpty
+        var isRenderable =
+            !entity.IsErased &&
+            entity.IsVisible &&
+            document.TryGetLayer(entity.LayerId, out var layer) &&
+            layer is { IsVisible: true, IsFrozen: false };
+        var style = isRenderable ? createEntityPreviewStyle(entity) : default;
+        snapshot = new CadEntityInvalidationSnapshot(
+            entity.Bounds,
+            style.StrokeWidth,
+            style.KeepStrokeWidthScreenConstant,
+            style.MinimumScreenStrokeWidth,
+            EntityUsesStrokeWidth(entity),
+            ResolveEntityStrokeExtentMultiplier(entity),
+            entity is CadBlockReference,
+            style.HatchFill is not null,
+            isRenderable);
+        return true;
+    }
+
+    public CadRenderInvalidation CreateCurrentEntityInvalidation(
+        EntityId entityId,
+        CadEntityInvalidationSnapshot snapshot)
+    {
+        if (!snapshot.IsRenderable ||
+            !document.TryGetEntity(entityId, out var entity) ||
+            entity is null)
+        {
+            return CadRenderInvalidation.Empty;
+        }
+
+        var padding = ResolveEntityInvalidationPadding(snapshot);
+        return entity switch
+        {
+            CadPolyline { FillStyleId: null } polyline =>
+                CreatePolylinePathInvalidation(polyline, default, padding),
+            CadSpline { Closed: false } spline =>
+                CreateSplinePathInvalidation(spline, default, padding),
+            CadSpline { FillStyleId: null } spline =>
+                CreateSplinePathInvalidation(spline, default, padding),
+            _ => CreateWorldBoundsInvalidation(snapshot.Bounds, padding)
+        };
+    }
+
+    public CadRenderInvalidation CreateEntitySnapshotInvalidation(
+        CadEntityInvalidationSnapshot snapshot)
+    {
+        return !snapshot.IsRenderable || snapshot.Bounds.IsEmpty
             ? CadRenderInvalidation.Empty
-            : CreateWorldBoundsInvalidation(bounds, ResolveDocumentInvalidationPadding(changes));
+            : CreateWorldBoundsInvalidation(
+                snapshot.Bounds,
+                ResolveEntityInvalidationPadding(snapshot));
     }
 
     private CadRenderInvalidation CreateTransientInvalidation(CadTransientItem item)
@@ -147,7 +198,8 @@ internal readonly struct CadRenderInvalidationCalculator(
                 minimumPaddingPixels: 24.0),
             CadTransientPolyline polyline => CreateTransientBoundsInvalidation(
                 BoundsFromPoints(polyline.Points),
-                polyline.Style),
+                polyline.Style,
+                strokeExtentMultiplier: Direct2DDefaultMiterLimit * 0.5),
             CadTransientSpline spline => CreateTransientSplineInvalidation(spline),
             CadTransientRectangle rectangle => CreateTransientBoundsInvalidation(
                 rectangle.Bounds,
@@ -165,7 +217,8 @@ internal readonly struct CadRenderInvalidationCalculator(
                 text.Style),
             CadTransientShapeText text => CreateTransientBoundsInvalidation(
                 ResolveTransientShapeTextBounds(text),
-                text.Style),
+                text.Style,
+                strokeExtentMultiplier: Direct2DDefaultMiterLimit * 0.5),
             CadTransientEntityReference reference => CreateEntityReferenceInvalidation(reference.EntityId, reference.Offset),
             CadTransientBlockReference reference => CreateBlockReferenceInvalidation(reference),
             _ => CadRenderInvalidation.FromScreenRect(default)
@@ -304,26 +357,50 @@ internal readonly struct CadRenderInvalidationCalculator(
     private CadRenderInvalidation CreateTransientBoundsInvalidation(
         CadRectD bounds,
         CadTransientStyle style,
-        double minimumPaddingPixels = 12.0)
+        double minimumPaddingPixels = 12.0,
+        double strokeExtentMultiplier = 0.5)
     {
-        return CreateWorldBoundsInvalidation(bounds, ResolveTransientInvalidationPadding(style, minimumPaddingPixels));
+        return CreateWorldBoundsInvalidation(
+            bounds,
+            ResolveTransientInvalidationPadding(
+                style,
+                minimumPaddingPixels,
+                strokeExtentMultiplier));
     }
 
     private CadRenderInvalidation CreateTransientSplineInvalidation(CadTransientSpline spline)
     {
-        var padding = ResolveTransientInvalidationPadding(spline.Style, 16.0);
+        var padding = ResolveTransientInvalidationPadding(
+            spline.Style,
+            16.0,
+            Direct2DDefaultMiterLimit * 0.5);
         return CreateSplinePathInvalidation(spline.FitPoints, spline.Closed, CadVectorD.Zero, padding);
     }
 
-    private double ResolveTransientInvalidationPadding(CadTransientStyle style, double minimumPaddingPixels)
+    private double ResolveTransientInvalidationPadding(
+        CadTransientStyle style,
+        double minimumPaddingPixels,
+        double strokeExtentMultiplier = 0.5)
     {
-        var strokeScreenWidth = style.KeepStrokeWidthScreenConstant
-            ? style.StrokeWidth
-            : style.StrokeWidth * viewport.Zoom;
-        strokeScreenWidth = Math.Max(strokeScreenWidth, Math.Max(style.MinimumScreenStrokeWidth, 0.0));
+        var strokeScreenWidth = ResolveStyleScreenStrokeWidth(style);
+        return ResolveStrokeInvalidationPadding(
+            strokeScreenWidth,
+            minimumPaddingPixels,
+            strokeExtentMultiplier,
+            style.LinePattern != CadTransientLinePattern.Solid);
+    }
 
-        var strokePadding = Math.Max(0.0, strokeScreenWidth) * 0.5 + 8.0;
-        if (style.LinePattern != CadTransientLinePattern.Solid)
+    private static double ResolveStrokeInvalidationPadding(
+        double strokeScreenWidth,
+        double minimumPaddingPixels,
+        double strokeExtentMultiplier,
+        bool isPatterned = false)
+    {
+        var strokePadding =
+            Math.Max(0.0, strokeScreenWidth) *
+            Math.Max(0.5, strokeExtentMultiplier) +
+            8.0;
+        if (isPatterned)
             strokePadding += Math.Max(6.0, Math.Max(0.0, strokeScreenWidth));
 
         return Math.Max(minimumPaddingPixels, Math.Ceiling(strokePadding));
@@ -333,7 +410,8 @@ internal readonly struct CadRenderInvalidationCalculator(
     {
         return item switch
         {
-            CadSelectionEntityReference reference => CreateEntityReferenceInvalidation(reference.EntityId, reference.Offset),
+            CadSelectionEntityReference reference =>
+                CreateSelectionReferenceInvalidation(reference),
             CadGripHandle grip => CreateScreenPointInvalidation(
                 viewport.WorldToScreen(grip.Position),
                 Math.Max(grip.Style.Size, grip.Style.StrokeWidth) + 4.0),
@@ -345,6 +423,35 @@ internal readonly struct CadRenderInvalidationCalculator(
                     KeepStrokeWidthScreenConstant: guide.Style.KeepSizeScreenConstant)),
             _ => CadRenderInvalidation.FromScreenRect(default)
         };
+    }
+
+    private CadRenderInvalidation CreateSelectionReferenceInvalidation(
+        CadSelectionEntityReference reference)
+    {
+        var minimumPadding = document.TryGetEntity(reference.EntityId, out var entity) &&
+                             entity is CadBlockReference
+            ? 64.0
+            : 16.0;
+        return CreateWorldBoundsInvalidation(
+            reference.EntityBounds.Translate(reference.Offset),
+            ResolveHandleStyleInvalidationPadding(
+                reference.Style,
+                minimumPadding,
+                Direct2DDefaultMiterLimit * 0.5));
+    }
+
+    private double ResolveHandleStyleInvalidationPadding(
+        CadHandleStyle style,
+        double minimumPaddingPixels,
+        double strokeExtentMultiplier)
+    {
+        var screenStrokeWidth = style.KeepSizeScreenConstant
+            ? style.StrokeWidth
+            : style.StrokeWidth * viewport.Zoom;
+        return ResolveStrokeInvalidationPadding(
+            screenStrokeWidth,
+            minimumPaddingPixels,
+            strokeExtentMultiplier);
     }
 
     private CadRenderInvalidation CreateEntityReferenceInvalidation(EntityId entityId, CadVectorD offset)
@@ -454,18 +561,54 @@ internal readonly struct CadRenderInvalidationCalculator(
     private double ResolveEntityInvalidationPadding(CadEntity entity)
     {
         var style = createEntityPreviewStyle(entity);
-        return ResolveTransientInvalidationPadding(style, style.HatchFill is null ? 8.0 : 16.0);
+        var minimumPadding = entity is CadBlockReference
+            ? 64.0
+            : style.HatchFill is null ? 8.0 : 16.0;
+        return ResolveTransientInvalidationPadding(
+            style,
+            minimumPadding,
+            ResolveEntityStrokeExtentMultiplier(entity));
+    }
+
+    private double ResolveEntityInvalidationPadding(
+        CadEntityInvalidationSnapshot snapshot)
+    {
+        var minimumPadding = snapshot.IsBlockReference
+            ? 64.0
+            : snapshot.HasHatchFill ? 16.0 : 8.0;
+        return snapshot.UsesStrokeWidth
+            ? ResolveStrokeInvalidationPadding(
+                ResolveSnapshotScreenStrokeWidth(snapshot),
+                minimumPadding,
+                snapshot.StrokeExtentMultiplier)
+            : minimumPadding;
     }
 
     private double ResolveStyleWorldStrokeWidth(CadTransientStyle style)
     {
         var zoom = Math.Max(viewport.Zoom, double.Epsilon);
-        var screenStrokeWidth = style.KeepStrokeWidthScreenConstant
-            ? style.StrokeWidth
-            : style.StrokeWidth * zoom;
-        screenStrokeWidth = Math.Max(screenStrokeWidth, Math.Max(style.MinimumScreenStrokeWidth, 0.0));
+        return ResolveStyleScreenStrokeWidth(style) / zoom;
+    }
 
-        return screenStrokeWidth / zoom;
+    private double ResolveStyleScreenStrokeWidth(CadTransientStyle style)
+    {
+        var strokeScreenWidth = style.KeepStrokeWidthScreenConstant
+            ? style.StrokeWidth
+            : style.StrokeWidth * viewport.Zoom;
+        return Math.Max(
+            strokeScreenWidth,
+            Math.Max(style.MinimumScreenStrokeWidth, 0.0));
+    }
+
+    private double ResolveSnapshotScreenStrokeWidth(
+        CadEntityInvalidationSnapshot snapshot)
+    {
+        var strokeScreenWidth = snapshot.KeepStrokeWidthScreenConstant
+            ? snapshot.StrokeWidth
+            : snapshot.StrokeWidth * viewport.Zoom;
+        return Math.Max(
+            strokeScreenWidth,
+            Math.Max(snapshot.MinimumScreenStrokeWidth, 0.0));
     }
 
     private static bool EntityUsesStrokeWidth(CadEntity entity)
@@ -480,6 +623,28 @@ internal readonly struct CadRenderInvalidationCalculator(
             CadSpline or
             CadShapeText or
             CadBlockReference;
+    }
+
+    private static double ResolveEntityStrokeExtentMultiplier(CadEntity entity)
+    {
+        var multiplier = 0.5;
+        if (entity is CadShapeText ||
+            CadEntityCapabilities.SupportsLineJoin(entity) &&
+            entity.StrokeStyle.LineJoin is
+                CadStrokeLineJoin.Miter or CadStrokeLineJoin.MiterOrBevel)
+        {
+            multiplier = Direct2DDefaultMiterLimit * 0.5;
+        }
+
+        if (CadEntityCapabilities.SupportsStartEndCaps(entity) &&
+            (entity.StrokeStyle.StartCap == CadStrokeCap.Triangle ||
+             entity.StrokeStyle.EndCap == CadStrokeCap.Triangle ||
+             entity.StrokeStyle.DashCap == CadStrokeCap.Triangle))
+        {
+            multiplier = Math.Max(multiplier, 1.0);
+        }
+
+        return multiplier;
     }
 
     private CadRenderInvalidation CreateWorldBoundsInvalidation(CadRectD bounds, double paddingPixels = 8.0)
@@ -585,48 +750,15 @@ internal readonly struct CadRenderInvalidationCalculator(
 
         return result;
     }
-
-    private static bool RequiresFullRender(CadEntityChange change)
-    {
-        var kind = change.Kind;
-        if (kind.HasFlag(CadEntityChangeKind.Deleted) ||
-            kind.HasFlag(CadEntityChangeKind.DrawOrder) ||
-            kind.HasFlag(CadEntityChangeKind.Layer))
-        {
-            return true;
-        }
-
-        if (kind.HasFlag(CadEntityChangeKind.Geometry) &&
-            !kind.HasFlag(CadEntityChangeKind.Created))
-        {
-            return true;
-        }
-
-        if (kind.HasFlag(CadEntityChangeKind.Rotation))
-            return true;
-
-        if (kind.HasFlag(CadEntityChangeKind.Appearance) &&
-            !kind.HasFlag(CadEntityChangeKind.Fill) &&
-            !kind.HasFlag(CadEntityChangeKind.Created))
-        {
-            return true;
-        }
-
-        return kind.HasFlag(CadEntityChangeKind.Visibility) &&
-               !kind.HasFlag(CadEntityChangeKind.Created);
-    }
-
-    private double ResolveDocumentInvalidationPadding(CadDocumentChangeSet changes)
-    {
-        var padding = 8.0;
-        foreach (var change in changes.EntityChanges)
-        {
-            if (!document.TryGetEntity(change.EntityId, out var entity) || entity is null)
-                continue;
-
-            padding = Math.Max(padding, ResolveEntityInvalidationPadding(entity));
-        }
-
-        return padding;
-    }
 }
+
+internal readonly record struct CadEntityInvalidationSnapshot(
+    CadRectD Bounds,
+    double StrokeWidth,
+    bool KeepStrokeWidthScreenConstant,
+    double MinimumScreenStrokeWidth,
+    bool UsesStrokeWidth,
+    double StrokeExtentMultiplier,
+    bool IsBlockReference,
+    bool HasHatchFill,
+    bool IsRenderable);

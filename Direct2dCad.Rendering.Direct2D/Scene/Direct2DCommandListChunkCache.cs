@@ -100,6 +100,10 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         var buildOptions = CreateBuildOptions(options, viewport.Zoom);
         var started = Stopwatch.GetTimestamp();
         var visibleWorldBounds = viewport.VisibleWorldBounds;
+        var renderPadding = Direct2DEntityVisibility.ResolveBroadPhasePadding(
+            _resourceCache,
+            viewport,
+            options);
         for (var pass = 0; pass < 2; pass++)
         {
             var buildVisibleChunks = pass == 0;
@@ -109,7 +113,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                     chunk.CommandList is not null ||
                     chunk.BuildFailed ||
                     chunk.WasBudgetEvicted ||
-                    IntersectsRenderBounds(chunk.Bounds, visibleWorldBounds, viewport.Zoom) !=
+                    IntersectsRenderBounds(chunk.Bounds, visibleWorldBounds, renderPadding) !=
                     buildVisibleChunks)
                 {
                     continue;
@@ -161,9 +165,13 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
         profile.LastUsed = ++_usageStamp;
         var renderBounds = Direct2DEntityVisibility.ResolveRenderWorldBounds(viewport, options);
+        var renderPadding = Direct2DEntityVisibility.ResolveBroadPhasePadding(
+            _resourceCache,
+            viewport,
+            options);
         foreach (var chunk in profile.Chunks)
         {
-            if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, viewport.Zoom))
+            if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, renderPadding))
                 continue;
             if (AreAllTopLevelEntitiesHidden(chunk, options.HiddenEntityIds))
                 continue;
@@ -471,12 +479,11 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     private static bool IntersectsRenderBounds(
         CadRectD chunkBounds,
         CadRectD? renderBounds,
-        double zoom)
+        double padding)
     {
         if (renderBounds is null || chunkBounds.IsEmpty)
             return true;
 
-        var padding = 64.0 / Math.Max(zoom, double.Epsilon);
         var paintBounds = chunkBounds.Inflate(padding);
         return paintBounds.Intersects(renderBounds.Value) ||
                paintBounds.Contains(renderBounds.Value.Center) ||

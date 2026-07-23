@@ -5,9 +5,10 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
 
-internal sealed class Direct2DBackgroundPreparationService
+internal sealed class Direct2DBackgroundPreparationService : IDisposable
 {
     private Task<PreparedDocumentPlan>? _pendingTask;
+    private CancellationTokenSource? _pendingCancellation;
     private CadDocument? _pendingDocument;
     private long _pendingVersion;
     private PreparedDocumentPlan? _publishedPlan;
@@ -26,7 +27,7 @@ internal sealed class Direct2DBackgroundPreparationService
         if (!_pendingTask.IsFaulted && !_pendingTask.IsCanceled)
             return false;
 
-        _pendingTask = null;
+        ClearPendingTask(cancel: false);
         return true;
     }
 
@@ -41,7 +42,11 @@ internal sealed class Direct2DBackgroundPreparationService
         _pendingDocument = document;
         _pendingVersion = version;
         _publishedPlan = null;
-        _pendingTask = Task.Run(() => Build(version, owners));
+        _pendingCancellation = new CancellationTokenSource();
+        var cancellationToken = _pendingCancellation.Token;
+        _pendingTask = Task.Run(
+            () => Build(version, owners, cancellationToken),
+            cancellationToken);
     }
 
     public PreparedDocumentPlan? TryGet(CadDocument document, long version)
@@ -54,24 +59,28 @@ internal sealed class Direct2DBackgroundPreparationService
             return null;
         if (_pendingTask.IsCompletedSuccessfully && _pendingTask.Result.Version == version)
             _publishedPlan = _pendingTask.Result;
-        _pendingTask = null;
+        ClearPendingTask(cancel: false);
         return _publishedPlan;
     }
 
     public void Invalidate()
     {
-        _pendingTask = null;
+        ClearPendingTask(cancel: true);
         _pendingDocument = null;
         _publishedPlan = null;
     }
 
+    public void Dispose() => Invalidate();
+
     private static PreparedDocumentPlan Build(
         long version,
-        IReadOnlyList<OwnerPreparationSnapshot> owners)
+        IReadOnlyList<OwnerPreparationSnapshot> owners,
+        CancellationToken cancellationToken)
     {
         var plans = new Dictionary<BlockId, PreparedOwnerPlan>(owners.Count);
         foreach (var owner in owners)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var ordered = owner.Entities
                 .OrderBy(static entity => entity.LayerPriority)
                 .ThenBy(static entity => entity.ZIndex)
@@ -92,7 +101,7 @@ internal sealed class Direct2DBackgroundPreparationService
                 ordered.Select(static entity => entity.Entity).ToArray(),
                 bounds,
                 localWork,
-                BuildAdaptiveChunkBreaks(ordered),
+                BuildAdaptiveChunkBreaks(ordered, cancellationToken),
                 ordered.Select(static entity => entity.Entity.Id).ToArray(),
                 ordered
                     .Where(static entity => entity.DefinitionBlockId is not null)
@@ -102,15 +111,25 @@ internal sealed class Direct2DBackgroundPreparationService
 
         foreach (var ownerId in plans.Keys.ToArray())
         {
-            plans[ownerId].EstimatedRenderWork = ResolveRenderWork(plans, ownerId, []);
-            plans[ownerId].DependencyEntityIds = ResolveDependencies(plans, ownerId, []);
+            cancellationToken.ThrowIfCancellationRequested();
+            plans[ownerId].EstimatedRenderWork = ResolveRenderWork(
+                plans,
+                ownerId,
+                [],
+                cancellationToken);
+            plans[ownerId].DependencyEntityIds = ResolveDependencies(
+                plans,
+                ownerId,
+                [],
+                cancellationToken);
         }
 
         return new PreparedDocumentPlan(version, plans);
     }
 
     private static IReadOnlySet<EntityId> BuildAdaptiveChunkBreaks(
-        IReadOnlyList<EntityPreparationSnapshot> ordered)
+        IReadOnlyList<EntityPreparationSnapshot> ordered,
+        CancellationToken cancellationToken)
     {
         const int minimumCount = 64;
         const int maximumCount = 384;
@@ -120,6 +139,7 @@ internal sealed class Direct2DBackgroundPreparationService
         var footprint = 0.0;
         foreach (var entity in ordered)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (Direct2DAdaptiveChunkPlanner.ShouldFlushBefore(
                     count,
                     minimumCount,
@@ -145,15 +165,17 @@ internal sealed class Direct2DBackgroundPreparationService
     private static int ResolveRenderWork(
         IReadOnlyDictionary<BlockId, PreparedOwnerPlan> plans,
         BlockId ownerId,
-        HashSet<BlockId> visiting)
+        HashSet<BlockId> visiting,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!plans.TryGetValue(ownerId, out var owner) || !visiting.Add(ownerId))
             return 1;
 
         long total = owner.LocalEstimatedRenderWork;
         foreach (var nestedOwnerId in owner.NestedDefinitionBlockIds)
         {
-            total += ResolveRenderWork(plans, nestedOwnerId, visiting);
+            total += ResolveRenderWork(plans, nestedOwnerId, visiting, cancellationToken);
             if (total >= Direct2DEntityOrderCache.MaximumEstimatedRenderWork)
             {
                 total = Direct2DEntityOrderCache.MaximumEstimatedRenderWork;
@@ -168,16 +190,33 @@ internal sealed class Direct2DBackgroundPreparationService
     private static IReadOnlySet<EntityId> ResolveDependencies(
         IReadOnlyDictionary<BlockId, PreparedOwnerPlan> plans,
         BlockId ownerId,
-        HashSet<BlockId> visiting)
+        HashSet<BlockId> visiting,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (!plans.TryGetValue(ownerId, out var owner) || !visiting.Add(ownerId))
             return new HashSet<EntityId>();
 
         var dependencies = new HashSet<EntityId>(owner.OwnedEntityIds);
         foreach (var nestedOwnerId in owner.NestedDefinitionBlockIds)
-            dependencies.UnionWith(ResolveDependencies(plans, nestedOwnerId, visiting));
+        {
+            dependencies.UnionWith(ResolveDependencies(
+                plans,
+                nestedOwnerId,
+                visiting,
+                cancellationToken));
+        }
         visiting.Remove(ownerId);
         return dependencies;
+    }
+
+    private void ClearPendingTask(bool cancel)
+    {
+        if (cancel)
+            _pendingCancellation?.Cancel();
+        _pendingCancellation?.Dispose();
+        _pendingCancellation = null;
+        _pendingTask = null;
     }
 }
 

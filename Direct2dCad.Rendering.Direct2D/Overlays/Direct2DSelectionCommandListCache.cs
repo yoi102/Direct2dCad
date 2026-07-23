@@ -101,6 +101,9 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         var buildOptions = CreateBuildOptions(options, viewport.Zoom);
         var started = Stopwatch.GetTimestamp();
         var visibleWorldBounds = viewport.VisibleWorldBounds;
+        var renderPadding = Direct2DSelectionRenderer.ResolveSelectionRenderPadding(
+            scene!,
+            viewport.Zoom);
         for (var pass = 0; pass < 2; pass++)
         {
             var buildVisibleChunks = pass == 0;
@@ -110,7 +113,7 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
                     chunk.CommandList is not null ||
                     chunk.BuildFailed ||
                     chunk.WasBudgetEvicted ||
-                    IntersectsRenderBounds(chunk.Bounds, visibleWorldBounds, viewport.Zoom) !=
+                    IntersectsRenderBounds(chunk.Bounds, visibleWorldBounds, renderPadding) !=
                     buildVisibleChunks)
                 {
                     continue;
@@ -165,9 +168,12 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
         var renderBounds = options.DirtyWorldBounds is { IsEmpty: false } dirty
             ? dirty
             : viewport.VisibleWorldBounds;
+        var renderPadding = Direct2DSelectionRenderer.ResolveSelectionRenderPadding(
+            scene,
+            viewport.Zoom);
         foreach (var chunk in profile.Chunks)
         {
-            if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, viewport.Zoom))
+            if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, renderPadding))
                 continue;
 
             if (chunk.CommandList is not null)
@@ -482,12 +488,11 @@ internal sealed class Direct2DSelectionCommandListCache : IDisposable
     private static bool IntersectsRenderBounds(
         CadRectD chunkBounds,
         CadRectD renderBounds,
-        double zoom)
+        double padding)
     {
         if (chunkBounds.IsEmpty || renderBounds.IsEmpty)
             return true;
 
-        var padding = 64.0 / Math.Max(zoom, double.Epsilon);
         var paintBounds = chunkBounds.Inflate(padding);
         return paintBounds.Intersects(renderBounds) ||
                paintBounds.Contains(renderBounds.Center) ||

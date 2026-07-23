@@ -6,7 +6,7 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
 
-internal sealed class Direct2DEntityOrderCache
+internal sealed class Direct2DEntityOrderCache : IDisposable
 {
     internal const int MaximumEstimatedRenderWork = 1_000_000;
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _entitiesByOwner = [];
@@ -375,6 +375,8 @@ internal sealed class Direct2DEntityOrderCache
         _preparationVersion++;
         _backgroundPreparation.Invalidate();
     }
+
+    public void Dispose() => _backgroundPreparation.Dispose();
 
     internal readonly record struct RankedEntity(int Rank, CadEntity Entity);
 

@@ -144,7 +144,7 @@ internal sealed class Direct2DSelectionRenderer(
         CadRenderOptions options,
         CadRectD renderWorldBounds)
     {
-        var padding = 64.0 / Math.Max(viewport.Zoom, double.Epsilon);
+        var padding = ResolveSelectionRenderPadding(scene, viewport.Zoom);
         var queryBounds = renderWorldBounds.Inflate(padding);
         IReadOnlyList<EntityId> candidateIds;
         if (options.EntityBoundsQueryInto is { } bufferedQuery)
@@ -215,7 +215,8 @@ internal sealed class Direct2DSelectionRenderer(
                 reference.EntityBounds,
                 reference.Offset,
                 viewport,
-                dirtyWorldBounds))
+                dirtyWorldBounds,
+                reference.Style))
         {
             return;
         }
@@ -265,7 +266,12 @@ internal sealed class Direct2DSelectionRenderer(
         CadRenderOptions options,
         HashSet<BlockId> visitedBlocks)
     {
-        if (!IntersectsRenderBounds(entity, offset, viewport, dirtyWorldBounds))
+        if (!IntersectsRenderBounds(
+                entity,
+                offset,
+                viewport,
+                dirtyWorldBounds,
+                selectionStyle))
             return;
 
         statistics.RecordSelectionEntity();
@@ -691,16 +697,23 @@ internal sealed class Direct2DSelectionRenderer(
         CadEntity entity,
         CadVectorD offset,
         CadViewport viewport,
-        CadRectD? dirtyWorldBounds)
+        CadRectD? dirtyWorldBounds,
+        CadHandleStyle style)
     {
-        return IntersectsRenderBounds(entity.Bounds, offset, viewport, dirtyWorldBounds);
+        return IntersectsRenderBounds(
+            entity.Bounds,
+            offset,
+            viewport,
+            dirtyWorldBounds,
+            style);
     }
 
     private static bool IntersectsRenderBounds(
         CadRectD bounds,
         CadVectorD offset,
         CadViewport viewport,
-        CadRectD? dirtyWorldBounds)
+        CadRectD? dirtyWorldBounds,
+        CadHandleStyle style)
     {
         var entityBounds = bounds.Translate(offset);
         if (entityBounds.IsEmpty)
@@ -709,8 +722,29 @@ internal sealed class Direct2DSelectionRenderer(
         if (dirtyWorldBounds is not { IsEmpty: false } renderBounds)
             return true;
 
-        var padding = 32.0 / Math.Max(viewport.Zoom, double.Epsilon);
+        var zoom = Math.Max(viewport.Zoom, double.Epsilon);
+        var strokePadding = style.KeepSizeScreenConstant
+            ? (Math.Max(0.0, style.StrokeWidth) * 5.0 + 8.0) / zoom
+            : Math.Max(0.0, style.StrokeWidth) * 5.0 + 8.0 / zoom;
+        var padding = Math.Max(32.0 / zoom, strokePadding);
         return entityBounds.Intersects(renderBounds.Inflate(padding));
+    }
+
+    internal static double ResolveSelectionRenderPadding(
+        CadHandleScene scene,
+        double zoom,
+        double minimumPaddingPixels = 64.0)
+    {
+        ArgumentNullException.ThrowIfNull(scene);
+
+        zoom = Math.Max(zoom, double.Epsilon);
+        var screenConstantPadding =
+            (scene.MaximumScreenConstantSelectionStrokeWidth * 5.0 + 8.0) / zoom;
+        var worldPadding =
+            scene.MaximumWorldSelectionStrokeWidth * 5.0 + 8.0 / zoom;
+        return Math.Max(
+            Math.Max(0.0, minimumPaddingPixels) / zoom,
+            Math.Max(screenConstantPadding, worldPadding));
     }
 
     private static CadTransientStyle ToTransientStyle(
