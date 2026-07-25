@@ -404,6 +404,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     public bool DrawFrameSnapshot(
         System.Numerics.Matrix3x2 screenTransform,
         Color4 background,
+        Vortice.Direct2D1.InterpolationMode interpolationMode,
         Action<ID2D1DeviceContext>? drawAfterSnapshot = null)
     {
         ThrowIfDisposed();
@@ -424,7 +425,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
                     _interactionSnapshotBitmap,
                     new RawRectF(0, 0, _width, _height),
                     1.0f,
-                    Vortice.Direct2D1.InterpolationMode.Linear,
+                    interpolationMode,
                     null,
                     null);
             }

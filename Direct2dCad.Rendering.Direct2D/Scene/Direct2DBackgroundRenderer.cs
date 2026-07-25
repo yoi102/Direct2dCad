@@ -59,6 +59,12 @@ internal sealed class Direct2DBackgroundRenderer(
         var majorBrush = styleResources.GetBrush(
             deviceContext,
             rasterization.ResolveColor(palette.MajorColor, palette.MajorStrokeWidth, major: true));
+        var primitiveBounds = InflateGridPrimitiveBounds(
+            bounds,
+            grid.Type,
+            spacingX,
+            spacingY,
+            rasterization);
 
         switch (grid.Type)
         {
@@ -81,7 +87,7 @@ internal sealed class Direct2DBackgroundRenderer(
                         rasterization.ResolveDotScreenSize(major: true),
                         rasterization.IsAliased))
                 {
-                    DrawGridDots(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
+                    DrawGridDots(deviceContext, primitiveBounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
                 }
                 break;
             case CadGridType.Cross:
@@ -103,11 +109,11 @@ internal sealed class Direct2DBackgroundRenderer(
                         rasterization.ResolveDotScreenSize(major: true),
                         rasterization.IsAliased))
                 {
-                    DrawGridCrosses(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
+                    DrawGridCrosses(deviceContext, primitiveBounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
                 }
                 break;
             default:
-                DrawGridLines(deviceContext, bounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
+                DrawGridLines(deviceContext, primitiveBounds, origin, spacingX, spacingY, majorX, majorY, minorBrush, majorBrush, rasterization);
                 break;
         }
     }
@@ -424,6 +430,30 @@ internal sealed class Direct2DBackgroundRenderer(
         if (dirtyBounds is not { } dirty || dirty.IsEmpty)
             return viewport.VisibleWorldBounds;
         return viewport.VisibleWorldBounds.Intersection(dirty);
+    }
+
+    private static CadRectD InflateGridPrimitiveBounds(
+        CadRectD bounds,
+        CadGridType gridType,
+        double spacingX,
+        double spacingY,
+        GridRasterization rasterization)
+    {
+        var maximumStrokeHalfWidth = Math.Max(
+            rasterization.ResolveWorldStroke(major: false),
+            rasterization.ResolveWorldStroke(major: true)) * 0.5;
+        var padding = gridType switch
+        {
+            CadGridType.Dots => Math.Max(
+                rasterization.ResolveDotHalfSize(major: false),
+                rasterization.ResolveDotHalfSize(major: true)),
+            CadGridType.Cross => Math.Max(spacingX, spacingY) * 0.12 +
+                                 maximumStrokeHalfWidth,
+            _ => maximumStrokeHalfWidth
+        };
+        return padding > 0 && double.IsFinite(padding)
+            ? bounds.Inflate(padding)
+            : bounds;
     }
 
     private static double GuardScreenStroke(double value, double fallback) => IsPositiveFinite(value) ? value : fallback;

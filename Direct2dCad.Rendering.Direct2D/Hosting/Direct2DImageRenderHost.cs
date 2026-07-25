@@ -19,6 +19,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 {
     private const double DirtyRegionPassPenalty = 96.0;
     private const double InteractionPreviewMaxExposedAreaRatio = 0.55;
+    private const int InteractionPreviewSeamOverlapPixels = 2;
     private readonly ImageSourceDirect2DResource _target = new();
     private readonly Direct2DSceneRender _renderer = new();
     private readonly Direct2DDirtyRegionPlanner _dirtyRegionPlanner = new();
@@ -327,6 +328,9 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 if (!_target.DrawFrameSnapshot(
                         transform,
                         background,
+                        isPanPreview
+                            ? InterpolationMode.NearestNeighbor
+                            : InterpolationMode.Linear,
                         exposedRects.Count > 0
                             ? context => DrawSnapshotExposedRegions(context, exposedRects)
                             : null))
@@ -395,31 +399,57 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _snapshotExposedRects.Clear();
         var result = _snapshotExposedRects;
         if (coveredTop > 0)
-            result.Add(new CadScreenRect(0, 0, _target.Width, coveredTop));
-        if (coveredBottom < _target.Height)
         {
             result.Add(new CadScreenRect(
                 0,
-                coveredBottom,
+                0,
                 _target.Width,
-                _target.Height - coveredBottom));
+                Math.Min(
+                    _target.Height,
+                    coveredTop + InteractionPreviewSeamOverlapPixels)));
         }
 
-        var middleHeight = coveredBottom - coveredTop;
+        var bottomStart = _target.Height;
+        if (coveredBottom < _target.Height)
+        {
+            bottomStart = Math.Max(
+                0,
+                coveredBottom - InteractionPreviewSeamOverlapPixels);
+            result.Add(new CadScreenRect(
+                0,
+                bottomStart,
+                _target.Width,
+                _target.Height - bottomStart));
+        }
+
+        var middleTop = coveredTop > 0
+            ? Math.Min(
+                _target.Height,
+                coveredTop + InteractionPreviewSeamOverlapPixels)
+            : 0;
+        var middleBottom = coveredBottom < _target.Height
+            ? bottomStart
+            : _target.Height;
+        var middleHeight = Math.Max(0, middleBottom - middleTop);
         if (coveredLeft > 0 && middleHeight > 0)
         {
             result.Add(new CadScreenRect(
                 0,
-                coveredTop,
-                coveredLeft,
+                middleTop,
+                Math.Min(
+                    _target.Width,
+                    coveredLeft + InteractionPreviewSeamOverlapPixels),
                 middleHeight));
         }
         if (coveredRight < _target.Width && middleHeight > 0)
         {
+            var rightStart = Math.Max(
+                0,
+                coveredRight - InteractionPreviewSeamOverlapPixels);
             result.Add(new CadScreenRect(
-                coveredRight,
-                coveredTop,
-                _target.Width - coveredRight,
+                rightStart,
+                middleTop,
+                _target.Width - rightStart,
                 middleHeight));
         }
 
@@ -451,6 +481,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             context.PushAxisAlignedClip(clip, AntialiasMode.Aliased);
             try
             {
+                var background = ToColor4(_document.ViewSettings.BackgroundColor);
+                FillScreenRect(context, clip, background);
                 var dirtyWorldBounds = ScreenRectToWorldBounds(exposed, _viewport);
                 _renderer.Render(
                     _document,
