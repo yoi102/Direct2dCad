@@ -15,6 +15,13 @@
     <File Path=".editorconfig" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="Direct2dCad.Commands.Tests/Direct2dCad.Commands.Tests.csproj" />
+    <Project Path="Direct2dCad.Db.Tests/Direct2dCad.Db.Tests.csproj" />
+    <Project Path="Direct2dCad.Editor.Tests/Direct2dCad.Editor.Tests.csproj" />
+    <Project Path="Direct2dCad.HitTesting.Tests/Direct2dCad.HitTesting.Tests.csproj" />
+    <Project Path="Direct2dCad.Indexing.Tests/Direct2dCad.Indexing.Tests.csproj" />
+    <Project Path="Direct2dCad.IO.Tests/Direct2dCad.IO.Tests.csproj" />
+    <Project Path="Direct2dCad.ViewModels.Services.Tests/Direct2dCad.ViewModels.Services.Tests.csproj" />
     <Project Path="Direct2dCad.Tests/Direct2dCad.Tests.csproj" />
   </Folder>
   <Project Path="Direct2dCad.Commands/Direct2dCad.Commands.csproj" Id="135b8a89-715a-4c51-90bb-d7c5e3247ae0" />

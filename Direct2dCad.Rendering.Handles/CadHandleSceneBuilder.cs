@@ -106,7 +106,7 @@ public sealed class CadHandleSceneBuilder
             }
 
             if (includeIndividualGrips &&
-                (!entity.IsLocked || options.IncludeLockedEntityGripHandles))
+                (!IsLocked(document, entity) || options.IncludeLockedEntityGripHandles))
             {
                 AddEntityGripHandles(items, document, entity, options.GripStyle, options.RotationHandleOffset);
             }
@@ -116,7 +116,7 @@ public sealed class CadHandleSceneBuilder
             !includeIndividualGrips &&
             options.IncludeAggregateMoveGripForLargeSelection)
         {
-            AddAggregateMoveGrip(items, selectedEntities, options);
+            AddAggregateMoveGrip(items, document, selectedEntities, options);
         }
     }
 
@@ -144,6 +144,7 @@ public sealed class CadHandleSceneBuilder
 
     private static void AddAggregateMoveGrip(
         List<CadHandleItem> items,
+        CadDocument document,
         IReadOnlyList<CadEntity> selectedEntities,
         CadHandleSceneBuildOptions options)
     {
@@ -152,7 +153,7 @@ public sealed class CadHandleSceneBuilder
 
         foreach (var entity in selectedEntities)
         {
-            if ((entity.IsLocked && !options.IncludeLockedEntityGripHandles) ||
+            if ((IsLocked(document, entity) && !options.IncludeLockedEntityGripHandles) ||
                 !SupportsCenterGrip(entity))
             {
                 continue;
@@ -171,6 +172,14 @@ public sealed class CadHandleSceneBuilder
             bounds.Center,
             CadHandleType.Center,
             options.GripStyle);
+    }
+
+    private static bool IsLocked(CadDocument document, CadEntity entity)
+    {
+        return entity.IsLocked ||
+               (document.TryGetLayer(entity.LayerId, out var layer) &&
+                layer is not null &&
+                layer.IsLocked);
     }
 
     public static bool SupportsCenterGrip(CadEntity entity)

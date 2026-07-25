@@ -330,7 +330,13 @@ internal static class CadDocumentMapper
                     TextStyleId = x.TextStyleId?.Value,
                     GraphicStyleId = x.GraphicStyleId?.Value,
                     IsInverted = x.IsInverted,
-                    InvertedMarginFactor = x.InvertedMarginFactor
+                    InvertedMarginFactor = x.InvertedMarginFactor,
+                    LocalBoundsMin = x.RequiresBoundsMeasurement
+                        ? null
+                        : ToData(new CadPointD(x.LocalBounds.MinX, x.LocalBounds.MinY)),
+                    LocalBoundsMax = x.RequiresBoundsMeasurement
+                        ? null
+                        : ToData(new CadPointD(x.LocalBounds.MaxX, x.LocalBounds.MaxY))
                 })
                 .ToList()
         };
@@ -854,6 +860,15 @@ internal static class CadDocumentMapper
                 textData.Entity.Name,
                 textData.IsInverted,
                 textData.InvertedMarginFactor ?? CadText.DefaultInvertedMarginFactor);
+            if (textData.LocalBoundsMin is { } localBoundsMin &&
+                textData.LocalBoundsMax is { } localBoundsMax)
+            {
+                text.SetLocalBounds(CadRectD.FromLTRB(
+                    localBoundsMin.X,
+                    localBoundsMin.Y,
+                    localBoundsMax.X,
+                    localBoundsMax.Y));
+            }
             text.SetGraphicStyleInternal(ToStyleId(textData.GraphicStyleId));
             ApplyEntityState(document, text, textData.Entity);
             document.AddEntityCore(text);
