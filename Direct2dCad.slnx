@@ -28,6 +28,7 @@
     <Project Path="Direct2dCad.IO.Tests/Direct2dCad.IO.Tests.csproj" />
     <Project Path="Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj" />
     <Project Path="Direct2dCad.ViewModels.Services.Tests/Direct2dCad.ViewModels.Services.Tests.csproj" />
+    <Project Path="Direct2dCad.ViewModels.Tests/Direct2dCad.ViewModels.Tests.csproj" />
     <Project Path="Direct2dCad.Windows.IntegrationTests/Direct2dCad.Windows.IntegrationTests.csproj" />
     <Project Path="Direct2dCad.Tests/Direct2dCad.Tests.csproj" />
   </Folder>

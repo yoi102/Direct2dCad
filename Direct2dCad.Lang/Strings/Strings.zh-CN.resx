@@ -1147,7 +1147,7 @@
     <value>AI 助手</value>
   </data>
   <data name="AiAssistantWelcome" xml:space="preserve">
-    <value>连接 LM Studio 并选择模型后，可以询问或编辑当前图纸。</value>
+    <value>连接 LM Studio 并选择模型后，可以查看或编辑工作区中的图纸。</value>
   </data>
   <data name="LmStudioConnection" xml:space="preserve">
     <value>LM Studio 连接</value>

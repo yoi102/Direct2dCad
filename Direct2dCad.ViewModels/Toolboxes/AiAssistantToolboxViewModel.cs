@@ -15,6 +15,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private readonly IAiChatClient _chatClient;
     private readonly IAiAssistantSettingsStore _settingsStore;
+    private readonly ICadAiWorkspaceService _workspaceService;
     private readonly List<AiChatMessage> _conversation = [];
     private CancellationTokenSource? _requestCancellation;
     private CadDocumentViewModel? _documentViewModel;
@@ -24,11 +25,13 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         IAiChatClient chatClient,
-        IAiAssistantSettingsStore settingsStore)
+        IAiAssistantSettingsStore settingsStore,
+        ICadAiWorkspaceService workspaceService)
         : base(toolboxLayoutSettingsStore, "toolbox.ai-assistant", DockZone.RightBottom, isOpenByDefault: false)
     {
         _chatClient = chatClient;
         _settingsStore = settingsStore;
+        _workspaceService = workspaceService;
         Title = Resource("AiAssistant", "AI Assistant");
         Icon = toolboxIconProvider.Assistant;
         Shortcut = "Ctrl+Shift+A";
@@ -37,7 +40,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         ApplySettings(settingsStore.Load());
         Messages.Add(new AiChatItemViewModel(
             AiChatItemKind.System,
-            Resource("AiAssistantWelcome", "Connect to LM Studio, select a model, and ask me to inspect or edit the active drawing.")));
+            Resource("AiAssistantWelcome", "Connect to LM Studio, select a model, and ask me to inspect or edit documents in the workspace.")));
     }
 
     public ObservableCollection<AiChatItemViewModel> Messages { get; } = [];
@@ -139,10 +142,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         UserInput = string.Empty;
         Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, prompt));
         _conversation.Add(AiChatMessage.User(prompt));
-        var batchId = Guid.NewGuid();
-        var executor = _documentViewModel is null
-            ? null
-            : new CadAiToolExecutor(_documentViewModel, batchId);
+        var executor = new CadAiWorkspaceToolExecutor(_workspaceService);
 
         BeginRequest();
         var cancellationToken = _requestCancellation!.Token;
@@ -153,7 +153,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
             {
                 var requestMessages = new List<AiChatMessage>(_conversation.Count + 1)
                 {
-                    AiChatMessage.System(executor?.CreateSystemPrompt() ?? CreateChatOnlySystemPrompt())
+                    AiChatMessage.System(executor.CreateSystemPrompt())
                 };
                 requestMessages.AddRange(_conversation);
 
@@ -162,7 +162,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
                         Endpoint,
                         SelectedModel,
                         requestMessages,
-                        EnableCadTools && executor is not null ? CadAiToolExecutor.ToolDefinitions : [],
+                        EnableCadTools ? CadAiWorkspaceToolExecutor.ToolDefinitions : [],
                         Temperature),
                     cancellationToken);
 
@@ -180,12 +180,12 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
                     return;
                 }
 
-                if (executor is null || !EnableCadTools)
+                if (!EnableCadTools)
                     throw new InvalidOperationException("The model requested CAD tools, but CAD tools are unavailable.");
 
                 foreach (var toolCall in completion.ToolCalls)
                 {
-                    var result = executor.Execute(toolCall);
+                    var result = await executor.ExecuteAsync(toolCall, cancellationToken);
                     _conversation.Add(AiChatMessage.Tool(toolCall.Id, result));
                     Messages.Add(new AiChatItemViewModel(
                         AiChatItemKind.Tool,
@@ -286,9 +286,6 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     }
 
     private void AddError(string message) => Messages.Add(new AiChatItemViewModel(AiChatItemKind.Error, message));
-
-    private static string CreateChatOnlySystemPrompt() =>
-        "You are the Direct2dCad assistant. No CAD document is active, so explain that drawing tools require an open document when the user requests edits. Keep replies concise.";
 
     private static string CreateToolResultSummary(string result)
     {

@@ -128,7 +128,7 @@ LM Studio/OpenAI-compatible 协议层，不引用 WPF 和 CAD 数据模型。
 - 保存连接地址、模型、temperature 和 CAD 工具开关等用户级设置。
 - CAD 工具的具体执行位于 ViewModel 适配层，编辑仍通过 `ICadCommand` 进入 undo / redo 和渲染更新链路。
 
-AI Toolbox 默认连接 `http://localhost:1234/v1`。先在 LM Studio 启动 Local Server 并加载支持 tool calling 的模型，再于面板刷新模型；同一次用户请求产生的文档命令共用一个 batch id。
+AI Toolbox 默认连接 `http://localhost:1234/v1`。先在 LM Studio 启动 Local Server 并加载支持 tool calling 的模型，再于面板刷新模型。AI 可通过稳定的 `document_id` 查询、创建、打开、激活、重命名、保存和关闭工作区图纸，也可在创建实体时设置颜色、线宽、填充与描边样式；同一次用户请求中，每个目标文档分别使用独立的 undo / redo batch。
 
 ### Direct2dCad.Db
 

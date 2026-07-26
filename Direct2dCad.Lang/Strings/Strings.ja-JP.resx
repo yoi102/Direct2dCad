@@ -1147,7 +1147,7 @@
     <value>AI アシスタント</value>
   </data>
   <data name="AiAssistantWelcome" xml:space="preserve">
-    <value>LM Studio に接続してモデルを選択すると、現在の図面を確認・編集できます。</value>
+    <value>LM Studio に接続してモデルを選択すると、ワークスペース内の図面を確認・編集できます。</value>
   </data>
   <data name="LmStudioConnection" xml:space="preserve">
     <value>LM Studio 接続</value>

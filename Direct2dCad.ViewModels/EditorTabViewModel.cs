@@ -103,6 +103,33 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         return TrySaveFileAsync();
     }
 
+    internal async Task<bool> SaveForAiAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!string.IsNullOrWhiteSpace(CurrentFilePath))
+            return await SaveToAsync(CurrentFilePath, cancellationToken);
+
+        var fileName = string.IsNullOrWhiteSpace(CadDocumentViewModel.CadEditor.Document.Name)
+            ? "Untitled.d2cad"
+            : $"{CadDocumentViewModel.CadEditor.Document.Name}.d2cad";
+        var selectedFileName = _fileDialogService.SaveAsD2cad(fileName);
+        if (selectedFileName is null)
+            return false;
+
+        return await SaveToFileForAiAsync(selectedFileName, cancellationToken);
+    }
+
+    internal async Task<bool> SaveToFileForAiAsync(string filePath, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!await SaveToAsync(filePath, cancellationToken))
+            return false;
+
+        CurrentFilePath = filePath;
+        SaveWorkspaceSettings();
+        return true;
+    }
+
     private async Task<bool> ConfirmCloseCoreAsync()
     {
         var result = await _dialogService.ShowUnsavedDocumentDialogAsync(DocumentName);
@@ -493,16 +520,22 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
     }
 
-    private async Task<bool> SaveToAsync(string filePath)
+    private Task<bool> SaveToAsync(string filePath) => SaveToAsync(filePath, CancellationToken.None);
+
+    private async Task<bool> SaveToAsync(string filePath, CancellationToken cancellationToken)
     {
         try
         {
             using (_dialogService.ShowProgressBarDialog())
-                await _storage.SaveAsync(CadDocumentViewModel.CadEditor.Document, filePath);
+                await _storage.SaveAsync(CadDocumentViewModel.CadEditor.Document, filePath, cancellationToken);
 
             ResetModificationBaseline(isModified: false);
             _snackbarService.Enqueue("File saved successfully.");
             return true;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {

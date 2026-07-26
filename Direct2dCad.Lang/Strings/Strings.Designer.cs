@@ -133,7 +133,7 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Connect to LM Studio, select a model, and ask me to inspect or edit the active drawing. 的本地化字符串。
+        ///   查找类似 Connect to LM Studio, select a model, and ask me to inspect or edit documents in the workspace. 的本地化字符串。
         /// </summary>
         public static string AiAssistantWelcome {
             get {

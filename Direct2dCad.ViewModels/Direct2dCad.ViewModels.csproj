@@ -31,4 +31,8 @@
     <ProjectReference Include="..\Direct2dCad.ViewModels.Services\Direct2dCad.ViewModels.Services.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Direct2dCad.ViewModels.Tests" />
+  </ItemGroup>
+
 </Project>

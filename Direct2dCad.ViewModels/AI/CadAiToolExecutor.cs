@@ -114,6 +114,16 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
             new { type = "object", properties = new { }, additionalProperties = false })
     ];
 
+    internal CadDocumentViewModel DocumentViewModel => documentViewModel;
+
+    internal void ExecuteCommand(ICadCommand command) =>
+        documentViewModel.CadEditor.ExecuteInBatch(command, batchId);
+
+    internal EntityId[] ResolveEntityIdsForTool(JsonElement arguments, bool allowSelectionFallback) =>
+        ResolveEntityIds(arguments, allowSelectionFallback);
+
+    internal LayerId ResolveLayerForTool(string name) => ResolveLayer(name);
+
     public string Execute(AiToolCall toolCall)
     {
         try
@@ -197,7 +207,20 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
                 layer = ResolveLayerName(entity.LayerId),
                 bounds = RectDto(entity.Bounds),
                 entity.IsVisible,
-                entity.IsLocked
+                entity.IsLocked,
+                color_source = ProtocolEnum(entity.ColorSource),
+                line_weight = entity.UseLayerLineWeight ? (object)"by_layer" : entity.LineWeight?.Value,
+                entity.ZIndex,
+                graphic_style_id = GraphicStyleId(entity)?.Value,
+                fill_style_id = FillStyleId(entity)?.Value,
+                stroke_style = new
+                {
+                    start_cap = ProtocolEnum(entity.StrokeStyle.StartCap),
+                    end_cap = ProtocolEnum(entity.StrokeStyle.EndCap),
+                    dash_cap = ProtocolEnum(entity.StrokeStyle.DashCap),
+                    dash_style = ProtocolEnum(entity.StrokeStyle.DashStyle),
+                    line_join = ProtocolEnum(entity.StrokeStyle.LineJoin)
+                }
             })
             .ToArray();
         return Success(new { count = entities.Length, entities });
@@ -513,6 +536,36 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         CadBlockReference => "BlockReference",
         _ => entity.GetType().Name
     };
+
+    private static StyleId? GraphicStyleId(CadEntity entity) => entity switch
+    {
+        CadLine value => value.GraphicStyleId,
+        CadCircle value => value.GraphicStyleId,
+        CadArc value => value.GraphicStyleId,
+        CadEllipse value => value.GraphicStyleId,
+        CadEllipseArc value => value.GraphicStyleId,
+        CadRectangle value => value.GraphicStyleId,
+        CadPolyline value => value.GraphicStyleId,
+        CadSpline value => value.GraphicStyleId,
+        CadText value => value.GraphicStyleId,
+        CadShapeText value => value.GraphicStyleId,
+        CadBlockReference value => value.GraphicStyleId,
+        _ => null
+    };
+
+    private static StyleId? FillStyleId(CadEntity entity) => entity switch
+    {
+        CadCircle value => value.FillStyleId,
+        CadEllipse value => value.FillStyleId,
+        CadRectangle value => value.FillStyleId,
+        CadPolyline value => value.FillStyleId,
+        CadSpline value => value.FillStyleId,
+        _ => null
+    };
+
+    private static string ProtocolEnum<T>(T value) where T : struct, Enum =>
+        string.Concat(value.ToString().Select((character, index) =>
+            index > 0 && char.IsUpper(character) ? $"_{char.ToLowerInvariant(character)}" : char.ToLowerInvariant(character).ToString()));
 
     private static string Success(object value) => JsonSerializer.Serialize(new { success = true, result = value });
     private static string Error(string message) => JsonSerializer.Serialize(new { success = false, error = message });

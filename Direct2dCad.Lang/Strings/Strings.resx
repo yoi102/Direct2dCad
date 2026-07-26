@@ -1368,7 +1368,7 @@
     <value>AI Assistant</value>
   </data>
   <data name="AiAssistantWelcome" xml:space="preserve">
-    <value>Connect to LM Studio, select a model, and ask me to inspect or edit the active drawing.</value>
+    <value>Connect to LM Studio, select a model, and ask me to inspect or edit documents in the workspace.</value>
   </data>
   <data name="LmStudioConnection" xml:space="preserve">
     <value>LM Studio connection</value>
