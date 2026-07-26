@@ -8,7 +8,9 @@ public sealed class CadAiToolSelectorTests
 {
     private static readonly IReadOnlyList<AiToolDefinition> AvailableTools = CreateTools(
         "add_entities", "add_line", "add_circle", "add_arc", "add_ellipse", "add_rectangle",
-        "add_polygon", "add_polyline", "add_spline", "add_text", "create_layer",
+        "add_polygon", "add_polyline", "add_spline", "add_text",
+        "list_layers", "create_layer", "rename_layer", "delete_layer",
+        "set_layer_properties", "reorder_layers",
         "create_block", "insert_block", "duplicate_entities", "get_entity_geometry",
         "transform_entities", "open_document", "activate_document", "rename_document",
         "save_document", "close_document", "get_document_summary", "list_entities",
@@ -68,6 +70,21 @@ public sealed class CadAiToolSelectorTests
         Assert.Contains(selected, tool => tool.Name == "rename_document");
         Assert.Contains(selected, tool => tool.Name == "save_document");
         Assert.Contains(selected, tool => tool.Name == "close_document");
+    }
+
+    [Theory]
+    [InlineData("删除图层", "delete_layer")]
+    [InlineData("レイヤーを削除", "delete_layer")]
+    [InlineData("重命名图层", "rename_layer")]
+    [InlineData("锁定图层并设置颜色", "set_layer_properties")]
+    [InlineData("调整图层顺序", "reorder_layers")]
+    public void Select_LayerIntent_PrioritizesRequestedLayerTool(string prompt, string expectedTool)
+    {
+        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+
+        Assert.NotEmpty(selected);
+        Assert.Equal(expectedTool, selected[0].Name);
+        Assert.Contains(selected, tool => tool.Name == "list_layers");
     }
 
     private static IReadOnlyList<AiToolDefinition> CreateTools(params string[] names) =>
@@ -176,6 +193,23 @@ public sealed class CadAiRequestContextBuilderTests
             AiAssistantSettings.DefaultContextWindowTokens);
 
         Assert.Contains(context.Tools, tool => tool.Name == "add_entities");
+        Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 8192);
+    }
+
+    [Fact]
+    public void Build_RealLayerDeletionSchemaKeepsRequestedActionWithinDefaultContext()
+    {
+        const string prompt = "删除图层 Construction 以及其中的所有实体";
+        var selected = CadAiToolSelector.Select(prompt, CadAiWorkspaceToolExecutor.ToolDefinitions);
+
+        var context = CadAiRequestContextBuilder.Build(
+            "You are a CAD editing assistant.",
+            [AiChatMessage.User(prompt)],
+            selected,
+            AiAssistantSettings.DefaultContextWindowTokens);
+
+        Assert.Equal("delete_layer", context.Tools[0].Name);
+        Assert.Contains(context.Tools, tool => tool.Name == "list_layers");
         Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 8192);
     }
 

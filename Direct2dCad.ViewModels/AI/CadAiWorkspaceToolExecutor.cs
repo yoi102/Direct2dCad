@@ -52,7 +52,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         return $$"""
             You are the workspace-aware CAD editing assistant inside Direct2dCad. Use tools for every inspection or modification and never claim success before a tool confirms it. Open documents: {{documentSummary}}
 
-            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
+            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
 
             {{activeDetails}}
             """;
@@ -80,11 +80,16 @@ internal sealed class CadAiWorkspaceToolExecutor
                 "set_entity_common_properties" => ExecuteForDocument(root, SetEntityCommonProperties),
                 "set_entity_fill" => ExecuteForDocument(root, SetEntityFill),
                 "set_entity_stroke_style" => ExecuteForDocument(root, SetEntityStrokeStyle),
-                "create_layer" => ExecuteForDocument(root, CreateLayer),
                 "create_block" => ExecuteForDocument(root, CreateBlock),
                 "insert_block" => ExecuteForDocument(root, InsertBlock),
                 "add_composite_path" => ExecuteForDocument(root, AddCompositePath),
                 "add_entities" => ExecuteForDocument(root, AddEntities),
+                _ when CadAiLayerTools.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
+                    ExecuteForDocument(root, (executor, arguments) =>
+                        new CadAiLayerTools(
+                            executor.DocumentViewModel.CadEditor.Document,
+                            executor.ExecuteCommand)
+                        .Execute(toolCall.Name, arguments)),
                 "get_entity_geometry" or "set_entity_geometry" or "transform_entities" or "duplicate_entities" =>
                     ExecuteForDocument(root, (executor, arguments) => CadAiGeometryTools.Execute(executor, toolCall.Name, arguments)),
                 _ when CadAiToolExecutor.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
@@ -340,38 +345,6 @@ internal sealed class CadAiWorkspaceToolExecutor
                     base_point = new { x = block.BasePoint.X, y = block.BasePoint.Y },
                     entity_count = block.EntityIds.Count
                 }).ToArray()
-        };
-    }
-
-    private object CreateLayer(CadAiToolExecutor executor, JsonElement arguments)
-    {
-        var document = executor.DocumentViewModel.CadEditor.Document;
-        var name = RequiredString(arguments, "name");
-        var color = HasValue(arguments, "color")
-            ? ParseColor(RequiredString(arguments, "color"))
-            : CadColor.Green;
-        var lineWeight = arguments.TryGetProperty("line_weight", out var lineWeightElement)
-            ? ParseLineWeight(lineWeightElement)
-            : CadLineWeight.Default;
-        int? drawingPriority = null;
-        if (HasValue(arguments, "drawing_priority"))
-        {
-            if (!arguments.GetProperty("drawing_priority").TryGetInt32(out var priority))
-                throw new ArgumentException("drawing_priority must be an integer.");
-            drawingPriority = priority;
-        }
-
-        var command = new CreateLayerCommand(name, color, lineWeight, drawingPriority: drawingPriority);
-        executor.ExecuteCommand(command);
-        var layerId = command.LayerId ?? throw new InvalidOperationException("The layer was not created.");
-        var layer = document.GetLayer(layerId);
-        return new
-        {
-            layer_id = layerId.Value,
-            layer.Name,
-            color = ColorText(layer.Color),
-            line_weight = LineWeightValue(layer.LineWeight),
-            drawing_priority = document.DocumentSettings.LayerDrawingPriority.GetPriority(layerId)
         };
     }
 
@@ -1094,6 +1067,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         var tools = CadAiToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
         tools.AddRange(WorkspaceToolDefinitions());
         tools.AddRange(CadAiGeometryTools.ToolDefinitions);
+        tools.AddRange(CadAiLayerTools.ToolDefinitions);
         tools.Add(CadAiBulkCreationTools.ToolDefinition);
         tools.Add(CadAiCompositePathTools.ToolDefinition);
         tools.Add(Tool("list_document_catalog", "List layers and reusable graphic, fill, hatch, and text styles for a document.",
@@ -1104,15 +1078,6 @@ internal sealed class CadAiWorkspaceToolExecutor
             ObjectSchema(FillSchema(includeEntityIds: true), ["entity_ids", "mode"])));
         tools.Add(Tool("set_entity_stroke_style", "Set one or more stroke cap, dash, or join properties while preserving omitted values.",
             ObjectSchema(StrokeSchema(includeEntityIds: true), ["entity_ids"])));
-        tools.Add(Tool("create_layer", "Create an undoable drawing layer. Layer names must be unique.",
-            ObjectSchema(new Dictionary<string, object>
-            {
-                ["document_id"] = DocumentIdSchema(),
-                ["name"] = StringSchema("Unique layer name"),
-                ["color"] = StringSchema("#RRGGBB, #AARRGGBB, or a supported named color"),
-                ["line_weight"] = new { type = "number", exclusiveMinimum = 0.0 },
-                ["drawing_priority"] = new { type = "integer" }
-            }, ["name"])));
         tools.Add(Tool("create_block", "Create an undoable reusable Block from entities in the active drawing space and replace them with one reference. Uses the current selection when entity_ids is omitted.",
             ObjectSchema(new Dictionary<string, object>
             {

@@ -19,7 +19,9 @@ internal static class CadAiToolSelector
 
     private static readonly string[] LayerTools =
     [
-        "create_layer", "change_entity_layer", "set_entity_common_properties"
+        "list_layers", "create_layer", "rename_layer", "delete_layer",
+        "set_layer_properties", "reorder_layers",
+        "change_entity_layer", "set_entity_common_properties"
     ];
 
     private static readonly string[] BlockTools =
@@ -107,10 +109,31 @@ internal static class CadAiToolSelector
             Add(["create_layer"]);
         }
 
+        if (ContainsAny(normalized, "layer", "图层", "层级", "レイヤー"))
+        {
+            if (ContainsAny(normalized, "delete", "remove", "删除", "移除", "削除"))
+                Add(["delete_layer"]);
+            if (ContainsAny(normalized, "rename", "重命名", "改名", "名前変更"))
+                Add(["rename_layer"]);
+            if (ContainsAny(normalized,
+                    "lock", "freeze", "visible", "color", "line weight", "priority",
+                    "锁定", "冻结", "显示", "隐藏", "颜色", "线宽", "优先级",
+                    "ロック", "フリーズ", "表示", "非表示", "色", "線幅", "優先度"))
+            {
+                Add(["set_layer_properties"]);
+            }
+            if (ContainsAny(normalized,
+                    "reorder", "layer order", "move up", "move down",
+                    "排序", "顺序", "上移", "下移", "並べ替え", "順序"))
+            {
+                Add(["reorder_layers"]);
+            }
+            if (ContainsAny(normalized, "create", "new layer", "add layer", "创建", "新建", "添加", "作成", "追加"))
+                Add(["create_layer"]);
+            Add(LayerTools);
+        }
         if (ContainsAny(normalized, EditingTerms))
             Add(EditingTools);
-        if (ContainsAny(normalized, "layer", "图层", "层级"))
-            Add(LayerTools);
         if (ContainsAny(normalized, "block", "块", "块定义", "块引用"))
             Add(BlockTools);
         if (ContainsAny(normalized,

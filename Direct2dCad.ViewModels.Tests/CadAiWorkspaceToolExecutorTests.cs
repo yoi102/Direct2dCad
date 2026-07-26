@@ -1,6 +1,10 @@
 using System.Text.Json;
 using Direct2dCad.AI;
+using Direct2dCad.Commands;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Geometry;
+using Direct2dCad.Editor;
 using Direct2dCad.ViewModels.AI;
 
 namespace Direct2dCad.ViewModels.Tests;
@@ -25,7 +29,12 @@ public sealed class CadAiWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "transform_entities");
         Assert.Contains(tools, tool => tool.Name == "duplicate_entities");
         Assert.Contains(tools, tool => tool.Name == "add_entities");
+        Assert.Contains(tools, tool => tool.Name == "list_layers");
         Assert.Contains(tools, tool => tool.Name == "create_layer");
+        Assert.Contains(tools, tool => tool.Name == "rename_layer");
+        Assert.Contains(tools, tool => tool.Name == "delete_layer");
+        Assert.Contains(tools, tool => tool.Name == "set_layer_properties");
+        Assert.Contains(tools, tool => tool.Name == "reorder_layers");
         Assert.Contains(tools, tool => tool.Name == "create_block");
         Assert.Contains(tools, tool => tool.Name == "insert_block");
         Assert.Contains(tools, tool => tool.Name == "add_composite_path");
@@ -105,6 +114,89 @@ public sealed class CadAiWorkspaceToolExecutorTests
         Assert.True(composite.TryGetProperty("segments", out var segments));
         Assert.Equal(1, segments.GetProperty("minItems").GetInt32());
         Assert.True(composite.TryGetProperty("fill", out _));
+    }
+
+    [Fact]
+    public void LayerTools_ExposeStateOrderAndDeleteConfirmationSchemas()
+    {
+        var tools = CadAiWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var setProperties = tools["set_layer_properties"].Parameters.GetProperty("properties");
+        var delete = tools["delete_layer"].Parameters.GetProperty("properties");
+        var reorder = tools["reorder_layers"].Parameters.GetProperty("properties");
+
+        Assert.True(setProperties.TryGetProperty("visible", out _));
+        Assert.True(setProperties.TryGetProperty("locked", out _));
+        Assert.True(setProperties.TryGetProperty("frozen", out _));
+        Assert.True(setProperties.TryGetProperty("drawing_priority", out _));
+        Assert.True(delete.GetProperty("delete_entities").GetProperty("const").GetBoolean());
+        Assert.True(reorder.GetProperty("layer_order").GetProperty("uniqueItems").GetBoolean());
+    }
+
+    [Fact]
+    public void LayerTools_MutationsShareOneUndoBatch()
+    {
+        var document = CadDocument.Create("Test");
+        var editor = new CadEditor(document);
+        var batchId = Guid.NewGuid();
+        var tools = new CadAiLayerTools(
+            document,
+            command => editor.ExecuteInBatch(command, batchId));
+
+        ExecuteLayerTool(tools, "create_layer", """
+            { "name": "Mechanical", "color": "#123456", "line_weight": 0.35 }
+            """);
+        ExecuteLayerTool(tools, "rename_layer", """
+            { "layer": "Mechanical", "new_name": "Housing" }
+            """);
+        ExecuteLayerTool(tools, "set_layer_properties", """
+            { "layer": "Housing", "visible": false, "locked": true, "frozen": true, "drawing_priority": 12 }
+            """);
+        ExecuteLayerTool(tools, "reorder_layers", """
+            { "layer_order": ["Housing", "DefaultLayer"] }
+            """);
+
+        var layer = Assert.Single(document.Layers.Values, candidate => candidate.Name == "Housing");
+        Assert.False(layer.IsVisible);
+        Assert.True(layer.IsLocked);
+        Assert.True(layer.IsFrozen);
+        Assert.True(document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id) >
+                    document.DocumentSettings.LayerDrawingPriority.GetPriority(LayerId.Default));
+
+        editor.UndoBatch(batchId);
+
+        Assert.Single(document.Layers);
+        Assert.True(document.Layers.ContainsKey(LayerId.Default));
+    }
+
+    [Fact]
+    public void DeleteLayer_RequiresConfirmationAndUndoRestoresEntities()
+    {
+        var document = CadDocument.Create("Test");
+        var layerId = document.CreateLayer("Disposable", CadColor.Green, CadLineWeight.Default);
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0), layerId);
+        var editor = new CadEditor(document);
+        var batchId = Guid.NewGuid();
+        var tools = new CadAiLayerTools(
+            document,
+            command => editor.ExecuteInBatch(command, batchId));
+
+        Assert.Throws<ArgumentException>(() => ExecuteLayerTool(
+            tools,
+            "delete_layer",
+            """{ "layer": "Disposable", "delete_entities": false }"""));
+
+        ExecuteLayerTool(
+            tools,
+            "delete_layer",
+            """{ "layer": "Disposable", "delete_entities": true }""");
+
+        Assert.False(document.TryGetLayer(layerId, out _));
+        Assert.True(line.IsErased);
+
+        editor.UndoBatch(batchId);
+
+        Assert.True(document.TryGetLayer(layerId, out _));
+        Assert.False(line.IsErased);
     }
 
     [Fact]
@@ -233,6 +325,12 @@ public sealed class CadAiWorkspaceToolExecutorTests
     {
         using var json = JsonDocument.Parse(result);
         return json.RootElement.GetProperty("success").GetBoolean();
+    }
+
+    private static object ExecuteLayerTool(CadAiLayerTools tools, string name, string arguments)
+    {
+        using var json = JsonDocument.Parse(arguments);
+        return tools.Execute(name, json.RootElement);
     }
 
     private sealed class FakeWorkspaceService : ICadAiWorkspaceService

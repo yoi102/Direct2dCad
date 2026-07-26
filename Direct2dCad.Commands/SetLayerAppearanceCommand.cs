@@ -34,7 +34,7 @@ public sealed class SetLayerAppearanceCommand : ICadCommand
                 _layerId,
                 _color,
                 _lineWeight,
-                DefaultGraphicStyleId: null));
+                layer.DefaultGraphicStyleId));
         return CreateChangeSet(document);
     }
 

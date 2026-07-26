@@ -105,6 +105,28 @@ public sealed class PropertyAndLayoutCommandTests
     }
 
     [Fact]
+    public void SetLayerAppearance_PreservesDefaultGraphicStyle()
+    {
+        var document = CadDocument.Create("Test");
+        var layerId = document.CreateLayer("Layer", CadColor.Green, CadLineWeight.Default);
+        document.SetLayerDefaultGraphicStyle(layerId, StyleId.DefaultGraphic);
+        var command = new SetLayerAppearanceCommand(
+            layerId,
+            CadColor.Red,
+            new CadLineWeight(0.5));
+
+        command.Execute(document);
+
+        var layer = document.GetLayer(layerId);
+        Assert.Equal(StyleId.DefaultGraphic, layer.DefaultGraphicStyleId);
+        Assert.Equal(CadColor.Red, layer.Color);
+        Assert.Equal(new CadLineWeight(0.5), layer.LineWeight);
+
+        command.Undo(document);
+        Assert.Equal(StyleId.DefaultGraphic, layer.DefaultGraphicStyleId);
+    }
+
+    [Fact]
     public void SetViewSettings_UndoRestoresGridPresetsAndOrigin()
     {
         var document = CadDocument.Create("Test");
