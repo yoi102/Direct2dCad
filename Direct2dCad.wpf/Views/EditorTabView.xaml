@@ -379,7 +379,8 @@
                 <StackPanel DockPanel.Dock="Right"
                             Orientation="Horizontal"
                             Margin="4,0,6,0">
-                    <Button Width="32"
+                    <Button AutomationProperties.AutomationId="CreateLayoutViewportButton"
+                            Width="32"
                             Height="32"
                             Padding="0"
                             Style="{StaticResource MaterialDesignFlatButton}"
@@ -393,7 +394,8 @@
                     <StackPanel Margin="2,0,6,0"
                                 Orientation="Horizontal"
                                 Visibility="{Binding HasActiveLayout, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <RadioButton MinWidth="62"
+                        <RadioButton AutomationProperties.AutomationId="PaperSpaceButton"
+                                     MinWidth="62"
                                      Height="28"
                                      Margin="2,4"
                                      Padding="8,0"
@@ -403,7 +405,8 @@
                                      IsChecked="{Binding DataContext.CadDocumentViewModel.ActiveLayoutSpaceMode, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Mode=TwoWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadLayoutSpaceMode.Paper}}"
                                      Style="{StaticResource MaterialDesignTabRadioButtonTop}"
                                      ToolTip="{I18N {x:Static r:LangKeys.Paper}}" />
-                        <RadioButton MinWidth="62"
+                        <RadioButton AutomationProperties.AutomationId="LayoutModelSpaceButton"
+                                     MinWidth="62"
                                      Height="28"
                                      Margin="2,4"
                                      Padding="8,0"
@@ -423,7 +426,8 @@
                                   Visibility="{Binding DataContext.CadDocumentViewModel.IsLayoutViewportActive, RelativeSource={RelativeSource AncestorType=views:EditorTabView}, Converter={StaticResource BooleanToVisibilityConverter}}"
                                   ToolTip="{I18N {x:Static r:LangKeys.Viewport}}" />
                     </StackPanel>
-                    <Button Width="32"
+                    <Button AutomationProperties.AutomationId="AddLayoutButton"
+                            Width="32"
                             Height="32"
                             Padding="0"
                             Style="{StaticResource MaterialDesignFlatButton}"
@@ -455,7 +459,8 @@
                     </Button>
                 </StackPanel>
 
-                <ListBox ItemsSource="{Binding Tabs}"
+                <ListBox AutomationProperties.AutomationId="LayoutTabs"
+                         ItemsSource="{Binding Tabs}"
                          SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
                          BorderThickness="0"
                          Background="Transparent"

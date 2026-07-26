@@ -11,6 +11,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
+             AutomationProperties.AutomationId="MainRibbon"
              mc:Ignorable="d"
              d:DesignHeight="150"
              d:DesignWidth="1500">
@@ -80,7 +81,8 @@
 
             <!--Toggle Primary Side Bar (Left)-->
 
-            <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.TogglePrimarySideBar}}"
+            <ToggleButton AutomationProperties.AutomationId="TogglePrimarySideBarButton"
+                          ToolTip="{I18N {x:Static r:LangKeys.TogglePrimarySideBar}}"
                           IsChecked="{Binding IsPrimarySideBarOpen, Mode=OneWay}"
                           Command="{Binding TogglePrimarySideBarCommand}">
                 <Viewbox Width="20"
@@ -174,10 +176,12 @@
                     mah:HeaderedControlHelper.HeaderFontSize="18">
 
             <TabItem Header="{I18N {x:Static r:LangKeys.File}}"
+                     AutomationProperties.AutomationId="FileRibbonTab"
                      Style="{StaticResource MahApps.Styles.TabItem}">
                 <WrapPanel Margin="10">
 
                     <Button ToolTip="{I18N {x:Static r:UserSettingsLangKeys.ApplicationSettings}}"
+                            AutomationProperties.AutomationId="UserSettingsButton"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             Width="80"
                             Height="80"
@@ -200,6 +204,7 @@
 
 
                     <Button ToolTip="{I18N {x:Static r:LangKeys.New}}"
+                            AutomationProperties.AutomationId="NewDocumentButton"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             Width="80"
                             Height="80"
@@ -281,11 +286,13 @@
             </TabItem>
 
             <TabItem Header="{I18N {x:Static r:LangKeys.Draw}}"
+                     AutomationProperties.AutomationId="DrawRibbonTab"
                      Style="{StaticResource MahApps.Styles.TabItem}"
                      Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
                 <WrapPanel Margin="10">
 
                     <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Select}}"
+                                  AutomationProperties.AutomationId="SelectToolButton"
                                   IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Select}}"
                                   Width="80"
                                   Height="80"
@@ -1142,6 +1149,7 @@
 
                     <WrapPanel Width="180">
                         <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Line}}"
+                                      AutomationProperties.AutomationId="LineToolButton"
                                       IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Line}}"
                                       Width="33"
                                       Height="33"
@@ -1304,6 +1312,7 @@
 
                         </Button>
                         <Button ToolTip="{I18N {x:Static r:LangKeys.Settings}}"
+                                AutomationProperties.AutomationId="DocumentSettingsButton"
                                 Style="{StaticResource MaterialDesignFlatButton}"
                                 Width="33"
                                 Height="33"

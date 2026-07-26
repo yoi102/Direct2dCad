@@ -1,8 +1,10 @@
 using Direct2dCad.Commands;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.Rendering;
 
 namespace Direct2dCad.Editor.Tests;
 
@@ -74,6 +76,53 @@ public sealed class CadEditorTests
     }
 
     [Fact]
+    public void ImageRotationCommand_UpdatesSpatialIndexAndNotifiesResourcesThroughUndoRedo()
+    {
+        var document = CadDocument.Create("Image rotation");
+        var image = document.AddImage(
+            CadRectD.FromXYWH(-5, -1, 10, 2),
+            1,
+            1,
+            4,
+            [0x20, 0x80, 0xE0, 0xFF]);
+        var editor = new CadEditor(document);
+        var resources = new RecordingGeometryResourceManager();
+        editor.RegisterGeometryResourceManager(resources, rebuildExistingResources: false);
+        var horizontalOnlyArea = CadRectD.FromXYWH(3, -0.5, 2, 1);
+        var verticalOnlyArea = CadRectD.FromXYWH(-0.5, 3, 1, 2);
+
+        editor.Execute(new SetImageRotationCommand(image.Id, Math.PI / 2));
+
+        Assert.DoesNotContain(
+            image.Id,
+            editor.SpatialIndex.Query(BlockId.ModelSpace, horizontalOnlyArea));
+        Assert.Contains(
+            image.Id,
+            editor.SpatialIndex.Query(BlockId.ModelSpace, verticalOnlyArea));
+        AssertSingleResourceChange(resources, image.Id, CadEntityChangeKind.Rotation);
+
+        editor.UndoDocument();
+
+        Assert.Contains(
+            image.Id,
+            editor.SpatialIndex.Query(BlockId.ModelSpace, horizontalOnlyArea));
+        Assert.DoesNotContain(
+            image.Id,
+            editor.SpatialIndex.Query(BlockId.ModelSpace, verticalOnlyArea));
+        AssertSingleResourceChange(resources, image.Id, CadEntityChangeKind.Rotation);
+
+        editor.RedoDocument();
+
+        Assert.DoesNotContain(
+            image.Id,
+            editor.SpatialIndex.Query(BlockId.ModelSpace, horizontalOnlyArea));
+        Assert.Contains(
+            image.Id,
+            editor.SpatialIndex.Query(BlockId.ModelSpace, verticalOnlyArea));
+        AssertSingleResourceChange(resources, image.Id, CadEntityChangeKind.Rotation);
+    }
+
+    [Fact]
     public void ClickSelectionPrefersLayerPriorityThenZIndexThenLaterEntity()
     {
         var document = CadDocument.Create("Test");
@@ -95,5 +144,38 @@ public sealed class CadEditorTests
 
         Assert.Equal(laterHigh.Id, command.SelectedEntityId);
         Assert.DoesNotContain(low.Id, editor.Selection.EntityIds);
+    }
+
+    private static void AssertSingleResourceChange(
+        RecordingGeometryResourceManager resources,
+        EntityId entityId,
+        CadEntityChangeKind expectedKind)
+    {
+        var changes = Assert.IsType<CadDocumentChangeSet>(resources.LastChanges);
+        var change = Assert.Single(changes.EntityChanges);
+        Assert.Equal(entityId, change.EntityId);
+        Assert.Equal(expectedKind, change.Kind);
+    }
+
+    private sealed class RecordingGeometryResourceManager : ICadGeometryResourceManager
+    {
+        public CadDocumentChangeSet? LastChanges { get; private set; }
+
+        public void RebuildAll(CadDocument document)
+        {
+        }
+
+        public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
+        {
+            LastChanges = changes;
+        }
+
+        public void RebuildEntity(CadDocument document, EntityId entityId)
+        {
+        }
+
+        public void RemoveEntity(EntityId entityId)
+        {
+        }
     }
 }

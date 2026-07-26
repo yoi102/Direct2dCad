@@ -7,6 +7,7 @@
              xmlns:sys="clr-namespace:System;assembly=mscorlib"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views.Dialogs"
+             AutomationProperties.AutomationId="MessageDialog"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid Margin="16">
@@ -33,6 +34,7 @@
                     HorizontalAlignment="Center">
 
             <Button x:Name="OkButton"
+                    AutomationProperties.AutomationId="MessageDialogOkButton"
                     Content="{I18N {x:Static r:LangKeys.Ok}}"
                     IsDefault="True"
                     IsCancel="True"
@@ -42,6 +44,7 @@
 
             <!-- 取消按钮 -->
             <Button x:Name="CancelButton"
+                    AutomationProperties.AutomationId="MessageDialogCancelButton"
                     Content="{I18N {x:Static r:LangKeys.Cancel}}"
                     Visibility="Collapsed"
                     IsCancel="True"

@@ -1,3 +1,4 @@
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
@@ -57,13 +58,23 @@ public sealed class PropertyAndLayoutCommandTests
             opacity: 0.6);
         var command = new SetEntityOpacityCommand([image.Id, ole.Id], 0.25);
 
+        var execute = command.Execute(document);
+        Assert.Equal(0.25, image.Opacity);
+        Assert.Equal(0.25, ole.Opacity);
+        Assert.All(
+            execute.EntityChanges,
+            change => Assert.Equal(CadEntityChangeKind.Opacity, change.Kind));
+
+        var undo = command.Undo(document);
+        Assert.Equal(0.8, image.Opacity);
+        Assert.Equal(0.6, ole.Opacity);
+        Assert.All(
+            undo.EntityChanges,
+            change => Assert.Equal(CadEntityChangeKind.Opacity, change.Kind));
+
         command.Execute(document);
         Assert.Equal(0.25, image.Opacity);
         Assert.Equal(0.25, ole.Opacity);
-
-        command.Undo(document);
-        Assert.Equal(0.8, image.Opacity);
-        Assert.Equal(0.6, ole.Opacity);
     }
 
     [Fact]

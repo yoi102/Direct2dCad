@@ -1,4 +1,5 @@
 using Direct2dCad.Commands;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -80,5 +81,46 @@ public sealed class LayerAndBlockCommandTests
 
         Assert.Equal(CadColorSource.ByLayer, line.ColorSource);
         Assert.Null(line.GraphicStyleId);
+    }
+
+    [Fact]
+    public void SetBlockReferenceTransformCommand_ExecuteUndoAndRedoRestoreTransformAndBounds()
+    {
+        var document = CadDocument.Create("Block transform");
+        var blockId = document.CreateBlockDefinition("Definition", CadPointD.Origin);
+        var child = document.AddLine(CadPointD.Origin, new CadPointD(10, 5));
+        document.MoveEntityToBlock(child.Id, blockId);
+        var reference = document.AddBlockReference(blockId, new CadPointD(20, 30));
+        var originalBounds = reference.Bounds;
+        var command = new SetBlockReferenceTransformCommand(
+            reference.Id,
+            new CadPointD(100, 80),
+            rotationRadians: Math.PI / 4,
+            scaleX: -2,
+            scaleY: 3);
+        var expectedKinds = CadEntityChangeKind.Geometry | CadEntityChangeKind.Rotation;
+
+        var execute = command.Execute(document);
+
+        Assert.Equal(expectedKinds, Assert.Single(execute.EntityChanges).Kind);
+        Assert.Equal(new CadPointD(100, 80), reference.Position);
+        Assert.Equal(Math.PI / 4, reference.RotationRadians);
+        Assert.Equal(-2, reference.ScaleX);
+        Assert.Equal(3, reference.ScaleY);
+        Assert.NotEqual(originalBounds, reference.Bounds);
+
+        command.Undo(document);
+
+        Assert.Equal(new CadPointD(20, 30), reference.Position);
+        Assert.Equal(0, reference.RotationRadians);
+        Assert.Equal(1, reference.ScaleX);
+        Assert.Equal(1, reference.ScaleY);
+        Assert.True(originalBounds.NearEquals(reference.Bounds));
+
+        command.Execute(document);
+        Assert.Equal(new CadPointD(100, 80), reference.Position);
+        Assert.Equal(Math.PI / 4, reference.RotationRadians);
+        Assert.Equal(-2, reference.ScaleX);
+        Assert.Equal(3, reference.ScaleY);
     }
 }

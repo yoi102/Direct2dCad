@@ -423,6 +423,7 @@ SetOrigin
 | `Direct2dCad.HitTesting` | `Direct2dCad.Db` |
 | `Direct2dCad.Indexing` | `Direct2dCad.Db` |
 | `Direct2dCad.IO` | `Direct2dCad.Db` |
+| `Direct2dCad.Ole.Windows` | 无 |
 | `Direct2dCad.Rendering` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
 | `Direct2dCad.Rendering.Transient` | `Direct2dCad.Db` |
 | `Direct2dCad.Rendering.Handles` | `Direct2dCad.Db` |
@@ -434,6 +435,7 @@ SetOrigin
 | `Direct2dCad.ViewModels` | `Direct2dCad.CommandLine`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.wpf.Controls` | 无 |
 | `Direct2dCad.wpf` | `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.Benchmarks` | `Direct2dCad.Db`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |
 
 ## NuGet 依赖
 
@@ -442,6 +444,7 @@ SetOrigin
 | `Direct2dCad.Db` | `StronglyTypedId` |
 | `Direct2dCad.Editor` | `Microsoft.Extensions.DependencyInjection.Abstractions` |
 | `Direct2dCad.IO` | `MessagePack`, `Riok.Mapperly` |
+| `Direct2dCad.Ole.Windows` | `Vanara.PInvoke.Ole` |
 | `Direct2dCad.Lang` | `Antelcat.I18N.SourceGenerators` |
 | `Direct2dCad.Rendering.Direct2D` | `Vortice.Direct2D1`, `Vortice.Direct3D11`, `Vortice.Direct3D9` |
 | `Direct2dCad.ViewModels.Services` | `CommunityToolkit.Mvvm` |
@@ -453,4 +456,74 @@ SetOrigin
 ```powershell
 dotnet build .\Direct2dCad.slnx
 ```
+
+自动化测试：
+
+```powershell
+dotnet test .\Direct2dCad.slnx -m:1
+```
+
+## 性能基准
+
+`Direct2dCad.Benchmarks` 使用 BenchmarkDotNet，并按性能边界拆成以下几组：
+
+基准必须使用 `Release` 配置运行。在 Visual Studio 中启动前也要把解决方案配置切换为 `Release`；Debug 构建及其未优化的项目依赖会被 BenchmarkDotNet 拒绝，以免生成失真的性能结果。
+
+| 基准类 | 覆盖内容 |
+|---|---|
+| `SpatialIndexBenchmarks` | 20,000 / 100,000 实体的 BVH 构建、分配式查询、复用缓冲区查询、1% 实体更新后查询 |
+| `SelectionOverlayBenchmarks` | 1 / 512 / 20,000 个选中实体的 handle/outline 构建，以及复用缓冲区和新集合的差异 |
+| `Direct2DSelectionOverlayBenchmarks` | 512 / 20,000 个选中实体实际进入 Direct2D selection overlay 的缓存回放和大选择集 fallback |
+| `DirtyRegionBenchmarks` | 8 / 32 / 128 个脏矩形的批量规划和增量 Union |
+| `Direct2DRenderingBenchmarks` | line-only / mixed 文档、LOD 开关、完整帧、单/多脏区域、缓存恢复、GPU 资源冷重建、单帧及连续 16 帧 pan/zoom、缩放快照预览 |
+| `Direct2DResourceUpdateBenchmarks` | 单实体与 100 实体 geometry 变更时的 Direct2D 资源更新 |
+| `ComplexSceneRenderingBenchmarks` | 5,000 个文字、2,000 个 hatch、2,000 个 Block Reference（每个展开 12 个实体）以及 512 个图像的热帧、资源重建和首帧 |
+| `DocumentIoBenchmarks` | 生成文档或指定 `.d2cad` 的同步/异步读写、Section 读取、空间索引构建以及加载到 Direct2D 首帧的完整管线 |
+| `LayoutRenderingBenchmarks` | Layout 纸空间、模型 Viewport、激活/未激活 Viewport 的热帧、资源重建和首帧 |
+
+先列出所有基准：
+
+```powershell
+dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --list flat
+```
+
+快速 smoke 只验证基准能够初始化和完成，不应用于性能比较：
+
+```powershell
+dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --smoke --filter "*SpatialIndexBenchmarks*"
+```
+
+需要较快获得带预热和多次迭代的初步趋势时，可使用 BenchmarkDotNet 的 `ShortRun`；它比 smoke 可靠，但仍不替代完整基准：
+
+```powershell
+dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --job short --filter "*QueryVisibleArea*"
+```
+
+默认的 IO 基准使用可复现的 20,000 实体 mixed 文档。使用真实图纸时通过 `--document` 指定文件；该参数只作用于 `DocumentIoBenchmarks`：
+
+```powershell
+dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --document "C:\Drawings\large.d2cad" --filter "*DocumentIoBenchmarks*"
+```
+
+运行单组或完整基准：
+
+```powershell
+dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --filter "*Direct2DRenderingBenchmarks*"
+dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj
+```
+
+正式比较前应关闭调试器和其他高负载程序，并在相同机器、电源模式和构建版本下运行。同一工作区内不要并行启动多个基准进程，避免它们竞争 BenchmarkDotNet 的临时构建目录。报告同时输出 Mean、P95 和托管内存分配；CSV、HTML 和 GitHub Markdown 文件生成在 `BenchmarkDotNet.Artifacts/results`。
+
+历史结果可以使用 `scripts/benchmarks/Compare-BenchmarkResults.ps1` 比较。脚本按方法、Category 和参数匹配场景，超过阈值时返回非零退出码，可直接用于 CI：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\benchmarks\Compare-BenchmarkResults.ps1 `
+  -BaselineCsv .\benchmarks-baseline\SpatialIndex-report.csv `
+  -CurrentCsv .\BenchmarkDotNet.Artifacts\results\Direct2dCad.Benchmarks.SpatialIndexBenchmarks-report.csv `
+  -Metric P95 `
+  -MaxRegressionPercent 10 `
+  -FailOnMissing
+```
+
+首帧和 Direct2D 基准会创建真实 Windows 图形设备，应在具有稳定 GPU 驱动的 Windows x64 环境运行。OLE 的性能依赖外部 COM Server 和对象内容，不纳入默认基准；应针对固定 OLE 样本单独建立可选测试，避免默认基准因机器环境而失去可复现性。
 

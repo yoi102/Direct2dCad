@@ -20,7 +20,8 @@
         <StatusBar Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotHiddenInstance}}">
             <StatusBarItem>
 
-                <TextBlock Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CadCanvasToolMode}" />
+                <TextBlock AutomationProperties.AutomationId="CurrentToolModeText"
+                           Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CadCanvasToolMode}" />
             </StatusBarItem>
 
             <Separator />

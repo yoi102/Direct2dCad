@@ -9,6 +9,7 @@
                  xmlns:usersettings="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels"
                  d:DataContext="{d:DesignInstance Type=usersettings:UserSettingsViewModel}"
                  mc:Ignorable="d"
+                 AutomationProperties.AutomationId="UserSettingsDialog"
                  Title="{I18N {x:Static r:UserSettingsLangKeys.ApplicationSettings}}"
                  Background="{DynamicResource MaterialDesign.Brush.Background}"
                  TitleCharacterCasing="Normal"
@@ -36,20 +37,24 @@
 
             <Grid Grid.Row="2" Margin="0,14,0,0">
                 <Button MinWidth="88"
+                        AutomationProperties.AutomationId="ResetUserSettingsButton"
                         HorizontalAlignment="Left"
                         Click="Reset_Click"
                         Content="{I18N {x:Static r:UserSettingsLangKeys.Reset}}" />
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                     <Button MinWidth="88"
+                            AutomationProperties.AutomationId="ConfirmUserSettingsButton"
                             Margin="0,0,8,0"
                             Click="Ok_Click"
                             Content="{I18N {x:Static r:LangKeys.Ok}}"
                             IsDefault="True" />
                     <Button MinWidth="88"
+                            AutomationProperties.AutomationId="ApplyUserSettingsButton"
                             Margin="0,0,8,0"
                             Click="Apply_Click"
                             Content="{I18N {x:Static r:LangKeys.Apply}}" />
                     <Button MinWidth="88"
+                            AutomationProperties.AutomationId="CancelUserSettingsButton"
                             Click="Cancel_Click"
                             Content="{I18N {x:Static r:LangKeys.Cancel}}"
                             IsCancel="True" />

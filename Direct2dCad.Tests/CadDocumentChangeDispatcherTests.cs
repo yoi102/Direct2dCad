@@ -1,14 +1,17 @@
 using Direct2dCad.ChangeTracking;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.Rendering;
 
 namespace Direct2dCad.Tests;
 
 public sealed class CadDocumentChangeDispatcherTests
 {
     [Theory]
+    [InlineData(CadEntityChangeKind.Geometry)]
     [InlineData(CadEntityChangeKind.Appearance)]
     [InlineData(CadEntityChangeKind.Visibility)]
     [InlineData(CadEntityChangeKind.Layer)]
@@ -16,6 +19,7 @@ public sealed class CadDocumentChangeDispatcherTests
     [InlineData(CadEntityChangeKind.Fill)]
     [InlineData(CadEntityChangeKind.EmbeddedData)]
     [InlineData(CadEntityChangeKind.Opacity)]
+    [InlineData(CadEntityChangeKind.Rotation)]
     public void VisualBlockChildChange_AlsoInvalidatesItsReferences(
         CadEntityChangeKind changeKind)
     {
@@ -33,6 +37,8 @@ public sealed class CadDocumentChangeDispatcherTests
         var dispatcher = new CadDocumentChangeDispatcher(
             document,
             new DirtySet());
+        var resourceManager = new RecordingGeometryResourceManager();
+        dispatcher.RegisterGeometryResourceManager(resourceManager, rebuildExistingResources: false);
         CadDocumentChangeSet? published = null;
         dispatcher.DocumentChanged += (_, changes) => published = changes;
 
@@ -43,5 +49,32 @@ public sealed class CadDocumentChangeDispatcherTests
             published.EntityChanges,
             change => change.EntityId.Equals(reference.Id));
         Assert.True(referenceChange.Kind.HasFlag(CadEntityChangeKind.Geometry));
+        Assert.Same(published, resourceManager.LastChanges);
+        Assert.Contains(
+            resourceManager.LastChanges!.EntityChanges,
+            change => change.EntityId.Equals(reference.Id) &&
+                      change.Kind.HasFlag(CadEntityChangeKind.Geometry));
+    }
+
+    private sealed class RecordingGeometryResourceManager : ICadGeometryResourceManager
+    {
+        public CadDocumentChangeSet? LastChanges { get; private set; }
+
+        public void RebuildAll(CadDocument document)
+        {
+        }
+
+        public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
+        {
+            LastChanges = changes;
+        }
+
+        public void RebuildEntity(CadDocument document, EntityId entityId)
+        {
+        }
+
+        public void RemoveEntity(EntityId entityId)
+        {
+        }
     }
 }

@@ -9,6 +9,7 @@
              xmlns:vm_ep="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
              xmlns:v_ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty"
+             AutomationProperties.AutomationId="EntityPropertiesToolbox"
              d:DataContext="{d:DesignInstance Type=toolboxes:EntityPropertiesToolboxViewModel}"
              mc:Ignorable="d"
              d:DesignHeight="450"

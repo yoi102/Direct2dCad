@@ -1,4 +1,5 @@
 using Direct2dCad.Commands;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -86,21 +87,29 @@ public sealed class GeometryCommandCoverageTests
 
         var polyline = document.AddPolyline(originalPoints, isClosed: false);
         var polylineCommand = new SetPolylineGeometryCommand(polyline.Id, updatedPoints, closed: true);
-        polylineCommand.Execute(document);
+        var polylineExecute = polylineCommand.Execute(document);
+        Assert.Equal(CadEntityChangeKind.Geometry, Assert.Single(polylineExecute.EntityChanges).Kind);
         Assert.Equal(updatedPoints, polyline.Points);
         Assert.True(polyline.Closed);
         polylineCommand.Undo(document);
         Assert.Equal(originalPoints, polyline.Points);
         Assert.False(polyline.Closed);
+        polylineCommand.Execute(document);
+        Assert.Equal(updatedPoints, polyline.Points);
+        Assert.True(polyline.Closed);
 
         var spline = document.AddSpline(originalPoints, closed: false);
         var splineCommand = new SetSplineGeometryCommand(spline.Id, updatedPoints, closed: true);
-        splineCommand.Execute(document);
+        var splineExecute = splineCommand.Execute(document);
+        Assert.Equal(CadEntityChangeKind.Geometry, Assert.Single(splineExecute.EntityChanges).Kind);
         Assert.Equal(updatedPoints, spline.FitPoints);
         Assert.True(spline.Closed);
         splineCommand.Undo(document);
         Assert.Equal(originalPoints, spline.FitPoints);
         Assert.False(spline.Closed);
+        splineCommand.Execute(document);
+        Assert.Equal(updatedPoints, spline.FitPoints);
+        Assert.True(spline.Closed);
     }
 
     [Fact]

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Indexing\Direct2dCad.Indexing.csproj" />
+    <ProjectReference Include="..\Direct2dCad.IO\Direct2dCad.IO.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering\Direct2dCad.Rendering.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering.Direct2D\Direct2dCad.Rendering.Direct2D.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering.Handles\Direct2dCad.Rendering.Handles.csproj" />
+  </ItemGroup>
+
+</Project>

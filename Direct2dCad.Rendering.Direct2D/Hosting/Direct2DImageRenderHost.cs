@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Numerics;
+using SharpGen.Runtime;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -20,7 +21,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private const double DirtyRegionPassPenalty = 96.0;
     private const double InteractionPreviewMaxExposedAreaRatio = 0.55;
     private const int InteractionPreviewSeamOverlapPixels = 2;
-    private readonly ImageSourceDirect2DResource _target = new();
+    private readonly ImageSourceDirect2DResource _target;
     private readonly Direct2DSceneRender _renderer = new();
     private readonly Direct2DDirtyRegionPlanner _dirtyRegionPlanner = new();
     private readonly Direct2DFrameRateTracker _frameRateTracker = new();
@@ -43,6 +44,17 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private bool _baseSceneDirty = true;
     private bool _hasRenderedFrame;
     private bool _disposed;
+
+    public Direct2DImageRenderHost()
+        : this(endDrawOverride: null)
+    {
+    }
+
+    internal Direct2DImageRenderHost(
+        Func<ID2D1DeviceContext, Result>? endDrawOverride)
+    {
+        _target = new ImageSourceDirect2DResource(endDrawOverride);
+    }
 
     public ICadGeometryResourceManager GeometryResourceManager => this;
 

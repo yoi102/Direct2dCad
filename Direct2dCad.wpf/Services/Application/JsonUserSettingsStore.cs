@@ -15,10 +15,7 @@ internal sealed class JsonUserSettingsStore : IUserSettingsStore
     private readonly string _filePath;
 
     public JsonUserSettingsStore()
-        : this(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Direct2dCad",
-            "user-settings.json"))
+        : this(ApplicationSettingsPathResolver.Resolve("user-settings.json"))
     {
     }
 

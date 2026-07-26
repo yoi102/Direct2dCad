@@ -17,6 +17,7 @@
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:settings="clr-namespace:Direct2dCad.ViewModels.Settings;assembly=Direct2dCad.ViewModels"
                  d:DataContext="{d:DesignInstance Type=settings:DocumentSettingsViewModel}"
+                 AutomationProperties.AutomationId="DocumentSettingsDialog"
                  mc:Ignorable="d"
                  WindowStartupLocation="CenterOwner"
                  ShowInTaskbar="False">
@@ -41,20 +42,24 @@
 
         <Grid Grid.Row="2" Margin="0,14,0,0">
             <Button MinWidth="88"
+                    AutomationProperties.AutomationId="ResetDocumentSettingsButton"
                     HorizontalAlignment="Left"
                     Click="Reset_Click"
                     Content="{I18N {x:Static r:UserSettingsLangKeys.Reset}}" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button MinWidth="88"
+                        AutomationProperties.AutomationId="ConfirmDocumentSettingsButton"
                         Margin="0,0,8,0"
                         Click="Ok_Click"
                         Content="{I18N {x:Static r:LangKeys.Ok}}"
                         IsDefault="True" />
                 <Button MinWidth="88"
+                        AutomationProperties.AutomationId="ApplyDocumentSettingsButton"
                         Margin="0,0,8,0"
                         Click="Apply_Click"
                         Content="{I18N {x:Static r:LangKeys.Apply}}" />
                 <Button MinWidth="88"
+                        AutomationProperties.AutomationId="CancelDocumentSettingsButton"
                         Click="Cancel_Click"
                         Content="{I18N {x:Static r:LangKeys.Cancel}}"
                         IsCancel="True" />

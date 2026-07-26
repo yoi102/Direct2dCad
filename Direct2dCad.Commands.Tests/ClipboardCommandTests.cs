@@ -1,4 +1,5 @@
 using Direct2dCad.Commands.Clipboard;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -112,6 +113,125 @@ public sealed class ClipboardCommandTests
         Assert.Equal(referenceId, Assert.Single(command.CreatedEntityIds));
         Assert.True(target.Blocks.ContainsKey(importedBlockId));
         Assert.Equal(importedEntityIds, target.GetBlock(importedBlockId).EntityIds);
+    }
+
+    [Fact]
+    public void PasteMixedEntities_AcrossDocumentsPreservesIsolatedDataStylesAndRedoChanges()
+    {
+        var source = CadDocument.Create("Source");
+        var sourceLayerId = source.CreateLayer(
+            "Assets",
+            CadColor.FromRgb(20, 180, 90),
+            new CadLineWeight(0.5));
+        var fillStyleId = source.CreateSolidFillStyle(
+            "Asset fill",
+            CadColor.FromRgb(30, 90, 210));
+        var sourcePixels = Enumerable.Range(0, 16).Select(value => (byte)value).ToArray();
+        var sourceOleBytes = new byte[] { 1, 3, 5, 7, 9 };
+        var image = source.AddImage(
+            CadRectD.FromXYWH(0, 0, 4, 2),
+            2,
+            2,
+            8,
+            sourcePixels,
+            sourceLayerId,
+            contentType: "image/test",
+            sourceName: "source.img",
+            name: "Image1",
+            opacity: 0.4,
+            rotationRadians: 0.25);
+        var ole = source.AddOleObject(
+            CadRectD.FromXYWH(10, 5, 6, 3),
+            sourceOleBytes,
+            sourceLayerId,
+            contentType: "application/test",
+            sourceName: "source.ole",
+            name: "Ole1",
+            opacity: 0.6);
+        var polyline = source.AddPolyline(
+            [new CadPointD(20, 0), new CadPointD(25, 0), new CadPointD(23, 4)],
+            isClosed: true,
+            layerId: sourceLayerId,
+            fillStyleId: fillStyleId,
+            name: "Polyline1");
+        var spline = source.AddSpline(
+            [
+                new CadPointD(30, 0),
+                new CadPointD(35, 5),
+                new CadPointD(40, 0),
+                new CadPointD(35, -3)
+            ],
+            closed: true,
+            layerId: sourceLayerId,
+            fillStyleId: fillStyleId,
+            name: "Spline1");
+        var snapshot = Assert.IsType<CadClipboardSnapshot>(
+            CadClipboardSnapshotFactory.Create(
+                source,
+                [image.Id, ole.Id, polyline.Id, spline.Id]));
+
+        image.SetImageData(2, 2, 8, Enumerable.Repeat((byte)0xEE, 16).ToArray());
+        ole.SetOleData([0xFF], "application/changed", "changed.ole");
+
+        var target = CadDocument.Create("Target");
+        var delta = new CadVectorD(100, -50);
+        var command = new PasteEntitiesCommand(snapshot, delta);
+        var expectedKinds =
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Geometry |
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Visibility |
+            CadEntityChangeKind.Fill |
+            CadEntityChangeKind.Layer |
+            CadEntityChangeKind.DrawOrder |
+            CadEntityChangeKind.EmbeddedData |
+            CadEntityChangeKind.Opacity |
+            CadEntityChangeKind.Rotation;
+
+        var execute = command.Execute(target);
+        var createdIds = command.CreatedEntityIds.ToArray();
+        var pastedEntities = createdIds.Select(target.GetEntity).ToArray();
+        var pastedImage = Assert.Single(pastedEntities.OfType<CadImage>());
+        var pastedOle = Assert.Single(pastedEntities.OfType<CadOleObject>());
+        var pastedPolyline = Assert.Single(pastedEntities.OfType<CadPolyline>());
+        var pastedSpline = Assert.Single(pastedEntities.OfType<CadSpline>());
+        var importedLayer = Assert.Single(target.Layers.Values, layer => layer.Name == "Assets");
+
+        Assert.Equal(4, execute.EntityChanges.Count);
+        Assert.All(execute.EntityChanges, change => Assert.Equal(expectedKinds, change.Kind));
+        Assert.False(execute.AffectsDocumentStructure);
+        Assert.All(pastedEntities, entity => Assert.Equal(importedLayer.Id, entity.LayerId));
+        Assert.Equal(CadRectD.FromXYWH(100, -50, 4, 2), pastedImage.FrameBounds);
+        Assert.Equal(sourcePixels, pastedImage.CopyPixels());
+        Assert.Equal("image/test", pastedImage.ContentType);
+        Assert.Equal("source.img", pastedImage.SourceName);
+        Assert.Equal(0.4, pastedImage.Opacity);
+        Assert.Equal(0.25, pastedImage.RotationRadians);
+        Assert.Equal(CadRectD.FromXYWH(110, -45, 6, 3), pastedOle.Bounds);
+        Assert.Equal(sourceOleBytes, pastedOle.CopyOleBytes());
+        Assert.Equal("application/test", pastedOle.ContentType);
+        Assert.Equal("source.ole", pastedOle.SourceName);
+        Assert.Equal(0.6, pastedOle.Opacity);
+        Assert.NotNull(pastedPolyline.FillStyleId);
+        Assert.Equal(pastedPolyline.FillStyleId, pastedSpline.FillStyleId);
+
+        var undo = command.Undo(target);
+
+        Assert.All(pastedEntities, entity => Assert.True(entity.IsErased));
+        Assert.All(
+            undo.EntityChanges,
+            change => Assert.Equal(
+                CadEntityChangeKind.Deleted | CadEntityChangeKind.Visibility,
+                change.Kind));
+
+        var redo = command.Execute(target);
+
+        Assert.Equal(createdIds, command.CreatedEntityIds);
+        Assert.All(pastedEntities, entity => Assert.False(entity.IsErased));
+        Assert.Equal(4, redo.EntityChanges.Count);
+        Assert.All(redo.EntityChanges, change => Assert.Equal(expectedKinds, change.Kind));
+        Assert.Equal(sourcePixels, pastedImage.CopyPixels());
+        Assert.Equal(sourceOleBytes, pastedOle.CopyOleBytes());
     }
 
     private static BlockId CreateLineBlock(CadDocument document, string name)

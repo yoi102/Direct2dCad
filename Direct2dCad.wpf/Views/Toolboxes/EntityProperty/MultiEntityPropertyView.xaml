@@ -19,7 +19,8 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="10,8">
-            <TextBlock FontSize="15"
+            <TextBlock AutomationProperties.AutomationId="MultiEntitySelectionCount"
+                       FontSize="15"
                        FontWeight="SemiBold"
                        Text="{Binding SelectionCountText}" />
             <TextBlock Margin="0,3,0,10"
@@ -55,7 +56,8 @@
                                        Opacity="0.7"
                                        Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
                                        Visibility="{Binding HasMixedLayer, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <ComboBox DisplayMemberPath="Name"
+                            <ComboBox AutomationProperties.AutomationId="MultiEntityLayerSelector"
+                                      DisplayMemberPath="Name"
                                       ItemsSource="{Binding LayerOptions}"
                                       SelectedItem="{Binding SelectedLayerOption, Mode=TwoWay}" />
                         </StackPanel>

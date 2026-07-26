@@ -10,6 +10,7 @@
              xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+             AutomationProperties.AutomationId="LayersToolbox"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=toolboxes:LayersToolboxViewModel}"
              d:DesignHeight="450"
@@ -31,7 +32,8 @@
 
             <StackPanel DockPanel.Dock="Right"
                         Orientation="Horizontal">
-                <Button Width="26"
+                <Button AutomationProperties.AutomationId="AddLayerButton"
+                        Width="26"
                         Height="26"
                         Padding="0"
                         Command="{Binding AddLayerCommand}"
@@ -64,7 +66,8 @@
             </StackPanel>
         </DockPanel>
 
-        <ListBox Grid.Row="1"
+        <ListBox AutomationProperties.AutomationId="LayersList"
+                 Grid.Row="1"
                  ItemsSource="{Binding Layers}"
                  SelectedItem="{Binding SelectedLayer, Mode=TwoWay}"
                  Background="Transparent"
@@ -150,7 +153,8 @@
                                             Grid.Column="3"
                                             Orientation="Horizontal"
                                             HorizontalAlignment="Right">
-                                    <ToggleButton Style="{StaticResource MaterialDesignActionSecondaryToggleButton}"
+                                    <ToggleButton AutomationProperties.AutomationId="LayerVisibilityToggle"
+                                                  Style="{StaticResource MaterialDesignActionSecondaryToggleButton}"
                                                   Content="{md:PackIcon Kind=EyeOff}"
                                                   md:ToggleButtonAssist.OnContent="{md:PackIcon Kind=Eye}"
                                                   Background="Transparent"
@@ -158,7 +162,8 @@
                                                   IsChecked="{Binding IsVisible, Mode=TwoWay}"
                                                   ToolTip="{I18N {x:Static r:LangKeys.Visible}}"
                                                   VerticalAlignment="Center" />
-                                    <ToggleButton Style="{StaticResource MaterialDesignActionSecondaryToggleButton}"
+                                    <ToggleButton AutomationProperties.AutomationId="LayerLockToggle"
+                                                  Style="{StaticResource MaterialDesignActionSecondaryToggleButton}"
                                                   Content="{md:PackIcon Kind=Unlocked}"
                                                   Background="Transparent"
                                                   Foreground="{DynamicResource MahApps.Brushes.Text}"
@@ -167,7 +172,8 @@
                                                   ToolTip="{I18N {x:Static r:LangKeys.Locked}}"
                                                   Margin="4,0,0,0"
                                                   VerticalAlignment="Center" />
-                                    <ToggleButton Style="{StaticResource MaterialDesignActionSecondaryToggleButton}"
+                                    <ToggleButton AutomationProperties.AutomationId="LayerFreezeToggle"
+                                                  Style="{StaticResource MaterialDesignActionSecondaryToggleButton}"
                                                   Content="{md:PackIcon Kind=SnowflakeOff}"
                                                   Background="Transparent"
                                                   Foreground="{DynamicResource MahApps.Brushes.Text}"

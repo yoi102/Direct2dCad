@@ -56,6 +56,116 @@ public sealed class AdditionalEntityHitTests
     }
 
     [Fact]
+    public void EllipseArcEdge_HitsOnlyPointsInsideSweep()
+    {
+        var document = CadDocument.Create("Test");
+        var arc = document.AddEllipseArc(
+            CadPointD.Origin,
+            radiusX: 10,
+            radiusY: 4,
+            startAngleRadians: 0,
+            sweepAngleRadians: Math.PI / 2);
+
+        Assert.True(CadEntityHitTester.HitTestEdge(
+            document,
+            arc,
+            new CadPointD(0, 4),
+            0.01,
+            out _));
+        Assert.False(CadEntityHitTester.HitTestEdge(
+            document,
+            arc,
+            new CadPointD(-10, 0),
+            0.01,
+            out _));
+    }
+
+    [Fact]
+    public void RoundedRectangle_UsesRoundedEdgeAndFillStyle()
+    {
+        var document = CadDocument.Create("Test");
+        var fillStyleId = document.CreateSolidFillStyle("Solid", CadColor.Green);
+        var rectangle = document.AddRectangle(
+            CadRectD.FromXYWH(0, 0, 20, 10),
+            cornerRadiusX: 3,
+            cornerRadiusY: 3,
+            fillStyleId: fillStyleId);
+
+        Assert.True(CadEntityHitTester.HitTestEdge(
+            document,
+            rectangle,
+            new CadPointD(10, 10),
+            0.01,
+            out _));
+        Assert.False(CadEntityHitTester.HitTestEdge(
+            document,
+            rectangle,
+            new CadPointD(0, 0),
+            0.01,
+            out _));
+        Assert.True(CadEntityHitTester.HitTestFill(
+            document,
+            rectangle,
+            new CadPointD(10, 5),
+            out _));
+        Assert.False(CadEntityHitTester.HitTestFill(
+            document,
+            rectangle,
+            new CadPointD(0, 0),
+            out _));
+    }
+
+    [Fact]
+    public void SplineEdge_UsesFlattenedCurveInsteadOfFitPointBounds()
+    {
+        var document = CadDocument.Create("Test");
+        var spline = document.AddSpline(
+        [
+            new CadPointD(0, 0),
+            new CadPointD(6, 8),
+            new CadPointD(12, 0)
+        ]);
+        var curvePoint = spline.EnumerateFlattenedPoints(24).Skip(12).First();
+
+        Assert.True(CadEntityHitTester.HitTestEdge(
+            document,
+            spline,
+            curvePoint,
+            0.01,
+            out _));
+        Assert.False(CadEntityHitTester.HitTestEdge(
+            document,
+            spline,
+            new CadPointD(6, -5),
+            0.1,
+            out _));
+    }
+
+    [Fact]
+    public void ShapeTextEdge_HitsGeneratedStrokeOnly()
+    {
+        var document = CadDocument.Create("Test");
+        var shapeText = document.AddShapeText("A", CadPointD.Origin, 10);
+        var segment = shapeText.CreateStrokeSegments()[0];
+        var midpoint = new CadPointD(
+            (segment.Start.X + segment.End.X) * 0.5,
+            (segment.Start.Y + segment.End.Y) * 0.5);
+
+        Assert.True(CadEntityHitTester.HitTestEdge(
+            document,
+            shapeText,
+            midpoint,
+            0.01,
+            out _));
+        Assert.False(CadEntityHitTester.HitTestEdge(
+            document,
+            shapeText,
+            new CadPointD(shapeText.Bounds.MaxX + 5, shapeText.Bounds.MaxY + 5),
+            0.1,
+            out _));
+    }
+
+    [Fact]
     public void ClosedPolylineFill_HitsInteriorOnlyWhenFillStyleExists()
     {
         var document = CadDocument.Create("Test");

@@ -184,7 +184,7 @@ public sealed class CadHandleSceneBuilder
 
     public static bool SupportsCenterGrip(CadEntity entity)
     {
-        return entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or CadPolyline or CadSpline or CadText or CadShapeText or CadImage or CadOleObject or CadBlockReference;
+        return CadEntityCapabilities.SupportsGripHandles(entity);
     }
 
     public IReadOnlyList<CadHandleItem> BuildBlockReferenceGripHandles(

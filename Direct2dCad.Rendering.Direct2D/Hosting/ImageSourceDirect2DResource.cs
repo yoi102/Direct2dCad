@@ -22,6 +22,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     private readonly List<IntRect> _presentDirtyRects = new(8);
     private readonly CadScreenRect[] _singleDirtyRect = new CadScreenRect[1];
     private readonly Action _presentBackBuffer;
+    private readonly Func<ID2D1DeviceContext, Result>? _endDrawOverride;
     private ID2D1Factory1? _d2dFactory;
     private ID2D1Device? _d2dDevice;
     private ID2D1DeviceContext? _d2dContext;
@@ -100,8 +101,10 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     public bool HasBaseSceneSnapshot => _baseSceneTexture is not null;
 
-    public ImageSourceDirect2DResource()
+    public ImageSourceDirect2DResource(
+        Func<ID2D1DeviceContext, Result>? endDrawOverride = null)
     {
+        _endDrawOverride = endDrawOverride;
         _presentBackBuffer = PresentBackBuffer;
         CreateD2DFactory();
         CreateD3D11Device();
@@ -195,14 +198,16 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         try
         {
-            var result = _d2dContext.EndDraw();
+            var result = _endDrawOverride is null
+                ? _d2dContext.EndDraw()
+                : _endDrawOverride(_d2dContext);
             _isDrawing = false;
 
             if (result.Failure)
             {
-                if (IsRecoverableEndDrawFailure(result))
+                if (Direct2DDeviceFailureClassifier.IsRecoverable(result))
                 {
-                    RecreateDeviceResources();
+                    RecoverFromDeviceLoss();
                     throw new Direct2DDeviceResourcesRecreatedException(result);
                 }
 
@@ -801,8 +806,10 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         return resource.SharedHandle;
     }
 
-    private void RecreateDeviceResources()
+    internal void RecoverFromDeviceLoss()
     {
+        ThrowIfDisposed();
+
         if (_imageSource is null)
             return;
 
@@ -840,16 +847,6 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         _d2dContext.Target = _targetBitmap;
         _imageSource.SetSurface(_sharedSurface9.NativePointer);
         _imageSource.Invalidate();
-    }
-
-    private static bool IsRecoverableEndDrawFailure(Result result)
-    {
-        return result == Vortice.Direct2D1.ResultCode.RecreateTarget ||
-               result == Vortice.DXGI.ResultCode.DeviceRemoved ||
-               result == Vortice.DXGI.ResultCode.DeviceReset ||
-               result == Vortice.DXGI.ResultCode.DeviceHung ||
-               result == Vortice.DXGI.ResultCode.DriverInternalError ||
-               result == Vortice.DXGI.ResultCode.AccessLost;
     }
 
     private void ReleaseImageTarget()

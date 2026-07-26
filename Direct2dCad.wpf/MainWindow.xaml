@@ -27,6 +27,7 @@
                  TitleCharacterCasing="Normal"
                  ShowIconOnTitleBar="True"
                  Title="{I18N {x:Static r:LangKeys.Direct2dCad}}"
+                 AutomationProperties.AutomationId="Direct2dCad.MainWindow"
                  WindowStartupLocation="CenterScreen"
                  Height="900"
                  Width="1300">
@@ -171,6 +172,8 @@
                                     <Setter Property="Title"
                                             Value="{Binding Model.Title}" />
                                     <Setter Property="ContentId"
+                                            Value="{Binding Model.ContentId}" />
+                                    <Setter Property="AutomationProperties.AutomationId"
                                             Value="{Binding Model.ContentId}" />
                                     <Setter Property="ClipToBounds"
                                             Value="True" />

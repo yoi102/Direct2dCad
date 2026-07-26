@@ -17,10 +17,7 @@ internal sealed class JsonToolboxLayoutSettingsStore : IToolboxLayoutSettingsSto
     private CadToolboxLayoutSettings? _settings;
 
     public JsonToolboxLayoutSettingsStore()
-        : this(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Direct2dCad",
-            "toolbox-settings.json"))
+        : this(ApplicationSettingsPathResolver.Resolve("toolbox-settings.json"))
     {
     }
 

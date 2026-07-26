@@ -10,6 +10,18 @@ namespace Direct2dCad.Commands;
 
 public sealed class PasteEntitiesCommand : ICadCommand
 {
+    private const CadEntityChangeKind CreatedEntityChangeKinds =
+        CadEntityChangeKind.Created |
+        CadEntityChangeKind.Geometry |
+        CadEntityChangeKind.Appearance |
+        CadEntityChangeKind.Visibility |
+        CadEntityChangeKind.Fill |
+        CadEntityChangeKind.Layer |
+        CadEntityChangeKind.DrawOrder |
+        CadEntityChangeKind.EmbeddedData |
+        CadEntityChangeKind.Opacity |
+        CadEntityChangeKind.Rotation;
+
     private readonly CadClipboardSnapshot _snapshot;
     private readonly CadVectorD _delta;
     private readonly LayerId? _targetLayerId;
@@ -64,7 +76,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
 
             return CreateChangeSet(
                 restoredIds.Concat(GetCreatedBlockEntityIds(document)),
-                CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance | CadEntityChangeKind.Visibility,
+                CreatedEntityChangeKinds,
                 _createdBlockIds.Count > 0);
         }
 
@@ -90,8 +102,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
 
         return CreateChangeSet(
             _createdEntityIds.Concat(GetCreatedBlockEntityIds(document)),
-            CadEntityChangeKind.Created | CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance |
-            CadEntityChangeKind.Fill | CadEntityChangeKind.Layer | CadEntityChangeKind.DrawOrder,
+            CreatedEntityChangeKinds,
             _createdBlockIds.Count > 0);
     }
 

@@ -17,10 +17,7 @@ internal sealed class JsonWorkspaceSettingsStore : IWorkspaceSettingsStore
     private CadWorkspaceSettings? _settings;
 
     public JsonWorkspaceSettingsStore()
-        : this(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "Direct2dCad",
-            "workspace-settings.json"))
+        : this(ApplicationSettingsPathResolver.Resolve("workspace-settings.json"))
     {
     }
 

@@ -147,6 +147,71 @@ public sealed class CadDocumentInvalidationTrackerTests
     }
 
     [Fact]
+    public void MovingRotatedImage_InvalidatesOldAndNewFrameBounds()
+    {
+        var document = CadDocument.Create("Image dirty regions");
+        var image = document.AddImage(
+            CadRectD.FromXYWH(100, 100, 80, 40),
+            1,
+            1,
+            4,
+            [0x20, 0x80, 0xE0, 0xFF],
+            rotationRadians: Math.PI / 4);
+        var viewport = CreateViewport();
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, viewport);
+        tracker.Reset(document, calculator);
+
+        image.SetBounds(CadRectD.FromXYWH(700, 700, 120, 60));
+        image.SetRotation(Math.PI / 6);
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.ForEntity(
+                image.Id,
+                CadEntityChangeKind.Geometry | CadEntityChangeKind.Rotation),
+            calculator);
+
+        Assert.False(invalidation.IsFull);
+        Assert.Equal(2, invalidation.DirtyScreenRects.Count);
+        Assert.Contains(
+            invalidation.DirtyScreenRects,
+            rect => rect.X < 250 && rect.Y > 800);
+        Assert.Contains(
+            invalidation.DirtyScreenRects,
+            rect => rect.X > 600 && rect.Y < 400);
+    }
+
+    [Fact]
+    public void MovingOleObject_InvalidatesOldAndNewBounds()
+    {
+        var document = CadDocument.Create("OLE dirty regions");
+        var ole = document.AddOleObject(
+            CadRectD.FromXYWH(100, 100, 80, 40),
+            [1, 2, 3, 4]);
+        var viewport = CreateViewport();
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, viewport);
+        tracker.Reset(document, calculator);
+
+        ole.SetBounds(CadRectD.FromXYWH(700, 700, 120, 60));
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.ForEntity(
+                ole.Id,
+                CadEntityChangeKind.Geometry),
+            calculator);
+
+        Assert.False(invalidation.IsFull);
+        Assert.Equal(2, invalidation.DirtyScreenRects.Count);
+        Assert.Contains(
+            invalidation.DirtyScreenRects,
+            rect => rect.X < 250 && rect.Y > 800);
+        Assert.Contains(
+            invalidation.DirtyScreenRects,
+            rect => rect.X > 600 && rect.Y < 400);
+    }
+
+    [Fact]
     public void LayoutStructureChange_RequiresFullRender()
     {
         var document = CadDocument.Create("Dirty regions");

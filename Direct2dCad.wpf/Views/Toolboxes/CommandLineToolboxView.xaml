@@ -6,6 +6,7 @@
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
              d:DataContext="{d:DesignInstance Type=toolboxes:CommandLineToolboxViewModel}"
+             AutomationProperties.AutomationId="CommandLineToolbox"
              d:DesignHeight="240"
              d:DesignWidth="900"
              mc:Ignorable="d">
@@ -16,6 +17,7 @@
         </Grid.RowDefinitions>
 
         <ListBox x:Name="OutputList"
+                 AutomationProperties.AutomationId="CommandLineOutput"
                  Margin="6,4,6,0"
                  Padding="0"
                  HorizontalContentAlignment="Stretch"
@@ -122,6 +124,7 @@
                            Foreground="{DynamicResource MahApps.Brushes.Accent}"
                            Text=">" />
                 <TextBox x:Name="CommandInput"
+                         AutomationProperties.AutomationId="CommandLineInput"
                          Grid.Column="1"
                          Padding="0"
                          VerticalContentAlignment="Center"

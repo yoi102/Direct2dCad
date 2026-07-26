@@ -8,6 +8,7 @@ namespace Direct2dCad.IO;
 
 public sealed class CadDocumentStorage
 {
+    private const int MaxSectionCount = 4096;
     private static readonly MessagePackSerializerOptions Lz4Options =
         MessagePackSerializerOptions.Standard
             .WithCompression(MessagePackCompression.Lz4BlockArray);
@@ -18,6 +19,7 @@ public sealed class CadDocumentStorage
     public void Save(CadDocument document, string filePath)
     {
         ArgumentNullException.ThrowIfNull(document);
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
         var sections = CreateSections(document);
         var tableOffset = CadContainerFormat.FileHeaderLength;
@@ -37,24 +39,43 @@ public sealed class CadDocumentStorage
             payloadOffset += section.Payload.Length;
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
+        var destinationPath = PrepareDestinationPath(filePath);
+        var temporaryPath = CreateTemporaryPath(destinationPath);
+        try
+        {
+            using (var stream = new FileStream(
+                       temporaryPath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None,
+                       bufferSize: 64 * 1024,
+                       FileOptions.SequentialScan))
+            using (var writer = new BinaryWriter(stream))
+            {
+                CadContainerFormat.WriteHeader(
+                    writer,
+                    new CadFileHeader(
+                        CadContainerFormat.CurrentContainerVersion,
+                        entries.Count,
+                        tableOffset,
+                        tableLength));
 
-        using var stream = File.Create(filePath);
-        using var writer = new BinaryWriter(stream);
+                foreach (var entry in entries)
+                    CadContainerFormat.WriteSectionEntry(writer, entry);
 
-        CadContainerFormat.WriteHeader(
-            writer,
-            new CadFileHeader(
-                CadContainerFormat.CurrentContainerVersion,
-                entries.Count,
-                tableOffset,
-                tableLength));
+                foreach (var section in sections)
+                    writer.Write(section.Payload);
 
-        foreach (var entry in entries)
-            CadContainerFormat.WriteSectionEntry(writer, entry);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
 
-        foreach (var section in sections)
-            writer.Write(section.Payload);
+            CommitTemporaryFile(temporaryPath, destinationPath);
+        }
+        finally
+        {
+            DeleteTemporaryFile(temporaryPath);
+        }
     }
 
     public async Task SaveAsync(
@@ -64,6 +85,7 @@ public sealed class CadDocumentStorage
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var sections = await Task.Run(() => CreateSections(document), cancellationToken).ConfigureAwait(false);
         var tableOffset = CadContainerFormat.FileHeaderLength;
@@ -98,18 +120,31 @@ public sealed class CadDocumentStorage
             headerAndTable = buffer.ToArray();
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(filePath))!);
-        await using var stream = new FileStream(
-            filePath,
-            FileMode.Create,
-            FileAccess.Write,
-            FileShare.None,
-            bufferSize: 64 * 1024,
-            FileOptions.Asynchronous | FileOptions.SequentialScan);
-        await stream.WriteAsync(headerAndTable, cancellationToken).ConfigureAwait(false);
-        foreach (var section in sections)
-            await stream.WriteAsync(section.Payload, cancellationToken).ConfigureAwait(false);
-        await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+        var destinationPath = PrepareDestinationPath(filePath);
+        var temporaryPath = CreateTemporaryPath(destinationPath);
+        try
+        {
+            await using (var stream = new FileStream(
+                             temporaryPath,
+                             FileMode.CreateNew,
+                             FileAccess.Write,
+                             FileShare.None,
+                             bufferSize: 64 * 1024,
+                             FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                await stream.WriteAsync(headerAndTable, cancellationToken).ConfigureAwait(false);
+                foreach (var section in sections)
+                    await stream.WriteAsync(section.Payload, cancellationToken).ConfigureAwait(false);
+                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            CommitTemporaryFile(temporaryPath, destinationPath);
+        }
+        finally
+        {
+            DeleteTemporaryFile(temporaryPath);
+        }
     }
 
     public CadDocument Load(string filePath)
@@ -145,6 +180,7 @@ public sealed class CadDocumentStorage
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        cancellationToken.ThrowIfCancellationRequested();
 
         await using var stream = new FileStream(
             filePath,
@@ -212,8 +248,11 @@ public sealed class CadDocumentStorage
         if (entry.Kind != kind)
             throw new InvalidDataException($"Section not found: {kind}");
 
+        ValidateSectionEntry(entry, stream.Length);
         stream.Position = entry.PayloadOffset;
         var payload = reader.ReadBytes(entry.PayloadLength);
+        if (payload.Length != entry.PayloadLength)
+            throw new EndOfStreamException($"Unexpected end of section: {entry.Kind}");
         return CadSectionMigrationRegistry.ReadCurrent<TSection>(
             entry.Kind,
             entry.Version,
@@ -229,8 +268,9 @@ public sealed class CadDocumentStorage
     private static IReadOnlyList<CadSectionEntry> ReadSectionTable(BinaryReader reader)
     {
         var header = CadContainerFormat.ReadHeader(reader);
-        if (header.ContainerVersion != CadContainerFormat.CurrentContainerVersion)
-            throw new NotSupportedException($"Unsupported .d2cad container version: {header.ContainerVersion}");
+        ValidateHeader(header);
+        if (header.SectionTableOffset > reader.BaseStream.Length - header.SectionTableLength)
+            throw new InvalidDataException("Section table extends beyond the end of the file.");
 
         reader.BaseStream.Position = header.SectionTableOffset;
 
@@ -329,6 +369,7 @@ public sealed class CadDocumentStorage
         if (header.ContainerVersion != CadContainerFormat.CurrentContainerVersion)
             throw new NotSupportedException($"Unsupported .d2cad container version: {header.ContainerVersion}");
         if (header.SectionCount < 0 ||
+            header.SectionCount > MaxSectionCount ||
             header.SectionCount > int.MaxValue / CadContainerFormat.SectionEntryLength ||
             header.SectionTableOffset < CadContainerFormat.FileHeaderLength ||
             header.SectionTableLength != header.SectionCount * CadContainerFormat.SectionEntryLength)
@@ -387,8 +428,11 @@ public sealed class CadDocumentStorage
         if (entry.Kind != kind)
             return fallback;
 
+        ValidateSectionEntry(entry, stream.Length);
         stream.Position = entry.PayloadOffset;
         var payload = reader.ReadBytes(entry.PayloadLength);
+        if (payload.Length != entry.PayloadLength)
+            throw new EndOfStreamException($"Unexpected end of section: {entry.Kind}");
         return CadSectionMigrationRegistry.ReadCurrent<TSection>(
             entry.Kind,
             entry.Version,
@@ -412,6 +456,35 @@ public sealed class CadDocumentStorage
             CadCompressionKind.MessagePackLz4BlockArray => Lz4Options,
             _ => throw new NotSupportedException($"Unsupported compression: {compression}")
         };
+    }
+
+    private static string PrepareDestinationPath(string filePath)
+    {
+        var destinationPath = Path.GetFullPath(filePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+        return destinationPath;
+    }
+
+    private static string CreateTemporaryPath(string destinationPath)
+    {
+        var directory = Path.GetDirectoryName(destinationPath)!;
+        var fileName = Path.GetFileName(destinationPath);
+        return Path.Combine(directory, $".{fileName}.{Guid.NewGuid():N}.tmp");
+    }
+
+    private static void CommitTemporaryFile(string temporaryPath, string destinationPath) =>
+        File.Move(temporaryPath, destinationPath, overwrite: true);
+
+    private static void DeleteTemporaryFile(string temporaryPath)
+    {
+        try
+        {
+            File.Delete(temporaryPath);
+        }
+        catch
+        {
+            // A failed save must not hide its original exception because cleanup also failed.
+        }
     }
 
     private sealed record SerializedSection(

@@ -78,6 +78,64 @@ internal static class DrawableOleObjectFactory
         }
     }
 
+    internal static DrawableOleObject CreateFromFile(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException("The OLE source file does not exist.", filePath);
+
+        CreateILockBytesOnHGlobal(IntPtr.Zero, true, out var lockBytes)
+            .ThrowIfFailed("CreateILockBytesOnHGlobal failed.");
+
+        OleStorage? storage = null;
+        object? oleObject = null;
+        try
+        {
+            StgCreateDocfileOnILockBytes(
+                lockBytes,
+                STGM.STGM_CREATE | STGM.STGM_READWRITE | STGM.STGM_SHARE_EXCLUSIVE | STGM.STGM_TRANSACTED,
+                0,
+                out storage).ThrowIfFailed("StgCreateDocfileOnILockBytes failed.");
+
+            var classId = Guid.Empty;
+            var iid = IidIUnknown;
+            var format = new FORMATETC
+            {
+                cfFormat = 0,
+                ptd = IntPtr.Zero,
+                dwAspect = DVASPECT.DVASPECT_CONTENT,
+                lindex = -1,
+                tymed = TYMED.TYMED_NULL
+            };
+            OleCreateFromFile(
+                in classId,
+                filePath,
+                in iid,
+                OLERENDER.OLERENDER_DRAW,
+                in format,
+                new OleClientSiteBridge(null),
+                storage,
+                out oleObject).ThrowIfFailed("OleCreateFromFile failed.");
+
+            storage.Commit(STGC.STGC_DEFAULT);
+            return new DrawableOleObject(
+                oleObject,
+                DVASPECT.DVASPECT_CONTENT,
+                storage,
+                lockBytes)
+            {
+                Name = Path.GetFileName(filePath)
+            };
+        }
+        catch
+        {
+            HGlobalHelper.ReleaseComObjectSafe(oleObject);
+            HGlobalHelper.ReleaseComObjectSafe(storage);
+            HGlobalHelper.ReleaseComObjectSafe(lockBytes);
+            throw;
+        }
+    }
+
     public static DrawableOleObject CreateFromBytes(byte[] bytes)
     {
         ArgumentNullException.ThrowIfNull(bytes);
