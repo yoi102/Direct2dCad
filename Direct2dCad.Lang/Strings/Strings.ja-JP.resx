@@ -1143,4 +1143,88 @@
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>LOD 最適化を有効にする</value>
   </data>
+  <data name="AiAssistant" xml:space="preserve">
+    <value>AI アシスタント</value>
+  </data>
+  <data name="AiAssistantWelcome" xml:space="preserve">
+    <value>LM Studio に接続してモデルを選択すると、現在の図面を確認・編集できます。</value>
+  </data>
+  <data name="LmStudioConnection" xml:space="preserve">
+    <value>LM Studio 接続</value>
+  </data>
+  <data name="Endpoint" xml:space="preserve">
+    <value>エンドポイント</value>
+  </data>
+  <data name="Temperature" xml:space="preserve">
+    <value>Temperature</value>
+  </data>
+  <data name="RefreshModels" xml:space="preserve">
+    <value>モデルを更新</value>
+  </data>
+  <data name="EnableCadAiTools" xml:space="preserve">
+    <value>AI に CAD 編集ツールの使用を許可する</value>
+  </data>
+  <data name="ClearConversation" xml:space="preserve">
+    <value>会話をクリア</value>
+  </data>
+  <data name="AiPromptHint" xml:space="preserve">
+    <value>現在の図面について質問または編集</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>送信</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>停止</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>エラー</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>状態</value>
+  </data>
+  <data name="AiDisconnected" xml:space="preserve">
+    <value>未接続</value>
+  </data>
+  <data name="AiConnecting" xml:space="preserve">
+    <value>接続中...</value>
+  </data>
+  <data name="AiNoModels" xml:space="preserve">
+    <value>接続済みですが、モデルが読み込まれていません</value>
+  </data>
+  <data name="AiConnectedModelCountFormat" xml:space="preserve">
+    <value>接続済み: {0} モデル</value>
+  </data>
+  <data name="AiCancelled" xml:space="preserve">
+    <value>キャンセルしました</value>
+  </data>
+  <data name="AiConnectionFailed" xml:space="preserve">
+    <value>接続に失敗しました</value>
+  </data>
+  <data name="AiActiveDocumentFormat" xml:space="preserve">
+    <value>現在のドキュメント: {0}</value>
+  </data>
+  <data name="AiGenerating" xml:space="preserve">
+    <value>生成中...</value>
+  </data>
+  <data name="AiEmptyResponse" xml:space="preserve">
+    <value>モデルから空の応答が返されました。</value>
+  </data>
+  <data name="AiReadyModelFormat" xml:space="preserve">
+    <value>準備完了: {0}</value>
+  </data>
+  <data name="AiRequestFailed" xml:space="preserve">
+    <value>リクエストに失敗しました</value>
+  </data>
+  <data name="AiConversationCleared" xml:space="preserve">
+    <value>会話をクリアしました。</value>
+  </data>
+  <data name="AiYou" xml:space="preserve">
+    <value>あなた</value>
+  </data>
+  <data name="AiAssistantShort" xml:space="preserve">
+    <value>AI</value>
+  </data>
+  <data name="AiCadTool" xml:space="preserve">
+    <value>CAD ツール</value>
+  </data>
 </root>

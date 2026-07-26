@@ -57,6 +57,7 @@ public partial class MainViewModel : ObservableObject
         EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
         SelectionFilter = _dockLayoutService.GetAnchorable<SelectionFilterToolboxViewModel>() ?? throw new ArgumentNullException(nameof(SelectionFilterToolboxViewModel));
         CommandLine = _dockLayoutService.GetAnchorable<CommandLineToolboxViewModel>() ?? throw new ArgumentNullException(nameof(CommandLineToolboxViewModel));
+        AiAssistant = _dockLayoutService.GetAnchorable<AiAssistantToolboxViewModel>() ?? throw new ArgumentNullException(nameof(AiAssistantToolboxViewModel));
 
         IsDarkTheme = _userSettings.General.IsDarkTheme;
         _themeSettingService.ApplyTheme(
@@ -83,6 +84,7 @@ public partial class MainViewModel : ObservableObject
     public EntitySearchToolboxViewModel EntitySearch { get; }
     public SelectionFilterToolboxViewModel SelectionFilter { get; }
     public CommandLineToolboxViewModel CommandLine { get; }
+    public AiAssistantToolboxViewModel AiAssistant { get; }
 
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
@@ -96,6 +98,7 @@ public partial class MainViewModel : ObservableObject
         EntitySearch.Attach(value?.CadDocumentViewModel);
         SelectionFilter.Attach(value?.CadDocumentViewModel);
         CommandLine.Attach(value?.CadDocumentViewModel);
+        AiAssistant.Attach(value?.CadDocumentViewModel);
     }
 
     [ObservableProperty]

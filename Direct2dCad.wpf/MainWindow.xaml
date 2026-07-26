@@ -143,6 +143,9 @@
                         <DataTemplate DataType="{x:Type vm_tb:CommandLineToolboxViewModel}">
                             <v_tb:CommandLineToolboxView />
                         </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm_tb:AiAssistantToolboxViewModel}">
+                            <v_tb:AiAssistantToolboxView />
+                        </DataTemplate>
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm:EditorTabViewModel}">
                             <views:EditorTabView />

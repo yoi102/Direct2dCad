@@ -106,6 +106,168 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Active document: {0} 的本地化字符串。
+        /// </summary>
+        public static string AiActiveDocumentFormat {
+            get {
+                return ResourceManager.GetString("AiActiveDocumentFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 AI Assistant 的本地化字符串。
+        /// </summary>
+        public static string AiAssistant {
+            get {
+                return ResourceManager.GetString("AiAssistant", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 AI 的本地化字符串。
+        /// </summary>
+        public static string AiAssistantShort {
+            get {
+                return ResourceManager.GetString("AiAssistantShort", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Connect to LM Studio, select a model, and ask me to inspect or edit the active drawing. 的本地化字符串。
+        /// </summary>
+        public static string AiAssistantWelcome {
+            get {
+                return ResourceManager.GetString("AiAssistantWelcome", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 CAD tool 的本地化字符串。
+        /// </summary>
+        public static string AiCadTool {
+            get {
+                return ResourceManager.GetString("AiCadTool", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Cancelled 的本地化字符串。
+        /// </summary>
+        public static string AiCancelled {
+            get {
+                return ResourceManager.GetString("AiCancelled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Connected: {0} model(s) 的本地化字符串。
+        /// </summary>
+        public static string AiConnectedModelCountFormat {
+            get {
+                return ResourceManager.GetString("AiConnectedModelCountFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Connecting... 的本地化字符串。
+        /// </summary>
+        public static string AiConnecting {
+            get {
+                return ResourceManager.GetString("AiConnecting", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Connection failed 的本地化字符串。
+        /// </summary>
+        public static string AiConnectionFailed {
+            get {
+                return ResourceManager.GetString("AiConnectionFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Conversation cleared. 的本地化字符串。
+        /// </summary>
+        public static string AiConversationCleared {
+            get {
+                return ResourceManager.GetString("AiConversationCleared", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Not connected 的本地化字符串。
+        /// </summary>
+        public static string AiDisconnected {
+            get {
+                return ResourceManager.GetString("AiDisconnected", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 The model returned an empty response. 的本地化字符串。
+        /// </summary>
+        public static string AiEmptyResponse {
+            get {
+                return ResourceManager.GetString("AiEmptyResponse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Generating... 的本地化字符串。
+        /// </summary>
+        public static string AiGenerating {
+            get {
+                return ResourceManager.GetString("AiGenerating", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Connected, but no model is loaded 的本地化字符串。
+        /// </summary>
+        public static string AiNoModels {
+            get {
+                return ResourceManager.GetString("AiNoModels", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Ask about or edit the active drawing 的本地化字符串。
+        /// </summary>
+        public static string AiPromptHint {
+            get {
+                return ResourceManager.GetString("AiPromptHint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Ready: {0} 的本地化字符串。
+        /// </summary>
+        public static string AiReadyModelFormat {
+            get {
+                return ResourceManager.GetString("AiReadyModelFormat", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Request failed 的本地化字符串。
+        /// </summary>
+        public static string AiRequestFailed {
+            get {
+                return ResourceManager.GetString("AiRequestFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 You 的本地化字符串。
+        /// </summary>
+        public static string AiYou {
+            get {
+                return ResourceManager.GetString("AiYou", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Angle 的本地化字符串。
         /// </summary>
         public static string Angle {
@@ -498,6 +660,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string CircleTwoPoint {
             get {
                 return ResourceManager.GetString("CircleTwoPoint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Clear conversation 的本地化字符串。
+        /// </summary>
+        public static string ClearConversation {
+            get {
+                return ResourceManager.GetString("ClearConversation", resourceCulture);
             }
         }
         
@@ -1006,6 +1177,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Allow AI to use CAD editing tools 的本地化字符串。
+        /// </summary>
+        public static string EnableCadAiTools {
+            get {
+                return ResourceManager.GetString("EnableCadAiTools", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 End 的本地化字符串。
         /// </summary>
         public static string End {
@@ -1020,6 +1200,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string EndCap {
             get {
                 return ResourceManager.GetString("EndCap", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Endpoint 的本地化字符串。
+        /// </summary>
+        public static string Endpoint {
+            get {
+                return ResourceManager.GetString("Endpoint", resourceCulture);
             }
         }
         
@@ -1164,6 +1353,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string EntitySettings {
             get {
                 return ResourceManager.GetString("EntitySettings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Error 的本地化字符串。
+        /// </summary>
+        public static string Error {
+            get {
+                return ResourceManager.GetString("Error", resourceCulture);
             }
         }
         
@@ -1713,6 +1911,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string LinkGridAxes {
             get {
                 return ResourceManager.GetString("LinkGridAxes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 LM Studio connection 的本地化字符串。
+        /// </summary>
+        public static string LmStudioConnection {
+            get {
+                return ResourceManager.GetString("LmStudioConnection", resourceCulture);
             }
         }
         
@@ -2356,6 +2563,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Refresh models 的本地化字符串。
+        /// </summary>
+        public static string RefreshModels {
+            get {
+                return ResourceManager.GetString("RefreshModels", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Remove 的本地化字符串。
         /// </summary>
         public static string Remove {
@@ -2523,6 +2739,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string SelectionWindow {
             get {
                 return ResourceManager.GetString("SelectionWindow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Send 的本地化字符串。
+        /// </summary>
+        public static string Send {
+            get {
+                return ResourceManager.GetString("Send", resourceCulture);
             }
         }
         
@@ -2770,6 +2995,24 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Status 的本地化字符串。
+        /// </summary>
+        public static string Status {
+            get {
+                return ResourceManager.GetString("Status", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Stop 的本地化字符串。
+        /// </summary>
+        public static string Stop {
+            get {
+                return ResourceManager.GetString("Stop", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Stroke 的本地化字符串。
         /// </summary>
         public static string Stroke {
@@ -2847,6 +3090,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string TargetLayer {
             get {
                 return ResourceManager.GetString("TargetLayer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Temperature 的本地化字符串。
+        /// </summary>
+        public static string Temperature {
+            get {
+                return ResourceManager.GetString("Temperature", resourceCulture);
             }
         }
         

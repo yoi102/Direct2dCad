@@ -1,9 +1,11 @@
 using System.Windows;
+using System.Net.Http;
 using Antelcat.I18N.WPF;
 using AvalonDock;
 using AvalonDock.DependencyInjection;
 using CommunityToolkit.Mvvm.DependencyInjection;
 using Direct2dCad.CommandLine;
+using Direct2dCad.AI;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -78,6 +80,7 @@ public partial class App : System.Windows.Application
             dock.AddToolbox<EntitySearchToolboxViewModel>();
             dock.AddToolbox<SelectionFilterToolboxViewModel>();
             dock.AddToolbox<CommandLineToolboxViewModel>();
+            dock.AddToolbox<AiAssistantToolboxViewModel>();
         });
 
         services.AddTransient<IFileDialogService, FileDialogService>();
@@ -93,6 +96,9 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ISnackbarService, SnackbarService>();
         services.AddSingleton<IToolboxIconProvider, ToolboxIconProvider>();
         services.AddSingleton<ICadCommandLineService, CadCommandLineService>();
+        services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
+        services.AddSingleton<IAiChatClient, LmStudioChatClient>();
+        services.AddSingleton<IAiAssistantSettingsStore, JsonAiAssistantSettingsStore>();
 
         services.AddTransient<MainWindow>();
     }

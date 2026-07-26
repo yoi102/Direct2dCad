@@ -16,7 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.AI\Direct2dCad.AI.csproj" />
     <ProjectReference Include="..\Direct2dCad.CommandLine\Direct2dCad.CommandLine.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Commands\Direct2dCad.Commands.csproj" />
     <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
     <ProjectReference Include="..\Direct2dCad.Client.Common\Direct2dCad.Client.Common.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />

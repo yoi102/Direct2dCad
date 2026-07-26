@@ -1364,4 +1364,88 @@
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>Level of detail optimization</value>
   </data>
+  <data name="AiAssistant" xml:space="preserve">
+    <value>AI Assistant</value>
+  </data>
+  <data name="AiAssistantWelcome" xml:space="preserve">
+    <value>Connect to LM Studio, select a model, and ask me to inspect or edit the active drawing.</value>
+  </data>
+  <data name="LmStudioConnection" xml:space="preserve">
+    <value>LM Studio connection</value>
+  </data>
+  <data name="Endpoint" xml:space="preserve">
+    <value>Endpoint</value>
+  </data>
+  <data name="Temperature" xml:space="preserve">
+    <value>Temperature</value>
+  </data>
+  <data name="RefreshModels" xml:space="preserve">
+    <value>Refresh models</value>
+  </data>
+  <data name="EnableCadAiTools" xml:space="preserve">
+    <value>Allow AI to use CAD editing tools</value>
+  </data>
+  <data name="ClearConversation" xml:space="preserve">
+    <value>Clear conversation</value>
+  </data>
+  <data name="AiPromptHint" xml:space="preserve">
+    <value>Ask about or edit the active drawing</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>Send</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="AiDisconnected" xml:space="preserve">
+    <value>Not connected</value>
+  </data>
+  <data name="AiConnecting" xml:space="preserve">
+    <value>Connecting...</value>
+  </data>
+  <data name="AiNoModels" xml:space="preserve">
+    <value>Connected, but no model is loaded</value>
+  </data>
+  <data name="AiConnectedModelCountFormat" xml:space="preserve">
+    <value>Connected: {0} model(s)</value>
+  </data>
+  <data name="AiCancelled" xml:space="preserve">
+    <value>Cancelled</value>
+  </data>
+  <data name="AiConnectionFailed" xml:space="preserve">
+    <value>Connection failed</value>
+  </data>
+  <data name="AiActiveDocumentFormat" xml:space="preserve">
+    <value>Active document: {0}</value>
+  </data>
+  <data name="AiGenerating" xml:space="preserve">
+    <value>Generating...</value>
+  </data>
+  <data name="AiEmptyResponse" xml:space="preserve">
+    <value>The model returned an empty response.</value>
+  </data>
+  <data name="AiReadyModelFormat" xml:space="preserve">
+    <value>Ready: {0}</value>
+  </data>
+  <data name="AiRequestFailed" xml:space="preserve">
+    <value>Request failed</value>
+  </data>
+  <data name="AiConversationCleared" xml:space="preserve">
+    <value>Conversation cleared.</value>
+  </data>
+  <data name="AiYou" xml:space="preserve">
+    <value>You</value>
+  </data>
+  <data name="AiAssistantShort" xml:space="preserve">
+    <value>AI</value>
+  </data>
+  <data name="AiCadTool" xml:space="preserve">
+    <value>CAD tool</value>
+  </data>
 </root>

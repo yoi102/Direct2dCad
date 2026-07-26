@@ -1143,4 +1143,88 @@
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>启用细节层级优化</value>
   </data>
+  <data name="AiAssistant" xml:space="preserve">
+    <value>AI 助手</value>
+  </data>
+  <data name="AiAssistantWelcome" xml:space="preserve">
+    <value>连接 LM Studio 并选择模型后，可以询问或编辑当前图纸。</value>
+  </data>
+  <data name="LmStudioConnection" xml:space="preserve">
+    <value>LM Studio 连接</value>
+  </data>
+  <data name="Endpoint" xml:space="preserve">
+    <value>服务地址</value>
+  </data>
+  <data name="Temperature" xml:space="preserve">
+    <value>温度</value>
+  </data>
+  <data name="RefreshModels" xml:space="preserve">
+    <value>刷新模型</value>
+  </data>
+  <data name="EnableCadAiTools" xml:space="preserve">
+    <value>允许 AI 使用 CAD 编辑工具</value>
+  </data>
+  <data name="ClearConversation" xml:space="preserve">
+    <value>清空对话</value>
+  </data>
+  <data name="AiPromptHint" xml:space="preserve">
+    <value>询问或编辑当前图纸</value>
+  </data>
+  <data name="Send" xml:space="preserve">
+    <value>发送</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>停止</value>
+  </data>
+  <data name="Error" xml:space="preserve">
+    <value>错误</value>
+  </data>
+  <data name="Status" xml:space="preserve">
+    <value>状态</value>
+  </data>
+  <data name="AiDisconnected" xml:space="preserve">
+    <value>未连接</value>
+  </data>
+  <data name="AiConnecting" xml:space="preserve">
+    <value>正在连接...</value>
+  </data>
+  <data name="AiNoModels" xml:space="preserve">
+    <value>已连接，但没有加载模型</value>
+  </data>
+  <data name="AiConnectedModelCountFormat" xml:space="preserve">
+    <value>已连接：{0} 个模型</value>
+  </data>
+  <data name="AiCancelled" xml:space="preserve">
+    <value>已取消</value>
+  </data>
+  <data name="AiConnectionFailed" xml:space="preserve">
+    <value>连接失败</value>
+  </data>
+  <data name="AiActiveDocumentFormat" xml:space="preserve">
+    <value>当前文档：{0}</value>
+  </data>
+  <data name="AiGenerating" xml:space="preserve">
+    <value>正在生成...</value>
+  </data>
+  <data name="AiEmptyResponse" xml:space="preserve">
+    <value>模型返回了空响应。</value>
+  </data>
+  <data name="AiReadyModelFormat" xml:space="preserve">
+    <value>就绪：{0}</value>
+  </data>
+  <data name="AiRequestFailed" xml:space="preserve">
+    <value>请求失败</value>
+  </data>
+  <data name="AiConversationCleared" xml:space="preserve">
+    <value>对话已清空。</value>
+  </data>
+  <data name="AiYou" xml:space="preserve">
+    <value>你</value>
+  </data>
+  <data name="AiAssistantShort" xml:space="preserve">
+    <value>AI</value>
+  </data>
+  <data name="AiCadTool" xml:space="preserve">
+    <value>CAD 工具</value>
+  </data>
 </root>

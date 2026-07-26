@@ -1,0 +1,238 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.AiAssistantToolboxView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=toolboxes:AiAssistantToolboxViewModel}"
+             d:DesignHeight="620"
+             d:DesignWidth="360">
+    <Grid Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Expander Grid.Row="0"
+                  Margin="10,6,10,4"
+                  Header="{I18N {x:Static r:LangKeys.LmStudioConnection}}"
+                  IsExpanded="True">
+            <Grid Margin="10,8,4,8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Margin="0,0,10,8"
+                           VerticalAlignment="Center"
+                           Text="{I18N {x:Static r:LangKeys.Endpoint}}" />
+                <TextBox Grid.Row="0"
+                         Grid.Column="1"
+                         Grid.ColumnSpan="2"
+                         Margin="0,0,0,8"
+                         Text="{Binding Endpoint, UpdateSourceTrigger=LostFocus}" />
+
+                <TextBlock Grid.Row="1"
+                           Margin="0,0,10,8"
+                           VerticalAlignment="Center"
+                           Text="{I18N {x:Static r:LangKeys.Model}}" />
+                <ComboBox Grid.Row="1"
+                          Grid.Column="1"
+                          Margin="0,0,6,8"
+                          IsEditable="True"
+                          ItemsSource="{Binding Models}"
+                          SelectedItem="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Row="1"
+                        Grid.Column="2"
+                        Width="30"
+                        Height="30"
+                        Margin="0,0,0,8"
+                        Padding="0"
+                        Command="{Binding RefreshModelsCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        ToolTip="{I18N {x:Static r:LangKeys.RefreshModels}}">
+                    <md:PackIcon Kind="Refresh" Width="17" Height="17" />
+                </Button>
+
+                <TextBlock Grid.Row="2"
+                           Margin="0,0,10,8"
+                           VerticalAlignment="Center"
+                           Text="{I18N {x:Static r:LangKeys.Temperature}}" />
+                <Slider Grid.Row="2"
+                        Grid.Column="1"
+                        Margin="0,0,8,8"
+                        Minimum="0"
+                        Maximum="2"
+                        TickFrequency="0.1"
+                        IsSnapToTickEnabled="True"
+                        Value="{Binding Temperature, Mode=TwoWay}" />
+                <TextBlock Grid.Row="2"
+                           Grid.Column="2"
+                           MinWidth="30"
+                           Margin="0,0,0,8"
+                           Text="{Binding Temperature, StringFormat=F1}"
+                           TextAlignment="Right"
+                           VerticalAlignment="Center" />
+
+                <CheckBox Grid.Row="3"
+                          Grid.ColumnSpan="3"
+                          Content="{I18N {x:Static r:LangKeys.EnableCadAiTools}}"
+                          IsChecked="{Binding EnableCadTools, Mode=TwoWay}" />
+            </Grid>
+        </Expander>
+
+        <Grid Grid.Row="1" Margin="10,2,10,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <md:PackIcon Kind="Circle"
+                             Width="8"
+                             Height="8"
+                             Margin="0,0,7,0"
+                             Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                <TextBlock Text="{Binding ConnectionStatus}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Grid.Column="1"
+                    Width="28"
+                    Height="28"
+                    Padding="0"
+                    Command="{Binding ClearConversationCommand}"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    ToolTip="{I18N {x:Static r:LangKeys.ClearConversation}}">
+                <md:PackIcon Kind="DeleteSweepOutline" Width="17" Height="17" />
+            </Button>
+        </Grid>
+
+        <ListBox x:Name="MessagesList"
+                 Grid.Row="2"
+                 Margin="6,0"
+                 Padding="0,4"
+                 BorderThickness="0"
+                 Background="Transparent"
+                 ItemsSource="{Binding Messages}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling">
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type toolboxes:AiChatItemViewModel}">
+                    <Border x:Name="MessageBorder"
+                            Margin="4,3"
+                            Padding="9,7"
+                            CornerRadius="6"
+                            Background="#12000000">
+                        <StackPanel>
+                            <TextBlock x:Name="RoleText"
+                                       Margin="0,0,0,3"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                       Text="{Binding Role}" />
+                            <TextBox x:Name="ContentText"
+                                     Padding="0"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     IsReadOnly="True"
+                                     IsReadOnlyCaretVisible="False"
+                                     Text="{Binding Content, Mode=OneWay}"
+                                     TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static toolboxes:AiChatItemKind.User}">
+                            <Setter TargetName="MessageBorder" Property="Background" Value="#243F51B5" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static toolboxes:AiChatItemKind.System}">
+                            <Setter TargetName="MessageBorder" Property="Background" Value="Transparent" />
+                            <Setter TargetName="RoleText" Property="Opacity" Value="0.7" />
+                            <Setter TargetName="ContentText" Property="Opacity" Value="0.72" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static toolboxes:AiChatItemKind.Tool}">
+                            <Setter TargetName="MessageBorder" Property="Background" Value="#1828A745" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Kind}" Value="{x:Static toolboxes:AiChatItemKind.Error}">
+                            <Setter TargetName="MessageBorder" Property="Background" Value="#20D32F2F" />
+                            <Setter TargetName="RoleText" Property="Foreground" Value="#EF5350" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Grid Grid.Row="3" Margin="10,5,10,10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <ProgressBar Grid.Row="0"
+                         Height="2"
+                         Margin="0,0,0,5"
+                         IsIndeterminate="True"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="PromptTextBox"
+                         MinHeight="54"
+                         MaxHeight="120"
+                         Padding="8,6"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         Text="{Binding UserInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PreviewKeyDown="OnPromptPreviewKeyDown"
+                         md:HintAssist.Hint="{I18N {x:Static r:LangKeys.AiPromptHint}}" />
+                <StackPanel Grid.Column="1"
+                            Margin="6,0,0,0"
+                            VerticalAlignment="Bottom">
+                    <Button Width="34"
+                            Height="34"
+                            Padding="0"
+                            Command="{Binding SendCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            ToolTip="{I18N {x:Static r:LangKeys.Send}}">
+                        <md:PackIcon Kind="Send" Width="19" Height="19" />
+                    </Button>
+                    <Button Width="34"
+                            Height="34"
+                            Margin="0,3,0,0"
+                            Padding="0"
+                            Command="{Binding StopCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            ToolTip="{I18N {x:Static r:LangKeys.Stop}}">
+                        <md:PackIcon Kind="Stop" Width="19" Height="19" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>
