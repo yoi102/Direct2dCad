@@ -411,6 +411,25 @@ internal static class CadDocumentMapper
         };
     }
 
+    internal static CadCompositePathsSection ToCompositePathsSection(ILookup<Type, CadEntity> entities)
+    {
+        return new CadCompositePathsSection
+        {
+            CompositePaths = entities[typeof(CadCompositePath)]
+                .Cast<CadCompositePath>()
+                .Select(path => new CadCompositePathData
+                {
+                    Entity = ToEntityData(path),
+                    StartPoint = ToData(path.StartPoint),
+                    Segments = path.Segments.Select(ToCompositePathSegmentData).ToList(),
+                    Closed = path.Closed,
+                    GraphicStyleId = path.GraphicStyleId?.Value,
+                    FillStyleId = path.FillStyleId?.Value
+                })
+                .ToList()
+        };
+    }
+
     internal static CadBlockReferencesSection ToBlockReferencesSection(
         CadDocument document,
         ILookup<Type, CadEntity> entities)
@@ -448,6 +467,7 @@ internal static class CadDocumentMapper
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
         CadSplinesSection splines,
+        CadCompositePathsSection compositePaths,
         CadTextsSection texts,
         CadShapeTextsSection shapeTexts,
         CadImagesSection images,
@@ -468,6 +488,7 @@ internal static class CadDocumentMapper
             rectangles.Rectangles.Count +
             polylines.Polylines.Count +
             splines.Splines.Count +
+            compositePaths.CompositePaths.Count +
             texts.Texts.Count +
             shapeTexts.ShapeTexts.Count +
             images.Images.Count +
@@ -487,7 +508,7 @@ internal static class CadDocumentMapper
         ApplyLayers(document, layers);
         ApplyLayouts(document, layouts);
         ApplyBlocks(document, blocks);
-        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, texts, shapeTexts, images, oleObjects);
+        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, compositePaths, texts, shapeTexts, images, oleObjects);
         ApplyBlockReferences(document, blockReferences);
         document.RefreshBlockReferenceBounds();
 
@@ -713,6 +734,7 @@ internal static class CadDocumentMapper
         CadRectanglesSection rectangles,
         CadPolylinesSection polylines,
         CadSplinesSection splines,
+        CadCompositePathsSection compositePaths,
         CadTextsSection texts,
         CadShapeTextsSection shapeTexts,
         CadImagesSection images,
@@ -844,6 +866,22 @@ internal static class CadDocumentMapper
             spline.SetFillStyleInternal(ToStyleId(splineData.FillStyleId));
             ApplyEntityState(document, spline, splineData.Entity);
             document.AddEntityCore(spline);
+        }
+
+        foreach (var pathData in compositePaths.CompositePaths)
+        {
+            var path = new CadCompositePath(
+                new EntityId(pathData.Entity.Id),
+                new LayerId(pathData.Entity.LayerId),
+                new BlockId(pathData.Entity.OwnerBlockId),
+                FromData(pathData.StartPoint),
+                pathData.Segments.Select(FromCompositePathSegmentData),
+                pathData.Closed,
+                pathData.Entity.Name);
+            path.SetGraphicStyleInternal(ToStyleId(pathData.GraphicStyleId));
+            path.SetFillStyleInternal(ToStyleId(pathData.FillStyleId));
+            ApplyEntityState(document, path, pathData.Entity);
+            document.AddEntityCore(path);
         }
 
         foreach (var textData in texts.Texts)
@@ -1245,6 +1283,7 @@ internal static class CadDocumentMapper
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
+            CadCompositePath path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
@@ -1261,6 +1300,39 @@ internal static class CadDocumentMapper
     }
 
     private static StyleId? ToStyleId(long? value) => value is null ? null : new StyleId(value.Value);
+
+    private static CadCompositePathSegmentData ToCompositePathSegmentData(CadCompositePathSegment segment) =>
+        segment switch
+        {
+            CadCompositeLineSegment line => new CadCompositePathSegmentData
+            {
+                Kind = CadCompositePathSegmentKindData.Line,
+                Point = ToData(line.End)
+            },
+            CadCompositeArcSegment arc => new CadCompositePathSegmentData
+            {
+                Kind = CadCompositePathSegmentKindData.Arc,
+                Point = ToData(arc.Center),
+                SweepAngleRadians = arc.SweepAngleRadians
+            },
+            CadCompositeSplineSegment spline => new CadCompositePathSegmentData
+            {
+                Kind = CadCompositePathSegmentKindData.Spline,
+                FitPoints = spline.FitPoints.Select(ToData).ToList()
+            },
+            _ => throw new NotSupportedException($"Unsupported composite path segment: {segment.GetType().Name}")
+        };
+
+    private static CadCompositePathSegment FromCompositePathSegmentData(CadCompositePathSegmentData data) =>
+        data.Kind switch
+        {
+            CadCompositePathSegmentKindData.Line => new CadCompositeLineSegment(FromData(data.Point)),
+            CadCompositePathSegmentKindData.Arc => new CadCompositeArcSegment(
+                FromData(data.Point),
+                data.SweepAngleRadians),
+            CadCompositePathSegmentKindData.Spline => new CadCompositeSplineSegment(data.FitPoints.Select(FromData)),
+            _ => throw new InvalidDataException($"Unsupported composite path segment kind: {data.Kind}")
+        };
 
     private static CadPointData ToData(CadPointD point) => new(point.X, point.Y);
 

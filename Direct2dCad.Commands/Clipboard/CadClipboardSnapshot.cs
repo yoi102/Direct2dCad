@@ -113,6 +113,12 @@ public sealed record CadSplineClipboardSnapshot(
     IReadOnlyList<CadPointD> FitPoints,
     bool Closed) : CadEntityClipboardSnapshot(State);
 
+public sealed record CadCompositePathClipboardSnapshot(
+    CadEntityStateClipboardSnapshot State,
+    CadPointD StartPoint,
+    IReadOnlyList<CadCompositePathSegment> Segments,
+    bool Closed) : CadEntityClipboardSnapshot(State);
+
 public sealed record CadTextClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
     string Text,
@@ -399,6 +405,11 @@ public static class CadClipboardSnapshotFactory
                 state,
                 spline.FitPoints.ToArray(),
                 spline.Closed),
+            CadCompositePath path => new CadCompositePathClipboardSnapshot(
+                state,
+                path.StartPoint,
+                path.Segments.ToArray(),
+                path.Closed),
             CadText text => new CadTextClipboardSnapshot(
                 state,
                 text.Text,
@@ -505,6 +516,7 @@ public static class CadClipboardSnapshotFactory
             CadRectangle rectangle => rectangle.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
+            CadCompositePath path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
@@ -519,6 +531,7 @@ public static class CadClipboardSnapshotFactory
             CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline polyline => polyline.FillStyleId,
             CadSpline spline => spline.FillStyleId,
+            CadCompositePath path => path.FillStyleId,
             _ => null
         };
 

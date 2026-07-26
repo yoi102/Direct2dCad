@@ -221,6 +221,14 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 graphicStyleId,
                 fillStyleId,
                 spline.State.Name),
+            CadCompositePathClipboardSnapshot path => document.AddCompositePath(
+                path.StartPoint + delta,
+                TranslateCompositePathSegments(path.Segments, delta),
+                path.Closed,
+                layerId,
+                graphicStyleId,
+                fillStyleId,
+                path.State.Name),
             CadTextClipboardSnapshot text => CreateText(document, text, delta, layerId, graphicStyleId, textStyleId),
             CadShapeTextClipboardSnapshot shapeText => document.AddShapeText(
                 shapeText.Text,
@@ -586,6 +594,19 @@ public sealed class PasteEntitiesCommand : ICadCommand
             _hatchPatterns[snapshot] = patternId;
             return patternId;
         }
+    }
+
+    private static IEnumerable<CadCompositePathSegment> TranslateCompositePathSegments(
+        IEnumerable<CadCompositePathSegment> segments,
+        CadVectorD delta)
+    {
+        return segments.Select<CadCompositePathSegment, CadCompositePathSegment>(segment => segment switch
+        {
+            CadCompositeLineSegment line => new CadCompositeLineSegment(line.End + delta),
+            CadCompositeArcSegment arc => new CadCompositeArcSegment(arc.Center + delta, arc.SweepAngleRadians),
+            CadCompositeSplineSegment spline => new CadCompositeSplineSegment(spline.FitPoints.Select(point => point + delta)),
+            _ => throw new NotSupportedException($"Unsupported composite path segment: {segment.GetType().Name}")
+        });
     }
 
     private static string CreateUniqueLayerName(CadDocument document, string baseName)

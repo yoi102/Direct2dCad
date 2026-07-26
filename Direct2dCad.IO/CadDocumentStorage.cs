@@ -297,6 +297,7 @@ public sealed class CadDocumentStorage
         var rectangles = ReadOptionalSection(payloads, CadSectionKind.Rectangles, new CadRectanglesSection());
         var polylines = ReadOptionalSection(payloads, CadSectionKind.Polylines, new CadPolylinesSection());
         var splines = ReadOptionalSection(payloads, CadSectionKind.Splines, new CadSplinesSection());
+        var compositePaths = ReadOptionalSection(payloads, CadSectionKind.CompositePaths, new CadCompositePathsSection());
         var texts = ReadRequiredSection<CadTextsSection>(payloads, CadSectionKind.Texts);
         var shapeTexts = ReadOptionalSection(payloads, CadSectionKind.ShapeTexts, new CadShapeTextsSection());
         var images = ReadOptionalSection(payloads, CadSectionKind.Images, new CadImagesSection());
@@ -317,6 +318,7 @@ public sealed class CadDocumentStorage
             rectangles,
             polylines,
             splines,
+            compositePaths,
             texts,
             shapeTexts,
             images,
@@ -407,6 +409,7 @@ public sealed class CadDocumentStorage
             Serialize(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(entities)),
             Serialize(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(entities)),
             Serialize(CadSectionKind.Splines, CadDocumentMapper.ToSplinesSection(entities)),
+            Serialize(CadSectionKind.CompositePaths, CadDocumentMapper.ToCompositePathsSection(entities)),
             Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(entities)),
             Serialize(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(entities)),
             Serialize(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(entities)),

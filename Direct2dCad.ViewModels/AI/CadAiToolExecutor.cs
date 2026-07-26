@@ -85,6 +85,27 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
                 required = new[] { "points" },
                 additionalProperties = false
             }),
+        Tool("add_arc", "Add a circular arc. Angles are counter-clockwise degrees; sweep may be negative.", CoordinateSchema(
+            new[] { "center_x", "center_y", "radius", "start_angle_degrees", "sweep_angle_degrees" },
+            new Dictionary<string, object>
+            {
+                ["center_x"] = Number("Center X"), ["center_y"] = Number("Center Y"),
+                ["radius"] = new { type = "number", exclusiveMinimum = 0.0 },
+                ["start_angle_degrees"] = Number("Start angle in degrees"),
+                ["sweep_angle_degrees"] = Number("Non-zero sweep in degrees, between -360 and 360")
+            })),
+        Tool("add_ellipse", "Add an axis-aligned ellipse in CAD world coordinates.", CoordinateSchema(
+            new[] { "center_x", "center_y", "radius_x", "radius_y" },
+            new Dictionary<string, object>
+            {
+                ["center_x"] = Number("Center X"), ["center_y"] = Number("Center Y"),
+                ["radius_x"] = new { type = "number", exclusiveMinimum = 0.0 },
+                ["radius_y"] = new { type = "number", exclusiveMinimum = 0.0 }
+            })),
+        Tool("add_polygon", "Add a closed polygon from three or more CAD world-coordinate vertices.", PointCollectionSchema(
+            "points", minimumPoints: 3, includeClosed: false)),
+        Tool("add_spline", "Add a smooth interpolating spline from fit points.", PointCollectionSchema(
+            "fit_points", minimumPoints: 2, includeClosed: true)),
         Tool("select_entities", "Replace the current selection with the supplied entity IDs.", EntityIdsSchema(required: true)),
         Tool("move_entities", "Move supplied entity IDs, or the current selection when IDs are omitted.",
             new
@@ -124,6 +145,25 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
 
     internal LayerId ResolveLayerForTool(string name) => ResolveLayer(name);
 
+    internal void ValidateCreationTool(string toolName, JsonElement arguments)
+    {
+        var layerId = ResolveLayer(arguments);
+        CadEntityAccessPolicy.EnsureCanAddToLayer(documentViewModel.CadEditor.Document, layerId);
+        _ = (ICadCommand)(toolName switch
+        {
+            "add_line" => CreateLineCommand(arguments),
+            "add_circle" => CreateCircleCommand(arguments),
+            "add_rectangle" => CreateRectangleCommand(arguments),
+            "add_text" => CreateTextCommand(arguments),
+            "add_polyline" => CreatePolylineCommand(arguments),
+            "add_arc" => CreateArcCommand(arguments),
+            "add_ellipse" => CreateEllipseCommand(arguments),
+            "add_polygon" => CreatePolygonCommand(arguments),
+            "add_spline" => CreateSplineCommand(arguments),
+            _ => throw new ArgumentException($"Unsupported creation tool: {toolName}")
+        });
+    }
+
     public string Execute(AiToolCall toolCall)
     {
         try
@@ -140,6 +180,10 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
                 "add_rectangle" => AddRectangle(arguments.RootElement),
                 "add_text" => AddText(arguments.RootElement),
                 "add_polyline" => AddPolyline(arguments.RootElement),
+                "add_arc" => AddArc(arguments.RootElement),
+                "add_ellipse" => AddEllipse(arguments.RootElement),
+                "add_polygon" => AddPolygon(arguments.RootElement),
+                "add_spline" => AddSpline(arguments.RootElement),
                 "select_entities" => SelectEntities(arguments.RootElement),
                 "move_entities" => MoveEntities(arguments.RootElement),
                 "delete_entities" => DeleteEntities(arguments.RootElement),
@@ -228,25 +272,35 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
 
     private string AddLine(JsonElement arguments)
     {
-        var command = new AddLineCommand(
+        var command = CreateLineCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddLineCommand CreateLineCommand(JsonElement arguments) => new(
             new CadPointD(RequiredDouble(arguments, "x1"), RequiredDouble(arguments, "y1")),
             new CadPointD(RequiredDouble(arguments, "x2"), RequiredDouble(arguments, "y2")),
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Line"));
-        return ExecuteCreate(command, () => command.CreatedEntityId);
-    }
 
     private string AddCircle(JsonElement arguments)
     {
-        var command = new AddCircleCommand(
+        var command = CreateCircleCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddCircleCommand CreateCircleCommand(JsonElement arguments) => new(
             new CadPointD(RequiredDouble(arguments, "center_x"), RequiredDouble(arguments, "center_y")),
             RequiredPositive(arguments, "radius"),
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Circle"));
+
+    private string AddRectangle(JsonElement arguments)
+    {
+        var command = CreateRectangleCommand(arguments);
         return ExecuteCreate(command, () => command.CreatedEntityId);
     }
 
-    private string AddRectangle(JsonElement arguments)
+    private AddRectangleCommand CreateRectangleCommand(JsonElement arguments)
     {
         var minX = RequiredDouble(arguments, "min_x");
         var minY = RequiredDouble(arguments, "min_y");
@@ -258,30 +312,40 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         if (radius < 0)
             throw new ArgumentOutOfRangeException("corner_radius");
 
-        var command = new AddRectangleCommand(
+        return new AddRectangleCommand(
             CadRectD.FromLTRB(minX, minY, maxX, maxY),
             radius,
             radius,
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Rectangle"));
-        return ExecuteCreate(command, () => command.CreatedEntityId);
     }
 
     private string AddText(JsonElement arguments)
     {
+        var command = CreateTextCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddTextCommand CreateTextCommand(JsonElement arguments)
+    {
         var text = RequiredString(arguments, "text");
         var rotation = OptionalDouble(arguments, "rotation_degrees", 0) * Math.PI / 180.0;
-        var command = new AddTextCommand(
+        return new AddTextCommand(
             text,
             new CadPointD(RequiredDouble(arguments, "x"), RequiredDouble(arguments, "y")),
             RequiredPositive(arguments, "height"),
             rotation,
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Text"));
-        return ExecuteCreate(command, () => command.CreatedEntityId);
     }
 
     private string AddPolyline(JsonElement arguments)
+    {
+        var command = CreatePolylineCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddPolylineCommand CreatePolylineCommand(JsonElement arguments)
     {
         if (!arguments.TryGetProperty("points", out var pointElements) || pointElements.ValueKind != JsonValueKind.Array)
             throw new ArgumentException("points must be an array.");
@@ -289,12 +353,78 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
             .Select(point => new CadPointD(RequiredDouble(point, "x"), RequiredDouble(point, "y")))
             .ToArray();
         var closed = OptionalBool(arguments, "closed");
-        var command = new AddPolylineCommand(
+        return new AddPolylineCommand(
             points,
             closed,
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Polyline"));
+    }
+
+    private string AddArc(JsonElement arguments)
+    {
+        var command = CreateArcCommand(arguments);
         return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddArcCommand CreateArcCommand(JsonElement arguments)
+    {
+        var sweepDegrees = RequiredDouble(arguments, "sweep_angle_degrees");
+        if (Math.Abs(sweepDegrees) <= 1e-9 || Math.Abs(sweepDegrees) > 360.0)
+            throw new ArgumentOutOfRangeException("sweep_angle_degrees", "Sweep must be non-zero and no greater than 360 degrees.");
+        return new AddArcCommand(
+            new CadPointD(RequiredDouble(arguments, "center_x"), RequiredDouble(arguments, "center_y")),
+            RequiredPositive(arguments, "radius"),
+            RequiredDouble(arguments, "start_angle_degrees") * Math.PI / 180.0,
+            sweepDegrees * Math.PI / 180.0,
+            ResolveLayer(arguments),
+            name: ResolveName(arguments, "Arc"));
+    }
+
+    private string AddEllipse(JsonElement arguments)
+    {
+        var command = CreateEllipseCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddEllipseCommand CreateEllipseCommand(JsonElement arguments) => new(
+            new CadPointD(RequiredDouble(arguments, "center_x"), RequiredDouble(arguments, "center_y")),
+            RequiredPositive(arguments, "radius_x"),
+            RequiredPositive(arguments, "radius_y"),
+            ResolveLayer(arguments),
+            name: ResolveName(arguments, "Ellipse"));
+
+    private string AddPolygon(JsonElement arguments)
+    {
+        var command = CreatePolygonCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddPolygonCommand CreatePolygonCommand(JsonElement arguments)
+    {
+        var points = RequiredPoints(arguments, "points", minimumCount: 3);
+        return new AddPolygonCommand(
+            points,
+            ResolveLayer(arguments),
+            name: ResolveName(arguments, "Polygon"));
+    }
+
+    private string AddSpline(JsonElement arguments)
+    {
+        var command = CreateSplineCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddSplineCommand CreateSplineCommand(JsonElement arguments)
+    {
+        var fitPoints = RequiredPoints(arguments, "fit_points", minimumCount: 2);
+        var closed = OptionalBool(arguments, "closed");
+        if (closed && fitPoints.Length < 3)
+            throw new ArgumentException("A closed spline requires at least three fit_points.");
+        return new AddSplineCommand(
+            fitPoints,
+            closed,
+            ResolveLayer(arguments),
+            name: ResolveName(arguments, "Spline"));
     }
 
     private string SelectEntities(JsonElement arguments)
@@ -446,6 +576,36 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         return new { type = "object", properties, required, additionalProperties = false };
     }
 
+    private static object PointCollectionSchema(string propertyName, int minimumPoints, bool includeClosed)
+    {
+        var properties = new Dictionary<string, object>
+        {
+            [propertyName] = new
+            {
+                type = "array",
+                minItems = minimumPoints,
+                items = new
+                {
+                    type = "object",
+                    properties = new { x = Number("X"), y = Number("Y") },
+                    required = new[] { "x", "y" },
+                    additionalProperties = false
+                }
+            },
+            ["layer"] = String("Layer name; current drawing layer is used when omitted"),
+            ["name"] = String("Optional entity name")
+        };
+        if (includeClosed)
+            properties["closed"] = new { type = "boolean" };
+        return new
+        {
+            type = "object",
+            properties,
+            required = new[] { propertyName },
+            additionalProperties = false
+        };
+    }
+
     private static object EntityIdsSchema(bool required) => new
     {
         type = "object",
@@ -511,6 +671,18 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         return element.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False && value.GetBoolean();
     }
 
+    internal static CadPointD[] RequiredPoints(JsonElement arguments, string name, int minimumCount)
+    {
+        if (!arguments.TryGetProperty(name, out var pointsElement) || pointsElement.ValueKind != JsonValueKind.Array)
+            throw new ArgumentException($"{name} must be an array.");
+        var points = pointsElement.EnumerateArray()
+            .Select(point => new CadPointD(RequiredDouble(point, "x"), RequiredDouble(point, "y")))
+            .ToArray();
+        if (points.Length < minimumCount)
+            throw new ArgumentException($"{name} requires at least {minimumCount} points.");
+        return points;
+    }
+
     private static object RectDto(CadRectD rect) => rect.IsEmpty
         ? new { empty = true }
         : new { min_x = rect.MinX, min_y = rect.MinY, max_x = rect.MaxX, max_y = rect.MaxY };
@@ -529,6 +701,7 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         CadRectangle => "Rectangle",
         CadPolyline => "Polyline",
         CadSpline => "Spline",
+        CadCompositePath => "CompositePath",
         CadText => "Text",
         CadShapeText => "ShapeText",
         CadImage => "Image",
@@ -547,6 +720,7 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         CadRectangle value => value.GraphicStyleId,
         CadPolyline value => value.GraphicStyleId,
         CadSpline value => value.GraphicStyleId,
+        CadCompositePath value => value.GraphicStyleId,
         CadText value => value.GraphicStyleId,
         CadShapeText value => value.GraphicStyleId,
         CadBlockReference value => value.GraphicStyleId,
@@ -560,6 +734,7 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         CadRectangle value => value.FillStyleId,
         CadPolyline value => value.FillStyleId,
         CadSpline value => value.FillStyleId,
+        CadCompositePath value => value.FillStyleId,
         _ => null
     };
 

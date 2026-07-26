@@ -445,9 +445,10 @@ public abstract class EntityPropertyViewModel : ObservableObject,
             CadEllipseArc => true,
             CadPolyline polyline => !polyline.Closed,
             CadSpline spline => !spline.Closed,
+            CadCompositePath path => !path.Closed,
             _ => false
         };
-        SupportsLineJoin = entity is CadRectangle or CadPolyline or CadSpline;
+        SupportsLineJoin = entity is CadRectangle or CadPolyline or CadSpline or CadCompositePath;
     }
 
     private void CommitStrokeStyleChange()

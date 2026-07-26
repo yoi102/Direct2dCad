@@ -56,6 +56,9 @@ internal static class CadSectionMigrationRegistry
             Section<CadSplinesSection>(CadSectionKind.Splines, currentVersion: 1)
                 .ReadsVersion<CadSplinesSection>(1),
 
+            Section<CadCompositePathsSection>(CadSectionKind.CompositePaths, currentVersion: 1)
+                .ReadsVersion<CadCompositePathsSection>(1),
+
             Section<CadTextsSection>(CadSectionKind.Texts, currentVersion: 1)
                 .ReadsVersion<CadTextsSection>(1),
 

@@ -295,6 +295,10 @@ public sealed class CadHandleSceneBuilder
                 AddSplineGripHandles(items, spline, gripStyle);
                 break;
 
+            case CadCompositePath:
+                AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
+                break;
+
             case CadText:
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;

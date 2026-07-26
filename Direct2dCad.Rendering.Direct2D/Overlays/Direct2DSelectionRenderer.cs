@@ -437,6 +437,15 @@ internal sealed class Direct2DSelectionRenderer(
                     style,
                     options.IsLevelOfDetailEnabled);
                 break;
+            case CadCompositePath path:
+                DrawTranslatedCompositePath(
+                    context,
+                    viewport,
+                    path,
+                    offset,
+                    style,
+                    options.IsLevelOfDetailEnabled);
+                break;
             case CadShapeText text:
                 transientRenderer.DrawShapeText(
                     context,
@@ -512,6 +521,34 @@ internal sealed class Direct2DSelectionRenderer(
                 viewport,
                 spline.FitPoints,
                 spline.Closed,
+                style,
+                isLevelOfDetailEnabled);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
+    }
+
+    private void DrawTranslatedCompositePath(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadCompositePath path,
+        CadVectorD offset,
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateTranslation(
+            (float)offset.X,
+            (float)offset.Y) * previousTransform;
+        try
+        {
+            transientRenderer.DrawPolyline(
+                context,
+                viewport,
+                path.EnumerateFlattenedPoints(96, 24).ToArray(),
+                path.Closed,
                 style,
                 isLevelOfDetailEnabled);
         }

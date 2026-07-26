@@ -125,6 +125,9 @@ public static class CadEntityHitTester
             case CadSpline spline:
                 return HitSplineEdge(spline, point, edgeTolerance, out result);
 
+            case CadCompositePath path:
+                return HitCompositePathEdge(path, point, edgeTolerance, out result);
+
             case CadShapeText shapeText:
                 return HitShapeTextEdge(shapeText, point, edgeTolerance, out result);
 
@@ -177,6 +180,9 @@ public static class CadEntityHitTester
 
             case CadSpline spline:
                 return HitSplineFill(spline, point, out result);
+
+            case CadCompositePath path:
+                return HitCompositePathFill(path, point, out result);
 
             case CadText text:
                 return HitTextFill(text, point, out result);
@@ -685,6 +691,50 @@ public static class CadEntityHitTester
             [spline.Id],
             point);
 
+        return true;
+    }
+
+    private static bool HitCompositePathEdge(
+        CadCompositePath path,
+        CadPointD point,
+        double tolerance,
+        out CadHitTestResult result)
+    {
+        result = default;
+        using var flattened = path.EnumerateFlattenedPoints(96, 24).GetEnumerator();
+        if (!flattened.MoveNext())
+            return false;
+
+        var previous = flattened.Current;
+        var bestDistance = double.PositiveInfinity;
+        var count = 1;
+        while (flattened.MoveNext())
+        {
+            count++;
+            var current = flattened.Current;
+            bestDistance = Math.Min(bestDistance, DistancePointToSegment(point, previous, current));
+            previous = current;
+        }
+
+        if (count < 2 || bestDistance > tolerance)
+            return false;
+        result = new CadHitTestResult(CadHitTestKind.Edge, [path.Id], point, bestDistance);
+        return true;
+    }
+
+    private static bool HitCompositePathFill(
+        CadCompositePath path,
+        CadPointD point,
+        out CadHitTestResult result)
+    {
+        result = default;
+        if (!path.Closed || path.FillStyleId is null ||
+            !PointInPolygon(point, path.EnumerateFlattenedPoints(96, 24)))
+        {
+            return false;
+        }
+
+        result = new CadHitTestResult(CadHitTestKind.Fill, [path.Id], point);
         return true;
     }
 

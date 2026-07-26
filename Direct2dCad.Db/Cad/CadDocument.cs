@@ -946,6 +946,32 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return entity;
     }
 
+    public CadCompositePath AddCompositePath(
+        CadPointD startPoint,
+        IEnumerable<CadCompositePathSegment> segments,
+        bool closed = false,
+        LayerId? layerId = null,
+        StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null,
+        string name = "")
+    {
+        var entity = new CadCompositePath(
+            _ids.NewEntityId(),
+            layerId ?? LayerId.Default,
+            BlockId.ModelSpace,
+            startPoint,
+            segments,
+            closed,
+            name);
+
+        entity.SetGraphicStyleInternal(graphicStyleId);
+        entity.SetUseLayerColor(graphicStyleId is null);
+        entity.SetUseLayerLineWeight(graphicStyleId is null);
+        entity.SetFillStyleInternal(fillStyleId);
+        AddEntityCore(entity);
+        return entity;
+    }
+
     public CadText AddText(
         string text,
         CadPointD position,

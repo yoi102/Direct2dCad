@@ -343,6 +343,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
             CadPolyline polyline when polyline.Closed => "Polyline",
             CadPolyline => "Polyline",
             CadSpline => "Spline",
+            CadCompositePath => "Composite Path",
             CadText => "Text",
             CadShapeText => "ShapeText",
             CadImage => "Image",

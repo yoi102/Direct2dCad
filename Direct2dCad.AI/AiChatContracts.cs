@@ -36,7 +36,8 @@ public sealed record AiChatRequest(
     string Model,
     IReadOnlyList<AiChatMessage> Messages,
     IReadOnlyList<AiToolDefinition> Tools,
-    double Temperature = 0.2);
+    double Temperature = 0.2,
+    int MaxOutputTokens = 1024);
 
 public sealed record AiChatCompletion(
     string? Content,
@@ -52,6 +53,23 @@ public interface IAiChatClient
     Task<AiChatCompletion> CompleteAsync(
         AiChatRequest request,
         CancellationToken cancellationToken = default);
+}
+
+public sealed class AiContextWindowExceededException : HttpRequestException
+{
+    public AiContextWindowExceededException(
+        string message,
+        System.Net.HttpStatusCode? statusCode,
+        int? promptTokens,
+        int? contextWindowTokens)
+        : base(message, null, statusCode)
+    {
+        PromptTokens = promptTokens;
+        ContextWindowTokens = contextWindowTokens;
+    }
+
+    public int? PromptTokens { get; }
+    public int? ContextWindowTokens { get; }
 }
 
 public interface IAiAssistantSettingsStore

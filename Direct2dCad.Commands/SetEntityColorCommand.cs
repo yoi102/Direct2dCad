@@ -71,6 +71,7 @@ public sealed class SetEntityColorCommand : ICadCommand
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
+            CadCompositePath path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
@@ -105,6 +106,9 @@ public sealed class SetEntityColorCommand : ICadCommand
                 break;
             case CadSpline spline:
                 spline.SetGraphicStyleInternal(styleId);
+                break;
+            case CadCompositePath path:
+                path.SetGraphicStyleInternal(styleId);
                 break;
             case CadText text:
                 text.SetGraphicStyleInternal(styleId);

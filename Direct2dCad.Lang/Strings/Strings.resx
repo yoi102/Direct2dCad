@@ -1379,6 +1379,9 @@
   <data name="Temperature" xml:space="preserve">
     <value>Temperature</value>
   </data>
+  <data name="ContextWindowTokens" xml:space="preserve">
+    <value>Context window</value>
+  </data>
   <data name="RefreshModels" xml:space="preserve">
     <value>Refresh models</value>
   </data>
@@ -1426,6 +1429,9 @@
   </data>
   <data name="AiGenerating" xml:space="preserve">
     <value>Generating...</value>
+  </data>
+  <data name="AiReducingContext" xml:space="preserve">
+    <value>Reducing conversation context and retrying...</value>
   </data>
   <data name="AiEmptyResponse" xml:space="preserve">
     <value>The model returned an empty response.</value>

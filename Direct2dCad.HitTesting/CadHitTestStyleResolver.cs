@@ -38,6 +38,7 @@ internal static class CadHitTestStyleResolver
             CadArc or
             CadPolyline or
             CadSpline or
+            CadCompositePath or
             CadShapeText;
     }
 
@@ -82,6 +83,7 @@ internal static class CadHitTestStyleResolver
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
+            CadCompositePath path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,

@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
@@ -25,6 +26,7 @@
                   IsExpanded="True">
             <Grid Margin="10,8,4,8">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -89,7 +91,20 @@
                            TextAlignment="Right"
                            VerticalAlignment="Center" />
 
-                <CheckBox Grid.Row="3"
+                <TextBlock Grid.Row="3"
+                           Margin="0,0,10,8"
+                           VerticalAlignment="Center"
+                           Text="{I18N {x:Static r:LangKeys.ContextWindowTokens}}" />
+                <mah:NumericUpDown Grid.Row="3"
+                                   Grid.Column="1"
+                                   Grid.ColumnSpan="2"
+                                   Margin="0,0,0,8"
+                                   Minimum="4096"
+                                   Maximum="262144"
+                                   Interval="4096"
+                                   Value="{Binding ContextWindowTokens, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                <CheckBox Grid.Row="4"
                           Grid.ColumnSpan="3"
                           Content="{I18N {x:Static r:LangKeys.EnableCadAiTools}}"
                           IsChecked="{Binding EnableCadTools, Mode=TwoWay}" />

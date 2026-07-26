@@ -21,7 +21,8 @@ internal sealed class CadAiWorkspaceToolExecutor
 {
     private static readonly HashSet<string> CreationToolNames =
     [
-        "add_line", "add_circle", "add_rectangle", "add_text", "add_polyline"
+        "add_line", "add_circle", "add_rectangle", "add_text", "add_polyline",
+        "add_arc", "add_ellipse", "add_polygon", "add_spline", "add_composite_path"
     ];
 
     private readonly ICadAiWorkspaceService _workspace;
@@ -51,7 +52,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         return $$"""
             You are the workspace-aware CAD editing assistant inside Direct2dCad. Use tools for every inspection or modification and never claim success before a tool confirms it. Open documents: {{documentSummary}}
 
-            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Keep replies concise and report document_id together with created or changed entity IDs.
+            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
 
             {{activeDetails}}
             """;
@@ -79,6 +80,13 @@ internal sealed class CadAiWorkspaceToolExecutor
                 "set_entity_common_properties" => ExecuteForDocument(root, SetEntityCommonProperties),
                 "set_entity_fill" => ExecuteForDocument(root, SetEntityFill),
                 "set_entity_stroke_style" => ExecuteForDocument(root, SetEntityStrokeStyle),
+                "create_layer" => ExecuteForDocument(root, CreateLayer),
+                "create_block" => ExecuteForDocument(root, CreateBlock),
+                "insert_block" => ExecuteForDocument(root, InsertBlock),
+                "add_composite_path" => ExecuteForDocument(root, AddCompositePath),
+                "add_entities" => ExecuteForDocument(root, AddEntities),
+                "get_entity_geometry" or "set_entity_geometry" or "transform_entities" or "duplicate_entities" =>
+                    ExecuteForDocument(root, (executor, arguments) => CadAiGeometryTools.Execute(executor, toolCall.Name, arguments)),
                 _ when CadAiToolExecutor.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
                     ExecuteLegacyDocumentTool(toolCall, root),
                 _ => Error($"Unknown CAD tool: {toolCall.Name}")
@@ -174,18 +182,100 @@ internal sealed class CadAiWorkspaceToolExecutor
         if (!CreationToolNames.Contains(toolCall.Name))
             return AddDocumentId(executor.Execute(toolCall), document.DocumentId);
 
-        ValidateCreationAppearance(toolCall.Name, arguments, executor);
-        var creationResult = executor.Execute(toolCall);
-        if (!TryReadCreatedEntityId(creationResult, out var createdEntityId))
-            return AddDocumentId(creationResult, document.DocumentId);
-
-        var changedFields = ApplyCreationAppearance(executor, createdEntityId, arguments);
+        var (createdEntityId, changedFields) = ExecuteCreationTool(executor, toolCall.Name, arguments);
         return Success(new
         {
             document_id = document.DocumentId,
             created_entity_id = createdEntityId.Value,
             applied_appearance = changedFields
         });
+    }
+
+    private object AddEntities(CadAiToolExecutor executor, JsonElement arguments)
+    {
+        var items = CadAiBulkCreationTools.Parse(arguments);
+
+        foreach (var item in items)
+        {
+            if (item.ToolName == "add_composite_path")
+                _ = CadAiCompositePathTools.Parse(item.Arguments);
+            else
+                executor.ValidateCreationTool(item.ToolName, item.Arguments);
+            ValidateCreationAppearance(item.ToolName, item.Arguments, executor);
+        }
+
+        var created = new List<object>(items.Count);
+        var createdIds = new List<EntityId>(items.Count);
+        foreach (var item in items)
+        {
+            var (entityId, appearance) = ExecuteCreationTool(executor, item.ToolName, item.Arguments);
+            createdIds.Add(entityId);
+            created.Add(new
+            {
+                type = item.ToolName[4..],
+                entity_id = entityId.Value,
+                applied_appearance = appearance
+            });
+        }
+
+        executor.DocumentViewModel.SelectEntities(createdIds);
+        return new { count = created.Count, created_entities = created };
+    }
+
+    private (EntityId EntityId, IReadOnlyList<string> Appearance) ExecuteCreationTool(
+        CadAiToolExecutor executor,
+        string toolName,
+        JsonElement arguments)
+    {
+        ValidateCreationAppearance(toolName, arguments, executor);
+        if (toolName == "add_composite_path")
+        {
+            var createdId = CreateCompositePath(executor, arguments);
+            return (createdId, ApplyCreationAppearance(executor, createdId, arguments));
+        }
+        var toolCall = new AiToolCall(Guid.NewGuid().ToString("N"), toolName, arguments.GetRawText());
+        var creationResult = executor.Execute(toolCall);
+        if (!TryReadCreatedEntityId(creationResult, out var createdEntityId))
+            throw new InvalidOperationException(ReadToolError(creationResult));
+
+        var changedFields = ApplyCreationAppearance(executor, createdEntityId, arguments);
+        return (createdEntityId, changedFields);
+    }
+
+    private EntityId CreateCompositePath(CadAiToolExecutor executor, JsonElement arguments)
+    {
+        var geometry = CadAiCompositePathTools.Parse(arguments);
+        var layerId = HasValue(arguments, "layer")
+            ? executor.ResolveLayerForTool(RequiredString(arguments, "layer"))
+            : executor.DocumentViewModel.DrawingLayerId;
+        var command = new AddCompositePathCommand(
+            geometry.StartPoint,
+            geometry.Segments,
+            geometry.Closed,
+            layerId,
+            name: OptionalString(arguments, "name") ?? NextEntityName(
+                executor.DocumentViewModel.CadEditor.Document,
+                "CompositePath"));
+        executor.ExecuteCommand(command);
+        var entityId = command.CreatedEntityId ?? throw new InvalidOperationException("The composite path was not created.");
+        executor.DocumentViewModel.SelectEntities([entityId]);
+        return entityId;
+    }
+
+    private object AddCompositePath(CadAiToolExecutor executor, JsonElement arguments)
+    {
+        ValidateCreationAppearance("add_composite_path", arguments, executor);
+        var id = CreateCompositePath(executor, arguments);
+        var appearance = ApplyCreationAppearance(executor, id, arguments);
+        return new { created_entity_id = id.Value, applied_appearance = appearance };
+    }
+
+    private static string ReadToolError(string result)
+    {
+        using var json = JsonDocument.Parse(result);
+        return json.RootElement.TryGetProperty("error", out var error) && error.ValueKind == JsonValueKind.String
+            ? error.GetString() ?? "The entity could not be created."
+            : "The entity could not be created.";
     }
 
     private string ExecuteForDocument(
@@ -240,7 +330,106 @@ internal sealed class CadAiWorkspaceToolExecutor
                 oblique_angle_degrees = style.ObliqueAngle * 180.0 / Math.PI,
                 style.IsBold,
                 style.IsItalic
-            }).ToArray()
+            }).ToArray(),
+            blocks = document.Blocks.Values
+                .Where(block => block.Kind == CadBlockKind.User)
+                .Select(block => new
+                {
+                    id = block.Id.Value,
+                    block.Name,
+                    base_point = new { x = block.BasePoint.X, y = block.BasePoint.Y },
+                    entity_count = block.EntityIds.Count
+                }).ToArray()
+        };
+    }
+
+    private object CreateLayer(CadAiToolExecutor executor, JsonElement arguments)
+    {
+        var document = executor.DocumentViewModel.CadEditor.Document;
+        var name = RequiredString(arguments, "name");
+        var color = HasValue(arguments, "color")
+            ? ParseColor(RequiredString(arguments, "color"))
+            : CadColor.Green;
+        var lineWeight = arguments.TryGetProperty("line_weight", out var lineWeightElement)
+            ? ParseLineWeight(lineWeightElement)
+            : CadLineWeight.Default;
+        int? drawingPriority = null;
+        if (HasValue(arguments, "drawing_priority"))
+        {
+            if (!arguments.GetProperty("drawing_priority").TryGetInt32(out var priority))
+                throw new ArgumentException("drawing_priority must be an integer.");
+            drawingPriority = priority;
+        }
+
+        var command = new CreateLayerCommand(name, color, lineWeight, drawingPriority: drawingPriority);
+        executor.ExecuteCommand(command);
+        var layerId = command.LayerId ?? throw new InvalidOperationException("The layer was not created.");
+        var layer = document.GetLayer(layerId);
+        return new
+        {
+            layer_id = layerId.Value,
+            layer.Name,
+            color = ColorText(layer.Color),
+            line_weight = LineWeightValue(layer.LineWeight),
+            drawing_priority = document.DocumentSettings.LayerDrawingPriority.GetPriority(layerId)
+        };
+    }
+
+    private object CreateBlock(CadAiToolExecutor executor, JsonElement arguments)
+    {
+        var editor = executor.DocumentViewModel.CadEditor;
+        var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: true);
+        var blockName = RequiredString(arguments, "name");
+        var basePoint = new CadPointD(
+            RequiredFinite(arguments, "base_x"),
+            RequiredFinite(arguments, "base_y"));
+        var referenceLayerId = HasValue(arguments, "reference_layer")
+            ? executor.ResolveLayerForTool(RequiredString(arguments, "reference_layer"))
+            : executor.DocumentViewModel.DrawingLayerId;
+        var command = new CreateBlockCommand(
+            ids,
+            blockName,
+            basePoint,
+            editor.ActiveOwnerBlockId,
+            referenceLayerId,
+            OptionalString(arguments, "reference_name") ?? blockName);
+        executor.ExecuteCommand(command);
+        var blockId = command.CreatedBlockId ?? throw new InvalidOperationException("The block was not created.");
+        var referenceId = command.CreatedReferenceId ?? throw new InvalidOperationException("The block reference was not created.");
+        executor.DocumentViewModel.SelectEntities([referenceId]);
+        return new
+        {
+            block_id = blockId.Value,
+            block_name = blockName,
+            reference_entity_id = referenceId.Value,
+            source_entity_ids = ids.Select(id => id.Value).ToArray()
+        };
+    }
+
+    private object InsertBlock(CadAiToolExecutor executor, JsonElement arguments)
+    {
+        var editor = executor.DocumentViewModel.CadEditor;
+        var definition = ResolveBlock(editor.Document, RequiredString(arguments, "block"));
+        var layerId = HasValue(arguments, "layer")
+            ? executor.ResolveLayerForTool(RequiredString(arguments, "layer"))
+            : executor.DocumentViewModel.DrawingLayerId;
+        var command = new InsertBlockReferenceCommand(
+            definition.Id,
+            editor.ActiveOwnerBlockId,
+            new CadPointD(RequiredFinite(arguments, "x"), RequiredFinite(arguments, "y")),
+            layerId,
+            OptionalFinite(arguments, "rotation_degrees", 0) * Math.PI / 180.0,
+            OptionalNonZero(arguments, "scale_x", 1),
+            OptionalNonZero(arguments, "scale_y", 1),
+            OptionalString(arguments, "name") ?? definition.Name);
+        executor.ExecuteCommand(command);
+        var entityId = command.CreatedEntityId ?? throw new InvalidOperationException("The block reference was not created.");
+        executor.DocumentViewModel.SelectEntities([entityId]);
+        return new
+        {
+            entity_id = entityId.Value,
+            block_id = definition.Id.Value,
+            block_name = definition.Name
         };
     }
 
@@ -440,12 +629,12 @@ internal sealed class CadAiWorkspaceToolExecutor
         }
         if (arguments.TryGetProperty("fill", out fill) && fill.ValueKind == JsonValueKind.Object)
         {
-            if (toolName is not ("add_circle" or "add_rectangle" or "add_polyline"))
+            if (toolName is not ("add_circle" or "add_ellipse" or "add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path"))
                 throw new NotSupportedException($"{toolName} does not support fill.");
-            if (toolName == "add_polyline" &&
+            if (toolName is "add_polyline" or "add_spline" or "add_composite_path" &&
                 (!arguments.TryGetProperty("closed", out var closed) || closed.ValueKind != JsonValueKind.True))
             {
-                throw new NotSupportedException("Only a closed polyline supports fill.");
+                throw new NotSupportedException($"Only a closed {toolName[4..]} supports fill.");
             }
             ValidateFillArguments(document, fill);
         }
@@ -464,12 +653,13 @@ internal sealed class CadAiWorkspaceToolExecutor
                     ValidateStrokeEnum(field, RequiredString(stroke, field));
 
             var changesStartOrEnd = HasValue(stroke, "start_cap") || HasValue(stroke, "end_cap");
-            var isClosedPolyline = toolName == "add_polyline" &&
+            var isClosedPath = toolName is "add_polyline" or "add_spline" or "add_composite_path" &&
                                    arguments.TryGetProperty("closed", out var closed) &&
                                    closed.ValueKind == JsonValueKind.True;
-            if (changesStartOrEnd && toolName != "add_line" && (toolName != "add_polyline" || isClosedPolyline))
+            if (changesStartOrEnd && toolName is not ("add_line" or "add_arc") &&
+                (toolName is not ("add_polyline" or "add_spline" or "add_composite_path") || isClosedPath))
                 throw new NotSupportedException($"{toolName} does not support start/end caps.");
-            if (HasValue(stroke, "line_join") && toolName is not ("add_rectangle" or "add_polyline"))
+            if (HasValue(stroke, "line_join") && toolName is not ("add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path"))
                 throw new NotSupportedException($"{toolName} does not support line joins.");
         }
     }
@@ -815,6 +1005,20 @@ internal sealed class CadAiWorkspaceToolExecutor
 
     private static object? LineWeightValue(CadLineWeight lineWeight) => lineWeight.IsByLayer ? "by_layer" : lineWeight.Value;
 
+    private static string NextEntityName(CadDocument document, string prefix)
+    {
+        var names = document.Entities.Values
+            .Select(entity => entity.Name)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        for (var index = 1; ; index++)
+        {
+            var candidate = $"{prefix}{index}";
+            if (!names.Contains(candidate))
+                return candidate;
+        }
+    }
+
     private static string ColorText(CadColor color) => $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
 
     private static bool HasValue(JsonElement arguments, string name) =>
@@ -841,6 +1045,41 @@ internal sealed class CadAiWorkspaceToolExecutor
         return result;
     }
 
+    private static double RequiredFinite(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) ||
+            !value.TryGetDouble(out var result) ||
+            !double.IsFinite(result))
+        {
+            throw new ArgumentException($"{name} must be a finite number.");
+        }
+
+        return result;
+    }
+
+    private static double OptionalNonZero(JsonElement element, string name, double fallback)
+    {
+        var result = OptionalFinite(element, name, fallback);
+        if (Math.Abs(result) <= 1e-9)
+            throw new ArgumentOutOfRangeException(name, "Value must not be zero.");
+        return result;
+    }
+
+    private static CadBlockDefinition ResolveBlock(CadDocument document, string value)
+    {
+        CadBlockDefinition? block = null;
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericId))
+            document.Blocks.TryGetValue(new BlockId(numericId), out block);
+
+        block ??= document.Blocks.Values.FirstOrDefault(candidate =>
+            candidate.Kind == CadBlockKind.User &&
+            string.Equals(candidate.Name, value, StringComparison.OrdinalIgnoreCase));
+
+        if (block is null || block.Kind != CadBlockKind.User)
+            throw new KeyNotFoundException($"User block not found: {value}");
+        return block;
+    }
+
     private static double OptionalPositive(JsonElement element, string name, double fallback)
     {
         var result = OptionalFinite(element, name, fallback);
@@ -854,6 +1093,9 @@ internal sealed class CadAiWorkspaceToolExecutor
     {
         var tools = CadAiToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
         tools.AddRange(WorkspaceToolDefinitions());
+        tools.AddRange(CadAiGeometryTools.ToolDefinitions);
+        tools.Add(CadAiBulkCreationTools.ToolDefinition);
+        tools.Add(CadAiCompositePathTools.ToolDefinition);
         tools.Add(Tool("list_document_catalog", "List layers and reusable graphic, fill, hatch, and text styles for a document.",
             ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
         tools.Add(Tool("set_entity_common_properties", "Set undoable common entity properties in one document batch. color overrides graphic_style.",
@@ -862,6 +1104,39 @@ internal sealed class CadAiWorkspaceToolExecutor
             ObjectSchema(FillSchema(includeEntityIds: true), ["entity_ids", "mode"])));
         tools.Add(Tool("set_entity_stroke_style", "Set one or more stroke cap, dash, or join properties while preserving omitted values.",
             ObjectSchema(StrokeSchema(includeEntityIds: true), ["entity_ids"])));
+        tools.Add(Tool("create_layer", "Create an undoable drawing layer. Layer names must be unique.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["name"] = StringSchema("Unique layer name"),
+                ["color"] = StringSchema("#RRGGBB, #AARRGGBB, or a supported named color"),
+                ["line_weight"] = new { type = "number", exclusiveMinimum = 0.0 },
+                ["drawing_priority"] = new { type = "integer" }
+            }, ["name"])));
+        tools.Add(Tool("create_block", "Create an undoable reusable Block from entities in the active drawing space and replace them with one reference. Uses the current selection when entity_ids is omitted.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["entity_ids"] = EntityIdsSchema(),
+                ["name"] = StringSchema("Unique Block definition name"),
+                ["base_x"] = new { type = "number" },
+                ["base_y"] = new { type = "number" },
+                ["reference_layer"] = StringSchema("Existing layer name or ID for the created reference"),
+                ["reference_name"] = StringSchema("Optional name for the created reference entity")
+            }, ["name", "base_x", "base_y"])));
+        tools.Add(Tool("insert_block", "Insert an undoable reference to an existing user Block.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["block"] = StringSchema("Existing user Block name or ID"),
+                ["x"] = new { type = "number" },
+                ["y"] = new { type = "number" },
+                ["layer"] = StringSchema("Existing target layer name or ID"),
+                ["rotation_degrees"] = new { type = "number" },
+                ["scale_x"] = new { type = "number" },
+                ["scale_y"] = new { type = "number" },
+                ["name"] = StringSchema("Optional Block reference entity name")
+            }, ["block", "x", "y"])));
         return tools;
     }
 
@@ -876,7 +1151,7 @@ internal sealed class CadAiWorkspaceToolExecutor
                 if (name is not ("layer" or "name"))
                     properties[name] = JsonSerializer.SerializeToNode(value);
             properties["stroke_style"] = JsonSerializer.SerializeToNode(ObjectSchema(StrokeSchema(false)));
-            if (definition.Name is "add_circle" or "add_rectangle" or "add_polyline")
+            if (definition.Name is "add_circle" or "add_ellipse" or "add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path")
                 properties["fill"] = JsonSerializer.SerializeToNode(ObjectSchema(FillSchema(false), ["mode"]));
         }
 

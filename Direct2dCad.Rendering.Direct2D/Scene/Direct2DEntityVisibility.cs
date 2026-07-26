@@ -578,6 +578,7 @@ internal static class Direct2DEntityVisibility
             CadArc or
             CadPolyline or
             CadSpline or
+            CadCompositePath or
             CadShapeText;
     }
 

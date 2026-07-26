@@ -250,6 +250,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Reducing conversation context and retrying... 的本地化字符串。
+        /// </summary>
+        public static string AiReducingContext {
+            get {
+                return ResourceManager.GetString("AiReducingContext", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Request failed 的本地化字符串。
         /// </summary>
         public static string AiRequestFailed {
@@ -804,6 +813,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string ContentType {
             get {
                 return ResourceManager.GetString("ContentType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Context window 的本地化字符串。
+        /// </summary>
+        public static string ContextWindowTokens {
+            get {
+                return ResourceManager.GetString("ContextWindowTokens", resourceCulture);
             }
         }
         

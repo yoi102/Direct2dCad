@@ -46,7 +46,8 @@ public sealed class LmStudioChatClientTests
             "http://localhost:1234/v1",
             "local-model",
             [AiChatMessage.System("system"), AiChatMessage.User("draw")],
-            [new AiToolDefinition("add_line", "Add a line", schema)]));
+            [new AiToolDefinition("add_line", "Add a line", schema)],
+            MaxOutputTokens: 777));
 
         var toolCall = Assert.Single(completion.ToolCalls);
         Assert.Equal("call-1", toolCall.Id);
@@ -54,6 +55,31 @@ public sealed class LmStudioChatClientTests
         Assert.Equal("local-model", completion.Model);
         Assert.Contains("\"tool_choice\":\"auto\"", handler.LastRequestBody, StringComparison.Ordinal);
         Assert.Contains("\"name\":\"add_line\"", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"max_tokens\":777", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_MapsNestedContextWindowError()
+    {
+        const string error =
+            """{"error":"Engine protocol predict request returned 400: {\"error\":{\"code\":400,\"message\":\"request (12945 tokens) exceeds the available context size (8192 tokens), try increasing it\",\"type\":\"exceed_context_size_error\",\"n_prompt_tokens\":12945,\"n_ctx\":8192}}"}""";
+        using var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent(error, Encoding.UTF8, "application/json")
+        });
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        var exception = await Assert.ThrowsAsync<AiContextWindowExceededException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                "local-model",
+                [AiChatMessage.User("draw")],
+                [])));
+
+        Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
+        Assert.Equal(12945, exception.PromptTokens);
+        Assert.Equal(8192, exception.ContextWindowTokens);
     }
 
     [Fact]

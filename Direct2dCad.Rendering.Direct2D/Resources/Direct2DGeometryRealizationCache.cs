@@ -239,7 +239,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
                 geometry,
                 ResolveFlatteningTolerance(
                     profile.AnchorScale,
-                    entity is CadSpline { Closed: true }
+                    entity is CadSpline { Closed: true } or CadCompositePath { Closed: true }
                         ? ClosedSplineFillFlatteningTolerance
                         : DefaultFlatteningTolerance));
             profile.FillEstimatedBytes = EstimateRealizationBytes(entity, resources);
@@ -259,6 +259,9 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         {
             CadPolyline polyline => polyline.Points.Count,
             CadSpline spline => spline.FitPoints.Count * 4,
+            CadCompositePath path => path.Segments.Sum(segment => segment is CadCompositeSplineSegment spline
+                ? spline.FitPoints.Count * 4
+                : 1),
             CadShapeText => resources.GeometryComplexity,
             _ => Math.Max(resources.GeometryComplexity, 1)
         };
@@ -289,6 +292,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         {
             CadPolyline polyline => polyline.Points.Count >= MinimumPolylinePointCount,
             CadSpline spline => spline.FitPoints.Count >= MinimumSplineFitPointCount,
+            CadCompositePath path => path.Segments.Count >= 8,
             CadShapeText => resources.GeometryComplexity >= MinimumShapeTextSegmentCount,
             _ => false
         };

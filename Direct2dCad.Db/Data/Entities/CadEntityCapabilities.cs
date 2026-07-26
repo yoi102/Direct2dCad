@@ -25,18 +25,18 @@ public static class CadEntityCapabilities
 
         var capabilities = CadEntityCapability.None;
         if (entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or
-            CadPolyline or CadSpline or CadText or CadShapeText or CadImage or CadOleObject or CadBlockReference)
+            CadPolyline or CadSpline or CadCompositePath or CadText or CadShapeText or CadImage or CadOleObject or CadBlockReference)
         {
             capabilities |= CadEntityCapability.GripHandles;
         }
         if (entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or
-            CadPolyline or CadSpline or CadText or CadShapeText or CadBlockReference)
+            CadPolyline or CadSpline or CadCompositePath or CadText or CadShapeText or CadBlockReference)
         {
             capabilities |= CadEntityCapability.GraphicStyle;
         }
 
         if (entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or
-            CadPolyline or CadSpline)
+            CadPolyline or CadSpline or CadCompositePath)
         {
             capabilities |= CadEntityCapability.StrokeStyle;
         }
@@ -44,17 +44,19 @@ public static class CadEntityCapabilities
         if (entity is CadLine or CadEllipseArc ||
             entity is CadArc { IsFullCircle: false } ||
             entity is CadPolyline { Closed: false } ||
-            entity is CadSpline { Closed: false })
+            entity is CadSpline { Closed: false } ||
+            entity is CadCompositePath { Closed: false })
         {
             capabilities |= CadEntityCapability.StartEndCaps;
         }
 
-        if (entity is CadRectangle or CadPolyline or CadSpline)
+        if (entity is CadRectangle or CadPolyline or CadSpline or CadCompositePath)
             capabilities |= CadEntityCapability.LineJoin;
 
         if (entity is CadCircle or CadEllipse or CadRectangle ||
             entity is CadPolyline { Closed: true } ||
-            entity is CadSpline { Closed: true })
+            entity is CadSpline { Closed: true } ||
+            entity is CadCompositePath { Closed: true })
         {
             capabilities |= CadEntityCapability.Fill;
         }

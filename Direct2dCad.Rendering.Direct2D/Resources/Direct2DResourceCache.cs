@@ -25,6 +25,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     private readonly Direct2DTextFormatResourceCache _textFormatResources;
     private readonly Direct2DImageBitmapResourceCache _imageBitmapResources;
     private readonly Direct2DGeometryRealizationCache _geometryRealizations = new();
+    private readonly Direct2DGeometryFactory _geometryFactory = new();
     private readonly Direct2DHatchTileCache _hatchTiles;
     private float _maximumStrokeWidth;
     private bool _maximumStrokeWidthDirty;
@@ -580,6 +581,9 @@ internal sealed class Direct2DResourceCache : IDisposable
                 CreatePolylineGeometry(polyline.Points, polyline.Closed),
                 polyline.Points.Count),
             CadSpline spline => CreateSplineGeometry(spline.GetBezierSegments(), spline.Closed),
+            CadCompositePath path => (
+                _geometryFactory.CreateCompositePath(Factory!, path),
+                path.Segments.Count),
             CadShapeText shapeText => CreateShapeTextGeometry(shapeText.CreateStrokeSegments()),
             _ => (null, 0)
         };
@@ -848,6 +852,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
+            CadCompositePath path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
@@ -865,6 +870,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadArc or
             CadPolyline or
             CadSpline or
+            CadCompositePath or
             CadText or
             CadShapeText;
     }
@@ -879,6 +885,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadArc or
             CadPolyline or
             CadSpline or
+            CadCompositePath or
             CadShapeText;
     }
 
@@ -937,6 +944,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline { Closed: true } polyline => polyline.FillStyleId,
             CadSpline { Closed: true } spline => spline.FillStyleId,
+            CadCompositePath { Closed: true } path => path.FillStyleId,
             _ => null
         };
 

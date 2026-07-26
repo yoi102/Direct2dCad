@@ -69,6 +69,61 @@ internal sealed class Direct2DGeometryFactory
         return geometry;
     }
 
+    public ID2D1PathGeometry CreateCompositePath(
+        ID2D1Factory factory,
+        CadCompositePath path)
+    {
+        var geometry = factory.CreatePathGeometry();
+        using var sink = geometry.Open();
+        var current = path.StartPoint;
+        sink.BeginFigure(ToVector2(current), path.Closed ? FigureBegin.Filled : FigureBegin.Hollow);
+
+        foreach (var segment in path.Segments)
+        {
+            switch (segment)
+            {
+                case CadCompositeLineSegment line:
+                    sink.AddLine(ToVector2(line.End));
+                    current = line.End;
+                    break;
+                case CadCompositeArcSegment arc:
+                    var radius = current.DistanceTo(arc.Center);
+                    var end = CadCompositePath.GetEndPoint(current, arc);
+                    if (Math.Abs(Math.Abs(arc.SweepAngleRadians) - TwoPi) <= FullCircleTolerance)
+                    {
+                        var halfSweep = arc.SweepAngleRadians >= 0 ? Math.PI : -Math.PI;
+                        var middle = RotateAround(current, arc.Center, halfSweep);
+                        sink.AddArc(CreateArcSegment(middle, radius, halfSweep));
+                        sink.AddArc(CreateArcSegment(end, radius, halfSweep));
+                    }
+                    else
+                    {
+                        sink.AddArc(CreateArcSegment(end, radius, arc.SweepAngleRadians));
+                    }
+                    current = end;
+                    break;
+                case CadCompositeSplineSegment spline:
+                    var points = new CadPointD[spline.FitPoints.Count + 1];
+                    points[0] = current;
+                    for (var index = 0; index < spline.FitPoints.Count; index++)
+                        points[index + 1] = spline.FitPoints[index];
+                    foreach (var bezier in CadSpline.CreateBezierSegments(points))
+                    {
+                        sink.AddBezier(new BezierSegment(
+                            ToVector2(bezier.Control1),
+                            ToVector2(bezier.Control2),
+                            ToVector2(bezier.End)));
+                    }
+                    current = spline.FitPoints[^1];
+                    break;
+            }
+        }
+
+        sink.EndFigure(path.Closed ? FigureEnd.Closed : FigureEnd.Open);
+        sink.Close();
+        return geometry;
+    }
+
     public ID2D1PathGeometry CreateArc(
         ID2D1Factory factory,
         CadPointD center,
@@ -164,6 +219,17 @@ internal sealed class Direct2DGeometryFactory
         double angle)
     {
         return new CadPointD(center.X + Math.Cos(angle) * radiusX, center.Y + Math.Sin(angle) * radiusY);
+    }
+
+    private static CadPointD RotateAround(CadPointD point, CadPointD center, double angle)
+    {
+        var x = point.X - center.X;
+        var y = point.Y - center.Y;
+        var cosine = Math.Cos(angle);
+        var sine = Math.Sin(angle);
+        return new CadPointD(
+            center.X + x * cosine - y * sine,
+            center.Y + x * sine + y * cosine);
     }
 
     private static Vector2 ToVector2(CadPointD point) => new((float)point.X, (float)point.Y);

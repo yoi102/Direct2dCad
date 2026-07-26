@@ -1158,6 +1158,9 @@
   <data name="Temperature" xml:space="preserve">
     <value>温度</value>
   </data>
+  <data name="ContextWindowTokens" xml:space="preserve">
+    <value>上下文窗口</value>
+  </data>
   <data name="RefreshModels" xml:space="preserve">
     <value>刷新模型</value>
   </data>
@@ -1205,6 +1208,9 @@
   </data>
   <data name="AiGenerating" xml:space="preserve">
     <value>正在生成...</value>
+  </data>
+  <data name="AiReducingContext" xml:space="preserve">
+    <value>正在缩减对话上下文并重试...</value>
   </data>
   <data name="AiEmptyResponse" xml:space="preserve">
     <value>模型返回了空响应。</value>

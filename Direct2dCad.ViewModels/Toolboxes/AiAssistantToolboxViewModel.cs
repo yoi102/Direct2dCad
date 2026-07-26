@@ -64,6 +64,9 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     public partial bool EnableCadTools { get; set; } = true;
 
     [ObservableProperty]
+    public partial int ContextWindowTokens { get; set; } = AiAssistantSettings.DefaultContextWindowTokens;
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
     [NotifyCanExecuteChangedFor(nameof(RefreshModelsCommand))]
     [NotifyCanExecuteChangedFor(nameof(StopCommand))]
@@ -93,6 +96,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     partial void OnSelectedModelChanged(string? value) => SaveSettings();
     partial void OnTemperatureChanged(double value) => SaveSettings();
     partial void OnEnableCadToolsChanged(bool value) => SaveSettings();
+    partial void OnContextWindowTokensChanged(int value) => SaveSettings();
 
     [RelayCommand(CanExecute = nameof(CanRefreshModels))]
     private async Task RefreshModelsAsync()
@@ -143,6 +147,10 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, prompt));
         _conversation.Add(AiChatMessage.User(prompt));
         var executor = new CadAiWorkspaceToolExecutor(_workspaceService);
+        var availableTools = EnableCadTools ? CadAiWorkspaceToolExecutor.ToolDefinitions : [];
+        var selectedTools = EnableCadTools
+            ? CadAiToolSelector.Select(prompt, availableTools)
+            : [];
 
         BeginRequest();
         var cancellationToken = _requestCancellation!.Token;
@@ -151,19 +159,11 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
             ConnectionStatus = Resource("AiGenerating", "Generating...");
             for (var round = 0; round < MaximumToolRounds; round++)
             {
-                var requestMessages = new List<AiChatMessage>(_conversation.Count + 1)
-                {
-                    AiChatMessage.System(executor.CreateSystemPrompt())
-                };
-                requestMessages.AddRange(_conversation);
-
-                var completion = await _chatClient.CompleteAsync(
-                    new AiChatRequest(
-                        Endpoint,
-                        SelectedModel,
-                        requestMessages,
-                        EnableCadTools ? CadAiWorkspaceToolExecutor.ToolDefinitions : [],
-                        Temperature),
+                var completion = await CompleteWithContextRetryAsync(
+                    executor.CreateSystemPrompt(),
+                    prompt,
+                    selectedTools,
+                    availableTools,
                     cancellationToken);
 
                 _conversation.Add(AiChatMessage.Assistant(completion.Content, completion.ToolCalls));
@@ -241,6 +241,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
             SelectedModel = settings.Model;
             Temperature = settings.Temperature;
             EnableCadTools = settings.EnableCadTools;
+            ContextWindowTokens = settings.ContextWindowTokens;
             if (!string.IsNullOrWhiteSpace(settings.Model))
                 Models.Add(settings.Model);
         }
@@ -262,7 +263,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
                 Endpoint = Endpoint,
                 Model = SelectedModel ?? string.Empty,
                 Temperature = Temperature,
-                EnableCadTools = EnableCadTools
+                EnableCadTools = EnableCadTools,
+                ContextWindowTokens = ContextWindowTokens
             });
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -276,6 +278,59 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         _requestCancellation?.Dispose();
         _requestCancellation = new CancellationTokenSource();
         IsBusy = true;
+    }
+
+    private async Task<AiChatCompletion> CompleteWithContextRetryAsync(
+        string systemPrompt,
+        string userPrompt,
+        IReadOnlyList<AiToolDefinition> selectedTools,
+        IReadOnlyList<AiToolDefinition> availableTools,
+        CancellationToken cancellationToken)
+    {
+        var contextWindow = Math.Clamp(
+            ContextWindowTokens,
+            AiAssistantSettings.MinimumContextWindowTokens,
+            AiAssistantSettings.MaximumContextWindowTokens);
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var aggressive = attempt > 0;
+            var tools = aggressive && availableTools.Count > 0
+                ? CadAiToolSelector.Select(userPrompt, availableTools, aggressive: true)
+                : selectedTools;
+            var context = CadAiRequestContextBuilder.Build(
+                systemPrompt,
+                _conversation,
+                tools,
+                contextWindow,
+                aggressive);
+            try
+            {
+                return await _chatClient.CompleteAsync(
+                    new AiChatRequest(
+                        Endpoint,
+                        SelectedModel!,
+                        context.Messages,
+                        context.Tools,
+                        Temperature,
+                        context.MaxOutputTokens),
+                    cancellationToken);
+            }
+            catch (AiContextWindowExceededException exception) when (attempt == 0)
+            {
+                if (exception.ContextWindowTokens is { } reportedContext)
+                {
+                    contextWindow = Math.Clamp(
+                        reportedContext,
+                        AiAssistantSettings.MinimumContextWindowTokens,
+                        AiAssistantSettings.MaximumContextWindowTokens);
+                    ContextWindowTokens = contextWindow;
+                }
+
+                ConnectionStatus = Resource("AiReducingContext", "Reducing conversation context and retrying...");
+            }
+        }
+
+        throw new InvalidOperationException("The AI request could not fit in the configured context window.");
     }
 
     private void EndRequest()

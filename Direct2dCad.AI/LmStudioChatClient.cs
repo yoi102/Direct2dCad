@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace Direct2dCad.AI;
 
@@ -50,6 +51,7 @@ public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
                 : request.Tools.Select(CreateToolPayload).ToArray(),
             request.Tools.Count == 0 ? null : "auto",
             Math.Clamp(request.Temperature, 0, 2),
+            Math.Clamp(request.MaxOutputTokens, 1, 32768),
             Stream: false);
 
         using var response = await httpClient.PostAsJsonAsync(
@@ -155,6 +157,14 @@ public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
             return;
 
         var detail = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (IsContextWindowExceeded(detail))
+        {
+            throw new AiContextWindowExceededException(
+                $"LM Studio context window is too small. {detail}".Trim(),
+                response.StatusCode,
+                ReadTokenCount(detail, "n_prompt_tokens"),
+                ReadTokenCount(detail, "n_ctx"));
+        }
         if (detail.Length > 800)
             detail = detail[..800];
         throw new HttpRequestException(
@@ -163,12 +173,28 @@ public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
             response.StatusCode);
     }
 
+    private static bool IsContextWindowExceeded(string detail) =>
+        detail.Contains("exceed_context_size_error", StringComparison.OrdinalIgnoreCase) ||
+        detail.Contains("exceeds the available context size", StringComparison.OrdinalIgnoreCase);
+
+    private static int? ReadTokenCount(string detail, string propertyName)
+    {
+        var match = Regex.Match(
+            detail,
+            $"{Regex.Escape(propertyName)}[^0-9]{{0,16}}(?<value>\\d+)",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+        return match.Success && int.TryParse(match.Groups["value"].Value, out var value)
+            ? value
+            : null;
+    }
+
     private sealed record ChatCompletionRequestPayload(
         [property: JsonPropertyName("model")] string Model,
         [property: JsonPropertyName("messages")] IReadOnlyList<ChatMessagePayload> Messages,
         [property: JsonPropertyName("tools")] IReadOnlyList<ToolDefinitionPayload>? Tools,
         [property: JsonPropertyName("tool_choice")] string? ToolChoice,
         [property: JsonPropertyName("temperature")] double Temperature,
+        [property: JsonPropertyName("max_tokens")] int MaxTokens,
         [property: JsonPropertyName("stream")] bool Stream);
 
     private sealed record ChatMessagePayload(

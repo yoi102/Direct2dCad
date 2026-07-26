@@ -17,7 +17,8 @@ public sealed class JsonAiAssistantSettingsStoreTests
                 Endpoint = "http://localhost:1234/v1/",
                 Model = " local-model ",
                 Temperature = 9,
-                EnableCadTools = false
+                EnableCadTools = false,
+                ContextWindowTokens = int.MaxValue
             });
 
             var loaded = store.Load();
@@ -26,6 +27,7 @@ public sealed class JsonAiAssistantSettingsStoreTests
             Assert.Equal("local-model", loaded.Model);
             Assert.Equal(2, loaded.Temperature);
             Assert.False(loaded.EnableCadTools);
+            Assert.Equal(AiAssistantSettings.MaximumContextWindowTokens, loaded.ContextWindowTokens);
         }
         finally
         {

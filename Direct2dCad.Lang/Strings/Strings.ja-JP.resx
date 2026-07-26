@@ -1158,6 +1158,9 @@
   <data name="Temperature" xml:space="preserve">
     <value>Temperature</value>
   </data>
+  <data name="ContextWindowTokens" xml:space="preserve">
+    <value>コンテキストウィンドウ</value>
+  </data>
   <data name="RefreshModels" xml:space="preserve">
     <value>モデルを更新</value>
   </data>
@@ -1205,6 +1208,9 @@
   </data>
   <data name="AiGenerating" xml:space="preserve">
     <value>生成中...</value>
+  </data>
+  <data name="AiReducingContext" xml:space="preserve">
+    <value>会話コンテキストを縮小して再試行しています...</value>
   </data>
   <data name="AiEmptyResponse" xml:space="preserve">
     <value>モデルから空の応答が返されました。</value>

@@ -24,13 +24,13 @@ public sealed class MoveEntitiesCommand : ICadCommand
     {
         CadCommandEntityAccess.EnsureEditable(document, _entityIds);
         Move(document, _delta);
-        return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Geometry);
+        return ChangeSet(document);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
         Move(document, -_delta);
-        return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Geometry);
+        return ChangeSet(document);
     }
 
     private void Move(CadDocument document, CadVectorD delta)
@@ -42,5 +42,13 @@ public sealed class MoveEntitiesCommand : ICadCommand
             var entity = document.GetEntity(entityId);
             CadEntityTransform.Translate(entity, delta);
         }
+    }
+
+    private CadDocumentChangeSet ChangeSet(CadDocument document)
+    {
+        var dependentReferences = document.RefreshBlockReferenceBounds();
+        return CadDocumentChangeSet.ForEntities(
+            _entityIds.Concat(dependentReferences).Distinct(),
+            CadEntityChangeKind.Geometry);
     }
 }
