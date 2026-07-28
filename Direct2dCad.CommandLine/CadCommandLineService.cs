@@ -200,6 +200,11 @@ public sealed class CadCommandLineService : ICadCommandLineService
             $"selection {statistics.SelectionRenderMilliseconds:F2} ms",
             $"Timing I/O: OLE prepare {statistics.OlePreparationMilliseconds:F2} ms | " +
             $"surface draw {statistics.SurfaceDrawMilliseconds:F2} ms",
+            $"Multi-device: frames {statistics.MultiDeviceFrameCount} | " +
+            $"workers {statistics.MultiDeviceWorkerCount} | " +
+            $"entities {statistics.MultiDeviceEntityCount} | " +
+            $"render {statistics.MultiDeviceRenderMilliseconds:F2} ms | " +
+            $"worker GPU cache {FormatBytes(statistics.MultiDeviceGpuCacheBytes)}",
             $"Blocks: refs {statistics.BlockReferenceCount} | expanded {statistics.ExpandedBlockEntityCount} | " +
             $"definition CL replay/build {statistics.BlockDefinitionCommandListReplayCount}/" +
             $"{statistics.BlockDefinitionCommandListBuildCount}",
@@ -208,7 +213,9 @@ public sealed class CadCommandLineService : ICadCommandLineService
             $"tiles {statistics.TileReplayCount}/{statistics.TileBuildCount}",
             $"Geometry realization: fill {statistics.GeometryRealizationFillDrawCount} | " +
             $"stroke {statistics.GeometryRealizationStrokeDrawCount} | " +
-            $"build/fallback {statistics.GeometryRealizationBuildCount}/{statistics.GeometryRealizationFallbackCount}",
+            $"hit/miss {statistics.GeometryRealizationCacheHitCount}/{statistics.GeometryRealizationCacheMissCount} | " +
+            $"build/fallback {statistics.GeometryRealizationBuildCount}/{statistics.GeometryRealizationFallbackCount} | " +
+            $"build {statistics.GeometryRealizationBuildMilliseconds:F2} ms",
             $"Hatch/OLE: lines {statistics.HatchLineSubmissionCount} | " +
             $"simplified families {statistics.HatchSimplifiedLineFamilyCount} | " +
             $"OLE tile builds {statistics.OleTileBuildCount}",

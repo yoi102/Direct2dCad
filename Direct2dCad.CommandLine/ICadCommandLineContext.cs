@@ -54,6 +54,9 @@ public sealed record CadCommandLineRenderStatistics(
     int GeometryRealizationStrokeDrawCount,
     int GeometryRealizationBuildCount,
     int GeometryRealizationFallbackCount,
+    int GeometryRealizationCacheHitCount,
+    int GeometryRealizationCacheMissCount,
+    double GeometryRealizationBuildMilliseconds,
     long HatchLineSubmissionCount,
     int HatchSimplifiedLineFamilyCount,
     int OleTileBuildCount,
@@ -75,4 +78,9 @@ public sealed record CadCommandLineRenderStatistics(
     double TransientRenderMilliseconds,
     double SelectionRenderMilliseconds,
     double OlePreparationMilliseconds,
-    double SurfaceDrawMilliseconds);
+    double SurfaceDrawMilliseconds,
+    int MultiDeviceFrameCount,
+    int MultiDeviceWorkerCount,
+    int MultiDeviceEntityCount,
+    double MultiDeviceRenderMilliseconds,
+    long MultiDeviceGpuCacheBytes);

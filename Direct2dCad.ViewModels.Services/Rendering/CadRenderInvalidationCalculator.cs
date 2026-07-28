@@ -176,6 +176,9 @@ internal readonly struct CadRenderInvalidationCalculator(
             CadTransientLine line => CreateTransientBoundsInvalidation(
                 BoundsFromPoints(line.Start, line.End),
                 line.Style),
+            CadTransientInfiniteCross infiniteCross => CreateTransientBoundsInvalidation(
+                viewport.VisibleWorldBounds,
+                infiniteCross.Style),
             CadTransientCircle circle when circle.Radius > 0 => CreateTransientBoundsInvalidation(
                 CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2),
                 circle.Style,
@@ -257,6 +260,7 @@ internal readonly struct CadRenderInvalidationCalculator(
         {
             CadTransientGroup group => ResolveTransientGroupBounds(group),
             CadTransientLine line => BoundsFromPoints(line.Start, line.End),
+            CadTransientInfiniteCross => viewport.VisibleWorldBounds,
             CadTransientCircle circle when circle.Radius > 0 =>
                 CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2),
             CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 =>
@@ -770,6 +774,7 @@ internal readonly struct CadRenderInvalidationCalculator(
             CadArc or
             CadPolyline or
             CadSpline or
+            CadCompositePath or
             CadShapeText or
             CadBlockReference;
     }
@@ -826,11 +831,31 @@ internal readonly struct CadRenderInvalidationCalculator(
     private static CadRenderInvalidation CreateScreenPointInvalidation(CadPointD screenPoint, double radiusPixels)
     {
         var radius = Math.Max(1.0, radiusPixels);
+        var left = Math.Floor(screenPoint.X - radius);
+        var top = Math.Floor(screenPoint.Y - radius);
+        var right = Math.Ceiling(screenPoint.X + radius);
+        var bottom = Math.Ceiling(screenPoint.Y + radius);
+        var x = Math.Max(0, SaturateToInt(left));
+        var y = Math.Max(0, SaturateToInt(top));
         return CadRenderInvalidation.FromScreenRect(new CadScreenRect(
-            Math.Max(0, (int)Math.Floor(screenPoint.X - radius)),
-            Math.Max(0, (int)Math.Floor(screenPoint.Y - radius)),
-            (int)Math.Ceiling(radius * 2),
-            (int)Math.Ceiling(radius * 2)));
+            x,
+            y,
+            SaturateDimension(right - x),
+            SaturateDimension(bottom - y)));
+    }
+
+    private static int SaturateToInt(double value)
+    {
+        if (double.IsNaN(value))
+            return 0;
+        return (int)Math.Clamp(value, int.MinValue, int.MaxValue);
+    }
+
+    private static int SaturateDimension(double value)
+    {
+        if (double.IsNaN(value) || value <= 0)
+            return 0;
+        return (int)Math.Clamp(value, 0, int.MaxValue);
     }
 
     private static CadRectD ResolveTransientTextBounds(CadTransientText text)

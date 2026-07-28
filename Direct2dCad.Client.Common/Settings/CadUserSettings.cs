@@ -53,7 +53,13 @@ public sealed class CadUserSettings
                 source.Rendering.IsZoomSnapshotPreviewEnabled,
             IsLevelOfDetailEnabled = source.Rendering.IsLevelOfDetailEnabled,
             AllowApproximateTileScaleFallback =
-                source.Rendering.AllowApproximateTileScaleFallback
+                source.Rendering.AllowApproximateTileScaleFallback,
+            IsBackgroundChunkRecordingEnabled =
+                source.Rendering.IsBackgroundChunkRecordingEnabled,
+            IsMultiDeviceRenderingEnabled =
+                source.Rendering.IsMultiDeviceRenderingEnabled,
+            MultiDeviceRenderingDeviceCount =
+                source.Rendering.MultiDeviceRenderingDeviceCount
         };
         Interaction = new CadInteractionUserSettings
         {
@@ -102,9 +108,14 @@ public sealed class CadRenderingUserSettings
     public bool IsZoomSnapshotPreviewEnabled { get; set; } = false;
     public bool IsLevelOfDetailEnabled { get; set; } = true;
     public bool AllowApproximateTileScaleFallback { get; set; } = false;
+    public bool IsBackgroundChunkRecordingEnabled { get; set; } = false;
+    public bool IsMultiDeviceRenderingEnabled { get; set; } = false;
+    public int MultiDeviceRenderingDeviceCount { get; set; } = 2;
 
     internal void Normalize()
     {
+        MultiDeviceRenderingDeviceCount =
+            Math.Clamp(MultiDeviceRenderingDeviceCount, 2, 4);
     }
 }
 

@@ -43,18 +43,7 @@ internal readonly struct CadSnapInteractionService(
         switch (grid.SnapMarkerType)
         {
             case CadSnapMarkerType.InfiniteCross:
-                var visibleBounds = viewport.VisibleWorldBounds;
-                if (visibleBounds.IsEmpty)
-                    break;
-
-                items.Add(new CadTransientLine(
-                    new CadPointD(visibleBounds.MinX, snappedWorld.Y),
-                    new CadPointD(visibleBounds.MaxX, snappedWorld.Y),
-                    style));
-                items.Add(new CadTransientLine(
-                    new CadPointD(snappedWorld.X, visibleBounds.MinY),
-                    new CadPointD(snappedWorld.X, visibleBounds.MaxY),
-                    style));
+                items.Add(new CadTransientInfiniteCross(snappedWorld, style));
                 break;
 
             case CadSnapMarkerType.X:

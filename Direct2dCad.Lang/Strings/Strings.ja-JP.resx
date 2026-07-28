@@ -1143,6 +1143,9 @@
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>LOD 最適化を有効にする</value>
   </data>
+  <data name="BackgroundChunkRecording" xml:space="preserve">
+    <value>コマンドリストチャンクのバックグラウンド記録（試験的）</value>
+  </data>
   <data name="AiAssistant" xml:space="preserve">
     <value>AI アシスタント</value>
   </data>
@@ -1232,5 +1235,11 @@
   </data>
   <data name="AiCadTool" xml:space="preserve">
     <value>CAD ツール</value>
+  </data>
+  <data name="MultiDeviceRendering" xml:space="preserve">
+    <value>実験的なマルチデバイス描画</value>
+  </data>
+  <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
+    <value>描画デバイス数</value>
   </data>
 </root>

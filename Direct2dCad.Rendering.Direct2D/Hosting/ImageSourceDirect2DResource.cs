@@ -23,6 +23,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     private readonly CadScreenRect[] _singleDirtyRect = new CadScreenRect[1];
     private readonly Action _presentBackBuffer;
     private readonly Func<ID2D1DeviceContext, Result>? _endDrawOverride;
+    private readonly Action? _beforeDeviceResourcesReleased;
     private ID2D1Factory1? _d2dFactory;
     private ID2D1Device? _d2dDevice;
     private ID2D1DeviceContext? _d2dContext;
@@ -65,6 +66,15 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     public IDWriteFactory? DwriteFactory => _dwriteFactory;
 
+    public ID3D11Device? D3DDevice
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _d3dDevice;
+        }
+    }
+
     public ID2D1DeviceContext? Context
     {
         get
@@ -102,9 +112,11 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     public bool HasBaseSceneSnapshot => _baseSceneTexture is not null;
 
     public ImageSourceDirect2DResource(
-        Func<ID2D1DeviceContext, Result>? endDrawOverride = null)
+        Func<ID2D1DeviceContext, Result>? endDrawOverride = null,
+        Action? beforeDeviceResourcesReleased = null)
     {
         _endDrawOverride = endDrawOverride;
+        _beforeDeviceResourcesReleased = beforeDeviceResourcesReleased;
         _presentBackBuffer = PresentBackBuffer;
         CreateD2DFactory();
         CreateD3D11Device();
@@ -825,6 +837,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             // The old shared surface may already be invalid when the device is lost.
         }
 
+        _beforeDeviceResourcesReleased?.Invoke();
         ReleaseImageTarget();
         ReleaseDeviceResources();
 

@@ -93,6 +93,9 @@ internal sealed class Direct2DTransientSceneRenderer(
                 case CadTransientLine line:
                     primitives.DrawLine(context, viewport, line.Start, line.End, line.Style);
                     break;
+                case CadTransientInfiniteCross infiniteCross:
+                    DrawInfiniteCross(context, viewport, infiniteCross);
+                    break;
                 case CadTransientCircle circle when circle.Radius > 0:
                     primitives.DrawCircle(
                         context,
@@ -203,6 +206,29 @@ internal sealed class Direct2DTransientSceneRenderer(
                     break;
             }
         }
+    }
+
+    private void DrawInfiniteCross(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadTransientInfiniteCross infiniteCross)
+    {
+        var bounds = viewport.VisibleWorldBounds;
+        if (bounds.IsEmpty)
+            return;
+
+        primitives.DrawLine(
+            context,
+            viewport,
+            new CadPointD(bounds.MinX, infiniteCross.Center.Y),
+            new CadPointD(bounds.MaxX, infiniteCross.Center.Y),
+            infiniteCross.Style);
+        primitives.DrawLine(
+            context,
+            viewport,
+            new CadPointD(infiniteCross.Center.X, bounds.MinY),
+            new CadPointD(infiniteCross.Center.X, bounds.MaxY),
+            infiniteCross.Style);
     }
 
     private void DrawGroup(

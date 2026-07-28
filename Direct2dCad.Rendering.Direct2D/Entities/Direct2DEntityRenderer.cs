@@ -64,7 +64,8 @@ internal sealed class Direct2DEntityRenderer(
             FillBounds(context, shapeText.InvertedBackgroundBounds, strokeBrush);
             var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
             var resolvedStrokeWidth = ResolveStrokeWidth(strokeWidth, viewport, options);
-            if (!resourceCache.TryDrawStrokedGeometry(
+            if (!options.EnableGeometryRealizations ||
+                !resourceCache.TryDrawStrokedGeometry(
                     context,
                     entity,
                     resources,
@@ -153,7 +154,8 @@ internal sealed class Direct2DEntityRenderer(
                 resources,
                 options,
                 geometrySimplified);
-            if (!resourceCache.TryDrawStrokedGeometry(
+            if (!options.EnableGeometryRealizations ||
+                !resourceCache.TryDrawStrokedGeometry(
                     context,
                     entity,
                     resources,
@@ -624,12 +626,13 @@ internal sealed class Direct2DEntityRenderer(
         CadRenderOptions options)
     {
         if (resources.FillBrush is not null &&
-            !resourceCache.TryDrawFilledGeometry(
+            (!options.EnableGeometryRealizations ||
+             !resourceCache.TryDrawFilledGeometry(
                 context,
                 entity,
                 resources,
                 geometry,
-                resources.FillBrush))
+                resources.FillBrush)))
         {
             context.FillGeometry(geometry, resources.FillBrush);
         }

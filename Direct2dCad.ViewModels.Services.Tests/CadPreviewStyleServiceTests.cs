@@ -1,5 +1,7 @@
 using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Services.Styling;
 
@@ -64,5 +66,37 @@ public sealed class CadPreviewStyleServiceTests
         var style = service.CreateEntityPreviewStyle(line);
 
         Assert.Equal(4.5, style.StrokeWidth);
+    }
+
+    [Fact]
+    public void CompositePathPreviewResolvesEntityGraphicAndFillStyles()
+    {
+        var document = CadDocument.Create("Test");
+        var strokeColor = CadColor.FromRgb(12, 34, 56);
+        var fillColor = CadColor.FromArgb(180, 78, 90, 123);
+        var graphicStyleId = document.CreateGraphicStyle(
+            "Composite path",
+            strokeColor,
+            new CadLineWeight(24),
+            LineTypeId.Continuous);
+        var fillStyleId = document.CreateSolidFillStyle("Composite fill", fillColor);
+        var path = document.AddCompositePath(
+            CadPointD.Origin,
+            [
+                new CadCompositeLineSegment(new CadPointD(20, 0)),
+                new CadCompositeLineSegment(new CadPointD(20, 20))
+            ],
+            closed: true,
+            graphicStyleId: graphicStyleId,
+            fillStyleId: fillStyleId);
+        var service = new CadPreviewStyleService(
+            document,
+            CadUserSettings.CreateDefault());
+
+        var style = service.CreateEntityPreviewStyle(path);
+
+        Assert.Equal(strokeColor, style.StrokeColor);
+        Assert.Equal(24, style.StrokeWidth);
+        Assert.Equal(fillColor, style.FillColor);
     }
 }

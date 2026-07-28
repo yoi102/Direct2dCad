@@ -8,6 +8,8 @@ internal sealed class Direct2DRenderStatisticsCollector
     private bool _isFrameActive;
     private int _dirtyRegionCount;
     private int _pendingCommandListBuildCount;
+    private int _pendingBackgroundCommandListBuildCount;
+    private double _pendingBackgroundCommandListBuildMilliseconds;
     private int _pendingBlockDefinitionCommandListBuildCount;
     private int _pendingSelectionCommandListBuildCount;
     private int _pendingTileBuildCount;
@@ -29,6 +31,13 @@ internal sealed class Direct2DRenderStatisticsCollector
     public int SelectionCommandListBuildCount { get; private set; }
     public int CommandListReplayCount { get; private set; }
     public int CommandListBuildCount { get; private set; }
+    public int BackgroundCommandListBuildCount { get; private set; }
+    public double BackgroundCommandListBuildMilliseconds { get; private set; }
+    public int MultiDeviceFrameCount { get; private set; }
+    public int MultiDeviceWorkerCount { get; private set; }
+    public int MultiDeviceEntityCount { get; private set; }
+    public double MultiDeviceRenderMilliseconds { get; private set; }
+    public long MultiDeviceGpuCacheBytes { get; private set; }
     public int TileReplayCount { get; private set; }
     public int TileBuildCount { get; private set; }
     public int FallbackEntityCount { get; private set; }
@@ -36,6 +45,9 @@ internal sealed class Direct2DRenderStatisticsCollector
     public int GeometryRealizationStrokeDrawCount { get; private set; }
     public int GeometryRealizationBuildCount { get; private set; }
     public int GeometryRealizationFallbackCount { get; private set; }
+    public int GeometryRealizationCacheHitCount { get; private set; }
+    public int GeometryRealizationCacheMissCount { get; private set; }
+    public double GeometryRealizationBuildMilliseconds { get; private set; }
     public long HatchLineSubmissionCount { get; private set; }
     public int HatchSimplifiedLineFamilyCount { get; private set; }
     public int OleTileBuildCount { get; private set; }
@@ -88,6 +100,14 @@ internal sealed class Direct2DRenderStatisticsCollector
         SelectionCommandListBuildCount = _pendingSelectionCommandListBuildCount;
         CommandListReplayCount = 0;
         CommandListBuildCount = _pendingCommandListBuildCount;
+        BackgroundCommandListBuildCount = _pendingBackgroundCommandListBuildCount;
+        BackgroundCommandListBuildMilliseconds =
+            _pendingBackgroundCommandListBuildMilliseconds;
+        MultiDeviceFrameCount = 0;
+        MultiDeviceWorkerCount = 0;
+        MultiDeviceEntityCount = 0;
+        MultiDeviceRenderMilliseconds = 0;
+        MultiDeviceGpuCacheBytes = 0;
         TileReplayCount = 0;
         TileBuildCount = _pendingTileBuildCount;
         FallbackEntityCount = 0;
@@ -95,6 +115,9 @@ internal sealed class Direct2DRenderStatisticsCollector
         GeometryRealizationStrokeDrawCount = 0;
         GeometryRealizationBuildCount = 0;
         GeometryRealizationFallbackCount = 0;
+        GeometryRealizationCacheHitCount = 0;
+        GeometryRealizationCacheMissCount = 0;
+        GeometryRealizationBuildMilliseconds = 0;
         HatchLineSubmissionCount = _pendingHatchLineSubmissionCount;
         HatchSimplifiedLineFamilyCount = _pendingHatchSimplifiedLineFamilyCount;
         OleTileBuildCount = _pendingOleTileBuildCount;
@@ -116,6 +139,8 @@ internal sealed class Direct2DRenderStatisticsCollector
         OlePreparationMilliseconds = 0;
         SurfaceDrawMilliseconds = 0;
         _pendingCommandListBuildCount = 0;
+        _pendingBackgroundCommandListBuildCount = 0;
+        _pendingBackgroundCommandListBuildMilliseconds = 0;
         _pendingBlockDefinitionCommandListBuildCount = 0;
         _pendingSelectionCommandListBuildCount = 0;
         _pendingTileBuildCount = 0;
@@ -161,6 +186,65 @@ internal sealed class Direct2DRenderStatisticsCollector
             CommandListBuildCount++;
         else
             _pendingCommandListBuildCount++;
+    }
+    public void RecordBackgroundCommandListBuild(double milliseconds)
+    {
+        RecordCommandListBuild();
+        if (_isFrameActive)
+        {
+            BackgroundCommandListBuildCount++;
+            BackgroundCommandListBuildMilliseconds += NormalizeDuration(milliseconds);
+        }
+        else
+        {
+            _pendingBackgroundCommandListBuildCount++;
+            _pendingBackgroundCommandListBuildMilliseconds +=
+                NormalizeDuration(milliseconds);
+        }
+    }
+    public void RecordMultiDeviceFrame(
+        int workerCount,
+        int entityCount,
+        double milliseconds,
+        IReadOnlyList<CadRenderStatistics> workerStatistics)
+    {
+        MultiDeviceFrameCount++;
+        MultiDeviceWorkerCount = Math.Max(
+            MultiDeviceWorkerCount,
+            Math.Max(0, workerCount));
+        var normalizedEntityCount = Math.Max(0, entityCount);
+        MultiDeviceEntityCount += normalizedEntityCount;
+        MultiDeviceRenderMilliseconds += NormalizeDuration(milliseconds);
+        foreach (var statistics in workerStatistics)
+        {
+            ScenePassCount += statistics.ScenePassCount;
+            VisibleEntityCount += statistics.VisibleEntityCount;
+            EntitySubmissionCount += statistics.EntitySubmissionCount;
+            FallbackEntityCount += statistics.FallbackEntityCount;
+            GeometryRealizationFillDrawCount +=
+                statistics.GeometryRealizationFillDrawCount;
+            GeometryRealizationStrokeDrawCount +=
+                statistics.GeometryRealizationStrokeDrawCount;
+            GeometryRealizationBuildCount +=
+                statistics.GeometryRealizationBuildCount;
+            GeometryRealizationFallbackCount +=
+                statistics.GeometryRealizationFallbackCount;
+            GeometryRealizationCacheHitCount +=
+                statistics.GeometryRealizationCacheHitCount;
+            GeometryRealizationCacheMissCount +=
+                statistics.GeometryRealizationCacheMissCount;
+            GeometryRealizationBuildMilliseconds +=
+                statistics.GeometryRealizationBuildMilliseconds;
+            HatchLineSubmissionCount += statistics.HatchLineSubmissionCount;
+            HatchSimplifiedLineFamilyCount +=
+                statistics.HatchSimplifiedLineFamilyCount;
+            RenderCacheHitCount += statistics.RenderCacheHitCount;
+            RenderCacheMissCount += statistics.RenderCacheMissCount;
+            CpuEntitySubmissionMilliseconds +=
+                statistics.CpuEntitySubmissionMilliseconds;
+            EntityRenderMilliseconds += statistics.EntityRenderMilliseconds;
+            MultiDeviceGpuCacheBytes += statistics.GpuCacheBytes;
+        }
     }
     public void RecordTileReplay() => TileReplayCount++;
     public void RecordTileBuild()
@@ -270,6 +354,9 @@ internal sealed class Direct2DRenderStatisticsCollector
         GeometryRealizationStrokeDrawCount += statistics.StrokeDrawCount;
         GeometryRealizationBuildCount += statistics.BuildCount;
         GeometryRealizationFallbackCount += statistics.FallbackCount;
+        GeometryRealizationCacheHitCount += statistics.CacheHitCount;
+        GeometryRealizationCacheMissCount += statistics.CacheMissCount;
+        GeometryRealizationBuildMilliseconds += statistics.BuildDurationMilliseconds;
         RecordGpuCacheEviction(statistics.CacheEvictionCount);
     }
 
@@ -295,6 +382,9 @@ internal sealed class Direct2DRenderStatisticsCollector
         GeometryRealizationStrokeDrawCount,
         GeometryRealizationBuildCount,
         GeometryRealizationFallbackCount,
+        GeometryRealizationCacheHitCount,
+        GeometryRealizationCacheMissCount,
+        GeometryRealizationBuildMilliseconds,
         HatchLineSubmissionCount,
         HatchSimplifiedLineFamilyCount,
         OleTileBuildCount,
@@ -326,7 +416,17 @@ internal sealed class Direct2DRenderStatisticsCollector
         SelectionRenderMilliseconds,
         OlePreparationMilliseconds,
         SurfaceDrawMilliseconds,
-        renderDurationMilliseconds);
+        renderDurationMilliseconds)
+    {
+        BackgroundCommandListBuildCount = BackgroundCommandListBuildCount,
+        BackgroundCommandListBuildMilliseconds =
+            BackgroundCommandListBuildMilliseconds,
+        MultiDeviceFrameCount = MultiDeviceFrameCount,
+        MultiDeviceWorkerCount = MultiDeviceWorkerCount,
+        MultiDeviceEntityCount = MultiDeviceEntityCount,
+        MultiDeviceRenderMilliseconds = MultiDeviceRenderMilliseconds,
+        MultiDeviceGpuCacheBytes = MultiDeviceGpuCacheBytes
+    };
 
     private static double NormalizeDuration(double milliseconds) =>
         double.IsFinite(milliseconds) ? Math.Max(0.0, milliseconds) : 0.0;

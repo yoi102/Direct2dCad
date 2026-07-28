@@ -19,6 +19,11 @@ public sealed class CadRenderOptions
     public bool IsTextAntialiasingEnabled { get; init; } = true;
     public bool IsLevelOfDetailEnabled { get; init; }
     public bool AllowApproximateTileScaleFallback { get; init; }
+    public bool IsBackgroundChunkRecordingEnabled { get; init; }
+    public bool IsMultiDeviceRenderingEnabled { get; init; }
+    public int MultiDeviceRenderingDeviceCount { get; init; } = 2;
+    public int MultiDeviceRenderingEntityThreshold { get; init; } = 1000;
+    public bool EnableGeometryRealizations { get; init; } = true;
     public double TransformScaleMultiplier { get; init; } = 1.0;
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;

@@ -21,6 +21,11 @@ public sealed record CadTransientLine(
     CadTransientStyle Style)
     : CadTransientItem(Style);
 
+public sealed record CadTransientInfiniteCross(
+    CadPointD Center,
+    CadTransientStyle Style)
+    : CadTransientItem(Style);
+
 public sealed record CadTransientCircle(
     CadPointD Center,
     double Radius,

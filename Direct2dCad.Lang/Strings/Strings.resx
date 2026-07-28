@@ -1364,6 +1364,9 @@
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>Level of detail optimization</value>
   </data>
+  <data name="BackgroundChunkRecording" xml:space="preserve">
+    <value>Background command-list chunk recording (experimental)</value>
+  </data>
   <data name="AiAssistant" xml:space="preserve">
     <value>AI Assistant</value>
   </data>
@@ -1453,5 +1456,11 @@
   </data>
   <data name="AiCadTool" xml:space="preserve">
     <value>CAD tool</value>
+  </data>
+  <data name="MultiDeviceRendering" xml:space="preserve">
+    <value>Experimental multi-device rendering</value>
+  </data>
+  <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
+    <value>Rendering devices</value>
   </data>
 </root>

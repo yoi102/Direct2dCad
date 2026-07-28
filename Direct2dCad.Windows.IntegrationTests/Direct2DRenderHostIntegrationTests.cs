@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Styles.FillStyles;
@@ -6,6 +7,7 @@ using Direct2dCad.ChangeTracking;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D.Hosting;
 using Direct2dCad.Rendering.Direct2D.Ole;
+using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using SharpGen.Runtime;
@@ -15,6 +17,293 @@ namespace Direct2dCad.Windows.IntegrationTests;
 
 public sealed class Direct2DRenderHostIntegrationTests
 {
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_RendersEntityChunksOnIndependentDevices()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("Multi-device rendering");
+        for (var index = 0; index < 96; index++)
+        {
+            var row = index / 16;
+            var column = index % 16;
+            document.AddLine(
+                new CadPointD(column * 4 - 30, row * 4 - 10),
+                new CadPointD(column * 4 - 28, row * 4 - 8));
+        }
+
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(6, new CadPointD(320, 240));
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsMultiDeviceRenderingEnabled = true,
+            MultiDeviceRenderingDeviceCount = 2,
+            MultiDeviceRenderingEntityThreshold = 32
+        });
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(1, host.RenderStatistics.MultiDeviceFrameCount);
+        Assert.Equal(2, host.RenderStatistics.MultiDeviceWorkerCount);
+        Assert.Equal(96, host.RenderStatistics.MultiDeviceEntityCount);
+        Assert.Equal(96, host.RenderStatistics.VisibleEntityCount);
+        Assert.True(host.RenderStatistics.MultiDeviceRenderMilliseconds > 0);
+        Assert.Equal(1, imageSource.PresentCount);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_MultiDeviceWorkersReuseGeometryRealizations()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("Multi-device geometry realization");
+        for (var entityIndex = 0; entityIndex < 4; entityIndex++)
+        {
+            var yOffset = entityIndex * 18.0 - 27.0;
+            document.AddPolyline(
+                Enumerable
+                    .Range(0, 257)
+                    .Select(index =>
+                    {
+                        var x = -50.0 + index * 100.0 / 256.0;
+                        return new CadPointD(
+                            x,
+                            yOffset + Math.Sin(index * Math.PI / 16.0) * 6.0);
+                    })
+                    .ToArray());
+        }
+
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(4, new CadPointD(320, 240));
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsLevelOfDetailEnabled = true,
+            IsMultiDeviceRenderingEnabled = true,
+            MultiDeviceRenderingDeviceCount = 2,
+            MultiDeviceRenderingEntityThreshold = 2
+        });
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(1, host.RenderStatistics.MultiDeviceFrameCount);
+        Assert.True(host.RenderStatistics.GeometryRealizationBuildCount >= 1);
+        Assert.True(host.RenderStatistics.GeometryRealizationCacheMissCount >= 1);
+        Assert.True(host.RenderStatistics.MultiDeviceGpuCacheBytes > 0);
+        var firstFrameBuildCount =
+            host.RenderStatistics.GeometryRealizationBuildCount;
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(1, host.RenderStatistics.MultiDeviceFrameCount);
+        Assert.True(
+            host.RenderStatistics.GeometryRealizationBuildCount <=
+            firstFrameBuildCount);
+        Assert.True(host.RenderStatistics.GeometryRealizationCacheHitCount >= 1);
+        Assert.True(host.RenderStatistics.GeometryRealizationStrokeDrawCount >= 1);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_RecordsSceneChunkOnBackgroundDeviceContext()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("Background chunk recording");
+        for (var index = 0; index < 1152; index++)
+        {
+            var row = index / 48;
+            var column = index % 48;
+            document.AddLine(
+                new CadPointD(column * 2 - 48, row * 2 - 24),
+                new CadPointD(column * 2 - 47, row * 2 - 23));
+        }
+
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(4, new CadPointD(320, 240));
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsBackgroundChunkRecordingEnabled = true
+        });
+
+        host.Render();
+        var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
+        while (host.RenderStatistics.BackgroundCommandListBuildCount == 0 &&
+               Stopwatch.GetTimestamp() < deadline)
+        {
+            host.PrepareRenderCacheStep();
+            Thread.Yield();
+            host.Render();
+        }
+
+        Assert.True(host.RenderStatistics.BackgroundCommandListBuildCount > 0);
+        Assert.True(
+            host.RenderStatistics.BackgroundCommandListBuildMilliseconds > 0);
+        Assert.True(host.RenderStatistics.CommandListBuildCount > 0);
+        Assert.True(host.RenderStatistics.CommandListCacheBytes > 0);
+    }
+
+    [Theory]
+    [InlineData(-524287, -524287, 524287, 524287, true)]
+    [InlineData(-524288, 0, 10, 10, false)]
+    [InlineData(0, 0, 524288, 10, false)]
+    [InlineData(double.NaN, 0, 10, 10, false)]
+    [Trait("Category", "WindowsIntegration")]
+    public void GeometryRealizationBounds_RejectsCoordinatesOutsideDirect2DSafeRange(
+        double minX,
+        double minY,
+        double maxX,
+        double maxY,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            Direct2DGeometryRealizationCache.IsWithinSafeRealizationBounds(
+                CadRectD.FromLTRB(minX, minY, maxX, maxY)));
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_FallsBackToDirectGeometryForLargeCoordinates()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("Large coordinate geometry");
+        document.AddPolyline(
+            Enumerable
+                .Range(0, 64)
+                .Select(index => new CadPointD(
+                    600_000.0 + index * 2.0,
+                    Math.Sin(index * Math.PI / 8.0) * 20.0))
+                .ToArray());
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(1.0, new CadPointD(320 - 600_063, 240));
+
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false
+        });
+        host.RebuildAll(document);
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.True(host.RenderStatistics.EntitySubmissionCount >= 1);
+        Assert.Equal(0, host.RenderStatistics.GeometryRealizationBuildCount);
+        Assert.Equal(0, host.RenderStatistics.GeometryRealizationCacheMissCount);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_ReusesLevelOfDetailGeometryRealizationAfterColorChange()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("LOD geometry realization");
+        var points = Enumerable
+            .Range(0, 257)
+            .Select(index =>
+            {
+                var x = -50.0 + index * 100.0 / 256.0;
+                return new CadPointD(x, Math.Sin(index * Math.PI / 16.0) * 20.0);
+            })
+            .ToArray();
+        var polyline = document.AddPolyline(points);
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(1.0, new CadPointD(320, 240));
+
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsLevelOfDetailEnabled = true
+        });
+        host.RebuildAll(document);
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.True(host.RenderStatistics.GeometryRealizationBuildCount >= 1);
+        Assert.True(host.RenderStatistics.GeometryRealizationCacheMissCount >= 1);
+        Assert.True(host.RenderStatistics.GeometryRealizationBuildMilliseconds >= 0);
+
+        document.Layers[polyline.LayerId].SetColor(CadColor.Green);
+        host.ApplyChanges(
+            document,
+            CadDocumentChangeSet.ForEntity(
+                polyline.Id,
+                CadEntityChangeKind.Appearance));
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(0, host.RenderStatistics.GeometryRealizationBuildCount);
+        Assert.True(host.RenderStatistics.GeometryRealizationCacheHitCount >= 1);
+        Assert.True(host.RenderStatistics.GeometryRealizationStrokeDrawCount >= 1);
+
+        polyline.SetLineWeight(new CadLineWeight(2.0));
+        host.ApplyChanges(
+            document,
+            CadDocumentChangeSet.ForEntity(
+                polyline.Id,
+                CadEntityChangeKind.Appearance));
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.True(host.RenderStatistics.GeometryRealizationBuildCount >= 1);
+        Assert.True(host.RenderStatistics.GeometryRealizationCacheMissCount >= 1);
+    }
+
+    [Theory]
+    [InlineData(0.49, 0)]
+    [InlineData(0.5, 1)]
+    [InlineData(1.49, 1)]
+    [InlineData(1.5, 2)]
+    [InlineData(-0.49, 0)]
+    [InlineData(-0.5, -1)]
+    [Trait("Category", "WindowsIntegration")]
+    public void PanPreviewTranslation_QuantizesFractionalOffsetForGridContinuity(
+        double translation,
+        double expected)
+    {
+        Assert.Equal(
+            expected,
+            Direct2DImageRenderHost.QuantizePanPreviewTranslation(translation));
+    }
+
     [Fact]
     [Trait("Category", "WindowsIntegration")]
     public void DeviceFailureClassifier_RecognizesOnlyRecoverableDeviceFailures()

@@ -27,9 +27,13 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     private readonly Direct2DResourceCache _resourceCache;
     private readonly Direct2DEntityOrderCache _entityOrderCache;
     private readonly Direct2DRenderStatisticsCollector _statistics;
+    private readonly Direct2DChunkRecordingWorker _backgroundWorker;
+    private readonly Dictionary<long, RenderChunk> _backgroundChunks = [];
     private readonly Dictionary<RenderProfileKey, RenderProfile> _profiles = [];
     private readonly Dictionary<BlockId, IReadOnlyList<RenderChunkPlan>> _chunkPlans = [];
     private readonly Dictionary<BlockId, RenderChunkPlanBuilder> _planBuilders = [];
+    private ID2D1Factory? _backgroundFactory;
+    private ID2D1Device? _backgroundDevice;
     private CadDocument? _document;
     private long _usageStamp;
     private long _estimatedBytes;
@@ -43,9 +47,19 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         _resourceCache = resourceCache;
         _entityOrderCache = entityOrderCache;
         _statistics = statistics;
+        _backgroundWorker = new Direct2DChunkRecordingWorker(resourceCache);
     }
 
     public long EstimatedBytes => Math.Max(0, _estimatedBytes);
+
+    public void ResetBackgroundResources(ID2D1Factory? factory, ID2D1Device? device)
+    {
+        ThrowIfDisposed();
+        CancelBackgroundRecordings();
+        _backgroundWorker.Reset(factory: null, device: null);
+        _backgroundFactory = factory;
+        _backgroundDevice = device;
+    }
 
     public bool Prepare(
         ID2D1DeviceContext context,
@@ -59,6 +73,19 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
+        PublishCompletedBackgroundRecordings();
+        if (!options.IsBackgroundChunkRecordingEnabled &&
+            _backgroundWorker.IsReady)
+        {
+            CancelBackgroundRecordings();
+            _backgroundWorker.Reset(factory: null, device: null);
+        }
+        if (_backgroundChunks.Count > 0 &&
+            (!options.IsBackgroundChunkRecordingEnabled ||
+             !_backgroundWorker.IsReady))
+        {
+            CancelBackgroundRecordings();
+        }
         if (!CanUse(options, estimatedRenderWork))
             return false;
 
@@ -111,12 +138,38 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             {
                 if (!chunk.IsCacheable ||
                     chunk.CommandList is not null ||
+                    chunk.PendingRecordingId != 0 ||
                     chunk.BuildFailed ||
                     chunk.WasBudgetEvicted ||
                     IntersectsRenderBounds(chunk.Bounds, visibleWorldBounds, renderPadding) !=
                     buildVisibleChunks)
                 {
                     continue;
+                }
+
+                if (options.IsBackgroundChunkRecordingEnabled &&
+                    EnsureBackgroundWorkerReady() &&
+                    CanRecordInBackground(chunk))
+                {
+                    PrepareBackgroundResources(chunk, options);
+                    var backgroundOptions = CreateBuildOptions(
+                        options,
+                        viewport.Zoom,
+                        enableGeometryRealizations: false);
+                    if (_backgroundWorker.TrySchedule(
+                            document,
+                            viewport,
+                            backgroundOptions,
+                            chunk.Entities,
+                            out var requestId))
+                    {
+                        chunk.PendingRecordingId = requestId;
+                        _backgroundChunks.Add(requestId, chunk);
+                    }
+
+                    // One worker owns one context. Keep foreground cache preparation responsive
+                    // while that context records the selected chunk.
+                    return true;
                 }
 
                 chunk.CommandList = RecordChunk(
@@ -228,6 +281,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
+        CancelBackgroundRecordings();
         if (AffectsChunkPlan(document, changes))
         {
             ClearChunkCaches();
@@ -253,6 +307,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     public void InvalidateEntity(EntityId entityId)
     {
         ThrowIfDisposed();
+        CancelBackgroundRecordings();
         foreach (var profile in _profiles.Values)
             profile.Invalidate(entityId);
     }
@@ -260,6 +315,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     public void Clear()
     {
         ThrowIfDisposed();
+        CancelBackgroundRecordings();
         ClearChunkCaches();
         _document = null;
     }
@@ -468,9 +524,114 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                layer is { IsVisible: true, IsFrozen: false };
     }
 
+    private bool CanRecordInBackground(RenderChunk chunk)
+    {
+        foreach (var entity in chunk.Entities)
+        {
+            // Block-reference recording owns additional mutable caches. Keep those chunks on
+            // the foreground path until block caches have their own worker-local recorder.
+            if (entity is CadBlockReference ||
+                !_resourceCache.TryGetEntityResources(entity.Id, out var resources) ||
+                resources is null ||
+                resources.HatchBrush is not null)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool EnsureBackgroundWorkerReady()
+    {
+        if (_backgroundWorker.IsReady)
+            return true;
+        if (_backgroundFactory is null || _backgroundDevice is null)
+            return false;
+
+        try
+        {
+            _backgroundWorker.Reset(_backgroundFactory, _backgroundDevice);
+            return _backgroundWorker.IsReady;
+        }
+        catch
+        {
+            // Multiple-context recording is an optimization. The foreground recorder remains
+            // the correctness path when a driver rejects the additional device context.
+            return false;
+        }
+    }
+
+    private void PrepareBackgroundResources(RenderChunk chunk, CadRenderOptions options)
+    {
+        if (!options.IsLevelOfDetailEnabled)
+            return;
+
+        // LOD geometry creation mutates the entity bucket, so finish it on the foreground
+        // thread before the worker starts reading the bucket.
+        foreach (var entity in chunk.Entities)
+        {
+            if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) &&
+                resources is not null)
+            {
+                _resourceCache.EnsureLevelOfDetailGeometries(entity, resources);
+            }
+        }
+    }
+
+    private void PublishCompletedBackgroundRecordings()
+    {
+        while (_backgroundWorker.TryTakeCompleted(out var result))
+        {
+            using (result)
+            {
+                if (!_backgroundChunks.Remove(result.RequestId, out var chunk) ||
+                    chunk.PendingRecordingId != result.RequestId)
+                {
+                    continue;
+                }
+
+                chunk.PendingRecordingId = 0;
+                if (result.IsCancelled)
+                    continue;
+                if (result.IsFailed)
+                {
+                    chunk.BuildFailed = true;
+                    continue;
+                }
+
+                chunk.CommandList = result.TakeCommandList();
+                if (chunk.CommandList is null)
+                {
+                    chunk.BuildFailed = true;
+                    continue;
+                }
+
+                chunk.RecordedEntityCount = result.RecordedEntityCount;
+                chunk.EstimatedBytes = EstimateCommandListBytes(chunk);
+                chunk.LastUsed = ++_usageStamp;
+                _statistics.RecordBackgroundCommandListBuild(
+                    result.ElapsedMilliseconds);
+                TrimToBudget(chunk);
+            }
+        }
+    }
+
+    private void CancelBackgroundRecordings()
+    {
+        _backgroundWorker.CancelAndWait();
+        foreach (var (requestId, chunk) in _backgroundChunks)
+        {
+            if (chunk.PendingRecordingId == requestId)
+                chunk.PendingRecordingId = 0;
+        }
+        _backgroundChunks.Clear();
+    }
+
     private static CadRenderOptions CreateBuildOptions(
         CadRenderOptions options,
-        double viewportZoom) => new()
+        double viewportZoom,
+        bool? enableGeometryRealizations = null) => new()
         {
             ActiveOwnerBlockId = options.ActiveOwnerBlockId,
             DrawGrid = false,
@@ -480,6 +641,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             IsTextAntialiasingEnabled = options.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
             AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
+            IsBackgroundChunkRecordingEnabled = options.IsBackgroundChunkRecordingEnabled,
+            EnableGeometryRealizations =
+                enableGeometryRealizations ?? options.EnableGeometryRealizations,
             TransformScaleMultiplier = viewportZoom,
             KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
@@ -603,6 +767,8 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
     private void TrimProfiles(RenderProfileKey currentKey)
     {
+        if (_profiles.Count > MaximumProfiles)
+            CancelBackgroundRecordings();
         while (_profiles.Count > MaximumProfiles)
         {
             var oldest = _profiles
@@ -624,6 +790,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
     private void ClearChunkCaches()
     {
+        CancelBackgroundRecordings();
         ClearProfiles();
         _chunkPlans.Clear();
         _planBuilders.Clear();
@@ -639,6 +806,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         if (_disposed)
             return;
         ClearChunkCaches();
+        _backgroundWorker.Dispose();
+        _backgroundFactory = null;
+        _backgroundDevice = null;
         _document = null;
         _disposed = true;
     }
@@ -858,6 +1028,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         public CadRectD Bounds { get; private set; }
         public bool IsCacheable { get; }
         public ID2D1CommandList? CommandList { get; set; }
+        public long PendingRecordingId { get; set; }
         public int RecordedEntityCount { get; set; }
         public bool BuildFailed { get; set; }
         public bool WasBudgetEvicted { get; private set; }
@@ -892,6 +1063,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         {
             CommandList?.Dispose();
             CommandList = null;
+            PendingRecordingId = 0;
             RecordedEntityCount = 0;
             BuildFailed = false;
             WasBudgetEvicted = false;
@@ -905,6 +1077,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         {
             CommandList?.Dispose();
             CommandList = null;
+            PendingRecordingId = 0;
             RecordedEntityCount = 0;
             EstimatedBytes = 0;
             WasBudgetEvicted = true;

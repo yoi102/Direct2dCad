@@ -21,6 +21,12 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
             settings.IsZoomSnapshotPreviewEnabled;
         IsLevelOfDetailEnabled = settings.IsLevelOfDetailEnabled;
         AllowApproximateTileScaleFallback = settings.AllowApproximateTileScaleFallback;
+        IsBackgroundChunkRecordingEnabled =
+            settings.IsBackgroundChunkRecordingEnabled;
+        IsMultiDeviceRenderingEnabled =
+            settings.IsMultiDeviceRenderingEnabled;
+        MultiDeviceRenderingDeviceCount =
+            settings.MultiDeviceRenderingDeviceCount;
     }
 
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
@@ -38,6 +44,15 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     [ObservableProperty]
     public partial bool AllowApproximateTileScaleFallback { get; set; }
 
+    [ObservableProperty]
+    public partial bool IsBackgroundChunkRecordingEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsMultiDeviceRenderingEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial int MultiDeviceRenderingDeviceCount { get; set; }
+
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
@@ -48,6 +63,12 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         settings.Rendering.IsLevelOfDetailEnabled = IsLevelOfDetailEnabled;
         settings.Rendering.AllowApproximateTileScaleFallback =
             AllowApproximateTileScaleFallback;
+        settings.Rendering.IsBackgroundChunkRecordingEnabled =
+            IsBackgroundChunkRecordingEnabled;
+        settings.Rendering.IsMultiDeviceRenderingEnabled =
+            IsMultiDeviceRenderingEnabled;
+        settings.Rendering.MultiDeviceRenderingDeviceCount =
+            Math.Clamp(MultiDeviceRenderingDeviceCount, 2, 4);
         return true;
     }
 

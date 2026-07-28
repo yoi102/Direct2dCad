@@ -22,6 +22,9 @@ public sealed record CadRenderStatistics(
     int GeometryRealizationStrokeDrawCount,
     int GeometryRealizationBuildCount,
     int GeometryRealizationFallbackCount,
+    int GeometryRealizationCacheHitCount,
+    int GeometryRealizationCacheMissCount,
+    double GeometryRealizationBuildMilliseconds,
     long HatchLineSubmissionCount,
     int HatchSimplifiedLineFamilyCount,
     int OleTileBuildCount,
@@ -55,6 +58,14 @@ public sealed record CadRenderStatistics(
     double SurfaceDrawMilliseconds,
     double RenderDurationMilliseconds)
 {
+    public int BackgroundCommandListBuildCount { get; init; }
+    public double BackgroundCommandListBuildMilliseconds { get; init; }
+    public int MultiDeviceFrameCount { get; init; }
+    public int MultiDeviceWorkerCount { get; init; }
+    public int MultiDeviceEntityCount { get; init; }
+    public double MultiDeviceRenderMilliseconds { get; init; }
+    public long MultiDeviceGpuCacheBytes { get; init; }
+
     public double RenderCacheHitRatio =>
         RenderCacheHitCount + RenderCacheMissCount == 0
             ? 0
@@ -83,6 +94,9 @@ public sealed record CadRenderStatistics(
         GeometryRealizationStrokeDrawCount: 0,
         GeometryRealizationBuildCount: 0,
         GeometryRealizationFallbackCount: 0,
+        GeometryRealizationCacheHitCount: 0,
+        GeometryRealizationCacheMissCount: 0,
+        GeometryRealizationBuildMilliseconds: 0,
         HatchLineSubmissionCount: 0,
         HatchSimplifiedLineFamilyCount: 0,
         OleTileBuildCount: 0,

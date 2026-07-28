@@ -1143,6 +1143,9 @@
   <data name="LevelOfDetailOptimization" xml:space="preserve">
     <value>启用细节层级优化</value>
   </data>
+  <data name="BackgroundChunkRecording" xml:space="preserve">
+    <value>后台录制命令列表区块（实验性）</value>
+  </data>
   <data name="AiAssistant" xml:space="preserve">
     <value>AI 助手</value>
   </data>
@@ -1232,5 +1235,11 @@
   </data>
   <data name="AiCadTool" xml:space="preserve">
     <value>CAD 工具</value>
+  </data>
+  <data name="MultiDeviceRendering" xml:space="preserve">
+    <value>实验性多设备绘制</value>
+  </data>
+  <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
+    <value>绘制设备数量</value>
   </data>
 </root>

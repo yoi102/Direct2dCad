@@ -131,6 +131,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     public void ResetDeviceResources(
         ID2D1Factory? factory,
         IDWriteFactory? writeFactory,
+        ID2D1Device? device,
         ID2D1DeviceContext? deviceContext,
         CadDocument? document = null)
     {
@@ -148,6 +149,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _styleResources.Reset(factory, deviceContext);
         _textFormatResources.Reset(writeFactory);
         _resourceCache.ResetDeviceResources(factory, writeFactory, deviceContext, document);
+        _commandListCache.ResetBackgroundResources(factory, device);
+    }
+
+    internal void SuspendBackgroundChunkRecording()
+    {
+        ThrowIfDisposed();
+        _commandListCache.ResetBackgroundResources(factory: null, device: null);
     }
 
     public void RebuildAll(CadDocument document)
@@ -216,6 +224,17 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     internal void RecordSurfaceDraw(double milliseconds) =>
         _statistics.RecordSurfaceDraw(milliseconds);
+
+    internal void RecordMultiDeviceFrame(
+        int workerCount,
+        int entityCount,
+        double milliseconds,
+        IReadOnlyList<CadRenderStatistics> workerStatistics) =>
+        _statistics.RecordMultiDeviceFrame(
+            workerCount,
+            entityCount,
+            milliseconds,
+            workerStatistics);
 
     public void CompleteFrame()
     {
@@ -571,6 +590,137 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             handleScene: null,
             options,
             Direct2DScenePasses.Base);
+    }
+
+    internal IReadOnlyList<CadEntity> GetVisibleEntitiesForMultiDevice(
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(viewport);
+        ThrowIfDisposed();
+
+        var orderedEntities = _entityOrderCache.GetOrderedEntities(
+            document,
+            options.ActiveOwnerBlockId);
+        var renderBounds = Direct2DEntityVisibility.ResolveRenderWorldBounds(
+            viewport,
+            options);
+        return Direct2DEntityVisibility.EnumerateOrderedSubset(
+                document,
+                viewport,
+                options,
+                _resourceCache,
+                orderedEntities,
+                renderBounds)
+            .Select(static visible => visible.Entity)
+            .ToArray();
+    }
+
+    internal void RenderBackground(
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(viewport);
+        ThrowIfDisposed();
+        if (_resourceCache.DeviceContext is not { } context)
+            return;
+
+        var previousTransform = context.Transform;
+        var previousAntialiasMode = context.AntialiasMode;
+        context.Transform = CreateViewportTransform(viewport);
+        context.AntialiasMode = options.IsAntialiasingEnabled
+            ? AntialiasMode.PerPrimitive
+            : AntialiasMode.Aliased;
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            if (options.DrawGrid)
+            {
+                _backgroundRenderer.DrawGrid(
+                    context,
+                    document,
+                    viewport,
+                    dirtyWorldBounds: null);
+            }
+
+            if (options.DrawOrigin)
+            {
+                _backgroundRenderer.DrawOrigin(
+                    context,
+                    _resourceCache.Factory,
+                    document,
+                    viewport,
+                    dirtyWorldBounds: null);
+            }
+        }
+        finally
+        {
+            _statistics.RecordBackgroundRender(ElapsedMilliseconds(started));
+            context.AntialiasMode = previousAntialiasMode;
+            context.Transform = previousTransform;
+        }
+    }
+
+    internal void RenderEntityBatch(
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options,
+        IReadOnlyList<CadEntity> entities)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(viewport);
+        ArgumentNullException.ThrowIfNull(entities);
+        ThrowIfDisposed();
+        if (_resourceCache.DeviceContext is not { } context)
+            return;
+
+        var previousTransform = context.Transform;
+        var previousAntialiasMode = context.AntialiasMode;
+        var previousTextAntialiasMode = context.TextAntialiasMode;
+        var previousPrimitiveBlend = context.PrimitiveBlend;
+        context.Transform = CreateViewportTransform(viewport);
+        context.AntialiasMode = options.IsAntialiasingEnabled
+            ? AntialiasMode.PerPrimitive
+            : AntialiasMode.Aliased;
+        context.TextAntialiasMode = options.IsTextAntialiasingEnabled
+            ? Vortice.Direct2D1.TextAntialiasMode.Default
+            : Vortice.Direct2D1.TextAntialiasMode.Aliased;
+        context.PrimitiveBlend = PrimitiveBlend.SourceOver;
+        using var realizationScaleScope =
+            _resourceCache.PushGeometryRealizationScale(viewport.Zoom);
+        var started = Stopwatch.GetTimestamp();
+        _statistics.RecordScenePass();
+        try
+        {
+            foreach (var entity in entities)
+            {
+                if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) &&
+                    resources is not null)
+                {
+                    _statistics.RecordVisibleEntity();
+                    _statistics.RecordEntitySubmission();
+                    DrawEntityCore(
+                        context,
+                        document,
+                        entity,
+                        viewport,
+                        options,
+                        resources);
+                }
+            }
+        }
+        finally
+        {
+            _statistics.RecordEntityRender(ElapsedMilliseconds(started));
+            context.PrimitiveBlend = previousPrimitiveBlend;
+            context.TextAntialiasMode = previousTextAntialiasMode;
+            context.AntialiasMode = previousAntialiasMode;
+            context.Transform = previousTransform;
+        }
     }
 
     internal void RenderOverlays(

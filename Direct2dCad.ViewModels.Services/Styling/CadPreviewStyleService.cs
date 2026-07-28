@@ -179,6 +179,7 @@ internal readonly struct CadPreviewStyleService(
             CadArc arc => arc.GraphicStyleId,
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
+            CadCompositePath path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
@@ -195,6 +196,7 @@ internal readonly struct CadPreviewStyleService(
             CadRectangle rectangle => rectangle.FillStyleId,
             CadPolyline { Closed: true } polyline => polyline.FillStyleId,
             CadSpline { Closed: true } spline => spline.FillStyleId,
+            CadCompositePath { Closed: true } path => path.FillStyleId,
             _ => null
         };
     }

@@ -1740,6 +1740,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             IsLevelOfDetailEnabled = UserSettings.Rendering.IsLevelOfDetailEnabled,
             AllowApproximateTileScaleFallback =
                 UserSettings.Rendering.AllowApproximateTileScaleFallback,
+            IsBackgroundChunkRecordingEnabled =
+                UserSettings.Rendering.IsBackgroundChunkRecordingEnabled,
+            IsMultiDeviceRenderingEnabled =
+                UserSettings.Rendering.IsMultiDeviceRenderingEnabled,
+            MultiDeviceRenderingDeviceCount =
+                UserSettings.Rendering.MultiDeviceRenderingDeviceCount,
             EntityBoundsQuery = _entityBoundsQuery,
             EntityBoundsQueryInto = _entityBoundsQueryInto,
             HiddenEntityIds = _gripDrag.HiddenEntityIds
@@ -2715,6 +2721,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             statistics.GeometryRealizationStrokeDrawCount,
             statistics.GeometryRealizationBuildCount,
             statistics.GeometryRealizationFallbackCount,
+            statistics.GeometryRealizationCacheHitCount,
+            statistics.GeometryRealizationCacheMissCount,
+            statistics.GeometryRealizationBuildMilliseconds,
             statistics.HatchLineSubmissionCount,
             statistics.HatchSimplifiedLineFamilyCount,
             statistics.OleTileBuildCount,
@@ -2736,7 +2745,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             statistics.TransientRenderMilliseconds,
             statistics.SelectionRenderMilliseconds,
             statistics.OlePreparationMilliseconds,
-            statistics.SurfaceDrawMilliseconds);
+            statistics.SurfaceDrawMilliseconds,
+            statistics.MultiDeviceFrameCount,
+            statistics.MultiDeviceWorkerCount,
+            statistics.MultiDeviceEntityCount,
+            statistics.MultiDeviceRenderMilliseconds,
+            statistics.MultiDeviceGpuCacheBytes);
     }
 
     private static CadCommandLineClipboardSummary? CreateClipboardSummary(CadClipboardSnapshot? snapshot)

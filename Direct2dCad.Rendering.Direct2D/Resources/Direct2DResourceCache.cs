@@ -214,7 +214,6 @@ internal sealed class Direct2DResourceCache : IDisposable
                 CadEntityChangeKind.Deleted |
                 CadEntityChangeKind.Visibility |
                 CadEntityChangeKind.Layer |
-                CadEntityChangeKind.Fill |
                 CadEntityChangeKind.EmbeddedData;
             if ((resourceChanges & fullRebuildChanges) != 0 ||
                 !document.TryGetEntity(change.EntityId, out var entity) ||
@@ -225,8 +224,21 @@ internal sealed class Direct2DResourceCache : IDisposable
                 continue;
             }
 
+            if ((resourceChanges & CadEntityChangeKind.Fill) != 0 &&
+                entity is CadCircle or CadEllipse or CadRectangle)
+            {
+                // Primitive fill geometry exists only for hatch clipping. These
+                // entities are never geometry-realization candidates, so rebuilding
+                // them remains cheap and keeps their resource state atomic.
+                RebuildEntityResources(document, change.EntityId);
+                continue;
+            }
+
             if ((resourceChanges & CadEntityChangeKind.Geometry) != 0)
                 UpdateGeometryResources(document, entity, bucket);
+
+            if ((resourceChanges & CadEntityChangeKind.Fill) != 0)
+                UpdateFillResources(document, entity, bucket);
 
             if ((resourceChanges & CadEntityChangeKind.Appearance) != 0)
                 UpdateAppearanceResources(document, entity, bucket);
@@ -327,6 +339,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 entity.UseLayerLineWeight,
                 graphic?.LineWeight,
                 layer.LineWeight);
+            bucket.StrokeStyleDefinition = entity.StrokeStyle;
             if (UsesStrokeBrush(entity))
             {
                 var strokeColor = ResolveStrokeColor(document, entity, layer, graphic);
@@ -434,19 +447,82 @@ internal sealed class Direct2DResourceCache : IDisposable
             throw;
         }
 
+        var strokeWidth = ResolveStrokeWidth(
+            entity.LineWeight,
+            entity.UseLayerLineWeight,
+            graphic?.LineWeight,
+            layer.LineWeight);
+        var strokeRealizationChanged =
+            Math.Abs(bucket.StrokeWidth - strokeWidth) >
+            Math.Max(1e-6f, Math.Abs(strokeWidth) * 1e-5f) ||
+            bucket.StrokeStyleDefinition != entity.StrokeStyle;
+
         RemoveStrokeWidthContribution(bucket);
-        bucket.GeometryRealizations?.ClearStroke();
+        if (strokeRealizationChanged)
+            bucket.GeometryRealizations?.ClearStroke();
         bucket.StrokeBrushLease?.Dispose();
         bucket.StrokeStyleLease?.Dispose();
         bucket.StrokeColor = strokeColor;
         bucket.StrokeBrushLease = strokeBrushLease;
         bucket.StrokeStyleLease = strokeStyleLease;
-        bucket.StrokeWidth = ResolveStrokeWidth(
-            entity.LineWeight,
-            entity.UseLayerLineWeight,
-            graphic?.LineWeight,
-            layer.LineWeight);
+        bucket.StrokeWidth = strokeWidth;
+        bucket.StrokeStyleDefinition = entity.StrokeStyle;
         AddStrokeWidthContribution(bucket);
+    }
+
+    private void UpdateFillResources(
+        CadDocument document,
+        CadEntity entity,
+        EntityResourceBucket bucket)
+    {
+        KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? fillBrushLease = null;
+        KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? hatchBrushLease = null;
+        CadHatchFillStyle? hatchFillStyle = null;
+        CadHatchPatternDefinition? hatchPattern = null;
+        CadTransientHatchFill? hatchRenderData = null;
+        try
+        {
+            if (TryResolveFillStyle(document, entity, out var fillStyle))
+            {
+                switch (fillStyle)
+                {
+                    case CadGradientFillStyle { IsSolid: true } gradient:
+                        var fillColor = gradient.Stops[0].Color;
+                        if (!fillColor.IsTransparent)
+                            fillBrushLease = _styleResources.AcquireBrush(fillColor);
+                        break;
+
+                    case CadHatchFillStyle hatch
+                        when document.TryGetHatchPattern(hatch.PatternId, out var pattern) &&
+                             pattern is not null:
+                        hatchFillStyle = hatch;
+                        hatchPattern = pattern;
+                        hatchRenderData = new CadTransientHatchFill(
+                            hatch.ForegroundColor,
+                            hatch.HatchScale,
+                            hatch.HatchAngle,
+                            hatch.HatchOrigin,
+                            pattern.Lines);
+                        if (!hatch.ForegroundColor.IsTransparent)
+                            hatchBrushLease = _styleResources.AcquireBrush(hatch.ForegroundColor);
+                        break;
+                }
+            }
+        }
+        catch
+        {
+            fillBrushLease?.Dispose();
+            hatchBrushLease?.Dispose();
+            throw;
+        }
+
+        bucket.FillBrushLease?.Dispose();
+        bucket.HatchBrushLease?.Dispose();
+        bucket.FillBrushLease = fillBrushLease;
+        bucket.HatchBrushLease = hatchBrushLease;
+        bucket.HatchFillStyle = hatchFillStyle;
+        bucket.HatchPattern = hatchPattern;
+        bucket.HatchRenderData = hatchRenderData;
     }
 
     private void UpdateGeometryResources(
@@ -1060,6 +1136,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1Bitmap? Bitmap => BitmapLease?.Resource;
         public ID2D1BitmapBrush? BitmapBrush { get; set; }
         public float StrokeWidth { get; set; }
+        public CadStrokeStyle StrokeStyleDefinition { get; set; } = CadStrokeStyle.Default;
 
         public bool IsEmpty =>
             Geometry is null &&
@@ -1100,6 +1177,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             GeometryComplexity = 0;
             GeometryRealizations = null;
             StrokeColor = null;
+            StrokeStyleDefinition = CadStrokeStyle.Default;
             StrokeBrushLease = null;
             StrokeStyleLease = null;
             FillBrushLease = null;
