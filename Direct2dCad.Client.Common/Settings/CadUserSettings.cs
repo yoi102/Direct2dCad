@@ -105,9 +105,9 @@ public sealed class CadRenderingUserSettings
     public bool IsAntialiasingEnabled { get; set; } = true;
     public bool IsTextAntialiasingEnabled { get; set; } = true;
     public bool ShowFramesPerSecond { get; set; } = true;
-    public bool IsZoomSnapshotPreviewEnabled { get; set; } = false;
+    public bool IsZoomSnapshotPreviewEnabled { get; set; } = true;
     public bool IsLevelOfDetailEnabled { get; set; } = true;
-    public bool AllowApproximateTileScaleFallback { get; set; } = false;
+    public bool AllowApproximateTileScaleFallback { get; set; } = true;
     public bool IsBackgroundChunkRecordingEnabled { get; set; } = false;
     public bool IsMultiDeviceRenderingEnabled { get; set; } = false;
     public int MultiDeviceRenderingDeviceCount { get; set; } = 2;
