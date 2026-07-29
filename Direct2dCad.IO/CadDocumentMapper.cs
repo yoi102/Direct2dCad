@@ -1320,6 +1320,13 @@ internal static class CadDocumentMapper
                 Kind = CadCompositePathSegmentKindData.Spline,
                 FitPoints = spline.FitPoints.Select(ToData).ToList()
             },
+            CadCompositeBezierSegment bezier => new CadCompositePathSegmentData
+            {
+                Kind = CadCompositePathSegmentKindData.CubicBezier,
+                Point = ToData(bezier.End),
+                Control1 = ToData(bezier.Control1),
+                Control2 = ToData(bezier.Control2)
+            },
             _ => throw new NotSupportedException($"Unsupported composite path segment: {segment.GetType().Name}")
         };
 
@@ -1331,6 +1338,10 @@ internal static class CadDocumentMapper
                 FromData(data.Point),
                 data.SweepAngleRadians),
             CadCompositePathSegmentKindData.Spline => new CadCompositeSplineSegment(data.FitPoints.Select(FromData)),
+            CadCompositePathSegmentKindData.CubicBezier => new CadCompositeBezierSegment(
+                FromData(data.Control1),
+                FromData(data.Control2),
+                FromData(data.Point)),
             _ => throw new InvalidDataException($"Unsupported composite path segment kind: {data.Kind}")
         };
 

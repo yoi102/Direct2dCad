@@ -105,6 +105,52 @@ public sealed class EmbeddedEntityCommandTests
         Assert.Equal("application/updated", ole.ContentType);
     }
 
+    [Fact]
+    public void ImageDataCommand_ExecuteUndoAndRedoRestoreClonedPixelsAndMetadata()
+    {
+        var document = CadDocument.Create("Image data");
+        var image = document.AddImage(
+            CadRectD.FromXYWH(0, 0, 10, 10),
+            1,
+            1,
+            4,
+            [1, 2, 3, 4],
+            contentType: "image/original",
+            sourceName: "original.raw");
+        var replacement = new byte[]
+        {
+            10, 20, 30, 40,
+            50, 60, 70, 80
+        };
+        var command = new SetImageDataCommand(
+            image.Id,
+            2,
+            1,
+            8,
+            replacement,
+            "image/bgra32",
+            "updated.raw");
+        replacement[0] = 255;
+        var expectedKinds = CadEntityChangeKind.Appearance | CadEntityChangeKind.EmbeddedData;
+
+        AssertSingleChange(command.Execute(document), image.Id, expectedKinds);
+        Assert.Equal(2, image.PixelWidth);
+        Assert.Equal(1, image.PixelHeight);
+        Assert.Equal(8, image.Stride);
+        Assert.Equal(10, image.CopyPixels()[0]);
+        Assert.Equal("updated.raw", image.SourceName);
+
+        AssertSingleChange(command.Undo(document), image.Id, expectedKinds);
+        Assert.Equal(1, image.PixelWidth);
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, image.CopyPixels());
+        Assert.Equal("image/original", image.ContentType);
+        Assert.Equal("original.raw", image.SourceName);
+
+        command.Execute(document);
+        Assert.Equal(2, image.PixelWidth);
+        Assert.Equal(10, image.CopyPixels()[0]);
+    }
+
     private static void AssertSingleChange(
         CadDocumentChangeSet changes,
         EntityId entityId,

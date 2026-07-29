@@ -6,15 +6,16 @@ internal static class CadAiToolSelector
 {
     private static readonly string[] CoreTools =
     [
-        "get_document_summary", "list_entities", "list_document_catalog",
-        "list_documents", "create_document", "select_entities", "undo", "redo"
+        "get_editor_state", "get_document_summary", "list_entities",
+        "select_entities", "undo", "redo"
     ];
 
     private static readonly string[] EditingTools =
     [
-        "get_entity_geometry", "set_entity_geometry", "transform_entities",
+        "get_entity_geometry", "get_entity_properties", "set_entity_geometry", "transform_entities",
         "duplicate_entities", "move_entities", "delete_entities", "change_entity_layer",
-        "set_entity_common_properties", "set_entity_fill", "set_entity_stroke_style"
+        "set_entity_common_properties", "set_entity_fill", "set_entity_stroke_style",
+        "set_text_properties"
     ];
 
     private static readonly string[] LayerTools =
@@ -27,13 +28,8 @@ internal static class CadAiToolSelector
     private static readonly string[] BlockTools =
     [
         "create_block", "insert_block", "duplicate_entities",
-        "get_entity_geometry", "transform_entities"
-    ];
-
-    private static readonly string[] DocumentTools =
-    [
-        "open_document", "activate_document", "rename_document",
-        "save_document", "close_document"
+        "get_entity_geometry", "get_entity_properties", "transform_entities",
+        "set_block_reference_definition", "set_block_definition_base_point"
     ];
 
     private static readonly (string Tool, string[] Terms)[] EntityCreationTools =
@@ -51,8 +47,8 @@ internal static class CadAiToolSelector
 
     private static readonly string[] DrawingTerms =
     [
-        "draw", "sketch", "drawing", "pattern", "outline",
-        "绘制", "画", "图案", "轮廓", "猫"
+        "draw", "sketch", "drawing", "pattern", "outline", "silhouette",
+        "绘制", "画", "图案", "轮廓", "侧身", "猫"
     ];
 
     private static readonly string[] EditingTerms =
@@ -77,8 +73,10 @@ internal static class CadAiToolSelector
         void Add(IEnumerable<string> names)
         {
             foreach (var name in names)
+            {
                 if (requestedSet.Add(name))
                     requested.Add(name);
+            }
         }
 
         var isDrawing = ContainsAny(normalized, DrawingTerms) ||
@@ -96,17 +94,20 @@ internal static class CadAiToolSelector
             {
                 specificTools.Remove("add_line");
             }
-            var needsBulk = specificTools.Count == 0 || ContainsAny(normalized,
-                "multiple", "many", "batch", "pattern", "outline", "drawing",
-                "多个", "批量", "图案", "轮廓", "猫");
-            if (needsBulk)
-                Add(["add_entities"]);
-            else
-                Add(specificTools);
 
-            if (ContainsAny(normalized, "composite", "mixed path", "closed contour", "复合路径", "混合路径", "闭合轮廓"))
+            var needsBulk = specificTools.Count == 0 || ContainsAny(normalized,
+                "multiple", "many", "batch", "pattern", "outline", "silhouette", "complete drawing",
+                "多个", "批量", "图案", "轮廓", "侧身", "猫");
+            Add(needsBulk ? ["add_entities"] : specificTools);
+
+            if (ContainsAny(normalized,
+                    "composite", "mixed path", "closed contour", "bezier", "organic",
+                    "复合路径", "混合路径", "闭合轮廓", "贝塞尔", "有机轮廓"))
+            {
                 Add(["add_composite_path"]);
-            Add(["create_layer"]);
+            }
+
+            Add(["list_document_catalog", "create_layer"]);
         }
 
         if (ContainsAny(normalized, "layer", "图层", "层级", "レイヤー"))
@@ -128,26 +129,33 @@ internal static class CadAiToolSelector
             {
                 Add(["reorder_layers"]);
             }
-            if (ContainsAny(normalized, "create", "new layer", "add layer", "创建", "新建", "添加", "作成", "追加"))
+            if (ContainsAny(normalized,
+                    "create", "new layer", "add layer", "创建", "新建", "添加", "作成", "追加"))
+            {
                 Add(["create_layer"]);
+            }
             Add(LayerTools);
         }
+
         if (ContainsAny(normalized, EditingTerms))
             Add(EditingTools);
         if (ContainsAny(normalized, "block", "块", "块定义", "块引用"))
             Add(BlockTools);
+
         if (ContainsAny(normalized,
-                "document", "file", "open", "save", "close", "rename",
-                "文档", "文件", "打开", "保存", "关闭", "重命名", "新建"))
+                "embedded data", "binary data", "replace image data", "replace ole data",
+                "\u5d4c\u5165\u6570\u636e", "\u4e8c\u8fdb\u5236\u6570\u636e",
+                "\u66ff\u6362\u56fe\u50cf\u6570\u636e", "\u66ff\u6362ole\u6570\u636e"))
         {
-            Add(DocumentTools);
+            Add(["get_entity_properties", "replace_embedded_entity_data"]);
         }
+
+        AddDocumentLifecycleTools(normalized, Add);
 
         if (!isDrawing && !ContainsAny(normalized, EditingTerms) && !aggressive)
             Add(["get_entity_geometry", "set_entity_common_properties"]);
 
-        // Intent-specific tools are deliberately first so budget fitting never
-        // discards the operation the user actually requested in favor of helpers.
+        // Intent-specific tools stay first so context fitting retains the requested action.
         Add(CoreTools);
 
         var definitions = availableTools.ToDictionary(tool => tool.Name, StringComparer.Ordinal);
@@ -155,6 +163,53 @@ internal static class CadAiToolSelector
             .Where(definitions.ContainsKey)
             .Select(name => definitions[name])
             .ToArray();
+    }
+
+    private static void AddDocumentLifecycleTools(string prompt, Action<IEnumerable<string>> add)
+    {
+        var mentionsDocument = ContainsAny(prompt,
+            "document", "cad file", ".d2cad", "drawing file", "new drawing",
+            "文档", "文件", "图纸文件", "ドキュメント", "ファイル");
+        if (!mentionsDocument)
+            return;
+
+        var anyLifecycleAction = false;
+        if (ContainsAny(prompt,
+                "create document", "new document", "new drawing",
+                "新建文档", "创建文档", "新建文件", "新建图纸",
+                "新規ドキュメント", "新しいファイル"))
+        {
+            add(["create_document"]);
+            anyLifecycleAction = true;
+        }
+        if (ContainsAny(prompt, "open", "打开", "開く"))
+        {
+            add(["open_document"]);
+            anyLifecycleAction = true;
+        }
+        if (ContainsAny(prompt, "activate", "switch document", "切换文档", "激活文档", "切り替え"))
+        {
+            add(["activate_document"]);
+            anyLifecycleAction = true;
+        }
+        if (ContainsAny(prompt, "rename", "重命名", "改名", "名前変更"))
+        {
+            add(["rename_document"]);
+            anyLifecycleAction = true;
+        }
+        if (ContainsAny(prompt, "save", "保存"))
+        {
+            add(["save_document"]);
+            anyLifecycleAction = true;
+        }
+        if (ContainsAny(prompt, "close", "关闭", "閉じる"))
+        {
+            add(["close_document"]);
+            anyLifecycleAction = true;
+        }
+
+        if (anyLifecycleAction || ContainsAny(prompt, "list documents", "文档列表", "ドキュメント一覧"))
+            add(["list_documents"]);
     }
 
     private static bool ContainsAny(string text, params string[] terms) =>

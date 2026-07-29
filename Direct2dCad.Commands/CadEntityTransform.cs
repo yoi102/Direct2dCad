@@ -60,9 +60,9 @@ internal static class CadEntityTransform
     {
         if (!double.IsFinite(angleRadians))
             throw new ArgumentOutOfRangeException(nameof(angleRadians));
-        if (entity is CadEllipse or CadRectangle && !TryGetQuarterTurns(angleRadians, out _))
+        if (entity is CadEllipse or CadEllipseArc or CadRectangle && !TryGetQuarterTurns(angleRadians, out _))
             throw new NotSupportedException($"{entity.GetType().Name} only supports rotation in 90 degree increments.");
-        if (entity is CadEllipseArc or CadOleObject)
+        if (entity is CadOleObject)
             throw new NotSupportedException($"Entity type is not rotatable by this command: {entity.GetType().Name}");
     }
 
@@ -79,6 +79,9 @@ internal static class CadEntityTransform
                 break;
             case CadEllipse ellipse:
                 RotateEllipse(ellipse, pivot, angleRadians);
+                break;
+            case CadEllipseArc ellipseArc:
+                RotateEllipseArc(ellipseArc, pivot, angleRadians);
                 break;
             case CadRectangle rectangle:
                 RotateRectangle(rectangle, pivot, angleRadians);
@@ -124,8 +127,6 @@ internal static class CadEntityTransform
     {
         if (!double.IsFinite(factor) || factor <= 0)
             throw new ArgumentOutOfRangeException(nameof(factor), "Scale factor must be greater than zero.");
-        if (entity is CadEllipseArc)
-            throw new NotSupportedException($"Entity type is not scalable by this command: {entity.GetType().Name}");
     }
 
     internal static void UniformScale(CadEntity entity, CadPointD pivot, double factor)
@@ -141,6 +142,14 @@ internal static class CadEntityTransform
                 break;
             case CadEllipse ellipse:
                 ellipse.SetGeometry(ScalePoint(ellipse.Center, pivot, factor), ellipse.RadiusX * factor, ellipse.RadiusY * factor);
+                break;
+            case CadEllipseArc ellipseArc:
+                ellipseArc.SetGeometry(
+                    ScalePoint(ellipseArc.Center, pivot, factor),
+                    ellipseArc.RadiusX * factor,
+                    ellipseArc.RadiusY * factor,
+                    ellipseArc.StartAngleRadians,
+                    ellipseArc.SweepAngleRadians);
                 break;
             case CadRectangle rectangle:
                 var radiusX = rectangle.CornerRadiusX * factor;
@@ -187,12 +196,10 @@ internal static class CadEntityTransform
     {
         if (!double.IsFinite(axisAngleRadians))
             throw new ArgumentOutOfRangeException(nameof(axisAngleRadians));
-        if (entity is CadEllipse or CadRectangle && !TryGetEighthTurns(axisAngleRadians, out _))
+        if (entity is CadEllipse or CadEllipseArc or CadRectangle && !TryGetEighthTurns(axisAngleRadians, out _))
             throw new NotSupportedException($"{entity.GetType().Name} only supports mirror axes in 45 degree increments.");
         if (entity is CadOleObject && !TryGetQuarterTurns(axisAngleRadians, out _))
             throw new NotSupportedException("CadOleObject only supports horizontal or vertical mirror axes.");
-        if (entity is CadEllipseArc)
-            throw new NotSupportedException($"Entity type is not mirrorable by this command: {entity.GetType().Name}");
     }
 
     internal static void Mirror(CadEntity entity, CadPointD axisPoint, double axisAngleRadians)
@@ -213,6 +220,16 @@ internal static class CadEntityTransform
                     Transform(ellipse.Center),
                     swapRadii ? ellipse.RadiusY : ellipse.RadiusX,
                     swapRadii ? ellipse.RadiusX : ellipse.RadiusY);
+                break;
+            case CadEllipseArc ellipseArc:
+                _ = TryGetEighthTurns(axisAngleRadians, out var ellipseArcTurns);
+                var swapEllipseArcRadii = Math.Abs(ellipseArcTurns) % 2 == 1;
+                ellipseArc.SetGeometry(
+                    Transform(ellipseArc.Center),
+                    swapEllipseArcRadii ? ellipseArc.RadiusY : ellipseArc.RadiusX,
+                    swapEllipseArcRadii ? ellipseArc.RadiusX : ellipseArc.RadiusY,
+                    2 * axisAngleRadians - ellipseArc.StartAngleRadians,
+                    -ellipseArc.SweepAngleRadians);
                 break;
             case CadRectangle rectangle:
                 var rectangleRadiusX = rectangle.CornerRadiusX;
@@ -277,6 +294,10 @@ internal static class CadEntityTransform
                 transform(arc.Center),
                 reverseArcDirection ? -arc.SweepAngleRadians : arc.SweepAngleRadians),
             CadCompositeSplineSegment spline => new CadCompositeSplineSegment(spline.FitPoints.Select(transform)),
+            CadCompositeBezierSegment bezier => new CadCompositeBezierSegment(
+                transform(bezier.Control1),
+                transform(bezier.Control2),
+                transform(bezier.End)),
             _ => throw new NotSupportedException($"Unsupported composite path segment: {segment.GetType().Name}")
         }).ToArray();
         path.ReplaceGeometry(transform(path.StartPoint), segments, path.Closed);
@@ -325,6 +346,18 @@ internal static class CadEntityTransform
             RotatePoint(ellipse.Center, pivot, angleRadians),
             swapRadii ? ellipse.RadiusY : ellipse.RadiusX,
             swapRadii ? ellipse.RadiusX : ellipse.RadiusY);
+    }
+
+    private static void RotateEllipseArc(CadEllipseArc ellipseArc, CadPointD pivot, double angleRadians)
+    {
+        _ = TryGetQuarterTurns(angleRadians, out var turns);
+        var swapRadii = Math.Abs(turns) % 2 == 1;
+        ellipseArc.SetGeometry(
+            RotatePoint(ellipseArc.Center, pivot, angleRadians),
+            swapRadii ? ellipseArc.RadiusY : ellipseArc.RadiusX,
+            swapRadii ? ellipseArc.RadiusX : ellipseArc.RadiusY,
+            ellipseArc.StartAngleRadians + angleRadians,
+            ellipseArc.SweepAngleRadians);
     }
 
     private static void RotateRectangle(CadRectangle rectangle, CadPointD pivot, double angleRadians)

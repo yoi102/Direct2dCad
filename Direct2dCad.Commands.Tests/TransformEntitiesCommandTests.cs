@@ -124,6 +124,51 @@ public sealed class TransformEntitiesCommandTests
         Assert.Equal(CadPointD.Origin, ellipse.Center);
     }
 
+    [Fact]
+    public void EllipseArc_QuarterTurnScaleAndMirrorRemainExactAndUndoable()
+    {
+        var document = CadDocument.Create("Ellipse arc transform");
+        var ellipseArc = document.AddEllipseArc(
+            new CadPointD(4, 2),
+            6,
+            3,
+            Math.PI / 6,
+            Math.PI / 2);
+
+        var rotate = new RotateEntitiesCommand([ellipseArc.Id], CadPointD.Origin, Math.PI / 2);
+        rotate.Execute(document);
+        AssertPoint(new CadPointD(-2, 4), ellipseArc.Center);
+        Assert.Equal(3, ellipseArc.RadiusX, 10);
+        Assert.Equal(6, ellipseArc.RadiusY, 10);
+        Assert.Equal(Math.PI * 2 / 3, ellipseArc.StartAngleRadians, 10);
+        rotate.Undo(document);
+        AssertPoint(new CadPointD(4, 2), ellipseArc.Center);
+        Assert.Equal(6, ellipseArc.RadiusX, 10);
+        Assert.Equal(3, ellipseArc.RadiusY, 10);
+
+        var scale = new ScaleEntitiesCommand([ellipseArc.Id], CadPointD.Origin, 2);
+        scale.Execute(document);
+        AssertPoint(new CadPointD(8, 4), ellipseArc.Center);
+        Assert.Equal(12, ellipseArc.RadiusX, 10);
+        Assert.Equal(6, ellipseArc.RadiusY, 10);
+        scale.Undo(document);
+        AssertPoint(new CadPointD(4, 2), ellipseArc.Center);
+
+        var mirror = new MirrorEntitiesCommand([ellipseArc.Id], CadPointD.Origin, Math.PI / 4);
+        mirror.Execute(document);
+        AssertPoint(new CadPointD(2, 4), ellipseArc.Center);
+        Assert.Equal(3, ellipseArc.RadiusX, 10);
+        Assert.Equal(6, ellipseArc.RadiusY, 10);
+        Assert.Equal(Math.PI / 3, ellipseArc.StartAngleRadians, 10);
+        Assert.Equal(-Math.PI / 2, ellipseArc.SweepAngleRadians, 10);
+        mirror.Undo(document);
+        AssertPoint(new CadPointD(4, 2), ellipseArc.Center);
+        Assert.Equal(6, ellipseArc.RadiusX, 10);
+        Assert.Equal(3, ellipseArc.RadiusY, 10);
+        Assert.Equal(Math.PI / 6, ellipseArc.StartAngleRadians, 10);
+        Assert.Equal(Math.PI / 2, ellipseArc.SweepAngleRadians, 10);
+    }
+
     private static void AssertPoint(CadPointD expected, CadPointD actual)
     {
         Assert.Equal(expected.X, actual.X, 9);

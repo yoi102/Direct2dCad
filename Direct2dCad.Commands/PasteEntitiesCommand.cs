@@ -605,6 +605,10 @@ public sealed class PasteEntitiesCommand : ICadCommand
             CadCompositeLineSegment line => new CadCompositeLineSegment(line.End + delta),
             CadCompositeArcSegment arc => new CadCompositeArcSegment(arc.Center + delta, arc.SweepAngleRadians),
             CadCompositeSplineSegment spline => new CadCompositeSplineSegment(spline.FitPoints.Select(point => point + delta)),
+            CadCompositeBezierSegment bezier => new CadCompositeBezierSegment(
+                bezier.Control1 + delta,
+                bezier.Control2 + delta,
+                bezier.End + delta),
             _ => throw new NotSupportedException($"Unsupported composite path segment: {segment.GetType().Name}")
         });
     }

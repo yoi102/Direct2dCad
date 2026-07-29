@@ -24,6 +24,11 @@ public sealed class CadAiWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "set_entity_common_properties");
         Assert.Contains(tools, tool => tool.Name == "set_entity_fill");
         Assert.Contains(tools, tool => tool.Name == "set_entity_stroke_style");
+        Assert.Contains(tools, tool => tool.Name == "get_entity_properties");
+        Assert.Contains(tools, tool => tool.Name == "set_text_properties");
+        Assert.Contains(tools, tool => tool.Name == "set_block_reference_definition");
+        Assert.Contains(tools, tool => tool.Name == "set_block_definition_base_point");
+        Assert.Contains(tools, tool => tool.Name == "replace_embedded_entity_data");
         Assert.Contains(tools, tool => tool.Name == "get_entity_geometry");
         Assert.Contains(tools, tool => tool.Name == "set_entity_geometry");
         Assert.Contains(tools, tool => tool.Name == "transform_entities");
@@ -96,9 +101,14 @@ public sealed class CadAiWorkspaceToolExecutorTests
         Assert.True(setGeometry.TryGetProperty("entity_id", out _));
         Assert.True(setGeometry.TryGetProperty("fit_points", out _));
         Assert.True(setGeometry.TryGetProperty("start_angle_degrees", out _));
+        Assert.True(setGeometry.TryGetProperty("radius_x", out _));
         Assert.True(transform.TryGetProperty("operation", out _));
         Assert.True(transform.TryGetProperty("axis_angle_degrees", out _));
         Assert.True(transform.TryGetProperty("factor", out _));
+
+        var common = tools["set_entity_common_properties"].Parameters.GetProperty("properties");
+        Assert.True(common.TryGetProperty("locked", out _));
+        Assert.True(common.TryGetProperty("opacity", out _));
     }
 
     [Fact]
@@ -208,6 +218,12 @@ public sealed class CadAiWorkspaceToolExecutorTests
               "segments": [
                 { "type": "line", "end": { "x": 10, "y": 0 } },
                 { "type": "arc", "center": { "x": 10, "y": 5 }, "sweep_angle_degrees": 90 },
+                {
+                  "type": "cubic_bezier",
+                  "control1": { "x": 12, "y": 12 },
+                  "control2": { "x": 18, "y": 12 },
+                  "end": { "x": 20, "y": 8 }
+                },
                 { "type": "spline", "fit_points": [{ "x": 20, "y": 8 }, { "x": 25, "y": 0 }] }
               ],
               "closed": true
@@ -221,6 +237,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
             geometry.Segments,
             segment => Assert.IsType<Direct2dCad.Db.Data.Entities.CadCompositeLineSegment>(segment),
             segment => Assert.IsType<Direct2dCad.Db.Data.Entities.CadCompositeArcSegment>(segment),
+            segment => Assert.IsType<Direct2dCad.Db.Data.Entities.CadCompositeBezierSegment>(segment),
             segment => Assert.IsType<Direct2dCad.Db.Data.Entities.CadCompositeSplineSegment>(segment));
     }
 
@@ -302,7 +319,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
     }
 
     [Fact]
-    public async Task ActivateDocument_ChangesRequestDefaultDocument()
+    public async Task ActivateDocument_DoesNotChangeRequestStartTargetDocument()
     {
         var workspace = new FakeWorkspaceService();
         workspace.Add("document-1", "One", isActive: true);
@@ -318,7 +335,36 @@ public sealed class CadAiWorkspaceToolExecutorTests
 
         Assert.True(ReadSuccess(result));
         using var listJson = JsonDocument.Parse(listResult);
-        Assert.Equal("document-2", listJson.RootElement.GetProperty("result").GetProperty("default_document_id").GetString());
+        Assert.Equal("document-1", listJson.RootElement.GetProperty("result").GetProperty("request_target_document_id").GetString());
+        Assert.Equal("document-1", listJson.RootElement.GetProperty("result").GetProperty("default_document_id").GetString());
+    }
+
+    [Fact]
+    public async Task DocumentScopedTool_WithoutRequestTarget_DoesNotCreateDocument()
+    {
+        var workspace = new FakeWorkspaceService();
+        var executor = new CadAiWorkspaceToolExecutor(workspace);
+
+        var result = await executor.ExecuteAsync(
+            new AiToolCall("call-1", "add_line", """{"x1":0,"y1":0,"x2":10,"y2":10}"""),
+            CancellationToken.None);
+
+        Assert.False(ReadSuccess(result));
+        Assert.Empty(workspace.GetDocuments());
+    }
+
+    [Fact]
+    public void ToolSchema_ExposesEditorStateAndCubicBezierSegments()
+    {
+        var stateTool = Assert.Single(
+            CadAiWorkspaceToolExecutor.ToolDefinitions,
+            tool => tool.Name == "get_editor_state");
+        var bulkTool = Assert.Single(
+            CadAiWorkspaceToolExecutor.ToolDefinitions,
+            tool => tool.Name == "add_entities");
+
+        Assert.True(stateTool.Parameters.GetProperty("properties").TryGetProperty("document_id", out _));
+        Assert.Contains("cubic_bezier", bulkTool.Parameters.GetRawText(), StringComparison.Ordinal);
     }
 
     private static bool ReadSuccess(string result)

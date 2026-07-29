@@ -734,6 +734,23 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetEllipseGeometryCommand(entityId, center, radiusX, radiusY));
     }
 
+    public CadDocumentChangeSet SetEllipseArcGeometry(
+        EntityId entityId,
+        CadPointD center,
+        double radiusX,
+        double radiusY,
+        double startAngleRadians,
+        double sweepAngleRadians)
+    {
+        return DocumentCommands.Execute(new SetEllipseArcGeometryCommand(
+            entityId,
+            center,
+            radiusX,
+            radiusY,
+            startAngleRadians,
+            sweepAngleRadians));
+    }
+
     public CadDocumentChangeSet SetArcGeometry(
         EntityId entityId,
         CadPointD center,
@@ -762,6 +779,25 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetImageRotation(EntityId entityId, double rotationRadians)
     {
         return DocumentCommands.Execute(new SetImageRotationCommand(entityId, rotationRadians));
+    }
+
+    public CadDocumentChangeSet SetImageData(
+        EntityId entityId,
+        int pixelWidth,
+        int pixelHeight,
+        int stride,
+        byte[] pixels,
+        string contentType,
+        string sourceName)
+    {
+        return DocumentCommands.Execute(new SetImageDataCommand(
+            entityId,
+            pixelWidth,
+            pixelHeight,
+            stride,
+            pixels,
+            contentType,
+            sourceName));
     }
 
     public CadDocumentChangeSet SetOleObjectBounds(EntityId entityId, CadRectD bounds)
@@ -1003,6 +1039,16 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetEntityOpacity(IEnumerable<EntityId> entityIds, double opacity)
     {
         return DocumentCommands.Execute(new SetEntityOpacityCommand(entityIds, opacity));
+    }
+
+    public CadDocumentChangeSet SetEntityLocked(EntityId entityId, bool isLocked)
+    {
+        return SetEntitiesLocked([entityId], isLocked);
+    }
+
+    public CadDocumentChangeSet SetEntitiesLocked(IEnumerable<EntityId> entityIds, bool isLocked)
+    {
+        return DocumentCommands.Execute(new SetEntityLockedCommand(entityIds, isLocked));
     }
 
     public CadDocumentChangeSet ChangeEntityLayer(EntityId entityId, LayerId layerId)

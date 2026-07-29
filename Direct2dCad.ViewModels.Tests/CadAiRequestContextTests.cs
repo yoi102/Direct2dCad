@@ -8,14 +8,16 @@ public sealed class CadAiToolSelectorTests
 {
     private static readonly IReadOnlyList<AiToolDefinition> AvailableTools = CreateTools(
         "add_entities", "add_line", "add_circle", "add_arc", "add_ellipse", "add_rectangle",
-        "add_polygon", "add_polyline", "add_spline", "add_text",
+        "add_polygon", "add_polyline", "add_spline", "add_text", "add_composite_path",
         "list_layers", "create_layer", "rename_layer", "delete_layer",
         "set_layer_properties", "reorder_layers",
-        "create_block", "insert_block", "duplicate_entities", "get_entity_geometry",
+        "create_block", "insert_block", "duplicate_entities", "get_entity_geometry", "get_entity_properties",
         "transform_entities", "open_document", "activate_document", "rename_document",
-        "save_document", "close_document", "get_document_summary", "list_entities",
+        "save_document", "close_document", "get_editor_state", "get_document_summary", "list_entities",
         "list_document_catalog", "list_documents", "create_document", "select_entities",
-        "undo", "redo", "set_entity_common_properties");
+        "undo", "redo", "set_entity_common_properties", "set_entity_fill", "set_entity_stroke_style",
+        "set_text_properties", "set_block_reference_definition", "set_block_definition_base_point",
+        "replace_embedded_entity_data");
 
     [Fact]
     public void Select_ComplexDrawing_PrefersBulkCreationTool()
@@ -23,6 +25,10 @@ public sealed class CadAiToolSelectorTests
         var selected = CadAiToolSelector.Select("画一个猫的侧身图案", AvailableTools);
 
         Assert.Contains(selected, tool => tool.Name == "add_entities");
+        Assert.Contains(selected, tool => tool.Name == "get_editor_state");
+        Assert.DoesNotContain(selected, tool => tool.Name == "create_document");
+        Assert.DoesNotContain(selected, tool => tool.Name == "open_document");
+        Assert.DoesNotContain(selected, tool => tool.Name == "activate_document");
     }
 
     [Fact]
@@ -58,6 +64,21 @@ public sealed class CadAiToolSelectorTests
 
         Assert.Contains(selected, tool => tool.Name == "create_block");
         Assert.Contains(selected, tool => tool.Name == "insert_block");
+        Assert.Contains(selected, tool => tool.Name == "set_block_reference_definition");
+        Assert.Contains(selected, tool => tool.Name == "set_block_definition_base_point");
+    }
+
+    [Fact]
+    public void Select_EntityPropertyEdit_IncludesTypedReadAndMutationTools()
+    {
+        var selected = CadAiToolSelector.Select(
+            "change the selected text font, inverted margin, opacity, and block reference property",
+            AvailableTools);
+
+        Assert.Contains(selected, tool => tool.Name == "get_entity_properties");
+        Assert.Contains(selected, tool => tool.Name == "set_text_properties");
+        Assert.Contains(selected, tool => tool.Name == "set_entity_common_properties");
+        Assert.Contains(selected, tool => tool.Name == "set_block_reference_definition");
     }
 
     [Fact]
@@ -66,10 +87,29 @@ public sealed class CadAiToolSelectorTests
         var selected = CadAiToolSelector.Select("打开文件，重命名后保存并关闭文档", AvailableTools);
 
         Assert.Contains(selected, tool => tool.Name == "open_document");
-        Assert.Contains(selected, tool => tool.Name == "activate_document");
         Assert.Contains(selected, tool => tool.Name == "rename_document");
         Assert.Contains(selected, tool => tool.Name == "save_document");
         Assert.Contains(selected, tool => tool.Name == "close_document");
+    }
+
+    [Theory]
+    [InlineData("draw a new cat silhouette")]
+    [InlineData("新建一个图层后画猫")]
+    [InlineData("用 Spline 绘制小猫")]
+    public void Select_DrawingRequest_DoesNotExposeDocumentCreation(string prompt)
+    {
+        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+
+        Assert.DoesNotContain(selected, tool => tool.Name == "create_document");
+    }
+
+    [Fact]
+    public void Select_ExplicitNewDocumentRequest_ExposesDocumentCreation()
+    {
+        var selected = CadAiToolSelector.Select("新建文档并在新图纸中绘制一个圆", AvailableTools);
+
+        Assert.Contains(selected, tool => tool.Name == "create_document");
+        Assert.Contains(selected, tool => tool.Name == "list_documents");
     }
 
     [Theory]
@@ -193,6 +233,25 @@ public sealed class CadAiRequestContextBuilderTests
             AiAssistantSettings.DefaultContextWindowTokens);
 
         Assert.Contains(context.Tools, tool => tool.Name == "add_entities");
+        Assert.Contains(context.Tools, tool => tool.Name == "get_editor_state");
+        Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 8192);
+    }
+
+    [Fact]
+    public void Build_ExplicitNewDocumentDrawing_KeepsLifecycleStateAndDrawingTools()
+    {
+        const string prompt = "新建文档并在新图纸中绘制一个猫的侧身轮廓";
+        var selected = CadAiToolSelector.Select(prompt, CadAiWorkspaceToolExecutor.ToolDefinitions);
+
+        var context = CadAiRequestContextBuilder.Build(
+            "You are a CAD editing assistant.",
+            [AiChatMessage.User(prompt)],
+            selected,
+            AiAssistantSettings.DefaultContextWindowTokens);
+
+        Assert.Contains(context.Tools, tool => tool.Name == "create_document");
+        Assert.Contains(context.Tools, tool => tool.Name == "add_entities");
+        Assert.Contains(context.Tools, tool => tool.Name == "get_editor_state");
         Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 8192);
     }
 

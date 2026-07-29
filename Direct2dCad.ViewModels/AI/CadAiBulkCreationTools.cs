@@ -104,6 +104,7 @@ internal static class CadAiBulkCreationTools
                     maxItems = MaximumEntitiesPerCall,
                     items = new
                     {
+                        description = "Required geometry by type: line=x1,y1,x2,y2; circle=center_x,center_y,radius; rectangle=min_x,min_y,max_x,max_y; text=text,x,y,height; polyline=points; arc=center_x,center_y,radius,start_angle_degrees,sweep_angle_degrees; ellipse=center_x,center_y,radius_x,radius_y; polygon=points; spline=fit_points; composite_path=start,segments,closed.",
                         type = "object",
                         properties = itemProperties,
                         required = new[] { "type" },
@@ -134,7 +135,7 @@ internal static class CadAiBulkCreationTools
         ["height"] = new { type = "number", exclusiveMinimum = 0.0 },
         ["rotation_degrees"] = Number("Counter-clockwise text rotation"),
         ["points"] = PointArray(2),
-        ["fit_points"] = PointArray(2),
+        ["fit_points"] = PointArray(2, "Ordered points that an interpolating spline passes through; these are not Bezier control handles"),
         ["start"] = Point(),
         ["segments"] = new
         {
@@ -142,14 +143,17 @@ internal static class CadAiBulkCreationTools
             minItems = 1,
             items = new
             {
+                description = "line requires end; arc requires center and sweep_angle_degrees; cubic_bezier requires control1, control2, and end; spline requires fit_points.",
                 type = "object",
                 properties = new
                 {
-                    type = Enum("line", "arc", "spline"),
+                    type = Enum("line", "arc", "cubic_bezier", "spline"),
                     end = Point(),
                     center = Point(),
                     sweep_angle_degrees = Number("Arc sweep"),
-                    fit_points = PointArray(1)
+                    fit_points = PointArray(1),
+                    control1 = Point("First cubic Bezier control handle"),
+                    control2 = Point("Second cubic Bezier control handle")
                 },
                 required = new[] { "type" },
                 additionalProperties = false
@@ -158,16 +162,18 @@ internal static class CadAiBulkCreationTools
         ["closed"] = new { type = "boolean" }
     };
 
-    private static object Point() => new
+    private static object Point(string description = "CAD world-coordinate point") => new
     {
+        description,
         type = "object",
         properties = new { x = Number("X"), y = Number("Y") },
         required = new[] { "x", "y" },
         additionalProperties = false
     };
 
-    private static object PointArray(int minimum) => new
+    private static object PointArray(int minimum, string? description = null) => new
     {
+        description,
         type = "array",
         minItems = minimum,
         items = Point()

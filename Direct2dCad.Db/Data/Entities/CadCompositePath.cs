@@ -37,7 +37,28 @@ public sealed record CadCompositeSplineSegment : CadCompositePathSegment
 }
 
 /// <summary>
-/// One continuous path whose segments may mix lines, circular arcs, and interpolating splines.
+/// One cubic Bezier segment. The segment start is the previous path endpoint.
+/// </summary>
+public sealed record CadCompositeBezierSegment : CadCompositePathSegment
+{
+    public CadPointD Control1 { get; }
+    public CadPointD Control2 { get; }
+    public CadPointD End { get; }
+
+    public CadCompositeBezierSegment(CadPointD control1, CadPointD control2, CadPointD end)
+    {
+        CadCompositePath.GuardPoint(control1, nameof(control1));
+        CadCompositePath.GuardPoint(control2, nameof(control2));
+        CadCompositePath.GuardPoint(end, nameof(end));
+        Control1 = control1;
+        Control2 = control2;
+        End = end;
+    }
+}
+
+/// <summary>
+/// One continuous path whose segments may mix lines, circular arcs, cubic Beziers,
+/// and interpolating splines.
 /// Segment start points are inferred from the path start and the preceding segment endpoint.
 /// </summary>
 public sealed class CadCompositePath : Curve
@@ -146,6 +167,16 @@ public sealed class CadCompositePath : Curve
                     }
                     current = spline.FitPoints[^1];
                     break;
+                case CadCompositeBezierSegment bezier:
+                    var cubic = new CadBezierSegmentD(
+                        current,
+                        bezier.Control1,
+                        bezier.Control2,
+                        bezier.End);
+                    for (var step = 1; step <= splineStepsPerBezier; step++)
+                        yield return cubic.Evaluate((double)step / splineStepsPerBezier);
+                    current = bezier.End;
+                    break;
             }
         }
 
@@ -158,6 +189,7 @@ public sealed class CadCompositePath : Curve
         CadCompositeLineSegment line => line.End,
         CadCompositeSplineSegment spline => spline.FitPoints[^1],
         CadCompositeArcSegment arc => RotateAround(start, arc.Center, arc.SweepAngleRadians),
+        CadCompositeBezierSegment bezier => bezier.End,
         _ => throw new NotSupportedException($"Unsupported composite path segment: {segment.GetType().Name}")
     };
 
@@ -195,6 +227,8 @@ public sealed class CadCompositePath : Curve
                         throw new ArgumentException("An arc segment start point cannot equal its center.", nameof(segments));
                     break;
                 case CadCompositeSplineSegment:
+                    break;
+                case CadCompositeBezierSegment:
                     break;
                 case null:
                     throw new ArgumentException("Composite path segments cannot contain null.", nameof(segments));
@@ -246,6 +280,13 @@ public sealed class CadCompositePath : Curve
                             .ExpandToInclude(bezier.End);
                     }
                     current = spline.FitPoints[^1];
+                    break;
+                case CadCompositeBezierSegment bezier:
+                    bounds = bounds
+                        .ExpandToInclude(bezier.Control1)
+                        .ExpandToInclude(bezier.Control2)
+                        .ExpandToInclude(bezier.End);
+                    current = bezier.End;
                     break;
             }
         }

@@ -7,7 +7,8 @@ public enum CadCompositePathSegmentKindData : byte
 {
     Line = 1,
     Arc = 2,
-    Spline = 3
+    Spline = 3,
+    CubicBezier = 4
 }
 
 [MessagePackObject]
@@ -17,6 +18,8 @@ public sealed class CadCompositePathSegmentData
     [Key(1)] public CadPointData Point { get; set; }
     [Key(2)] public double SweepAngleRadians { get; set; }
     [Key(3)] public List<CadPointData> FitPoints { get; set; } = [];
+    [Key(4)] public CadPointData Control1 { get; set; }
+    [Key(5)] public CadPointData Control2 { get; set; }
 }
 
 [MessagePackObject]

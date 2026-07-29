@@ -8,6 +8,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
@@ -27,12 +28,14 @@ internal sealed class CadAiWorkspaceToolExecutor
 
     private readonly ICadAiWorkspaceService _workspace;
     private readonly Dictionary<string, CadAiToolExecutor> _documentExecutors = new(StringComparer.Ordinal);
+    private readonly string? _requestDocumentId;
     private string? _defaultDocumentId;
 
     public CadAiWorkspaceToolExecutor(ICadAiWorkspaceService workspace)
     {
         _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
-        _defaultDocumentId = workspace.GetActiveDocument()?.DocumentId;
+        _requestDocumentId = workspace.GetActiveDocument()?.DocumentId;
+        _defaultDocumentId = _requestDocumentId;
     }
 
     public static IReadOnlyList<AiToolDefinition> ToolDefinitions { get; } = BuildToolDefinitions();
@@ -41,7 +44,7 @@ internal sealed class CadAiWorkspaceToolExecutor
     {
         var documents = _workspace.GetDocuments();
         var documentSummary = documents.Count == 0
-            ? "No CAD documents are open. You can create or open one with a workspace tool."
+            ? "No CAD documents are open. Do not create one unless the user explicitly requested a new document."
             : string.Join("; ", documents.Select(document =>
                 $"document_id={document.DocumentId}, name='{document.Name}', cad_document_id={document.CadDocumentId}, active={document.IsActive}, modified={document.IsModified}"));
 
@@ -52,7 +55,9 @@ internal sealed class CadAiWorkspaceToolExecutor
         return $$"""
             You are the workspace-aware CAD editing assistant inside Direct2dCad. Use tools for every inspection or modification and never claim success before a tool confirms it. Open documents: {{documentSummary}}
 
-            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
+            The request target document_id is '{{_requestDocumentId ?? "none"}}'. It is fixed for this request. Omitted document_id values resolve to that request-start document and never drift when another tab is activated. Never create, open, activate, close, rename, or save a document unless the user explicitly asked for that lifecycle operation. After an explicitly requested create/open/activate operation, pass its returned document_id to every later document-scoped tool that should target it. If there is no request target and the user only asked to draw or edit, explain that an open document is required instead of creating one.
+
+            Call get_editor_state before planning a non-trivial drawing or edit. It reports the active model/paper/layout/block context, viewport, selection, drawing layer and defaults, grid/origin settings, and undo/redo state. Call get_entity_properties before changing type-specific content, fonts, embedded data, or Block references, and omit properties that should remain unchanged. Compose new artwork inside the reported visible bounds with deliberate proportions and separate semantic contours for silhouette, interior details, and accents. Drawing content and appearance changes use undoable document commands, and each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings so the result is one undo batch. For organic artwork, prefer several intentional closed or open contours made from cubic_bezier segments in composite_path entities. Each cubic segment has the previous endpoint as its start, control1 as the outgoing handle, control2 as the incoming handle, and end as its anchor. Avoid one oversized interpolating spline. When the user explicitly requests Spline entities, use several short, ordered splines with a modest number of fit points. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Keep replies concise and report document_id together with created or changed entity IDs.
 
             {{activeDetails}}
             """;
@@ -76,6 +81,7 @@ internal sealed class CadAiWorkspaceToolExecutor
                 "rename_document" => RenameDocument(root),
                 "save_document" => await SaveDocumentAsync(root, cancellationToken),
                 "close_document" => await CloseDocumentAsync(root),
+                "get_editor_state" => ExecuteForDocument(root, (executor, _) => executor.GetEditorState()),
                 "list_document_catalog" => ExecuteForDocument(root, ListDocumentCatalog),
                 "set_entity_common_properties" => ExecuteForDocument(root, SetEntityCommonProperties),
                 "set_entity_fill" => ExecuteForDocument(root, SetEntityFill),
@@ -89,6 +95,14 @@ internal sealed class CadAiWorkspaceToolExecutor
                         new CadAiLayerTools(
                             executor.DocumentViewModel.CadEditor.Document,
                             executor.ExecuteCommand)
+                        .Execute(toolCall.Name, arguments)),
+                _ when CadAiEntityMutationTools.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
+                    ExecuteForDocument(root, (executor, arguments) =>
+                        new CadAiEntityMutationTools(
+                            executor.DocumentViewModel.CadEditor.Document,
+                            value => executor.ResolveEntityIdsForTool(value, allowSelectionFallback: false),
+                            executor.ExecuteCommand,
+                            executor.DocumentViewModel.SelectEntities)
                         .Execute(toolCall.Name, arguments)),
                 "get_entity_geometry" or "set_entity_geometry" or "transform_entities" or "duplicate_entities" =>
                     ExecuteForDocument(root, (executor, arguments) => CadAiGeometryTools.Execute(executor, toolCall.Name, arguments)),
@@ -110,13 +124,15 @@ internal sealed class CadAiWorkspaceToolExecutor
     private string ListDocuments() => Success(new
     {
         documents = _workspace.GetDocuments().Select(DocumentDto).ToArray(),
+        request_target_document_id = _requestDocumentId,
         default_document_id = _defaultDocumentId
     });
 
     private string CreateDocument(JsonElement arguments)
     {
         var document = _workspace.CreateDocument(OptionalString(arguments, "name"));
-        _defaultDocumentId = document.DocumentId;
+        if (_requestDocumentId is null)
+            _defaultDocumentId = document.DocumentId;
         return Success(new { document = DocumentDto(document) });
     }
 
@@ -125,7 +141,8 @@ internal sealed class CadAiWorkspaceToolExecutor
         var document = await _workspace.OpenDocumentAsync(
             RequiredString(arguments, "file_path"),
             cancellationToken);
-        _defaultDocumentId = document.DocumentId;
+        if (_requestDocumentId is null)
+            _defaultDocumentId = document.DocumentId;
         return Success(new { document = DocumentDto(document) });
     }
 
@@ -133,7 +150,8 @@ internal sealed class CadAiWorkspaceToolExecutor
     {
         var documentId = RequiredString(arguments, "document_id");
         _workspace.ActivateDocument(documentId);
-        _defaultDocumentId = documentId;
+        if (_requestDocumentId is null)
+            _defaultDocumentId = documentId;
         return Success(new { document = DocumentDto(_workspace.GetRequiredDocument(documentId)) });
     }
 
@@ -168,7 +186,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         {
             _documentExecutors.Remove(document.DocumentId);
             if (string.Equals(_defaultDocumentId, document.DocumentId, StringComparison.Ordinal))
-                _defaultDocumentId = _workspace.GetActiveDocument()?.DocumentId ?? _workspace.GetDocuments().FirstOrDefault()?.DocumentId;
+                _defaultDocumentId = null;
         }
 
         return Success(new
@@ -336,6 +354,12 @@ internal sealed class CadAiWorkspaceToolExecutor
                 style.IsBold,
                 style.IsItalic
             }).ToArray(),
+            shape_fonts = CadShapeFontRegistry.Defaults.Select(font => new
+            {
+                id = font.Id.Value,
+                font.Name,
+                supports_unicode = font.SupportsUnicode
+            }).ToArray(),
             blocks = document.Blocks.Values
                 .Where(block => block.Kind == CadBlockKind.User)
                 .Select(block => new
@@ -423,8 +447,10 @@ internal sealed class CadAiWorkspaceToolExecutor
         var hasLineWeight = HasValue(arguments, "line_weight");
         var hasZIndex = HasValue(arguments, "z_index");
         var hasVisibility = HasValue(arguments, "visible");
+        var hasLocked = HasValue(arguments, "locked");
+        var hasOpacity = HasValue(arguments, "opacity");
         if (!hasLayer && !hasName && !hasColor && !hasColorSource && !hasGraphicStyle &&
-            !hasLineWeight && !hasZIndex && !hasVisibility)
+            !hasLineWeight && !hasZIndex && !hasVisibility && !hasLocked && !hasOpacity)
         {
             throw new ArgumentException("At least one common property must be supplied.");
         }
@@ -432,6 +458,8 @@ internal sealed class CadAiWorkspaceToolExecutor
             throw new ArgumentException("color and graphic_style cannot be set in the same call.");
         if ((hasColor || hasColorSource || hasGraphicStyle) && entities.Any(entity => !CadEntityCapabilities.SupportsGraphicStyle(entity)))
             throw new NotSupportedException("One or more entities do not support stroke color or graphic styles.");
+        if (hasOpacity && entities.Any(entity => !CadEntityCapabilities.SupportsOpacity(entity)))
+            throw new NotSupportedException("One or more entities do not support opacity.");
         if (hasName && ids.Length != 1)
             throw new ArgumentException("name can only be set when exactly one entity_id is supplied.");
 
@@ -461,6 +489,28 @@ internal sealed class CadAiWorkspaceToolExecutor
             if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
                 throw new ArgumentException("visible must be a boolean.");
             visible = value.GetBoolean();
+        }
+        bool? locked = null;
+        if (hasLocked)
+        {
+            var value = arguments.GetProperty("locked");
+            if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new ArgumentException("locked must be a boolean.");
+            locked = value.GetBoolean();
+        }
+        double? opacity = null;
+        if (hasOpacity)
+        {
+            var value = RequiredFinite(arguments, "opacity");
+            if (value is < 0 or > 1)
+                throw new ArgumentOutOfRangeException("opacity", "opacity must be between 0 and 1.");
+            opacity = value;
+        }
+
+        if (locked is false)
+        {
+            executor.ExecuteCommand(new SetEntityLockedCommand(ids, false));
+            changed.Add("locked");
         }
 
         if (targetLayerId is { } layerId)
@@ -509,6 +559,16 @@ internal sealed class CadAiWorkspaceToolExecutor
         {
             executor.ExecuteCommand(new SetEntityVisibilityCommand(ids, parsedVisibility));
             changed.Add("visible");
+        }
+        if (opacity is { } parsedOpacity)
+        {
+            executor.ExecuteCommand(new SetEntityOpacityCommand(ids, parsedOpacity));
+            changed.Add("opacity");
+        }
+        if (locked is true)
+        {
+            executor.ExecuteCommand(new SetEntityLockedCommand(ids, true));
+            changed.Add("locked");
         }
 
         executor.DocumentViewModel.SelectEntities(ids);
@@ -732,7 +792,8 @@ internal sealed class CadAiWorkspaceToolExecutor
     {
         var documentId = OptionalString(arguments, "document_id") ?? _defaultDocumentId;
         if (documentId is null)
-            throw new InvalidOperationException("No CAD document is open. Create or open a document first.");
+            throw new InvalidOperationException(
+                "No request target document is available. Open a document in the editor, or explicitly ask to create/open one.");
         return _workspace.GetRequiredDocument(documentId);
     }
 
@@ -1068,8 +1129,11 @@ internal sealed class CadAiWorkspaceToolExecutor
         tools.AddRange(WorkspaceToolDefinitions());
         tools.AddRange(CadAiGeometryTools.ToolDefinitions);
         tools.AddRange(CadAiLayerTools.ToolDefinitions);
+        tools.AddRange(CadAiEntityMutationTools.ToolDefinitions);
         tools.Add(CadAiBulkCreationTools.ToolDefinition);
         tools.Add(CadAiCompositePathTools.ToolDefinition);
+        tools.Add(Tool("get_editor_state", "Get compact current editor state for a document: active model/paper/layout/block context, tool mode, selection details, viewport, drawing layer/defaults, grid/origin settings, current-space counts, and undo/redo availability.",
+            ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
         tools.Add(Tool("list_document_catalog", "List layers and reusable graphic, fill, hatch, and text styles for a document.",
             ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
         tools.Add(Tool("set_entity_common_properties", "Set undoable common entity properties in one document batch. color overrides graphic_style.",
@@ -1159,6 +1223,8 @@ internal sealed class CadAiWorkspaceToolExecutor
             properties["entity_ids"] = EntityIdsSchema();
             properties["layer"] = StringSchema("Existing layer name or ID");
             properties["name"] = StringSchema("Entity name; only valid for one entity");
+            properties["locked"] = new { type = "boolean" };
+            properties["opacity"] = new { type = "number", minimum = 0.0, maximum = 1.0 };
         }
         properties["color_source"] = EnumSchema("by_layer", "explicit", "by_block");
         properties["color"] = StringSchema("#RRGGBB, #AARRGGBB, or black/white/red/green/blue/transparent");

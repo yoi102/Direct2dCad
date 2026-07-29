@@ -25,6 +25,8 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
                 {
                     type = new { type = "string", description = "Optional entity type such as Line, Circle, Rectangle, Text, or Polyline." },
                     layer = new { type = "string", description = "Optional layer name." },
+                    selected_only = new { type = "boolean", description = "When true, return only currently selected entities." },
+                    offset = new { type = "integer", minimum = 0 },
                     limit = new { type = "integer", minimum = 1, maximum = MaximumListedEntities }
                 },
                 additionalProperties = false
@@ -104,7 +106,7 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
             })),
         Tool("add_polygon", "Add a closed polygon from three or more CAD world-coordinate vertices.", PointCollectionSchema(
             "points", minimumPoints: 3, includeClosed: false)),
-        Tool("add_spline", "Add a smooth interpolating spline from fit points.", PointCollectionSchema(
+        Tool("add_spline", "Add one smooth interpolating spline that passes through every ordered fit point. Fit points are not Bezier control handles. Use several short splines for multi-part organic artwork.", PointCollectionSchema(
             "fit_points", minimumPoints: 2, includeClosed: true)),
         Tool("select_entities", "Replace the current selection with the supplied entity IDs.", EntityIdsSchema(required: true)),
         Tool("move_entities", "Move supplied entity IDs, or the current selection when IDs are omitted.",
@@ -203,8 +205,19 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
     {
         var editor = documentViewModel.CadEditor;
         var viewport = editor.Viewport.VisibleWorldBounds;
+        var entityCount = editor.Document.GetEntitiesInBlock(editor.ActiveOwnerBlockId)
+            .Count(entity => !entity.IsErased);
+        var selectedIds = editor.Selection.EntityIds.Take(20).Select(id => id.Value);
+        var selection = string.Join(",", selectedIds);
+        var spaceKind = documentViewModel.IsEditingBlock
+            ? "block_definition"
+            : documentViewModel.IsLayoutViewportActive
+                ? "layout_model_viewport"
+                : documentViewModel.IsPaperSpaceActive
+                    ? "paper_space"
+                    : "model_space";
         return $$"""
-            You are the CAD editing assistant inside Direct2dCad. Use the supplied tools whenever the user asks to inspect or modify the drawing. Never claim an edit succeeded until its tool result confirms it. CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees. Prefer inspecting entities before changing existing ones. Keep replies concise and summarize created or changed entity IDs. The active drawing layer is '{{ResolveLayerName(documentViewModel.DrawingLayerId)}}'. The visible world bounds are {{FormatRect(viewport)}}. All mutating tool calls from this user request share one undo batch.
+            You are the CAD editing assistant inside Direct2dCad. Use the supplied tools whenever the user asks to inspect or modify the drawing. Never claim an edit succeeded until its tool result confirms it. CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees. Prefer inspecting entities before changing existing ones. Keep replies concise and summarize created or changed entity IDs. Current editor snapshot: space_kind={{spaceKind}}, owner_block_id={{editor.ActiveOwnerBlockId.Value}}, tool_mode={{documentViewModel.CadCanvasToolMode}}, entity_count={{entityCount}}, selected_entity_ids=[{{selection}}], can_undo={{editor.DocumentCommands.CanUndo}}, can_redo={{editor.DocumentCommands.CanRedo}}, drawing_layer='{{ResolveLayerName(documentViewModel.DrawingLayerId)}}', visible_world_bounds={{FormatRect(viewport)}}. Use get_editor_state for the full current snapshot. All mutating tool calls from this user request share one undo batch.
             """;
     }
 
@@ -234,14 +247,25 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         });
     }
 
+    internal object GetEditorState() => CadAiEditorStateBuilder.Build(documentViewModel);
+
     private string ListEntities(JsonElement arguments)
     {
         var requestedType = OptionalString(arguments, "type");
         var requestedLayer = OptionalString(arguments, "layer");
+        var selectedOnly = OptionalBool(arguments, "selected_only");
+        var offset = Math.Max(0, OptionalInt(arguments, "offset", 0));
         var limit = Math.Clamp(OptionalInt(arguments, "limit", 50), 1, MaximumListedEntities);
-        var entities = GetCurrentSpaceEntities()
+        var selectedIds = selectedOnly
+            ? documentViewModel.CadEditor.Selection.EntityIds.ToHashSet()
+            : null;
+        var query = GetCurrentSpaceEntities()
+            .Where(entity => selectedIds is null || selectedIds.Contains(entity.Id))
             .Where(entity => requestedType is null || string.Equals(EntityType(entity), requestedType, StringComparison.OrdinalIgnoreCase))
-            .Where(entity => requestedLayer is null || string.Equals(ResolveLayerName(entity.LayerId), requestedLayer, StringComparison.OrdinalIgnoreCase))
+            .Where(entity => requestedLayer is null || string.Equals(ResolveLayerName(entity.LayerId), requestedLayer, StringComparison.OrdinalIgnoreCase));
+        var totalMatches = query.Count();
+        var entities = query
+            .Skip(offset)
             .Take(limit)
             .Select(entity => new
             {
@@ -267,7 +291,14 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
                 }
             })
             .ToArray();
-        return Success(new { count = entities.Length, entities });
+        return Success(new
+        {
+            count = entities.Length,
+            total_matches = totalMatches,
+            offset,
+            has_more = offset + entities.Length < totalMatches,
+            entities
+        });
     }
 
     private string AddLine(JsonElement arguments)

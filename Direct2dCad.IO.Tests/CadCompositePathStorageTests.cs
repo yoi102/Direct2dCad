@@ -19,6 +19,10 @@ public sealed class CadCompositePathStorageTests
                 [
                     new CadCompositeLineSegment(new CadPointD(11, 2)),
                     new CadCompositeArcSegment(new CadPointD(11, 7), -Math.PI / 2),
+                    new CadCompositeBezierSegment(
+                        new CadPointD(13, 10),
+                        new CadPointD(17, 10),
+                        new CadPointD(18, 8)),
                     new CadCompositeSplineSegment([new CadPointD(14, 8), new CadPointD(20, 2)])
                 ],
                 closed: true,
@@ -33,10 +37,14 @@ public sealed class CadCompositePathStorageTests
             Assert.Equal(entity.StartPoint, actual.StartPoint);
             Assert.Equal(entity.Closed, actual.Closed);
             Assert.Equal(entity.FillStyleId, actual.FillStyleId);
-            Assert.Equal(3, actual.Segments.Count);
+            Assert.Equal(4, actual.Segments.Count);
             Assert.IsType<CadCompositeLineSegment>(actual.Segments[0]);
             Assert.IsType<CadCompositeArcSegment>(actual.Segments[1]);
-            Assert.IsType<CadCompositeSplineSegment>(actual.Segments[2]);
+            var bezier = Assert.IsType<CadCompositeBezierSegment>(actual.Segments[2]);
+            Assert.Equal(new CadPointD(13, 10), bezier.Control1);
+            Assert.Equal(new CadPointD(17, 10), bezier.Control2);
+            Assert.Equal(new CadPointD(18, 8), bezier.End);
+            Assert.IsType<CadCompositeSplineSegment>(actual.Segments[3]);
         }
         finally
         {

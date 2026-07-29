@@ -26,4 +26,34 @@ public sealed class CadCompositePathHitTests
         Assert.True(CadEntityHitTester.HitTestEdge(document, path, new CadPointD(5, 10), 0.2, out _));
         Assert.True(CadEntityHitTester.HitTestFill(document, path, new CadPointD(5, 5), out _));
     }
+
+    [Fact]
+    public void HitTesting_CoversCubicBezierEdgeAndClosedFill()
+    {
+        var document = CadDocument.Create("BezierHit");
+        var fill = document.CreateSolidFillStyle("Fill", CadColor.Green);
+        var path = document.AddCompositePath(
+            CadPointD.Origin,
+            [
+                new CadCompositeBezierSegment(
+                    new CadPointD(0, 10),
+                    new CadPointD(10, 10),
+                    new CadPointD(10, 0)),
+                new CadCompositeLineSegment(CadPointD.Origin)
+            ],
+            closed: true,
+            fillStyleId: fill);
+
+        Assert.True(CadEntityHitTester.HitTestEdge(
+            document,
+            path,
+            new CadPointD(5, 7.5),
+            0.05,
+            out _));
+        Assert.True(CadEntityHitTester.HitTestFill(
+            document,
+            path,
+            new CadPointD(5, 3),
+            out _));
+    }
 }

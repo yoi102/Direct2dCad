@@ -12,7 +12,7 @@ internal static class CadAiCompositePathTools
 
     internal static AiToolDefinition ToolDefinition { get; } = new(
         "add_composite_path",
-        "Create one continuous path mixing line, circular arc, and interpolating spline segments. A closed path supports one shared solid or hatch fill.",
+        "Create one continuous path mixing line, circular arc, cubic Bezier, and interpolating spline segments. Prefer cubic_bezier segments for controlled organic outlines. A closed path supports one shared solid or hatch fill.",
         JsonSerializer.SerializeToElement(CreateSchema()));
 
     internal static CadAiCompositePathGeometry Parse(JsonElement arguments)
@@ -35,6 +35,10 @@ internal static class CadAiCompositePathTools
                     RequiredSweepDegrees(element) * RadiansPerDegree),
                 "spline" => new CadCompositeSplineSegment(
                     RequiredPoints(element, "fit_points", minimumCount: 1)),
+                "cubic_bezier" => new CadCompositeBezierSegment(
+                    RequiredPoint(element, "control1"),
+                    RequiredPoint(element, "control2"),
+                    RequiredPoint(element, "end")),
                 _ => throw new ArgumentException($"Unsupported composite path segment type: {type}")
             });
         }
@@ -73,6 +77,15 @@ internal static class CadAiCompositePathTools
                         fit_points = spline.FitPoints.Select(PointDto).ToArray()
                     });
                     break;
+                case CadCompositeBezierSegment bezier:
+                    segments.Add(new
+                    {
+                        type = "cubic_bezier",
+                        control1 = PointDto(bezier.Control1),
+                        control2 = PointDto(bezier.Control2),
+                        end = PointDto(bezier.End)
+                    });
+                    break;
             }
             current = CadCompositePath.GetEndPoint(current, segment);
         }
@@ -102,14 +115,31 @@ internal static class CadAiCompositePathTools
                     minItems = 1,
                     items = new
                     {
+                        description = "line requires end; arc requires center and sweep_angle_degrees; cubic_bezier requires control1, control2, and end; spline requires fit_points.",
                         type = "object",
                         properties = new Dictionary<string, object>
                         {
-                            ["type"] = new { type = "string", @enum = new[] { "line", "arc", "spline" } },
+                            ["type"] = new { type = "string", @enum = new[] { "line", "arc", "cubic_bezier", "spline" } },
                             ["end"] = point,
                             ["center"] = point,
                             ["sweep_angle_degrees"] = new { type = "number", description = "Non-zero, at most 360 degrees" },
-                            ["fit_points"] = PointArraySchema(1)
+                            ["fit_points"] = PointArraySchema(1),
+                            ["control1"] = new
+                            {
+                                type = "object",
+                                description = "First cubic Bezier control handle, measured from the previous endpoint",
+                                properties = new { x = new { type = "number" }, y = new { type = "number" } },
+                                required = new[] { "x", "y" },
+                                additionalProperties = false
+                            },
+                            ["control2"] = new
+                            {
+                                type = "object",
+                                description = "Second cubic Bezier control handle, approaching end",
+                                properties = new { x = new { type = "number" }, y = new { type = "number" } },
+                                required = new[] { "x", "y" },
+                                additionalProperties = false
+                            }
                         },
                         required = new[] { "type" },
                         additionalProperties = false

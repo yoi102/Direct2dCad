@@ -116,6 +116,13 @@ internal sealed class Direct2DGeometryFactory
                     }
                     current = spline.FitPoints[^1];
                     break;
+                case CadCompositeBezierSegment bezier:
+                    sink.AddBezier(new BezierSegment(
+                        ToVector2(bezier.Control1),
+                        ToVector2(bezier.Control2),
+                        ToVector2(bezier.End)));
+                    current = bezier.End;
+                    break;
             }
         }
 
