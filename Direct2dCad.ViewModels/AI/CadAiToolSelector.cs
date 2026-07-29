@@ -6,7 +6,7 @@ internal static class CadAiToolSelector
 {
     private static readonly string[] CoreTools =
     [
-        "get_document_summary", "list_entities", "list_document_catalog",
+        "get_document_summary", "get_entity_statistics", "list_entities", "list_document_catalog",
         "list_documents", "create_document", "select_entities", "undo", "redo"
     ];
 
@@ -63,6 +63,25 @@ internal static class CadAiToolSelector
         "颜色", "填充", "线型", "属性"
     ];
 
+    private static readonly string[] EntityStatisticsTerms =
+    [
+        "how many entities", "entity count", "entity counts", "what types", "which types",
+        "type count", "type counts", "entity statistics", "drawing statistics",
+        "\u591a\u5c11\u5b9e\u4f53", "\u5b9e\u4f53\u6570\u91cf", "\u5b9e\u4f53\u7c7b\u578b",
+        "\u6709\u4ec0\u4e48\u7c7b\u578b", "\u54ea\u4e9b\u7c7b\u578b", "\u7c7b\u578b\u7edf\u8ba1",
+        "\u30a8\u30f3\u30c6\u30a3\u30c6\u30a3\u6570", "\u7a2e\u985e\u5225"
+    ];
+
+    private static readonly string[] EntityQueryTerms =
+    [
+        "find entities", "search entities", "query entities", "which entities",
+        "filter entities", "named", "radius", "length", "opacity", "inside bounds",
+        "\u67e5\u8be2\u5b9e\u4f53", "\u67e5\u627e\u5b9e\u4f53", "\u641c\u7d22\u5b9e\u4f53",
+        "\u7b5b\u9009\u5b9e\u4f53", "\u54ea\u4e9b\u5b9e\u4f53", "\u534a\u5f84",
+        "\u957f\u5ea6", "\u900f\u660e\u5ea6", "\u540d\u79f0\u5305\u542b",
+        "\u30a8\u30f3\u30c6\u30a3\u30c6\u30a3\u691c\u7d22", "\u534a\u5f84", "\u9577\u3055"
+    ];
+
     internal static IReadOnlyList<AiToolDefinition> Select(
         string prompt,
         IReadOnlyList<AiToolDefinition> availableTools,
@@ -80,6 +99,12 @@ internal static class CadAiToolSelector
                 if (requestedSet.Add(name))
                     requested.Add(name);
         }
+
+        if (ContainsAny(normalized, EntityStatisticsTerms))
+            Add(["get_entity_statistics"]);
+        var isEntityQuery = ContainsAny(normalized, EntityQueryTerms);
+        if (isEntityQuery)
+            Add(["list_entities"]);
 
         var isDrawing = ContainsAny(normalized, DrawingTerms) ||
                         EntityCreationTools.Any(item => ContainsAny(normalized, item.Terms));
@@ -143,7 +168,7 @@ internal static class CadAiToolSelector
             Add(DocumentTools);
         }
 
-        if (!isDrawing && !ContainsAny(normalized, EditingTerms) && !aggressive)
+        if (!isDrawing && !ContainsAny(normalized, EditingTerms) && !isEntityQuery && !aggressive)
             Add(["get_entity_geometry", "set_entity_common_properties"]);
 
         // Intent-specific tools are deliberately first so budget fitting never

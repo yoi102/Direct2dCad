@@ -13,7 +13,7 @@ public sealed class CadAiToolSelectorTests
         "set_layer_properties", "reorder_layers",
         "create_block", "insert_block", "duplicate_entities", "get_entity_geometry",
         "transform_entities", "open_document", "activate_document", "rename_document",
-        "save_document", "close_document", "get_document_summary", "list_entities",
+        "save_document", "close_document", "get_document_summary", "get_entity_statistics", "list_entities",
         "list_document_catalog", "list_documents", "create_document", "select_entities",
         "undo", "redo", "set_entity_common_properties");
 
@@ -34,6 +34,28 @@ public sealed class CadAiToolSelectorTests
         Assert.DoesNotContain(selected, tool => tool.Name == "add_entities");
         Assert.DoesNotContain(selected, tool => tool.Name == "add_line");
         Assert.DoesNotContain(selected, tool => tool.Name == "add_rectangle");
+    }
+
+    [Theory]
+    [InlineData("how many entities are there and what types exist")]
+    [InlineData("\u6709\u591a\u5c11\u5b9e\u4f53\uff0c\u6709\u4ec0\u4e48\u7c7b\u578b")]
+    public void Select_EntityInventoryQuestion_PrioritizesUnfilteredStatistics(string prompt)
+    {
+        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+
+        Assert.NotEmpty(selected);
+        Assert.Equal("get_entity_statistics", selected[0].Name);
+    }
+
+    [Theory]
+    [InlineData("find circles with radius greater than 10")]
+    [InlineData("\u67e5\u627e\u534a\u5f84\u5927\u4e8e10\u7684\u5706")]
+    public void Select_EntityFeatureQuery_PrioritizesStructuredEntityQuery(string prompt)
+    {
+        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+
+        Assert.NotEmpty(selected);
+        Assert.Equal("list_entities", selected[0].Name);
     }
 
     [Theory]

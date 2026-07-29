@@ -17,18 +17,10 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
     [
         Tool("get_document_summary", "Get the active CAD document, layers, selection, and bounds summary.",
             new { type = "object", properties = new { }, additionalProperties = false }),
-        Tool("list_entities", "List entities in the current editing space. Use this before editing existing entities.",
-            new
-            {
-                type = "object",
-                properties = new
-                {
-                    type = new { type = "string", description = "Optional entity type such as Line, Circle, Rectangle, Text, or Polyline." },
-                    layer = new { type = "string", description = "Optional layer name." },
-                    limit = new { type = "integer", minimum = 1, maximum = MaximumListedEntities }
-                },
-                additionalProperties = false
-            }),
+        Tool("get_entity_statistics", "Get complete unpaged entity counts with optional type, layer, owner, or selection filters, grouped by type, layer, and owner space. Use this for counts and inventories.",
+            CadAiEntityQueryProtocol.CreateSchema(paged: false, MaximumListedEntities)),
+        Tool("list_entities", "Query a sorted page of entity details by type, layer, name, state, style, geometry, content, or spatial bounds. Results include total_matches and has_more.",
+            CadAiEntityQueryProtocol.CreateSchema(paged: true, MaximumListedEntities)),
         Tool("add_line", "Add a line in CAD world coordinates.", CoordinateSchema(
             new[] { "x1", "y1", "x2", "y2" },
             new Dictionary<string, object>
@@ -174,6 +166,7 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
             return toolCall.Name switch
             {
                 "get_document_summary" => GetDocumentSummary(),
+                "get_entity_statistics" => GetEntityStatistics(arguments.RootElement),
                 "list_entities" => ListEntities(arguments.RootElement),
                 "add_line" => AddLine(arguments.RootElement),
                 "add_circle" => AddCircle(arguments.RootElement),
@@ -204,7 +197,7 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         var editor = documentViewModel.CadEditor;
         var viewport = editor.Viewport.VisibleWorldBounds;
         return $$"""
-            You are the CAD editing assistant inside Direct2dCad. Use the supplied tools whenever the user asks to inspect or modify the drawing. Never claim an edit succeeded until its tool result confirms it. CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees. Prefer inspecting entities before changing existing ones. Keep replies concise and summarize created or changed entity IDs. The active drawing layer is '{{ResolveLayerName(documentViewModel.DrawingLayerId)}}'. The visible world bounds are {{FormatRect(viewport)}}. All mutating tool calls from this user request share one undo batch.
+            You are the CAD editing assistant inside Direct2dCad. Use the supplied tools whenever the user asks to inspect or modify the drawing. Never claim an edit succeeded until its tool result confirms it. CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees. For complete entity counts or type inventories, call get_entity_statistics without a type filter. For counts constrained by names, states, styles, geometry, content, or bounds, call list_entities and use total_matches. list_entities is paged detail data, so never treat its returned entities as the whole document. Use structured filters instead of guessing from names or a partial page. Prefer inspecting entities before changing existing ones. Keep replies concise and summarize created or changed entity IDs. The active drawing layer is '{{ResolveLayerName(documentViewModel.DrawingLayerId)}}'. The visible world bounds are {{FormatRect(viewport)}}. All mutating tool calls from this user request share one undo batch.
             """;
     }
 
@@ -230,44 +223,37 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
                 layer.IsFrozen
             }).ToArray(),
             content_bounds = RectDto(bounds),
-            visible_bounds = RectDto(editor.Viewport.VisibleWorldBounds)
+            visible_bounds = RectDto(editor.Viewport.VisibleWorldBounds),
+            entity_statistics = CadAiEntityQuery.CreateStatistics(
+                document,
+                editor.ActiveOwnerBlockId,
+                editor.Selection.EntityIds.ToHashSet(),
+                new CadAiEntityQueryOptions(
+                    CadAiEntityQuery.CurrentSpaceScope,
+                    null,
+                    null,
+                    SelectedOnly: false))
         });
+    }
+
+    private string GetEntityStatistics(JsonElement arguments)
+    {
+        var editor = documentViewModel.CadEditor;
+        return Success(CadAiEntityQuery.CreateStatistics(
+            editor.Document,
+            editor.ActiveOwnerBlockId,
+            editor.Selection.EntityIds.ToHashSet(),
+            CadAiEntityQueryProtocol.Parse(arguments, paged: false, MaximumListedEntities)));
     }
 
     private string ListEntities(JsonElement arguments)
     {
-        var requestedType = OptionalString(arguments, "type");
-        var requestedLayer = OptionalString(arguments, "layer");
-        var limit = Math.Clamp(OptionalInt(arguments, "limit", 50), 1, MaximumListedEntities);
-        var entities = GetCurrentSpaceEntities()
-            .Where(entity => requestedType is null || string.Equals(EntityType(entity), requestedType, StringComparison.OrdinalIgnoreCase))
-            .Where(entity => requestedLayer is null || string.Equals(ResolveLayerName(entity.LayerId), requestedLayer, StringComparison.OrdinalIgnoreCase))
-            .Take(limit)
-            .Select(entity => new
-            {
-                id = entity.Id.Value,
-                type = EntityType(entity),
-                entity.Name,
-                layer = ResolveLayerName(entity.LayerId),
-                bounds = RectDto(entity.Bounds),
-                entity.IsVisible,
-                entity.IsLocked,
-                color_source = ProtocolEnum(entity.ColorSource),
-                line_weight = entity.UseLayerLineWeight ? (object)"by_layer" : entity.LineWeight?.Value,
-                entity.ZIndex,
-                graphic_style_id = GraphicStyleId(entity)?.Value,
-                fill_style_id = FillStyleId(entity)?.Value,
-                stroke_style = new
-                {
-                    start_cap = ProtocolEnum(entity.StrokeStyle.StartCap),
-                    end_cap = ProtocolEnum(entity.StrokeStyle.EndCap),
-                    dash_cap = ProtocolEnum(entity.StrokeStyle.DashCap),
-                    dash_style = ProtocolEnum(entity.StrokeStyle.DashStyle),
-                    line_join = ProtocolEnum(entity.StrokeStyle.LineJoin)
-                }
-            })
-            .ToArray();
-        return Success(new { count = entities.Length, entities });
+        var editor = documentViewModel.CadEditor;
+        return Success(CadAiEntityQuery.CreatePage(
+            editor.Document,
+            editor.ActiveOwnerBlockId,
+            editor.Selection.EntityIds.ToHashSet(),
+            CadAiEntityQueryProtocol.Parse(arguments, paged: true, MaximumListedEntities)));
     }
 
     private string AddLine(JsonElement arguments)
@@ -659,13 +645,6 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
             : fallback;
     }
 
-    private static int OptionalInt(JsonElement element, string name, int fallback)
-    {
-        return element.TryGetProperty(name, out var value) && value.TryGetInt32(out var result)
-            ? result
-            : fallback;
-    }
-
     private static bool OptionalBool(JsonElement element, string name)
     {
         return element.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False && value.GetBoolean();
@@ -690,57 +669,6 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
     private static string FormatRect(CadRectD rect) => rect.IsEmpty
         ? "empty"
         : FormattableString.Invariant($"[{rect.MinX:0.###}, {rect.MinY:0.###}] to [{rect.MaxX:0.###}, {rect.MaxY:0.###}]");
-
-    private static string EntityType(CadEntity entity) => entity switch
-    {
-        CadLine => "Line",
-        CadCircle => "Circle",
-        CadArc => "Arc",
-        CadEllipse => "Ellipse",
-        CadEllipseArc => "EllipseArc",
-        CadRectangle => "Rectangle",
-        CadPolyline => "Polyline",
-        CadSpline => "Spline",
-        CadCompositePath => "CompositePath",
-        CadText => "Text",
-        CadShapeText => "ShapeText",
-        CadImage => "Image",
-        CadOleObject => "OleObject",
-        CadBlockReference => "BlockReference",
-        _ => entity.GetType().Name
-    };
-
-    private static StyleId? GraphicStyleId(CadEntity entity) => entity switch
-    {
-        CadLine value => value.GraphicStyleId,
-        CadCircle value => value.GraphicStyleId,
-        CadArc value => value.GraphicStyleId,
-        CadEllipse value => value.GraphicStyleId,
-        CadEllipseArc value => value.GraphicStyleId,
-        CadRectangle value => value.GraphicStyleId,
-        CadPolyline value => value.GraphicStyleId,
-        CadSpline value => value.GraphicStyleId,
-        CadCompositePath value => value.GraphicStyleId,
-        CadText value => value.GraphicStyleId,
-        CadShapeText value => value.GraphicStyleId,
-        CadBlockReference value => value.GraphicStyleId,
-        _ => null
-    };
-
-    private static StyleId? FillStyleId(CadEntity entity) => entity switch
-    {
-        CadCircle value => value.FillStyleId,
-        CadEllipse value => value.FillStyleId,
-        CadRectangle value => value.FillStyleId,
-        CadPolyline value => value.FillStyleId,
-        CadSpline value => value.FillStyleId,
-        CadCompositePath value => value.FillStyleId,
-        _ => null
-    };
-
-    private static string ProtocolEnum<T>(T value) where T : struct, Enum =>
-        string.Concat(value.ToString().Select((character, index) =>
-            index > 0 && char.IsUpper(character) ? $"_{char.ToLowerInvariant(character)}" : char.ToLowerInvariant(character).ToString()));
 
     private static string Success(object value) => JsonSerializer.Serialize(new { success = true, result = value });
     private static string Error(string message) => JsonSerializer.Serialize(new { success = false, error = message });
