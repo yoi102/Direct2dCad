@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.CommandLine;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Lang.Strings;
+using Direct2dCad.ViewModels.AI;
 using Direct2dCad.ViewModels.Collections;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -18,8 +19,10 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     private const int MaximumEntryCount = 1000;
     private const int MaximumPendingEntryCount = 4000;
     private readonly ICadCommandLineService _commandLineService;
+    private readonly ICadAiCommandLineService _aiCommandLineService;
     private readonly IDisposable _commandActivitySubscription;
     private readonly IDisposable _interactionActivitySubscription;
+    private readonly CancellationTokenSource _disposeCancellation = new();
     private readonly object _pendingEntriesGate = new();
     private readonly Queue<CadCommandLineEntryViewModel> _pendingEntries = [];
     private readonly List<string> _commandHistory = [];
@@ -31,11 +34,13 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ICadCommandLineService commandLineService,
+        ICadAiCommandLineService aiCommandLineService,
         IAsyncSubscriber<CadCommandActivityMessage> commandActivitySubscriber,
         IAsyncSubscriber<CadInteractionActivityMessage> interactionActivitySubscriber)
         : base(toolboxLayoutSettingsStore, "toolbox.command-line", DockZone.BottomRight, isOpenByDefault: true)
     {
         _commandLineService = commandLineService;
+        _aiCommandLineService = aiCommandLineService;
         _commandActivitySubscription = commandActivitySubscriber.Subscribe(
             (message, _) =>
             {
@@ -54,7 +59,9 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         Shortcut = "Ctrl+Oem3";
         CanClose = false;
 
-        AddEntry(CadCommandLineEntryKind.Information, "Direct2dCad command line ready. Type HELP for commands.");
+        AddEntry(
+            CadCommandLineEntryKind.Information,
+            "Direct2dCad command line ready. Type HELP for terminal commands or TOOLS for AI CAD tools.");
     }
 
     [ObservableProperty]
@@ -91,8 +98,8 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
                 : $"Active document: {documentViewModel.CadEditor.Document.Name}");
     }
 
-    [RelayCommand]
-    private void ExecuteCommand()
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task ExecuteCommandAsync()
     {
         var commandLine = CommandText.Trim();
         if (commandLine.Length == 0)
@@ -106,6 +113,29 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         AddEntry(CadCommandLineEntryKind.Input, $"> {commandLine}");
         AddToHistory(commandLine);
         CommandText = string.Empty;
+
+        try
+        {
+            var aiResult = await _aiCommandLineService.TryExecuteAsync(
+                commandLine,
+                _disposeCancellation.Token);
+            if (aiResult is not null)
+            {
+                AddMessage(
+                    aiResult.Success ? CadCommandLineEntryKind.Output : CadCommandLineEntryKind.Error,
+                    aiResult.Message);
+                return;
+            }
+        }
+        catch (OperationCanceledException) when (_disposeCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception)
+        {
+            AddMessage(CadCommandLineEntryKind.Error, exception.Message);
+            return;
+        }
 
         CadCommandLineResult result;
         try
@@ -185,7 +215,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     public void CancelCurrentCommand()
     {
         CommandText = "CANCEL";
-        ExecuteCommand();
+        _ = ExecuteCommandAsync();
     }
 
     partial void OnCommandTextChanged(string value)
@@ -193,9 +223,14 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         Suggestions.Clear();
         SelectedSuggestion = null;
         var prefix = value.Trim();
-        if (prefix.Length > 0 && !prefix.Any(char.IsWhiteSpace))
+        if (prefix.Length > 0)
         {
-            foreach (var suggestion in _commandLineService.Complete(prefix))
+            var suggestions = _commandLineService.Complete(prefix)
+                .Concat(_aiCommandLineService.Complete(prefix))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .Take(12);
+            foreach (var suggestion in suggestions)
                 Suggestions.Add(suggestion);
         }
 
@@ -218,6 +253,8 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     public void Dispose()
     {
+        _disposeCancellation.Cancel();
+        _disposeCancellation.Dispose();
         _commandActivitySubscription.Dispose();
         _interactionActivitySubscription.Dispose();
     }

@@ -13,6 +13,7 @@ public static class ServiceCollectionExtension
         services.AddTransient<CadDocumentViewModel>();
         services.AddSingleton<ICadClipboardStore, CadClipboardStore>();
         services.AddSingleton<ICadAiWorkspaceService, CadAiWorkspaceService>();
+        services.AddSingleton<ICadAiCommandLineService, CadAiCommandLineService>();
 
         return services;
     }
