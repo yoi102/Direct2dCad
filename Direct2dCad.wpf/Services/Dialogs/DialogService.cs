@@ -130,6 +130,20 @@ internal sealed class DialogService : IDialogService
             : null;
     }
 
+    public async Task<AiAssistantSettingsDialogResult?> ShowAiAssistantSettingsDialogAsync(
+        AiAssistantSettingsDialogRequest request,
+        string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var viewModel = new AiAssistantSettingsDialogViewModel(request);
+        var result = await ShowReplacingCurrentAsync(
+            () => new AiAssistantSettingsDialog { DataContext = viewModel },
+            dialogIdentifier);
+        return result is AiAssistantSettingsDialogAction.Confirm && viewModel.IsValid
+            ? viewModel.CreateResult()
+            : null;
+    }
+
     private static Task<object?> ShowMessageAsync(string header, string message, string dialogIdentifier, MessageDialogButton buttonType = MessageDialogButton.OK)
     {
         MessageDialog messageDialog = new(header, message, buttonType);

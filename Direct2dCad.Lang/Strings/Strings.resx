@@ -1371,7 +1371,7 @@
     <value>AI Assistant</value>
   </data>
   <data name="AiAssistantWelcome" xml:space="preserve">
-    <value>Connect to LM Studio, select a model, and ask me to inspect or edit documents in the workspace.</value>
+    <value>Configure LM Studio or Codex, then ask me to inspect or edit documents in the workspace.</value>
   </data>
   <data name="LmStudioConnection" xml:space="preserve">
     <value>LM Studio connection</value>
@@ -1462,5 +1462,23 @@
   </data>
   <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
     <value>Rendering devices</value>
+  </data>
+  <data name="AiSettings" xml:space="preserve">
+    <value>AI assistant settings</value>
+  </data>
+  <data name="AiProvider" xml:space="preserve">
+    <value>Provider</value>
+  </data>
+  <data name="CodexExecutable" xml:space="preserve">
+    <value>Codex executable</value>
+  </data>
+  <data name="ReasoningEffort" xml:space="preserve">
+    <value>Reasoning effort</value>
+  </data>
+  <data name="ServiceTier" xml:space="preserve">
+    <value>Service tier</value>
+  </data>
+  <data name="Advanced" xml:space="preserve">
+    <value>Advanced</value>
   </data>
 </root>

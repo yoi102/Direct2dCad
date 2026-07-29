@@ -4,6 +4,7 @@ using Antelcat.I18N.WPF;
 using AvalonDock;
 using AvalonDock.DependencyInjection;
 using CommunityToolkit.Mvvm.DependencyInjection;
+using Direct2dCad.Agent.Codex;
 using Direct2dCad.CommandLine;
 using Direct2dCad.AI;
 using Direct2dCad.Editor;
@@ -98,6 +99,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ICadCommandLineService, CadCommandLineService>();
         services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
         services.AddSingleton<IAiChatClient, LmStudioChatClient>();
+        services.AddSingleton<ICodexAgentClient, CodexAppServerClient>();
         services.AddSingleton<IAiAssistantSettingsStore, JsonAiAssistantSettingsStore>();
 
         services.AddTransient<MainWindow>();

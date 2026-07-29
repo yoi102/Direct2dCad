@@ -1150,7 +1150,7 @@
     <value>AI アシスタント</value>
   </data>
   <data name="AiAssistantWelcome" xml:space="preserve">
-    <value>LM Studio に接続してモデルを選択すると、ワークスペース内の図面を確認・編集できます。</value>
+    <value>LM Studio または Codex を設定すると、ワークスペース内の図面を確認・編集できます。</value>
   </data>
   <data name="LmStudioConnection" xml:space="preserve">
     <value>LM Studio 接続</value>
@@ -1241,5 +1241,23 @@
   </data>
   <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
     <value>描画デバイス数</value>
+  </data>
+  <data name="AiSettings" xml:space="preserve">
+    <value>AI アシスタント設定</value>
+  </data>
+  <data name="AiProvider" xml:space="preserve">
+    <value>プロバイダー</value>
+  </data>
+  <data name="CodexExecutable" xml:space="preserve">
+    <value>Codex 実行ファイル</value>
+  </data>
+  <data name="ReasoningEffort" xml:space="preserve">
+    <value>推論レベル</value>
+  </data>
+  <data name="ServiceTier" xml:space="preserve">
+    <value>サービス階層</value>
+  </data>
+  <data name="Advanced" xml:space="preserve">
+    <value>詳細設定</value>
   </data>
 </root>

@@ -1,5 +1,11 @@
 namespace Direct2dCad.AI;
 
+public enum AiAssistantProvider
+{
+    LmStudio,
+    Codex
+}
+
 public sealed class AiAssistantSettings
 {
     public const string DefaultEndpoint = "http://localhost:1234/v1";
@@ -7,11 +13,16 @@ public sealed class AiAssistantSettings
     public const int MinimumContextWindowTokens = 4096;
     public const int MaximumContextWindowTokens = 262144;
 
+    public AiAssistantProvider Provider { get; set; } = AiAssistantProvider.LmStudio;
     public string Endpoint { get; set; } = DefaultEndpoint;
     public string Model { get; set; } = string.Empty;
     public double Temperature { get; set; } = 0.2;
     public bool EnableCadTools { get; set; } = true;
     public int ContextWindowTokens { get; set; } = DefaultContextWindowTokens;
+    public string CodexExecutablePath { get; set; } = "codex";
+    public string CodexModel { get; set; } = string.Empty;
+    public string CodexReasoningEffort { get; set; } = "medium";
+    public string CodexServiceTier { get; set; } = "flex";
 
     public void Normalize()
     {
@@ -26,18 +37,43 @@ public sealed class AiAssistantSettings
             ContextWindowTokens,
             MinimumContextWindowTokens,
             MaximumContextWindowTokens);
+        CodexExecutablePath = string.IsNullOrWhiteSpace(CodexExecutablePath)
+            ? "codex"
+            : CodexExecutablePath.Trim();
+        CodexModel = CodexModel?.Trim() ?? string.Empty;
+        CodexReasoningEffort = NormalizeReasoningEffort(CodexReasoningEffort);
+        CodexServiceTier = string.Equals(CodexServiceTier, "fast", StringComparison.OrdinalIgnoreCase)
+            ? "fast"
+            : "flex";
     }
 
     public AiAssistantSettings Clone()
     {
-        Normalize();
-        return new AiAssistantSettings
+        var clone = new AiAssistantSettings
         {
+            Provider = Provider,
             Endpoint = Endpoint,
             Model = Model,
             Temperature = Temperature,
             EnableCadTools = EnableCadTools,
-            ContextWindowTokens = ContextWindowTokens
+            ContextWindowTokens = ContextWindowTokens,
+            CodexExecutablePath = CodexExecutablePath,
+            CodexModel = CodexModel,
+            CodexReasoningEffort = CodexReasoningEffort,
+            CodexServiceTier = CodexServiceTier
         };
+        clone.Normalize();
+        return clone;
     }
+
+    private static string NormalizeReasoningEffort(string? value) =>
+        value?.Trim().ToLowerInvariant() switch
+        {
+            "none" => "none",
+            "minimal" => "minimal",
+            "low" => "low",
+            "high" => "high",
+            "xhigh" => "xhigh",
+            _ => "medium"
+        };
 }

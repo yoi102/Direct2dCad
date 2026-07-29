@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.AI;
 
 namespace Direct2dCad.ViewModels.Services.Platform;
 
@@ -24,6 +25,9 @@ public interface IDialogService
         string dialogIdentifier = ViewServiceIdentifiers.DocumentSettingsDialogHost);
     Task<CreateBlockDialogResult?> ShowCreateBlockDialogAsync(
         CreateBlockDialogRequest request,
+        string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
+    Task<AiAssistantSettingsDialogResult?> ShowAiAssistantSettingsDialogAsync(
+        AiAssistantSettingsDialogRequest request,
         string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
     void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel);
     void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel);
@@ -69,6 +73,23 @@ public sealed record CreateBlockDialogResult(
     CadPointD BasePoint);
 
 public enum CreateBlockDialogAction
+{
+    Confirm,
+    Cancel
+}
+
+public sealed record AiAssistantSettingsDialogRequest(
+    AiAssistantSettings Settings,
+    IReadOnlyList<string> LmStudioModels,
+    IReadOnlyList<string> CodexModels,
+    Func<AiAssistantSettings, CancellationToken, Task<IReadOnlyList<string>>> LoadModelsAsync);
+
+public sealed record AiAssistantSettingsDialogResult(
+    AiAssistantSettings Settings,
+    IReadOnlyList<string> LmStudioModels,
+    IReadOnlyList<string> CodexModels);
+
+public enum AiAssistantSettingsDialogAction
 {
     Confirm,
     Cancel

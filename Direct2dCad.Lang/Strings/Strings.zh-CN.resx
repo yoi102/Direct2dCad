@@ -1150,7 +1150,7 @@
     <value>AI 助手</value>
   </data>
   <data name="AiAssistantWelcome" xml:space="preserve">
-    <value>连接 LM Studio 并选择模型后，可以查看或编辑工作区中的图纸。</value>
+    <value>配置 LM Studio 或 Codex 后，可以查看或编辑工作区中的图纸。</value>
   </data>
   <data name="LmStudioConnection" xml:space="preserve">
     <value>LM Studio 连接</value>
@@ -1241,5 +1241,23 @@
   </data>
   <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
     <value>绘制设备数量</value>
+  </data>
+  <data name="AiSettings" xml:space="preserve">
+    <value>AI 助手设置</value>
+  </data>
+  <data name="AiProvider" xml:space="preserve">
+    <value>提供商</value>
+  </data>
+  <data name="CodexExecutable" xml:space="preserve">
+    <value>Codex 可执行文件</value>
+  </data>
+  <data name="ReasoningEffort" xml:space="preserve">
+    <value>推理强度</value>
+  </data>
+  <data name="ServiceTier" xml:space="preserve">
+    <value>服务等级</value>
+  </data>
+  <data name="Advanced" xml:space="preserve">
+    <value>高级设置</value>
   </data>
 </root>

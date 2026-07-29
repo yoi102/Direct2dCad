@@ -4,7 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
-             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
@@ -15,105 +14,14 @@
     <Grid Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Expander Grid.Row="0"
-                  Margin="10,6,10,4"
-                  Header="{I18N {x:Static r:LangKeys.LmStudioConnection}}"
-                  IsExpanded="True">
-            <Grid Margin="10,8,4,8">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Row="0"
-                           Margin="0,0,10,8"
-                           VerticalAlignment="Center"
-                           Text="{I18N {x:Static r:LangKeys.Endpoint}}" />
-                <TextBox Grid.Row="0"
-                         Grid.Column="1"
-                         Grid.ColumnSpan="2"
-                         Margin="0,0,0,8"
-                         Text="{Binding Endpoint, UpdateSourceTrigger=LostFocus}" />
-
-                <TextBlock Grid.Row="1"
-                           Margin="0,0,10,8"
-                           VerticalAlignment="Center"
-                           Text="{I18N {x:Static r:LangKeys.Model}}" />
-                <ComboBox Grid.Row="1"
-                          Grid.Column="1"
-                          Margin="0,0,6,8"
-                          IsEditable="True"
-                          ItemsSource="{Binding Models}"
-                          SelectedItem="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                          Text="{Binding SelectedModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Row="1"
-                        Grid.Column="2"
-                        Width="30"
-                        Height="30"
-                        Margin="0,0,0,8"
-                        Padding="0"
-                        Command="{Binding RefreshModelsCommand}"
-                        Style="{StaticResource MaterialDesignFlatButton}"
-                        ToolTip="{I18N {x:Static r:LangKeys.RefreshModels}}">
-                    <md:PackIcon Kind="Refresh" Width="17" Height="17" />
-                </Button>
-
-                <TextBlock Grid.Row="2"
-                           Margin="0,0,10,8"
-                           VerticalAlignment="Center"
-                           Text="{I18N {x:Static r:LangKeys.Temperature}}" />
-                <Slider Grid.Row="2"
-                        Grid.Column="1"
-                        Margin="0,0,8,8"
-                        Minimum="0"
-                        Maximum="2"
-                        TickFrequency="0.1"
-                        IsSnapToTickEnabled="True"
-                        Value="{Binding Temperature, Mode=TwoWay}" />
-                <TextBlock Grid.Row="2"
-                           Grid.Column="2"
-                           MinWidth="30"
-                           Margin="0,0,0,8"
-                           Text="{Binding Temperature, StringFormat=F1}"
-                           TextAlignment="Right"
-                           VerticalAlignment="Center" />
-
-                <TextBlock Grid.Row="3"
-                           Margin="0,0,10,8"
-                           VerticalAlignment="Center"
-                           Text="{I18N {x:Static r:LangKeys.ContextWindowTokens}}" />
-                <mah:NumericUpDown Grid.Row="3"
-                                   Grid.Column="1"
-                                   Grid.ColumnSpan="2"
-                                   Margin="0,0,0,8"
-                                   Minimum="4096"
-                                   Maximum="262144"
-                                   Interval="4096"
-                                   Value="{Binding ContextWindowTokens, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-                <CheckBox Grid.Row="4"
-                          Grid.ColumnSpan="3"
-                          Content="{I18N {x:Static r:LangKeys.EnableCadAiTools}}"
-                          IsChecked="{Binding EnableCadTools, Mode=TwoWay}" />
-            </Grid>
-        </Expander>
-
-        <Grid Grid.Row="1" Margin="10,2,10,4">
+        <Grid Grid.Row="0" Margin="10,6,10,4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -129,6 +37,16 @@
             <Button Grid.Column="1"
                     Width="28"
                     Height="28"
+                    Margin="0,0,2,0"
+                    Padding="0"
+                    Command="{Binding OpenSettingsCommand}"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    ToolTip="{I18N {x:Static r:LangKeys.Settings}}">
+                <md:PackIcon Kind="CogOutline" Width="17" Height="17" />
+            </Button>
+            <Button Grid.Column="2"
+                    Width="28"
+                    Height="28"
                     Padding="0"
                     Command="{Binding ClearConversationCommand}"
                     Style="{StaticResource MaterialDesignFlatButton}"
@@ -138,7 +56,7 @@
         </Grid>
 
         <ListBox x:Name="MessagesList"
-                 Grid.Row="2"
+                 Grid.Row="1"
                  Margin="6,0"
                  Padding="0,4"
                  BorderThickness="0"
@@ -202,7 +120,7 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <Grid Grid.Row="3" Margin="10,5,10,10">
+        <Grid Grid.Row="2" Margin="10,5,10,10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />

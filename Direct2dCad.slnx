@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Direct2dCad.Agent/Direct2dCad.Agent.csproj" />
+  <Project Path="Direct2dCad.Agent.Codex/Direct2dCad.Agent.Codex.csproj" />
   <Project Path="Direct2dCad.AI/Direct2dCad.AI.csproj" />
   <Folder Name="/clients/">
     <Project Path="Direct2dCad.Client.Common/Direct2dCad.Client.Common.csproj" Id="d3f18ae1-15bb-4994-bc9f-5d45016cd932" />
@@ -20,6 +21,7 @@
     <Project Path="Direct2dCad.Benchmarks/Direct2dCad.Benchmarks.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="Direct2dCad.Agent.Codex.Tests/Direct2dCad.Agent.Codex.Tests.csproj" />
     <Project Path="Direct2dCad.Agent.Tests/Direct2dCad.Agent.Tests.csproj" />
     <Project Path="Direct2dCad.AI.Tests/Direct2dCad.AI.Tests.csproj" />
     <Project Path="Direct2dCad.Commands.Tests/Direct2dCad.Commands.Tests.csproj" />

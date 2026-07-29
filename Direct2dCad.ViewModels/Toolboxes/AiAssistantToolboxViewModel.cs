@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Agent;
+using Direct2dCad.Agent.Codex;
 using Direct2dCad.AI;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Agents;
@@ -15,25 +16,30 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
 {
     private readonly IAiChatClient _chatClient;
     private readonly IAgentRunner _agentRunner;
+    private readonly ICodexAgentClient _codexAgentClient;
     private readonly IAiAssistantSettingsStore _settingsStore;
+    private readonly IDialogService _dialogService;
     private readonly ICadToolWorkspace _workspace;
     private readonly AgentConversation _conversation = new();
     private CancellationTokenSource? _requestCancellation;
     private CadDocumentViewModel? _documentViewModel;
-    private bool _isApplyingSettings;
 
     public AiAssistantToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         IAiChatClient chatClient,
         IAgentRunner agentRunner,
+        ICodexAgentClient codexAgentClient,
         IAiAssistantSettingsStore settingsStore,
+        IDialogService dialogService,
         ICadToolWorkspace workspace)
         : base(toolboxLayoutSettingsStore, "toolbox.ai-assistant", DockZone.RightBottom, isOpenByDefault: false)
     {
         _chatClient = chatClient;
         _agentRunner = agentRunner;
+        _codexAgentClient = codexAgentClient;
         _settingsStore = settingsStore;
+        _dialogService = dialogService;
         _workspace = workspace;
         Title = Resource("AiAssistant", "AI Assistant");
         Icon = toolboxIconProvider.Assistant;
@@ -41,17 +47,23 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         CanClose = false;
 
         ApplySettings(settingsStore.Load());
+        UpdateConfiguredStatus();
         Messages.Add(new AiChatItemViewModel(
             AiChatItemKind.System,
-            Resource("AiAssistantWelcome", "Connect to LM Studio, select a model, and ask me to inspect or edit documents in the workspace.")));
+            Resource("AiAssistantWelcome", "Configure LM Studio or Codex, then ask me to inspect or edit documents in the workspace.")));
     }
 
     public ObservableCollection<AiChatItemViewModel> Messages { get; } = [];
-    public ObservableCollection<string> Models { get; } = [];
+    public ObservableCollection<string> LmStudioModels { get; } = [];
+    public ObservableCollection<string> CodexModels { get; } = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
     public partial string UserInput { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SendCommand))]
+    public partial AiAssistantProvider Provider { get; set; }
 
     [ObservableProperty]
     public partial string Endpoint { get; set; } = AiAssistantSettings.DefaultEndpoint;
@@ -70,9 +82,21 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     public partial int ContextWindowTokens { get; set; } = AiAssistantSettings.DefaultContextWindowTokens;
 
     [ObservableProperty]
+    public partial string CodexExecutablePath { get; set; } = "codex";
+
+    [ObservableProperty]
+    public partial string? SelectedCodexModel { get; set; }
+
+    [ObservableProperty]
+    public partial string CodexReasoningEffort { get; set; } = "medium";
+
+    [ObservableProperty]
+    public partial string CodexServiceTier { get; set; } = "flex";
+
+    [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
-    [NotifyCanExecuteChangedFor(nameof(RefreshModelsCommand))]
     [NotifyCanExecuteChangedFor(nameof(StopCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenSettingsCommand))]
     public partial bool IsBusy { get; private set; }
 
     [ObservableProperty]
@@ -95,60 +119,40 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         }
     }
 
-    partial void OnEndpointChanged(string value) => SaveSettings();
-    partial void OnSelectedModelChanged(string? value) => SaveSettings();
-    partial void OnTemperatureChanged(double value) => SaveSettings();
-    partial void OnEnableCadToolsChanged(bool value) => SaveSettings();
-    partial void OnContextWindowTokensChanged(int value) => SaveSettings();
-
-    [RelayCommand(CanExecute = nameof(CanRefreshModels))]
-    private async Task RefreshModelsAsync()
+    [RelayCommand(CanExecute = nameof(CanOpenSettings))]
+    private async Task OpenSettingsAsync()
     {
-        BeginRequest();
-        var cancellationToken = _requestCancellation!.Token;
-        try
-        {
-            ConnectionStatus = Resource("AiConnecting", "Connecting...");
-            var models = await _chatClient.GetModelsAsync(Endpoint, cancellationToken);
-            var previousModel = SelectedModel;
-            Models.Clear();
-            foreach (var model in models)
-                Models.Add(model);
+        var result = await _dialogService.ShowAiAssistantSettingsDialogAsync(
+            new AiAssistantSettingsDialogRequest(
+                CreateSettings(),
+                LmStudioModels.ToArray(),
+                CodexModels.ToArray(),
+                LoadModelsAsync),
+            ViewServiceIdentifiers.RootDialogHost);
+        if (result is null)
+            return;
 
-            SelectedModel = previousModel is not null && Models.Contains(previousModel)
-                ? previousModel
-                : Models.FirstOrDefault();
-            ConnectionStatus = Models.Count == 0
-                ? Resource("AiNoModels", "Connected, but no model is loaded")
-                : string.Format(Resource("AiConnectedModelCountFormat", "Connected: {0} model(s)"), Models.Count);
-        }
-        catch (OperationCanceledException)
-        {
-            ConnectionStatus = Resource("AiCancelled", "Cancelled");
-        }
-        catch (Exception exception)
-        {
-            ConnectionStatus = Resource("AiConnectionFailed", "Connection failed");
-            AddError(exception.Message);
-        }
-        finally
-        {
-            EndRequest();
-        }
+        ApplySettings(result.Settings);
+        ReplaceModels(LmStudioModels, result.LmStudioModels);
+        ReplaceModels(CodexModels, result.CodexModels);
+        SaveSettings();
+        await _codexAgentClient.ResetConversationAsync();
+        _conversation.Clear();
+        UpdateConfiguredStatus();
     }
 
-    private bool CanRefreshModels() => !IsBusy && !string.IsNullOrWhiteSpace(Endpoint);
+    private bool CanOpenSettings() => !IsBusy;
 
     [RelayCommand(CanExecute = nameof(CanSend))]
     private async Task SendAsync()
     {
         var prompt = UserInput.Trim();
-        if (prompt.Length == 0 || string.IsNullOrWhiteSpace(SelectedModel))
+        if (prompt.Length == 0 ||
+            (Provider == AiAssistantProvider.LmStudio && string.IsNullOrWhiteSpace(SelectedModel)))
             return;
 
         UserInput = string.Empty;
         Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, prompt));
-        _conversation.AddUser(prompt);
         var toolset = new CadAgentToolset(_workspace);
 
         BeginRequest();
@@ -156,25 +160,10 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         try
         {
             ConnectionStatus = Resource("AiGenerating", "Generating...");
-            var result = await _agentRunner.RunAsync(
-                new AgentRunRequest(
-                    Endpoint,
-                    SelectedModel,
-                    toolset.CreateSystemPrompt(),
-                    prompt,
-                    _conversation,
-                    ContextWindowTokens,
-                    Temperature,
-                    EnableCadTools ? toolset : null),
-                ReportAgentEventAsync,
-                cancellationToken);
-
-            ContextWindowTokens = result.ContextWindowTokens;
-            if (result.ResponseWasEmpty)
-                AddError(Resource("AiEmptyResponse", "The model returned an empty response."));
-            ConnectionStatus = string.Format(
-                Resource("AiReadyModelFormat", "Ready: {0}"),
-                result.Model ?? SelectedModel);
+            if (Provider == AiAssistantProvider.Codex)
+                await RunCodexAsync(prompt, toolset, cancellationToken);
+            else
+                await RunLmStudioAsync(prompt, toolset, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -192,10 +181,73 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         }
     }
 
+    private async Task RunLmStudioAsync(
+        string prompt,
+        CadAgentToolset toolset,
+        CancellationToken cancellationToken)
+    {
+        _conversation.AddUser(prompt);
+        var result = await _agentRunner.RunAsync(
+                new AgentRunRequest(
+                    Endpoint,
+                    SelectedModel!,
+                    toolset.CreateSystemPrompt(),
+                    prompt,
+                    _conversation,
+                    ContextWindowTokens,
+                    Temperature,
+                    EnableCadTools ? toolset : null),
+                ReportAgentEventAsync,
+                cancellationToken);
+
+        ContextWindowTokens = result.ContextWindowTokens;
+        SaveSettings();
+        CompleteRun(result.ResponseWasEmpty, result.Model ?? SelectedModel);
+    }
+
+    private async Task RunCodexAsync(
+        string prompt,
+        CadAgentToolset toolset,
+        CancellationToken cancellationToken)
+    {
+        var result = await _codexAgentClient.RunAsync(
+            new CodexAgentRunRequest(
+                prompt,
+                toolset.CreateSystemPrompt(),
+                CreateCodexOptions(CreateSettings()),
+                EnableCadTools ? toolset : null),
+            ReportAgentEventAsync,
+            cancellationToken);
+        CompleteRun(
+            result.ResponseWasEmpty,
+            result.Model ?? SelectedCodexModel ?? "Codex");
+    }
+
+    private void CompleteRun(bool responseWasEmpty, string? model)
+    {
+        if (responseWasEmpty)
+            AddError(Resource("AiEmptyResponse", "The model returned an empty response."));
+        ConnectionStatus = string.Format(
+            Resource("AiReadyModelFormat", "Ready: {0}"),
+            model);
+    }
+
+    private void UpdateConfiguredStatus()
+    {
+        var model = Provider == AiAssistantProvider.Codex
+            ? SelectedCodexModel ?? "Codex"
+            : SelectedModel;
+        ConnectionStatus = string.IsNullOrWhiteSpace(model)
+            ? Resource("AiDisconnected", "Not connected")
+            : string.Format(
+                Resource("AiReadyModelFormat", "Ready: {0}"),
+                model);
+    }
+
     private bool CanSend() =>
         !IsBusy &&
         !string.IsNullOrWhiteSpace(UserInput) &&
-        !string.IsNullOrWhiteSpace(SelectedModel);
+        (Provider == AiAssistantProvider.Codex || !string.IsNullOrWhiteSpace(SelectedModel));
 
     [RelayCommand(CanExecute = nameof(CanStop))]
     private void Stop() => _requestCancellation?.Cancel();
@@ -203,8 +255,9 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private bool CanStop() => IsBusy;
 
     [RelayCommand]
-    private void ClearConversation()
+    private async Task ClearConversationAsync()
     {
+        await _codexAgentClient.ResetConversationAsync();
         _conversation.Clear();
         Messages.Clear();
         Messages.Add(new AiChatItemViewModel(
@@ -215,38 +268,27 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private void ApplySettings(AiAssistantSettings settings)
     {
         settings.Normalize();
-        _isApplyingSettings = true;
-        try
-        {
-            Endpoint = settings.Endpoint;
-            SelectedModel = settings.Model;
-            Temperature = settings.Temperature;
-            EnableCadTools = settings.EnableCadTools;
-            ContextWindowTokens = settings.ContextWindowTokens;
-            if (!string.IsNullOrWhiteSpace(settings.Model))
-                Models.Add(settings.Model);
-        }
-        finally
-        {
-            _isApplyingSettings = false;
-        }
+        Endpoint = settings.Endpoint;
+        Provider = settings.Provider;
+        SelectedModel = settings.Model;
+        Temperature = settings.Temperature;
+        EnableCadTools = settings.EnableCadTools;
+        ContextWindowTokens = settings.ContextWindowTokens;
+        CodexExecutablePath = settings.CodexExecutablePath;
+        SelectedCodexModel = settings.CodexModel;
+        CodexReasoningEffort = settings.CodexReasoningEffort;
+        CodexServiceTier = settings.CodexServiceTier;
+        if (!string.IsNullOrWhiteSpace(settings.Model))
+            ReplaceModels(LmStudioModels, [settings.Model]);
+        if (!string.IsNullOrWhiteSpace(settings.CodexModel))
+            ReplaceModels(CodexModels, [settings.CodexModel]);
     }
 
     private void SaveSettings()
     {
-        if (_isApplyingSettings)
-            return;
-
         try
         {
-            _settingsStore.Save(new AiAssistantSettings
-            {
-                Endpoint = Endpoint,
-                Model = SelectedModel ?? string.Empty,
-                Temperature = Temperature,
-                EnableCadTools = EnableCadTools,
-                ContextWindowTokens = ContextWindowTokens
-            });
+            _settingsStore.Save(CreateSettings());
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -260,6 +302,43 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         _requestCancellation = new CancellationTokenSource();
         IsBusy = true;
     }
+
+    private async Task<IReadOnlyList<string>> LoadModelsAsync(
+        AiAssistantSettings settings,
+        CancellationToken cancellationToken)
+    {
+        settings.Normalize();
+        return settings.Provider == AiAssistantProvider.Codex
+            ? await _codexAgentClient.GetModelsAsync(CreateCodexOptions(settings), cancellationToken)
+            : await _chatClient.GetModelsAsync(settings.Endpoint, cancellationToken);
+    }
+
+    private AiAssistantSettings CreateSettings()
+    {
+        var settings = new AiAssistantSettings
+        {
+            Provider = Provider,
+            Endpoint = Endpoint,
+            Model = SelectedModel ?? string.Empty,
+            Temperature = Temperature,
+            EnableCadTools = EnableCadTools,
+            ContextWindowTokens = ContextWindowTokens,
+            CodexExecutablePath = CodexExecutablePath,
+            CodexModel = SelectedCodexModel ?? string.Empty,
+            CodexReasoningEffort = CodexReasoningEffort,
+            CodexServiceTier = CodexServiceTier
+        };
+        settings.Normalize();
+        return settings;
+    }
+
+    private static CodexAgentOptions CreateCodexOptions(AiAssistantSettings settings) =>
+        new(
+            settings.CodexExecutablePath,
+            settings.CodexModel,
+            settings.CodexReasoningEffort,
+            settings.CodexServiceTier,
+            Environment.CurrentDirectory);
 
     private ValueTask ReportAgentEventAsync(AgentRunEvent agentEvent)
     {
@@ -297,6 +376,20 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         if (result.Length <= 180)
             return result;
         return string.Concat(result.AsSpan(0, 177), "...");
+    }
+
+    private static void ReplaceModels(
+        ObservableCollection<string> target,
+        IEnumerable<string> models)
+    {
+        target.Clear();
+        foreach (var model in models
+                     .Where(model => !string.IsNullOrWhiteSpace(model))
+                     .Distinct(StringComparer.Ordinal)
+                     .Order(StringComparer.Ordinal))
+        {
+            target.Add(model);
+        }
     }
 
     private static string Resource(string key, string fallback) =>

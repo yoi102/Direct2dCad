@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Agent\Direct2dCad.Agent.csproj" />
+    <ProjectReference Include="..\Direct2dCad.AI\Direct2dCad.AI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Direct2dCad.Agent.Codex.Tests" />
+  </ItemGroup>
+
+</Project>

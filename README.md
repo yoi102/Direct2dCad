@@ -11,7 +11,7 @@ Direct2dCad 是一个基于 WPF、Direct2D 和 DirectWrite 的桌面 CAD 编辑�
 - 使用命令系统管理文档与视口操作，支持单条或批量 undo / redo。
 - 通过 Direct2D 资源缓存、局部刷新和变更跟踪提高渲染效率。
 - 提供 WPF 工具面板、属性设置、文件读写、CAD Terminal 和多语言界面。
-- 可连接 LM Studio，通过本地大语言模型对话、查询图纸并执行可撤销的 CAD 编辑。
+- 可连接 LM Studio 或 Codex，通过 AI 对话查询图纸并执行可撤销的 CAD 编辑。
 
 ## 演示与设计
 
@@ -58,7 +58,7 @@ https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7
 | 分层 | 项目 |
 |---|---|
 | 核心编辑 | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
-| AI 与 Agent | `Direct2dCad.AI`, `Direct2dCad.Agent` |
+| AI 与 Agent | `Direct2dCad.AI`, `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex` |
 | 查询与存储 | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
 | 渲染 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
 | 客户端公共能力 | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
@@ -81,6 +81,7 @@ flowchart TD
     CommandLine["Command Line<br/>Direct2dCad.CommandLine"]
     AI["Local AI Protocol<br/>Direct2dCad.AI"]
     Agent["Agent Orchestration<br/>Direct2dCad.Agent"]
+    Codex["Codex App Server Adapter<br/>Direct2dCad.Agent.Codex"]
     ChangeTracking["Change Tracking<br/>Direct2dCad.ChangeTracking"]
     Db["CAD Data Model<br/>Direct2dCad.Db"]
     Query["HitTesting / Indexing<br/>Direct2dCad.HitTesting<br/>Direct2dCad.Indexing"]
@@ -94,10 +95,12 @@ flowchart TD
     UI --> VMAbs
     UI --> CommandLine
     UI --> AI
+    UI --> Codex
     VM --> VMAbs
     VM --> CommandLine
     VM --> AI
     VM --> Agent
+    VM --> Codex
     VM --> VMServices
     VM --> Client
     VM --> Editor
@@ -128,6 +131,8 @@ flowchart TD
     IO --> Db
     Client --> Db
     Agent --> AI
+    Codex --> Agent
+    Codex --> AI
 ```
 
 ## 项目职责
@@ -149,9 +154,18 @@ LM Studio/OpenAI-compatible 协议层，不引用 WPF 和 CAD 数据模型。
 - 通过 `IAgentToolset` 使用宿主提供的工具，不直接依赖具体 CAD 命令。
 - 通过事件报告 assistant 消息、工具结果和上下文压缩状态。
 
+### Direct2dCad.Agent.Codex
+
+Codex app-server 适配层，复用 Codex CLI 的本机认证和模型配置。
+
+- 通过持久化 stdio JSON-RPC 连接获取模型、管理对话线程并执行 turn。
+- 将 `IAgentToolset` 注册为 Codex dynamic tools，与 LM Studio 和 Terminal 共用同一套 CAD 查询及编辑命令。
+- 将 CAD 工具执行切回 UI 同步上下文，编辑结果继续进入 `ICadCommand`、undo / redo 和渲染更新链路。
+- 支持取消当前 turn；切换提供商、模型或工具配置后会重建 Codex 会话。
+
 CAD 工具目录、查询及执行器位于 `Direct2dCad.ViewModels.Tools` 适配层，并由 AI Agent 和终端共同使用；实体编辑仍通过 `ICadCommand` 进入 undo / redo 和渲染更新链路。
 
-AI Toolbox 默认连接 `http://localhost:1234/v1`。先在 LM Studio 启动 Local Server 并加载支持 tool calling 的模型，再于面板刷新模型。AI 可通过稳定的 `document_id` 查询、创建、打开、激活、重命名、保存和关闭工作区图纸，也可在创建实体时设置颜色、线宽、填充与描边样式；同一次用户请求中，每个目标文档分别使用独立的 undo / redo batch。
+AI Toolbox 的连接配置位于齿轮按钮打开的 MaterialDesign 对话框中。LM Studio 默认连接 `http://localhost:1234/v1`，需先启动 Local Server 并加载支持 tool calling 的模型；Codex 通过本机 `codex app-server` 工作，沿用 Codex CLI 的登录状态，可使用配置默认模型或在对话框中选择模型。AI 可通过稳定的 `document_id` 查询、创建、打开、激活、重命名、保存和关闭工作区图纸，也可在创建实体时设置颜色、线宽、填充与描边样式；同一次用户请求中，每个目标文档分别使用独立的 undo / redo batch。
 
 ### Direct2dCad.Db
 
@@ -456,6 +470,7 @@ SetOrigin
 |---|---|
 | `Direct2dCad.AI` | 无 |
 | `Direct2dCad.Agent` | `Direct2dCad.AI` |
+| `Direct2dCad.Agent.Codex` | `Direct2dCad.Agent`, `Direct2dCad.AI` |
 | `Direct2dCad.Db` | 无 |
 | `Direct2dCad.ChangeTracking` | `Direct2dCad.Db` |
 | `Direct2dCad.Commands` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
@@ -473,9 +488,9 @@ SetOrigin
 | `Direct2dCad.Lang` | 无 |
 | `Direct2dCad.ViewModels.Abstractions` | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
 | `Direct2dCad.ViewModels.Services` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions` |
-| `Direct2dCad.ViewModels` | `Direct2dCad.Agent`, `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.ViewModels` | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.wpf.Controls` | 无 |
-| `Direct2dCad.wpf` | `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.wpf` | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.Benchmarks` | `Direct2dCad.Db`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |
 
 ## NuGet 依赖
