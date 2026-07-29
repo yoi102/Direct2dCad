@@ -37,6 +37,7 @@ public sealed class CadDocumentCommandManager
     {
         ArgumentNullException.ThrowIfNull(command);
 
+        using var access = _document.AcquireWriteAccess();
         var result = command.Execute(_document);
         _history.PushExecuted(command);
         _changes.Publish(result);
@@ -50,6 +51,7 @@ public sealed class CadDocumentCommandManager
         if (batchId == Guid.Empty)
             throw new ArgumentException("Batch id cannot be empty.", nameof(batchId));
 
+        using var access = _document.AcquireWriteAccess();
         var result = command.Execute(_document);
         _history.PushExecuted(command, batchId);
         _changes.Publish(result);
@@ -65,6 +67,7 @@ public sealed class CadDocumentCommandManager
         if (commandArray.Length == 0)
             return CadDocumentChangeSet.Empty;
 
+        using var access = _document.AcquireWriteAccess();
         var batchId = Guid.NewGuid();
         var results = new List<CadDocumentChangeSet>(commandArray.Length);
 
@@ -91,6 +94,7 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet Undo()
     {
+        using var access = _document.AcquireWriteAccess();
         var entries = _history.PopUndo(_settings.UndoMode);
         if (entries.Count == 0)
         {
@@ -122,6 +126,7 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet UndoBatch(Guid batchId)
     {
+        using var access = _document.AcquireWriteAccess();
         var entries = _history.PopUndoBatch(batchId);
         if (entries.Count == 0)
             return CadDocumentChangeSet.Empty;
@@ -150,6 +155,7 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet Redo()
     {
+        using var access = _document.AcquireWriteAccess();
         var entries = _history.PopRedo(_settings.RedoMode);
         if (entries.Count == 0)
         {

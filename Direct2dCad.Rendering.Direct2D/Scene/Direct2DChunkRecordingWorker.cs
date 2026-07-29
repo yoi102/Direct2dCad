@@ -16,6 +16,8 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 /// </summary>
 internal sealed class Direct2DChunkRecordingWorker : IDisposable
 {
+    private static readonly TimeSpan DocumentReadRetryInterval =
+        TimeSpan.FromMilliseconds(10);
     private readonly Direct2DResourceCache _resourceCache;
     private readonly object _gate = new();
     private readonly AutoResetEvent _workAvailable = new(false);
@@ -177,7 +179,20 @@ internal sealed class Direct2DChunkRecordingWorker : IDisposable
                     _isRecording = true;
                 }
 
-                var result = Record(context, styleResources, entityRenderer, request);
+                RecordingResult result;
+                try
+                {
+                    result = RecordWithDocumentAccess(
+                        context,
+                        styleResources,
+                        entityRenderer,
+                        request);
+                }
+                catch
+                {
+                    // A failed optimization request must not terminate the dedicated worker.
+                    result = RecordingResult.Failed(request.RequestId);
+                }
                 var publish =
                     !Volatile.Read(ref _stopping) &&
                     request.Generation == Volatile.Read(ref _generation);
@@ -203,6 +218,41 @@ internal sealed class Direct2DChunkRecordingWorker : IDisposable
             styleResources.Dispose();
             context.Dispose();
         }
+    }
+
+    private RecordingResult RecordWithDocumentAccess(
+        ID2D1DeviceContext context,
+        Direct2DStyleResourceCache styleResources,
+        Direct2DEntityRenderer entityRenderer,
+        RecordingRequest request)
+    {
+        while (!Volatile.Read(ref _stopping) &&
+               request.Generation == Volatile.Read(ref _generation))
+        {
+            if (!request.Document.TryAcquireReadAccess(
+                    DocumentReadRetryInterval,
+                    out var documentAccess))
+            {
+                continue;
+            }
+
+            using (documentAccess)
+            {
+                if (Volatile.Read(ref _stopping) ||
+                    request.Generation != Volatile.Read(ref _generation))
+                {
+                    return RecordingResult.Cancelled(request.RequestId);
+                }
+
+                return Record(
+                    context,
+                    styleResources,
+                    entityRenderer,
+                    request);
+            }
+        }
+
+        return RecordingResult.Cancelled(request.RequestId);
     }
 
     private RecordingResult Record(

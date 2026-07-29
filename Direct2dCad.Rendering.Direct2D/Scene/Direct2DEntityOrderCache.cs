@@ -155,6 +155,7 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         if (!_backgroundPreparation.NeedsSchedule(document, _preparationVersion))
             return;
 
+        using var documentAccess = document.AcquireReadAccess();
         var owners = new List<OwnerPreparationSnapshot>(document.Blocks.Count);
         foreach (var block in document.Blocks.Values)
         {

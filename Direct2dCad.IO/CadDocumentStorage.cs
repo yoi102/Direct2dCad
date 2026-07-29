@@ -21,7 +21,9 @@ public sealed class CadDocumentStorage
         ArgumentNullException.ThrowIfNull(document);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
-        var sections = CreateSections(document);
+        var sections = CreateSectionsWithReadAccess(
+            document,
+            CancellationToken.None);
         var tableOffset = CadContainerFormat.FileHeaderLength;
         var tableLength = sections.Count * CadContainerFormat.SectionEntryLength;
         var payloadOffset = tableOffset + tableLength;
@@ -87,7 +89,12 @@ public sealed class CadDocumentStorage
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var sections = await Task.Run(() => CreateSections(document), cancellationToken).ConfigureAwait(false);
+        var sections = await Task.Run(
+                () => CreateSectionsWithReadAccess(
+                    document,
+                    cancellationToken),
+                cancellationToken)
+            .ConfigureAwait(false);
         var tableOffset = CadContainerFormat.FileHeaderLength;
         var tableLength = sections.Count * CadContainerFormat.SectionEntryLength;
         var payloadOffset = tableOffset + tableLength;
@@ -387,6 +394,28 @@ public sealed class CadDocumentStorage
             entry.PayloadOffset > fileLength - entry.PayloadLength)
         {
             throw new InvalidDataException($"Invalid section bounds: {entry.Kind}");
+        }
+    }
+
+    private static List<SerializedSection> CreateSectionsWithReadAccess(
+        CadDocument document,
+        CancellationToken cancellationToken = default)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!document.TryAcquireReadAccess(
+                    TimeSpan.FromMilliseconds(50),
+                    out var access))
+            {
+                continue;
+            }
+
+            using (access)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return CreateSections(document);
+            }
         }
     }
 

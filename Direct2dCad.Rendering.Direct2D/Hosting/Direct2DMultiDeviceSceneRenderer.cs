@@ -24,6 +24,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
     internal const int MaximumDeviceCount = 4;
     internal const int DefaultDeviceCount = 2;
     internal const int DefaultEntityThreshold = 1000;
+    private static readonly long PoolRetryDelayTicks = Stopwatch.Frequency * 5;
 
     private WorkerSlot[]? _slots;
     private CadDocument? _document;
@@ -32,6 +33,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
     private int _height;
     private int _deviceCount;
     private bool _poolCreationFailed;
+    private long _poolRetryAfterTimestamp;
     private bool _disposed;
 
     public bool TryDraw(
@@ -70,10 +72,17 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
             return false;
         }
 
-        var activeDeviceCount = Math.Min(requestedDeviceCount, entities.Count);
+        var processorLimit = Math.Clamp(
+            Environment.ProcessorCount,
+            2,
+            MaximumDeviceCount);
+        var activeDeviceCount = Math.Min(
+            Math.Min(requestedDeviceCount, processorLimit),
+            entities.Count);
         var batches = CreateBatches(entities, activeDeviceCount);
         var started = Stopwatch.GetTimestamp();
         CadRenderStatistics[] workerStatistics;
+        using var documentAccess = document.AcquireReadAccess();
         try
         {
             if (!EnsurePool(
@@ -127,7 +136,11 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         int deviceCount)
     {
         if (_poolCreationFailed)
-            return false;
+        {
+            if (Stopwatch.GetTimestamp() < _poolRetryAfterTimestamp)
+                return false;
+            _poolCreationFailed = false;
+        }
         if (_slots is not null &&
             ReferenceEquals(_document, document) &&
             _mainDevicePointer == mainD3DDevice.NativePointer &&
@@ -180,6 +193,8 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
             }
 
             _poolCreationFailed = true;
+            _poolRetryAfterTimestamp =
+                Stopwatch.GetTimestamp() + PoolRetryDelayTicks;
             return false;
         }
     }
@@ -331,6 +346,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         _height = 0;
         _deviceCount = 0;
         _poolCreationFailed = false;
+        _poolRetryAfterTimestamp = 0;
     }
 
     public void Dispose()

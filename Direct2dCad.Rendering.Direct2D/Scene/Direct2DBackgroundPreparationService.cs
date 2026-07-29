@@ -7,14 +7,17 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 
 internal sealed class Direct2DBackgroundPreparationService : IDisposable
 {
+    private readonly List<Task> _retiredTasks = [];
     private Task<PreparedDocumentPlan>? _pendingTask;
     private CancellationTokenSource? _pendingCancellation;
     private CadDocument? _pendingDocument;
     private long _pendingVersion;
     private PreparedDocumentPlan? _publishedPlan;
+    private bool _disposed;
 
     public bool NeedsSchedule(CadDocument document, long version)
     {
+        ThrowIfDisposed();
         if (!ReferenceEquals(_pendingDocument, document) || _pendingVersion != version)
             return true;
 
@@ -36,21 +39,26 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
         long version,
         IReadOnlyList<OwnerPreparationSnapshot> owners)
     {
+        ThrowIfDisposed();
         if (!NeedsSchedule(document, version))
             return;
 
+        ClearPendingTask(cancel: true);
         _pendingDocument = document;
         _pendingVersion = version;
         _publishedPlan = null;
         _pendingCancellation = new CancellationTokenSource();
         var cancellationToken = _pendingCancellation.Token;
-        _pendingTask = Task.Run(
+        var task = Task.Run(
             () => Build(version, owners, cancellationToken),
             cancellationToken);
+        ObserveFault(task);
+        _pendingTask = task;
     }
 
     public PreparedDocumentPlan? TryGet(CadDocument document, long version)
     {
+        ThrowIfDisposed();
         if (!ReferenceEquals(_pendingDocument, document) || _pendingVersion != version)
             return null;
         if (_publishedPlan is not null)
@@ -65,12 +73,38 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
 
     public void Invalidate()
     {
+        if (_disposed)
+            return;
+
         ClearPendingTask(cancel: true);
         _pendingDocument = null;
         _publishedPlan = null;
     }
 
-    public void Dispose() => Invalidate();
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        Invalidate();
+        foreach (var retiredTask in _retiredTasks)
+        {
+            try
+            {
+                retiredTask.GetAwaiter().GetResult();
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch
+            {
+                // Faults are observed here; preparation is only an optimization.
+            }
+        }
+
+        _retiredTasks.Clear();
+        _disposed = true;
+    }
 
     private static PreparedDocumentPlan Build(
         long version,
@@ -212,11 +246,34 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
 
     private void ClearPendingTask(bool cancel)
     {
+        var pendingTask = _pendingTask;
         if (cancel)
             _pendingCancellation?.Cancel();
         _pendingCancellation?.Dispose();
         _pendingCancellation = null;
         _pendingTask = null;
+        if (pendingTask is { IsCompleted: false })
+            _retiredTasks.Add(pendingTask);
+        _retiredTasks.RemoveAll(static task => task.IsCompleted);
+    }
+
+    private static void ObserveFault(Task task)
+    {
+        _ = task.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously |
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(
+                nameof(Direct2DBackgroundPreparationService));
+        }
     }
 }
 

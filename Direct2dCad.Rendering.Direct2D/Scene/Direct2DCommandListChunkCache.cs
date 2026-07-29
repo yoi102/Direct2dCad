@@ -530,7 +530,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         {
             // Block-reference recording owns additional mutable caches. Keep those chunks on
             // the foreground path until block caches have their own worker-local recorder.
-            if (entity is CadBlockReference ||
+            // Image drawing mutates BitmapBrush.Opacity, so it must not share that brush with
+            // a concurrently rendered foreground frame.
+            if (entity is CadBlockReference or CadImage ||
                 !_resourceCache.TryGetEntityResources(entity.Id, out var resources) ||
                 resources is null ||
                 resources.HatchBrush is not null)

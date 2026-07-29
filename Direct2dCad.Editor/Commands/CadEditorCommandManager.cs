@@ -45,6 +45,7 @@ public sealed class CadEditorCommandManager
     {
         ArgumentNullException.ThrowIfNull(command);
 
+        using var access = _context.Document.AcquireWriteAccess();
         var result = command.Execute(_context);
         _history.PushExecuted(command);
         Publish(result);
@@ -62,6 +63,7 @@ public sealed class CadEditorCommandManager
         if (commandArray.Length == 0)
             return CadEditorCommandResult.Empty;
 
+        using var access = _context.Document.AcquireWriteAccess();
         var batchId = Guid.NewGuid();
         var results = new List<CadEditorCommandResult>(commandArray.Length);
 
@@ -90,6 +92,7 @@ public sealed class CadEditorCommandManager
 
     public CadEditorCommandResult Undo()
     {
+        using var access = _context.Document.AcquireWriteAccess();
         var entries = _history.PopUndo(_settings.UndoMode);
         if (entries.Count == 0)
         {
@@ -121,6 +124,7 @@ public sealed class CadEditorCommandManager
 
     public CadEditorCommandResult Redo()
     {
+        using var access = _context.Document.AcquireWriteAccess();
         var entries = _history.PopRedo(_settings.RedoMode);
         if (entries.Count == 0)
         {

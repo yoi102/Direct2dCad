@@ -13,6 +13,8 @@ namespace Direct2dCad.Db.Cad;
 /// </summary>
 public sealed class CadDocument : IEquatable<CadDocument>
 {
+    private readonly ReaderWriterLockSlim _accessLock =
+        new(LockRecursionPolicy.SupportsRecursion);
     private readonly CadIdGenerator _ids;
     private readonly Dictionary<LayerId, CadLayer> _layers = [];
     private readonly Dictionary<BlockId, CadBlockDefinition> _blocks = [];
@@ -42,6 +44,48 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return new CadDocument(ids.NewDocumentId(), name, ids);
     }
 
+    /// <summary>
+    /// Prevents document mutations while a renderer, serializer, or index builder reads
+    /// a coherent document state. The returned scope is thread-affine and must not cross
+    /// an await boundary.
+    /// </summary>
+    public IDisposable AcquireReadAccess()
+    {
+        _accessLock.EnterReadLock();
+        return new AccessLease(_accessLock, write: false);
+    }
+
+    /// <summary>
+    /// Attempts to acquire a thread-affine read scope without waiting indefinitely.
+    /// </summary>
+    public bool TryAcquireReadAccess(
+        TimeSpan timeout,
+        out IDisposable? access)
+    {
+        if (timeout < TimeSpan.Zero && timeout != Timeout.InfiniteTimeSpan)
+            throw new ArgumentOutOfRangeException(nameof(timeout));
+
+        if (!_accessLock.TryEnterReadLock(timeout))
+        {
+            access = null;
+            return false;
+        }
+
+        access = new AccessLease(_accessLock, write: false);
+        return true;
+    }
+
+    /// <summary>
+    /// Serializes a document mutation with background readers. Editor command managers
+    /// hold this lease until change propagation and resource invalidation are complete.
+    /// The returned scope is thread-affine and must not cross an await boundary.
+    /// </summary>
+    public IDisposable AcquireWriteAccess()
+    {
+        _accessLock.EnterWriteLock();
+        return new AccessLease(_accessLock, write: true);
+    }
+
     public CadDocument(DocumentId id, string name, CadIdGenerator? idGenerator = null)
     {
         Id = id;
@@ -50,6 +94,25 @@ public sealed class CadDocument : IEquatable<CadDocument>
         _ids.RegisterExisting(id);
         DocumentSettings = CadDocumentSettings.Default();
         InitializeDefaults();
+    }
+
+    private sealed class AccessLease(
+        ReaderWriterLockSlim accessLock,
+        bool write) : IDisposable
+    {
+        private ReaderWriterLockSlim? _accessLock = accessLock;
+
+        public void Dispose()
+        {
+            var lockToRelease = Interlocked.Exchange(ref _accessLock, null);
+            if (lockToRelease is null)
+                return;
+
+            if (write)
+                lockToRelease.ExitWriteLock();
+            else
+                lockToRelease.ExitReadLock();
+        }
     }
 
     private void InitializeDefaults()

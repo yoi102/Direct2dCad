@@ -168,6 +168,67 @@ public sealed class Direct2DRenderHostIntegrationTests
         Assert.True(host.RenderStatistics.CommandListCacheBytes > 0);
     }
 
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_BackgroundRecordingRecoversAfterDocumentMutation()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("Background mutation");
+        var firstLine = document.AddLine(
+            new CadPointD(-48, -24),
+            new CadPointD(-47, -23));
+        for (var index = 1; index < 1152; index++)
+        {
+            var row = index / 48;
+            var column = index % 48;
+            document.AddLine(
+                new CadPointD(column * 2 - 48, row * 2 - 24),
+                new CadPointD(column * 2 - 47, row * 2 - 23));
+        }
+
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(4, new CadPointD(320, 240));
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsBackgroundChunkRecordingEnabled = true
+        });
+
+        host.Render();
+        using (document.AcquireWriteAccess())
+        {
+            firstLine.SetGeometry(
+                new CadPointD(-40, -20),
+                new CadPointD(-35, -15));
+            host.ApplyChanges(
+                document,
+                CadDocumentChangeSet.ForEntity(
+                    firstLine.Id,
+                    CadEntityChangeKind.Geometry));
+        }
+
+        var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 10;
+        while (host.RenderStatistics.BackgroundCommandListBuildCount == 0 &&
+               Stopwatch.GetTimestamp() < deadline)
+        {
+            host.PrepareRenderCacheStep();
+            Thread.Yield();
+            host.Render();
+        }
+
+        Assert.True(host.RenderStatistics.BackgroundCommandListBuildCount > 0);
+        Assert.True(host.RenderStatistics.CommandListCacheBytes > 0);
+        Assert.Equal(1152, document.Entities.Count);
+    }
+
     [Theory]
     [InlineData(-524287, -524287, 524287, 524287, true)]
     [InlineData(-524288, 0, 10, 10, false)]

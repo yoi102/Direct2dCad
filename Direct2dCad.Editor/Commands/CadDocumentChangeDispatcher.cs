@@ -74,6 +74,7 @@ public sealed class CadDocumentChangeDispatcher
         if (!result.DocumentChanged)
             return;
 
+        using var access = _document.AcquireWriteAccess();
         result = ExpandBlockReferenceChanges(result);
         _dirtySet.Add(result);
         UpdateSpatialIndex(result);
