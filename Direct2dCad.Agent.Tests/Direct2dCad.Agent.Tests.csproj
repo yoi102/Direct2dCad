@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.Agent\Direct2dCad.Agent.csproj" />
-    <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
   </ItemGroup>
 
 </Project>

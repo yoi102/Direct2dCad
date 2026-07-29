@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Direct2dCad.AI;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal static class CadAiBulkCreationTools
+internal static class CadBulkCreationTools
 {
     private const int MaximumEntitiesPerCall = 200;
 
@@ -18,7 +18,7 @@ internal static class CadAiBulkCreationTools
         "Create up to 200 styled entities in one document undo batch. Prefer this for complete drawings with many parts.",
         JsonSerializer.SerializeToElement(CreateSchema()));
 
-    internal static IReadOnlyList<CadAiBulkCreationItem> Parse(JsonElement arguments)
+    internal static IReadOnlyList<CadBulkCreationItem> Parse(JsonElement arguments)
     {
         if (!arguments.TryGetProperty("entities", out var entities) || entities.ValueKind != JsonValueKind.Array)
             throw new ArgumentException("entities must be an array.");
@@ -27,7 +27,7 @@ internal static class CadAiBulkCreationTools
         if (count is < 1 or > MaximumEntitiesPerCall)
             throw new ArgumentOutOfRangeException("entities", $"entities must contain between 1 and {MaximumEntitiesPerCall} items.");
 
-        var result = new List<CadAiBulkCreationItem>(count);
+        var result = new List<CadBulkCreationItem>(count);
         foreach (var entity in entities.EnumerateArray())
         {
             if (entity.ValueKind != JsonValueKind.Object)
@@ -35,7 +35,7 @@ internal static class CadAiBulkCreationTools
             var type = RequiredString(entity, "type").ToLowerInvariant();
             if (!SupportedTypes.Contains(type))
                 throw new ArgumentException($"Unsupported bulk entity type: {type}");
-            result.Add(new CadAiBulkCreationItem($"add_{type}", entity));
+            result.Add(new CadBulkCreationItem($"add_{type}", entity));
         }
 
         return result;
@@ -185,4 +185,4 @@ internal static class CadAiBulkCreationTools
     private static object Enum(params string[] values) => new { type = "string", @enum = values };
 }
 
-internal readonly record struct CadAiBulkCreationItem(string ToolName, JsonElement Arguments);
+internal readonly record struct CadBulkCreationItem(string ToolName, JsonElement Arguments);

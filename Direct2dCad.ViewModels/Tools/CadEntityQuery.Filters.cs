@@ -4,11 +4,11 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal static partial class CadAiEntityQuery
+internal static partial class CadEntityQuery
 {
-    private static void ValidateOptions(CadAiEntityQueryOptions options)
+    private static void ValidateOptions(CadEntityQueryOptions options)
     {
         if (options.Scope is not (CurrentSpaceScope or DocumentScope))
             throw new ArgumentException("scope must be current_space or document.");
@@ -66,7 +66,7 @@ internal static partial class CadAiEntityQuery
         CadDocument document,
         IEnumerable<CadEntity> entities,
         IReadOnlySet<EntityId> selectedEntityIds,
-        CadAiEntityQueryOptions options)
+        CadEntityQueryOptions options)
     {
         if (options.SelectedOnly)
             entities = entities.Where(entity => selectedEntityIds.Contains(entity.Id));
@@ -146,7 +146,7 @@ internal static partial class CadAiEntityQuery
     private static IEnumerable<CadEntity> OrderEntities(
         CadDocument document,
         IEnumerable<CadEntity> entities,
-        CadAiEntityQueryOptions options)
+        CadEntityQueryOptions options)
     {
         Func<CadEntity, object?> keySelector = options.SortBy switch
         {

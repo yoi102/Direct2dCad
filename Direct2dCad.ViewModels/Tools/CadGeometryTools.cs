@@ -5,9 +5,9 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal static class CadAiGeometryTools
+internal static class CadGeometryTools
 {
     private const double DegreesPerRadian = 180.0 / Math.PI;
 
@@ -33,7 +33,7 @@ internal static class CadAiGeometryTools
             }, ["entity_ids", "delta_x", "delta_y"]))
     ];
 
-    internal static object Execute(CadAiToolExecutor executor, string toolName, JsonElement arguments) => toolName switch
+    internal static object Execute(CadDocumentToolExecutor executor, string toolName, JsonElement arguments) => toolName switch
     {
         "get_entity_geometry" => GetEntityGeometry(executor, arguments),
         "set_entity_geometry" => SetEntityGeometry(executor, arguments),
@@ -42,7 +42,7 @@ internal static class CadAiGeometryTools
         _ => throw new ArgumentException($"Unknown geometry tool: {toolName}")
     };
 
-    private static object GetEntityGeometry(CadAiToolExecutor executor, JsonElement arguments)
+    private static object GetEntityGeometry(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         var entity = GetEntity(executor, RequiredEntityId(arguments));
         return new
@@ -54,7 +54,7 @@ internal static class CadAiGeometryTools
         };
     }
 
-    private static object SetEntityGeometry(CadAiToolExecutor executor, JsonElement arguments)
+    private static object SetEntityGeometry(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         var id = RequiredEntityId(arguments);
         var entity = GetEntity(executor, id);
@@ -68,7 +68,7 @@ internal static class CadAiGeometryTools
         };
     }
 
-    private static object TransformEntities(CadAiToolExecutor executor, JsonElement arguments)
+    private static object TransformEntities(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: true);
         var operation = RequiredString(arguments, "operation").ToLowerInvariant();
@@ -95,7 +95,7 @@ internal static class CadAiGeometryTools
         };
     }
 
-    private static object DuplicateEntities(CadAiToolExecutor executor, JsonElement arguments)
+    private static object DuplicateEntities(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: false);
         var command = new DuplicateEntitiesCommand(
@@ -129,9 +129,9 @@ internal static class CadAiGeometryTools
             RequiredPositive(arguments, "radius_y"))],
         CadRectangle => CreateRectangleGeometryCommands(entity.Id, arguments),
         CadPolyline => [new SetPolylineGeometryCommand(entity.Id,
-            CadAiToolExecutor.RequiredPoints(arguments, "points", 2), RequiredBool(arguments, "closed"))],
+            CadDocumentToolExecutor.RequiredPoints(arguments, "points", 2), RequiredBool(arguments, "closed"))],
         CadSpline => [new SetSplineGeometryCommand(entity.Id,
-            CadAiToolExecutor.RequiredPoints(arguments, "fit_points", 2), RequiredBool(arguments, "closed"))],
+            CadDocumentToolExecutor.RequiredPoints(arguments, "fit_points", 2), RequiredBool(arguments, "closed"))],
         CadCompositePath => CreateCompositePathGeometryCommands(entity.Id, arguments),
         CadText => [new SetTextGeometryCommand(entity.Id,
             RequiredPoint(arguments, "position"),
@@ -168,11 +168,11 @@ internal static class CadAiGeometryTools
 
     private static IReadOnlyList<ICadCommand> CreateCompositePathGeometryCommands(EntityId id, JsonElement arguments)
     {
-        var geometry = CadAiCompositePathTools.Parse(arguments);
+        var geometry = CadCompositePathTools.Parse(arguments);
         return [new SetCompositePathGeometryCommand(id, geometry.StartPoint, geometry.Segments, geometry.Closed)];
     }
 
-    private static object GeometryDto(CadAiToolExecutor executor, CadEntity entity) => entity switch
+    private static object GeometryDto(CadDocumentToolExecutor executor, CadEntity entity) => entity switch
     {
         CadLine line => new { start = PointDto(line.Start), end = PointDto(line.End) },
         CadCircle circle => new { center = PointDto(circle.Center), radius = circle.Radius },
@@ -213,7 +213,7 @@ internal static class CadAiGeometryTools
                 end = PointDto(segment.End)
             }).ToArray()
         },
-        CadCompositePath path => CadAiCompositePathTools.ToDto(path),
+        CadCompositePath path => CadCompositePathTools.ToDto(path),
         CadText text => new
         {
             text.Text,
@@ -263,7 +263,7 @@ internal static class CadAiGeometryTools
         _ => new { bounds = RectDto(entity.Bounds) }
     };
 
-    private static CadEntity GetEntity(CadAiToolExecutor executor, EntityId id)
+    private static CadEntity GetEntity(CadDocumentToolExecutor executor, EntityId id)
     {
         var editor = executor.DocumentViewModel.CadEditor;
         if (!editor.Document.TryGetEntity(id, out var entity) || entity is null || entity.IsErased)

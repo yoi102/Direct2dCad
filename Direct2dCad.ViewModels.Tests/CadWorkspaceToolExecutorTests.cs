@@ -5,16 +5,16 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
-using Direct2dCad.ViewModels.AI;
+using Direct2dCad.ViewModels.Tools;
 
 namespace Direct2dCad.ViewModels.Tests;
 
-public sealed class CadAiWorkspaceToolExecutorTests
+public sealed class CadWorkspaceToolExecutorTests
 {
     [Fact]
     public void ToolDefinitions_AreUniqueAndContainWorkspaceAndAppearanceTools()
     {
-        var tools = CadAiWorkspaceToolExecutor.ToolDefinitions;
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions;
 
         Assert.Equal(tools.Count, tools.Select(tool => tool.Name).Distinct(StringComparer.Ordinal).Count());
         Assert.Contains(tools, tool => tool.Name == "list_documents");
@@ -43,9 +43,9 @@ public sealed class CadAiWorkspaceToolExecutorTests
     [Fact]
     public void LegacyDocumentTools_AllAcceptOptionalDocumentId()
     {
-        var workspaceTools = CadAiWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var workspaceTools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
 
-        foreach (var legacyTool in CadAiToolExecutor.ToolDefinitions)
+        foreach (var legacyTool in CadDocumentToolExecutor.ToolDefinitions)
         {
             var properties = workspaceTools[legacyTool.Name].Parameters.GetProperty("properties");
             Assert.True(properties.TryGetProperty("document_id", out var documentId), legacyTool.Name);
@@ -56,7 +56,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
     [Fact]
     public void CreationTools_ExposeSupportedAppearanceSchemas()
     {
-        var tools = CadAiWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
         var circle = tools["add_circle"].Parameters.GetProperty("properties");
         var text = tools["add_text"].Parameters.GetProperty("properties");
 
@@ -77,7 +77,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
         string toolName,
         bool supportsFill)
     {
-        var tool = CadAiWorkspaceToolExecutor.ToolDefinitions.Single(candidate => candidate.Name == toolName);
+        var tool = CadWorkspaceToolExecutor.ToolDefinitions.Single(candidate => candidate.Name == toolName);
         var properties = tool.Parameters.GetProperty("properties");
 
         Assert.True(properties.TryGetProperty("document_id", out _));
@@ -89,7 +89,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
     [Fact]
     public void GeometryTools_ExposeTypedReadWriteAndTransformParameters()
     {
-        var tools = CadAiWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
         var setGeometry = tools["set_entity_geometry"].Parameters.GetProperty("properties");
         var transform = tools["transform_entities"].Parameters.GetProperty("properties");
 
@@ -104,7 +104,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
     [Fact]
     public void P1Tools_ExposeDocumentScopedLayerBlockAndCompositePathSchemas()
     {
-        var tools = CadAiWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
         foreach (var name in new[] { "create_layer", "create_block", "insert_block", "add_composite_path" })
         {
             Assert.True(tools[name].Parameters.GetProperty("properties").TryGetProperty("document_id", out _), name);
@@ -119,7 +119,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
     [Fact]
     public void LayerTools_ExposeStateOrderAndDeleteConfirmationSchemas()
     {
-        var tools = CadAiWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
         var setProperties = tools["set_layer_properties"].Parameters.GetProperty("properties");
         var delete = tools["delete_layer"].Parameters.GetProperty("properties");
         var reorder = tools["reorder_layers"].Parameters.GetProperty("properties");
@@ -138,7 +138,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
         var document = CadDocument.Create("Test");
         var editor = new CadEditor(document);
         var batchId = Guid.NewGuid();
-        var tools = new CadAiLayerTools(
+        var tools = new CadLayerTools(
             document,
             command => editor.ExecuteInBatch(command, batchId));
 
@@ -176,7 +176,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
         var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0), layerId);
         var editor = new CadEditor(document);
         var batchId = Guid.NewGuid();
-        var tools = new CadAiLayerTools(
+        var tools = new CadLayerTools(
             document,
             command => editor.ExecuteInBatch(command, batchId));
 
@@ -214,7 +214,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
             }
             """);
 
-        var geometry = CadAiCompositePathTools.Parse(arguments.RootElement);
+        var geometry = CadCompositePathTools.Parse(arguments.RootElement);
 
         Assert.True(geometry.Closed);
         Assert.Collection(
@@ -244,7 +244,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
             }
             """);
 
-        var items = CadAiBulkCreationTools.Parse(arguments.RootElement);
+        var items = CadBulkCreationTools.Parse(arguments.RootElement);
 
         Assert.Equal(10, items.Count);
         Assert.Equal("add_line", items[0].ToolName);
@@ -256,7 +256,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
     {
         using var arguments = JsonDocument.Parse("""{ "entities": [{ "type": "cat" }] }""");
 
-        var exception = Assert.Throws<ArgumentException>(() => CadAiBulkCreationTools.Parse(arguments.RootElement));
+        var exception = Assert.Throws<ArgumentException>(() => CadBulkCreationTools.Parse(arguments.RootElement));
 
         Assert.Contains("Unsupported bulk entity type", exception.Message);
     }
@@ -272,7 +272,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
         byte expectedG,
         byte expectedB)
     {
-        var color = CadAiWorkspaceToolExecutor.ParseColor(value);
+        var color = CadWorkspaceToolExecutor.ParseColor(value);
 
         Assert.Equal(new CadColor(expectedA, expectedR, expectedG, expectedB), color);
     }
@@ -280,14 +280,14 @@ public sealed class CadAiWorkspaceToolExecutorTests
     [Fact]
     public void ParseColor_RejectsUnknownValues()
     {
-        Assert.Throws<ArgumentException>(() => CadAiWorkspaceToolExecutor.ParseColor("not-a-color"));
+        Assert.Throws<ArgumentException>(() => CadWorkspaceToolExecutor.ParseColor("not-a-color"));
     }
 
     [Fact]
     public async Task WorkspaceTools_CanCreateDocumentWithoutAnActiveDocument()
     {
         var workspace = new FakeWorkspaceService();
-        var executor = new CadAiWorkspaceToolExecutor(workspace);
+        var executor = new CadWorkspaceToolExecutor(workspace);
 
         var result = await executor.ExecuteAsync(
             new AiToolCall("call-1", "create_document", "{\"name\":\"AI Drawing\"}"),
@@ -307,7 +307,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
         var workspace = new FakeWorkspaceService();
         workspace.Add("document-1", "One", isActive: true);
         workspace.Add("document-2", "Two", isActive: false);
-        var executor = new CadAiWorkspaceToolExecutor(workspace);
+        var executor = new CadWorkspaceToolExecutor(workspace);
 
         var result = await executor.ExecuteAsync(
             new AiToolCall("call-1", "activate_document", "{\"document_id\":\"document-2\"}"),
@@ -327,15 +327,15 @@ public sealed class CadAiWorkspaceToolExecutorTests
         return json.RootElement.GetProperty("success").GetBoolean();
     }
 
-    private static object ExecuteLayerTool(CadAiLayerTools tools, string name, string arguments)
+    private static object ExecuteLayerTool(CadLayerTools tools, string name, string arguments)
     {
         using var json = JsonDocument.Parse(arguments);
         return tools.Execute(name, json.RootElement);
     }
 
-    private sealed class FakeWorkspaceService : ICadAiWorkspaceService
+    private sealed class FakeWorkspaceService : ICadToolWorkspace
     {
-        private readonly List<CadAiWorkspaceDocument> _documents = [];
+        private readonly List<CadToolWorkspaceDocument> _documents = [];
         private string? _activeDocumentId;
 
         public void Add(string documentId, string name, bool isActive)
@@ -345,30 +345,30 @@ public sealed class CadAiWorkspaceToolExecutorTests
             _documents.Add(CreateDescriptor(documentId, name));
         }
 
-        public IReadOnlyList<CadAiWorkspaceDocument> GetDocuments() =>
+        public IReadOnlyList<CadToolWorkspaceDocument> GetDocuments() =>
             _documents.Select(document => document with
             {
                 IsActive = document.DocumentId == _activeDocumentId
             }).ToArray();
 
-        public CadAiWorkspaceDocument? GetActiveDocument() =>
+        public CadToolWorkspaceDocument? GetActiveDocument() =>
             _activeDocumentId is null ? null : GetRequiredDocument(_activeDocumentId);
 
-        public CadAiWorkspaceDocument GetRequiredDocument(string documentId)
+        public CadToolWorkspaceDocument GetRequiredDocument(string documentId)
         {
             var document = _documents.FirstOrDefault(candidate => candidate.DocumentId == documentId)
                 ?? throw new ArgumentException($"Open document not found: {documentId}");
             return document with { IsActive = document.DocumentId == _activeDocumentId };
         }
 
-        public CadAiWorkspaceDocument CreateDocument(string? name)
+        public CadToolWorkspaceDocument CreateDocument(string? name)
         {
             var id = $"document-{_documents.Count + 1}";
             Add(id, string.IsNullOrWhiteSpace(name) ? "Untitled" : name, isActive: true);
             return GetRequiredDocument(id);
         }
 
-        public Task<CadAiWorkspaceDocument> OpenDocumentAsync(string filePath, CancellationToken cancellationToken) =>
+        public Task<CadToolWorkspaceDocument> OpenDocumentAsync(string filePath, CancellationToken cancellationToken) =>
             throw new NotSupportedException();
 
         public bool ActivateDocument(string documentId)
@@ -385,7 +385,7 @@ public sealed class CadAiWorkspaceToolExecutorTests
 
         public Task<bool> CloseDocumentAsync(string documentId) => throw new NotSupportedException();
 
-        private CadAiWorkspaceDocument CreateDescriptor(string documentId, string name) => new(
+        private CadToolWorkspaceDocument CreateDescriptor(string documentId, string name) => new(
             documentId,
             _documents.Count + 1,
             name,

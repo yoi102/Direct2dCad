@@ -6,7 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.CommandLine;
 using Direct2dCad.Editor.Commands;
 using Direct2dCad.Lang.Strings;
-using Direct2dCad.ViewModels.AI;
+using Direct2dCad.ViewModels.Tools;
 using Direct2dCad.ViewModels.Collections;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -19,7 +19,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     private const int MaximumEntryCount = 1000;
     private const int MaximumPendingEntryCount = 4000;
     private readonly ICadCommandLineService _commandLineService;
-    private readonly ICadAiCommandLineService _aiCommandLineService;
+    private readonly ICadToolCommandLineService _toolCommandLineService;
     private readonly IDisposable _commandActivitySubscription;
     private readonly IDisposable _interactionActivitySubscription;
     private readonly CancellationTokenSource _disposeCancellation = new();
@@ -34,13 +34,13 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         ICadCommandLineService commandLineService,
-        ICadAiCommandLineService aiCommandLineService,
+        ICadToolCommandLineService toolCommandLineService,
         IAsyncSubscriber<CadCommandActivityMessage> commandActivitySubscriber,
         IAsyncSubscriber<CadInteractionActivityMessage> interactionActivitySubscriber)
         : base(toolboxLayoutSettingsStore, "toolbox.command-line", DockZone.BottomRight, isOpenByDefault: true)
     {
         _commandLineService = commandLineService;
-        _aiCommandLineService = aiCommandLineService;
+        _toolCommandLineService = toolCommandLineService;
         _commandActivitySubscription = commandActivitySubscriber.Subscribe(
             (message, _) =>
             {
@@ -61,7 +61,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
         AddEntry(
             CadCommandLineEntryKind.Information,
-            "Direct2dCad command line ready. Type HELP for terminal commands or TOOLS for AI CAD tools.");
+            "Direct2dCad command line ready. Type HELP for terminal commands or TOOLS for CAD tools.");
     }
 
     [ObservableProperty]
@@ -116,14 +116,14 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
         try
         {
-            var aiResult = await _aiCommandLineService.TryExecuteAsync(
+            var toolResult = await _toolCommandLineService.TryExecuteAsync(
                 commandLine,
                 _disposeCancellation.Token);
-            if (aiResult is not null)
+            if (toolResult is not null)
             {
                 AddMessage(
-                    aiResult.Success ? CadCommandLineEntryKind.Output : CadCommandLineEntryKind.Error,
-                    aiResult.Message);
+                    toolResult.Success ? CadCommandLineEntryKind.Output : CadCommandLineEntryKind.Error,
+                    toolResult.Message);
                 return;
             }
         }
@@ -226,7 +226,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         if (prefix.Length > 0)
         {
             var suggestions = _commandLineService.Complete(prefix)
-                .Concat(_aiCommandLineService.Complete(prefix))
+                .Concat(_toolCommandLineService.Complete(prefix))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
                 .Take(12);

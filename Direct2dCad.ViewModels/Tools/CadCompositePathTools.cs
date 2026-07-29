@@ -3,9 +3,9 @@ using Direct2dCad.AI;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal static class CadAiCompositePathTools
+internal static class CadCompositePathTools
 {
     private const double RadiansPerDegree = Math.PI / 180.0;
     private const double DegreesPerRadian = 180.0 / Math.PI;
@@ -15,7 +15,7 @@ internal static class CadAiCompositePathTools
         "Create one continuous path mixing line, circular arc, and interpolating spline segments. A closed path supports one shared solid or hatch fill.",
         JsonSerializer.SerializeToElement(CreateSchema()));
 
-    internal static CadAiCompositePathGeometry Parse(JsonElement arguments)
+    internal static CadCompositePathGeometry Parse(JsonElement arguments)
     {
         var start = RequiredPoint(arguments, "start");
         if (!arguments.TryGetProperty("segments", out var segmentArray) || segmentArray.ValueKind != JsonValueKind.Array)
@@ -43,7 +43,7 @@ internal static class CadAiCompositePathTools
                      closedElement.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? closedElement.GetBoolean()
             : throw new ArgumentException("closed is required and must be boolean.");
-        return new CadAiCompositePathGeometry(start, segments, closed);
+        return new CadCompositePathGeometry(start, segments, closed);
     }
 
     internal static object ToDto(CadCompositePath path)
@@ -236,7 +236,7 @@ internal static class CadAiCompositePathTools
     private static object PointDto(CadPointD point) => new { x = point.X, y = point.Y };
 }
 
-internal sealed record CadAiCompositePathGeometry(
+internal sealed record CadCompositePathGeometry(
     CadPointD StartPoint,
     IReadOnlyList<CadCompositePathSegment> Segments,
     bool Closed);

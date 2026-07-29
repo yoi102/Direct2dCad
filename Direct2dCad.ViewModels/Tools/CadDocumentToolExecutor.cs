@@ -7,9 +7,9 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, Guid batchId)
+internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewModel, Guid batchId)
 {
     private const int MaximumListedEntities = 200;
 
@@ -18,9 +18,9 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         Tool("get_document_summary", "Get the active CAD document, layers, selection, and bounds summary.",
             new { type = "object", properties = new { }, additionalProperties = false }),
         Tool("get_entity_statistics", "Get complete unpaged entity counts with optional type, layer, owner, or selection filters, grouped by type, layer, and owner space. Use this for counts and inventories.",
-            CadAiEntityQueryProtocol.CreateSchema(paged: false, MaximumListedEntities)),
+            CadEntityQueryProtocol.CreateSchema(paged: false, MaximumListedEntities)),
         Tool("list_entities", "Query a sorted page of entity details by type, layer, name, state, style, geometry, content, or spatial bounds. Results include total_matches and has_more.",
-            CadAiEntityQueryProtocol.CreateSchema(paged: true, MaximumListedEntities)),
+            CadEntityQueryProtocol.CreateSchema(paged: true, MaximumListedEntities)),
         Tool("add_line", "Add a line in CAD world coordinates.", CoordinateSchema(
             new[] { "x1", "y1", "x2", "y2" },
             new Dictionary<string, object>
@@ -192,7 +192,7 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
         }
     }
 
-    public string CreateSystemPrompt()
+    public string CreateToolUsageInstructions()
     {
         var editor = documentViewModel.CadEditor;
         var viewport = editor.Viewport.VisibleWorldBounds;
@@ -224,12 +224,12 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
             }).ToArray(),
             content_bounds = RectDto(bounds),
             visible_bounds = RectDto(editor.Viewport.VisibleWorldBounds),
-            entity_statistics = CadAiEntityQuery.CreateStatistics(
+            entity_statistics = CadEntityQuery.CreateStatistics(
                 document,
                 editor.ActiveOwnerBlockId,
                 editor.Selection.EntityIds.ToHashSet(),
-                new CadAiEntityQueryOptions(
-                    CadAiEntityQuery.CurrentSpaceScope,
+                new CadEntityQueryOptions(
+                    CadEntityQuery.CurrentSpaceScope,
                     null,
                     null,
                     SelectedOnly: false))
@@ -239,21 +239,21 @@ internal sealed class CadAiToolExecutor(CadDocumentViewModel documentViewModel, 
     private string GetEntityStatistics(JsonElement arguments)
     {
         var editor = documentViewModel.CadEditor;
-        return Success(CadAiEntityQuery.CreateStatistics(
+        return Success(CadEntityQuery.CreateStatistics(
             editor.Document,
             editor.ActiveOwnerBlockId,
             editor.Selection.EntityIds.ToHashSet(),
-            CadAiEntityQueryProtocol.Parse(arguments, paged: false, MaximumListedEntities)));
+            CadEntityQueryProtocol.Parse(arguments, paged: false, MaximumListedEntities)));
     }
 
     private string ListEntities(JsonElement arguments)
     {
         var editor = documentViewModel.CadEditor;
-        return Success(CadAiEntityQuery.CreatePage(
+        return Success(CadEntityQuery.CreatePage(
             editor.Document,
             editor.ActiveOwnerBlockId,
             editor.Selection.EntityIds.ToHashSet(),
-            CadAiEntityQueryProtocol.Parse(arguments, paged: true, MaximumListedEntities)));
+            CadEntityQueryProtocol.Parse(arguments, paged: true, MaximumListedEntities)));
     }
 
     private string AddLine(JsonElement arguments)

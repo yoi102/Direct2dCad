@@ -5,9 +5,9 @@ using Direct2dCad.Commands;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal sealed class CadAiLayerTools(
+internal sealed class CadLayerTools(
     CadDocument document,
     Action<ICadCommand> executeCommand)
 {
@@ -93,7 +93,7 @@ internal sealed class CadAiLayerTools(
     {
         var name = RequiredString(arguments, "name");
         var color = HasValue(arguments, "color")
-            ? CadAiWorkspaceToolExecutor.ParseColor(RequiredString(arguments, "color"))
+            ? CadWorkspaceToolExecutor.ParseColor(RequiredString(arguments, "color"))
             : CadColor.Green;
         var lineWeight = arguments.TryGetProperty("line_weight", out var lineWeightElement)
             ? ParseLineWeight(lineWeightElement)
@@ -148,7 +148,7 @@ internal sealed class CadAiLayerTools(
         if (hasColor || hasLineWeight)
         {
             var color = hasColor
-                ? CadAiWorkspaceToolExecutor.ParseColor(RequiredString(arguments, "color"))
+                ? CadWorkspaceToolExecutor.ParseColor(RequiredString(arguments, "color"))
                 : layer.Color;
             var lineWeight = hasLineWeight
                 ? ParseLineWeight(arguments.GetProperty("line_weight"))

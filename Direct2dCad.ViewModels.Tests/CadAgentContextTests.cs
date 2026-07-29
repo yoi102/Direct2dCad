@@ -1,10 +1,12 @@
 using System.Text.Json;
+using Direct2dCad.Agent;
 using Direct2dCad.AI;
-using Direct2dCad.ViewModels.AI;
+using Direct2dCad.ViewModels.Agents;
+using Direct2dCad.ViewModels.Tools;
 
 namespace Direct2dCad.ViewModels.Tests;
 
-public sealed class CadAiToolSelectorTests
+public sealed class CadAgentToolSelectorTests
 {
     private static readonly IReadOnlyList<AiToolDefinition> AvailableTools = CreateTools(
         "add_entities", "add_line", "add_circle", "add_arc", "add_ellipse", "add_rectangle",
@@ -20,7 +22,7 @@ public sealed class CadAiToolSelectorTests
     [Fact]
     public void Select_ComplexDrawing_PrefersBulkCreationTool()
     {
-        var selected = CadAiToolSelector.Select("画一个猫的侧身图案", AvailableTools);
+        var selected = CadAgentToolSelector.Select("画一个猫的侧身图案", AvailableTools);
 
         Assert.Contains(selected, tool => tool.Name == "add_entities");
     }
@@ -28,7 +30,7 @@ public sealed class CadAiToolSelectorTests
     [Fact]
     public void Select_SingleCircle_DoesNotIncludeUnrelatedCreationTools()
     {
-        var selected = CadAiToolSelector.Select("画一个圆", AvailableTools);
+        var selected = CadAgentToolSelector.Select("画一个圆", AvailableTools);
 
         Assert.Contains(selected, tool => tool.Name == "add_circle");
         Assert.DoesNotContain(selected, tool => tool.Name == "add_entities");
@@ -41,7 +43,7 @@ public sealed class CadAiToolSelectorTests
     [InlineData("\u6709\u591a\u5c11\u5b9e\u4f53\uff0c\u6709\u4ec0\u4e48\u7c7b\u578b")]
     public void Select_EntityInventoryQuestion_PrioritizesUnfilteredStatistics(string prompt)
     {
-        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
 
         Assert.NotEmpty(selected);
         Assert.Equal("get_entity_statistics", selected[0].Name);
@@ -52,7 +54,7 @@ public sealed class CadAiToolSelectorTests
     [InlineData("\u67e5\u627e\u534a\u5f84\u5927\u4e8e10\u7684\u5706")]
     public void Select_EntityFeatureQuery_PrioritizesStructuredEntityQuery(string prompt)
     {
-        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
 
         Assert.NotEmpty(selected);
         Assert.Equal("list_entities", selected[0].Name);
@@ -67,7 +69,7 @@ public sealed class CadAiToolSelectorTests
         string expected,
         string excluded)
     {
-        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
 
         Assert.Contains(selected, tool => tool.Name == expected);
         Assert.DoesNotContain(selected, tool => tool.Name == excluded);
@@ -76,7 +78,7 @@ public sealed class CadAiToolSelectorTests
     [Fact]
     public void Select_BlockRequest_IncludesBlockLifecycleTools()
     {
-        var selected = CadAiToolSelector.Select("创建一个块并插入 block", AvailableTools);
+        var selected = CadAgentToolSelector.Select("创建一个块并插入 block", AvailableTools);
 
         Assert.Contains(selected, tool => tool.Name == "create_block");
         Assert.Contains(selected, tool => tool.Name == "insert_block");
@@ -85,7 +87,7 @@ public sealed class CadAiToolSelectorTests
     [Fact]
     public void Select_DocumentRequest_IncludesDocumentLifecycleTools()
     {
-        var selected = CadAiToolSelector.Select("打开文件，重命名后保存并关闭文档", AvailableTools);
+        var selected = CadAgentToolSelector.Select("打开文件，重命名后保存并关闭文档", AvailableTools);
 
         Assert.Contains(selected, tool => tool.Name == "open_document");
         Assert.Contains(selected, tool => tool.Name == "activate_document");
@@ -102,7 +104,7 @@ public sealed class CadAiToolSelectorTests
     [InlineData("调整图层顺序", "reorder_layers")]
     public void Select_LayerIntent_PrioritizesRequestedLayerTool(string prompt, string expectedTool)
     {
-        var selected = CadAiToolSelector.Select(prompt, AvailableTools);
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
 
         Assert.NotEmpty(selected);
         Assert.Equal(expectedTool, selected[0].Name);
@@ -120,7 +122,7 @@ public sealed class CadAiToolSelectorTests
     });
 }
 
-public sealed class CadAiRequestContextBuilderTests
+public sealed class AgentRequestContextBuilderTests
 {
     [Fact]
     public void Build_KeepsNewestUserTurnAndDropsOldTurns()
@@ -134,7 +136,7 @@ public sealed class CadAiRequestContextBuilderTests
             .Append(AiChatMessage.User("newest-user-request"))
             .ToArray();
 
-        var context = CadAiRequestContextBuilder.Build(
+        var context = AgentRequestContextBuilder.Build(
             "system",
             conversation,
             [],
@@ -155,7 +157,7 @@ public sealed class CadAiRequestContextBuilderTests
             AiChatMessage.Tool(call.Id, new string('x', 20000))
         };
 
-        var context = CadAiRequestContextBuilder.Build(
+        var context = AgentRequestContextBuilder.Build(
             "system",
             conversation,
             [],
@@ -183,8 +185,8 @@ public sealed class CadAiRequestContextBuilderTests
             .Select(index => CreateLargeTool($"tool_{index}"))
             .ToArray();
 
-        var normal = CadAiRequestContextBuilder.Build("system", conversation, tools, 8192);
-        var aggressive = CadAiRequestContextBuilder.Build("system", conversation, tools, 8192, aggressive: true);
+        var normal = AgentRequestContextBuilder.Build("system", conversation, tools, 8192);
+        var aggressive = AgentRequestContextBuilder.Build("system", conversation, tools, 8192, aggressive: true);
 
         Assert.True(aggressive.EstimatedPromptTokens < normal.EstimatedPromptTokens);
     }
@@ -192,7 +194,7 @@ public sealed class CadAiRequestContextBuilderTests
     [Fact]
     public void Build_StaysInsideConfiguredContextBudgetWithOversizedInput()
     {
-        var context = CadAiRequestContextBuilder.Build(
+        var context = AgentRequestContextBuilder.Build(
             "system",
             [AiChatMessage.User(new string('x', 50000))],
             Enumerable.Range(0, 20).Select(index => CreateLargeTool($"tool_{index}")).ToArray(),
@@ -206,9 +208,9 @@ public sealed class CadAiRequestContextBuilderTests
     public void Build_RealBulkCreationSchemaFitsDefaultLmStudioContext()
     {
         const string prompt = "画一个猫的侧身图案";
-        var selected = CadAiToolSelector.Select(prompt, CadAiWorkspaceToolExecutor.ToolDefinitions);
+        var selected = CadAgentToolSelector.Select(prompt, CadWorkspaceToolExecutor.ToolDefinitions);
 
-        var context = CadAiRequestContextBuilder.Build(
+        var context = AgentRequestContextBuilder.Build(
             "You are a CAD editing assistant.",
             [AiChatMessage.User(prompt)],
             selected,
@@ -222,9 +224,9 @@ public sealed class CadAiRequestContextBuilderTests
     public void Build_RealLayerDeletionSchemaKeepsRequestedActionWithinDefaultContext()
     {
         const string prompt = "删除图层 Construction 以及其中的所有实体";
-        var selected = CadAiToolSelector.Select(prompt, CadAiWorkspaceToolExecutor.ToolDefinitions);
+        var selected = CadAgentToolSelector.Select(prompt, CadWorkspaceToolExecutor.ToolDefinitions);
 
-        var context = CadAiRequestContextBuilder.Build(
+        var context = AgentRequestContextBuilder.Build(
             "You are a CAD editing assistant.",
             [AiChatMessage.User(prompt)],
             selected,
@@ -245,7 +247,7 @@ public sealed class CadAiRequestContextBuilderTests
             AiChatMessage.Tool("orphan", "result")
         };
 
-        var context = CadAiRequestContextBuilder.Build("system", conversation, [], 8192);
+        var context = AgentRequestContextBuilder.Build("system", conversation, [], 8192);
 
         Assert.DoesNotContain(context.Messages, message => message.Role == AiChatRole.Assistant);
         Assert.DoesNotContain(context.Messages, message => message.Role == AiChatRole.Tool);

@@ -1,8 +1,8 @@
 using Direct2dCad.AI;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Agents;
 
-internal static class CadAiToolSelector
+internal static class CadAgentToolSelector
 {
     private static readonly string[] CoreTools =
     [

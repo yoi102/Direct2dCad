@@ -3,9 +3,9 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal static partial class CadAiEntityQuery
+internal static partial class CadEntityQuery
 {
     internal const string CurrentSpaceScope = "current_space";
     internal const string DocumentScope = "document";
@@ -14,7 +14,7 @@ internal static partial class CadAiEntityQuery
         CadDocument document,
         BlockId activeOwnerBlockId,
         IReadOnlySet<EntityId> selectedEntityIds,
-        CadAiEntityQueryOptions options)
+        CadEntityQueryOptions options)
     {
         ArgumentNullException.ThrowIfNull(document);
         ValidateOptions(options);
@@ -43,7 +43,7 @@ internal static partial class CadAiEntityQuery
         CadDocument document,
         BlockId activeOwnerBlockId,
         IReadOnlySet<EntityId> selectedEntityIds,
-        CadAiEntityQueryOptions options)
+        CadEntityQueryOptions options)
     {
         ArgumentNullException.ThrowIfNull(document);
         ValidateOptions(options);

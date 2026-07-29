@@ -1,14 +1,14 @@
 using Direct2dCad.AI;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.Agent;
 
-internal sealed record CadAiRequestContext(
+internal sealed record AgentRequestContext(
     IReadOnlyList<AiChatMessage> Messages,
     IReadOnlyList<AiToolDefinition> Tools,
     int MaxOutputTokens,
     int EstimatedPromptTokens);
 
-internal static class CadAiRequestContextBuilder
+internal static class AgentRequestContextBuilder
 {
     private const int NormalSafetyTokens = 640;
     private const int RetrySafetyTokens = 1280;
@@ -17,7 +17,7 @@ internal static class CadAiRequestContextBuilder
     private const int MinimumHistoryTokens = 256;
     private const string TruncatedContentMarker = "\n[content truncated to fit the model context window]";
 
-    internal static CadAiRequestContext Build(
+    internal static AgentRequestContext Build(
         string systemPrompt,
         IReadOnlyList<AiChatMessage> conversation,
         IReadOnlyList<AiToolDefinition> tools,
@@ -49,7 +49,7 @@ internal static class CadAiRequestContextBuilder
         };
         messages.AddRange(history);
         var estimate = messages.Sum(EstimateMessageTokens) + selectedTools.Sum(EstimateToolTokens);
-        return new CadAiRequestContext(messages, selectedTools, maxOutputTokens, estimate);
+        return new AgentRequestContext(messages, selectedTools, maxOutputTokens, estimate);
     }
 
     private static IReadOnlyList<AiToolDefinition> FitTools(

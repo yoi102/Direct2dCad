@@ -58,7 +58,7 @@ https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7
 | 分层 | 项目 |
 |---|---|
 | 核心编辑 | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
-| AI | `Direct2dCad.AI` |
+| AI 与 Agent | `Direct2dCad.AI`, `Direct2dCad.Agent` |
 | 查询与存储 | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
 | 渲染 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
 | 客户端公共能力 | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
@@ -80,6 +80,7 @@ flowchart TD
     Commands["Commands<br/>Direct2dCad.Commands"]
     CommandLine["Command Line<br/>Direct2dCad.CommandLine"]
     AI["Local AI Protocol<br/>Direct2dCad.AI"]
+    Agent["Agent Orchestration<br/>Direct2dCad.Agent"]
     ChangeTracking["Change Tracking<br/>Direct2dCad.ChangeTracking"]
     Db["CAD Data Model<br/>Direct2dCad.Db"]
     Query["HitTesting / Indexing<br/>Direct2dCad.HitTesting<br/>Direct2dCad.Indexing"]
@@ -96,6 +97,7 @@ flowchart TD
     VM --> VMAbs
     VM --> CommandLine
     VM --> AI
+    VM --> Agent
     VM --> VMServices
     VM --> Client
     VM --> Editor
@@ -125,6 +127,7 @@ flowchart TD
     Direct2D --> Db
     IO --> Db
     Client --> Db
+    Agent --> AI
 ```
 
 ## 项目职责
@@ -134,9 +137,19 @@ flowchart TD
 LM Studio/OpenAI-compatible 协议层，不引用 WPF 和 CAD 数据模型。
 
 - 获取 LM Studio 已加载的模型，并调用 `/v1/chat/completions`。
-- 支持 assistant、tool call 和 tool result 的多轮消息协议。
+- 定义 assistant、tool call 和 tool result 消息协议。
 - 保存连接地址、模型、temperature 和 CAD 工具开关等用户级设置。
-- CAD 工具的具体执行位于 ViewModel 适配层，编辑仍通过 `ICadCommand` 进入 undo / redo 和渲染更新链路。
+
+### Direct2dCad.Agent
+
+与 UI、WPF 和 CAD 数据模型无关的 Agent 编排层。
+
+- 管理对话历史、上下文窗口预算和超限重试。
+- 执行模型、工具结果、再次调用模型的多轮循环。
+- 通过 `IAgentToolset` 使用宿主提供的工具，不直接依赖具体 CAD 命令。
+- 通过事件报告 assistant 消息、工具结果和上下文压缩状态。
+
+CAD 工具目录、查询及执行器位于 `Direct2dCad.ViewModels.Tools` 适配层，并由 AI Agent 和终端共同使用；实体编辑仍通过 `ICadCommand` 进入 undo / redo 和渲染更新链路。
 
 AI Toolbox 默认连接 `http://localhost:1234/v1`。先在 LM Studio 启动 Local Server 并加载支持 tool calling 的模型，再于面板刷新模型。AI 可通过稳定的 `document_id` 查询、创建、打开、激活、重命名、保存和关闭工作区图纸，也可在创建实体时设置颜色、线宽、填充与描边样式；同一次用户请求中，每个目标文档分别使用独立的 undo / redo batch。
 
@@ -442,6 +455,7 @@ SetOrigin
 | 项目 | 当前项目引用 |
 |---|---|
 | `Direct2dCad.AI` | 无 |
+| `Direct2dCad.Agent` | `Direct2dCad.AI` |
 | `Direct2dCad.Db` | 无 |
 | `Direct2dCad.ChangeTracking` | `Direct2dCad.Db` |
 | `Direct2dCad.Commands` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
@@ -459,7 +473,7 @@ SetOrigin
 | `Direct2dCad.Lang` | 无 |
 | `Direct2dCad.ViewModels.Abstractions` | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
 | `Direct2dCad.ViewModels.Services` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions` |
-| `Direct2dCad.ViewModels` | `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.ViewModels` | `Direct2dCad.Agent`, `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.wpf.Controls` | 无 |
 | `Direct2dCad.wpf` | `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.Benchmarks` | `Direct2dCad.Db`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |

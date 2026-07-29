@@ -5,11 +5,11 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal static partial class CadAiEntityQuery
+internal static partial class CadEntityQuery
 {
-    private static object FilterDto(CadAiEntityQueryOptions options) => new
+    private static object FilterDto(CadEntityQueryOptions options) => new
     {
         type = options.Type,
         types = options.Types,

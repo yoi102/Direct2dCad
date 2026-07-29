@@ -1,30 +1,30 @@
 using System.Text.Json;
 using Direct2dCad.AI;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-public interface ICadAiCommandLineService
+public interface ICadToolCommandLineService
 {
-    Task<CadAiCommandLineExecution?> TryExecuteAsync(
+    Task<CadToolCommandLineExecution?> TryExecuteAsync(
         string commandLine,
         CancellationToken cancellationToken = default);
 
     IReadOnlyList<string> Complete(string commandText, int maximumCount = 12);
 }
 
-public sealed record CadAiCommandLineExecution(bool Success, string Message);
+public sealed record CadToolCommandLineExecution(bool Success, string Message);
 
-internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) : ICadAiCommandLineService
+internal sealed class CadToolCommandLineService(ICadToolWorkspace workspace) : ICadToolCommandLineService
 {
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
     private static readonly HashSet<string> BuiltInCommandCollisions =
         new(StringComparer.OrdinalIgnoreCase) { "undo", "redo" };
     private static readonly IReadOnlyDictionary<string, AiToolDefinition> Tools =
-        CadAiWorkspaceToolExecutor.ToolDefinitions.ToDictionary(
+        CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(
             tool => tool.Name,
             StringComparer.OrdinalIgnoreCase);
 
-    public async Task<CadAiCommandLineExecution?> TryExecuteAsync(
+    public async Task<CadToolCommandLineExecution?> TryExecuteAsync(
         string commandLine,
         CancellationToken cancellationToken = default)
     {
@@ -33,7 +33,7 @@ internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) 
             return null;
 
         if (command.Equals("TOOLS", StringComparison.OrdinalIgnoreCase))
-            return new CadAiCommandLineExecution(true, FormatToolList(remainder));
+            return new CadToolCommandLineExecution(true, FormatToolList(remainder));
 
         if (command.Equals("TOOLHELP", StringComparison.OrdinalIgnoreCase))
             return FormatToolHelpExecution(remainder);
@@ -63,13 +63,13 @@ internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) 
         }
 
         if (!Tools.ContainsKey(toolName))
-            return Failure($"Unknown AI CAD tool '{toolName}'. Type TOOLS to list available tools.");
+            return Failure($"Unknown CAD tool '{toolName}'. Type TOOLS to list available tools.");
 
         argumentsJson = string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson.Trim();
         if (!LooksLikeJsonObject(argumentsJson))
             return Failure("Tool arguments must be one JSON object, for example: add_circle {\"center_x\":0,\"center_y\":0,\"radius\":10}");
 
-        var executor = new CadAiWorkspaceToolExecutor(workspace);
+        var executor = new CadWorkspaceToolExecutor(workspace);
         var result = await executor.ExecuteAsync(
             new AiToolCall(Guid.NewGuid().ToString("N"), toolName, argumentsJson),
             cancellationToken);
@@ -107,16 +107,16 @@ internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) 
             .ToArray();
     }
 
-    private static CadAiCommandLineExecution FormatToolHelpExecution(string input)
+    private static CadToolCommandLineExecution FormatToolHelpExecution(string input)
     {
         var (toolName, _) = SplitHead(input);
         if (toolName.Length == 0)
             return Failure("Usage: TOOLHELP <tool-name>.");
         if (!Tools.TryGetValue(toolName, out var tool))
-            return Failure($"Unknown AI CAD tool '{toolName}'. Type TOOLS to list available tools.");
+            return Failure($"Unknown CAD tool '{toolName}'. Type TOOLS to list available tools.");
 
         var schema = JsonSerializer.Serialize(tool.Parameters, IndentedJson);
-        return new CadAiCommandLineExecution(
+        return new CadToolCommandLineExecution(
             true,
             $"{tool.Name}{Environment.NewLine}" +
             $"{tool.Description}{Environment.NewLine}" +
@@ -136,9 +136,9 @@ internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) 
             .ToArray();
 
         if (matches.Length == 0)
-            return $"No AI CAD tools match '{normalizedFilter}'.";
+            return $"No CAD tools match '{normalizedFilter}'.";
 
-        return $"AI CAD tools ({matches.Length}):{Environment.NewLine}" +
+        return $"CAD tools ({matches.Length}):{Environment.NewLine}" +
                string.Join(
                    Environment.NewLine,
                    matches.Select(tool => $"{tool.Name} - {tool.Description}")) +
@@ -146,7 +146,7 @@ internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) 
                "Use TOOLHELP <tool-name> for its JSON schema.";
     }
 
-    private static CadAiCommandLineExecution FormatExecutionResult(string toolName, string result)
+    private static CadToolCommandLineExecution FormatExecutionResult(string toolName, string result)
     {
         try
         {
@@ -155,13 +155,13 @@ internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) 
             var success = !root.TryGetProperty("success", out var successElement) ||
                           successElement.ValueKind != JsonValueKind.False;
             var formatted = JsonSerializer.Serialize(root, IndentedJson);
-            return new CadAiCommandLineExecution(
+            return new CadToolCommandLineExecution(
                 success,
                 $"{toolName}:{Environment.NewLine}{formatted}");
         }
         catch (JsonException)
         {
-            return new CadAiCommandLineExecution(true, $"{toolName}:{Environment.NewLine}{result}");
+            return new CadToolCommandLineExecution(true, $"{toolName}:{Environment.NewLine}{result}");
         }
     }
 
@@ -180,5 +180,5 @@ internal sealed class CadAiCommandLineService(ICadAiWorkspaceService workspace) 
             : (trimmed[..separator], trimmed[(separator + 1)..].TrimStart());
     }
 
-    private static CadAiCommandLineExecution Failure(string message) => new(false, message);
+    private static CadToolCommandLineExecution Failure(string message) => new(false, message);
 }

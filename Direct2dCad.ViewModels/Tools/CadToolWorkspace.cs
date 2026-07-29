@@ -4,9 +4,9 @@ using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Toolboxes;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-public sealed record CadAiWorkspaceDocument(
+public sealed record CadToolWorkspaceDocument(
     string DocumentId,
     long CadDocumentId,
     string Name,
@@ -18,28 +18,28 @@ public sealed record CadAiWorkspaceDocument(
     public CadDocumentViewModel DocumentViewModel => EditorTab.CadDocumentViewModel;
 }
 
-public interface ICadAiWorkspaceService
+public interface ICadToolWorkspace
 {
-    IReadOnlyList<CadAiWorkspaceDocument> GetDocuments();
-    CadAiWorkspaceDocument? GetActiveDocument();
-    CadAiWorkspaceDocument GetRequiredDocument(string documentId);
-    CadAiWorkspaceDocument CreateDocument(string? name);
-    Task<CadAiWorkspaceDocument> OpenDocumentAsync(string filePath, CancellationToken cancellationToken);
+    IReadOnlyList<CadToolWorkspaceDocument> GetDocuments();
+    CadToolWorkspaceDocument? GetActiveDocument();
+    CadToolWorkspaceDocument GetRequiredDocument(string documentId);
+    CadToolWorkspaceDocument CreateDocument(string? name);
+    Task<CadToolWorkspaceDocument> OpenDocumentAsync(string filePath, CancellationToken cancellationToken);
     bool ActivateDocument(string documentId);
     bool RenameDocument(string documentId, string name);
     Task<bool> SaveDocumentAsync(string documentId, string? filePath, CancellationToken cancellationToken);
     Task<bool> CloseDocumentAsync(string documentId);
 }
 
-internal sealed class CadAiWorkspaceService(
+internal sealed class CadToolWorkspace(
     IServiceProvider serviceProvider,
-    IDialogService dialogService) : ICadAiWorkspaceService
+    IDialogService dialogService) : ICadToolWorkspace
 {
     private readonly CadDocumentStorage _storage = new();
     private IDockLayoutService DockLayoutService =>
         serviceProvider.GetRequiredService<IDockLayoutService>();
 
-    public IReadOnlyList<CadAiWorkspaceDocument> GetDocuments()
+    public IReadOnlyList<CadToolWorkspaceDocument> GetDocuments()
     {
         var dockLayoutService = DockLayoutService;
         var active = dockLayoutService.ActiveDockable;
@@ -49,7 +49,7 @@ internal sealed class CadAiWorkspaceService(
             .ToArray();
     }
 
-    public CadAiWorkspaceDocument? GetActiveDocument()
+    public CadToolWorkspaceDocument? GetActiveDocument()
     {
         var dockLayoutService = DockLayoutService;
         return dockLayoutService.ActiveDockable is EditorTabViewModel tab
@@ -57,7 +57,7 @@ internal sealed class CadAiWorkspaceService(
             : null;
     }
 
-    public CadAiWorkspaceDocument GetRequiredDocument(string documentId)
+    public CadToolWorkspaceDocument GetRequiredDocument(string documentId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(documentId);
         var dockLayoutService = DockLayoutService;
@@ -69,7 +69,7 @@ internal sealed class CadAiWorkspaceService(
             : Describe(tab, ReferenceEquals(dockLayoutService.ActiveDockable, tab));
     }
 
-    public CadAiWorkspaceDocument CreateDocument(string? name)
+    public CadToolWorkspaceDocument CreateDocument(string? name)
     {
         var dockLayoutService = DockLayoutService;
         var tab = dockLayoutService.OpenOrActivateDocument(
@@ -83,7 +83,7 @@ internal sealed class CadAiWorkspaceService(
         return Describe(tab, isActive: true);
     }
 
-    public async Task<CadAiWorkspaceDocument> OpenDocumentAsync(
+    public async Task<CadToolWorkspaceDocument> OpenDocumentAsync(
         string filePath,
         CancellationToken cancellationToken)
     {
@@ -139,8 +139,8 @@ internal sealed class CadAiWorkspaceService(
     {
         var document = GetRequiredDocument(documentId);
         return string.IsNullOrWhiteSpace(filePath)
-            ? await document.EditorTab.SaveForAiAsync(cancellationToken)
-            : await document.EditorTab.SaveToFileForAiAsync(Path.GetFullPath(filePath), cancellationToken);
+            ? await document.EditorTab.SaveForWorkspaceToolAsync(cancellationToken)
+            : await document.EditorTab.SaveToFileForWorkspaceToolAsync(Path.GetFullPath(filePath), cancellationToken);
     }
 
     public async Task<bool> CloseDocumentAsync(string documentId)
@@ -159,7 +159,7 @@ internal sealed class CadAiWorkspaceService(
         DockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>()?.RefreshDocuments();
     }
 
-    private static CadAiWorkspaceDocument Describe(EditorTabViewModel tab, bool isActive) => new(
+    private static CadToolWorkspaceDocument Describe(EditorTabViewModel tab, bool isActive) => new(
         tab.ContentId,
         tab.CadDocumentViewModel.CadEditor.Document.Id.Value,
         tab.DocumentName,

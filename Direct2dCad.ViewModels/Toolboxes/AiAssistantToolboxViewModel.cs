@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Direct2dCad.Agent;
 using Direct2dCad.AI;
 using Direct2dCad.Lang.Strings;
-using Direct2dCad.ViewModels.AI;
+using Direct2dCad.ViewModels.Agents;
+using Direct2dCad.ViewModels.Tools;
 using Direct2dCad.ViewModels.Services.Platform;
 using AvalonDock.Core;
 
@@ -11,12 +13,11 @@ namespace Direct2dCad.ViewModels.Toolboxes;
 
 public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
-    private const int MaximumToolRounds = 12;
-
     private readonly IAiChatClient _chatClient;
+    private readonly IAgentRunner _agentRunner;
     private readonly IAiAssistantSettingsStore _settingsStore;
-    private readonly ICadAiWorkspaceService _workspaceService;
-    private readonly List<AiChatMessage> _conversation = [];
+    private readonly ICadToolWorkspace _workspace;
+    private readonly AgentConversation _conversation = new();
     private CancellationTokenSource? _requestCancellation;
     private CadDocumentViewModel? _documentViewModel;
     private bool _isApplyingSettings;
@@ -25,13 +26,15 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
         IToolboxIconProvider toolboxIconProvider,
         IAiChatClient chatClient,
+        IAgentRunner agentRunner,
         IAiAssistantSettingsStore settingsStore,
-        ICadAiWorkspaceService workspaceService)
+        ICadToolWorkspace workspace)
         : base(toolboxLayoutSettingsStore, "toolbox.ai-assistant", DockZone.RightBottom, isOpenByDefault: false)
     {
         _chatClient = chatClient;
+        _agentRunner = agentRunner;
         _settingsStore = settingsStore;
-        _workspaceService = workspaceService;
+        _workspace = workspace;
         Title = Resource("AiAssistant", "AI Assistant");
         Icon = toolboxIconProvider.Assistant;
         Shortcut = "Ctrl+Shift+A";
@@ -145,55 +148,33 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
 
         UserInput = string.Empty;
         Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, prompt));
-        _conversation.Add(AiChatMessage.User(prompt));
-        var executor = new CadAiWorkspaceToolExecutor(_workspaceService);
-        var availableTools = EnableCadTools ? CadAiWorkspaceToolExecutor.ToolDefinitions : [];
-        var selectedTools = EnableCadTools
-            ? CadAiToolSelector.Select(prompt, availableTools)
-            : [];
+        _conversation.AddUser(prompt);
+        var toolset = new CadAgentToolset(_workspace);
 
         BeginRequest();
         var cancellationToken = _requestCancellation!.Token;
         try
         {
             ConnectionStatus = Resource("AiGenerating", "Generating...");
-            for (var round = 0; round < MaximumToolRounds; round++)
-            {
-                var completion = await CompleteWithContextRetryAsync(
-                    executor.CreateSystemPrompt(),
+            var result = await _agentRunner.RunAsync(
+                new AgentRunRequest(
+                    Endpoint,
+                    SelectedModel,
+                    toolset.CreateSystemPrompt(),
                     prompt,
-                    selectedTools,
-                    availableTools,
-                    cancellationToken);
+                    _conversation,
+                    ContextWindowTokens,
+                    Temperature,
+                    EnableCadTools ? toolset : null),
+                ReportAgentEventAsync,
+                cancellationToken);
 
-                _conversation.Add(AiChatMessage.Assistant(completion.Content, completion.ToolCalls));
-                if (!string.IsNullOrWhiteSpace(completion.Content))
-                    Messages.Add(new AiChatItemViewModel(AiChatItemKind.Assistant, completion.Content.Trim()));
-
-                if (completion.ToolCalls.Count == 0)
-                {
-                    if (string.IsNullOrWhiteSpace(completion.Content))
-                        AddError(Resource("AiEmptyResponse", "The model returned an empty response."));
-                    ConnectionStatus = string.Format(
-                        Resource("AiReadyModelFormat", "Ready: {0}"),
-                        completion.Model ?? SelectedModel);
-                    return;
-                }
-
-                if (!EnableCadTools)
-                    throw new InvalidOperationException("The model requested CAD tools, but CAD tools are unavailable.");
-
-                foreach (var toolCall in completion.ToolCalls)
-                {
-                    var result = await executor.ExecuteAsync(toolCall, cancellationToken);
-                    _conversation.Add(AiChatMessage.Tool(toolCall.Id, result));
-                    Messages.Add(new AiChatItemViewModel(
-                        AiChatItemKind.Tool,
-                        $"{toolCall.Name}: {CreateToolResultSummary(result)}"));
-                }
-            }
-
-            throw new InvalidOperationException("The model exceeded the maximum number of CAD tool rounds.");
+            ContextWindowTokens = result.ContextWindowTokens;
+            if (result.ResponseWasEmpty)
+                AddError(Resource("AiEmptyResponse", "The model returned an empty response."));
+            ConnectionStatus = string.Format(
+                Resource("AiReadyModelFormat", "Ready: {0}"),
+                result.Model ?? SelectedModel);
         }
         catch (OperationCanceledException)
         {
@@ -280,57 +261,26 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         IsBusy = true;
     }
 
-    private async Task<AiChatCompletion> CompleteWithContextRetryAsync(
-        string systemPrompt,
-        string userPrompt,
-        IReadOnlyList<AiToolDefinition> selectedTools,
-        IReadOnlyList<AiToolDefinition> availableTools,
-        CancellationToken cancellationToken)
+    private ValueTask ReportAgentEventAsync(AgentRunEvent agentEvent)
     {
-        var contextWindow = Math.Clamp(
-            ContextWindowTokens,
-            AiAssistantSettings.MinimumContextWindowTokens,
-            AiAssistantSettings.MaximumContextWindowTokens);
-        for (var attempt = 0; attempt < 2; attempt++)
+        switch (agentEvent.Kind)
         {
-            var aggressive = attempt > 0;
-            var tools = aggressive && availableTools.Count > 0
-                ? CadAiToolSelector.Select(userPrompt, availableTools, aggressive: true)
-                : selectedTools;
-            var context = CadAiRequestContextBuilder.Build(
-                systemPrompt,
-                _conversation,
-                tools,
-                contextWindow,
-                aggressive);
-            try
-            {
-                return await _chatClient.CompleteAsync(
-                    new AiChatRequest(
-                        Endpoint,
-                        SelectedModel!,
-                        context.Messages,
-                        context.Tools,
-                        Temperature,
-                        context.MaxOutputTokens),
-                    cancellationToken);
-            }
-            catch (AiContextWindowExceededException exception) when (attempt == 0)
-            {
-                if (exception.ContextWindowTokens is { } reportedContext)
-                {
-                    contextWindow = Math.Clamp(
-                        reportedContext,
-                        AiAssistantSettings.MinimumContextWindowTokens,
-                        AiAssistantSettings.MaximumContextWindowTokens);
-                    ContextWindowTokens = contextWindow;
-                }
-
+            case AgentRunEventKind.AssistantMessage when !string.IsNullOrWhiteSpace(agentEvent.Content):
+                Messages.Add(new AiChatItemViewModel(AiChatItemKind.Assistant, agentEvent.Content));
+                break;
+            case AgentRunEventKind.ToolResult when agentEvent.ToolName is not null:
+                Messages.Add(new AiChatItemViewModel(
+                    AiChatItemKind.Tool,
+                    $"{agentEvent.ToolName}: {CreateToolResultSummary(agentEvent.Content ?? string.Empty)}"));
+                break;
+            case AgentRunEventKind.ContextReduced:
+                if (agentEvent.ContextWindowTokens is { } contextWindowTokens)
+                    ContextWindowTokens = contextWindowTokens;
                 ConnectionStatus = Resource("AiReducingContext", "Reducing conversation context and retrying...");
-            }
+                break;
         }
 
-        throw new InvalidOperationException("The AI request could not fit in the configured context window.");
+        return ValueTask.CompletedTask;
     }
 
     private void EndRequest()

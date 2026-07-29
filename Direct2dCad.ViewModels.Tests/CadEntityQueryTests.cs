@@ -2,23 +2,23 @@ using System.Text.Json;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
-using Direct2dCad.ViewModels.AI;
+using Direct2dCad.ViewModels.Tools;
 
 namespace Direct2dCad.ViewModels.Tests;
 
-public sealed class CadAiEntityQueryTests
+public sealed class CadEntityQueryTests
 {
     [Fact]
     public void Statistics_ReturnCompleteCurrentSpaceAndDocumentTypeInventories()
     {
         var document = CreateMixedDocument();
 
-        var result = CadAiEntityQuery.CreateStatistics(
+        var result = CadEntityQuery.CreateStatistics(
             document,
             BlockId.ModelSpace,
             new HashSet<EntityId>(),
-            new CadAiEntityQueryOptions(
-                CadAiEntityQuery.CurrentSpaceScope,
+            new CadEntityQueryOptions(
+                CadEntityQuery.CurrentSpaceScope,
                 null,
                 null,
                 SelectedOnly: false));
@@ -38,12 +38,12 @@ public sealed class CadAiEntityQueryTests
     public void FilteredPage_StillReportsUnfilteredScopeCountsAndPagination()
     {
         var document = CreateMixedDocument();
-        var result = CadAiEntityQuery.CreatePage(
+        var result = CadEntityQuery.CreatePage(
             document,
             BlockId.ModelSpace,
             new HashSet<EntityId>(),
-            new CadAiEntityQueryOptions(
-                CadAiEntityQuery.CurrentSpaceScope,
+            new CadEntityQueryOptions(
+                CadEntityQuery.CurrentSpaceScope,
                 "Circle",
                 null,
                 SelectedOnly: false,
@@ -63,7 +63,7 @@ public sealed class CadAiEntityQueryTests
     [Fact]
     public void QueryToolSchemas_DistinguishStatisticsFromPagedDetails()
     {
-        var tools = CadAiToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var tools = CadDocumentToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
         var statistics = tools["get_entity_statistics"].Parameters.GetProperty("properties");
         var list = tools["list_entities"].Parameters.GetProperty("properties");
 
@@ -94,12 +94,12 @@ public sealed class CadAiEntityQueryTests
         document.AddCircle(new CadPointD(30, 30), 1, name: "Small Circle");
         document.AddLine(CadPointD.Origin, new CadPointD(20, 0), name: "Target Line");
 
-        var result = CadAiEntityQuery.CreatePage(
+        var result = CadEntityQuery.CreatePage(
             document,
             BlockId.ModelSpace,
             new HashSet<EntityId> { target.Id },
-            new CadAiEntityQueryOptions(
-                CadAiEntityQuery.CurrentSpaceScope,
+            new CadEntityQueryOptions(
+                CadEntityQuery.CurrentSpaceScope,
                 null,
                 null,
                 SelectedOnly: true,
@@ -131,12 +131,12 @@ public sealed class CadAiEntityQueryTests
         document.AddText("Door A-200", new CadPointD(10, 0), 4, name: "Note 1");
         document.AddText("Window B-100", new CadPointD(20, 0), 3, name: "Other");
 
-        var result = CadAiEntityQuery.CreatePage(
+        var result = CadEntityQuery.CreatePage(
             document,
             BlockId.ModelSpace,
             new HashSet<EntityId>(),
-            new CadAiEntityQueryOptions(
-                CadAiEntityQuery.CurrentSpaceScope,
+            new CadEntityQueryOptions(
+                CadEntityQuery.CurrentSpaceScope,
                 "Text",
                 null,
                 SelectedOnly: false,
@@ -173,9 +173,9 @@ public sealed class CadAiEntityQueryTests
             }
             """);
 
-        var options = CadAiEntityQueryProtocol.Parse(arguments.RootElement, paged: true, maximumListedEntities: 200);
+        var options = CadEntityQueryProtocol.Parse(arguments.RootElement, paged: true, maximumListedEntities: 200);
 
-        Assert.Equal(CadAiEntityQuery.DocumentScope, options.Scope);
+        Assert.Equal(CadEntityQuery.DocumentScope, options.Scope);
         Assert.Equal(["Circle", "Arc"], options.Types);
         Assert.Equal("bearing", options.NameContains);
         Assert.Equal("hatch", options.FillKind);

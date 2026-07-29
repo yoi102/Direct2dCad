@@ -1,9 +1,9 @@
 using System.Text.Json;
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal static class CadAiEntityQueryProtocol
+internal static class CadEntityQueryProtocol
 {
     internal static object CreateSchema(bool paged, int maximumListedEntities)
     {
@@ -12,7 +12,7 @@ internal static class CadAiEntityQueryProtocol
             ["scope"] = new
             {
                 type = "string",
-                @enum = new[] { CadAiEntityQuery.CurrentSpaceScope, CadAiEntityQuery.DocumentScope },
+                @enum = new[] { CadEntityQuery.CurrentSpaceScope, CadEntityQuery.DocumentScope },
                 description = "Current editing space or every entity owned by any model, paper, or block space."
             },
             ["type"] = String("One entity type. Omit it when asking which types exist."),
@@ -34,17 +34,17 @@ internal static class CadAiEntityQueryProtocol
         };
     }
 
-    internal static CadAiEntityQueryOptions Parse(
+    internal static CadEntityQueryOptions Parse(
         JsonElement arguments,
         bool paged,
         int maximumListedEntities)
     {
-        var scope = (OptionalString(arguments, "scope") ?? CadAiEntityQuery.CurrentSpaceScope)
+        var scope = (OptionalString(arguments, "scope") ?? CadEntityQuery.CurrentSpaceScope)
             .ToLowerInvariant();
-        if (scope is not (CadAiEntityQuery.CurrentSpaceScope or CadAiEntityQuery.DocumentScope))
+        if (scope is not (CadEntityQuery.CurrentSpaceScope or CadEntityQuery.DocumentScope))
             throw new ArgumentException("scope must be current_space or document.");
 
-        return new CadAiEntityQueryOptions(
+        return new CadEntityQueryOptions(
             scope,
             OptionalString(arguments, "type"),
             OptionalString(arguments, "layer"),

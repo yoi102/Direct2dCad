@@ -1,8 +1,8 @@
 using Direct2dCad.Db.Geometry;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
-internal sealed record CadAiEntityQueryOptions(
+internal sealed record CadEntityQueryOptions(
     string Scope,
     string? Type,
     string? Layer,

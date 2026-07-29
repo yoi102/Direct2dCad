@@ -103,7 +103,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         return TrySaveFileAsync();
     }
 
-    internal async Task<bool> SaveForAiAsync(CancellationToken cancellationToken)
+    internal async Task<bool> SaveForWorkspaceToolAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!string.IsNullOrWhiteSpace(CurrentFilePath))
@@ -116,10 +116,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (selectedFileName is null)
             return false;
 
-        return await SaveToFileForAiAsync(selectedFileName, cancellationToken);
+        return await SaveToFileForWorkspaceToolAsync(selectedFileName, cancellationToken);
     }
 
-    internal async Task<bool> SaveToFileForAiAsync(string filePath, CancellationToken cancellationToken)
+    internal async Task<bool> SaveToFileForWorkspaceToolAsync(string filePath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!await SaveToAsync(filePath, cancellationToken))

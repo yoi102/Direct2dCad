@@ -1,13 +1,13 @@
-using Direct2dCad.ViewModels.AI;
+using Direct2dCad.ViewModels.Tools;
 
 namespace Direct2dCad.ViewModels.Tests;
 
-public sealed class CadAiCommandLineServiceTests
+public sealed class CadToolCommandLineServiceTests
 {
     [Fact]
-    public async Task ToolsAndToolHelp_ExposeTheSharedAiToolCatalog()
+    public async Task ToolsAndToolHelp_ExposeTheSharedToolCatalog()
     {
-        var service = new CadAiCommandLineService(new EmptyWorkspace());
+        var service = new CadToolCommandLineService(new EmptyWorkspace());
 
         var tools = await service.TryExecuteAsync("TOOLS circle");
         var help = await service.TryExecuteAsync("TOOLHELP add_circle");
@@ -24,7 +24,7 @@ public sealed class CadAiCommandLineServiceTests
     [Fact]
     public async Task DirectToolName_ExecutesThroughWorkspaceToolExecutor()
     {
-        var service = new CadAiCommandLineService(new EmptyWorkspace());
+        var service = new CadToolCommandLineService(new EmptyWorkspace());
 
         var execution = await service.TryExecuteAsync("list_documents {}");
 
@@ -37,7 +37,7 @@ public sealed class CadAiCommandLineServiceTests
     [Fact]
     public async Task BuiltInCollision_RequiresExplicitToolPrefix()
     {
-        var service = new CadAiCommandLineService(new EmptyWorkspace());
+        var service = new CadToolCommandLineService(new EmptyWorkspace());
 
         var builtIn = await service.TryExecuteAsync("undo");
         var explicitTool = await service.TryExecuteAsync("TOOL undo {}");
@@ -51,7 +51,7 @@ public sealed class CadAiCommandLineServiceTests
     [Fact]
     public void Complete_IncludesDirectAndPrefixedToolSyntax()
     {
-        var service = new CadAiCommandLineService(new EmptyWorkspace());
+        var service = new CadToolCommandLineService(new EmptyWorkspace());
 
         Assert.Contains("add_circle", service.Complete("add_c"));
         Assert.Contains("TOOL add_circle", service.Complete("TOOL add_c"));
@@ -61,7 +61,7 @@ public sealed class CadAiCommandLineServiceTests
     [Fact]
     public async Task NonJsonArguments_ReturnActionableError()
     {
-        var service = new CadAiCommandLineService(new EmptyWorkspace());
+        var service = new CadToolCommandLineService(new EmptyWorkspace());
 
         var execution = await service.TryExecuteAsync("add_circle center_x=0");
 
@@ -70,15 +70,15 @@ public sealed class CadAiCommandLineServiceTests
         Assert.Contains("JSON object", execution.Message, StringComparison.Ordinal);
     }
 
-    private sealed class EmptyWorkspace : ICadAiWorkspaceService
+    private sealed class EmptyWorkspace : ICadToolWorkspace
     {
-        public IReadOnlyList<CadAiWorkspaceDocument> GetDocuments() => [];
-        public CadAiWorkspaceDocument? GetActiveDocument() => null;
-        public CadAiWorkspaceDocument GetRequiredDocument(string documentId) =>
+        public IReadOnlyList<CadToolWorkspaceDocument> GetDocuments() => [];
+        public CadToolWorkspaceDocument? GetActiveDocument() => null;
+        public CadToolWorkspaceDocument GetRequiredDocument(string documentId) =>
             throw new ArgumentException($"Open document not found: {documentId}");
-        public CadAiWorkspaceDocument CreateDocument(string? name) =>
+        public CadToolWorkspaceDocument CreateDocument(string? name) =>
             throw new NotSupportedException();
-        public Task<CadAiWorkspaceDocument> OpenDocumentAsync(
+        public Task<CadToolWorkspaceDocument> OpenDocumentAsync(
             string filePath,
             CancellationToken cancellationToken) =>
             throw new NotSupportedException();

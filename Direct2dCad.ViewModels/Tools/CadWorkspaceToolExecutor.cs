@@ -11,13 +11,13 @@ using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
-namespace Direct2dCad.ViewModels.AI;
+namespace Direct2dCad.ViewModels.Tools;
 
 /// <summary>
-/// Routes one AI request across the open-document workspace. Each touched document
+/// Routes one tool execution session across the open-document workspace. Each touched document
 /// receives its own command batch so its undo history remains independent.
 /// </summary>
-internal sealed class CadAiWorkspaceToolExecutor
+internal sealed class CadWorkspaceToolExecutor
 {
     private static readonly HashSet<string> CreationToolNames =
     [
@@ -25,11 +25,11 @@ internal sealed class CadAiWorkspaceToolExecutor
         "add_arc", "add_ellipse", "add_polygon", "add_spline", "add_composite_path"
     ];
 
-    private readonly ICadAiWorkspaceService _workspace;
-    private readonly Dictionary<string, CadAiToolExecutor> _documentExecutors = new(StringComparer.Ordinal);
+    private readonly ICadToolWorkspace _workspace;
+    private readonly Dictionary<string, CadDocumentToolExecutor> _documentExecutors = new(StringComparer.Ordinal);
     private string? _defaultDocumentId;
 
-    public CadAiWorkspaceToolExecutor(ICadAiWorkspaceService workspace)
+    public CadWorkspaceToolExecutor(ICadToolWorkspace workspace)
     {
         _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
         _defaultDocumentId = workspace.GetActiveDocument()?.DocumentId;
@@ -37,7 +37,7 @@ internal sealed class CadAiWorkspaceToolExecutor
 
     public static IReadOnlyList<AiToolDefinition> ToolDefinitions { get; } = BuildToolDefinitions();
 
-    public string CreateSystemPrompt()
+    public string CreateToolUsageInstructions()
     {
         var documents = _workspace.GetDocuments();
         var documentSummary = documents.Count == 0
@@ -46,7 +46,7 @@ internal sealed class CadAiWorkspaceToolExecutor
                 $"document_id={document.DocumentId}, name='{document.Name}', cad_document_id={document.CadDocumentId}, active={document.IsActive}, modified={document.IsModified}"));
 
         var activeDetails = TryGetDefaultDocument() is { } active
-            ? GetExecutor(active).CreateSystemPrompt()
+            ? GetExecutor(active).CreateToolUsageInstructions()
             : "CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees.";
 
         return $$"""
@@ -84,15 +84,15 @@ internal sealed class CadAiWorkspaceToolExecutor
                 "insert_block" => ExecuteForDocument(root, InsertBlock),
                 "add_composite_path" => ExecuteForDocument(root, AddCompositePath),
                 "add_entities" => ExecuteForDocument(root, AddEntities),
-                _ when CadAiLayerTools.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
+                _ when CadLayerTools.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
                     ExecuteForDocument(root, (executor, arguments) =>
-                        new CadAiLayerTools(
+                        new CadLayerTools(
                             executor.DocumentViewModel.CadEditor.Document,
                             executor.ExecuteCommand)
                         .Execute(toolCall.Name, arguments)),
                 "get_entity_geometry" or "set_entity_geometry" or "transform_entities" or "duplicate_entities" =>
-                    ExecuteForDocument(root, (executor, arguments) => CadAiGeometryTools.Execute(executor, toolCall.Name, arguments)),
-                _ when CadAiToolExecutor.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
+                    ExecuteForDocument(root, (executor, arguments) => CadGeometryTools.Execute(executor, toolCall.Name, arguments)),
+                _ when CadDocumentToolExecutor.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
                     ExecuteLegacyDocumentTool(toolCall, root),
                 _ => Error($"Unknown CAD tool: {toolCall.Name}")
             };
@@ -196,14 +196,14 @@ internal sealed class CadAiWorkspaceToolExecutor
         });
     }
 
-    private object AddEntities(CadAiToolExecutor executor, JsonElement arguments)
+    private object AddEntities(CadDocumentToolExecutor executor, JsonElement arguments)
     {
-        var items = CadAiBulkCreationTools.Parse(arguments);
+        var items = CadBulkCreationTools.Parse(arguments);
 
         foreach (var item in items)
         {
             if (item.ToolName == "add_composite_path")
-                _ = CadAiCompositePathTools.Parse(item.Arguments);
+                _ = CadCompositePathTools.Parse(item.Arguments);
             else
                 executor.ValidateCreationTool(item.ToolName, item.Arguments);
             ValidateCreationAppearance(item.ToolName, item.Arguments, executor);
@@ -228,7 +228,7 @@ internal sealed class CadAiWorkspaceToolExecutor
     }
 
     private (EntityId EntityId, IReadOnlyList<string> Appearance) ExecuteCreationTool(
-        CadAiToolExecutor executor,
+        CadDocumentToolExecutor executor,
         string toolName,
         JsonElement arguments)
     {
@@ -247,9 +247,9 @@ internal sealed class CadAiWorkspaceToolExecutor
         return (createdEntityId, changedFields);
     }
 
-    private EntityId CreateCompositePath(CadAiToolExecutor executor, JsonElement arguments)
+    private EntityId CreateCompositePath(CadDocumentToolExecutor executor, JsonElement arguments)
     {
-        var geometry = CadAiCompositePathTools.Parse(arguments);
+        var geometry = CadCompositePathTools.Parse(arguments);
         var layerId = HasValue(arguments, "layer")
             ? executor.ResolveLayerForTool(RequiredString(arguments, "layer"))
             : executor.DocumentViewModel.DrawingLayerId;
@@ -267,7 +267,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         return entityId;
     }
 
-    private object AddCompositePath(CadAiToolExecutor executor, JsonElement arguments)
+    private object AddCompositePath(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         ValidateCreationAppearance("add_composite_path", arguments, executor);
         var id = CreateCompositePath(executor, arguments);
@@ -285,7 +285,7 @@ internal sealed class CadAiWorkspaceToolExecutor
 
     private string ExecuteForDocument(
         JsonElement arguments,
-        Func<CadAiToolExecutor, JsonElement, object> operation)
+        Func<CadDocumentToolExecutor, JsonElement, object> operation)
     {
         var document = ResolveDocument(arguments);
         var result = operation(GetExecutor(document), arguments);
@@ -293,7 +293,7 @@ internal sealed class CadAiWorkspaceToolExecutor
     }
 
     private object ListDocumentCatalog(
-        CadAiToolExecutor executor,
+        CadDocumentToolExecutor executor,
         JsonElement _)
     {
         var document = executor.DocumentViewModel.CadEditor.Document;
@@ -348,7 +348,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         };
     }
 
-    private object CreateBlock(CadAiToolExecutor executor, JsonElement arguments)
+    private object CreateBlock(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         var editor = executor.DocumentViewModel.CadEditor;
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: true);
@@ -379,7 +379,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         };
     }
 
-    private object InsertBlock(CadAiToolExecutor executor, JsonElement arguments)
+    private object InsertBlock(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         var editor = executor.DocumentViewModel.CadEditor;
         var definition = ResolveBlock(editor.Document, RequiredString(arguments, "block"));
@@ -407,7 +407,7 @@ internal sealed class CadAiWorkspaceToolExecutor
     }
 
     private object SetEntityCommonProperties(
-        CadAiToolExecutor executor,
+        CadDocumentToolExecutor executor,
         JsonElement arguments)
     {
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: false);
@@ -516,7 +516,7 @@ internal sealed class CadAiWorkspaceToolExecutor
     }
 
     private object SetEntityFill(
-        CadAiToolExecutor executor,
+        CadDocumentToolExecutor executor,
         JsonElement arguments)
     {
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: false);
@@ -536,7 +536,7 @@ internal sealed class CadAiWorkspaceToolExecutor
     }
 
     private object SetEntityStrokeStyle(
-        CadAiToolExecutor executor,
+        CadDocumentToolExecutor executor,
         JsonElement arguments)
     {
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: false);
@@ -571,7 +571,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         return new { entity_ids = ids.Select(id => id.Value).ToArray(), changed_fields = changedFields };
     }
 
-    private void ValidateCreationAppearance(string toolName, JsonElement arguments, CadAiToolExecutor executor)
+    private void ValidateCreationAppearance(string toolName, JsonElement arguments, CadDocumentToolExecutor executor)
     {
         var document = executor.DocumentViewModel.CadEditor.Document;
         if (HasValue(arguments, "color") && HasValue(arguments, "graphic_style"))
@@ -681,7 +681,7 @@ internal sealed class CadAiWorkspaceToolExecutor
     }
 
     private IReadOnlyList<string> ApplyCreationAppearance(
-        CadAiToolExecutor executor,
+        CadDocumentToolExecutor executor,
         EntityId entityId,
         JsonElement arguments)
     {
@@ -728,7 +728,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         return changed;
     }
 
-    private CadAiWorkspaceDocument ResolveDocument(JsonElement arguments)
+    private CadToolWorkspaceDocument ResolveDocument(JsonElement arguments)
     {
         var documentId = OptionalString(arguments, "document_id") ?? _defaultDocumentId;
         if (documentId is null)
@@ -736,7 +736,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         return _workspace.GetRequiredDocument(documentId);
     }
 
-    private CadAiWorkspaceDocument? TryGetDefaultDocument()
+    private CadToolWorkspaceDocument? TryGetDefaultDocument()
     {
         if (_defaultDocumentId is null)
             return null;
@@ -750,7 +750,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         }
     }
 
-    private CadAiToolExecutor GetExecutor(CadAiWorkspaceDocument document)
+    private CadDocumentToolExecutor GetExecutor(CadToolWorkspaceDocument document)
     {
         if (_documentExecutors.TryGetValue(document.DocumentId, out var executor) &&
             ReferenceEquals(executor.DocumentViewModel, document.DocumentViewModel))
@@ -758,7 +758,7 @@ internal sealed class CadAiWorkspaceToolExecutor
             return executor;
         }
 
-        executor = new CadAiToolExecutor(document.DocumentViewModel, Guid.NewGuid());
+        executor = new CadDocumentToolExecutor(document.DocumentViewModel, Guid.NewGuid());
         _documentExecutors[document.DocumentId] = executor;
         return executor;
     }
@@ -932,7 +932,7 @@ internal sealed class CadAiWorkspaceToolExecutor
         return root.ToJsonString();
     }
 
-    private static object DocumentDto(CadAiWorkspaceDocument document) => new
+    private static object DocumentDto(CadToolWorkspaceDocument document) => new
     {
         document_id = document.DocumentId,
         cad_document_id = document.CadDocumentId,
@@ -1064,12 +1064,12 @@ internal sealed class CadAiWorkspaceToolExecutor
 
     private static IReadOnlyList<AiToolDefinition> BuildToolDefinitions()
     {
-        var tools = CadAiToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
+        var tools = CadDocumentToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
         tools.AddRange(WorkspaceToolDefinitions());
-        tools.AddRange(CadAiGeometryTools.ToolDefinitions);
-        tools.AddRange(CadAiLayerTools.ToolDefinitions);
-        tools.Add(CadAiBulkCreationTools.ToolDefinition);
-        tools.Add(CadAiCompositePathTools.ToolDefinition);
+        tools.AddRange(CadGeometryTools.ToolDefinitions);
+        tools.AddRange(CadLayerTools.ToolDefinitions);
+        tools.Add(CadBulkCreationTools.ToolDefinition);
+        tools.Add(CadCompositePathTools.ToolDefinition);
         tools.Add(Tool("list_document_catalog", "List layers and reusable graphic, fill, hatch, and text styles for a document.",
             ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
         tools.Add(Tool("set_entity_common_properties", "Set undoable common entity properties in one document batch. color overrides graphic_style.",
