@@ -7,7 +7,7 @@ namespace Direct2dCad.Db.Cad;
 /// </summary>
 public sealed class CadIdGenerator
 {
-    private long _nextDocumentId;
+    private Guid _nextDocumentId;
     private long _nextEntityId;
     private long _nextLayerId;
     private long _nextBlockId;
@@ -26,7 +26,7 @@ public sealed class CadIdGenerator
         long nextLayoutId = 2,
         long nextLayoutViewportId = 1)
     {
-        _nextDocumentId = GuardNext(nextDocumentId, nameof(nextDocumentId));
+        _nextDocumentId = Guid.NewGuid();
         _nextEntityId = GuardNext(nextEntityId, nameof(nextEntityId));
         _nextLayerId = Math.Max(2, GuardNext(nextLayerId, nameof(nextLayerId)));
         _nextBlockId = Math.Max(3, GuardNext(nextBlockId, nameof(nextBlockId)));
@@ -36,7 +36,7 @@ public sealed class CadIdGenerator
         _nextLayoutViewportId = GuardNext(nextLayoutViewportId, nameof(nextLayoutViewportId));
     }
 
-    public DocumentId NewDocumentId() => new(_nextDocumentId++);
+    public DocumentId NewDocumentId() => new(_nextDocumentId);
     public EntityId NewEntityId() => new(_nextEntityId++);
     public LayerId NewLayerId() => new(_nextLayerId++);
     public BlockId NewBlockId() => new(_nextBlockId++);
@@ -45,7 +45,7 @@ public sealed class CadIdGenerator
     public LayoutId NewLayoutId() => new(_nextLayoutId++);
     public LayoutViewportId NewLayoutViewportId() => new(_nextLayoutViewportId++);
 
-    internal void RegisterExisting(DocumentId id) => _nextDocumentId = Math.Max(_nextDocumentId, id.Value + 1);
+    internal void RegisterExisting(DocumentId id) => _nextDocumentId = id.Value == _nextDocumentId ? Guid.NewGuid() : _nextDocumentId;
     internal void RegisterExisting(EntityId id) => _nextEntityId = Math.Max(_nextEntityId, id.Value + 1);
     internal void RegisterExisting(LayerId id) => _nextLayerId = Math.Max(_nextLayerId, id.Value + 1);
     internal void RegisterExisting(BlockId id) => _nextBlockId = Math.Max(_nextBlockId, id.Value + 1);

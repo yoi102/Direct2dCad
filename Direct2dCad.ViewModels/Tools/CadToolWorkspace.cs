@@ -8,7 +8,7 @@ namespace Direct2dCad.ViewModels.Tools;
 
 public sealed record CadToolWorkspaceDocument(
     string DocumentId,
-    long CadDocumentId,
+    Guid CadDocumentId,
     string Name,
     string FilePath,
     bool IsModified,

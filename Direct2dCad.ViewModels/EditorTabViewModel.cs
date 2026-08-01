@@ -83,8 +83,9 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ApplyDocumentViewSettingsToToolbar();
         ApplyUserSettingsToToolbar();
         CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
-        ContentId = Id = Guid.NewGuid().ToString();
-        ToolTip = Title = cadDocumentViewModel.CadEditor.Document.Name;
+        ContentId = Id = cadDocumentViewModel.CadEditor.Document.Id.ToString();
+        Title = cadDocumentViewModel.CadEditor.Document.Name;
+        ToolTip = $"id: {cadDocumentViewModel.CadEditor.Document.Id}";
         ResetModificationBaseline(isModified: string.IsNullOrWhiteSpace(CurrentFilePath));
 
     }

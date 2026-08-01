@@ -83,8 +83,15 @@
                                                           FontSize="13"
                                                           FontWeight="SemiBold"
                                                           TextTrimming="CharacterEllipsis"
-                                                          EmptyTextErrorMessage="{I18N {x:Static r:LangKeys.DocumentNameCannotBeEmpty}}"
-                                                          ToolTip="{Binding ToolTipText}" />
+                                                          EmptyTextErrorMessage="{I18N {x:Static r:LangKeys.DocumentNameCannotBeEmpty}}">
+                                        <yr:EditableTextBlock.ToolTip>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Document.Id, StringFormat='id: {0}'}" />
+                                                <TextBlock Text="{Binding ToolTipText}" />
+                                            </StackPanel>
+                                        </yr:EditableTextBlock.ToolTip>
+                                        
+                                    </yr:EditableTextBlock>
 
                                     <TextBlock x:Name="ModifiedMarker"
                                                Grid.Column="1"

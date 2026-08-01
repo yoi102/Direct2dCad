@@ -2,7 +2,7 @@ using StronglyTypedIds;
 
 namespace Direct2dCad.Db;
 
-[StronglyTypedId(Template.Long)]
+[StronglyTypedId(Template.Guid)]
 public partial struct DocumentId
 {
 }
