@@ -12,6 +12,8 @@ public sealed class AiAssistantSettings
     public const int DefaultContextWindowTokens = 8192;
     public const int MinimumContextWindowTokens = 4096;
     public const int MaximumContextWindowTokens = 262144;
+    public const string DefaultCodexServiceTier = "default";
+    public const string FastCodexServiceTier = "fast";
 
     public AiAssistantProvider Provider { get; set; } = AiAssistantProvider.LmStudio;
     public string Endpoint { get; set; } = DefaultEndpoint;
@@ -22,7 +24,7 @@ public sealed class AiAssistantSettings
     public string CodexExecutablePath { get; set; } = "codex";
     public string CodexModel { get; set; } = string.Empty;
     public string CodexReasoningEffort { get; set; } = "medium";
-    public string CodexServiceTier { get; set; } = "flex";
+    public string CodexServiceTier { get; set; } = DefaultCodexServiceTier;
 
     public void Normalize()
     {
@@ -42,9 +44,12 @@ public sealed class AiAssistantSettings
             : CodexExecutablePath.Trim();
         CodexModel = CodexModel?.Trim() ?? string.Empty;
         CodexReasoningEffort = NormalizeReasoningEffort(CodexReasoningEffort);
-        CodexServiceTier = string.Equals(CodexServiceTier, "fast", StringComparison.OrdinalIgnoreCase)
-            ? "fast"
-            : "flex";
+        CodexServiceTier = string.Equals(
+            CodexServiceTier,
+            FastCodexServiceTier,
+            StringComparison.OrdinalIgnoreCase)
+            ? FastCodexServiceTier
+            : DefaultCodexServiceTier;
     }
 
     public AiAssistantSettings Clone()

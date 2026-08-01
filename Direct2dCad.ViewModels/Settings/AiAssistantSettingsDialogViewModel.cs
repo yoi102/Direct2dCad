@@ -36,7 +36,8 @@ public partial class AiAssistantSettingsDialogViewModel : ObservableObject
     public IReadOnlyList<string> ReasoningEffortOptions { get; } =
         ["none", "minimal", "low", "medium", "high", "xhigh"];
 
-    public IReadOnlyList<string> ServiceTierOptions { get; } = ["flex", "fast"];
+    public IReadOnlyList<string> ServiceTierOptions { get; } =
+        [AiAssistantSettings.DefaultCodexServiceTier, AiAssistantSettings.FastCodexServiceTier];
 
     public ObservableCollection<string> LmStudioModels { get; } = [];
     public ObservableCollection<string> CodexModels { get; } = [];
@@ -82,7 +83,8 @@ public partial class AiAssistantSettingsDialogViewModel : ObservableObject
     public partial string CodexReasoningEffort { get; set; } = "medium";
 
     [ObservableProperty]
-    public partial string CodexServiceTier { get; set; } = "flex";
+    public partial string CodexServiceTier { get; set; } =
+        AiAssistantSettings.DefaultCodexServiceTier;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RefreshModelsCommand))]

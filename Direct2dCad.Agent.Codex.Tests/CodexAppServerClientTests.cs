@@ -8,6 +8,54 @@ namespace Direct2dCad.Agent.Codex.Tests;
 public sealed class CodexAppServerClientTests
 {
     [Fact]
+    public void CreateStartInfo_UsesBomlessUtf8ForStdio()
+    {
+        var startInfo = ProcessCodexAppServerTransport.CreateStartInfo(
+            OperatingSystem.IsWindows() ? @"C:\Tools\codex.exe" : "/usr/bin/codex",
+            "default");
+
+        Assert.Empty(startInfo.StandardInputEncoding!.GetPreamble());
+        Assert.Empty(startInfo.StandardOutputEncoding!.GetPreamble());
+        Assert.Empty(startInfo.StandardErrorEncoding!.GetPreamble());
+    }
+
+    [Fact]
+    public void CreateStartInfo_OnWindows_UsesCmdCommandLineWithoutDefaultServiceTier()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var startInfo = ProcessCodexAppServerTransport.CreateStartInfo(
+            @"C:\Program Files\Codex\codex.cmd",
+            "default");
+
+        Assert.Equal(
+            Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe",
+            startInfo.FileName);
+        Assert.Empty(startInfo.ArgumentList);
+        Assert.Contains("/d /s /c", startInfo.Arguments, StringComparison.Ordinal);
+        Assert.Contains(
+            "\"C:\\Program Files\\Codex\\codex.cmd\"",
+            startInfo.Arguments,
+            StringComparison.Ordinal);
+        Assert.Contains("app-server --listen stdio://", startInfo.Arguments, StringComparison.Ordinal);
+        Assert.DoesNotContain("service_tier", startInfo.Arguments, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateStartInfo_FastMode_InjectsFastServiceTier()
+    {
+        var startInfo = ProcessCodexAppServerTransport.CreateStartInfo(
+            OperatingSystem.IsWindows() ? @"C:\Tools\codex.cmd" : "/usr/bin/codex",
+            "fast");
+
+        if (OperatingSystem.IsWindows())
+            Assert.Contains("service_tier=\\\"fast\\\"", startInfo.Arguments, StringComparison.Ordinal);
+        else
+            Assert.Contains("service_tier=\"fast\"", startInfo.ArgumentList);
+    }
+
+    [Fact]
     public async Task GetModelsAsync_InitializesConnectionAndReturnsDistinctModels()
     {
         using var server = new FakeAppServer();
@@ -68,6 +116,7 @@ public sealed class CodexAppServerClientTests
                             threadId = "thread-1",
                             turnId = "turn-1",
                             callId = "call-1",
+                            @namespace = "direct2dcad",
                             tool = "inspect",
                             arguments = new { entityId = "entity-1" }
                         }
@@ -135,7 +184,73 @@ public sealed class CodexAppServerClientTests
             .GetProperty("params")
             .GetProperty("dynamicTools")[0];
         Assert.Equal("inspect", dynamicTool.GetProperty("name").GetString());
+        Assert.Equal("direct2dcad", dynamicTool.GetProperty("namespace").GetString());
         Assert.True(dynamicTool.GetProperty("deferLoading").GetBoolean());
+    }
+
+    [Fact]
+    public async Task RunAsync_RejectsToolCallsFromAnotherNamespace()
+    {
+        using var server = new FakeAppServer();
+        var toolset = new FakeToolset();
+        server.RequestHandler = (method, id, _, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    transport.Reply(id, new { thread = new { id = "thread-namespace" } });
+                    break;
+                case "turn/start":
+                    transport.Reply(id, new { turn = new { id = "turn-namespace" } });
+                    transport.Send(new
+                    {
+                        id = 901,
+                        method = "item/tool/call",
+                        @params = new
+                        {
+                            threadId = "thread-namespace",
+                            turnId = "turn-namespace",
+                            callId = "call-namespace",
+                            @namespace = "another-client",
+                            tool = "inspect",
+                            arguments = new { entityId = "entity-1" }
+                        }
+                    });
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+        server.ResponseHandler = (id, response, transport) =>
+        {
+            if (id != 901)
+                return Task.CompletedTask;
+
+            var result = response.GetProperty("result");
+            Assert.False(result.GetProperty("success").GetBoolean());
+            Assert.Contains(
+                "Unsupported dynamic tool namespace",
+                result.GetProperty("contentItems")[0].GetProperty("text").GetString());
+            transport.Send(new
+            {
+                method = "turn/completed",
+                @params = new { turn = new { status = "completed" } }
+            });
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        await client.RunAsync(
+            new CodexAgentRunRequest(
+                "inspect the entity",
+                string.Empty,
+                CreateOptions(),
+                toolset));
+
+        Assert.Equal(0, toolset.ExecutionCount);
     }
 
     [Fact]
@@ -200,7 +315,7 @@ public sealed class CodexAppServerClientTests
     }
 
     private static CodexAgentOptions CreateOptions() =>
-        new("codex", "gpt-5.3-codex", "medium", "flex", Environment.CurrentDirectory);
+        new("codex", "gpt-5.3-codex", "medium", "default", Environment.CurrentDirectory);
 
     private static string? GetMethod(JsonElement message) =>
         message.TryGetProperty("method", out var method) ? method.GetString() : null;

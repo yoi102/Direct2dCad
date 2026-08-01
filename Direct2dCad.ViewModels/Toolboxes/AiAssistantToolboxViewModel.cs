@@ -91,7 +91,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     public partial string CodexReasoningEffort { get; set; } = "medium";
 
     [ObservableProperty]
-    public partial string CodexServiceTier { get; set; } = "flex";
+    public partial string CodexServiceTier { get; set; } =
+        AiAssistantSettings.DefaultCodexServiceTier;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]

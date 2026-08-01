@@ -42,8 +42,28 @@ internal sealed class ProcessCodexAppServerTransport : ICodexAppServerTransport
     public Task<string?> ReadLineAsync(CancellationToken cancellationToken) =>
         _process.StandardOutput.ReadLineAsync(cancellationToken).AsTask();
 
-    public Task WriteLineAsync(string line, CancellationToken cancellationToken) =>
-        _process.StandardInput.WriteLineAsync(line.AsMemory(), cancellationToken);
+    public async Task WriteLineAsync(string line, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _process.StandardInput.WriteLineAsync(
+                line.AsMemory(),
+                cancellationToken);
+            await _process.StandardInput.FlushAsync(cancellationToken);
+        }
+        catch (IOException exception)
+        {
+            if (_process.HasExited)
+                await _errorPump.WaitAsync(TimeSpan.FromSeconds(1), cancellationToken);
+
+            var details = GetErrorSummary();
+            var exitCode = _process.HasExited ? _process.ExitCode.ToString() : "running";
+            throw new InvalidOperationException(
+                $"Unable to write to Codex app-server (exit code: {exitCode}). " +
+                details,
+                exception);
+        }
+    }
 
     public string GetErrorSummary()
     {
@@ -93,8 +113,10 @@ internal sealed class ProcessCodexAppServerTransport : ICodexAppServerTransport
         }
     }
 
-    private static ProcessStartInfo CreateStartInfo(string executable, string serviceTier)
+    internal static ProcessStartInfo CreateStartInfo(string executable, string serviceTier)
     {
+        var utf8WithoutBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        var useFastServiceTier = string.Equals(serviceTier, "fast", StringComparison.Ordinal);
         var startInfo = new ProcessStartInfo
         {
             UseShellExecute = false,
@@ -102,26 +124,33 @@ internal sealed class ProcessCodexAppServerTransport : ICodexAppServerTransport
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true,
-            StandardInputEncoding = Encoding.UTF8,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8
+            StandardInputEncoding = utf8WithoutBom,
+            StandardOutputEncoding = utf8WithoutBom,
+            StandardErrorEncoding = utf8WithoutBom
         };
 
         if (OperatingSystem.IsWindows() &&
             Path.GetExtension(executable) is ".cmd" or ".bat")
         {
             startInfo.FileName = Environment.GetEnvironmentVariable("COMSPEC") ?? "cmd.exe";
-            startInfo.ArgumentList.Add("/d");
-            startInfo.ArgumentList.Add("/s");
-            startInfo.ArgumentList.Add("/c");
-            startInfo.ArgumentList.Add(
-                $"\"\"{executable}\" -c service_tier=\\\"{serviceTier}\\\" app-server --listen stdio://\"");
+            // cmd.exe does not understand the backslash-escaped quotes produced when a whole
+            // batch command is placed in ArgumentList. Build its /s /c command line directly.
+            var serviceTierArgument = useFastServiceTier
+                ? " -c service_tier=\\\"fast\\\""
+                : string.Empty;
+            startInfo.Arguments =
+                $"/d /s /c \"\"{executable}\"{serviceTierArgument} " +
+                "app-server --listen stdio://\"";
             return startInfo;
         }
 
         startInfo.FileName = executable;
-        startInfo.ArgumentList.Add("-c");
-        startInfo.ArgumentList.Add($"service_tier=\"{serviceTier}\"");
+        if (useFastServiceTier)
+        {
+            startInfo.ArgumentList.Add("-c");
+            startInfo.ArgumentList.Add("service_tier=\"fast\"");
+        }
+
         startInfo.ArgumentList.Add("app-server");
         startInfo.ArgumentList.Add("--listen");
         startInfo.ArgumentList.Add("stdio://");
@@ -157,5 +186,5 @@ internal sealed class ProcessCodexAppServerTransport : ICodexAppServerTransport
     }
 
     private static string NormalizeServiceTier(string value) =>
-        string.Equals(value, "fast", StringComparison.OrdinalIgnoreCase) ? "fast" : "flex";
+        string.Equals(value, "fast", StringComparison.OrdinalIgnoreCase) ? "fast" : "default";
 }

@@ -25,6 +25,17 @@ public sealed class JsonAiAssistantSettingsStoreTests
     }
 
     [Fact]
+    public void Clone_NormalizesLegacyFlexServiceTierToDefault()
+    {
+        var source = new AiAssistantSettings { CodexServiceTier = "flex" };
+
+        var clone = source.Clone();
+
+        Assert.Equal("flex", source.CodexServiceTier);
+        Assert.Equal(AiAssistantSettings.DefaultCodexServiceTier, clone.CodexServiceTier);
+    }
+
+    [Fact]
     public void SaveAndLoad_RoundTripsNormalizedSettings()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"Direct2dCad.AI.Tests.{Guid.NewGuid():N}");

@@ -7,6 +7,7 @@ namespace Direct2dCad.Agent.Codex;
 
 public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
 {
+    private const string CadToolNamespace = "direct2dcad";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ICodexAppServerTransportFactory _transportFactory;
@@ -231,6 +232,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
         var dynamicTools = definitions.Select(definition => new
         {
             name = definition.Name,
+            @namespace = CadToolNamespace,
             description = definition.Description,
             inputSchema = definition.Parameters,
             deferLoading = true
@@ -389,6 +391,16 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
             var active = _activeTurn ??
                          throw new InvalidOperationException("Codex requested a tool without an active turn.");
             var parameters = message.GetProperty("params");
+            var toolNamespace = parameters.TryGetProperty("namespace", out var namespaceElement) &&
+                                namespaceElement.ValueKind == JsonValueKind.String
+                ? namespaceElement.GetString()
+                : null;
+            if (!string.Equals(toolNamespace, CadToolNamespace, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Unsupported dynamic tool namespace: {toolNamespace ?? "<missing>"}.");
+            }
+
             var toolName = parameters.GetProperty("tool").GetString() ??
                            throw new InvalidOperationException("Codex tool request did not include a tool name.");
             var arguments = parameters.TryGetProperty("arguments", out var argumentsElement)
@@ -580,7 +592,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
         };
 
     private static string NormalizeServiceTier(string value) =>
-        string.Equals(value, "fast", StringComparison.OrdinalIgnoreCase) ? "fast" : "flex";
+        string.Equals(value, "fast", StringComparison.OrdinalIgnoreCase) ? "fast" : "default";
 
     private static string NormalizeWorkingDirectory(string value) =>
         Directory.Exists(value) ? Path.GetFullPath(value) : Environment.CurrentDirectory;
