@@ -1,7 +1,5 @@
 
 
-https://github.com/user-attachments/assets/abae9186-d1cf-4323-b27f-4c58bdaeff15
-
 # Direct2dCad
 
 ## 项目简介
