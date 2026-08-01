@@ -130,7 +130,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
             hit.Distance,
             context.Document.DocumentSettings.LayerDrawingPriority.GetPriority(topEntity.LayerId),
             topEntity.ZIndex,
-            topEntity.Id.Value);
+            context.Document.GetEntityInsertionIndex(topEntity.Id));
     }
 
     private readonly record struct HitCandidate(

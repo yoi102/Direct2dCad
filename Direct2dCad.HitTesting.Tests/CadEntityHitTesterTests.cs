@@ -108,4 +108,36 @@ public sealed class CadEntityHitTesterTests
         Assert.Equal(outerReference.Id, result.TopEntityId);
         Assert.Equal(leaf.Id, result.LeafEntityId);
     }
+
+    [Fact]
+    public void HitTestEdge_NestedBlockUsesLayerPriorityAndZIndexBeforeInsertionOrder()
+    {
+        var document = CadDocument.Create("Test");
+        var lowLayerId = document.CreateLayer("Low", CadColor.Green, CadLineWeight.Default);
+        var highLayerId = document.CreateLayer("High", CadColor.Green, CadLineWeight.Default);
+        document.DocumentSettings.LayerDrawingPriority.SetPriority(lowLayerId, 1);
+        document.DocumentSettings.LayerDrawingPriority.SetPriority(highLayerId, 10);
+
+        var blockId = document.CreateBlockDefinition("Definition", CadPointD.Origin);
+        var high = document.AddLine(
+            CadPointD.Origin,
+            new CadPointD(10, 0),
+            highLayerId);
+        document.MoveEntityToBlock(high.Id, blockId);
+        var low = document.AddLine(
+            CadPointD.Origin,
+            new CadPointD(10, 0),
+            lowLayerId);
+        document.MoveEntityToBlock(low.Id, blockId);
+        var reference = document.AddBlockReference(blockId, CadPointD.Origin);
+
+        Assert.True(CadEntityHitTester.HitTestEdge(
+            document,
+            reference,
+            new CadPointD(5, 0),
+            tolerance: 0.1,
+            out var result));
+        Assert.Equal([reference.Id, high.Id], result.EntityPath);
+        Assert.NotEqual(low.Id, result.LeafEntityId);
+    }
 }

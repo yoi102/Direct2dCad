@@ -143,5 +143,6 @@ public sealed record CadTransientBlockReference(
     LayerId LayerId,
     CadColorSource ColorSource,
     StyleId? GraphicStyleId,
-    CadTransientStyle Style)
+    CadTransientStyle Style,
+    EntityId? SourceEntityId = null)
     : CadTransientItem(Style);

@@ -116,6 +116,31 @@ public sealed class CadHandleSceneBuilderTests
     }
 
     [Fact]
+    public void BuildSelectionHandles_OrdersSelectionReferencesLikeTheScene()
+    {
+        var document = CadDocument.Create("Test");
+        var lowLayerId = document.CreateLayer("Low", CadColor.Green, CadLineWeight.Default);
+        var highLayerId = document.CreateLayer("High", CadColor.Green, CadLineWeight.Default);
+        document.DocumentSettings.LayerDrawingPriority.SetPriority(lowLayerId, 1);
+        document.DocumentSettings.LayerDrawingPriority.SetPriority(highLayerId, 10);
+
+        var low = document.AddLine(CadPointD.Origin, new CadPointD(10, 0), lowLayerId);
+        var high = document.AddLine(CadPointD.Origin, new CadPointD(10, 0), highLayerId);
+        var builder = new CadHandleSceneBuilder();
+
+        var items = builder.BuildSelectionHandles(
+            document,
+            [high.Id, low.Id],
+            CadHandleSceneBuildOptions.Default with
+            {
+                IncludeGripHandles = false
+            });
+
+        var references = items.OfType<CadSelectionEntityReference>().ToArray();
+        Assert.Equal([low.Id, high.Id], references.Select(reference => reference.EntityId));
+    }
+
+    [Fact]
     public void HandleHitTester_SelectsClosestGripInsideHitRadius()
     {
         var scene = new CadHandleScene();

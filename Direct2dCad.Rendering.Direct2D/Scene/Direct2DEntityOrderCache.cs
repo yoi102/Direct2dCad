@@ -43,10 +43,12 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         {
             var ownerEntities = ResolveOwnerEntities(document, ownerBlockId);
             entities = ownerEntities
-                .OrderBy(entity =>
-                    document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
-                .ThenBy(entity => entity.ZIndex)
-                .ThenBy(entity => entity.Id.Value)
+                .OrderBy(item =>
+                    document.DocumentSettings.LayerDrawingPriority.GetPriority(item.Entity.LayerId))
+                .ThenBy(item => item.Entity.ZIndex)
+                .ThenBy(item => item.InsertionIndex)
+                .ThenBy(item => item.Entity.Id.Value)
+                .Select(static item => item.Entity)
                 .ToArray();
         }
         packet = new Direct2DOwnerRenderPacket(
@@ -58,18 +60,19 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         return packet;
     }
 
-    private static IEnumerable<CadEntity> ResolveOwnerEntities(
+    private static IEnumerable<OwnerEntity> ResolveOwnerEntities(
         CadDocument document,
         BlockId ownerBlockId)
     {
         if (!document.TryGetBlock(ownerBlockId, out var owner) || owner is null)
             return [];
 
-        var entities = new List<CadEntity>(owner.EntityIds.Count);
-        foreach (var entityId in owner.EntityIds)
+        var entities = new List<OwnerEntity>(owner.EntityIds.Count);
+        for (var insertionIndex = 0; insertionIndex < owner.EntityIds.Count; insertionIndex++)
         {
+            var entityId = owner.EntityIds[insertionIndex];
             if (document.TryGetEntity(entityId, out var entity) && entity is not null)
-                entities.Add(entity);
+                entities.Add(new OwnerEntity(entity, insertionIndex));
         }
 
         return entities;
@@ -159,14 +162,16 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         foreach (var block in document.Blocks.Values)
         {
             var entities = new List<EntityPreparationSnapshot>(block.EntityIds.Count);
-            foreach (var entityId in block.EntityIds)
+            for (var insertionIndex = 0; insertionIndex < block.EntityIds.Count; insertionIndex++)
             {
+                var entityId = block.EntityIds[insertionIndex];
                 if (!document.TryGetEntity(entityId, out var entity) || entity is null)
                     continue;
                 entities.Add(new EntityPreparationSnapshot(
                     entity,
                     document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId),
                     entity.ZIndex,
+                    insertionIndex,
                     entity.Bounds,
                     entity.IsErased,
                     entity.IsVisible,
@@ -414,6 +419,8 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
     public void Dispose() => _backgroundPreparation.Dispose();
 
     internal readonly record struct RankedEntity(int Rank, CadEntity Entity);
+
+    private readonly record struct OwnerEntity(CadEntity Entity, int InsertionIndex);
 
     private sealed class RankedEntityComparer : IComparer<RankedEntity>
     {

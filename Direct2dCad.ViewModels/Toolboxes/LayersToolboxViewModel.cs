@@ -148,6 +148,30 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
             lineWeight);
     }
 
+    internal void SetLayerPriority(LayerItemViewModel layer)
+    {
+        // Reorder the existing items immediately so the toolbox stays in sync
+        // while the document command is being applied and refreshed.
+        ReorderLayerItems();
+
+        if (_documentViewModel is null)
+            return;
+
+        var document = _documentViewModel.CadEditor.Document;
+        var priorities = document.Layers.Values.ToDictionary(
+            currentLayer => currentLayer.Id,
+            currentLayer => document.DocumentSettings.LayerDrawingPriority.GetPriority(currentLayer.Id));
+
+        if (!priorities.TryGetValue(layer.LayerId, out var currentPriority) ||
+            currentPriority == layer.Priority)
+            return;
+
+        priorities[layer.LayerId] = layer.Priority;
+        ExecuteAndRefresh(
+            () => _documentViewModel.CadEditor.SetLayerDrawingPriorities(priorities),
+            layer.LayerId);
+    }
+
     partial void OnSelectedLayerChanged(LayerItemViewModel? value)
     {
         DeleteSelectedLayerCommand.NotifyCanExecuteChanged();
@@ -287,6 +311,21 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
         MoveSelectedLayerDownCommand.NotifyCanExecuteChanged();
     }
 
+    private void ReorderLayerItems()
+    {
+        var ordered = Layers
+            .OrderByDescending(layer => layer.Priority)
+            .ThenByDescending(layer => layer.LayerId.Value)
+            .ToList();
+
+        for (var index = 0; index < ordered.Count; index++)
+        {
+            var currentIndex = Layers.IndexOf(ordered[index]);
+            if (currentIndex != index)
+                Layers.Move(currentIndex, index);
+        }
+    }
+
     private void ApplyLayerOrder(IReadOnlyList<LayerItemViewModel> orderedLayers)
     {
         if (_documentViewModel is null)
@@ -371,7 +410,7 @@ public sealed partial class LayerItemViewModel : ObservableObject
     public partial double LineWeight { get; set; }
 
     [ObservableProperty]
-    public partial int Priority { get; private set; }
+    public partial int Priority { get; set; }
 
     [ObservableProperty]
     public partial int EntityCount { get; private set; }
@@ -409,6 +448,14 @@ public sealed partial class LayerItemViewModel : ObservableObject
     partial void OnColorChanged(CadColor value) => CommitAppearance();
 
     partial void OnLineWeightChanged(double value) => CommitAppearance();
+
+    partial void OnPriorityChanged(int value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _owner.SetLayerPriority(this);
+    }
 
     partial void OnIsVisibleChanged(bool value) => CommitState();
 

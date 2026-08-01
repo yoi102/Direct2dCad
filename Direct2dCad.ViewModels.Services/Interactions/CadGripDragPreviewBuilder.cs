@@ -115,7 +115,8 @@ internal readonly struct CadGripDragPreviewBuilder(
                             reference.LayerId,
                             reference.ColorSource,
                             reference.GraphicStyleId,
-                            style));
+                            style,
+                            SourceEntityId: reference.Id));
                     }
                     else
                     {
@@ -395,6 +396,7 @@ internal readonly struct CadGripDragPreviewBuilder(
             reference.LayerId,
             reference.ColorSource,
             reference.GraphicStyleId,
-            style));
+            style,
+            SourceEntityId: reference.Id));
     }
 }

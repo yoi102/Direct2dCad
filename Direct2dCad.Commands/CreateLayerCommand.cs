@@ -11,6 +11,7 @@ public sealed class CreateLayerCommand : ICadCommand
     private readonly StyleId? _defaultGraphicStyleId;
     private readonly int? _drawingPriority;
     private LayerId? _layerId;
+    private int? _resolvedDrawingPriority;
 
     public string Name => "Create Layer";
     public LayerId? LayerId => _layerId;
@@ -35,8 +36,18 @@ public sealed class CreateLayerCommand : ICadCommand
 
         if (_layerId is not null && document.TryGetLayer(_layerId.Value, out _))
         {
-            if (_drawingPriority is { } existingPriority)
-                document.DocumentSettings.LayerDrawingPriority.SetPriority(_layerId.Value, existingPriority);
+            if (_resolvedDrawingPriority is { } resolvedPriority)
+            {
+                document.DocumentSettings.LayerDrawingPriority.SetPriority(
+                    _layerId.Value,
+                    resolvedPriority);
+            }
+            else if (_drawingPriority is { } existingPriority)
+            {
+                document.DocumentSettings.LayerDrawingPriority.SetPriority(
+                    _layerId.Value,
+                    existingPriority);
+            }
 
             return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
         }
@@ -58,8 +69,11 @@ public sealed class CreateLayerCommand : ICadCommand
             _layerId = document.CreateLayer(_name, _color, _lineWeight, _defaultGraphicStyleId);
         }
 
-        if (_drawingPriority is { } priority)
-            document.DocumentSettings.LayerDrawingPriority.SetPriority(_layerId.Value, priority);
+        var priority = _resolvedDrawingPriority ??
+                       _drawingPriority ??
+                       ResolveLowestPriority(document, _layerId.Value);
+        document.DocumentSettings.LayerDrawingPriority.SetPriority(_layerId.Value, priority);
+        _resolvedDrawingPriority = priority;
 
         return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
     }
@@ -75,5 +89,15 @@ public sealed class CreateLayerCommand : ICadCommand
         }
 
         return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+    }
+
+    private static int ResolveLowestPriority(CadDocument document, LayerId newLayerId)
+    {
+        var lowest = document.Layers.Keys
+            .Where(layerId => !layerId.Equals(newLayerId))
+            .Select(document.DocumentSettings.LayerDrawingPriority.GetPriority)
+            .DefaultIfEmpty(document.DocumentSettings.LayerDrawingPriority.DefaultPriority)
+            .Min();
+        return lowest == int.MinValue ? int.MinValue : lowest - 1;
     }
 }

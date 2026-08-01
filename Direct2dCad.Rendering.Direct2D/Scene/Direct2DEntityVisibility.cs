@@ -402,6 +402,53 @@ internal static class Direct2DEntityVisibility
         return true;
     }
 
+    internal static bool TryResolveVisibleEntity(
+        CadDocument document,
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DResourceCache resourceCache,
+        CadEntity entity,
+        CadRectD? renderWorldBounds,
+        out Direct2DVisibleEntity visible)
+    {
+        if (entity.IsErased ||
+            !entity.IsVisible ||
+            options.HiddenEntityIds.Contains(entity.Id) ||
+            !document.TryGetLayer(entity.LayerId, out var layer) ||
+            layer is not { IsVisible: true, IsFrozen: false })
+        {
+            visible = default;
+            return false;
+        }
+
+        var broadPhasePadding = ResolveBroadPhasePadding(resourceCache, viewport, options);
+        if (renderWorldBounds is { } coarseBounds &&
+            !MayIntersectRenderBounds(entity, coarseBounds, broadPhasePadding))
+        {
+            visible = default;
+            return false;
+        }
+
+        resourceCache.TryGetEntityResources(entity.Id, out var resources);
+        if (Direct2DEntityLevelOfDetail.Resolve(entity, resources, viewport, options) ==
+                Direct2DEntityRenderDetail.Skip ||
+            renderWorldBounds is { } bounds &&
+            !IntersectsRenderBounds(
+                entity,
+                bounds,
+                viewport,
+                options,
+                resources,
+                broadPhasePadding))
+        {
+            visible = default;
+            return false;
+        }
+
+        visible = new Direct2DVisibleEntity(entity, resources);
+        return true;
+    }
+
     internal static IEnumerable<Direct2DVisibleEntity> EnumerateOrderedSubset(
         CadDocument document,
         CadViewport viewport,
@@ -410,49 +457,19 @@ internal static class Direct2DEntityVisibility
         IReadOnlyList<CadEntity> entities,
         CadRectD? renderWorldBounds)
     {
-        var broadPhasePadding = ResolveBroadPhasePadding(
-            resourceCache,
-            viewport,
-            options);
         foreach (var entity in entities)
         {
-            if (entity.IsErased ||
-                !entity.IsVisible ||
-                options.HiddenEntityIds.Contains(entity.Id) ||
-                !document.TryGetLayer(entity.LayerId, out var layer) ||
-                layer is not { IsVisible: true, IsFrozen: false })
-            {
-                continue;
-            }
-
-            if (renderWorldBounds is { } coarseBounds &&
-                !MayIntersectRenderBounds(
-                    entity,
-                    coarseBounds,
-                    broadPhasePadding))
-            {
-                continue;
-            }
-
-            resourceCache.TryGetEntityResources(entity.Id, out var resources);
-            if (Direct2DEntityLevelOfDetail.Resolve(
-                    entity,
-                    resources,
-                    viewport,
-                    options) == Direct2DEntityRenderDetail.Skip ||
-                renderWorldBounds is { } bounds &&
-                !IntersectsRenderBounds(
-                    entity,
-                    bounds,
+            if (TryResolveVisibleEntity(
+                    document,
                     viewport,
                     options,
-                    resources,
-                    broadPhasePadding))
+                    resourceCache,
+                    entity,
+                    renderWorldBounds,
+                    out var visible))
             {
-                continue;
+                yield return visible;
             }
-
-            yield return new Direct2DVisibleEntity(entity, resources);
         }
     }
 

@@ -84,6 +84,41 @@ public sealed class LayerAndBlockCommandTests
     }
 
     [Fact]
+    public void CreateLayerCommandWithoutPriorityPlacesLayerBelowExistingLayersAndRedoKeepsIt()
+    {
+        var document = CadDocument.Create("Test");
+        var command = new CreateLayerCommand(
+            "Annotations",
+            CadColor.Green,
+            CadLineWeight.Default);
+
+        command.Execute(document);
+
+        var layerId = Assert.IsType<LayerId>(command.LayerId);
+        Assert.Equal(-1, document.DocumentSettings.LayerDrawingPriority.GetPriority(layerId));
+
+        command.Undo(document);
+        command.Execute(document);
+
+        Assert.Equal(-1, document.DocumentSettings.LayerDrawingPriority.GetPriority(layerId));
+    }
+
+    [Fact]
+    public void SetLayerDrawingPrioritiesCommandPreservesDefaultPriorityWhenOmitted()
+    {
+        var document = CadDocument.Create("Test");
+        document.DocumentSettings.LayerDrawingPriority.SetDefaultPriority(42);
+        var command = new SetLayerDrawingPrioritiesCommand(
+            new Dictionary<LayerId, int> { [LayerId.Default] = 10 });
+
+        command.Execute(document);
+
+        Assert.Equal(42, document.DocumentSettings.LayerDrawingPriority.DefaultPriority);
+        command.Undo(document);
+        Assert.Equal(42, document.DocumentSettings.LayerDrawingPriority.DefaultPriority);
+    }
+
+    [Fact]
     public void SetBlockReferenceTransformCommand_ExecuteUndoAndRedoRestoreTransformAndBounds()
     {
         var document = CadDocument.Create("Block transform");

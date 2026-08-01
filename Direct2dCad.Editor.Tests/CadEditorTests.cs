@@ -146,6 +146,27 @@ public sealed class CadEditorTests
         Assert.DoesNotContain(low.Id, editor.Selection.EntityIds);
     }
 
+    [Fact]
+    public void ClickSelectionUsesBlockInsertionOrderWhenEntitiesMove()
+    {
+        var document = CadDocument.Create("Test");
+        var first = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        var second = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        var otherBlockId = document.CreateBlockDefinition("Other", CadPointD.Origin);
+
+        // Moving an existing entity appends it to the target block. Its global ID
+        // remains smaller, so ID ordering would select the wrong entity here.
+        document.MoveEntityToBlock(first.Id, otherBlockId);
+        document.MoveEntityToBlock(first.Id, BlockId.ModelSpace);
+
+        var editor = new CadEditor(document);
+        var command = new ClickSelectCommand(new CadPointD(5, 0), tolerance: 0.1);
+
+        editor.Execute(command);
+
+        Assert.Equal(first.Id, command.SelectedEntityId);
+    }
+
     private static void AssertSingleResourceChange(
         RecordingGeometryResourceManager resources,
         EntityId entityId,

@@ -195,7 +195,7 @@
                                                Opacity="0.62"
                                                Margin="10,0,3,0"
                                                FontSize="11" />
-                                    <TextBlock Text="{Binding Priority}"
+                                    <yr:EditableTextBlock Text="{Binding Priority, Mode=TwoWay}"
                                                VerticalAlignment="Center"
                                                Opacity="0.62"
                                                FontSize="11" />

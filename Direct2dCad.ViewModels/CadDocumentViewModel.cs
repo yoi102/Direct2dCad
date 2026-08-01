@@ -1243,6 +1243,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 entity.Bounds.Contains(world))
             .OrderByDescending(entity => CadEditor.Document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId))
             .ThenByDescending(entity => entity.ZIndex)
+            .ThenByDescending(entity => CadEditor.Document.GetEntityInsertionIndex(entity.Id))
             .ThenByDescending(entity => entity.Id.Value)
             .FirstOrDefault();
 

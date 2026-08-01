@@ -323,8 +323,7 @@ public static class CadClipboardSnapshotFactory
         {
             var entities = new List<CadClipboardEntityItem>();
             foreach (var entity in document.GetEntitiesInBlock(blockId)
-                         .Where(entity => !entity.IsErased)
-                         .OrderBy(entity => entity.Id.Value))
+                         .Where(entity => !entity.IsErased))
             {
                 if (!TryCreateEntitySnapshot(
                         document,

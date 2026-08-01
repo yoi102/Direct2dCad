@@ -84,6 +84,7 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
             var ordered = owner.Entities
                 .OrderBy(static entity => entity.LayerPriority)
                 .ThenBy(static entity => entity.ZIndex)
+                .ThenBy(static entity => entity.InsertionIndex)
                 .ThenBy(static entity => entity.Entity.Id.Value)
                 .ToArray();
             var bounds = CadRectD.Empty;
@@ -250,6 +251,7 @@ internal readonly record struct EntityPreparationSnapshot(
     CadEntity Entity,
     int LayerPriority,
     int ZIndex,
+    int InsertionIndex,
     CadRectD Bounds,
     bool IsErased,
     bool IsVisible,

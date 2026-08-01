@@ -609,8 +609,20 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             !_target.HasBaseSceneSnapshot ||
             !ReferenceEquals(_baseSceneDocument, _document) ||
             !_baseSceneState.Equals(baseSceneState);
+        var previousStaticBaseState = _baseSceneState with
+        {
+            SelectionVersion = 0,
+            InlineMovePreviewVersion = 0
+        };
+        var currentStaticBaseState = baseSceneState with
+        {
+            SelectionVersion = 0,
+            InlineMovePreviewVersion = 0
+        };
+        var staticBaseStateChanged =
+            !previousStaticBaseState.Equals(currentStaticBaseState);
         baseSceneChanged |= _baseSceneDirty || baseStateChanged;
-        if (baseStateChanged)
+        if (staticBaseStateChanged)
             requestedInvalidation = CadRenderInvalidation.Full;
 
         var dirtyPlanningStarted = Stopwatch.GetTimestamp();
@@ -744,6 +756,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                                     _renderer.RenderBase(
                                         _document,
                                         _viewport,
+                                        _transientScene,
+                                        _handleScene,
                                         _renderOptions);
                                 }
                             },
@@ -864,7 +878,12 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 ScreenRectToWorldBounds(dirty, _viewport));
             if (drawBase)
             {
-                _renderer.RenderBase(_document, _viewport, options);
+                _renderer.RenderBase(
+                    _document,
+                    _viewport,
+                    _transientScene,
+                    _handleScene,
+                    options);
             }
             else
             {
@@ -921,7 +940,12 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 ScreenRectToWorldBounds(combinedBounds, _viewport));
             if (drawBase)
             {
-                _renderer.RenderBase(_document, _viewport, options);
+                _renderer.RenderBase(
+                    _document,
+                    _viewport,
+                    _transientScene,
+                    _handleScene,
+                    options);
             }
             else
             {
@@ -1045,6 +1069,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     {
         frameLease = null;
         if (!_renderOptions.IsParallelRenderingEnabled ||
+            _handleScene is { SelectionReferenceCount: > 0 } ||
             _target.D3DDevice is not { } d3dDevice ||
             _target.Factory is not { } d2dFactory ||
             _target.Device is not { } d2dDevice ||
@@ -1293,6 +1318,10 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             _renderOptions.MinimumScreenStrokeWidth,
             hiddenCount,
             hiddenHash.ToHashCode(),
+            _handleScene?.SelectionVersion ?? 0,
+            _renderOptions.HiddenEntityIds.Count > 0
+                ? _transientScene?.Version ?? 0
+                : 0,
             _document is null
                 ? FallbackBackgroundColor.GetHashCode()
                 : _document.ViewSettings.BackgroundColor.GetHashCode());
@@ -1329,6 +1358,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         double MinimumScreenStrokeWidth,
         int HiddenEntityCount,
         int HiddenEntityHash,
+        long SelectionVersion,
+        long InlineMovePreviewVersion,
         int BackgroundColorHash);
 
     private void ThrowIfDisposed()

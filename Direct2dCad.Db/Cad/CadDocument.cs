@@ -1469,6 +1469,52 @@ public sealed class CadDocument : IEquatable<CadDocument>
         }
     }
 
+    /// <summary>
+    /// Enumerates entities from visually topmost to bottommost within a block.
+    /// This is the reverse of the renderer's Layer priority, ZIndex, and insertion
+    /// order and is used by nested-block hit testing.
+    /// </summary>
+    public IEnumerable<CadEntity> GetEntitiesInBlockDrawOrderReverse(BlockId blockId)
+    {
+        if (!_blocks.TryGetValue(blockId, out var block))
+            return [];
+
+        var entities = new List<(CadEntity Entity, int InsertionIndex)>(block.EntityIds.Count);
+        for (var insertionIndex = 0; insertionIndex < block.EntityIds.Count; insertionIndex++)
+        {
+            var entityId = block.EntityIds[insertionIndex];
+            if (_entities.TryGetValue(entityId, out var entity))
+                entities.Add((entity, insertionIndex));
+        }
+
+        return entities
+            .OrderByDescending(item => DocumentSettings.LayerDrawingPriority.GetPriority(item.Entity.LayerId))
+            .ThenByDescending(item => item.Entity.ZIndex)
+            .ThenByDescending(item => item.InsertionIndex)
+            .ThenByDescending(item => item.Entity.Id.Value)
+            .Select(static item => item.Entity)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Returns the stable insertion position of an entity within its owning block.
+    /// This is the final draw-order tie breaker when Layer priority and ZIndex match.
+    /// </summary>
+    public int GetEntityInsertionIndex(EntityId entityId)
+    {
+        var entity = GetEntity(entityId);
+        if (!_blocks.TryGetValue(entity.OwnerBlockId, out var block))
+            return int.MaxValue;
+
+        for (var index = 0; index < block.EntityIds.Count; index++)
+        {
+            if (block.EntityIds[index].Equals(entityId))
+                return index;
+        }
+
+        return int.MaxValue;
+    }
+
     public CadRectD GetBlockBounds(BlockId blockId)
     {
         ValidateBlock(blockId);

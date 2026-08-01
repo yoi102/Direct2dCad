@@ -91,6 +91,30 @@ public sealed class CadHandleSceneBuilder
             selectedEntities.Add(entity);
         }
 
+        // Selection input order is not a drawing-order contract. Keep selected
+        // references in the same order as the normal scene so overlapping
+        // selected entities retain their visual stacking order.
+        var insertionIndices = selectedEntities.ToDictionary(
+            entity => entity.Id,
+            entity => document.GetEntityInsertionIndex(entity.Id));
+        selectedEntities.Sort((left, right) =>
+        {
+            var result = document.DocumentSettings.LayerDrawingPriority
+                .GetPriority(left.LayerId)
+                .CompareTo(document.DocumentSettings.LayerDrawingPriority.GetPriority(right.LayerId));
+            if (result != 0)
+                return result;
+
+            result = left.ZIndex.CompareTo(right.ZIndex);
+            if (result != 0)
+                return result;
+
+            result = insertionIndices[left.Id].CompareTo(insertionIndices[right.Id]);
+            return result != 0
+                ? result
+                : left.Id.Value.CompareTo(right.Id.Value);
+        });
+
         var includeIndividualGrips =
             options.IncludeGripHandles &&
             selectedEntities.Count <= Math.Max(0, options.MaximumIndividualGripEntityCount);

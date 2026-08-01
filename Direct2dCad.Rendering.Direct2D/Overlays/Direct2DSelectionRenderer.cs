@@ -19,45 +19,10 @@ internal sealed class Direct2DSelectionRenderer(
     Direct2DStyleResourceCache styleResources,
     Direct2DHandleRenderer handleRenderer,
     Direct2DEntityOrderCache entityOrderCache,
-    Direct2DRenderStatisticsCollector statistics) : IDisposable
+    Direct2DRenderStatisticsCollector statistics)
 {
     private const byte SelectedSolidFillMaximumAlpha = 64;
-    private const int SpatiallyIndexedSelectionThreshold = 256;
-    private const int LargeSelectionFallbackThreshold = 4096;
-    private const int ForcedLargeSelectionFallbackThreshold = 8192;
     private readonly HashSet<BlockId> _visitedBlocks = [];
-    private readonly List<EntityId> _selectionCandidateIds = new(256);
-    private readonly Direct2DSelectionCommandListCache _commandListCache = new(
-        resourceCache,
-        statistics);
-
-    public long EstimatedCacheBytes => _commandListCache.EstimatedBytes;
-    public static long CacheBudgetBytes => Direct2DSelectionCommandListCache.CacheBudgetBytes;
-
-    public bool PrepareCache(
-        ID2D1DeviceContext context,
-        CadDocument document,
-        CadViewport viewport,
-        CadHandleScene? scene,
-        CadRenderOptions options,
-        bool buildStep)
-    {
-        return _commandListCache.Prepare(
-            context,
-            document,
-            viewport,
-            scene,
-            options,
-            DrawSelectionReferenceForCache,
-            buildStep);
-    }
-
-    public void ApplyChanges(CadDocumentChangeSet changes)
-    {
-        _commandListCache.ApplyChanges(changes);
-    }
-
-    public void ClearCache() => _commandListCache.Clear();
 
     public void Draw(
         ID2D1DeviceContext context,
@@ -66,164 +31,29 @@ internal sealed class Direct2DSelectionRenderer(
         CadHandleScene? scene,
         CadRenderOptions options)
     {
-        if (scene is null || scene.IsEmpty)
-            return;
+        if (scene is not null)
+            DrawNonSelectionItems(context, viewport, scene.NonSelectionItems, options);
+    }
 
+    internal void DrawInlineSelectionReference(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadSelectionEntityReference reference,
+        CadRenderOptions options)
+    {
         _visitedBlocks.Clear();
         var renderWorldBounds = options.DirtyWorldBounds is { IsEmpty: false } dirty
             ? dirty
             : viewport.VisibleWorldBounds;
-        var useLargeSelectionFallback =
-            ShouldUseLargeSelectionFallback(scene, options);
-        if (_commandListCache.TryDraw(
-                context,
-                document,
-                viewport,
-                scene,
-                options,
-                DrawSelectionReferenceForCache,
-                requireCompleteCache: useLargeSelectionFallback))
-        {
-            statistics.RecordRenderCacheHit();
-            DrawNonSelectionItems(context, viewport, scene.NonSelectionItems, options);
-            return;
-        }
-        statistics.RecordRenderCacheMiss();
-        if (useLargeSelectionFallback)
-        {
-            DrawLargeSelectionFallback(
-                context,
-                viewport,
-                scene,
-                options);
-            DrawNonSelectionItems(context, viewport, scene.NonSelectionItems, options);
-            statistics.RecordSelectionEntities(scene.SelectionReferenceCount);
-            statistics.RecordLargeSelectionFallback();
-            return;
-        }
-        if (CanUseSpatialSelectionQuery(scene, options, renderWorldBounds))
-        {
-            DrawSpatiallyQueriedSelections(
-                context,
-                document,
-                viewport,
-                scene,
-                options,
-                renderWorldBounds);
-            DrawNonSelectionItems(context, viewport, scene.NonSelectionItems, options);
-            return;
-        }
-
-        foreach (var item in scene.Items)
-        {
-            switch (item)
-            {
-                case CadSelectionEntityReference reference:
-                    DrawSelectionReference(
-                        context,
-                        document,
-                        viewport,
-                        reference,
-                        renderWorldBounds,
-                        options,
-                        _visitedBlocks);
-                    break;
-                case CadGripHandle grip when options.DrawGripHandles && IsGripVisible(viewport, grip):
-                    handleRenderer.DrawGrip(context, resourceCache.Factory, viewport, grip);
-                    break;
-                case CadRotationHandleGuide guide when options.DrawGripHandles:
-                    transientRenderer.DrawLine(
-                        context,
-                        viewport,
-                        guide.Start,
-                        guide.End,
-                        ToTransientStyle(guide.Style));
-                    break;
-            }
-        }
-    }
-
-    private static bool ShouldUseLargeSelectionFallback(
-        CadHandleScene scene,
-        CadRenderOptions options)
-    {
-        return scene.SelectionReferenceCount >= ForcedLargeSelectionFallbackThreshold ||
-               options.IsLevelOfDetailEnabled &&
-               scene.SelectionReferenceCount >= LargeSelectionFallbackThreshold;
-    }
-
-    private void DrawLargeSelectionFallback(
-        ID2D1DeviceContext context,
-        CadViewport viewport,
-        CadHandleScene scene,
-        CadRenderOptions options)
-    {
-        if (scene.SelectionWorldBounds.IsEmpty ||
-            scene.SelectionReferences.Count == 0)
-        {
-            return;
-        }
-
-        var style = scene.SelectionReferences[^1].Style;
-        var brush = styleResources.GetBrush(context, style.StrokeColor);
-        Direct2DEntityRenderer.DrawRectangularProxy(
+        DrawSelectionReference(
             context,
-            scene.SelectionWorldBounds,
-            brush,
-            options.TransformScaleMultiplier);
-    }
-
-    private static bool CanUseSpatialSelectionQuery(
-        CadHandleScene scene,
-        CadRenderOptions options,
-        CadRectD renderWorldBounds)
-    {
-        return scene.SelectionReferenceCount >= SpatiallyIndexedSelectionThreshold &&
-               !scene.HasTranslatedSelectionReferences &&
-               !renderWorldBounds.IsEmpty &&
-               (options.EntityBoundsQueryInto is not null ||
-                options.EntityBoundsQuery is not null);
-    }
-
-    private void DrawSpatiallyQueriedSelections(
-        ID2D1DeviceContext context,
-        CadDocument document,
-        CadViewport viewport,
-        CadHandleScene scene,
-        CadRenderOptions options,
-        CadRectD renderWorldBounds)
-    {
-        var padding = ResolveSelectionRenderPadding(scene, viewport.Zoom);
-        var queryBounds = renderWorldBounds.Inflate(padding);
-        IReadOnlyList<EntityId> candidateIds;
-        if (options.EntityBoundsQueryInto is { } bufferedQuery)
-        {
-            _selectionCandidateIds.Clear();
-            bufferedQuery(options.ActiveOwnerBlockId, queryBounds, _selectionCandidateIds);
-            candidateIds = _selectionCandidateIds;
-        }
-        else
-        {
-            candidateIds = options.EntityBoundsQuery!(options.ActiveOwnerBlockId, queryBounds);
-        }
-
-        foreach (var entityId in candidateIds)
-        {
-            if (!scene.TryGetSelectionReference(entityId, out var reference) ||
-                reference is null)
-            {
-                continue;
-            }
-
-            DrawSelectionReference(
-                context,
-                document,
-                viewport,
-                reference,
-                renderWorldBounds,
-                options,
-                _visitedBlocks);
-        }
+            document,
+            viewport,
+            reference,
+            renderWorldBounds,
+            options,
+            _visitedBlocks);
     }
 
     private void DrawNonSelectionItems(
@@ -270,7 +100,12 @@ internal sealed class Direct2DSelectionRenderer(
             return;
         }
 
-        if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
+        if (!document.TryGetEntity(reference.EntityId, out var entity) ||
+            entity is null ||
+            entity.IsErased ||
+            !entity.IsVisible ||
+            !document.TryGetLayer(entity.LayerId, out var layer) ||
+            layer is not { IsVisible: true, IsFrozen: false })
             return;
 
         DrawSelectionEntity(
@@ -285,24 +120,6 @@ internal sealed class Direct2DSelectionRenderer(
             visitedBlocks);
     }
 
-    private void DrawSelectionReferenceForCache(
-        ID2D1DeviceContext context,
-        CadDocument document,
-        CadViewport viewport,
-        CadSelectionEntityReference reference,
-        CadRectD? renderWorldBounds,
-        CadRenderOptions options)
-    {
-        _visitedBlocks.Clear();
-        DrawSelectionReference(
-            context,
-            document,
-            viewport,
-            reference,
-            renderWorldBounds,
-            options,
-            _visitedBlocks);
-    }
 
     private void DrawSelectionEntity(
         ID2D1DeviceContext context,
@@ -866,5 +683,4 @@ internal sealed class Direct2DSelectionRenderer(
             color.B);
     }
 
-    public void Dispose() => _commandListCache.Dispose();
 }

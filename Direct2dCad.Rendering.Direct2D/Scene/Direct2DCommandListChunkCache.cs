@@ -6,6 +6,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Resources;
+using Direct2dCad.Rendering.Handles;
 using Vortice.Direct2D1;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
@@ -205,7 +206,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options,
-        Action<ID2D1DeviceContext, CadDocument, CadEntity, CadViewport, CadRenderOptions> drawEntity)
+        CadHandleScene? handleScene,
+        Action<ID2D1DeviceContext, CadDocument, CadEntity, CadViewport, CadRenderOptions> drawEntity,
+        Action<ID2D1DeviceContext, CadDocument, CadViewport, CadSelectionEntityReference, CadRenderOptions> drawSelectionEntity)
     {
         ThrowIfDisposed();
         EnsureDocument(document);
@@ -233,10 +236,13 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         {
             if (!IntersectsRenderBounds(chunk.Bounds, renderBounds, renderPadding))
                 continue;
-            if (AreAllTopLevelEntitiesHidden(chunk, options.HiddenEntityIds))
+            if (AreAllTopLevelEntitiesHidden(chunk, options.HiddenEntityIds) &&
+                !ContainsInlineSelectionDependency(chunk, handleScene))
                 continue;
 
-            if (chunk.CommandList is not null && !ContainsHiddenDependency(chunk, options.HiddenEntityIds))
+            if (chunk.CommandList is not null &&
+                !ContainsHiddenDependency(chunk, options.HiddenEntityIds) &&
+                !ContainsInlineSelectionDependency(chunk, handleScene))
             {
                 context.DrawImage(
                     chunk.CommandList,
@@ -253,14 +259,27 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             var fallbackStarted = Stopwatch.GetTimestamp();
             try
             {
-                foreach (var visible in Direct2DEntityVisibility.EnumerateOrderedSubset(
-                             document,
-                             viewport,
-                             options,
-                             _resourceCache,
-                             chunk.Entities,
-                             renderBounds))
+                foreach (var entity in chunk.Entities)
                 {
+                    if (handleScene?.TryGetSelectionReference(entity.Id, out var reference) == true &&
+                        reference is not null)
+                    {
+                        drawSelectionEntity(context, document, viewport, reference, options);
+                        continue;
+                    }
+
+                    if (!Direct2DEntityVisibility.TryResolveVisibleEntity(
+                            document,
+                            viewport,
+                            options,
+                            _resourceCache,
+                            entity,
+                            renderBounds,
+                            out var visible))
+                    {
+                        continue;
+                    }
+
                     _statistics.RecordVisibleEntity();
                     _statistics.RecordEntitySubmission();
                     _statistics.RecordFallbackEntity();
@@ -679,6 +698,22 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         foreach (var entityId in chunk.DependencyEntityIds)
         {
             if (hiddenEntityIds.Contains(entityId))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsInlineSelectionDependency(
+        RenderChunk chunk,
+        CadHandleScene? handleScene)
+    {
+        if (handleScene is null || handleScene.SelectionReferenceCount == 0)
+            return false;
+
+        foreach (var entityId in chunk.DependencyEntityIds)
+        {
+            if (handleScene.TryGetSelectionReference(entityId, out _))
                 return true;
         }
 

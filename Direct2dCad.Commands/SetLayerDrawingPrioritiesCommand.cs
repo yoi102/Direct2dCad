@@ -7,7 +7,7 @@ namespace Direct2dCad.Commands;
 public sealed class SetLayerDrawingPrioritiesCommand : ICadCommand
 {
     private readonly Dictionary<LayerId, int> _priorities;
-    private readonly int _defaultPriority;
+    private readonly int? _requestedDefaultPriority;
     private Dictionary<LayerId, int>? _previousPriorities;
     private int? _previousDefaultPriority;
 
@@ -15,12 +15,12 @@ public sealed class SetLayerDrawingPrioritiesCommand : ICadCommand
 
     public SetLayerDrawingPrioritiesCommand(
         IReadOnlyDictionary<LayerId, int> priorities,
-        int defaultPriority = 0)
+        int? defaultPriority = null)
     {
         ArgumentNullException.ThrowIfNull(priorities);
 
         _priorities = new Dictionary<LayerId, int>(priorities);
-        _defaultPriority = defaultPriority;
+        _requestedDefaultPriority = defaultPriority;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -31,7 +31,10 @@ public sealed class SetLayerDrawingPrioritiesCommand : ICadCommand
         _previousPriorities ??= new Dictionary<LayerId, int>(drawingPriority.Priorities);
         _previousDefaultPriority ??= drawingPriority.DefaultPriority;
 
-        Apply(drawingPriority, _priorities, _defaultPriority);
+        Apply(
+            drawingPriority,
+            _priorities,
+            _requestedDefaultPriority ?? drawingPriority.DefaultPriority);
         return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
     }
 

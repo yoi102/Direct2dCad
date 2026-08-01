@@ -42,7 +42,8 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadRenderOptions options,
         Action<CadTransientOleObject> drawOle,
         Action<CadTransientEntityReference> drawEntityReference,
-        Action<CadTransientBlockReference> drawBlockReference)
+        Action<CadTransientBlockReference> drawBlockReference,
+        Func<CadTransientGroup, bool>? skipGroup = null)
     {
         if (scene is null || scene.IsEmpty)
         {
@@ -62,7 +63,8 @@ internal sealed class Direct2DTransientSceneRenderer(
             options,
             drawOle,
             drawEntityReference,
-            drawBlockReference);
+            drawBlockReference,
+            skipGroup);
     }
 
     private void DrawItems(
@@ -73,12 +75,15 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadRenderOptions options,
         Action<CadTransientOleObject> drawOle,
         Action<CadTransientEntityReference> drawEntityReference,
-        Action<CadTransientBlockReference> drawBlockReference)
+        Action<CadTransientBlockReference> drawBlockReference,
+        Func<CadTransientGroup, bool>? skipGroup)
     {
         foreach (var item in items)
         {
             switch (item)
             {
+                case CadTransientGroup group when skipGroup?.Invoke(group) == true:
+                    break;
                 case CadTransientGroup group:
                     DrawGroup(
                         context,
@@ -88,7 +93,8 @@ internal sealed class Direct2DTransientSceneRenderer(
                         options,
                         drawOle,
                         drawEntityReference,
-                        drawBlockReference);
+                        drawBlockReference,
+                        skipGroup);
                     break;
                 case CadTransientLine line:
                     primitives.DrawLine(context, viewport, line.Start, line.End, line.Style);
@@ -239,7 +245,8 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadRenderOptions options,
         Action<CadTransientOleObject> drawOle,
         Action<CadTransientEntityReference> drawEntityReference,
-        Action<CadTransientBlockReference> drawBlockReference)
+        Action<CadTransientBlockReference> drawBlockReference,
+        Func<CadTransientGroup, bool>? skipGroup)
     {
         if (groupCommandListCache.TryDraw(context, document, viewport, group, options))
             return;
@@ -256,7 +263,8 @@ internal sealed class Direct2DTransientSceneRenderer(
                 options,
                 drawOle,
                 drawEntityReference,
-                drawBlockReference);
+                drawBlockReference,
+                skipGroup);
         }
         finally
         {

@@ -9,8 +9,17 @@ internal class DefaultConverter<T>(T defaultValue, T nonDefaultValue) : IValueCo
     public T NonDefaultValue { get; set; } = nonDefaultValue;
 
     public virtual object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value == default ? DefaultValue : NonDefaultValue;
+        => IsDefaultValue(value) ? DefaultValue : NonDefaultValue;
 
     public virtual object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => Binding.DoNothing;
+
+    private static bool IsDefaultValue(object? value)
+    {
+        if (value is null)
+            return true;
+
+        var valueType = value.GetType();
+        return valueType.IsValueType && value.Equals(Activator.CreateInstance(valueType));
+    }
 }
