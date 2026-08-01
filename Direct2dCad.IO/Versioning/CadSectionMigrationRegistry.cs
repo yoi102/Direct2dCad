@@ -17,8 +17,10 @@ internal static class CadSectionMigrationRegistry
             //                // v1 -> v2 映射
             //            });
 
-            Section<CadDocumentSection>(CadSectionKind.Document, currentVersion: 1)
-                .ReadsVersion<CadDocumentSection>(1),
+            Section<CadDocumentSection>(CadSectionKind.Document, currentVersion: 2)
+                .ReadsVersion(1, CadDocumentSectionMigrations.ReadVersion1)
+                .ReadsVersion<CadDocumentSection>(2)
+                .Migrates<CadDocumentSection, CadDocumentSection>(1, static old => old),
 
             Section<CadSettingsSection>(CadSectionKind.Settings, currentVersion: 1)
                 .ReadsVersion<CadSettingsSection>(1),

@@ -47,7 +47,6 @@ public sealed class CadDocument : IEquatable<CadDocument>
         Id = id;
         Name = NormalizeName(name);
         _ids = idGenerator ?? new CadIdGenerator();
-        _ids.RegisterExisting(id);
         DocumentSettings = CadDocumentSettings.Default();
         InitializeDefaults();
     }

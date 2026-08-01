@@ -27,10 +27,18 @@ internal sealed class CadSectionDescriptor
 
     internal CadSectionDescriptor ReadsVersion<TVersion>(int version)
     {
-        GuardVersion(version);
-        _readers[version] = (payload, options) =>
+        return ReadsVersion(version, (payload, options) =>
             MessagePackSerializer.Deserialize<TVersion>(payload, options)
-            ?? throw new InvalidDataException($"Section {Kind} version {version} payload is null.");
+            ?? throw new InvalidDataException($"Section {Kind} version {version} payload is null."));
+    }
+
+    internal CadSectionDescriptor ReadsVersion(
+        int version,
+        Func<byte[], MessagePackSerializerOptions, object> reader)
+    {
+        GuardVersion(version);
+        ArgumentNullException.ThrowIfNull(reader);
+        _readers[version] = reader;
 
         return this;
     }

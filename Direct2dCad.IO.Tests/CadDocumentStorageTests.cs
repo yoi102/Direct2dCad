@@ -3,6 +3,8 @@ using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO.FileFormat.Container;
+using Direct2dCad.IO.FileFormat.Sections;
+using MessagePack;
 
 namespace Direct2dCad.IO.Tests;
 
@@ -48,6 +50,7 @@ public sealed class CadDocumentStorageTests
             await storage.SaveAsync(document, path);
             var loaded = await storage.LoadAsync(path);
 
+            Assert.Equal(document.Id, loaded.Id);
             Assert.Equal("Assembly", loaded.Name);
             Assert.Equal(CadUnit.Inch, loaded.DocumentSettings.Unit);
             Assert.Equal(6, loaded.DocumentSettings.LengthPrecision);
@@ -107,6 +110,57 @@ public sealed class CadDocumentStorageTests
             Assert.Equal(oleBytes, loadedOle.CopyOleBytes());
             Assert.Equal(0.65, loadedOle.Opacity);
             Assert.Equal("sheet.ole", loadedOle.SourceName);
+        }
+        finally
+        {
+            DeleteIfExists(path);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_MigratesLegacyLongDocumentIdToStableGuid()
+    {
+        var path = CreateTempPath();
+        try
+        {
+            const long legacyId = 42;
+            var storage = new CadDocumentStorage();
+            storage.Save(CadDocument.Create("Legacy document"), path);
+            RewriteDocumentSectionAsLegacyVersion1(storage, path, legacyId, "Legacy document");
+
+            var firstLoad = await storage.LoadAsync(path);
+            var secondLoad = await storage.LoadAsync(path);
+
+            Assert.NotEqual(Guid.Empty, firstLoad.Id.Value);
+            Assert.Equal(firstLoad.Id, secondLoad.Id);
+            Assert.Equal("Legacy document", firstLoad.Name);
+            Assert.Equal(
+                2,
+                storage.GetCurrentSectionVersions()
+                    .Single(version => version.Kind == CadSectionKind.Document)
+                    .CurrentVersion);
+        }
+        finally
+        {
+            DeleteIfExists(path);
+        }
+    }
+
+    [Fact]
+    public async Task LoadAsync_AcceptsTransitionalGuidPayloadMarkedAsVersion1()
+    {
+        var path = CreateTempPath();
+        try
+        {
+            var document = CadDocument.Create("Transitional document");
+            var storage = new CadDocumentStorage();
+            storage.Save(document, path);
+            RewriteSectionVersion(storage, path, CadSectionKind.Document, version: 1);
+
+            var loaded = await storage.LoadAsync(path);
+
+            Assert.Equal(document.Id, loaded.Id);
+            Assert.Equal(document.Name, loaded.Name);
         }
         finally
         {
@@ -192,6 +246,96 @@ public sealed class CadDocumentStorageTests
 
     private static string CreateTempPath() =>
         Path.Combine(Path.GetTempPath(), $"Direct2dCad-{Guid.NewGuid():N}.d2cad");
+
+    private static void RewriteDocumentSectionAsLegacyVersion1(
+        CadDocumentStorage storage,
+        string path,
+        long legacyId,
+        string name)
+    {
+        var entries = storage.ReadSectionTable(path);
+        var sections = new List<TestSection>(entries.Count);
+        using (var stream = File.OpenRead(path))
+        {
+            foreach (var entry in entries)
+            {
+                stream.Position = entry.PayloadOffset;
+                var payload = new byte[entry.PayloadLength];
+                stream.ReadExactly(payload);
+                sections.Add(entry.Kind == CadSectionKind.Document
+                    ? new TestSection(
+                        entry.Kind,
+                        Version: 1,
+                        CadCompressionKind.None,
+                        MessagePackSerializer.Serialize(new LegacyCadDocumentSection
+                        {
+                            Id = legacyId,
+                            Name = name
+                        }))
+                    : new TestSection(entry.Kind, entry.Version, entry.Compression, payload));
+            }
+        }
+
+        WriteSections(path, sections);
+    }
+
+    private static void RewriteSectionVersion(
+        CadDocumentStorage storage,
+        string path,
+        CadSectionKind kind,
+        int version)
+    {
+        var entries = storage.ReadSectionTable(path);
+        var index = entries.Select((entry, index) => (entry, index))
+            .Single(item => item.entry.Kind == kind)
+            .index;
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None);
+        stream.Position = 25 + index * 19 + sizeof(ushort);
+        using var writer = new BinaryWriter(stream);
+        writer.Write(version);
+    }
+
+    private static void WriteSections(string path, IReadOnlyList<TestSection> sections)
+    {
+        const int headerLength = 25;
+        const int sectionEntryLength = 19;
+        var tableLength = checked(sections.Count * sectionEntryLength);
+        var payloadOffset = checked(headerLength + tableLength);
+
+        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
+        using var writer = new BinaryWriter(stream);
+        writer.Write("D2CAD"u8.ToArray());
+        writer.Write(1);
+        writer.Write(sections.Count);
+        writer.Write((long)headerLength);
+        writer.Write(tableLength);
+
+        foreach (var section in sections)
+        {
+            writer.Write((ushort)section.Kind);
+            writer.Write(section.Version);
+            writer.Write((byte)section.Compression);
+            writer.Write((long)payloadOffset);
+            writer.Write(section.Payload.Length);
+            payloadOffset = checked(payloadOffset + section.Payload.Length);
+        }
+
+        foreach (var section in sections)
+            writer.Write(section.Payload);
+    }
+
+    [MessagePackObject]
+    public sealed class LegacyCadDocumentSection
+    {
+        [Key(0)] public long Id { get; set; }
+        [Key(1)] public string Name { get; set; } = "Untitled";
+    }
+
+    private sealed record TestSection(
+        CadSectionKind Kind,
+        int Version,
+        CadCompressionKind Compression,
+        byte[] Payload);
 
     private static void DeleteIfExists(string path)
     {
