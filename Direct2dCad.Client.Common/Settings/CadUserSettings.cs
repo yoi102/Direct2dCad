@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Rendering;
 
 namespace Direct2dCad.Client.Common.Settings;
 
@@ -56,10 +57,11 @@ public sealed class CadUserSettings
                 source.Rendering.AllowApproximateTileScaleFallback,
             IsBackgroundChunkRecordingEnabled =
                 source.Rendering.IsBackgroundChunkRecordingEnabled,
-            IsMultiDeviceRenderingEnabled =
-                source.Rendering.IsMultiDeviceRenderingEnabled,
-            MultiDeviceRenderingDeviceCount =
-                source.Rendering.MultiDeviceRenderingDeviceCount
+            IsParallelRenderingEnabled =
+                source.Rendering.IsParallelRenderingEnabled,
+            ParallelRenderingMode = source.Rendering.ParallelRenderingMode,
+            ParallelRenderingWorkerCount =
+                source.Rendering.ParallelRenderingWorkerCount
         };
         Interaction = new CadInteractionUserSettings
         {
@@ -109,13 +111,17 @@ public sealed class CadRenderingUserSettings
     public bool IsLevelOfDetailEnabled { get; set; } = true;
     public bool AllowApproximateTileScaleFallback { get; set; } = false;
     public bool IsBackgroundChunkRecordingEnabled { get; set; } = false;
-    public bool IsMultiDeviceRenderingEnabled { get; set; } = false;
-    public int MultiDeviceRenderingDeviceCount { get; set; } = 2;
+    public bool IsParallelRenderingEnabled { get; set; } = false;
+    public CadParallelRenderingMode ParallelRenderingMode { get; set; } =
+        CadParallelRenderingMode.MultipleDevices;
+    public int ParallelRenderingWorkerCount { get; set; } = 2;
 
     internal void Normalize()
     {
-        MultiDeviceRenderingDeviceCount =
-            Math.Clamp(MultiDeviceRenderingDeviceCount, 2, 4);
+        if (!Enum.IsDefined(ParallelRenderingMode))
+            ParallelRenderingMode = CadParallelRenderingMode.MultipleDevices;
+        ParallelRenderingWorkerCount =
+            Math.Clamp(ParallelRenderingWorkerCount, 2, 4);
     }
 }
 

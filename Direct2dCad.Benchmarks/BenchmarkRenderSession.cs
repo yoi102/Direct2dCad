@@ -21,7 +21,9 @@ internal sealed class BenchmarkRenderSession : IDisposable
         bool levelOfDetail = false,
         BlockId? activeOwnerBlockId = null,
         LayoutId? activeLayoutId = null,
-        LayoutViewportId? activeLayoutViewportId = null)
+        LayoutViewportId? activeLayoutViewportId = null,
+        CadParallelRenderingMode? parallelRenderingMode = null,
+        int parallelWorkerCount = 2)
     {
         Data = data ?? throw new ArgumentNullException(nameof(data));
         Viewport = BenchmarkDocumentFactory.CreateFittedViewport(
@@ -46,6 +48,11 @@ internal sealed class BenchmarkRenderSession : IDisposable
             DrawOrigin = false,
             DrawGripHandles = false,
             IsLevelOfDetailEnabled = levelOfDetail,
+            IsParallelRenderingEnabled = parallelRenderingMode.HasValue,
+            ParallelRenderingMode = parallelRenderingMode ??
+                CadParallelRenderingMode.MultipleDevices,
+            ParallelRenderingWorkerCount = Math.Clamp(parallelWorkerCount, 2, 4),
+            ParallelRenderingEntityThreshold = 2,
             EntityBoundsQueryInto = (ownerBlockId, bounds, results) =>
                 SpatialIndex.Query(ownerBlockId, bounds, results)
         });

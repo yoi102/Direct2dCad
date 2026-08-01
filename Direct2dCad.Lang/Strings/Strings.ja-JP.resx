@@ -1236,11 +1236,20 @@
   <data name="AiCadTool" xml:space="preserve">
     <value>CAD ツール</value>
   </data>
-  <data name="MultiDeviceRendering" xml:space="preserve">
-    <value>実験的なマルチデバイス描画</value>
+  <data name="ParallelRendering" xml:space="preserve">
+    <value>実験的な並列描画</value>
   </data>
-  <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
-    <value>描画デバイス数</value>
+  <data name="ParallelRenderingMode" xml:space="preserve">
+    <value>リソース方式</value>
+  </data>
+  <data name="ParallelRenderingWorkerCount" xml:space="preserve">
+    <value>描画ワーカー数</value>
+  </data>
+  <data name="ParallelRenderingMultipleDevices" xml:space="preserve">
+    <value>複数デバイス</value>
+  </data>
+  <data name="ParallelRenderingSharedDeviceContexts" xml:space="preserve">
+    <value>共有デバイス・複数コンテキスト</value>
   </data>
   <data name="AiSettings" xml:space="preserve">
     <value>AI アシスタント設定</value>

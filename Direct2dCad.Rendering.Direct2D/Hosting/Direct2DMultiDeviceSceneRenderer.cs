@@ -21,10 +21,6 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 /// </summary>
 internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
 {
-    internal const int MaximumDeviceCount = 4;
-    internal const int DefaultDeviceCount = 2;
-    internal const int DefaultEntityThreshold = 1000;
-
     private WorkerSlot[]? _slots;
     private CadDocument? _document;
     private nint _mainDevicePointer;
@@ -46,32 +42,28 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         int height,
         Action beforeComposite,
         out Direct2DMultiDeviceFrameLease? frameLease,
-        out Direct2DMultiDeviceFrameMetrics metrics)
+        out Direct2DParallelFrameMetrics metrics)
     {
         ThrowIfDisposed();
         frameLease = null;
         metrics = default;
 
-        var requestedDeviceCount = Math.Clamp(
-            options.MultiDeviceRenderingDeviceCount,
-            2,
-            MaximumDeviceCount);
-        var threshold = Math.Max(2, options.MultiDeviceRenderingEntityThreshold);
-        if (!options.IsMultiDeviceRenderingEnabled ||
-            options.ActiveLayoutId is not null ||
-            entities.Count < threshold ||
-            width <= 0 ||
-            height <= 0 ||
-            requestedDeviceCount <= 1 ||
-            ContainsUnsupportedEntities(entities))
+        if (!Direct2DParallelRenderPlanner.TryCreatePlan(
+                options,
+                CadParallelRenderingMode.MultipleDevices,
+                entities,
+                width,
+                height,
+                out var plan))
         {
-            if (!options.IsMultiDeviceRenderingEnabled)
+            if (!options.IsParallelRenderingEnabled ||
+                options.ParallelRenderingMode != CadParallelRenderingMode.MultipleDevices)
                 Reset();
             return false;
         }
 
-        var activeDeviceCount = Math.Min(requestedDeviceCount, entities.Count);
-        var batches = CreateBatches(entities, activeDeviceCount);
+        var activeDeviceCount = plan.WorkerCount;
+        var batches = plan.Batches;
         var started = Stopwatch.GetTimestamp();
         CadRenderStatistics[] workerStatistics;
         try
@@ -103,7 +95,8 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         {
             beforeComposite();
             frameLease = Composite(mainD2DContext, batches);
-            metrics = new Direct2DMultiDeviceFrameMetrics(
+            metrics = new Direct2DParallelFrameMetrics(
+                CadParallelRenderingMode.MultipleDevices,
                 activeDeviceCount,
                 entities.Count,
                 Stopwatch.GetElapsedTime(started).TotalMilliseconds,
@@ -188,30 +181,30 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options,
-        RenderBatch[] batches)
+        IReadOnlyList<Direct2DParallelRenderBatch> batches)
     {
-        var completed = new int[batches.Length];
-        var workerStatistics = new CadRenderStatistics[batches.Length];
+        var completed = new int[batches.Count];
+        var workerStatistics = new CadRenderStatistics[batches.Count];
         try
         {
             Parallel.For(
                 0,
-                batches.Length,
-                new ParallelOptions { MaxDegreeOfParallelism = batches.Length },
+                batches.Count,
+                new ParallelOptions { MaxDegreeOfParallelism = batches.Count },
                 index =>
                 {
                     workerStatistics[index] = _slots![index].Draw(
                         document,
                         viewport,
                         options,
-                        batches[index].Entities);
+                        batches[index]);
                     Volatile.Write(ref completed[index], 1);
                 });
             return workerStatistics;
         }
         catch
         {
-            for (var index = 0; index < batches.Length; index++)
+            for (var index = 0; index < batches.Count; index++)
             {
                 if (Volatile.Read(ref completed[index]) == 0)
                     continue;
@@ -231,7 +224,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
 
     private Direct2DMultiDeviceFrameLease Composite(
         ID2D1DeviceContext mainContext,
-        IReadOnlyList<RenderBatch> batches)
+        IReadOnlyList<Direct2DParallelRenderBatch> batches)
     {
         var lease = new Direct2DMultiDeviceFrameLease(batches.Count);
         var acquired = new bool[batches.Count];
@@ -274,39 +267,6 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         }
     }
 
-    private static RenderBatch[] CreateBatches(
-        IReadOnlyList<CadEntity> entities,
-        int deviceCount)
-    {
-        var baseChunkSize = entities.Count / deviceCount;
-        var remainder = entities.Count % deviceCount;
-        var result = new RenderBatch[deviceCount];
-        for (var index = 0; index < deviceCount; index++)
-        {
-            var start = index * baseChunkSize + Math.Min(index, remainder);
-            var count = baseChunkSize + (index < remainder ? 1 : 0);
-            var chunk = new CadEntity[count];
-            for (var entityIndex = 0; entityIndex < count; entityIndex++)
-                chunk[entityIndex] = entities[start + entityIndex];
-            result[index] = new RenderBatch(chunk);
-        }
-
-        return result;
-    }
-
-    private static bool ContainsUnsupportedEntities(IReadOnlyList<CadEntity> entities)
-    {
-        foreach (var entity in entities)
-        {
-            // OLE drawing can call UI/COM callbacks, while block references own nested caches and
-            // may contain OLE entities. Preserve the foreground renderer for either case.
-            if (entity is CadOleObject or CadBlockReference)
-                return true;
-        }
-
-        return false;
-    }
-
     public void Reset()
     {
         if (_slots is not null)
@@ -346,8 +306,6 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         if (_disposed)
             throw new ObjectDisposedException(nameof(Direct2DMultiDeviceSceneRenderer));
     }
-
-    private sealed record RenderBatch(IReadOnlyList<CadEntity> Entities);
 
     internal sealed class WorkerSlot : IDisposable
     {
@@ -638,12 +596,6 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         }
     }
 }
-
-internal readonly record struct Direct2DMultiDeviceFrameMetrics(
-    int WorkerCount,
-    int EntityCount,
-    double ElapsedMilliseconds,
-    IReadOnlyList<CadRenderStatistics> WorkerStatistics);
 
 internal sealed class Direct2DMultiDeviceFrameLease : IDisposable
 {

@@ -200,11 +200,12 @@ public sealed class CadCommandLineService : ICadCommandLineService
             $"selection {statistics.SelectionRenderMilliseconds:F2} ms",
             $"Timing I/O: OLE prepare {statistics.OlePreparationMilliseconds:F2} ms | " +
             $"surface draw {statistics.SurfaceDrawMilliseconds:F2} ms",
-            $"Multi-device: frames {statistics.MultiDeviceFrameCount} | " +
-            $"workers {statistics.MultiDeviceWorkerCount} | " +
-            $"entities {statistics.MultiDeviceEntityCount} | " +
-            $"render {statistics.MultiDeviceRenderMilliseconds:F2} ms | " +
-            $"worker GPU cache {FormatBytes(statistics.MultiDeviceGpuCacheBytes)}",
+            $"Parallel rendering: frames {statistics.ParallelFrameCount} | " +
+            $"mode {statistics.ParallelMode ?? "inactive"} | " +
+            $"workers {statistics.ParallelWorkerCount} | " +
+            $"entities {statistics.ParallelEntityCount} | " +
+            $"render {statistics.ParallelRenderMilliseconds:F2} ms | " +
+            $"worker GPU cache {FormatBytes(statistics.ParallelGpuCacheBytes)}",
             $"Blocks: refs {statistics.BlockReferenceCount} | expanded {statistics.ExpandedBlockEntityCount} | " +
             $"definition CL replay/build {statistics.BlockDefinitionCommandListReplayCount}/" +
             $"{statistics.BlockDefinitionCommandListBuildCount}",

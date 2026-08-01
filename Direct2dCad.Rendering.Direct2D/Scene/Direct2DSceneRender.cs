@@ -39,6 +39,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private readonly List<EntityId> _visibleEntityIds = new(256);
     private readonly HashSet<EntityId> _visibleEntityIdSet = [];
     private readonly List<int> _visiblePacketIndices = new(256);
+    private readonly List<CadEntity> _parallelVisibleEntities = new(256);
     private bool _disposed;
 
     public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
@@ -225,12 +226,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     internal void RecordSurfaceDraw(double milliseconds) =>
         _statistics.RecordSurfaceDraw(milliseconds);
 
-    internal void RecordMultiDeviceFrame(
+    internal void RecordParallelFrame(
+        CadParallelRenderingMode mode,
         int workerCount,
         int entityCount,
         double milliseconds,
         IReadOnlyList<CadRenderStatistics> workerStatistics) =>
-        _statistics.RecordMultiDeviceFrame(
+        _statistics.RecordParallelFrame(
+            mode,
             workerCount,
             entityCount,
             milliseconds,
@@ -592,7 +595,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             Direct2DScenePasses.Base);
     }
 
-    internal IReadOnlyList<CadEntity> GetVisibleEntitiesForMultiDevice(
+    internal IReadOnlyList<CadEntity> GetVisibleEntitiesForParallelRendering(
         CadDocument document,
         CadViewport viewport,
         CadRenderOptions options)
@@ -607,15 +610,18 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         var renderBounds = Direct2DEntityVisibility.ResolveRenderWorldBounds(
             viewport,
             options);
-        return Direct2DEntityVisibility.EnumerateOrderedSubset(
-                document,
-                viewport,
-                options,
-                _resourceCache,
-                orderedEntities,
-                renderBounds)
-            .Select(static visible => visible.Entity)
-            .ToArray();
+        _parallelVisibleEntities.Clear();
+        foreach (var visible in Direct2DEntityVisibility.EnumerateOrderedSubset(
+                     document,
+                     viewport,
+                     options,
+                     _resourceCache,
+                     orderedEntities,
+                     renderBounds))
+        {
+            _parallelVisibleEntities.Add(visible.Entity);
+        }
+        return _parallelVisibleEntities;
     }
 
     internal void RenderBackground(

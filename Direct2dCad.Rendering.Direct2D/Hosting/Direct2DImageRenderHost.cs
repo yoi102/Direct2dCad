@@ -24,6 +24,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private readonly ImageSourceDirect2DResource _target;
     private readonly Direct2DSceneRender _renderer = new();
     private readonly Direct2DMultiDeviceSceneRenderer _multiDeviceRenderer = new();
+    private readonly Direct2DSharedDeviceSceneRenderer _sharedDeviceRenderer = new();
     private readonly Direct2DDirtyRegionPlanner _dirtyRegionPlanner = new();
     private readonly Direct2DFrameRateTracker _frameRateTracker = new();
     private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
@@ -180,7 +181,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
         RefreshPendingTextMeasurements(document);
         _baseSceneDirty = true;
-        _multiDeviceRenderer.Reset();
+        ResetParallelRenderers();
         _renderer.RebuildAll(document);
     }
 
@@ -193,7 +194,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         TrackPendingTextMeasurements(document, changes);
         _baseSceneDirty |= changes.DocumentChanged;
         if (changes.DocumentChanged)
-            _multiDeviceRenderer.Reset();
+            ResetParallelRenderers();
         _renderer.ApplyChanges(document, changes);
     }
 
@@ -204,7 +205,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
         TrackPendingTextMeasurement(document, entityId);
         _baseSceneDirty = true;
-        _multiDeviceRenderer.Reset();
+        ResetParallelRenderers();
         _renderer.RebuildEntity(document, entityId);
     }
 
@@ -214,7 +215,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
         _pendingTextMeasurementIds.Remove(entityId);
         _baseSceneDirty = true;
-        _multiDeviceRenderer.Reset();
+        ResetParallelRenderers();
         _renderer.RemoveEntity(entityId);
     }
 
@@ -237,10 +238,14 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ThrowIfDisposed();
 
         var nextOptions = renderOptions ?? new CadRenderOptions();
-        if (_renderOptions.IsMultiDeviceRenderingEnabled &&
-            !nextOptions.IsMultiDeviceRenderingEnabled)
+        if (_renderOptions.IsParallelRenderingEnabled !=
+                nextOptions.IsParallelRenderingEnabled ||
+            _renderOptions.ParallelRenderingMode !=
+                nextOptions.ParallelRenderingMode ||
+            _renderOptions.ParallelRenderingWorkerCount !=
+                nextOptions.ParallelRenderingWorkerCount)
         {
-            _multiDeviceRenderer.Reset();
+            ResetParallelRenderers();
         }
         _renderOptions = nextOptions;
     }
@@ -272,7 +277,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
         var sizeChanged = width != _target.Width || height != _target.Height;
         if (sizeChanged)
-            _multiDeviceRenderer.Reset();
+            ResetParallelRenderers();
         _imageSource?.SetSize(width, height);
 
         if (_imageSource is not null)
@@ -695,7 +700,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 {
                     if (baseSceneChanged)
                     {
-                        Direct2DMultiDeviceFrameLease? multiDeviceFrameLease = null;
+                        IDisposable? parallelFrameLease = null;
                         try
                         {
                             _target.DrawFrame(context =>
@@ -730,11 +735,11 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                                 context.Clear(background);
 
                                 if (_document is not null && _viewport is not null &&
-                                    !TryRenderMultiDeviceBase(
+                                    !TryRenderParallelBase(
                                         context,
                                         _document,
                                         _viewport,
-                                        out multiDeviceFrameLease))
+                                        out parallelFrameLease))
                                 {
                                     _renderer.RenderBase(
                                         _document,
@@ -749,9 +754,9 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                         }
                         finally
                         {
-                            // Key 0 must only be returned after the main context has submitted
-                            // every DrawImage that reads the worker textures.
-                            multiDeviceFrameLease?.Dispose();
+                            // Multi-device keyed-mutex ownership is released only after the main
+                            // context has submitted every DrawImage that reads worker textures.
+                            parallelFrameLease?.Dispose();
                         }
 
                         _baseSceneValid = _target.CaptureBaseScene(
@@ -1014,12 +1019,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             AllowApproximateTileScaleFallback = _renderOptions.AllowApproximateTileScaleFallback,
             IsBackgroundChunkRecordingEnabled =
                 _renderOptions.IsBackgroundChunkRecordingEnabled,
-            IsMultiDeviceRenderingEnabled =
-                _renderOptions.IsMultiDeviceRenderingEnabled,
-            MultiDeviceRenderingDeviceCount =
-                _renderOptions.MultiDeviceRenderingDeviceCount,
-            MultiDeviceRenderingEntityThreshold =
-                _renderOptions.MultiDeviceRenderingEntityThreshold,
+            IsParallelRenderingEnabled =
+                _renderOptions.IsParallelRenderingEnabled,
+            ParallelRenderingMode = _renderOptions.ParallelRenderingMode,
+            ParallelRenderingWorkerCount =
+                _renderOptions.ParallelRenderingWorkerCount,
+            ParallelRenderingEntityThreshold =
+                _renderOptions.ParallelRenderingEntityThreshold,
             EnableGeometryRealizations = _renderOptions.EnableGeometryRealizations,
             TransformScaleMultiplier = _renderOptions.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = _renderOptions.KeepStrokeWidthScreenConstant,
@@ -1031,40 +1037,69 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         };
     }
 
-    private bool TryRenderMultiDeviceBase(
+    private bool TryRenderParallelBase(
         ID2D1DeviceContext context,
         CadDocument document,
         CadViewport viewport,
-        out Direct2DMultiDeviceFrameLease? frameLease)
+        out IDisposable? frameLease)
     {
         frameLease = null;
-        if (!_renderOptions.IsMultiDeviceRenderingEnabled ||
+        if (!_renderOptions.IsParallelRenderingEnabled ||
             _target.D3DDevice is not { } d3dDevice ||
+            _target.Factory is not { } d2dFactory ||
+            _target.Device is not { } d2dDevice ||
             _target.DwriteFactory is not { } dwriteFactory)
         {
             return false;
         }
 
-        var visibleEntities = _renderer.GetVisibleEntitiesForMultiDevice(
+        var visibleEntities = _renderer.GetVisibleEntitiesForParallelRendering(
             document,
             viewport,
             _renderOptions);
-        var rendered = _multiDeviceRenderer.TryDraw(
-            d3dDevice,
-            context,
-            dwriteFactory,
-            document,
-            viewport,
-            _renderOptions,
-            visibleEntities,
-            _target.Width,
-            _target.Height,
-            () => _renderer.RenderBackground(document, viewport, _renderOptions),
-            out frameLease,
-            out var metrics);
+        Direct2DParallelFrameMetrics metrics;
+        bool rendered;
+        if (_renderOptions.ParallelRenderingMode ==
+            CadParallelRenderingMode.SharedDeviceContexts)
+        {
+            _multiDeviceRenderer.Reset();
+            rendered = _sharedDeviceRenderer.TryDraw(
+                d3dDevice,
+                d2dFactory,
+                d2dDevice,
+                context,
+                dwriteFactory,
+                document,
+                viewport,
+                _renderOptions,
+                visibleEntities,
+                _target.Width,
+                _target.Height,
+                () => _renderer.RenderBackground(document, viewport, _renderOptions),
+                out metrics);
+        }
+        else
+        {
+            _sharedDeviceRenderer.Reset();
+            rendered = _multiDeviceRenderer.TryDraw(
+                d3dDevice,
+                context,
+                dwriteFactory,
+                document,
+                viewport,
+                _renderOptions,
+                visibleEntities,
+                _target.Width,
+                _target.Height,
+                () => _renderer.RenderBackground(document, viewport, _renderOptions),
+                out var multiDeviceFrameLease,
+                out metrics);
+            frameLease = multiDeviceFrameLease;
+        }
         if (rendered)
         {
-            _renderer.RecordMultiDeviceFrame(
+            _renderer.RecordParallelFrame(
+                metrics.Mode,
                 metrics.WorkerCount,
                 metrics.EntityCount,
                 metrics.ElapsedMilliseconds,
@@ -1177,7 +1212,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         EndViewportInteraction();
         _hasRenderedFrame = false;
         InvalidateBaseScene(releaseSnapshot: true);
-        _multiDeviceRenderer.Reset();
+        ResetParallelRenderers();
         if (!_target.IsTargetReady)
             return;
 
@@ -1192,8 +1227,14 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
     private void BeforeDeviceResourcesReleased()
     {
-        _multiDeviceRenderer.Reset();
+        ResetParallelRenderers();
         _renderer.SuspendBackgroundChunkRecording();
+    }
+
+    private void ResetParallelRenderers()
+    {
+        _multiDeviceRenderer.Reset();
+        _sharedDeviceRenderer.Reset();
     }
 
     public void Dispose()
@@ -1204,6 +1245,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ReleaseClearBrush();
         EndViewportInteraction();
         _multiDeviceRenderer.Dispose();
+        _sharedDeviceRenderer.Dispose();
         _renderer.Dispose();
         _target.Dispose();
         _imageSource = null;

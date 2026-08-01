@@ -33,18 +33,38 @@
                   Content="{I18N {x:Static r:UserSettingsLangKeys.BackgroundChunkRecording}}"
                   IsChecked="{Binding IsBackgroundChunkRecordingEnabled}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.MultiDeviceRendering}}"
-                  IsChecked="{Binding IsMultiDeviceRenderingEnabled}" />
-        <DockPanel IsEnabled="{Binding IsMultiDeviceRenderingEnabled}">
-            <TextBlock Margin="24,0,12,0"
+                  Content="{I18N {x:Static r:UserSettingsLangKeys.ParallelRendering}}"
+                  IsChecked="{Binding IsParallelRenderingEnabled}" />
+        <Grid Margin="24,0,0,0"
+              IsEnabled="{Binding IsParallelRenderingEnabled}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="220" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Margin="0,0,12,10"
                        VerticalAlignment="Center"
-                       Text="{I18N {x:Static r:UserSettingsLangKeys.MultiDeviceRenderingDeviceCount}}" />
-            <mah:NumericUpDown Width="100"
+                       Text="{I18N {x:Static r:UserSettingsLangKeys.ParallelRenderingMode}}" />
+            <ComboBox Grid.Column="1"
+                      Margin="0,0,0,10"
+                      ItemsSource="{Binding ParallelRenderingModeOptions}"
+                      DisplayMemberPath="DisplayName"
+                      SelectedItem="{Binding SelectedParallelRenderingMode}" />
+            <TextBlock Grid.Row="1"
+                       Margin="0,0,12,0"
+                       VerticalAlignment="Center"
+                       Text="{I18N {x:Static r:UserSettingsLangKeys.ParallelRenderingWorkerCount}}" />
+            <mah:NumericUpDown Grid.Row="1"
+                               Grid.Column="1"
+                               Width="100"
                                HorizontalAlignment="Left"
                                Minimum="2"
                                Maximum="4"
                                Interval="1"
-                               Value="{Binding MultiDeviceRenderingDeviceCount}" />
-        </DockPanel>
+                               Value="{Binding ParallelRenderingWorkerCount}" />
+        </Grid>
     </StackPanel>
 </UserControl>

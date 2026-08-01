@@ -60,11 +60,12 @@ public sealed record CadRenderStatistics(
 {
     public int BackgroundCommandListBuildCount { get; init; }
     public double BackgroundCommandListBuildMilliseconds { get; init; }
-    public int MultiDeviceFrameCount { get; init; }
-    public int MultiDeviceWorkerCount { get; init; }
-    public int MultiDeviceEntityCount { get; init; }
-    public double MultiDeviceRenderMilliseconds { get; init; }
-    public long MultiDeviceGpuCacheBytes { get; init; }
+    public int ParallelFrameCount { get; init; }
+    public CadParallelRenderingMode? ParallelMode { get; init; }
+    public int ParallelWorkerCount { get; init; }
+    public int ParallelEntityCount { get; init; }
+    public double ParallelRenderMilliseconds { get; init; }
+    public long ParallelGpuCacheBytes { get; init; }
 
     public double RenderCacheHitRatio =>
         RenderCacheHitCount + RenderCacheMissCount == 0

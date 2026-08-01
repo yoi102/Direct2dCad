@@ -1457,11 +1457,20 @@
   <data name="AiCadTool" xml:space="preserve">
     <value>CAD tool</value>
   </data>
-  <data name="MultiDeviceRendering" xml:space="preserve">
-    <value>Experimental multi-device rendering</value>
+  <data name="ParallelRendering" xml:space="preserve">
+    <value>Experimental parallel rendering</value>
   </data>
-  <data name="MultiDeviceRenderingDeviceCount" xml:space="preserve">
-    <value>Rendering devices</value>
+  <data name="ParallelRenderingMode" xml:space="preserve">
+    <value>Resource strategy</value>
+  </data>
+  <data name="ParallelRenderingWorkerCount" xml:space="preserve">
+    <value>Rendering workers</value>
+  </data>
+  <data name="ParallelRenderingMultipleDevices" xml:space="preserve">
+    <value>Multiple devices</value>
+  </data>
+  <data name="ParallelRenderingSharedDeviceContexts" xml:space="preserve">
+    <value>Shared device, multiple contexts</value>
   </data>
   <data name="AiSettings" xml:space="preserve">
     <value>AI assistant settings</value>

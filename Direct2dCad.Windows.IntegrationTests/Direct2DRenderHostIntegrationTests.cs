@@ -45,24 +45,76 @@ public sealed class Direct2DRenderHostIntegrationTests
             DrawGrid = false,
             DrawOrigin = false,
             DrawGripHandles = false,
-            IsMultiDeviceRenderingEnabled = true,
-            MultiDeviceRenderingDeviceCount = 2,
-            MultiDeviceRenderingEntityThreshold = 32
+            IsParallelRenderingEnabled = true,
+            ParallelRenderingMode = CadParallelRenderingMode.MultipleDevices,
+            ParallelRenderingWorkerCount = 2,
+            ParallelRenderingEntityThreshold = 32
         });
 
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 
-        Assert.Equal(1, host.RenderStatistics.MultiDeviceFrameCount);
-        Assert.Equal(2, host.RenderStatistics.MultiDeviceWorkerCount);
-        Assert.Equal(96, host.RenderStatistics.MultiDeviceEntityCount);
+        Assert.Equal(1, host.RenderStatistics.ParallelFrameCount);
+        Assert.Equal(CadParallelRenderingMode.MultipleDevices, host.RenderStatistics.ParallelMode);
+        Assert.Equal(2, host.RenderStatistics.ParallelWorkerCount);
+        Assert.Equal(96, host.RenderStatistics.ParallelEntityCount);
         Assert.Equal(96, host.RenderStatistics.VisibleEntityCount);
-        Assert.True(host.RenderStatistics.MultiDeviceRenderMilliseconds > 0);
+        Assert.True(host.RenderStatistics.ParallelRenderMilliseconds > 0);
         Assert.Equal(1, imageSource.PresentCount);
     }
 
     [Fact]
     [Trait("Category", "WindowsIntegration")]
-    public void RenderHost_MultiDeviceWorkersReuseGeometryRealizations()
+    public void RenderHost_RendersEntityChunksOnSharedDeviceContexts()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("Shared-device-context rendering");
+        for (var index = 0; index < 96; index++)
+        {
+            var row = index / 16;
+            var column = index % 16;
+            document.AddLine(
+                new CadPointD(column * 4 - 30, row * 4 - 10),
+                new CadPointD(column * 4 - 28, row * 4 - 8));
+        }
+
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(6, new CadPointD(320, 240));
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsParallelRenderingEnabled = true,
+            ParallelRenderingMode = CadParallelRenderingMode.SharedDeviceContexts,
+            ParallelRenderingWorkerCount = 2,
+            ParallelRenderingEntityThreshold = 32
+        });
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(1, host.RenderStatistics.ParallelFrameCount);
+        Assert.Equal(
+            CadParallelRenderingMode.SharedDeviceContexts,
+            host.RenderStatistics.ParallelMode);
+        Assert.Equal(2, host.RenderStatistics.ParallelWorkerCount);
+        Assert.Equal(96, host.RenderStatistics.ParallelEntityCount);
+        Assert.Equal(96, host.RenderStatistics.VisibleEntityCount);
+        Assert.True(host.RenderStatistics.ParallelRenderMilliseconds > 0);
+        Assert.Equal(1, imageSource.PresentCount);
+    }
+
+    [Theory]
+    [InlineData(CadParallelRenderingMode.MultipleDevices)]
+    [InlineData(CadParallelRenderingMode.SharedDeviceContexts)]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_ParallelWorkersReuseGeometryRealizations(
+        CadParallelRenderingMode mode)
     {
         using var host = new Direct2DImageRenderHost();
         var imageSource = new RecordingImageSource(640, 480);
@@ -96,28 +148,152 @@ public sealed class Direct2DRenderHostIntegrationTests
             DrawOrigin = false,
             DrawGripHandles = false,
             IsLevelOfDetailEnabled = true,
-            IsMultiDeviceRenderingEnabled = true,
-            MultiDeviceRenderingDeviceCount = 2,
-            MultiDeviceRenderingEntityThreshold = 2
+            IsParallelRenderingEnabled = true,
+            ParallelRenderingMode = mode,
+            ParallelRenderingWorkerCount = 2,
+            ParallelRenderingEntityThreshold = 2
         });
 
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 
-        Assert.Equal(1, host.RenderStatistics.MultiDeviceFrameCount);
+        Assert.Equal(1, host.RenderStatistics.ParallelFrameCount);
         Assert.True(host.RenderStatistics.GeometryRealizationBuildCount >= 1);
         Assert.True(host.RenderStatistics.GeometryRealizationCacheMissCount >= 1);
-        Assert.True(host.RenderStatistics.MultiDeviceGpuCacheBytes > 0);
+        Assert.True(host.RenderStatistics.ParallelGpuCacheBytes > 0);
         var firstFrameBuildCount =
             host.RenderStatistics.GeometryRealizationBuildCount;
 
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 
-        Assert.Equal(1, host.RenderStatistics.MultiDeviceFrameCount);
+        Assert.Equal(1, host.RenderStatistics.ParallelFrameCount);
         Assert.True(
             host.RenderStatistics.GeometryRealizationBuildCount <=
             firstFrameBuildCount);
         Assert.True(host.RenderStatistics.GeometryRealizationCacheHitCount >= 1);
         Assert.True(host.RenderStatistics.GeometryRealizationStrokeDrawCount >= 1);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_SwitchesParallelResourceStrategiesAtRuntime()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(320, 240);
+        host.AttachImageSource(imageSource);
+        host.SetSize(320, 240);
+
+        var document = CadDocument.Create("Parallel strategy switch");
+        for (var index = 0; index < 64; index++)
+        {
+            document.AddLine(
+                new CadPointD(index - 32, -1),
+                new CadPointD(index - 32, 1));
+        }
+
+        var viewport = new CadViewport();
+        viewport.SetSize(320, 240);
+        viewport.SetView(3, new CadPointD(160, 120));
+        host.SetScene(document, viewport);
+
+        CadRenderOptions CreateOptions(
+            bool enabled,
+            CadParallelRenderingMode mode) => new()
+            {
+                DrawGrid = false,
+                DrawOrigin = false,
+                DrawGripHandles = false,
+                IsParallelRenderingEnabled = enabled,
+                ParallelRenderingMode = mode,
+                ParallelRenderingWorkerCount = 2,
+                ParallelRenderingEntityThreshold = 2
+            };
+
+        host.SetRenderOptions(CreateOptions(true, CadParallelRenderingMode.MultipleDevices));
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+        Assert.Equal(CadParallelRenderingMode.MultipleDevices, host.RenderStatistics.ParallelMode);
+
+        host.SetRenderOptions(CreateOptions(true, CadParallelRenderingMode.SharedDeviceContexts));
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+        Assert.Equal(CadParallelRenderingMode.SharedDeviceContexts, host.RenderStatistics.ParallelMode);
+
+        host.SetRenderOptions(CreateOptions(false, CadParallelRenderingMode.SharedDeviceContexts));
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+        Assert.Equal(0, host.RenderStatistics.ParallelFrameCount);
+        Assert.Null(host.RenderStatistics.ParallelMode);
+        Assert.Equal(64, host.RenderStatistics.VisibleEntityCount);
+        Assert.Equal(3, imageSource.PresentCount);
+    }
+
+    [Theory]
+    [InlineData(CadParallelRenderingMode.MultipleDevices)]
+    [InlineData(CadParallelRenderingMode.SharedDeviceContexts)]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_ParallelWorkersRecoverAfterResize(
+        CadParallelRenderingMode mode)
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(320, 240);
+        host.AttachImageSource(imageSource);
+        host.SetSize(320, 240);
+
+        var document = CadDocument.Create("Parallel resize");
+        for (var index = 0; index < 32; index++)
+            document.AddLine(new CadPointD(index, 0), new CadPointD(index, 4));
+
+        var viewport = new CadViewport();
+        viewport.SetSize(320, 240);
+        viewport.SetView(3, new CadPointD(160, 120));
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(CreateParallelRenderOptions(mode));
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        host.SetSize(480, 360);
+        viewport.SetSize(480, 360);
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(480, host.TargetWidth);
+        Assert.Equal(360, host.TargetHeight);
+        Assert.Equal(mode, host.RenderStatistics.ParallelMode);
+        Assert.Equal(32, host.RenderStatistics.ParallelEntityCount);
+        Assert.Equal(2, imageSource.PresentCount);
+    }
+
+    [Theory]
+    [InlineData(CadParallelRenderingMode.MultipleDevices)]
+    [InlineData(CadParallelRenderingMode.SharedDeviceContexts)]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_ParallelWorkersRecoverAfterDeviceLoss(
+        CadParallelRenderingMode mode)
+    {
+        var injectedFailureCount = 0;
+        using var host = new Direct2DImageRenderHost(context =>
+        {
+            if (injectedFailureCount++ == 0)
+                return Vortice.Direct2D1.ResultCode.RecreateTarget;
+            return context.EndDraw();
+        });
+        var imageSource = new RecordingImageSource(320, 240);
+        host.AttachImageSource(imageSource);
+        host.SetSize(320, 240);
+
+        var document = CadDocument.Create("Parallel device loss");
+        for (var index = 0; index < 32; index++)
+            document.AddLine(new CadPointD(index, 0), new CadPointD(index, 4));
+
+        var viewport = new CadViewport();
+        viewport.SetSize(320, 240);
+        viewport.SetView(3, new CadPointD(160, 120));
+        host.SetScene(document, viewport);
+        host.SetRenderOptions(CreateParallelRenderOptions(mode));
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.True(injectedFailureCount >= 2);
+        Assert.Equal(1, imageSource.PresentCount);
+        Assert.Equal(mode, host.RenderStatistics.ParallelMode);
+        Assert.Equal(32, host.RenderStatistics.ParallelEntityCount);
+        Assert.NotEqual(nint.Zero, imageSource.SurfacePointer);
     }
 
     [Fact]
@@ -746,6 +922,18 @@ public sealed class Direct2DRenderHostIntegrationTests
 
         return pixels;
     }
+
+    private static CadRenderOptions CreateParallelRenderOptions(
+        CadParallelRenderingMode mode) => new()
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false,
+            IsParallelRenderingEnabled = true,
+            ParallelRenderingMode = mode,
+            ParallelRenderingWorkerCount = 2,
+            ParallelRenderingEntityThreshold = 2
+        };
 
     private sealed class RecordingImageSource(int width, int height) : ID3D11ImageSource
     {

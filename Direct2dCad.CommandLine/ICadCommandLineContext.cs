@@ -79,8 +79,9 @@ public sealed record CadCommandLineRenderStatistics(
     double SelectionRenderMilliseconds,
     double OlePreparationMilliseconds,
     double SurfaceDrawMilliseconds,
-    int MultiDeviceFrameCount,
-    int MultiDeviceWorkerCount,
-    int MultiDeviceEntityCount,
-    double MultiDeviceRenderMilliseconds,
-    long MultiDeviceGpuCacheBytes);
+    int ParallelFrameCount,
+    string? ParallelMode,
+    int ParallelWorkerCount,
+    int ParallelEntityCount,
+    double ParallelRenderMilliseconds,
+    long ParallelGpuCacheBytes);

@@ -33,11 +33,12 @@ internal sealed class Direct2DRenderStatisticsCollector
     public int CommandListBuildCount { get; private set; }
     public int BackgroundCommandListBuildCount { get; private set; }
     public double BackgroundCommandListBuildMilliseconds { get; private set; }
-    public int MultiDeviceFrameCount { get; private set; }
-    public int MultiDeviceWorkerCount { get; private set; }
-    public int MultiDeviceEntityCount { get; private set; }
-    public double MultiDeviceRenderMilliseconds { get; private set; }
-    public long MultiDeviceGpuCacheBytes { get; private set; }
+    public int ParallelFrameCount { get; private set; }
+    public CadParallelRenderingMode? ParallelMode { get; private set; }
+    public int ParallelWorkerCount { get; private set; }
+    public int ParallelEntityCount { get; private set; }
+    public double ParallelRenderMilliseconds { get; private set; }
+    public long ParallelGpuCacheBytes { get; private set; }
     public int TileReplayCount { get; private set; }
     public int TileBuildCount { get; private set; }
     public int FallbackEntityCount { get; private set; }
@@ -103,11 +104,12 @@ internal sealed class Direct2DRenderStatisticsCollector
         BackgroundCommandListBuildCount = _pendingBackgroundCommandListBuildCount;
         BackgroundCommandListBuildMilliseconds =
             _pendingBackgroundCommandListBuildMilliseconds;
-        MultiDeviceFrameCount = 0;
-        MultiDeviceWorkerCount = 0;
-        MultiDeviceEntityCount = 0;
-        MultiDeviceRenderMilliseconds = 0;
-        MultiDeviceGpuCacheBytes = 0;
+        ParallelFrameCount = 0;
+        ParallelMode = null;
+        ParallelWorkerCount = 0;
+        ParallelEntityCount = 0;
+        ParallelRenderMilliseconds = 0;
+        ParallelGpuCacheBytes = 0;
         TileReplayCount = 0;
         TileBuildCount = _pendingTileBuildCount;
         FallbackEntityCount = 0;
@@ -202,19 +204,21 @@ internal sealed class Direct2DRenderStatisticsCollector
                 NormalizeDuration(milliseconds);
         }
     }
-    public void RecordMultiDeviceFrame(
+    public void RecordParallelFrame(
+        CadParallelRenderingMode mode,
         int workerCount,
         int entityCount,
         double milliseconds,
         IReadOnlyList<CadRenderStatistics> workerStatistics)
     {
-        MultiDeviceFrameCount++;
-        MultiDeviceWorkerCount = Math.Max(
-            MultiDeviceWorkerCount,
+        ParallelFrameCount++;
+        ParallelMode = mode;
+        ParallelWorkerCount = Math.Max(
+            ParallelWorkerCount,
             Math.Max(0, workerCount));
         var normalizedEntityCount = Math.Max(0, entityCount);
-        MultiDeviceEntityCount += normalizedEntityCount;
-        MultiDeviceRenderMilliseconds += NormalizeDuration(milliseconds);
+        ParallelEntityCount += normalizedEntityCount;
+        ParallelRenderMilliseconds += NormalizeDuration(milliseconds);
         foreach (var statistics in workerStatistics)
         {
             ScenePassCount += statistics.ScenePassCount;
@@ -243,7 +247,7 @@ internal sealed class Direct2DRenderStatisticsCollector
             CpuEntitySubmissionMilliseconds +=
                 statistics.CpuEntitySubmissionMilliseconds;
             EntityRenderMilliseconds += statistics.EntityRenderMilliseconds;
-            MultiDeviceGpuCacheBytes += statistics.GpuCacheBytes;
+            ParallelGpuCacheBytes += statistics.GpuCacheBytes;
         }
     }
     public void RecordTileReplay() => TileReplayCount++;
@@ -421,11 +425,12 @@ internal sealed class Direct2DRenderStatisticsCollector
         BackgroundCommandListBuildCount = BackgroundCommandListBuildCount,
         BackgroundCommandListBuildMilliseconds =
             BackgroundCommandListBuildMilliseconds,
-        MultiDeviceFrameCount = MultiDeviceFrameCount,
-        MultiDeviceWorkerCount = MultiDeviceWorkerCount,
-        MultiDeviceEntityCount = MultiDeviceEntityCount,
-        MultiDeviceRenderMilliseconds = MultiDeviceRenderMilliseconds,
-        MultiDeviceGpuCacheBytes = MultiDeviceGpuCacheBytes
+        ParallelFrameCount = ParallelFrameCount,
+        ParallelMode = ParallelMode,
+        ParallelWorkerCount = ParallelWorkerCount,
+        ParallelEntityCount = ParallelEntityCount,
+        ParallelRenderMilliseconds = ParallelRenderMilliseconds,
+        ParallelGpuCacheBytes = ParallelGpuCacheBytes
     };
 
     private static double NormalizeDuration(double milliseconds) =>

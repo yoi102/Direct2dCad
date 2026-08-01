@@ -1742,10 +1742,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 UserSettings.Rendering.AllowApproximateTileScaleFallback,
             IsBackgroundChunkRecordingEnabled =
                 UserSettings.Rendering.IsBackgroundChunkRecordingEnabled,
-            IsMultiDeviceRenderingEnabled =
-                UserSettings.Rendering.IsMultiDeviceRenderingEnabled,
-            MultiDeviceRenderingDeviceCount =
-                UserSettings.Rendering.MultiDeviceRenderingDeviceCount,
+            IsParallelRenderingEnabled =
+                UserSettings.Rendering.IsParallelRenderingEnabled,
+            ParallelRenderingMode =
+                UserSettings.Rendering.ParallelRenderingMode,
+            ParallelRenderingWorkerCount =
+                UserSettings.Rendering.ParallelRenderingWorkerCount,
             EntityBoundsQuery = _entityBoundsQuery,
             EntityBoundsQueryInto = _entityBoundsQueryInto,
             HiddenEntityIds = _gripDrag.HiddenEntityIds
@@ -2746,11 +2748,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             statistics.SelectionRenderMilliseconds,
             statistics.OlePreparationMilliseconds,
             statistics.SurfaceDrawMilliseconds,
-            statistics.MultiDeviceFrameCount,
-            statistics.MultiDeviceWorkerCount,
-            statistics.MultiDeviceEntityCount,
-            statistics.MultiDeviceRenderMilliseconds,
-            statistics.MultiDeviceGpuCacheBytes);
+            statistics.ParallelFrameCount,
+            statistics.ParallelMode?.ToString(),
+            statistics.ParallelWorkerCount,
+            statistics.ParallelEntityCount,
+            statistics.ParallelRenderMilliseconds,
+            statistics.ParallelGpuCacheBytes);
     }
 
     private static CadCommandLineClipboardSummary? CreateClipboardSummary(CadClipboardSnapshot? snapshot)

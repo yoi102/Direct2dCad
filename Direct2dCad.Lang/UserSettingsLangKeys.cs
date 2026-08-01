@@ -12,9 +12,11 @@ public static class UserSettingsLangKeys
     public const string ApproximateTileScaleFallback = nameof(ApproximateTileScaleFallback);
     public const string LevelOfDetailOptimization = nameof(LevelOfDetailOptimization);
     public const string BackgroundChunkRecording = nameof(BackgroundChunkRecording);
-    public const string MultiDeviceRendering = nameof(MultiDeviceRendering);
-    public const string MultiDeviceRenderingDeviceCount =
-        nameof(MultiDeviceRenderingDeviceCount);
+    public const string ParallelRendering = nameof(ParallelRendering);
+    public const string ParallelRenderingMode = nameof(ParallelRenderingMode);
+    public const string ParallelRenderingWorkerCount = nameof(ParallelRenderingWorkerCount);
+    public const string ParallelRenderingMultipleDevices = nameof(ParallelRenderingMultipleDevices);
+    public const string ParallelRenderingSharedDeviceContexts = nameof(ParallelRenderingSharedDeviceContexts);
     public const string SelectedEntity = nameof(SelectedEntity);
     public const string Grip = nameof(Grip);
     public const string GripPreview = nameof(GripPreview);

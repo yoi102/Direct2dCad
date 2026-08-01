@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering\Direct2dCad.Rendering.csproj" />
   </ItemGroup>
 
 </Project>

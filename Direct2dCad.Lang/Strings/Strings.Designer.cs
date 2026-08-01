@@ -2221,24 +2221,6 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
-        ///   查找类似 Experimental multi-device rendering 的本地化字符串。
-        /// </summary>
-        public static string MultiDeviceRendering {
-            get {
-                return ResourceManager.GetString("MultiDeviceRendering", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   查找类似 Rendering devices 的本地化字符串。
-        /// </summary>
-        public static string MultiDeviceRenderingDeviceCount {
-            get {
-                return ResourceManager.GetString("MultiDeviceRenderingDeviceCount", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   查找类似 Multiple entity types 的本地化字符串。
         /// </summary>
         public static string MultipleEntityTypes {
@@ -2442,6 +2424,51 @@ namespace Direct2dCad.Lang.Strings {
         public static string PaperWidth {
             get {
                 return ResourceManager.GetString("PaperWidth", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Experimental parallel rendering 的本地化字符串。
+        /// </summary>
+        public static string ParallelRendering {
+            get {
+                return ResourceManager.GetString("ParallelRendering", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Resource strategy 的本地化字符串。
+        /// </summary>
+        public static string ParallelRenderingMode {
+            get {
+                return ResourceManager.GetString("ParallelRenderingMode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Multiple devices 的本地化字符串。
+        /// </summary>
+        public static string ParallelRenderingMultipleDevices {
+            get {
+                return ResourceManager.GetString("ParallelRenderingMultipleDevices", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Shared device, multiple contexts 的本地化字符串。
+        /// </summary>
+        public static string ParallelRenderingSharedDeviceContexts {
+            get {
+                return ResourceManager.GetString("ParallelRenderingSharedDeviceContexts", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Rendering workers 的本地化字符串。
+        /// </summary>
+        public static string ParallelRenderingWorkerCount {
+            get {
+                return ResourceManager.GetString("ParallelRenderingWorkerCount", resourceCulture);
             }
         }
         

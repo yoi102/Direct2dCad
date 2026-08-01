@@ -1,14 +1,28 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Lang.Strings;
+using Direct2dCad.Rendering;
 
 namespace Direct2dCad.ViewModels.Settings.UserSettings;
+
+public sealed record ParallelRenderingModeOption(
+    CadParallelRenderingMode Mode,
+    string DisplayName);
 
 public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewModel
 {
     public RenderingUserSettingsViewModel(CadRenderingUserSettings settings)
         : base(Localized("Rendering"))
     {
+        ParallelRenderingModeOptions =
+        [
+            new(
+                CadParallelRenderingMode.MultipleDevices,
+                Localized("ParallelRenderingMultipleDevices")),
+            new(
+                CadParallelRenderingMode.SharedDeviceContexts,
+                Localized("ParallelRenderingSharedDeviceContexts"))
+        ];
         Load(settings);
     }
 
@@ -23,10 +37,11 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
         AllowApproximateTileScaleFallback = settings.AllowApproximateTileScaleFallback;
         IsBackgroundChunkRecordingEnabled =
             settings.IsBackgroundChunkRecordingEnabled;
-        IsMultiDeviceRenderingEnabled =
-            settings.IsMultiDeviceRenderingEnabled;
-        MultiDeviceRenderingDeviceCount =
-            settings.MultiDeviceRenderingDeviceCount;
+        IsParallelRenderingEnabled = settings.IsParallelRenderingEnabled;
+        SelectedParallelRenderingMode =
+            ParallelRenderingModeOptions.First(option =>
+                option.Mode == settings.ParallelRenderingMode);
+        ParallelRenderingWorkerCount = settings.ParallelRenderingWorkerCount;
     }
 
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
@@ -48,10 +63,15 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     public partial bool IsBackgroundChunkRecordingEnabled { get; set; }
 
     [ObservableProperty]
-    public partial bool IsMultiDeviceRenderingEnabled { get; set; }
+    public partial bool IsParallelRenderingEnabled { get; set; }
 
     [ObservableProperty]
-    public partial int MultiDeviceRenderingDeviceCount { get; set; }
+    public partial ParallelRenderingModeOption? SelectedParallelRenderingMode { get; set; }
+
+    [ObservableProperty]
+    public partial int ParallelRenderingWorkerCount { get; set; }
+
+    public IReadOnlyList<ParallelRenderingModeOption> ParallelRenderingModeOptions { get; }
 
     internal override bool TryApplyTo(CadUserSettings settings)
     {
@@ -65,10 +85,13 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
             AllowApproximateTileScaleFallback;
         settings.Rendering.IsBackgroundChunkRecordingEnabled =
             IsBackgroundChunkRecordingEnabled;
-        settings.Rendering.IsMultiDeviceRenderingEnabled =
-            IsMultiDeviceRenderingEnabled;
-        settings.Rendering.MultiDeviceRenderingDeviceCount =
-            Math.Clamp(MultiDeviceRenderingDeviceCount, 2, 4);
+        settings.Rendering.IsParallelRenderingEnabled =
+            IsParallelRenderingEnabled;
+        settings.Rendering.ParallelRenderingMode =
+            SelectedParallelRenderingMode?.Mode ??
+            CadParallelRenderingMode.MultipleDevices;
+        settings.Rendering.ParallelRenderingWorkerCount =
+            Math.Clamp(ParallelRenderingWorkerCount, 2, 4);
         return true;
     }
 
