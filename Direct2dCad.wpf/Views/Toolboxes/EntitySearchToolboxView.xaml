@@ -108,6 +108,7 @@
                  SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
                  Background="Transparent"
                  BorderThickness="0"
+                 VirtualizingPanel.ScrollUnit="Pixel"
                  Style="{StaticResource MaterialDesignNavigationListBox}"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <i:Interaction.Triggers>

@@ -45,6 +45,7 @@
                  Background="Transparent"
                  BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.ScrollUnit="Pixel"
                  Style="{StaticResource MaterialDesignNavigationListBox}">
 
             <ListBox.ItemTemplate>

@@ -73,6 +73,7 @@
                  Background="Transparent"
                  BorderThickness="0"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 VirtualizingPanel.ScrollUnit="Pixel"
                  Style="{StaticResource MaterialDesignNavigationListBox}"
                  dd:DragDrop.IsDragSource="True"
                  dd:DragDrop.IsDropTarget="True"
