@@ -14,7 +14,8 @@ internal static class CadAgentToolSelector
     [
         "get_entity_geometry", "set_entity_geometry", "transform_entities",
         "duplicate_entities", "move_entities", "delete_entities", "change_entity_layer",
-        "set_entity_common_properties", "set_entity_fill", "set_entity_stroke_style"
+        "set_entity_common_properties", "set_entity_fill", "set_entity_stroke_style",
+        "set_entity_specific_properties"
     ];
 
     private static readonly string[] LayerTools =
@@ -27,7 +28,7 @@ internal static class CadAgentToolSelector
     private static readonly string[] BlockTools =
     [
         "create_block", "insert_block", "duplicate_entities",
-        "get_entity_geometry", "transform_entities"
+        "get_entity_geometry", "transform_entities", "set_entity_specific_properties"
     ];
 
     private static readonly string[] DocumentTools =
@@ -38,6 +39,8 @@ internal static class CadAgentToolSelector
 
     private static readonly (string Tool, string[] Terms)[] EntityCreationTools =
     [
+        ("add_ellipse_arc", ["ellipse arc", "elliptical arc", "\u692d\u5706\u5f27"]),
+        ("add_shape_text", ["shape text", "stroke text", "\u5f62\u6587\u5b57", "\u5355\u7ebf\u6587\u5b57"]),
         ("add_line", ["line", "segment", "直线", "线段"]),
         ("add_circle", ["circle", "圆形", "圆"]),
         ("add_arc", ["arc", "圆弧", "弧"]),
@@ -59,6 +62,7 @@ internal static class CadAgentToolSelector
     [
         "edit", "change", "set", "move", "rotate", "scale", "mirror", "delete",
         "copy", "duplicate", "color", "fill", "stroke", "style", "property",
+        "font", "opacity", "inverted", "text content",
         "修改", "设置", "移动", "旋转", "缩放", "镜像", "删除", "复制",
         "颜色", "填充", "线型", "属性"
     ];
@@ -116,6 +120,13 @@ internal static class CadAgentToolSelector
                 .ToList();
             if (specificTools.Contains("add_arc", StringComparer.Ordinal))
                 specificTools.Remove("add_circle");
+            if (specificTools.Contains("add_ellipse_arc", StringComparer.Ordinal))
+            {
+                specificTools.Remove("add_ellipse");
+                specificTools.Remove("add_arc");
+            }
+            if (specificTools.Contains("add_shape_text", StringComparer.Ordinal))
+                specificTools.Remove("add_text");
             if (specificTools.Contains("add_polyline", StringComparer.Ordinal) ||
                 specificTools.Contains("add_spline", StringComparer.Ordinal))
             {

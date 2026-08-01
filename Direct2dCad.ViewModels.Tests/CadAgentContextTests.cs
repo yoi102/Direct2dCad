@@ -9,15 +9,15 @@ namespace Direct2dCad.ViewModels.Tests;
 public sealed class CadAgentToolSelectorTests
 {
     private static readonly IReadOnlyList<AiToolDefinition> AvailableTools = CreateTools(
-        "add_entities", "add_line", "add_circle", "add_arc", "add_ellipse", "add_rectangle",
-        "add_polygon", "add_polyline", "add_spline", "add_text",
+        "add_entities", "add_line", "add_circle", "add_arc", "add_ellipse", "add_ellipse_arc", "add_rectangle",
+        "add_polygon", "add_polyline", "add_spline", "add_text", "add_shape_text",
         "list_layers", "create_layer", "rename_layer", "delete_layer",
         "set_layer_properties", "reorder_layers",
         "create_block", "insert_block", "duplicate_entities", "get_entity_geometry",
         "transform_entities", "open_document", "activate_document", "rename_document",
         "save_document", "close_document", "get_document_summary", "get_entity_statistics", "list_entities",
         "list_document_catalog", "list_documents", "create_document", "select_entities",
-        "undo", "redo", "set_entity_common_properties");
+        "undo", "redo", "set_entity_common_properties", "set_entity_specific_properties");
 
     [Fact]
     public void Select_ComplexDrawing_PrefersBulkCreationTool()
@@ -73,6 +73,33 @@ public sealed class CadAgentToolSelectorTests
 
         Assert.Contains(selected, tool => tool.Name == expected);
         Assert.DoesNotContain(selected, tool => tool.Name == excluded);
+    }
+
+    [Theory]
+    [InlineData("add an elliptical arc", "add_ellipse_arc", "add_ellipse")]
+    [InlineData("add shape text", "add_shape_text", "add_text")]
+    public void Select_NewOverlappingEntityNames_PrefersSpecificTool(
+        string prompt,
+        string expected,
+        string excluded)
+    {
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
+
+        Assert.Contains(selected, tool => tool.Name == expected);
+        Assert.DoesNotContain(selected, tool => tool.Name == excluded);
+    }
+
+    [Theory]
+    [InlineData("change the text font")]
+    [InlineData("set image opacity")]
+    [InlineData("make the text inverted")]
+    [InlineData("\u4fee\u6539\u6587\u672c\u5b57\u4f53")]
+    [InlineData("\u8bbe\u7f6e\u56fe\u50cf\u900f\u660e\u5ea6")]
+    public void Select_TypeSpecificPropertyIntent_IncludesSpecificPropertyTool(string prompt)
+    {
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
+
+        Assert.Contains(selected, tool => tool.Name == "set_entity_specific_properties");
     }
 
     [Fact]

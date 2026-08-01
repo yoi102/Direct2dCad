@@ -24,6 +24,7 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "set_entity_common_properties");
         Assert.Contains(tools, tool => tool.Name == "set_entity_fill");
         Assert.Contains(tools, tool => tool.Name == "set_entity_stroke_style");
+        Assert.Contains(tools, tool => tool.Name == "set_entity_specific_properties");
         Assert.Contains(tools, tool => tool.Name == "get_entity_geometry");
         Assert.Contains(tools, tool => tool.Name == "set_entity_geometry");
         Assert.Contains(tools, tool => tool.Name == "transform_entities");
@@ -38,6 +39,8 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "create_block");
         Assert.Contains(tools, tool => tool.Name == "insert_block");
         Assert.Contains(tools, tool => tool.Name == "add_composite_path");
+        Assert.Contains(tools, tool => tool.Name == "add_shape_text");
+        Assert.Contains(tools, tool => tool.Name == "add_ellipse_arc");
     }
 
     [Fact]
@@ -58,19 +61,26 @@ public sealed class CadWorkspaceToolExecutorTests
     {
         var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
         var circle = tools["add_circle"].Parameters.GetProperty("properties");
+        var rectangle = tools["add_rectangle"].Parameters.GetProperty("properties");
         var text = tools["add_text"].Parameters.GetProperty("properties");
 
         Assert.True(circle.TryGetProperty("color", out _));
         Assert.True(circle.TryGetProperty("line_weight", out _));
         Assert.True(circle.TryGetProperty("stroke_style", out _));
         Assert.True(circle.TryGetProperty("fill", out _));
+        Assert.True(rectangle.TryGetProperty("corner_radius_x", out _));
+        Assert.True(rectangle.TryGetProperty("corner_radius_y", out _));
         Assert.True(text.TryGetProperty("color", out _));
         Assert.False(text.TryGetProperty("fill", out _));
+        Assert.False(text.TryGetProperty("stroke_style", out _));
+        Assert.True(text.TryGetProperty("font_family", out _));
+        Assert.True(text.TryGetProperty("inverted", out _));
     }
 
     [Theory]
     [InlineData("add_arc", false)]
     [InlineData("add_ellipse", true)]
+    [InlineData("add_ellipse_arc", false)]
     [InlineData("add_polygon", true)]
     [InlineData("add_spline", true)]
     public void NewCreationTools_ExposeDocumentAppearanceAndExpectedFill(
@@ -99,6 +109,43 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.True(transform.TryGetProperty("operation", out _));
         Assert.True(transform.TryGetProperty("axis_angle_degrees", out _));
         Assert.True(transform.TryGetProperty("factor", out _));
+    }
+
+    [Fact]
+    public void SpecificPropertyTool_ExposesAllTypeSpecificMutationGroups()
+    {
+        var tool = CadWorkspaceToolExecutor.ToolDefinitions.Single(candidate =>
+            candidate.Name == "set_entity_specific_properties");
+        var properties = tool.Parameters.GetProperty("properties");
+
+        foreach (var name in new[]
+                 {
+                     "text", "text_style", "font_family", "shape_font", "inverted",
+                     "inverted_margin_factor", "opacity", "block_definition"
+                 })
+        {
+            Assert.True(properties.TryGetProperty(name, out _), name);
+        }
+    }
+
+    [Fact]
+    public void CreationSpecificPropertyValidation_RejectsPropertiesOnWrongTypes()
+    {
+        var document = CadDocument.Create("Test");
+        using var valid = JsonDocument.Parse("""
+            { "shape_font": "unicode", "inverted": true, "inverted_margin_factor": 0.2 }
+            """);
+        using var invalid = JsonDocument.Parse("""{ "shape_font": "unicode" }""");
+
+        CadEntitySpecificPropertyTools.ValidateCreationArguments(
+            document,
+            "add_shape_text",
+            valid.RootElement);
+        Assert.Throws<NotSupportedException>(() =>
+            CadEntitySpecificPropertyTools.ValidateCreationArguments(
+                document,
+                "add_text",
+                invalid.RootElement));
     }
 
     [Fact]
@@ -234,9 +281,11 @@ public sealed class CadWorkspaceToolExecutorTests
                 { "type": "circle" },
                 { "type": "rectangle" },
                 { "type": "text" },
+                { "type": "shape_text" },
                 { "type": "polyline" },
                 { "type": "arc" },
                 { "type": "ellipse" },
+                { "type": "ellipse_arc" },
                 { "type": "polygon" },
                 { "type": "spline" }
                 ,{ "type": "composite_path" }
@@ -246,9 +295,32 @@ public sealed class CadWorkspaceToolExecutorTests
 
         var items = CadBulkCreationTools.Parse(arguments.RootElement);
 
-        Assert.Equal(10, items.Count);
+        Assert.Equal(12, items.Count);
         Assert.Equal("add_line", items[0].ToolName);
         Assert.Equal("add_composite_path", items[^1].ToolName);
+    }
+
+    [Fact]
+    public void BulkCreationSchema_DeclaresPerTypeRequiredGeometry()
+    {
+        var tool = CadWorkspaceToolExecutor.ToolDefinitions.Single(candidate => candidate.Name == "add_entities");
+        var item = tool.Parameters
+            .GetProperty("properties")
+            .GetProperty("entities")
+            .GetProperty("items");
+        var rules = item.GetProperty("allOf").EnumerateArray().ToArray();
+
+        Assert.Equal(12, rules.Length);
+        var ellipseArc = rules.Single(rule =>
+            rule.GetProperty("if")
+                .GetProperty("properties")
+                .GetProperty("type")
+                .GetProperty("const")
+                .GetString() == "ellipse_arc");
+        var required = ellipseArc.GetProperty("then").GetProperty("required")
+            .EnumerateArray().Select(value => value.GetString()).ToArray();
+        Assert.Contains("radius_x", required);
+        Assert.Contains("sweep_angle_degrees", required);
     }
 
     [Fact]
@@ -387,7 +459,7 @@ public sealed class CadWorkspaceToolExecutorTests
 
         private CadToolWorkspaceDocument CreateDescriptor(string documentId, string name) => new(
             documentId,
-            _documents.Count + 1,
+            Guid.NewGuid(),
             name,
             string.Empty,
             IsModified: false,

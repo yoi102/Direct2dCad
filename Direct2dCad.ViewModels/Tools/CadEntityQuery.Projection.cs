@@ -142,13 +142,21 @@ internal static partial class CadEntityQuery
                 result["text"] = text.Text;
                 result["height"] = text.Height;
                 result["rotation_degrees"] = CadArc.RadiansToDegrees(text.RotationRadians);
+                result["text_style_id"] = text.TextStyleId?.Value;
+                result["text_style"] = StyleName(document, text.TextStyleId);
                 result["inverted"] = text.IsInverted;
+                result["inverted_margin_factor"] = text.InvertedMarginFactor;
                 break;
             case CadShapeText text:
                 result["text"] = text.Text;
                 result["height"] = text.Height;
                 result["rotation_degrees"] = CadArc.RadiansToDegrees(text.RotationRadians);
+                result["width_factor"] = text.WidthFactor;
+                result["character_spacing_factor"] = text.CharacterSpacingFactor;
+                result["oblique_angle_degrees"] = CadArc.RadiansToDegrees(text.ObliqueAngleRadians);
+                result["shape_font"] = text.ShapeFontId.Value;
                 result["inverted"] = text.IsInverted;
+                result["inverted_margin_factor"] = text.InvertedMarginFactor;
                 break;
             case CadImage image:
                 result["pixel_width"] = image.PixelWidth;

@@ -8,6 +8,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
@@ -21,8 +22,8 @@ internal sealed class CadWorkspaceToolExecutor
 {
     private static readonly HashSet<string> CreationToolNames =
     [
-        "add_line", "add_circle", "add_rectangle", "add_text", "add_polyline",
-        "add_arc", "add_ellipse", "add_polygon", "add_spline", "add_composite_path"
+        "add_line", "add_circle", "add_rectangle", "add_text", "add_shape_text", "add_polyline",
+        "add_arc", "add_ellipse", "add_ellipse_arc", "add_polygon", "add_spline", "add_composite_path"
     ];
 
     private readonly ICadToolWorkspace _workspace;
@@ -52,7 +53,7 @@ internal sealed class CadWorkspaceToolExecutor
         return $$"""
             You are the workspace-aware CAD editing assistant inside Direct2dCad. Use tools for every inspection or modification and never claim success before a tool confirms it. Open documents: {{documentSummary}}
 
-            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
+            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Use set_entity_specific_properties for text/font/inversion, embedded-object opacity, and BlockReference definition changes. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
 
             {{activeDetails}}
             """;
@@ -80,6 +81,9 @@ internal sealed class CadWorkspaceToolExecutor
                 "set_entity_common_properties" => ExecuteForDocument(root, SetEntityCommonProperties),
                 "set_entity_fill" => ExecuteForDocument(root, SetEntityFill),
                 "set_entity_stroke_style" => ExecuteForDocument(root, SetEntityStrokeStyle),
+                "set_entity_specific_properties" => ExecuteForDocument(
+                    root,
+                    CadEntitySpecificPropertyTools.Execute),
                 "create_block" => ExecuteForDocument(root, CreateBlock),
                 "insert_block" => ExecuteForDocument(root, InsertBlock),
                 "add_composite_path" => ExecuteForDocument(root, AddCompositePath),
@@ -206,7 +210,7 @@ internal sealed class CadWorkspaceToolExecutor
                 _ = CadCompositePathTools.Parse(item.Arguments);
             else
                 executor.ValidateCreationTool(item.ToolName, item.Arguments);
-            ValidateCreationAppearance(item.ToolName, item.Arguments, executor);
+            ValidateCreationProperties(item.ToolName, item.Arguments, executor);
         }
 
         var created = new List<object>(items.Count);
@@ -232,18 +236,18 @@ internal sealed class CadWorkspaceToolExecutor
         string toolName,
         JsonElement arguments)
     {
-        ValidateCreationAppearance(toolName, arguments, executor);
+        ValidateCreationProperties(toolName, arguments, executor);
         if (toolName == "add_composite_path")
         {
             var createdId = CreateCompositePath(executor, arguments);
-            return (createdId, ApplyCreationAppearance(executor, createdId, arguments));
+            return (createdId, ApplyCreationProperties(executor, createdId, toolName, arguments));
         }
         var toolCall = new AiToolCall(Guid.NewGuid().ToString("N"), toolName, arguments.GetRawText());
         var creationResult = executor.Execute(toolCall);
         if (!TryReadCreatedEntityId(creationResult, out var createdEntityId))
             throw new InvalidOperationException(ReadToolError(creationResult));
 
-        var changedFields = ApplyCreationAppearance(executor, createdEntityId, arguments);
+        var changedFields = ApplyCreationProperties(executor, createdEntityId, toolName, arguments);
         return (createdEntityId, changedFields);
     }
 
@@ -269,9 +273,9 @@ internal sealed class CadWorkspaceToolExecutor
 
     private object AddCompositePath(CadDocumentToolExecutor executor, JsonElement arguments)
     {
-        ValidateCreationAppearance("add_composite_path", arguments, executor);
+        ValidateCreationProperties("add_composite_path", arguments, executor);
         var id = CreateCompositePath(executor, arguments);
-        var appearance = ApplyCreationAppearance(executor, id, arguments);
+        var appearance = ApplyCreationProperties(executor, id, "add_composite_path", arguments);
         return new { created_entity_id = id.Value, applied_appearance = appearance };
     }
 
@@ -335,6 +339,13 @@ internal sealed class CadWorkspaceToolExecutor
                 oblique_angle_degrees = style.ObliqueAngle * 180.0 / Math.PI,
                 style.IsBold,
                 style.IsItalic
+            }).ToArray(),
+            shape_fonts = CadShapeFontRegistry.Defaults.Select(font => new
+            {
+                id = font.Id.Value,
+                font.Name,
+                glyph_set = font.GlyphSet.ToString(),
+                font.SupportsUnicode
             }).ToArray(),
             blocks = document.Blocks.Values
                 .Where(block => block.Kind == CadBlockKind.User)
@@ -571,6 +582,18 @@ internal sealed class CadWorkspaceToolExecutor
         return new { entity_ids = ids.Select(id => id.Value).ToArray(), changed_fields = changedFields };
     }
 
+    private void ValidateCreationProperties(
+        string toolName,
+        JsonElement arguments,
+        CadDocumentToolExecutor executor)
+    {
+        ValidateCreationAppearance(toolName, arguments, executor);
+        CadEntitySpecificPropertyTools.ValidateCreationArguments(
+            executor.DocumentViewModel.CadEditor.Document,
+            toolName,
+            arguments);
+    }
+
     private void ValidateCreationAppearance(string toolName, JsonElement arguments, CadDocumentToolExecutor executor)
     {
         var document = executor.DocumentViewModel.CadEditor.Document;
@@ -619,8 +642,8 @@ internal sealed class CadWorkspaceToolExecutor
         }
         if (arguments.TryGetProperty("stroke_style", out stroke) && stroke.ValueKind == JsonValueKind.Object)
         {
-            if (toolName == "add_text")
-                throw new NotSupportedException("add_text does not support stroke_style.");
+            if (toolName is "add_text" or "add_shape_text")
+                throw new NotSupportedException($"{toolName} does not support stroke_style.");
             foreach (var field in StrokeFields)
                 if (HasValue(stroke, field))
                     ValidateStrokeEnum(field, RequiredString(stroke, field));
@@ -629,7 +652,7 @@ internal sealed class CadWorkspaceToolExecutor
             var isClosedPath = toolName is "add_polyline" or "add_spline" or "add_composite_path" &&
                                    arguments.TryGetProperty("closed", out var closed) &&
                                    closed.ValueKind == JsonValueKind.True;
-            if (changesStartOrEnd && toolName is not ("add_line" or "add_arc") &&
+            if (changesStartOrEnd && toolName is not ("add_line" or "add_arc" or "add_ellipse_arc") &&
                 (toolName is not ("add_polyline" or "add_spline" or "add_composite_path") || isClosedPath))
                 throw new NotSupportedException($"{toolName} does not support start/end caps.");
             if (HasValue(stroke, "line_join") && toolName is not ("add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path"))
@@ -725,6 +748,36 @@ internal sealed class CadWorkspaceToolExecutor
             changed.Add("stroke_style");
         }
 
+        return changed;
+    }
+
+    private IReadOnlyList<string> ApplyCreationProperties(
+        CadDocumentToolExecutor executor,
+        EntityId entityId,
+        string toolName,
+        JsonElement arguments)
+    {
+        var changed = ApplyCreationAppearance(executor, entityId, arguments).ToList();
+        var fields = toolName switch
+        {
+            "add_text" => new[] { "text_style", "font_family", "inverted", "inverted_margin_factor" },
+            "add_shape_text" => new[] { "shape_font", "inverted", "inverted_margin_factor" },
+            _ => []
+        };
+        var supplied = fields.Where(field => HasValue(arguments, field)).ToArray();
+        if (supplied.Length == 0)
+            return changed;
+
+        var properties = new JsonObject
+        {
+            ["entity_ids"] = new JsonArray(JsonValue.Create(entityId.Value))
+        };
+        foreach (var field in supplied)
+            properties[field] = JsonNode.Parse(arguments.GetProperty(field).GetRawText());
+
+        using var document = JsonDocument.Parse(properties.ToJsonString());
+        _ = CadEntitySpecificPropertyTools.Execute(executor, document.RootElement);
+        changed.AddRange(supplied);
         return changed;
     }
 
@@ -1067,6 +1120,7 @@ internal sealed class CadWorkspaceToolExecutor
         var tools = CadDocumentToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
         tools.AddRange(WorkspaceToolDefinitions());
         tools.AddRange(CadGeometryTools.ToolDefinitions);
+        tools.Add(CadEntitySpecificPropertyTools.ToolDefinition);
         tools.AddRange(CadLayerTools.ToolDefinitions);
         tools.Add(CadBulkCreationTools.ToolDefinition);
         tools.Add(CadCompositePathTools.ToolDefinition);
@@ -1115,9 +1169,23 @@ internal sealed class CadWorkspaceToolExecutor
             foreach (var (name, value) in CommonPropertySchema(includeEntityIds: false))
                 if (name is not ("layer" or "name"))
                     properties[name] = JsonSerializer.SerializeToNode(value);
-            properties["stroke_style"] = JsonSerializer.SerializeToNode(ObjectSchema(StrokeSchema(false)));
+            if (definition.Name is not ("add_text" or "add_shape_text"))
+                properties["stroke_style"] = JsonSerializer.SerializeToNode(ObjectSchema(StrokeSchema(false)));
             if (definition.Name is "add_circle" or "add_ellipse" or "add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path")
                 properties["fill"] = JsonSerializer.SerializeToNode(ObjectSchema(FillSchema(false), ["mode"]));
+            if (definition.Name == "add_text")
+            {
+                properties["text_style"] = JsonSerializer.SerializeToNode(StringSchema("Existing Text style name or ID; none selects the default"));
+                properties["font_family"] = JsonSerializer.SerializeToNode(StringSchema("Font family; creates or reuses a matching Text style"));
+                properties["inverted"] = JsonSerializer.SerializeToNode(new { type = "boolean" });
+                properties["inverted_margin_factor"] = JsonSerializer.SerializeToNode(new { type = "number", minimum = 0.0 });
+            }
+            else if (definition.Name == "add_shape_text")
+            {
+                properties["shape_font"] = JsonSerializer.SerializeToNode(StringSchema("Shape font ID or name"));
+                properties["inverted"] = JsonSerializer.SerializeToNode(new { type = "boolean" });
+                properties["inverted_margin_factor"] = JsonSerializer.SerializeToNode(new { type = "number", minimum = 0.0 });
+            }
         }
 
         return new AiToolDefinition(

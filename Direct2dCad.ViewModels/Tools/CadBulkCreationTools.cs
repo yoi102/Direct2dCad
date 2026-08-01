@@ -9,8 +9,8 @@ internal static class CadBulkCreationTools
 
     private static readonly HashSet<string> SupportedTypes =
     [
-        "line", "circle", "rectangle", "text", "polyline",
-        "arc", "ellipse", "polygon", "spline", "composite_path"
+        "line", "circle", "rectangle", "text", "shape_text", "polyline",
+        "arc", "ellipse", "ellipse_arc", "polygon", "spline", "composite_path"
     ];
 
     internal static AiToolDefinition ToolDefinition { get; } = new(
@@ -90,6 +90,11 @@ internal static class CadBulkCreationTools
             required = new[] { "mode" },
             additionalProperties = false
         };
+        itemProperties["text_style"] = String("Existing Text style name or ID; none selects the default");
+        itemProperties["font_family"] = String("Text font family; creates or reuses a matching Text style");
+        itemProperties["shape_font"] = String("Shape font ID or name");
+        itemProperties["inverted"] = new { type = "boolean" };
+        itemProperties["inverted_margin_factor"] = new { type = "number", minimum = 0.0 };
 
         return new
         {
@@ -107,6 +112,7 @@ internal static class CadBulkCreationTools
                         type = "object",
                         properties = itemProperties,
                         required = new[] { "type" },
+                        allOf = RequiredGeometryRules(),
                         additionalProperties = false
                     }
                 }
@@ -115,6 +121,33 @@ internal static class CadBulkCreationTools
             additionalProperties = false
         };
     }
+
+    private static object[] RequiredGeometryRules() =>
+    [
+        Requires("line", "x1", "y1", "x2", "y2"),
+        Requires("circle", "center_x", "center_y", "radius"),
+        Requires("rectangle", "min_x", "min_y", "max_x", "max_y"),
+        Requires("text", "text", "x", "y", "height"),
+        Requires("shape_text", "text", "x", "y", "height"),
+        Requires("polyline", "points"),
+        Requires("arc", "center_x", "center_y", "radius", "start_angle_degrees", "sweep_angle_degrees"),
+        Requires("ellipse", "center_x", "center_y", "radius_x", "radius_y"),
+        Requires("ellipse_arc", "center_x", "center_y", "radius_x", "radius_y", "start_angle_degrees", "sweep_angle_degrees"),
+        Requires("polygon", "points"),
+        Requires("spline", "fit_points"),
+        Requires("composite_path", "start", "segments", "closed")
+    ];
+
+    private static object Requires(string type, params string[] required) =>
+        new Dictionary<string, object>
+        {
+            ["if"] = new
+            {
+                properties = new { type = new { @const = type } },
+                required = new[] { "type" }
+            },
+            ["then"] = new { required }
+        };
 
     private static Dictionary<string, object> GeometryProperties() => new()
     {
@@ -133,6 +166,9 @@ internal static class CadBulkCreationTools
         ["x"] = Number("Text insertion X"), ["y"] = Number("Text insertion Y"),
         ["height"] = new { type = "number", exclusiveMinimum = 0.0 },
         ["rotation_degrees"] = Number("Counter-clockwise text rotation"),
+        ["width_factor"] = new { type = "number", exclusiveMinimum = 0.0 },
+        ["character_spacing_factor"] = new { type = "number", minimum = 0.0 },
+        ["oblique_angle_degrees"] = Number("ShapeText oblique angle"),
         ["points"] = PointArray(2),
         ["fit_points"] = PointArray(2),
         ["start"] = Point(),

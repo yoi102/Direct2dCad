@@ -127,6 +127,12 @@ internal static class CadGeometryTools
             RequiredPoint(arguments, "center"),
             RequiredPositive(arguments, "radius_x"),
             RequiredPositive(arguments, "radius_y"))],
+        CadEllipseArc => [new SetEllipseArcGeometryCommand(entity.Id,
+            RequiredPoint(arguments, "center"),
+            RequiredPositive(arguments, "radius_x"),
+            RequiredPositive(arguments, "radius_y"),
+            RequiredDouble(arguments, "start_angle_degrees") / DegreesPerRadian,
+            RequiredSweep(arguments, "sweep_angle_degrees") / DegreesPerRadian)],
         CadRectangle => CreateRectangleGeometryCommands(entity.Id, arguments),
         CadPolyline => [new SetPolylineGeometryCommand(entity.Id,
             CadDocumentToolExecutor.RequiredPoints(arguments, "points", 2), RequiredBool(arguments, "closed"))],
@@ -220,6 +226,9 @@ internal static class CadGeometryTools
             position = PointDto(text.Position),
             height = text.Height,
             rotation_degrees = text.RotationRadians * DegreesPerRadian,
+            text_style_id = text.TextStyleId?.Value,
+            inverted = text.IsInverted,
+            inverted_margin_factor = text.InvertedMarginFactor,
             local_bounds = RectDto(text.LocalBounds)
         },
         CadShapeText text => new
@@ -230,7 +239,10 @@ internal static class CadGeometryTools
             rotation_degrees = text.RotationRadians * DegreesPerRadian,
             width_factor = text.WidthFactor,
             character_spacing_factor = text.CharacterSpacingFactor,
-            oblique_angle_degrees = text.ObliqueAngleRadians * DegreesPerRadian
+            oblique_angle_degrees = text.ObliqueAngleRadians * DegreesPerRadian,
+            shape_font = text.ShapeFontId.Value,
+            inverted = text.IsInverted,
+            inverted_margin_factor = text.InvertedMarginFactor
         },
         CadImage image => new
         {

@@ -5,6 +5,7 @@ using Direct2dCad.Commands;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.ViewModels.Tools;
@@ -41,7 +42,9 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             {
                 ["min_x"] = Number("Minimum X"), ["min_y"] = Number("Minimum Y"),
                 ["max_x"] = Number("Maximum X"), ["max_y"] = Number("Maximum Y"),
-                ["corner_radius"] = new { type = "number", minimum = 0.0 }
+                ["corner_radius"] = new { type = "number", minimum = 0.0, description = "Shared X/Y corner radius" },
+                ["corner_radius_x"] = new { type = "number", minimum = 0.0 },
+                ["corner_radius_y"] = new { type = "number", minimum = 0.0 }
             })),
         Tool("add_text", "Add TrueType text in CAD world coordinates. Rotation is in degrees.", CoordinateSchema(
             new[] { "text", "x", "y", "height" },
@@ -51,6 +54,18 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
                 ["x"] = Number("Insertion X"), ["y"] = Number("Insertion Y"),
                 ["height"] = new { type = "number", exclusiveMinimum = 0.0 },
                 ["rotation_degrees"] = Number("Counter-clockwise rotation in degrees")
+            })),
+        Tool("add_shape_text", "Add CAD stroke-based ShapeText. Rotation and oblique angle are in degrees.", CoordinateSchema(
+            new[] { "text", "x", "y", "height" },
+            new Dictionary<string, object>
+            {
+                ["text"] = new { type = "string", minLength = 1 },
+                ["x"] = Number("Insertion X"), ["y"] = Number("Insertion Y"),
+                ["height"] = new { type = "number", exclusiveMinimum = 0.0 },
+                ["rotation_degrees"] = Number("Counter-clockwise rotation in degrees"),
+                ["width_factor"] = new { type = "number", exclusiveMinimum = 0.0 },
+                ["character_spacing_factor"] = new { type = "number", minimum = 0.0 },
+                ["oblique_angle_degrees"] = Number("ShapeText oblique angle in degrees")
             })),
         Tool("add_polyline", "Add a polyline from two or more CAD world-coordinate points.",
             new
@@ -93,6 +108,16 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
                 ["center_x"] = Number("Center X"), ["center_y"] = Number("Center Y"),
                 ["radius_x"] = new { type = "number", exclusiveMinimum = 0.0 },
                 ["radius_y"] = new { type = "number", exclusiveMinimum = 0.0 }
+            })),
+        Tool("add_ellipse_arc", "Add an elliptical arc. Angles are counter-clockwise degrees; sweep may be negative.", CoordinateSchema(
+            new[] { "center_x", "center_y", "radius_x", "radius_y", "start_angle_degrees", "sweep_angle_degrees" },
+            new Dictionary<string, object>
+            {
+                ["center_x"] = Number("Center X"), ["center_y"] = Number("Center Y"),
+                ["radius_x"] = new { type = "number", exclusiveMinimum = 0.0 },
+                ["radius_y"] = new { type = "number", exclusiveMinimum = 0.0 },
+                ["start_angle_degrees"] = Number("Start angle in degrees"),
+                ["sweep_angle_degrees"] = Number("Non-zero sweep in degrees, between -360 and 360")
             })),
         Tool("add_polygon", "Add a closed polygon from three or more CAD world-coordinate vertices.", PointCollectionSchema(
             "points", minimumPoints: 3, includeClosed: false)),
@@ -147,9 +172,11 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             "add_circle" => CreateCircleCommand(arguments),
             "add_rectangle" => CreateRectangleCommand(arguments),
             "add_text" => CreateTextCommand(arguments),
+            "add_shape_text" => CreateShapeTextCommand(arguments),
             "add_polyline" => CreatePolylineCommand(arguments),
             "add_arc" => CreateArcCommand(arguments),
             "add_ellipse" => CreateEllipseCommand(arguments),
+            "add_ellipse_arc" => CreateEllipseArcCommand(arguments),
             "add_polygon" => CreatePolygonCommand(arguments),
             "add_spline" => CreateSplineCommand(arguments),
             _ => throw new ArgumentException($"Unsupported creation tool: {toolName}")
@@ -172,9 +199,11 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
                 "add_circle" => AddCircle(arguments.RootElement),
                 "add_rectangle" => AddRectangle(arguments.RootElement),
                 "add_text" => AddText(arguments.RootElement),
+                "add_shape_text" => AddShapeText(arguments.RootElement),
                 "add_polyline" => AddPolyline(arguments.RootElement),
                 "add_arc" => AddArc(arguments.RootElement),
                 "add_ellipse" => AddEllipse(arguments.RootElement),
+                "add_ellipse_arc" => AddEllipseArc(arguments.RootElement),
                 "add_polygon" => AddPolygon(arguments.RootElement),
                 "add_spline" => AddSpline(arguments.RootElement),
                 "select_entities" => SelectEntities(arguments.RootElement),
@@ -294,14 +323,14 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         var maxY = RequiredDouble(arguments, "max_y");
         if (maxX <= minX || maxY <= minY)
             throw new ArgumentException("Rectangle max values must be greater than min values.");
-        var radius = OptionalDouble(arguments, "corner_radius", 0);
-        if (radius < 0)
-            throw new ArgumentOutOfRangeException("corner_radius");
+        var sharedRadius = OptionalNonNegative(arguments, "corner_radius", 0);
+        var radiusX = OptionalNonNegative(arguments, "corner_radius_x", sharedRadius);
+        var radiusY = OptionalNonNegative(arguments, "corner_radius_y", sharedRadius);
 
         return new AddRectangleCommand(
             CadRectD.FromLTRB(minX, minY, maxX, maxY),
-            radius,
-            radius,
+            radiusX,
+            radiusY,
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Rectangle"));
     }
@@ -324,6 +353,23 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Text"));
     }
+
+    private string AddShapeText(JsonElement arguments)
+    {
+        var command = CreateShapeTextCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddShapeTextCommand CreateShapeTextCommand(JsonElement arguments) => new(
+        RequiredString(arguments, "text"),
+        new CadPointD(RequiredDouble(arguments, "x"), RequiredDouble(arguments, "y")),
+        RequiredPositive(arguments, "height"),
+        OptionalDouble(arguments, "rotation_degrees", 0) * Math.PI / 180.0,
+        OptionalPositive(arguments, "width_factor", CadStrokeFont.DefaultWidthFactor),
+        OptionalNonNegative(arguments, "character_spacing_factor", CadStrokeFont.DefaultCharacterSpacingFactor),
+        OptionalDouble(arguments, "oblique_angle_degrees", 0) * Math.PI / 180.0,
+        ResolveLayer(arguments),
+        name: ResolveName(arguments, "ShapeText"));
 
     private string AddPolyline(JsonElement arguments)
     {
@@ -378,6 +424,27 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             RequiredPositive(arguments, "radius_y"),
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Ellipse"));
+
+    private string AddEllipseArc(JsonElement arguments)
+    {
+        var command = CreateEllipseArcCommand(arguments);
+        return ExecuteCreate(command, () => command.CreatedEntityId);
+    }
+
+    private AddEllipseArcCommand CreateEllipseArcCommand(JsonElement arguments)
+    {
+        var sweepDegrees = RequiredDouble(arguments, "sweep_angle_degrees");
+        if (Math.Abs(sweepDegrees) <= 1e-9 || Math.Abs(sweepDegrees) > 360.0)
+            throw new ArgumentOutOfRangeException("sweep_angle_degrees", "Sweep must be non-zero and no greater than 360 degrees.");
+        return new AddEllipseArcCommand(
+            new CadPointD(RequiredDouble(arguments, "center_x"), RequiredDouble(arguments, "center_y")),
+            RequiredPositive(arguments, "radius_x"),
+            RequiredPositive(arguments, "radius_y"),
+            RequiredDouble(arguments, "start_angle_degrees") * Math.PI / 180.0,
+            sweepDegrees * Math.PI / 180.0,
+            ResolveLayer(arguments),
+            name: ResolveName(arguments, "EllipseArc"));
+    }
 
     private string AddPolygon(JsonElement arguments)
     {
@@ -643,6 +710,22 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         return element.TryGetProperty(name, out var value) && value.TryGetDouble(out var result) && double.IsFinite(result)
             ? result
             : fallback;
+    }
+
+    private static double OptionalPositive(JsonElement element, string name, double fallback)
+    {
+        if (!element.TryGetProperty(name, out _))
+            return fallback;
+        var value = RequiredDouble(element, name);
+        return value > 0 ? value : throw new ArgumentOutOfRangeException(name, "Value must be greater than zero.");
+    }
+
+    private static double OptionalNonNegative(JsonElement element, string name, double fallback)
+    {
+        if (!element.TryGetProperty(name, out _))
+            return fallback;
+        var value = RequiredDouble(element, name);
+        return value >= 0 ? value : throw new ArgumentOutOfRangeException(name, "Value must not be negative.");
     }
 
     private static bool OptionalBool(JsonElement element, string name)

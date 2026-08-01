@@ -46,6 +46,27 @@ public sealed class GeometryCommandCoverageTests
         Assert.Equal(5, arc.Radius);
         Assert.Equal(0.25, arc.StartAngleRadians);
         Assert.Equal(1.5, arc.SweepAngleRadians);
+
+        var ellipseArc = document.AddEllipseArc(new CadPointD(4, 5), 6, 3, 0.5, 1.75);
+        var ellipseArcCommand = new SetEllipseArcGeometryCommand(
+            ellipseArc.Id,
+            new CadPointD(12, 13),
+            10,
+            7,
+            1.0,
+            -2.25);
+        ellipseArcCommand.Execute(document);
+        Assert.Equal(new CadPointD(12, 13), ellipseArc.Center);
+        Assert.Equal(10, ellipseArc.RadiusX);
+        Assert.Equal(7, ellipseArc.RadiusY);
+        Assert.Equal(1.0, ellipseArc.StartAngleRadians);
+        Assert.Equal(-2.25, ellipseArc.SweepAngleRadians);
+        ellipseArcCommand.Undo(document);
+        Assert.Equal(new CadPointD(4, 5), ellipseArc.Center);
+        Assert.Equal(6, ellipseArc.RadiusX);
+        Assert.Equal(3, ellipseArc.RadiusY);
+        Assert.Equal(0.5, ellipseArc.StartAngleRadians);
+        Assert.Equal(1.75, ellipseArc.SweepAngleRadians);
     }
 
     [Fact]
