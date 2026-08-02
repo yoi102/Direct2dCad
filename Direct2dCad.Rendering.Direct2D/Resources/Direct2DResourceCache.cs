@@ -340,6 +340,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 graphic?.LineWeight,
                 layer.LineWeight);
             bucket.StrokeStyleDefinition = entity.StrokeStyle;
+            bucket.GraphicLineTypeId = graphic?.LineTypeId ?? LineTypeId.Continuous;
             if (UsesStrokeBrush(entity))
             {
                 var strokeColor = ResolveStrokeColor(document, entity, layer, graphic);
@@ -350,7 +351,16 @@ internal sealed class Direct2DResourceCache : IDisposable
                 }
             }
             if (UsesStrokeStyle(entity))
+            {
                 bucket.StrokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
+                if (bucket.StrokeStyleLease is null &&
+                    graphic is not null &&
+                    graphic.LineTypeId != LineTypeId.Continuous &&
+                    document.LineTypes.TryGetValue(graphic.LineTypeId, out var lineType))
+                {
+                    bucket.GraphicLineTypeLease = _styleResources.AcquireLineTypeStrokeStyle(lineType);
+                }
+            }
 
             var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
             (bucket.Geometry, bucket.GeometryComplexity) = CreateGeometry(
@@ -425,6 +435,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         var graphic = ResolveGraphicStyle(document, entity, layer);
         KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? strokeBrushLease = null;
         KeyedResourceLease<ID2D1StrokeStyle, Direct2DStyleResourceCache.StrokeStyleKey>? strokeStyleLease = null;
+        KeyedResourceLease<ID2D1StrokeStyle, Direct2DStyleResourceCache.StrokeStyleKey>? graphicLineTypeLease = null;
         CadColor? strokeColor = null;
         try
         {
@@ -438,12 +449,22 @@ internal sealed class Direct2DResourceCache : IDisposable
                 }
             }
             if (UsesStrokeStyle(entity))
+            {
                 strokeStyleLease = _styleResources.AcquireStrokeStyle(entity.StrokeStyle);
+                if (strokeStyleLease is null &&
+                    graphic is not null &&
+                    graphic.LineTypeId != LineTypeId.Continuous &&
+                    document.LineTypes.TryGetValue(graphic.LineTypeId, out var lineType))
+                {
+                    graphicLineTypeLease = _styleResources.AcquireLineTypeStrokeStyle(lineType);
+                }
+            }
         }
         catch
         {
             strokeBrushLease?.Dispose();
             strokeStyleLease?.Dispose();
+            graphicLineTypeLease?.Dispose();
             throw;
         }
 
@@ -455,16 +476,20 @@ internal sealed class Direct2DResourceCache : IDisposable
         var strokeRealizationChanged =
             Math.Abs(bucket.StrokeWidth - strokeWidth) >
             Math.Max(1e-6f, Math.Abs(strokeWidth) * 1e-5f) ||
-            bucket.StrokeStyleDefinition != entity.StrokeStyle;
+            bucket.StrokeStyleDefinition != entity.StrokeStyle ||
+            bucket.GraphicLineTypeId != (graphic?.LineTypeId ?? LineTypeId.Continuous);
 
         RemoveStrokeWidthContribution(bucket);
         if (strokeRealizationChanged)
             bucket.GeometryRealizations?.ClearStroke();
         bucket.StrokeBrushLease?.Dispose();
         bucket.StrokeStyleLease?.Dispose();
+        bucket.GraphicLineTypeLease?.Dispose();
         bucket.StrokeColor = strokeColor;
         bucket.StrokeBrushLease = strokeBrushLease;
         bucket.StrokeStyleLease = strokeStyleLease;
+        bucket.GraphicLineTypeLease = graphicLineTypeLease;
+        bucket.GraphicLineTypeId = graphic?.LineTypeId ?? LineTypeId.Continuous;
         bucket.StrokeWidth = strokeWidth;
         bucket.StrokeStyleDefinition = entity.StrokeStyle;
         AddStrokeWidthContribution(bucket);
@@ -1119,11 +1144,13 @@ internal sealed class Direct2DResourceCache : IDisposable
         public Direct2DGeometryRealizationCache.EntityCache? GeometryRealizations { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? StrokeBrushLease { get; set; }
         internal KeyedResourceLease<ID2D1StrokeStyle, Direct2DStyleResourceCache.StrokeStyleKey>? StrokeStyleLease { get; set; }
+        internal KeyedResourceLease<ID2D1StrokeStyle, Direct2DStyleResourceCache.StrokeStyleKey>? GraphicLineTypeLease { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? FillBrushLease { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? HatchBrushLease { get; set; }
         public ID2D1Brush? StrokeBrush => StrokeBrushLease?.Resource;
         public CadColor? StrokeColor { get; set; }
         public ID2D1StrokeStyle? StrokeStyle => StrokeStyleLease?.Resource;
+        public ID2D1StrokeStyle? GraphicLineTypeStrokeStyle => GraphicLineTypeLease?.Resource;
         public ID2D1Brush? FillBrush => FillBrushLease?.Resource;
         public ID2D1Brush? HatchBrush => HatchBrushLease?.Resource;
         public CadHatchFillStyle? HatchFillStyle { get; set; }
@@ -1137,6 +1164,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1BitmapBrush? BitmapBrush { get; set; }
         public float StrokeWidth { get; set; }
         public CadStrokeStyle StrokeStyleDefinition { get; set; } = CadStrokeStyle.Default;
+        public LineTypeId GraphicLineTypeId { get; set; } = LineTypeId.Continuous;
 
         public bool IsEmpty =>
             Geometry is null &&
@@ -1144,6 +1172,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             LowDetailGeometry is null &&
             StrokeBrush is null &&
             StrokeStyle is null &&
+            GraphicLineTypeStrokeStyle is null &&
             FillBrush is null &&
             HatchBrush is null &&
             TextFormat is null &&
@@ -1164,6 +1193,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             LowDetailGeometry?.Dispose();
             StrokeBrushLease?.Dispose();
             StrokeStyleLease?.Dispose();
+            GraphicLineTypeLease?.Dispose();
             FillBrushLease?.Dispose();
             HatchBrushLease?.Dispose();
             TextLayout?.Dispose();
@@ -1180,6 +1210,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             StrokeStyleDefinition = CadStrokeStyle.Default;
             StrokeBrushLease = null;
             StrokeStyleLease = null;
+            GraphicLineTypeLease = null;
             FillBrushLease = null;
             HatchBrushLease = null;
             HatchFillStyle = null;

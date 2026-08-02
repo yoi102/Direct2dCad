@@ -64,4 +64,19 @@ public sealed class CommandHistoryTests
 
         Assert.False(history.UndoStackEquals(snapshot));
     }
+
+    [Fact]
+    public void PeekUndo_BatchModeDoesNotMergeUnbatchedCommands()
+    {
+        var history = new CommandHistory<object>();
+        var first = new object();
+        var second = new object();
+        history.PushExecuted(first);
+        history.PushExecuted(second);
+
+        var entries = history.PeekUndo(CadCommandBatchUndoMode.Batch);
+
+        Assert.Single(entries);
+        Assert.Same(second, entries[0].Command);
+    }
 }

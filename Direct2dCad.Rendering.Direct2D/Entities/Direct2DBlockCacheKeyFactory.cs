@@ -49,6 +49,7 @@ internal static class Direct2DBlockCacheKeyFactory
             BitConverter.DoubleToInt64Bits(quantizedScaleY),
             options.IsAntialiasingEnabled,
             options.IsTextAntialiasingEnabled,
+            options.EnableGeometryRealizations,
             options.IsLevelOfDetailEnabled,
             options.KeepStrokeWidthScreenConstant,
             BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
@@ -69,6 +70,7 @@ internal readonly record struct Direct2DBlockCacheRequestProfileKey(
     long TransformScaleMultiplierBits,
     bool IsAntialiasingEnabled,
     bool IsTextAntialiasingEnabled,
+    bool EnableGeometryRealizations,
     bool IsLevelOfDetailEnabled,
     bool KeepStrokeWidthScreenConstant,
     long MinimumScreenStrokeWidthBits)
@@ -83,6 +85,7 @@ internal readonly record struct Direct2DBlockCacheRequestProfileKey(
                 Direct2DBlockCacheKeyFactory.ResolveScaleMultiplier(options))),
         options.IsAntialiasingEnabled,
         options.IsTextAntialiasingEnabled,
+        options.EnableGeometryRealizations,
         options.IsLevelOfDetailEnabled,
         options.KeepStrokeWidthScreenConstant,
         BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));

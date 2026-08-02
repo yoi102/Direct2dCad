@@ -79,17 +79,15 @@ internal static class CadGeometryTools
     {
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: true);
         var operation = RequiredString(arguments, "operation").ToLowerInvariant();
+        var entities = ids.Select(executor.DocumentViewModel.CadEditor.Document.GetEntity).ToArray();
         ICadCommand command = operation switch
         {
             "move" => new MoveEntitiesCommand(ids, new CadVectorD(
                 RequiredDouble(arguments, "delta_x"),
                 RequiredDouble(arguments, "delta_y"))),
-            "rotate" => new RotateEntitiesCommand(ids, RequiredCoordinatePair(arguments, "pivot"),
-                RequiredDouble(arguments, "angle_degrees") / DegreesPerRadian),
-            "scale" => new ScaleEntitiesCommand(ids, RequiredCoordinatePair(arguments, "pivot"),
-                RequiredPositive(arguments, "factor")),
-            "mirror" => new MirrorEntitiesCommand(ids, RequiredCoordinatePair(arguments, "axis"),
-                RequiredDouble(arguments, "axis_angle_degrees") / DegreesPerRadian),
+            "rotate" => CreateRotateCommand(ids, entities, arguments),
+            "scale" => CreateScaleCommand(ids, entities, arguments),
+            "mirror" => CreateMirrorCommand(ids, entities, arguments),
             _ => throw new ArgumentException($"Unsupported transform operation: {operation}")
         };
 
@@ -337,13 +335,51 @@ internal static class CadGeometryTools
         };
     }
 
+    private static RotateEntitiesCommand CreateRotateCommand(
+        EntityId[] ids,
+        IReadOnlyList<CadEntity> entities,
+        JsonElement arguments)
+    {
+        var angle = RequiredDouble(arguments, "angle_degrees") / DegreesPerRadian;
+        foreach (var entity in entities)
+            CadEntityTransformRules.EnsureRotationSupported(entity, angle);
+        return new RotateEntitiesCommand(ids, RequiredCoordinatePair(arguments, "pivot"), angle);
+    }
+
+    private static ScaleEntitiesCommand CreateScaleCommand(
+        EntityId[] ids,
+        IReadOnlyList<CadEntity> entities,
+        JsonElement arguments)
+    {
+        var factor = RequiredPositive(arguments, "factor");
+        foreach (var entity in entities)
+            CadEntityTransformRules.EnsureScaleSupported(entity, factor);
+        return new ScaleEntitiesCommand(ids, RequiredCoordinatePair(arguments, "pivot"), factor);
+    }
+
+    private static MirrorEntitiesCommand CreateMirrorCommand(
+        EntityId[] ids,
+        IReadOnlyList<CadEntity> entities,
+        JsonElement arguments)
+    {
+        var angle = RequiredDouble(arguments, "axis_angle_degrees") / DegreesPerRadian;
+        foreach (var entity in entities)
+            CadEntityTransformRules.EnsureMirrorSupported(entity, angle);
+        return new MirrorEntitiesCommand(ids, RequiredCoordinatePair(arguments, "axis"), angle);
+    }
+
     private static object TransformSchema()
     {
         var properties = new Dictionary<string, object>
         {
             ["document_id"] = DocumentIdSchema(),
             ["entity_ids"] = EntityIdsSchema(),
-            ["operation"] = new { type = "string", @enum = new[] { "move", "rotate", "scale", "mirror" } },
+            ["operation"] = new
+            {
+                type = "string",
+                @enum = new[] { "move", "rotate", "scale", "mirror" },
+                description = "move supports all editable entities; rotate rejects EllipseArc and OleObject and requires 90-degree multiples for Ellipse/Rectangle; scale rejects EllipseArc; mirror rejects EllipseArc, requires 45-degree axes for Ellipse/Rectangle, and horizontal/vertical axes for OleObject."
+            },
             ["delta_x"] = Number("Required for move"),
             ["delta_y"] = Number("Required for move"),
             ["pivot_x"] = Number("Required for rotate and scale"),

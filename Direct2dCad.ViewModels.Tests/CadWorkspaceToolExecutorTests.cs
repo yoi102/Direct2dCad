@@ -40,6 +40,17 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "reorder_layers");
         Assert.Contains(tools, tool => tool.Name == "create_block");
         Assert.Contains(tools, tool => tool.Name == "insert_block");
+        Assert.Contains(tools, tool => tool.Name == "list_blocks");
+        Assert.Contains(tools, tool => tool.Name == "rename_block");
+        Assert.Contains(tools, tool => tool.Name == "delete_block");
+        Assert.Contains(tools, tool => tool.Name == "edit_block");
+        Assert.Contains(tools, tool => tool.Name == "exit_block_edit");
+        Assert.Contains(tools, tool => tool.Name == "create_line_type");
+        Assert.Contains(tools, tool => tool.Name == "rename_line_type");
+        Assert.Contains(tools, tool => tool.Name == "delete_line_type");
+        Assert.Contains(tools, tool => tool.Name == "create_graphic_style");
+        Assert.Contains(tools, tool => tool.Name == "create_fill_style");
+        Assert.Contains(tools, tool => tool.Name == "create_hatch_pattern");
         Assert.Contains(tools, tool => tool.Name == "add_composite_path");
         Assert.Contains(tools, tool => tool.Name == "add_shape_text");
         Assert.Contains(tools, tool => tool.Name == "add_ellipse_arc");
@@ -184,8 +195,7 @@ public sealed class CadWorkspaceToolExecutorTests
             Assert.True(textProperties.TryGetProperty(name, out _), name);
         foreach (var name in new[] { "color", "line_weight", "line_type_id" })
             Assert.True(graphicProperties.TryGetProperty(name, out _), name);
-        Assert.Contains(1L, graphicProperties.GetProperty("line_type_id").GetProperty("enum")
-            .EnumerateArray().Select(value => value.GetInt64()));
+        Assert.Equal(1, graphicProperties.GetProperty("line_type_id").GetProperty("minimum").GetInt64());
     }
 
     [Fact]
@@ -253,7 +263,7 @@ public sealed class CadWorkspaceToolExecutorTests
         var capabilities = CadAgentContract.CreateCapabilities([], null, includeExamples: false);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(capabilities));
         var root = json.RootElement;
-        Assert.Equal("1.2", root.GetProperty("contract_version").GetString());
+        Assert.Equal("1.3", root.GetProperty("contract_version").GetString());
         Assert.Contains("line_types", root.GetProperty("rules").EnumerateObject().Select(property => property.Name));
         var circle = root.GetProperty("entity_capabilities").EnumerateArray()
             .Single(item => item.GetProperty("type").GetString() == "Circle");

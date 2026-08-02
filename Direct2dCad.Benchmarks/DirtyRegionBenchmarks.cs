@@ -6,6 +6,7 @@ namespace Direct2dCad.Benchmarks;
 [CadBenchmark]
 public class DirtyRegionBenchmarks
 {
+    private const int OperationsPerInvocation = 64;
     private CadScreenRect[] _dirtyRects = null!;
 
     [Params(8, 32, 128)]
@@ -25,16 +26,27 @@ public class DirtyRegionBenchmarks
 
     [Benchmark]
     [BenchmarkCategory("DirtyRegion")]
-    public int BuildFromBatch() =>
-        CadRenderInvalidation.FromScreenRects(_dirtyRects).DirtyScreenRects.Count;
+    public int BuildFromBatch()
+    {
+        var count = 0;
+        for (var index = 0; index < OperationsPerInvocation; index++)
+            count += CadRenderInvalidation.FromScreenRects(_dirtyRects).DirtyScreenRects.Count;
+        return count;
+    }
 
     [Benchmark]
     [BenchmarkCategory("DirtyRegion")]
     public int UnionIncrementally()
     {
-        var invalidation = CadRenderInvalidation.Empty;
-        foreach (var rect in _dirtyRects)
-            invalidation = invalidation.Union(CadRenderInvalidation.FromScreenRect(rect));
-        return invalidation.DirtyScreenRects.Count;
+        var count = 0;
+        for (var operation = 0; operation < OperationsPerInvocation; operation++)
+        {
+            var invalidation = CadRenderInvalidation.Empty;
+            foreach (var rect in _dirtyRects)
+                invalidation = invalidation.Union(CadRenderInvalidation.FromScreenRect(rect));
+            count += invalidation.DirtyScreenRects.Count;
+        }
+
+        return count;
     }
 }

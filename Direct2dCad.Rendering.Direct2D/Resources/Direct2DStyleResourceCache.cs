@@ -136,6 +136,24 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             _releaseStrokeStyle);
     }
 
+    public KeyedResourceLease<ID2D1StrokeStyle, StrokeStyleKey>? AcquireLineTypeStrokeStyle(
+        CadLineTypeDefinition lineType)
+    {
+        ThrowIfDisposed();
+        if (lineType.IsContinuous || _factory is null)
+            return null;
+
+        var dashes = lineType.DashPattern.Select(value => (float)Math.Max(Math.Abs(value), 0.001)).ToArray();
+        var key = StrokeStyleKey.CreateCustom(dashes);
+        var entry = GetOrCreateStrokeStyle(key);
+        entry.ReferenceCount++;
+        _unleasedStrokeStyles.Remove(key);
+        return new KeyedResourceLease<ID2D1StrokeStyle, StrokeStyleKey>(
+            entry.Resource,
+            key,
+            _releaseStrokeStyle);
+    }
+
     public ID2D1StrokeStyle? GetLevelOfDetailStrokeStyle(
         ID2D1Factory? factory,
         CadStrokeStyle style)
@@ -235,7 +253,7 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         if (_strokeStyles.TryGetValue(key, out var entry))
             return entry;
 
-        var strokeStyle = _factory!.CreateStrokeStyle(new StrokeStyleProperties
+        var properties = new StrokeStyleProperties
         {
             StartCap = key.StartCap,
             EndCap = key.EndCap,
@@ -243,7 +261,9 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             LineJoin = key.LineJoin,
             MiterLimit = key.MiterLimit,
             DashStyle = key.DashStyle
-        });
+        };
+        var dashes = key.Dashes ?? [];
+        var strokeStyle = _factory!.CreateStrokeStyle(properties, dashes);
         entry = new ResourceEntry<ID2D1StrokeStyle>(strokeStyle);
         _strokeStyles.Add(key, entry);
         _unleasedStrokeStyles.Add(key);
@@ -410,14 +430,34 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         };
     }
 
-    internal readonly record struct StrokeStyleKey(
-        CapStyle StartCap,
-        CapStyle EndCap,
-        CapStyle DashCap,
-        LineJoin LineJoin,
-        DashStyle DashStyle,
-        float MiterLimit)
+    internal readonly struct StrokeStyleKey : IEquatable<StrokeStyleKey>
     {
+        public CapStyle StartCap { get; }
+        public CapStyle EndCap { get; }
+        public CapStyle DashCap { get; }
+        public LineJoin LineJoin { get; }
+        public DashStyle DashStyle { get; }
+        public float MiterLimit { get; }
+        public float[]? Dashes { get; }
+
+        public StrokeStyleKey(
+            CapStyle startCap,
+            CapStyle endCap,
+            CapStyle dashCap,
+            LineJoin lineJoin,
+            DashStyle dashStyle,
+            float miterLimit,
+            float[]? dashes = null)
+        {
+            StartCap = startCap;
+            EndCap = endCap;
+            DashCap = dashCap;
+            LineJoin = lineJoin;
+            DashStyle = dashStyle;
+            MiterLimit = miterLimit;
+            Dashes = dashes;
+        }
+
         public static StrokeStyleKey CreateDefault(DashStyle dashStyle) => new(
             CapStyle.Flat,
             CapStyle.Flat,
@@ -425,6 +465,34 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             LineJoin.Miter,
             dashStyle,
             DefaultMiterLimit);
+
+        public static StrokeStyleKey CreateCustom(float[] dashes) => new(
+            CapStyle.Flat,
+            CapStyle.Flat,
+            CapStyle.Flat,
+            LineJoin.Miter,
+            DashStyle.Custom,
+            DefaultMiterLimit,
+            dashes);
+
+        public bool Equals(StrokeStyleKey other) =>
+            StartCap == other.StartCap &&
+            EndCap == other.EndCap &&
+            DashCap == other.DashCap &&
+            LineJoin == other.LineJoin &&
+            DashStyle == other.DashStyle &&
+            MiterLimit.Equals(other.MiterLimit) &&
+            (Dashes ?? []).SequenceEqual(other.Dashes ?? []);
+
+        public override bool Equals(object? obj) => obj is StrokeStyleKey other && Equals(other);
+
+        public override int GetHashCode()
+        {
+            var hash = HashCode.Combine(StartCap, EndCap, DashCap, LineJoin, DashStyle, MiterLimit);
+            foreach (var dash in Dashes ?? [])
+                hash = HashCode.Combine(hash, dash);
+            return hash;
+        }
     }
 
     private sealed class ResourceEntry<T>(T resource) where T : IDisposable

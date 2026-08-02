@@ -14,7 +14,6 @@ internal delegate ID2D1CommandList? Direct2DBlockDefinitionRecordCallback(
 internal sealed class Direct2DBlockDefinitionCommandListCache(
     Direct2DRenderStatisticsCollector statistics) : IDisposable
 {
-    private const int MaximumEntries = 128;
     private const double BuildBudgetMilliseconds = 4.0;
     internal const long CacheBudgetBytes = 32L * 1024 * 1024;
 
@@ -173,7 +172,7 @@ internal sealed class Direct2DBlockDefinitionCommandListCache(
 
     private void TrimEntries(Direct2DBlockDefinitionCacheKey protectedKey)
     {
-        while (_entries.Count > MaximumEntries || EstimatedBytes > CacheBudgetBytes)
+        while (EstimatedBytes > CacheBudgetBytes)
         {
             var hasCandidate = false;
             var oldestKey = default(Direct2DBlockDefinitionCacheKey);
@@ -250,6 +249,7 @@ internal readonly record struct Direct2DBlockDefinitionCacheKey(
     long ScreenScaleYBits,
     bool IsAntialiasingEnabled,
     bool IsTextAntialiasingEnabled,
+    bool EnableGeometryRealizations,
     bool IsLevelOfDetailEnabled,
     bool KeepStrokeWidthScreenConstant,
     long MinimumScreenStrokeWidthBits);

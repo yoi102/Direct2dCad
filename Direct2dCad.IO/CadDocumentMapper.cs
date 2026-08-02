@@ -112,7 +112,8 @@ internal static class CadDocumentMapper
         return new CadStylesSection
         {
             Styles = document.Styles.Values.Select(ToData).ToList(),
-            HatchPatterns = document.HatchPatterns.Values.Select(ToData).ToList()
+            HatchPatterns = document.HatchPatterns.Values.Select(ToData).ToList(),
+            LineTypes = document.LineTypes.Values.Select(ToData).ToList()
         };
     }
 
@@ -698,6 +699,22 @@ internal static class CadDocumentMapper
 
     private static void ApplyStyles(CadDocument document, CadStylesSection section)
     {
+        foreach (var lineTypeData in section.LineTypes ?? [])
+        {
+            var lineType = FromData(lineTypeData);
+            if (!document.LineTypes.ContainsKey(lineType.Id))
+                document.AddLineTypeCore(lineType);
+        }
+
+        // Files written before custom line types were persisted may still carry
+        // a non-continuous ID. Keep those files loadable with a named placeholder.
+        foreach (var graphicData in section.Styles.Where(style => style.Graphic is not null).Select(style => style.Graphic!))
+        {
+            var id = new LineTypeId(graphicData.LineTypeId);
+            if (!document.LineTypes.ContainsKey(id))
+                document.AddLineTypeCore(new CadLineTypeDefinition(id, $"LineType {id.Value}"));
+        }
+
         foreach (var patternData in section.HatchPatterns ?? [])
         {
             var pattern = FromData(patternData);
@@ -1165,6 +1182,17 @@ internal static class CadDocumentMapper
             data.Lines.Select(FromData),
             data.Description);
     }
+
+    private static CadLineTypeData ToData(CadLineTypeDefinition lineType) => new()
+    {
+        Id = lineType.Id.Value,
+        Name = lineType.Name,
+        Description = lineType.Description,
+        DashPattern = lineType.DashPattern.ToList()
+    };
+
+    private static CadLineTypeDefinition FromData(CadLineTypeData data) =>
+        new(new LineTypeId(data.Id), data.Name, data.DashPattern, data.Description);
 
     private static CadHatchLineData ToData(CadHatchLineDefinition line)
     {

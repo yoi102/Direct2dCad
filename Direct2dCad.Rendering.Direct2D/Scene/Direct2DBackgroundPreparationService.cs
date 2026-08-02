@@ -39,6 +39,11 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
         if (!NeedsSchedule(document, version))
             return;
 
+        // A document/version change supersedes the previous preparation. Do not
+        // leave the old worker running until it happens to observe cancellation.
+        if (_pendingTask is not null || _pendingCancellation is not null)
+            ClearPendingTask(cancel: true);
+
         _pendingDocument = document;
         _pendingVersion = version;
         _publishedPlan = null;
@@ -57,8 +62,12 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
             return _publishedPlan;
         if (_pendingTask is null || !_pendingTask.IsCompleted)
             return null;
-        if (_pendingTask.IsCompletedSuccessfully && _pendingTask.Result.Version == version)
-            _publishedPlan = _pendingTask.Result;
+        if (_pendingTask.IsCompletedSuccessfully)
+        {
+            var plan = _pendingTask.GetAwaiter().GetResult();
+            if (plan.Version == version)
+                _publishedPlan = plan;
+        }
         ClearPendingTask(cancel: false);
         return _publishedPlan;
     }
@@ -67,6 +76,7 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
     {
         ClearPendingTask(cancel: true);
         _pendingDocument = null;
+        _pendingVersion = 0;
         _publishedPlan = null;
     }
 

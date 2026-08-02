@@ -22,6 +22,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     private readonly Dictionary<BlockId, HashSet<EntityId>> _blockReferenceIdsByDefinition = [];
     private readonly Dictionary<StyleId, CadStyle> _styles = [];
     private readonly Dictionary<HatchPatternId, CadHatchPatternDefinition> _hatchPatterns = [];
+    private readonly Dictionary<LineTypeId, CadLineTypeDefinition> _lineTypes = [];
     private readonly Dictionary<LayoutId, CadLayout> _layouts = [];
     public CadDocumentSettings DocumentSettings { get; }
     public CadViewSettings ViewSettings { get; } = new();
@@ -34,6 +35,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     public IReadOnlyDictionary<EntityId, CadEntity> Entities => _entities;
     public IReadOnlyDictionary<StyleId, CadStyle> Styles => _styles;
     public IReadOnlyDictionary<HatchPatternId, CadHatchPatternDefinition> HatchPatterns => _hatchPatterns;
+    public IReadOnlyDictionary<LineTypeId, CadLineTypeDefinition> LineTypes => _lineTypes;
     public IReadOnlyDictionary<LayoutId, CadLayout> Layouts => _layouts;
 
     public static CadDocument Create(string name)
@@ -53,6 +55,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     private void InitializeDefaults()
     {
+        AddLineTypeCore(new CadLineTypeDefinition(LineTypeId.Continuous, "Continuous"));
         var defaultGraphicStyle = new CadGraphicStyle(
             StyleId.DefaultGraphic,
             "Default Graphic",
@@ -637,6 +640,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         CadLineWeight lineWeight,
         LineTypeId lineTypeId)
     {
+        ValidateLineType(lineTypeId);
         var style = new CadGraphicStyle(
             _ids.NewStyleId(),
             name,
@@ -684,6 +688,37 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
         AddHatchPatternCore(pattern);
         return pattern.Id;
+    }
+
+    public LineTypeId CreateLineType(
+        string name,
+        IEnumerable<double>? dashPattern = null,
+        string description = "")
+    {
+        ValidateUniqueLineTypeName(name);
+        var lineType = new CadLineTypeDefinition(
+            _ids.NewLineTypeId(), name, dashPattern, description);
+        AddLineTypeCore(lineType);
+        return lineType.Id;
+    }
+
+    public void RenameLineType(LineTypeId lineTypeId, string name)
+    {
+        var lineType = GetLineType(lineTypeId);
+        ValidateUniqueLineTypeName(name, lineTypeId);
+        lineType.Rename(name);
+    }
+
+    public int GetLineTypeReferenceCount(LineTypeId lineTypeId) =>
+        _styles.Values.OfType<CadGraphicStyle>().Count(style => style.LineTypeId == lineTypeId);
+
+    public bool RemoveLineType(LineTypeId lineTypeId)
+    {
+        if (lineTypeId == LineTypeId.Continuous)
+            throw new InvalidOperationException("The Continuous line type cannot be deleted.");
+        if (GetLineTypeReferenceCount(lineTypeId) > 0)
+            throw new InvalidOperationException($"Line type is still referenced: {lineTypeId}");
+        return _lineTypes.Remove(lineTypeId);
     }
 
     public StyleId CreateHatchFillStyle(
@@ -746,6 +781,23 @@ public sealed class CadDocument : IEquatable<CadDocument>
         ValidateHatchPattern(patternId);
         GetStyle<CadHatchFillStyle>(styleId).SetPatternInternal(patternId);
     }
+
+    public void RenameStyle(StyleId styleId, string name)
+    {
+        var style = GetStyle<CadStyle>(styleId);
+        ValidateUniqueStyleName(name, styleId);
+        style.Rename(name);
+    }
+
+    public int GetStyleReferenceCount(StyleId styleId)
+    {
+        var count = _layers.Values.Count(layer => layer.DefaultGraphicStyleId == styleId);
+        count += _entities.Values.Count(entity => ReferencesStyle(entity, styleId));
+        return count;
+    }
+
+    public int GetHatchPatternReferenceCount(HatchPatternId patternId) =>
+        _styles.Values.OfType<CadHatchFillStyle>().Count(style => style.PatternId == patternId);
 
     #endregion Styles
 
@@ -1514,6 +1566,16 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     internal bool RemoveHatchPatternCore(HatchPatternId patternId) => _hatchPatterns.Remove(patternId);
 
+    internal void AddLineTypeCore(CadLineTypeDefinition lineType)
+    {
+        ArgumentNullException.ThrowIfNull(lineType);
+        if (_lineTypes.ContainsKey(lineType.Id))
+            throw new InvalidOperationException($"Line type already exists: {lineType.Id}");
+        ValidateUniqueLineTypeName(lineType.Name, lineType.Id);
+        _lineTypes.Add(lineType.Id, lineType);
+        _ids.RegisterExisting(lineType.Id);
+    }
+
     internal void AddEntityCore(CadEntity entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
@@ -1626,6 +1688,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
 
     private void ValidateStyleReferences(CadStyle style)
     {
+        if (style is CadGraphicStyle graphic)
+            ValidateLineType(graphic.LineTypeId);
         if (style is CadHatchFillStyle hatchStyle)
             ValidateHatchPattern(hatchStyle.PatternId);
     }
@@ -1665,6 +1729,36 @@ public sealed class CadDocument : IEquatable<CadDocument>
         if (duplicate is not null)
             throw new InvalidOperationException($"Block name already exists: {normalizedName}");
     }
+
+    private void ValidateUniqueStyleName(string name, StyleId? styleId = null)
+    {
+        var normalizedName = string.IsNullOrWhiteSpace(name)
+            ? throw new ArgumentException("Style name cannot be empty.", nameof(name))
+            : name.Trim();
+        if (_styles.Values.Any(style =>
+                (styleId is null || !style.Id.Equals(styleId.Value)) &&
+                string.Equals(style.Name, normalizedName, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Style name already exists: {normalizedName}");
+        }
+    }
+
+    private static bool ReferencesStyle(CadEntity entity, StyleId styleId) => entity switch
+    {
+        CadLine line => line.GraphicStyleId == styleId,
+        CadCircle circle => circle.GraphicStyleId == styleId || circle.FillStyleId == styleId,
+        CadArc arc => arc.GraphicStyleId == styleId,
+        CadEllipse ellipse => ellipse.GraphicStyleId == styleId || ellipse.FillStyleId == styleId,
+        CadEllipseArc ellipseArc => ellipseArc.GraphicStyleId == styleId,
+        CadRectangle rectangle => rectangle.GraphicStyleId == styleId || rectangle.FillStyleId == styleId,
+        CadPolyline polyline => polyline.GraphicStyleId == styleId || polyline.FillStyleId == styleId,
+        CadSpline spline => spline.GraphicStyleId == styleId || spline.FillStyleId == styleId,
+        CadCompositePath path => path.GraphicStyleId == styleId || path.FillStyleId == styleId,
+        CadText text => text.GraphicStyleId == styleId || text.TextStyleId == styleId,
+        CadShapeText shapeText => shapeText.GraphicStyleId == styleId,
+        CadBlockReference blockReference => blockReference.GraphicStyleId == styleId,
+        _ => false
+    };
 
     private static void EnsureBlockCanBeEdited(CadBlockDefinition block)
     {
@@ -1751,6 +1845,28 @@ public sealed class CadDocument : IEquatable<CadDocument>
         if (!_hatchPatterns.ContainsKey(patternId))
             throw new InvalidOperationException($"Hatch pattern does not exist: {patternId}");
     }
+
+    private void ValidateLineType(LineTypeId lineTypeId)
+    {
+        if (!_lineTypes.ContainsKey(lineTypeId))
+            throw new InvalidOperationException($"Line type does not exist: {lineTypeId}");
+    }
+
+    private void ValidateUniqueLineTypeName(string name, LineTypeId? lineTypeId = null)
+    {
+        var normalizedName = string.IsNullOrWhiteSpace(name)
+            ? throw new ArgumentException("Line type name cannot be empty.", nameof(name))
+            : name.Trim();
+        if (_lineTypes.Values.Any(candidate =>
+                (lineTypeId is null || !candidate.Id.Equals(lineTypeId.Value)) &&
+                candidate.Name.Equals(normalizedName, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException($"Line type name already exists: {normalizedName}");
+    }
+
+    public CadLineTypeDefinition GetLineType(LineTypeId lineTypeId) =>
+        _lineTypes.TryGetValue(lineTypeId, out var lineType)
+            ? lineType
+            : throw new KeyNotFoundException($"Line type does not exist: {lineTypeId}");
 
     private void ValidateGraphicStyle(StyleId? styleId, bool allowNull)
     {

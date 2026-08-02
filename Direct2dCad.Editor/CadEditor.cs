@@ -94,6 +94,9 @@ public sealed class CadEditor
 
     public CadDocumentChangeSet UndoBatch(Guid batchId) => DocumentCommands.UndoBatch(batchId);
 
+    public CadDocumentChangeSet RollbackDocumentBatch(Guid batchId, int commandCount) =>
+        DocumentCommands.RollbackBatch(batchId, commandCount);
+
     public CadDocumentChangeSet Redo() => DocumentCommands.Redo();
 
     public CadDocumentChangeSet UndoDocument() => DocumentCommands.Undo();

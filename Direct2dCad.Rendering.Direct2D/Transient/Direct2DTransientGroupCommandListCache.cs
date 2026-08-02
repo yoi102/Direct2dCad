@@ -372,7 +372,9 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         long ZoomBits,
         bool IsAntialiasingEnabled,
         bool IsTextAntialiasingEnabled,
+        bool EnableGeometryRealizations,
         bool IsLevelOfDetailEnabled,
+        long TransformScaleMultiplierBits,
         bool KeepStrokeWidthScreenConstant,
         long MinimumScreenStrokeWidthBits)
     {
@@ -383,8 +385,15 @@ internal sealed class Direct2DTransientGroupCommandListCache(
                 BitConverter.DoubleToInt64Bits(Direct2DRenderScaleBucket.Quantize(zoom)),
                 options.IsAntialiasingEnabled,
                 options.IsTextAntialiasingEnabled,
+                options.EnableGeometryRealizations,
                 options.IsLevelOfDetailEnabled,
+                BitConverter.DoubleToInt64Bits(
+                    Direct2DRenderScaleBucket.Quantize(
+                        ResolveTransformScaleMultiplier(options.TransformScaleMultiplier))),
                 options.KeepStrokeWidthScreenConstant,
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
+
+        private static double ResolveTransformScaleMultiplier(double value) =>
+            double.IsFinite(value) && value > double.Epsilon ? value : 1.0;
     }
 }

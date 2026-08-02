@@ -93,12 +93,23 @@ internal sealed class CadWorkspaceToolExecutor
                 "set_entity_stroke_style" => ExecuteForDocument(root, SetEntityStrokeStyle),
                 "set_text_style_properties" => ExecuteForDocument(root, CadTextStyleTools.Execute),
                 "set_graphic_style_properties" => ExecuteForDocument(root, CadGraphicStyleTools.Execute),
+                "list_styles" => ExecuteForDocument(root, (executor, _) => CadStyleManagementTools.Execute(executor, "list_styles", root)),
+                "create_graphic_style" or "create_line_type" or "rename_line_type" or "delete_line_type" or
+                    "create_text_style" or "create_fill_style" or "create_hatch_pattern" or
+                    "rename_style" or "delete_style" or "delete_hatch_pattern" =>
+                    ExecuteForDocument(root, (executor, arguments) => CadStyleManagementTools.Execute(executor, toolCall.Name, arguments)),
+                "list_system_fonts" => Success(CadStyleManagementTools.ListSystemFonts()),
                 "set_entity_specific_properties" => ExecuteForDocument(
                     root,
                     CadEntitySpecificPropertyTools.Execute),
                 "set_ole_object_data" => ExecuteForDocument(root, SetOleObjectData),
                 "create_block" => ExecuteForDocument(root, CreateBlock),
                 "insert_block" => ExecuteForDocument(root, InsertBlock),
+                "list_blocks" => ExecuteForDocument(root, ListBlocks),
+                "rename_block" => ExecuteForDocument(root, RenameBlock),
+                "delete_block" => ExecuteForDocument(root, DeleteBlock),
+                "edit_block" => EditBlock(root),
+                "exit_block_edit" => ExitBlockEdit(root),
                 "add_composite_path" => ExecuteForDocument(root, AddCompositePath),
                 "add_entities" => ExecuteForDocument(root, AddEntities),
                 _ when CadLayerTools.ToolDefinitions.Any(definition => definition.Name == toolCall.Name) =>
@@ -314,7 +325,8 @@ internal sealed class CadWorkspaceToolExecutor
         Func<CadDocumentToolExecutor, JsonElement, object> operation)
     {
         var document = ResolveDocument(arguments);
-        var result = operation(GetExecutor(document), arguments);
+        var executor = GetExecutor(document);
+        var result = executor.ExecuteAtomically(() => operation(executor, arguments));
         return Success(new { document_id = document.DocumentId, result });
     }
 
@@ -1176,6 +1188,69 @@ internal sealed class CadWorkspaceToolExecutor
         };
     }
 
+    private object ListBlocks(CadDocumentToolExecutor executor, JsonElement arguments)
+    {
+        var document = executor.DocumentViewModel.CadEditor.Document;
+        return new
+        {
+            blocks = document.Blocks.Values
+                .Where(block => block.Kind == CadBlockKind.User)
+                .OrderBy(block => block.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(block => new
+                {
+                    id = block.Id.Value,
+                    block.Name,
+                    kind = block.Kind.ToString(),
+                    is_read_only = block.IsReadOnly,
+                    base_point = new { x = block.BasePoint.X, y = block.BasePoint.Y },
+                    entity_count = block.EntityIds.Count,
+                    reference_count = document.GetBlockReferenceCount(block.Id)
+                }).ToArray()
+        };
+    }
+
+    private object RenameBlock(CadDocumentToolExecutor executor, JsonElement arguments)
+    {
+        var document = executor.DocumentViewModel.CadEditor.Document;
+        var block = ResolveBlock(document, RequiredString(arguments, "block"));
+        var name = RequiredString(arguments, "new_name");
+        executor.ExecuteCommand(new RenameBlockCommand(block.Id, name));
+        return new { block_id = block.Id.Value, old_name = block.Name, new_name = document.GetBlock(block.Id).Name };
+    }
+
+    private object DeleteBlock(CadDocumentToolExecutor executor, JsonElement arguments)
+    {
+        if (!OptionalBool(arguments, "confirm", false))
+            throw new ArgumentException("delete_block requires confirm=true.");
+
+        var document = executor.DocumentViewModel.CadEditor.Document;
+        var block = ResolveBlock(document, RequiredString(arguments, "block"));
+        var referenceCount = document.GetBlockReferenceCount(block.Id);
+        if (referenceCount > 0)
+            throw new InvalidOperationException(
+                $"Block '{block.Name}' has {referenceCount} reference(s); remove or replace them before deleting the definition.");
+
+        executor.ExecuteCommand(new DeleteBlockDefinitionCommand(block.Id));
+        return new { block_id = block.Id.Value, block_name = block.Name, deleted_entity_count = block.EntityIds.Count };
+    }
+
+    private string EditBlock(JsonElement arguments)
+    {
+        var document = ResolveDocument(arguments);
+        var block = ResolveBlock(document.DocumentViewModel.CadEditor.Document, RequiredString(arguments, "block"));
+        document.DocumentViewModel.EditBlockDefinition(block.Id);
+        _defaultDocumentId = document.DocumentId;
+        return Success(new { document_id = document.DocumentId, block_id = block.Id.Value, block_name = block.Name, editing = true });
+    }
+
+    private string ExitBlockEdit(JsonElement arguments)
+    {
+        var document = ResolveDocument(arguments);
+        document.DocumentViewModel.ExitBlockEditing();
+        _defaultDocumentId = document.DocumentId;
+        return Success(new { document_id = document.DocumentId, editing = false });
+    }
+
     private static CadGradientStop[] ParseGradientStops(JsonElement arguments)
     {
         if (!arguments.TryGetProperty("stops", out var value) || value.ValueKind != JsonValueKind.Array)
@@ -1542,6 +1617,7 @@ internal sealed class CadWorkspaceToolExecutor
             }, ["entity_id", "ole_base64"])));
         tools.Add(CadTextStyleTools.ToolDefinition);
         tools.Add(CadGraphicStyleTools.ToolDefinition);
+        tools.AddRange(CadStyleManagementTools.ToolDefinitions);
         tools.AddRange(CadLayerTools.ToolDefinitions);
         tools.Add(CadBulkCreationTools.ToolDefinition);
         tools.Add(CadCompositePathTools.ToolDefinition);
@@ -1611,6 +1687,30 @@ internal sealed class CadWorkspaceToolExecutor
                 ["visible"] = new { type = "boolean" },
                 ["locked"] = new { type = "boolean" }
             }, ["block", "x", "y"], not: MutuallyExclusive("color", "graphic_style"))));
+        tools.Add(Tool("list_blocks", "List user block definitions, their base points, entity counts, and reference counts.",
+            ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
+        tools.Add(Tool("rename_block", "Rename an existing user block definition as one undoable operation.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["block"] = StringSchema("Existing user Block name or ID"),
+                ["new_name"] = StringSchema("New unique Block name")
+            }, ["block", "new_name"])));
+        tools.Add(Tool("delete_block", "Delete an unreferenced user block definition and its owned entities. Requires confirm=true.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["block"] = StringSchema("Existing user Block name or ID"),
+                ["confirm"] = new { type = "boolean", @const = true }
+            }, ["block", "confirm"])));
+        tools.Add(Tool("edit_block", "Enter the selected user block definition as the active editable space.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["block"] = StringSchema("Existing user Block name or ID")
+            }, ["block"])));
+        tools.Add(Tool("exit_block_edit", "Leave block editing and return to model space.",
+            ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
         return tools;
     }
 

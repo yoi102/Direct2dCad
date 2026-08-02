@@ -12,6 +12,7 @@ public sealed class CadDocumentStorageFailureTests
     private const int FirstSectionCompressionOffset = 31;
     private const int FirstSectionPayloadOffset = 32;
     private const int SectionEntryLength = 19;
+    private const int SecondSectionPayloadOffset = FirstSectionPayloadOffset + SectionEntryLength;
 
     [Fact]
     public async Task LoadAsync_WithPreCanceledTokenDoesNotAccessFileSystem()
@@ -139,6 +140,23 @@ public sealed class CadDocumentStorageFailureTests
     {
         await AssertCorruptFileThrowsAsync<InvalidDataException>(
             bytes => WriteInt64(bytes, FirstSectionPayloadOffset, long.MaxValue));
+    }
+
+    [Fact]
+    public async Task LoadAsync_SectionPayloadInsideTableThrowsInvalidDataException()
+    {
+        await AssertCorruptFileThrowsAsync<InvalidDataException>(
+            bytes => WriteInt64(bytes, FirstSectionPayloadOffset, 25));
+    }
+
+    [Fact]
+    public async Task LoadAsync_OverlappingSectionPayloadsThrowInvalidDataException()
+    {
+        await AssertCorruptFileThrowsAsync<InvalidDataException>(bytes =>
+        {
+            var firstPayloadOffset = BitConverter.ToInt64(bytes, FirstSectionPayloadOffset);
+            WriteInt64(bytes, SecondSectionPayloadOffset, firstPayloadOffset);
+        });
     }
 
     [Fact]

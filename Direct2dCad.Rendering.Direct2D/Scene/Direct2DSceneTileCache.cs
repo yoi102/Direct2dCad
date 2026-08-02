@@ -462,6 +462,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             DrawGripHandles = false,
             IsAntialiasingEnabled = source.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
+            EnableGeometryRealizations = source.EnableGeometryRealizations,
             IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
             AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
             TransformScaleMultiplier = source.TransformScaleMultiplier,
@@ -837,6 +838,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         long ZoomBits,
         bool IsAntialiasingEnabled,
         bool IsTextAntialiasingEnabled,
+        bool EnableGeometryRealizations,
+        long TransformScaleMultiplierBits,
         bool IsLevelOfDetailEnabled,
         bool KeepStrokeWidthScreenConstant,
         long MinimumScreenStrokeWidthBits)
@@ -851,6 +854,10 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                 BitConverter.DoubleToInt64Bits(quantizedZoom),
                 options.IsAntialiasingEnabled,
                 options.IsTextAntialiasingEnabled,
+                options.EnableGeometryRealizations,
+                BitConverter.DoubleToInt64Bits(
+                    Direct2DRenderScaleBucket.Quantize(
+                        ResolveTransformScaleMultiplier(options.TransformScaleMultiplier))),
                 options.IsLevelOfDetailEnabled,
                 options.KeepStrokeWidthScreenConstant,
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
@@ -860,9 +867,14 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             OwnerBlockId.Equals(other.OwnerBlockId) &&
             IsAntialiasingEnabled == other.IsAntialiasingEnabled &&
             IsTextAntialiasingEnabled == other.IsTextAntialiasingEnabled &&
+            EnableGeometryRealizations == other.EnableGeometryRealizations &&
+            TransformScaleMultiplierBits == other.TransformScaleMultiplierBits &&
             IsLevelOfDetailEnabled == other.IsLevelOfDetailEnabled &&
             KeepStrokeWidthScreenConstant == other.KeepStrokeWidthScreenConstant &&
             MinimumScreenStrokeWidthBits == other.MinimumScreenStrokeWidthBits;
+
+        private static double ResolveTransformScaleMultiplier(double value) =>
+            double.IsFinite(value) && value > double.Epsilon ? value : 1.0;
     }
 
     private sealed class TileProfile(TileProfileKey key, double zoom) : IDisposable

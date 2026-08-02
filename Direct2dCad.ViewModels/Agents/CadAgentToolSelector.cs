@@ -27,8 +27,15 @@ internal static class CadAgentToolSelector
 
     private static readonly string[] BlockTools =
     [
-        "create_block", "insert_block", "duplicate_entities",
+        "create_block", "insert_block", "list_blocks", "rename_block", "delete_block", "edit_block", "exit_block_edit", "duplicate_entities",
         "get_entity_geometry", "transform_entities", "set_entity_specific_properties"
+    ];
+
+    private static readonly string[] StyleTools =
+    [
+        "list_styles", "create_graphic_style", "create_line_type", "rename_line_type", "delete_line_type",
+        "create_text_style", "create_fill_style", "create_hatch_pattern", "rename_style", "delete_style",
+        "delete_hatch_pattern", "list_system_fonts", "set_text_style_properties", "set_graphic_style_properties"
     ];
 
     private static readonly string[] DocumentTools =
@@ -181,6 +188,8 @@ internal static class CadAgentToolSelector
             Add(EditingTools);
         if (ContainsAny(normalized, "block", "块", "块定义", "块引用"))
             Add(BlockTools);
+        if (ContainsAny(normalized, "style", "font", "hatch", "line type", "linetype", "pattern"))
+            Add(StyleTools);
         if (ContainsAny(normalized,
                 "document", "file", "open", "save", "close", "rename",
                 "文档", "文件", "打开", "保存", "关闭", "重命名", "新建"))

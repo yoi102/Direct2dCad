@@ -158,4 +158,45 @@ public sealed class LayerAndBlockCommandTests
         Assert.Equal(-2, reference.ScaleX);
         Assert.Equal(3, reference.ScaleY);
     }
+
+    [Fact]
+    public void RenameBlockCommand_UndoAndRedoRestoreDefinitionName()
+    {
+        var document = CadDocument.Create("Block names");
+        var blockId = document.CreateBlockDefinition("Original", CadPointD.Origin);
+        var command = new RenameBlockCommand(blockId, "Renamed");
+
+        command.Execute(document);
+        Assert.Equal("Renamed", document.GetBlock(blockId).Name);
+
+        command.Undo(document);
+        Assert.Equal("Original", document.GetBlock(blockId).Name);
+
+        command.Execute(document);
+        Assert.Equal("Renamed", document.GetBlock(blockId).Name);
+    }
+
+    [Fact]
+    public void DeleteBlockDefinitionCommand_RejectsReferencedBlockAndRestoresUnreferencedBlock()
+    {
+        var document = CadDocument.Create("Block deletion");
+        var blockId = document.CreateBlockDefinition("Symbol", CadPointD.Origin);
+        var child = document.AddLine(CadPointD.Origin, new CadPointD(5, 0));
+        document.MoveEntityToBlock(child.Id, blockId);
+        var reference = document.AddBlockReference(blockId, new CadPointD(10, 10));
+        var command = new DeleteBlockDefinitionCommand(blockId);
+
+        Assert.Throws<InvalidOperationException>(() => command.Execute(document));
+        reference.Erase();
+
+        command.Execute(document);
+        Assert.False(document.Blocks.ContainsKey(blockId));
+        Assert.False(document.TryGetEntity(child.Id, out _));
+
+        command.Undo(document);
+        Assert.True(document.Blocks.ContainsKey(blockId));
+        Assert.True(document.TryGetEntity(child.Id, out var restored));
+        Assert.False(restored!.IsErased);
+        Assert.Equal(blockId, restored.OwnerBlockId);
+    }
 }

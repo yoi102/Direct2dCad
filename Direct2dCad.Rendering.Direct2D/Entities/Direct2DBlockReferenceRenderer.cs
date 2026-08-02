@@ -819,6 +819,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
             IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
             AllowApproximateTileScaleFallback = source.AllowApproximateTileScaleFallback,
+            EnableGeometryRealizations = source.EnableGeometryRealizations,
             TransformScaleMultiplier = buildScreenScale,
             KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,

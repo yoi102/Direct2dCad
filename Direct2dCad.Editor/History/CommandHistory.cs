@@ -53,13 +53,25 @@ public sealed class CommandHistory<TCommand>
         return Pop(_undoStack, mode);
     }
 
+    public IReadOnlyList<CommandHistoryEntry<TCommand>> PeekUndo(CadCommandBatchUndoMode mode) =>
+        Peek(_undoStack, mode);
+
     public IReadOnlyList<CommandHistoryEntry<TCommand>> PopRedo(CadCommandBatchUndoMode mode)
     {
         return Pop(_redoStack, mode);
     }
 
+    public IReadOnlyList<CommandHistoryEntry<TCommand>> PeekRedo(CadCommandBatchUndoMode mode) =>
+        Peek(_redoStack, mode);
+
     public IReadOnlyList<CommandHistoryEntry<TCommand>> PopUndoBatch(Guid batchId)
+        => PopUndoBatch(batchId, int.MaxValue);
+
+    public IReadOnlyList<CommandHistoryEntry<TCommand>> PopUndoBatch(Guid batchId, int maximumCount)
     {
+        if (maximumCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+
         if (batchId == Guid.Empty ||
             !_undoStack.TryPeek(out var first) ||
             first.BatchId != batchId)
@@ -68,10 +80,62 @@ public sealed class CommandHistory<TCommand>
         }
 
         var entries = new List<CommandHistoryEntry<TCommand>>();
-        while (_undoStack.TryPeek(out var next) && next.BatchId == batchId)
+        while (entries.Count < maximumCount &&
+               _undoStack.TryPeek(out var next) &&
+               next.BatchId == batchId)
             entries.Add(_undoStack.Pop());
         return entries;
     }
+
+    public IReadOnlyList<CommandHistoryEntry<TCommand>> PeekUndoBatch(Guid batchId, int maximumCount = int.MaxValue)
+    {
+        if (maximumCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumCount));
+        if (batchId == Guid.Empty)
+            return [];
+
+        var entries = new List<CommandHistoryEntry<TCommand>>();
+        foreach (var entry in _undoStack)
+        {
+            if (entries.Count >= maximumCount || entry.BatchId != batchId)
+                break;
+            entries.Add(entry);
+        }
+        return entries;
+    }
+
+    public int CountUndoBatch(Guid batchId)
+    {
+        if (batchId == Guid.Empty)
+            return 0;
+
+        var count = 0;
+        foreach (var entry in _undoStack)
+        {
+            if (entry.BatchId != batchId)
+                break;
+            count++;
+        }
+
+        return count;
+    }
+
+    public void CommitUndo(IReadOnlyList<CommandHistoryEntry<TCommand>> entries)
+    {
+        PopExpected(_undoStack, entries);
+        foreach (var entry in entries)
+            _redoStack.Push(entry);
+    }
+
+    public void CommitRedo(IReadOnlyList<CommandHistoryEntry<TCommand>> entries)
+    {
+        PopExpected(_redoStack, entries);
+        foreach (var entry in entries)
+            _undoStack.Push(entry);
+    }
+
+    public void DiscardUndo(IReadOnlyList<CommandHistoryEntry<TCommand>> entries) =>
+        PopExpected(_undoStack, entries);
 
     public void PushUndone(CommandHistoryEntry<TCommand> entry)
     {
@@ -99,6 +163,57 @@ public sealed class CommandHistory<TCommand>
         }
 
         return entries;
+    }
+
+    private static IReadOnlyList<CommandHistoryEntry<TCommand>> Peek(
+        Stack<CommandHistoryEntry<TCommand>> stack,
+        CadCommandBatchUndoMode mode)
+    {
+        var entries = new List<CommandHistoryEntry<TCommand>>();
+        foreach (var entry in stack)
+        {
+            if (entries.Count == 0)
+            {
+                entries.Add(entry);
+                if (mode != CadCommandBatchUndoMode.Batch || entry.BatchId is null)
+                    break;
+                continue;
+            }
+
+            if (entry.BatchId != entries[0].BatchId)
+            {
+                break;
+            }
+
+            entries.Add(entry);
+        }
+
+        return entries;
+    }
+
+    private static void PopExpected(
+        Stack<CommandHistoryEntry<TCommand>> stack,
+        IReadOnlyList<CommandHistoryEntry<TCommand>> entries)
+    {
+        var snapshot = stack.ToArray();
+        if (entries.Count > snapshot.Length)
+            throw new InvalidOperationException("Command history changed while an operation was being committed.");
+
+        for (var index = 0; index < entries.Count; index++)
+        {
+            var actual = snapshot[index];
+            var expected = entries[index];
+            if (!ReferenceEquals(actual.Command, expected.Command) ||
+                actual.BatchId != expected.BatchId)
+            {
+                throw new InvalidOperationException("Command history changed while an operation was being committed.");
+            }
+        }
+
+        foreach (var expected in entries)
+        {
+            _ = stack.Pop();
+        }
     }
 
     public void Clear()

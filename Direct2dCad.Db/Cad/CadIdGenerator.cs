@@ -12,6 +12,7 @@ public sealed class CadIdGenerator
     private long _nextBlockId;
     private long _nextStyleId;
     private long _nextHatchPatternId;
+    private long _nextLineTypeId;
     private long _nextLayoutId;
     private long _nextLayoutViewportId;
 
@@ -22,13 +23,15 @@ public sealed class CadIdGenerator
         long nextStyleId = 2,
         long nextHatchPatternId = 1,
         long nextLayoutId = 2,
-        long nextLayoutViewportId = 1)
+        long nextLayoutViewportId = 1,
+        long nextLineTypeId = 2)
     {
         _nextEntityId = GuardNext(nextEntityId, nameof(nextEntityId));
         _nextLayerId = Math.Max(2, GuardNext(nextLayerId, nameof(nextLayerId)));
         _nextBlockId = Math.Max(3, GuardNext(nextBlockId, nameof(nextBlockId)));
         _nextStyleId = Math.Max(2, GuardNext(nextStyleId, nameof(nextStyleId)));
         _nextHatchPatternId = GuardNext(nextHatchPatternId, nameof(nextHatchPatternId));
+        _nextLineTypeId = Math.Max(2, GuardNext(nextLineTypeId, nameof(nextLineTypeId)));
         _nextLayoutId = Math.Max(2, GuardNext(nextLayoutId, nameof(nextLayoutId)));
         _nextLayoutViewportId = GuardNext(nextLayoutViewportId, nameof(nextLayoutViewportId));
     }
@@ -39,6 +42,7 @@ public sealed class CadIdGenerator
     public BlockId NewBlockId() => new(_nextBlockId++);
     public StyleId NewStyleId() => new(_nextStyleId++);
     public HatchPatternId NewHatchPatternId() => new(_nextHatchPatternId++);
+    public LineTypeId NewLineTypeId() => new(_nextLineTypeId++);
     public LayoutId NewLayoutId() => new(_nextLayoutId++);
     public LayoutViewportId NewLayoutViewportId() => new(_nextLayoutViewportId++);
 
@@ -47,6 +51,7 @@ public sealed class CadIdGenerator
     internal void RegisterExisting(BlockId id) => _nextBlockId = Math.Max(_nextBlockId, id.Value + 1);
     internal void RegisterExisting(StyleId id) => _nextStyleId = Math.Max(_nextStyleId, id.Value + 1);
     internal void RegisterExisting(HatchPatternId id) => _nextHatchPatternId = Math.Max(_nextHatchPatternId, id.Value + 1);
+    internal void RegisterExisting(LineTypeId id) => _nextLineTypeId = Math.Max(_nextLineTypeId, id.Value + 1);
     internal void RegisterExisting(LayoutId id) => _nextLayoutId = Math.Max(_nextLayoutId, id.Value + 1);
     internal void RegisterExisting(LayoutViewportId id) => _nextLayoutViewportId = Math.Max(_nextLayoutViewportId, id.Value + 1);
 

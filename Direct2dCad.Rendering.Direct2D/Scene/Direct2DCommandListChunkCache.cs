@@ -859,6 +859,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         long ZoomBits,
         bool IsAntialiasingEnabled,
         bool IsTextAntialiasingEnabled,
+        bool EnableGeometryRealizations,
         bool IsLevelOfDetailEnabled,
         bool KeepStrokeWidthScreenConstant,
         long MinimumScreenStrokeWidthBits)
@@ -871,6 +872,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                 BitConverter.DoubleToInt64Bits(quantizedZoom),
                 options.IsAntialiasingEnabled,
                 options.IsTextAntialiasingEnabled,
+                options.EnableGeometryRealizations,
                 options.IsLevelOfDetailEnabled,
                 options.KeepStrokeWidthScreenConstant,
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));

@@ -4,6 +4,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
+using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Commands.Tests;
@@ -168,6 +169,50 @@ public sealed class PropertyAndLayoutCommandTests
         Assert.Equal(CadColor.Red, style.StrokeColor);
         Assert.Equal(new CadLineWeight(0.2), style.LineWeight);
         Assert.Equal(LineTypeId.Continuous, style.LineTypeId);
+    }
+
+    [Fact]
+    public void LineTypeCommands_KeepCustomPatternAcrossUndoRedoAndProtectReferences()
+    {
+        var document = CadDocument.Create("Line types");
+        var create = new CreateLineTypeCommand("Dashed custom", [4, -2, 1, -2], "AI pattern");
+
+        create.Execute(document);
+        var lineTypeId = Assert.IsType<LineTypeId>(create.CreatedLineTypeId);
+        Assert.Equal([4, -2, 1, -2], document.GetLineType(lineTypeId).DashPattern);
+
+        var styleId = document.CreateGraphicStyle(
+            "Uses custom",
+            CadColor.Red,
+            CadLineWeight.Default,
+            lineTypeId);
+        var delete = new DeleteLineTypeCommand(lineTypeId);
+        Assert.Throws<InvalidOperationException>(() => delete.Execute(document));
+
+        new DeleteStyleCommand(styleId).Execute(document);
+        delete.Execute(document);
+        Assert.False(document.LineTypes.ContainsKey(lineTypeId));
+        delete.Undo(document);
+        Assert.Equal([4, -2, 1, -2], document.GetLineType(lineTypeId).DashPattern);
+    }
+
+    [Fact]
+    public void DeleteHatchPatternCommand_ProtectsReferencedPattern()
+    {
+        var document = CadDocument.Create("Hatches");
+        var patternId = document.CreateHatchPattern(
+            "Brick",
+            [new CadHatchLineDefinition(0, CadPointD.Origin, new CadVectorD(10, 0))]);
+        var styleId = document.CreateHatchFillStyle("Brick fill", patternId, CadColor.Red);
+        var delete = new DeleteHatchPatternCommand(patternId);
+
+        Assert.Throws<InvalidOperationException>(() => delete.Execute(document));
+
+        new DeleteStyleCommand(styleId).Execute(document);
+        delete.Execute(document);
+        Assert.False(document.HatchPatterns.ContainsKey(patternId));
+        delete.Undo(document);
+        Assert.True(document.HatchPatterns.ContainsKey(patternId));
     }
 
     [Fact]

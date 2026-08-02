@@ -1,6 +1,7 @@
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO.FileFormat.Container;
 using Direct2dCad.IO.FileFormat.Sections;
@@ -30,11 +31,18 @@ public sealed class CadDocumentStorageTests
 
             var layerId = document.CreateLayer("Mechanical", CadColor.Green, new CadLineWeight(0.35));
             document.DocumentSettings.LayerDrawingPriority.SetPriority(layerId, 42);
+            var lineTypeId = document.CreateLineType("Center custom", [6, -2, 1, -2], "Center pattern");
+            var graphicStyleId = document.CreateGraphicStyle(
+                "Center style",
+                CadColor.Red,
+                new CadLineWeight(0.2),
+                lineTypeId);
             var blockId = document.CreateBlockDefinition("Valve", new CadPointD(1, 2));
             var line = document.AddLine(
                 new CadPointD(-3, 4),
                 new CadPointD(12, 18),
                 layerId,
+                graphicStyleId: graphicStyleId,
                 name: "CenterLine");
             document.MoveEntityToBlock(line.Id, blockId);
             var reference = document.AddBlockReference(
@@ -60,6 +68,9 @@ public sealed class CadDocumentStorageTests
             Assert.Equal(5, loaded.ViewSettings.Grid.MinorSpacingY);
             Assert.Equal(new CadPointD(125, -75), loaded.ViewSettings.Origin.Position);
             Assert.Equal(42, loaded.DocumentSettings.LayerDrawingPriority.GetPriority(layerId));
+            Assert.Equal([6, -2, 1, -2], loaded.GetLineType(lineTypeId).DashPattern);
+            var loadedGraphicStyle = Assert.IsType<CadGraphicStyle>(loaded.Styles[graphicStyleId]);
+            Assert.Equal(lineTypeId, loadedGraphicStyle.LineTypeId);
             Assert.Equal("Mechanical", loaded.GetLayer(layerId).Name);
             Assert.Equal(blockId, loaded.GetEntity(line.Id).OwnerBlockId);
             var loadedReference = Assert.IsType<CadBlockReference>(loaded.GetEntity(reference.Id));

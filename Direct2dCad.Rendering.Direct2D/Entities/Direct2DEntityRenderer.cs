@@ -64,7 +64,8 @@ internal sealed class Direct2DEntityRenderer(
             FillBounds(context, shapeText.InvertedBackgroundBounds, strokeBrush);
             var invertedBrush = styleResources.GetBrush(context, document.ViewSettings.BackgroundColor);
             var resolvedStrokeWidth = ResolveStrokeWidth(strokeWidth, viewport, options);
-            if (!options.EnableGeometryRealizations ||
+            if (resources.GraphicLineTypeStrokeStyle is not null ||
+                !options.EnableGeometryRealizations ||
                 !resourceCache.TryDrawStrokedGeometry(
                     context,
                     entity,
@@ -430,7 +431,7 @@ internal sealed class Direct2DEntityRenderer(
                 context.Transform,
                 options))
         {
-            return resources.StrokeStyle;
+            return resources.StrokeStyle ?? resources.GraphicLineTypeStrokeStyle;
         }
 
         return styleResources.GetLevelOfDetailStrokeStyle(

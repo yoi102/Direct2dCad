@@ -87,7 +87,13 @@ public sealed class CadDocumentStorage
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var sections = await Task.Run(() => CreateSections(document), cancellationToken).ConfigureAwait(false);
+        // CadDocument is edited on the UI/editor thread and is not a concurrent
+        // collection. Capture detached section DTOs before yielding to the pool;
+        // only serialization and file I/O run asynchronously.
+        var sectionPayloads = CreateSectionPayloads(document);
+        var sections = await Task.Run(
+            () => SerializeSections(sectionPayloads),
+            cancellationToken).ConfigureAwait(false);
         var tableOffset = CadContainerFormat.FileHeaderLength;
         var tableLength = sections.Count * CadContainerFormat.SectionEntryLength;
         var payloadOffset = tableOffset + tableLength;
@@ -202,7 +208,7 @@ public sealed class CadDocumentStorage
         stream.Position = header.SectionTableOffset;
         var tableBytes = new byte[header.SectionTableLength];
         await stream.ReadExactlyAsync(tableBytes, cancellationToken).ConfigureAwait(false);
-        var entries = ReadSectionEntries(header, tableBytes);
+        var entries = ReadSectionEntries(header, tableBytes, stream.Length);
 
         var payloads = new Dictionary<CadSectionKind, SerializedSectionPayload>(entries.Count);
         foreach (var entry in entries.OrderBy(x => x.PayloadOffset))
@@ -278,6 +284,10 @@ public sealed class CadDocumentStorage
         for (var i = 0; i < header.SectionCount; i++)
             entries.Add(CadContainerFormat.ReadSectionEntry(reader));
 
+        ValidateSectionEntries(
+            entries,
+            reader.BaseStream.Length,
+            checked(header.SectionTableOffset + header.SectionTableLength));
         return entries;
     }
 
@@ -357,12 +367,18 @@ public sealed class CadDocumentStorage
 
     private static IReadOnlyList<CadSectionEntry> ReadSectionEntries(
         CadFileHeader header,
-        byte[] tableBytes)
+        byte[] tableBytes,
+        long fileLength)
     {
         using var reader = new BinaryReader(new MemoryStream(tableBytes, writable: false));
         var entries = new List<CadSectionEntry>(header.SectionCount);
         for (var index = 0; index < header.SectionCount; index++)
             entries.Add(CadContainerFormat.ReadSectionEntry(reader));
+
+        ValidateSectionEntries(
+            entries,
+            fileLength,
+            checked(header.SectionTableOffset + header.SectionTableLength));
         return entries;
     }
 
@@ -380,9 +396,39 @@ public sealed class CadDocumentStorage
         }
     }
 
-    private static void ValidateSectionEntry(CadSectionEntry entry, long fileLength)
+    private static void ValidateSectionEntries(
+        IReadOnlyList<CadSectionEntry> entries,
+        long fileLength,
+        long sectionTableEnd)
     {
-        if (entry.PayloadOffset < 0 ||
+        var kinds = new HashSet<CadSectionKind>();
+        foreach (var entry in entries)
+        {
+            if (!kinds.Add(entry.Kind))
+                throw new InvalidDataException($"Duplicate section: {entry.Kind}");
+
+            ValidateSectionEntry(entry, fileLength, sectionTableEnd);
+        }
+
+        var previousPayloadEnd = sectionTableEnd;
+        foreach (var entry in entries.OrderBy(static entry => entry.PayloadOffset))
+        {
+            if (entry.PayloadOffset < previousPayloadEnd)
+            {
+                throw new InvalidDataException(
+                    $"Overlapping section payload: {entry.Kind}");
+            }
+
+            previousPayloadEnd = checked(entry.PayloadOffset + entry.PayloadLength);
+        }
+    }
+
+    private static void ValidateSectionEntry(
+        CadSectionEntry entry,
+        long fileLength,
+        long minimumPayloadOffset = 0)
+    {
+        if (entry.PayloadOffset < minimumPayloadOffset ||
             entry.PayloadLength < 0 ||
             entry.PayloadOffset > fileLength - entry.PayloadLength)
         {
@@ -392,31 +438,47 @@ public sealed class CadDocumentStorage
 
     private static List<SerializedSection> CreateSections(CadDocument document)
     {
+        return SerializeSections(CreateSectionPayloads(document));
+    }
+
+    private static List<ISectionPayload> CreateSectionPayloads(CadDocument document)
+    {
         var entities = CadDocumentMapper.IndexEntities(document);
 
         return
         [
-            Serialize(CadSectionKind.Document, CadDocumentMapper.ToDocumentSection(document)),
-            Serialize(CadSectionKind.Settings, CadDocumentMapper.ToSettingsSection(document)),
-            Serialize(CadSectionKind.Layers, CadDocumentMapper.ToLayerSection(document)),
-            Serialize(CadSectionKind.Styles, CadDocumentMapper.ToStylesSection(document)),
-            Serialize(CadSectionKind.Layouts, CadDocumentMapper.ToLayoutsSection(document)),
-            Serialize(CadSectionKind.Blocks, CadDocumentMapper.ToBlocksSection(document)),
-            Serialize(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(entities)),
-            Serialize(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(entities)),
-            Serialize(CadSectionKind.Ellipses, CadDocumentMapper.ToEllipsesSection(entities)),
-            Serialize(CadSectionKind.Arcs, CadDocumentMapper.ToArcsSection(entities)),
-            Serialize(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(entities)),
-            Serialize(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(entities)),
-            Serialize(CadSectionKind.Splines, CadDocumentMapper.ToSplinesSection(entities)),
-            Serialize(CadSectionKind.CompositePaths, CadDocumentMapper.ToCompositePathsSection(entities)),
-            Serialize(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(entities)),
-            Serialize(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(entities)),
-            Serialize(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(entities)),
-            Serialize(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(entities)),
-            Serialize(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document, entities))
+            Capture(CadSectionKind.Document, CadDocumentMapper.ToDocumentSection(document)),
+            Capture(CadSectionKind.Settings, CadDocumentMapper.ToSettingsSection(document)),
+            Capture(CadSectionKind.Layers, CadDocumentMapper.ToLayerSection(document)),
+            Capture(CadSectionKind.Styles, CadDocumentMapper.ToStylesSection(document)),
+            Capture(CadSectionKind.Layouts, CadDocumentMapper.ToLayoutsSection(document)),
+            Capture(CadSectionKind.Blocks, CadDocumentMapper.ToBlocksSection(document)),
+            Capture(CadSectionKind.Lines, CadDocumentMapper.ToLinesSection(entities)),
+            Capture(CadSectionKind.Circles, CadDocumentMapper.ToCirclesSection(entities)),
+            Capture(CadSectionKind.Ellipses, CadDocumentMapper.ToEllipsesSection(entities)),
+            Capture(CadSectionKind.Arcs, CadDocumentMapper.ToArcsSection(entities)),
+            Capture(CadSectionKind.Rectangles, CadDocumentMapper.ToRectanglesSection(entities)),
+            Capture(CadSectionKind.Polylines, CadDocumentMapper.ToPolylinesSection(entities)),
+            Capture(CadSectionKind.Splines, CadDocumentMapper.ToSplinesSection(entities)),
+            Capture(CadSectionKind.CompositePaths, CadDocumentMapper.ToCompositePathsSection(entities)),
+            Capture(CadSectionKind.Texts, CadDocumentMapper.ToTextsSection(entities)),
+            Capture(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(entities)),
+            Capture(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(entities)),
+            Capture(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(entities)),
+            Capture(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document, entities))
         ];
     }
+
+    private static List<SerializedSection> SerializeSections(
+        IReadOnlyList<ISectionPayload> payloads)
+    {
+        return payloads
+            .Select(static payload => payload.Serialize())
+            .ToList();
+    }
+
+    private static ISectionPayload Capture<TPayload>(CadSectionKind kind, TPayload payload) =>
+        new SectionPayload<TPayload>(kind, payload);
 
     private static TSection ReadOptionalSection<TSection>(
         string filePath,
@@ -494,6 +556,19 @@ public sealed class CadDocumentStorage
         CadSectionKind Kind,
         CadCompressionKind Compression,
         byte[] Payload);
+
+    private interface ISectionPayload
+    {
+        SerializedSection Serialize();
+    }
+
+    private sealed record SectionPayload<TPayload>(
+        CadSectionKind Kind,
+        TPayload Payload) : ISectionPayload
+    {
+        public SerializedSection Serialize() =>
+            CadDocumentStorage.Serialize(Kind, Payload);
+    }
 
     private sealed record SerializedSectionPayload(
         CadSectionEntry Entry,

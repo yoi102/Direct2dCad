@@ -26,7 +26,7 @@ internal static class CadGraphicStyleTools
             ? ParseLineWeight(arguments.GetProperty("line_weight"))
             : (CadLineWeight?)null;
         var lineTypeId = HasValue(arguments, "line_type_id")
-            ? (LineTypeId?)ParseLineTypeId(arguments)
+            ? (LineTypeId?)ParseLineTypeId(document, arguments)
             : (LineTypeId?)null;
 
         var changed = new List<string>();
@@ -78,16 +78,13 @@ internal static class CadGraphicStyleTools
         return result;
     }
 
-    private static LineTypeId ParseLineTypeId(JsonElement arguments)
+    private static LineTypeId ParseLineTypeId(CadDocument document, JsonElement arguments)
     {
         var value = RequiredLong(arguments, "line_type_id");
-        if (value != LineTypeId.Continuous.Value)
-        {
-            throw new NotSupportedException(
-                "Only LineTypeId.Continuous is currently supported by the CAD rendering model.");
-        }
-
-        return LineTypeId.Continuous;
+        var lineTypeId = new LineTypeId(value);
+        if (!document.LineTypes.ContainsKey(lineTypeId))
+            throw new ArgumentException($"Line type not found: {value}.");
+        return lineTypeId;
     }
 
     private static object CreateSchema() => new
@@ -109,8 +106,8 @@ internal static class CadGraphicStyleTools
             line_type_id = new
             {
                 type = "integer",
-                @enum = new[] { LineTypeId.Continuous.Value },
-                description = "Only Continuous is currently rendered; additional line type definitions are not yet modeled."
+                minimum = 1,
+                description = "Existing document line type ID. Use list_styles before assigning a custom line type."
             }
         },
         required = new[] { "graphic_style" },

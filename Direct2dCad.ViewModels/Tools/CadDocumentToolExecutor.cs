@@ -13,6 +13,7 @@ namespace Direct2dCad.ViewModels.Tools;
 internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewModel, Guid batchId)
 {
     private const int MaximumListedEntities = 200;
+    private int _executedCommandCount;
 
     public static IReadOnlyList<AiToolDefinition> ToolDefinitions { get; } =
     [
@@ -154,8 +155,32 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
 
     internal CadDocumentViewModel DocumentViewModel => documentViewModel;
 
-    internal void ExecuteCommand(ICadCommand command) =>
+    internal void ExecuteCommand(ICadCommand command)
+    {
         documentViewModel.CadEditor.ExecuteInBatch(command, batchId);
+        _executedCommandCount++;
+    }
+
+    internal T ExecuteAtomically<T>(Func<T> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        var commandCount = _executedCommandCount;
+        try
+        {
+            return operation();
+        }
+        catch
+        {
+            var executedSinceStart = _executedCommandCount - commandCount;
+            if (executedSinceStart > 0)
+            {
+                documentViewModel.CadEditor.RollbackDocumentBatch(batchId, executedSinceStart);
+                _executedCommandCount -= executedSinceStart;
+            }
+
+            throw;
+        }
+    }
 
     internal EntityId[] ResolveEntityIdsForTool(JsonElement arguments, bool allowSelectionFallback) =>
         ResolveEntityIds(arguments, allowSelectionFallback);
