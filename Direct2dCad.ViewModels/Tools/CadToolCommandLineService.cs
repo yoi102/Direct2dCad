@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Direct2dCad.AI;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Tools;
 
@@ -14,7 +15,9 @@ public interface ICadToolCommandLineService
 
 public sealed record CadToolCommandLineExecution(bool Success, string Message);
 
-internal sealed class CadToolCommandLineService(ICadToolWorkspace workspace) : ICadToolCommandLineService
+internal sealed class CadToolCommandLineService(
+    ICadToolWorkspace workspace,
+    IImageImportService? imageImportService = null) : ICadToolCommandLineService
 {
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
     private static readonly HashSet<string> BuiltInCommandCollisions =
@@ -69,7 +72,7 @@ internal sealed class CadToolCommandLineService(ICadToolWorkspace workspace) : I
         if (!LooksLikeJsonObject(argumentsJson))
             return Failure("Tool arguments must be one JSON object, for example: add_circle {\"center_x\":0,\"center_y\":0,\"radius\":10}");
 
-        var executor = new CadWorkspaceToolExecutor(workspace);
+        var executor = new CadWorkspaceToolExecutor(workspace, imageImportService);
         var result = await executor.ExecuteAsync(
             new AiToolCall(Guid.NewGuid().ToString("N"), toolName, argumentsJson),
             cancellationToken);

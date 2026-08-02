@@ -20,6 +20,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private readonly IAiAssistantSettingsStore _settingsStore;
     private readonly IDialogService _dialogService;
     private readonly ICadToolWorkspace _workspace;
+    private readonly IImageImportService _imageImportService;
     private readonly AgentConversation _conversation = new();
     private CancellationTokenSource? _requestCancellation;
     private CadDocumentViewModel? _documentViewModel;
@@ -32,7 +33,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         ICodexAgentClient codexAgentClient,
         IAiAssistantSettingsStore settingsStore,
         IDialogService dialogService,
-        ICadToolWorkspace workspace)
+        ICadToolWorkspace workspace,
+        IImageImportService imageImportService)
         : base(toolboxLayoutSettingsStore, "toolbox.ai-assistant", DockZone.RightBottom, isOpenByDefault: false)
     {
         _chatClient = chatClient;
@@ -41,6 +43,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         _settingsStore = settingsStore;
         _dialogService = dialogService;
         _workspace = workspace;
+        _imageImportService = imageImportService;
         Title = Resource("AiAssistant", "AI Assistant");
         Icon = toolboxIconProvider.Assistant;
         Shortcut = "Ctrl+Shift+A";
@@ -154,7 +157,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
 
         UserInput = string.Empty;
         Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, prompt));
-        var toolset = new CadAgentToolset(_workspace);
+        var toolset = new CadAgentToolset(_workspace, _imageImportService);
 
         BeginRequest();
         var cancellationToken = _requestCancellation!.Token;

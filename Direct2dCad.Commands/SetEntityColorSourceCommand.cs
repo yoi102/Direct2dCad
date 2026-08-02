@@ -10,6 +10,7 @@ public sealed class SetEntityColorSourceCommand : ICadCommand
     private readonly EntityId[] _entityIds;
     private readonly CadColorSource _colorSource;
     private readonly Dictionary<EntityId, EntityColorLayerState> _previousStates = [];
+    private readonly HashSet<StyleId> _createdGraphicStyleIds = [];
 
     public string Name => "Set Entity Color Source";
 
@@ -43,12 +44,16 @@ public sealed class SetEntityColorSourceCommand : ICadCommand
                 GetGraphicStyleId(entity));
 
             if (_colorSource == CadColorSource.Explicit && GetGraphicStyleId(entity) is null)
-                SetGraphicStyleId(entity, CreateEntityGraphicStyleFromLayer(document, entity));
+            {
+                var styleId = CreateEntityGraphicStyleFromLayer(document, entity);
+                _createdGraphicStyleIds.Add(styleId);
+                SetGraphicStyleId(entity, styleId);
+            }
 
             entity.SetColorSource(_colorSource);
         }
 
-        return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Appearance);
+        return CreateChangeSet(_entityIds);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -62,7 +67,24 @@ public sealed class SetEntityColorSourceCommand : ICadCommand
             entity.SetColorSource(state.ColorSource);
         }
 
-        return CadDocumentChangeSet.ForEntities(_previousStates.Keys, CadEntityChangeKind.Appearance);
+        foreach (var styleId in _createdGraphicStyleIds)
+        {
+            if (document.Styles.ContainsKey(styleId) &&
+                !document.Entities.Values.Any(entity => GetGraphicStyleId(entity) == styleId))
+            {
+                document.RemoveStyleCore(styleId);
+            }
+        }
+
+        return CreateChangeSet(_previousStates.Keys);
+    }
+
+    private CadDocumentChangeSet CreateChangeSet(IEnumerable<EntityId> entityIds)
+    {
+        var result = CadDocumentChangeSet.ForEntities(entityIds, CadEntityChangeKind.Appearance);
+        return _createdGraphicStyleIds.Count == 0
+            ? result
+            : result.WithDocumentStructureChanged();
     }
 
     private static StyleId CreateEntityGraphicStyleFromLayer(CadDocument document, CadEntity entity)

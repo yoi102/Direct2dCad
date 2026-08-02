@@ -16,6 +16,10 @@ internal static partial class CadEntityQuery
         ValidateEnum(options.ColorSource, "color_source", "by_layer", "explicit", "by_block");
         ValidateEnum(options.LineWeightSource, "line_weight_source", "by_layer", "explicit");
         ValidateEnum(options.DashStyle, "dash_style", "solid", "dash", "dot", "dash_dot", "dash_dot_dot");
+        ValidateEnum(options.Capability, "capability", CadEntityQuery.CapabilityNames);
+        if (options.Capabilities is not null)
+            foreach (var capability in options.Capabilities)
+                ValidateEnum(capability, "capabilities", CadEntityQuery.CapabilityNames);
         ValidateEnum(options.SpatialRelation, "spatial_relation", "intersects", "contained", "contains", "center_in");
         ValidateEnum(options.SortBy, "sort_by", "id", "name", "type", "layer", "z_index", "length", "width", "height", "bounds_area");
         if (options.SpatialRelation is not null && options.Bounds is null)
@@ -78,6 +82,10 @@ internal static partial class CadEntityQuery
         var requestedTypes = CombineFilters(options.Type, options.Types);
         if (requestedTypes.Count > 0)
             entities = entities.Where(entity => requestedTypes.Any(type => TypeMatches(entity, type)));
+
+        var requestedCapabilities = CombineFilters(options.Capability, options.Capabilities);
+        if (requestedCapabilities.Count > 0)
+            entities = entities.Where(entity => requestedCapabilities.Any(capability => SupportsCapability(entity, capability)));
 
         var requestedLayers = CombineFilters(options.Layer, options.Layers);
         if (requestedLayers.Count > 0)
@@ -195,6 +203,22 @@ internal static partial class CadEntityQuery
         CadText text => text.Text,
         CadShapeText text => text.Text,
         _ => null
+    };
+
+    private static bool SupportsCapability(CadEntity entity, string requested) => requested switch
+    {
+        "graphic_style" => CadEntityCapabilities.SupportsGraphicStyle(entity),
+        "stroke_style" => CadEntityCapabilities.SupportsStrokeStyle(entity),
+        "start_end_caps" => CadEntityCapabilities.SupportsStartEndCaps(entity),
+        "line_join" => CadEntityCapabilities.SupportsLineJoin(entity),
+        "fill" => CadEntityCapabilities.SupportsFill(entity),
+        "opacity" => CadEntityCapabilities.SupportsOpacity(entity),
+        "rotation" => CadEntityCapabilities.SupportsRotation(entity),
+        "grip_handles" => CadEntityCapabilities.SupportsGripHandles(entity),
+        "rotation_handle" => CadEntityCapabilities.SupportsRotationHandle(entity),
+        "embedded_content" => CadEntityCapabilities.SupportsEmbeddedContent(entity),
+        "text_content" => CadEntityCapabilities.Supports(entity, CadEntityCapability.TextContent),
+        _ => false
     };
 
     private static string? SourceName(CadEntity entity) => entity switch

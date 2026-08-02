@@ -102,17 +102,29 @@ internal static class CadCompositePathTools
                     minItems = 1,
                     items = new
                     {
-                        type = "object",
-                        properties = new Dictionary<string, object>
+                        oneOf = new object[]
                         {
-                            ["type"] = new { type = "string", @enum = new[] { "line", "arc", "spline" } },
-                            ["end"] = point,
-                            ["center"] = point,
-                            ["sweep_angle_degrees"] = new { type = "number", description = "Non-zero, at most 360 degrees" },
-                            ["fit_points"] = PointArraySchema(1)
-                        },
-                        required = new[] { "type" },
-                        additionalProperties = false
+                            SegmentSchema(
+                                "line",
+                                new Dictionary<string, object> { ["end"] = point },
+                                "end"),
+                            SegmentSchema(
+                                "arc",
+                                new Dictionary<string, object>
+                                {
+                                    ["center"] = point,
+                                    ["sweep_angle_degrees"] = new
+                                    {
+                                        type = "number",
+                                        description = "Non-zero, at most 360 degrees"
+                                    }
+                                },
+                                "center", "sweep_angle_degrees"),
+                            SegmentSchema(
+                                "spline",
+                                new Dictionary<string, object> { ["fit_points"] = PointArraySchema(1) },
+                                "fit_points")
+                        }
                     }
                 },
                 ["closed"] = new { type = "boolean" },
@@ -131,6 +143,7 @@ internal static class CadCompositePathTools
                 ["graphic_style"] = new { type = "string" },
                 ["z_index"] = new { type = "integer" },
                 ["visible"] = new { type = "boolean" },
+                ["locked"] = new { type = "boolean" },
                 ["stroke_style"] = StrokeStyleSchema(),
                 ["fill"] = FillSchema()
             },
@@ -173,17 +186,82 @@ internal static class CadCompositePathTools
         type = "object",
         properties = new
         {
-            mode = EnumSchema("none", "style", "solid", "hatch"),
+            mode = EnumSchema("none", "style", "solid", "hatch", "gradient"),
             style = new { type = "string", description = "Existing fill style name or ID" },
             color = new { type = "string", description = "Solid or hatch foreground color" },
             pattern = new { type = "string", description = "Hatch pattern name or ID" },
             scale = new { type = "number", exclusiveMinimum = 0.0 },
             angle_degrees = new { type = "number" },
             origin_x = new { type = "number" },
-            origin_y = new { type = "number" }
+            origin_y = new { type = "number" },
+            gradient_kind = EnumSchema("linear", "radial"),
+            stops = new
+            {
+                type = "array",
+                minItems = 2,
+                items = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        offset = new { type = "number", minimum = 0.0, maximum = 1.0 },
+                        color = new { type = "string" }
+                    },
+                    required = new[] { "offset", "color" },
+                    additionalProperties = false
+                }
+            },
+            gradient_scale = new { type = "number", exclusiveMinimum = 0.0 },
+            gradient_angle_degrees = new { type = "number" },
+            gradient_origin_x = new { type = "number" },
+            gradient_origin_y = new { type = "number" },
+            gradient_centered = new { type = "boolean" }
         },
         required = new[] { "mode" },
+        allOf = new object[]
+        {
+            ConditionalFillRequirement("style", "style"),
+            ConditionalFillRequirement("gradient", "stops")
+        },
         additionalProperties = false
+    };
+
+    private static object SegmentSchema(
+        string type,
+        IReadOnlyDictionary<string, object> extraProperties,
+        params string[] extraRequired)
+    {
+        var properties = new Dictionary<string, object>
+        {
+            ["type"] = new { type = "string", @const = type }
+        };
+        foreach (var (name, value) in extraProperties)
+            properties[name] = value;
+
+        return new
+        {
+            type = "object",
+            properties,
+            required = new[] { "type" }.Concat(extraRequired).ToArray(),
+            additionalProperties = false
+        };
+    }
+
+    private static object ConditionalFillRequirement(
+        string mode,
+        string requiredProperty,
+        bool required = true) => new Dictionary<string, object>
+    {
+        ["if"] = new Dictionary<string, object>
+        {
+            ["properties"] = new Dictionary<string, object>
+            {
+                ["mode"] = new Dictionary<string, object> { ["const"] = mode }
+            }
+        },
+        ["then"] = required
+            ? new Dictionary<string, object> { ["required"] = new[] { requiredProperty } }
+            : new Dictionary<string, object>()
     };
 
     private static object EnumSchema(params string[] values) => new { type = "string", @enum = values };

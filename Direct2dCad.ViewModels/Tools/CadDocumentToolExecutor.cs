@@ -137,7 +137,7 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
                 required = new[] { "delta_x", "delta_y" },
                 additionalProperties = false
             }),
-        Tool("delete_entities", "Delete supplied entity IDs, or the current selection when IDs are omitted.", EntityIdsSchema(required: false)),
+        Tool("delete_entities", "Delete supplied entity IDs, or the current selection when IDs are omitted. Requires explicit confirm=true and is undoable.", DeleteEntitiesSchema()),
         Tool("change_entity_layer", "Move supplied entities to an existing target layer.",
             new
             {
@@ -226,7 +226,11 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         var editor = documentViewModel.CadEditor;
         var viewport = editor.Viewport.VisibleWorldBounds;
         return $$"""
-            You are the CAD editing assistant inside Direct2dCad. Use the supplied tools whenever the user asks to inspect or modify the drawing. Never claim an edit succeeded until its tool result confirms it. CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees. For complete entity counts or type inventories, call get_entity_statistics without a type filter. For counts constrained by names, states, styles, geometry, content, or bounds, call list_entities and use total_matches. list_entities is paged detail data, so never treat its returned entities as the whole document. Use structured filters instead of guessing from names or a partial page. Prefer inspecting entities before changing existing ones. Keep replies concise and summarize created or changed entity IDs. The active drawing layer is '{{ResolveLayerName(documentViewModel.DrawingLayerId)}}'. The visible world bounds are {{FormatRect(viewport)}}. All mutating tool calls from this user request share one undo batch.
+            You are the CAD editing assistant inside Direct2dCad. Use the supplied tools whenever the user asks to inspect or modify the drawing. Never claim an edit succeeded until its tool result confirms it. CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees. The current editable owner space is the active model space, paper space, layout viewport model space, or block-edit space reported by get_document_summary. Mutating tools can only edit entities in that active owner space; scope=document is for inspection across spaces and does not grant permission to modify another space. Do not create a new document unless the user explicitly asks for one; always use the document_id of the requested open document.
+
+            For complete entity counts or type inventories, call get_entity_statistics without a type filter. For counts constrained by names, states, styles, geometry, content, or bounds, call list_entities and use total_matches. list_entities is paged detail data, so never treat its returned entities as the whole document. Use structured filters instead of guessing from names or a partial page. Prefer inspecting entities before changing existing ones. Keep replies concise and summarize created or changed entity IDs. The active drawing layer is '{{ResolveLayerName(documentViewModel.DrawingLayerId)}}'. The visible world bounds are {{FormatRect(viewport)}}. All mutating tool calls from this user request share one undo batch.
+
+            Selection fallback is intentionally limited: move_entities, transform_entities, delete_entities, create_block, and duplicate_entities may use the current selection when entity_ids is omitted. Property, fill, stroke, layer-change, geometry, and specific-property tools require explicit entity_ids. delete_entities additionally requires confirm=true; delete_layer requires delete_entities=true and confirm=true because it removes the layer's entities. For common appearance, color and graphic_style are mutually exclusive. By-layer color and line weight are resolved from the entity layer; query results include resolved appearance when available. For fill mode style, supply style; solid and hatch may use their documented defaults, while hatch pattern defaults to ANSI31. Read get_entity_geometry before changing unknown geometry and include entity_type when possible.
             """;
     }
 
@@ -240,6 +244,7 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         {
             document = document.Name,
             active_space = editor.ActiveOwnerBlockId.ToString(),
+            active_space_details = ActiveSpaceDetails(),
             entity_count = entities.Length,
             selected_entity_ids = editor.Selection.EntityIds.Select(id => id.Value).ToArray(),
             drawing_layer = ResolveLayerName(documentViewModel.DrawingLayerId),
@@ -263,6 +268,41 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
                     null,
                     SelectedOnly: false))
         });
+    }
+
+    private object ActiveSpaceDetails()
+    {
+        var editor = documentViewModel.CadEditor;
+        var document = editor.Document;
+        var owner = document.TryGetBlock(editor.ActiveOwnerBlockId, out var block) && block is not null
+            ? block.Name
+            : editor.ActiveOwnerBlockId.ToString();
+        var kind = documentViewModel.IsEditingBlock
+            ? "block_edit"
+            : documentViewModel.IsModelSpaceActive
+                ? "model_space"
+                : documentViewModel.IsLayoutViewportActive
+                    ? "layout_viewport_model_space"
+                    : "paper_space";
+
+        CadLayout? layout = documentViewModel.ActiveLayoutId is { } layoutId
+            ? document.GetLayout(layoutId)
+            : null;
+        return new
+        {
+            kind,
+            owner_block_id = editor.ActiveOwnerBlockId.Value,
+            owner,
+            editing_block_id = documentViewModel.EditingBlockId?.Value,
+            editing_block_name = documentViewModel.IsEditingBlock
+                ? documentViewModel.EditingBlockName
+                : null,
+            layout_id = layout?.Id.Value,
+            layout_name = layout?.Name,
+            viewport_id = documentViewModel.ActiveLayoutViewportId?.Value,
+            is_model_space = documentViewModel.IsModelSpaceActive || documentViewModel.IsLayoutViewportActive,
+            is_paper_space = documentViewModel.IsPaperSpaceActive
+        };
     }
 
     private string GetEntityStatistics(JsonElement arguments)
@@ -500,6 +540,12 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
 
     private string DeleteEntities(JsonElement arguments)
     {
+        if (!arguments.TryGetProperty("confirm", out var confirmation) ||
+            confirmation.ValueKind != JsonValueKind.True ||
+            !confirmation.GetBoolean())
+        {
+            throw new ArgumentException("delete_entities requires confirm=true.");
+        }
         var ids = ResolveEntityIds(arguments, allowSelectionFallback: true);
         var command = new DeleteEntitiesCommand(ids);
         documentViewModel.CadEditor.ExecuteInBatch(command, batchId);
@@ -664,6 +710,18 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         type = "object",
         properties = new { entity_ids = EntityIdArray() },
         required = required ? new[] { "entity_ids" } : Array.Empty<string>(),
+        additionalProperties = false
+    };
+
+    private static object DeleteEntitiesSchema() => new
+    {
+        type = "object",
+        properties = new
+        {
+            entity_ids = EntityIdArray(),
+            confirm = new { type = "boolean", @const = true, description = "Required explicit confirmation for deletion." }
+        },
+        required = new[] { "confirm" },
         additionalProperties = false
     };
 

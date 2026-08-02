@@ -25,6 +25,8 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "set_entity_fill");
         Assert.Contains(tools, tool => tool.Name == "set_entity_stroke_style");
         Assert.Contains(tools, tool => tool.Name == "set_entity_specific_properties");
+        Assert.Contains(tools, tool => tool.Name == "set_text_style_properties");
+        Assert.Contains(tools, tool => tool.Name == "set_graphic_style_properties");
         Assert.Contains(tools, tool => tool.Name == "get_entity_geometry");
         Assert.Contains(tools, tool => tool.Name == "set_entity_geometry");
         Assert.Contains(tools, tool => tool.Name == "transform_entities");
@@ -41,6 +43,10 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "add_composite_path");
         Assert.Contains(tools, tool => tool.Name == "add_shape_text");
         Assert.Contains(tools, tool => tool.Name == "add_ellipse_arc");
+        Assert.Contains(tools, tool => tool.Name == "insert_image_from_file");
+        Assert.Contains(tools, tool => tool.Name == "add_ole_object");
+        Assert.Contains(tools, tool => tool.Name == "set_ole_object_data");
+        Assert.Contains(tools, tool => tool.Name == "get_agent_capabilities");
     }
 
     [Fact]
@@ -68,6 +74,7 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.True(circle.TryGetProperty("line_weight", out _));
         Assert.True(circle.TryGetProperty("stroke_style", out _));
         Assert.True(circle.TryGetProperty("fill", out _));
+        Assert.True(circle.TryGetProperty("locked", out _));
         Assert.True(rectangle.TryGetProperty("corner_radius_x", out _));
         Assert.True(rectangle.TryGetProperty("corner_radius_y", out _));
         Assert.True(text.TryGetProperty("color", out _));
@@ -109,6 +116,44 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.True(transform.TryGetProperty("operation", out _));
         Assert.True(transform.TryGetProperty("axis_angle_degrees", out _));
         Assert.True(transform.TryGetProperty("factor", out _));
+        Assert.True(setGeometry.TryGetProperty("entity_type", out _));
+        var geometrySchema = tools["set_entity_geometry"].Parameters;
+        Assert.True(geometrySchema.TryGetProperty("allOf", out var geometryRules));
+        Assert.NotEmpty(geometryRules.EnumerateArray());
+        var transformSchema = tools["transform_entities"].Parameters;
+        Assert.True(transformSchema.TryGetProperty("allOf", out var transformRules));
+        Assert.Equal(4, transformRules.GetArrayLength());
+    }
+
+    [Fact]
+    public void DestructiveAndAppearanceSchemasExposeExplicitSafetyRules()
+    {
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var delete = tools["delete_entities"].Parameters;
+        Assert.True(delete.GetProperty("properties").GetProperty("confirm").GetProperty("const").GetBoolean());
+        Assert.Contains("confirm", delete.GetProperty("required").EnumerateArray().Select(value => value.GetString()));
+
+        var common = tools["set_entity_common_properties"].Parameters;
+        Assert.True(common.TryGetProperty("not", out var exclusive));
+        Assert.Equal(2, exclusive.GetProperty("required").GetArrayLength());
+
+        var fill = tools["set_entity_fill"].Parameters;
+        Assert.True(fill.TryGetProperty("allOf", out var fillRules));
+        Assert.NotEmpty(fillRules.EnumerateArray());
+        var fillProperties = fill.GetProperty("properties");
+        Assert.Contains("gradient", fillProperties.GetProperty("mode").GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
+        Assert.True(fillProperties.TryGetProperty("stops", out _));
+    }
+
+    [Fact]
+    public void AgentContractToolExposesRulesAndOptionalExamples()
+    {
+        var tool = CadWorkspaceToolExecutor.ToolDefinitions.Single(candidate =>
+            candidate.Name == "get_agent_capabilities");
+        var properties = tool.Parameters.GetProperty("properties");
+
+        Assert.True(properties.GetProperty("include_examples").GetProperty("type").GetString() == "boolean");
+        Assert.Contains("Agent Contract", tool.Description, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -126,6 +171,21 @@ public sealed class CadWorkspaceToolExecutorTests
         {
             Assert.True(properties.TryGetProperty(name, out _), name);
         }
+    }
+
+    [Fact]
+    public void SharedStyleTools_ExposeAllEditableStyleProperties()
+    {
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var textProperties = tools["set_text_style_properties"].Parameters.GetProperty("properties");
+        var graphicProperties = tools["set_graphic_style_properties"].Parameters.GetProperty("properties");
+
+        foreach (var name in new[] { "font_family", "text_height", "width_factor", "oblique_angle_degrees", "bold", "italic" })
+            Assert.True(textProperties.TryGetProperty(name, out _), name);
+        foreach (var name in new[] { "color", "line_weight", "line_type_id" })
+            Assert.True(graphicProperties.TryGetProperty(name, out _), name);
+        Assert.Contains(1L, graphicProperties.GetProperty("line_type_id").GetProperty("enum")
+            .EnumerateArray().Select(value => value.GetInt64()));
     }
 
     [Fact]
@@ -161,6 +221,43 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.True(composite.TryGetProperty("segments", out var segments));
         Assert.Equal(1, segments.GetProperty("minItems").GetInt32());
         Assert.True(composite.TryGetProperty("fill", out _));
+        Assert.Contains("gradient", composite.GetProperty("fill").GetProperty("properties")
+            .GetProperty("mode").GetProperty("enum").EnumerateArray()
+            .Select(value => value.GetString()));
+    }
+
+    [Fact]
+    public void EmbeddedObjectTools_ExposePersistedDataAndAppearanceState()
+    {
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var addOle = tools["add_ole_object"].Parameters.GetProperty("properties");
+        var setOle = tools["set_ole_object_data"].Parameters.GetProperty("properties");
+        var image = tools["insert_image_from_file"].Parameters.GetProperty("properties");
+
+        Assert.True(addOle.TryGetProperty("ole_base64", out var oleBytes));
+        Assert.Equal("base64", oleBytes.GetProperty("contentEncoding").GetString());
+        Assert.True(addOle.TryGetProperty("opacity", out _));
+        Assert.True(addOle.TryGetProperty("locked", out _));
+        Assert.True(setOle.TryGetProperty("entity_id", out _));
+        Assert.True(setOle.TryGetProperty("ole_base64", out _));
+        Assert.True(image.TryGetProperty("locked", out _));
+    }
+
+    [Fact]
+    public void AgentContract_DescribesConditionalCapabilitiesAndLineTypeLimit()
+    {
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var contractTool = tools["get_agent_capabilities"];
+        Assert.Contains("Contract", contractTool.Description, StringComparison.OrdinalIgnoreCase);
+
+        var capabilities = CadAgentContract.CreateCapabilities([], null, includeExamples: false);
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(capabilities));
+        var root = json.RootElement;
+        Assert.Equal("1.2", root.GetProperty("contract_version").GetString());
+        Assert.Contains("line_types", root.GetProperty("rules").EnumerateObject().Select(property => property.Name));
+        var circle = root.GetProperty("entity_capabilities").EnumerateArray()
+            .Single(item => item.GetProperty("type").GetString() == "Circle");
+        Assert.True(circle.TryGetProperty("conditions", out _));
     }
 
     [Fact]

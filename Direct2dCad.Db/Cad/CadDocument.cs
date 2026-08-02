@@ -1165,180 +1165,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return entity;
     }
 
-    //public CadLine AddLine(
-    //    CadPointD start,
-    //    CadPointD end,
-    //    LayerId? layerId = null,
-    //    StyleId? graphicStyleId = null,
-    //    BlockId? ownerBlockId = null,
-    //    string name = "")
-    //{
-    //    var entity = new CadLine(
-    //        _ids.NewEntityId(),
-    //        layerId ?? LayerId.Default,
-    //        ownerBlockId ?? BlockId.ModelSpace,
-    //        start,
-    //        end,
-    //        name);
-
-    //    entity.SetGraphicStyleInternal(graphicStyleId);
-    //    AddEntityCore(entity);
-    //    return entity;
-    //}
-
-    //public CadCircle AddCircle(
-    //    CadPointD center,
-    //    double radius,
-    //    LayerId? layerId = null,
-    //    StyleId? graphicStyleId = null,
-    //    StyleId? fillStyleId = null,
-    //    BlockId? ownerBlockId = null,
-    //    string name = "")
-    //{
-    //    var entity = new CadCircle(
-    //        _ids.NewEntityId(),
-    //        layerId ?? LayerId.Default,
-    //        ownerBlockId ?? BlockId.ModelSpace,
-    //        center,
-    //        radius,
-    //        name);
-
-    //    entity.SetGraphicStyleInternal(graphicStyleId);
-    //    entity.SetFillStyleInternal(fillStyleId);
-    //    AddEntityCore(entity);
-    //    return entity;
-    //}
-
-    //public CadArc AddArc(
-    //    CadPointD center,
-    //    double radius,
-    //    double startAngleRadians,
-    //    double sweepAngleRadians,
-    //    LayerId? layerId = null,
-    //    StyleId? graphicStyleId = null,
-    //    BlockId? ownerBlockId = null,
-    //    string name = "")
-    //{
-    //    var entity = new CadArc(
-    //        _ids.NewEntityId(),
-    //        layerId ?? LayerId.Default,
-    //        ownerBlockId ?? BlockId.ModelSpace,
-    //        center,
-    //        radius,
-    //        startAngleRadians,
-    //        sweepAngleRadians,
-    //        name);
-
-    //    entity.SetGraphicStyleInternal(graphicStyleId);
-    //    AddEntityCore(entity);
-    //    return entity;
-    //}
-
-    //public CadArc AddArcDegrees(
-    //    CadPointD center,
-    //    double radius,
-    //    double startAngleDegrees,
-    //    double sweepAngleDegrees,
-    //    LayerId? layerId = null,
-    //    StyleId? graphicStyleId = null,
-    //    BlockId? ownerBlockId = null,
-    //    string name = "")
-    //{
-    //    return AddArc(
-    //        center,
-    //        radius,
-    //        CadArc.DegreesToRadians(startAngleDegrees),
-    //        CadArc.DegreesToRadians(sweepAngleDegrees),
-    //        layerId,
-    //        graphicStyleId,
-    //        ownerBlockId,
-    //        name);
-    //}
-
-    //public CadPolyline AddPolyline(
-    //    IEnumerable<CadPointD> points,
-    //    bool isClosed = false,
-    //    LayerId? layerId = null,
-    //    StyleId? graphicStyleId = null,
-    //    StyleId? fillStyleId = null,
-    //    BlockId? ownerBlockId = null,
-    //    string name = "")
-    //{
-    //    var entity = new CadPolyline(
-    //        _ids.NewEntityId(),
-    //        layerId ?? LayerId.Default,
-    //        ownerBlockId ?? BlockId.ModelSpace,
-    //        points,
-    //        isClosed,
-    //        name);
-
-    //    entity.SetGraphicStyleInternal(graphicStyleId);
-    //    entity.SetFillStyleInternal(fillStyleId);
-    //    AddEntityCore(entity);
-    //    return entity;
-    //}
-
-    //public CadText AddText(
-    //    string text,
-    //    CadPointD position,
-    //    double height,
-    //    double rotationRadians = 0,
-    //    LayerId? layerId = null,
-    //    StyleId? graphicStyleId = null,
-    //    StyleId? textStyleId = null,
-    //    BlockId? ownerBlockId = null,
-    //    string name = "")
-    //{
-    //    ValidateTextStyle(textStyleId, allowNull: true);
-
-    //    var entity = new CadText(
-    //        _ids.NewEntityId(),
-    //        layerId ?? LayerId.Default,
-    //        ownerBlockId ?? BlockId.ModelSpace,
-    //        text,
-    //        position,
-    //        height,
-    //        rotationRadians,
-    //        textStyleId,
-    //        name);
-
-    //    AddEntityCore(entity);
-    //    return entity;
-    //}
-
-    //public CadBlockReference AddBlockReference(
-    //    BlockId definitionBlockId,
-    //    CadPointD position,
-    //    LayerId? layerId = null,
-    //    StyleId? graphicStyleId = null,
-    //    BlockId? ownerBlockId = null,
-    //    double rotationRadians = 0,
-    //    double scaleX = 1.0,
-    //    double scaleY = 1.0,
-    //    string name = "")
-    //{
-    //    ValidateBlock(definitionBlockId);
-
-    //    var owner = ownerBlockId ?? BlockId.ModelSpace;
-    //    if (definitionBlockId.Equals(owner))
-    //        throw new InvalidOperationException("Block reference cannot reference its owner block.");
-
-    //    var entity = new CadBlockReference(
-    //        _ids.NewEntityId(),
-    //        layerId ?? LayerId.Default,
-    //        owner,
-    //        definitionBlockId,
-    //        position,
-    //        rotationRadians,
-    //        scaleX,
-    //        scaleY,
-    //        name);
-
-    //    entity.SetGraphicStyleInternal(graphicStyleId);
-    //    AddEntityCore(entity);
-    //    return entity;
-    //}
-
+    
     public bool RemoveEntity(EntityId entityId)
     {
         if (!_entities.TryGetValue(entityId, out var entity))
@@ -1672,6 +1499,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
         _ids.RegisterExisting(style.Id);
     }
 
+    internal bool RemoveStyleCore(StyleId styleId) => _styles.Remove(styleId);
+
     internal void AddHatchPatternCore(CadHatchPatternDefinition pattern)
     {
         ArgumentNullException.ThrowIfNull(pattern);
@@ -1682,6 +1511,8 @@ public sealed class CadDocument : IEquatable<CadDocument>
         _hatchPatterns.Add(pattern.Id, pattern);
         _ids.RegisterExisting(pattern.Id);
     }
+
+    internal bool RemoveHatchPatternCore(HatchPatternId patternId) => _hatchPatterns.Remove(patternId);
 
     internal void AddEntityCore(CadEntity entity)
     {

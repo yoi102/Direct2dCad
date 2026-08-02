@@ -7,6 +7,8 @@ internal sealed record CadEntityQueryOptions(
     string? Type,
     string? Layer,
     bool SelectedOnly,
+    string? Capability = null,
+    IReadOnlyList<string>? Capabilities = null,
     IReadOnlyList<string>? Types = null,
     IReadOnlyList<string>? Layers = null,
     IReadOnlyList<long>? EntityIds = null,

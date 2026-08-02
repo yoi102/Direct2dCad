@@ -58,6 +58,13 @@ internal static class CadGeometryTools
     {
         var id = RequiredEntityId(arguments);
         var entity = GetEntity(executor, id);
+        if (arguments.TryGetProperty("entity_type", out var entityType) &&
+            entityType.ValueKind == JsonValueKind.String &&
+            !string.Equals(entityType.GetString(), EntityType(entity), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(
+                $"entity_type does not match entity {id.Value}; expected {EntityType(entity)}.");
+        }
         foreach (var command in CreateGeometryCommands(entity, arguments))
             executor.ExecuteCommand(command);
         return new
@@ -309,24 +316,99 @@ internal static class CadGeometryTools
         var properties = GeometryProperties();
         properties["document_id"] = DocumentIdSchema();
         properties["entity_id"] = EntityIdSchema();
-        return ObjectSchema(properties, ["entity_id"]);
+        properties["entity_type"] = new
+        {
+            type = "string",
+            @enum = new[]
+            {
+                "Line", "Circle", "Arc", "Ellipse", "EllipseArc", "Rectangle", "Polyline",
+                "Spline", "CompositePath", "Text", "ShapeText", "Image", "OleObject", "BlockReference"
+            },
+            description = "Optional type assertion. Read get_entity_geometry first when unsure."
+        };
+
+        return new
+        {
+            type = "object",
+            properties,
+            required = new[] { "entity_id" },
+            additionalProperties = false,
+            allOf = GeometryRequirements()
+        };
     }
 
-    private static object TransformSchema() => ObjectSchema(new Dictionary<string, object>
+    private static object TransformSchema()
     {
-        ["document_id"] = DocumentIdSchema(),
-        ["entity_ids"] = EntityIdsSchema(),
-        ["operation"] = new { type = "string", @enum = new[] { "move", "rotate", "scale", "mirror" } },
-        ["delta_x"] = Number("Required for move"),
-        ["delta_y"] = Number("Required for move"),
-        ["pivot_x"] = Number("Required for rotate and scale"),
-        ["pivot_y"] = Number("Required for rotate and scale"),
-        ["angle_degrees"] = Number("Counter-clockwise angle required for rotate"),
-        ["factor"] = new { type = "number", exclusiveMinimum = 0.0 },
-        ["axis_x"] = Number("A point on the mirror axis"),
-        ["axis_y"] = Number("A point on the mirror axis"),
-        ["axis_angle_degrees"] = Number("Counter-clockwise mirror-axis direction")
-    }, ["operation"]);
+        var properties = new Dictionary<string, object>
+        {
+            ["document_id"] = DocumentIdSchema(),
+            ["entity_ids"] = EntityIdsSchema(),
+            ["operation"] = new { type = "string", @enum = new[] { "move", "rotate", "scale", "mirror" } },
+            ["delta_x"] = Number("Required for move"),
+            ["delta_y"] = Number("Required for move"),
+            ["pivot_x"] = Number("Required for rotate and scale"),
+            ["pivot_y"] = Number("Required for rotate and scale"),
+            ["angle_degrees"] = Number("Counter-clockwise angle required for rotate"),
+            ["factor"] = new { type = "number", exclusiveMinimum = 0.0 },
+            ["axis_x"] = Number("A point on the mirror axis"),
+            ["axis_y"] = Number("A point on the mirror axis"),
+            ["axis_angle_degrees"] = Number("Counter-clockwise mirror-axis direction")
+        };
+
+        return new
+        {
+            type = "object",
+            properties,
+            required = new[] { "operation" },
+            additionalProperties = false,
+            allOf = new[]
+            {
+                ConditionalRequired("move", "delta_x", "delta_y"),
+                ConditionalRequired("rotate", "pivot_x", "pivot_y", "angle_degrees"),
+                ConditionalRequired("scale", "pivot_x", "pivot_y", "factor"),
+                ConditionalRequired("mirror", "axis_x", "axis_y", "axis_angle_degrees")
+            }
+        };
+    }
+
+    private static object[] GeometryRequirements() =>
+    [
+        ConditionalRequiredForProperty("Line", "entity_type", "start", "end"),
+        ConditionalRequiredForProperty("Circle", "entity_type", "center", "radius"),
+        ConditionalRequiredForProperty("Arc", "entity_type", "center", "radius", "start_angle_degrees", "sweep_angle_degrees"),
+        ConditionalRequiredForProperty("Ellipse", "entity_type", "center", "radius_x", "radius_y"),
+        ConditionalRequiredForProperty("EllipseArc", "entity_type", "center", "radius_x", "radius_y", "start_angle_degrees", "sweep_angle_degrees"),
+        ConditionalRequiredForProperty("Rectangle", "entity_type", "bounds"),
+        ConditionalRequiredForProperty("Polyline", "entity_type", "points", "closed"),
+        ConditionalRequiredForProperty("Spline", "entity_type", "fit_points", "closed"),
+        ConditionalRequiredForProperty("CompositePath", "entity_type", "start", "segments", "closed"),
+        ConditionalRequiredForProperty("Text", "entity_type", "position", "height", "rotation_degrees"),
+        ConditionalRequiredForProperty("ShapeText", "entity_type", "position", "height", "rotation_degrees"),
+        ConditionalRequiredForProperty("Image", "entity_type", "frame_bounds", "rotation_degrees"),
+        ConditionalRequiredForProperty("OleObject", "entity_type", "bounds"),
+        ConditionalRequiredForProperty("BlockReference", "entity_type", "position", "rotation_degrees", "scale_x", "scale_y")
+    ];
+
+    private static object ConditionalRequired(
+        string constant,
+        params string[] required) =>
+        ConditionalRequiredForProperty(constant, "operation", required);
+
+    private static object ConditionalRequiredForProperty(
+        string constant,
+        string propertyName,
+        params string[] required) => new Dictionary<string, object>
+        {
+            ["if"] = new Dictionary<string, object>
+            {
+                ["properties"] = new Dictionary<string, object>
+                {
+                    [propertyName] = new Dictionary<string, object> { ["const"] = constant }
+                },
+                ["required"] = new[] { propertyName }
+            },
+            ["then"] = new Dictionary<string, object> { ["required"] = required }
+        };
 
     private static Dictionary<string, object> GeometryProperties() => new()
     {

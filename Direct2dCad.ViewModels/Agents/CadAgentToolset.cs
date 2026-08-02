@@ -1,5 +1,6 @@
 using Direct2dCad.Agent;
 using Direct2dCad.AI;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Tools;
 
 namespace Direct2dCad.ViewModels.Agents;
@@ -8,9 +9,11 @@ internal sealed class CadAgentToolset : IAgentToolset
 {
     private readonly CadWorkspaceToolExecutor _executor;
 
-    public CadAgentToolset(ICadToolWorkspace workspace)
+    public CadAgentToolset(
+        ICadToolWorkspace workspace,
+        IImageImportService? imageImportService = null)
     {
-        _executor = new CadWorkspaceToolExecutor(workspace);
+        _executor = new CadWorkspaceToolExecutor(workspace, imageImportService);
     }
 
     public IReadOnlyList<AiToolDefinition> ToolDefinitions =>

@@ -60,6 +60,7 @@ internal static class CadBulkCreationTools
         itemProperties["graphic_style"] = String("Existing graphic style name or ID; use none to clear");
         itemProperties["z_index"] = new { type = "integer" };
         itemProperties["visible"] = new { type = "boolean" };
+        itemProperties["locked"] = new { type = "boolean" };
         itemProperties["stroke_style"] = new
         {
             type = "object",
@@ -78,16 +79,51 @@ internal static class CadBulkCreationTools
             type = "object",
             properties = new
             {
-                mode = Enum("none", "style", "solid", "hatch"),
+                mode = Enum("none", "style", "solid", "hatch", "gradient"),
                 style = String("Existing fill style name or ID"),
                 color = String("Solid or hatch foreground color"),
                 pattern = String("Hatch pattern name or ID"),
                 scale = new { type = "number", exclusiveMinimum = 0.0 },
                 angle_degrees = new { type = "number" },
                 origin_x = new { type = "number" },
-                origin_y = new { type = "number" }
+                origin_y = new { type = "number" },
+                gradient_kind = Enum("linear", "radial"),
+                stops = new
+                {
+                    type = "array",
+                    minItems = 2,
+                    items = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            offset = new { type = "number", minimum = 0.0, maximum = 1.0 },
+                            color = String("Gradient stop color")
+                        },
+                        required = new[] { "offset", "color" },
+                        additionalProperties = false
+                    }
+                },
+                gradient_scale = new { type = "number", exclusiveMinimum = 0.0 },
+                gradient_angle_degrees = new { type = "number" },
+                gradient_origin_x = new { type = "number" },
+                gradient_origin_y = new { type = "number" },
+                gradient_centered = new { type = "boolean" }
             },
             required = new[] { "mode" },
+            allOf = new object[]
+            {
+                new
+                {
+                    @if = new { properties = new { mode = new { @const = "style" } } },
+                    then = new { required = new[] { "style" } }
+                },
+                new
+                {
+                    @if = new { properties = new { mode = new { @const = "gradient" } } },
+                    then = new { required = new[] { "stops" } }
+                }
+            },
             additionalProperties = false
         };
         itemProperties["text_style"] = String("Existing Text style name or ID; none selects the default");

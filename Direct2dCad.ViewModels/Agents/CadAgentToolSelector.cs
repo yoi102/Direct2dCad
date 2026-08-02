@@ -6,7 +6,7 @@ internal static class CadAgentToolSelector
 {
     private static readonly string[] CoreTools =
     [
-        "get_document_summary", "get_entity_statistics", "list_entities", "list_document_catalog",
+        "get_agent_capabilities", "get_document_summary", "get_entity_statistics", "list_entities", "list_document_catalog",
         "list_documents", "create_document", "select_entities", "undo", "redo"
     ];
 
@@ -56,6 +56,12 @@ internal static class CadAgentToolSelector
     [
         "draw", "sketch", "drawing", "pattern", "outline",
         "绘制", "画", "图案", "轮廓", "猫"
+    ];
+
+    private static readonly string[] ImageTerms =
+    [
+        "insert image", "import image", "raster image", "bitmap", "png", "jpg", "jpeg", "bmp",
+        "\u63d2\u5165\u56fe\u7247", "\u5bfc\u5165\u56fe\u7247", "\u56fe\u50cf", "\u4f4d\u56fe"
     ];
 
     private static readonly string[] EditingTerms =
@@ -109,6 +115,9 @@ internal static class CadAgentToolSelector
         var isEntityQuery = ContainsAny(normalized, EntityQueryTerms);
         if (isEntityQuery)
             Add(["list_entities"]);
+
+        if (ContainsAny(normalized, ImageTerms))
+            Add(["insert_image_from_file"]);
 
         var isDrawing = ContainsAny(normalized, DrawingTerms) ||
                         EntityCreationTools.Any(item => ContainsAny(normalized, item.Terms));

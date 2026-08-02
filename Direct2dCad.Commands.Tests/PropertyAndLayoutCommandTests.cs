@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Commands.Tests;
@@ -26,6 +27,147 @@ public sealed class PropertyAndLayoutCommandTests
 
         Assert.False(line.UseLayerLineWeight);
         Assert.Equal(new CadLineWeight(2.5), line.LineWeight);
+    }
+
+    [Fact]
+    public void SetEntityLocked_AllowsUndoableLockAndUnlock()
+    {
+        var document = CadDocument.Create("Test");
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        var command = new SetEntityLockedCommand([line.Id], true);
+
+        command.Execute(document);
+        Assert.True(line.IsLocked);
+        Assert.Throws<InvalidOperationException>(() => new SetEntityLineWeightCommand(
+            [line.Id],
+            new CadLineWeight(0.5)).Execute(document));
+
+        command.Undo(document);
+        Assert.False(line.IsLocked);
+
+        var unlock = new SetEntityLockedCommand([line.Id], false);
+        unlock.Execute(document);
+        Assert.False(line.IsLocked);
+    }
+
+    [Fact]
+    public void SetTextStyleProperties_UpdatesAllReferencesAndUndoRestoresBoundsMeasurement()
+    {
+        var document = CadDocument.Create("Test");
+        var styleId = document.CreateTextStyle("Notes", "Arial", 1.0);
+        var first = document.AddText("A", CadPointD.Origin, 10, textStyleId: styleId);
+        var second = document.AddText("BBBB", new CadPointD(20, 0), 10, textStyleId: styleId);
+        first.SetLocalBounds(CadRectD.FromXYWH(0, 0, 5, 10));
+        second.SetLocalBounds(CadRectD.FromXYWH(0, 0, 20, 10));
+
+        var command = new SetTextStylePropertiesCommand(
+            styleId,
+            fontFamily: "Meiryo",
+            textHeight: 2.0,
+            widthFactor: 0.8,
+            obliqueAngle: 0.25,
+            isBold: true,
+            isItalic: true);
+
+        var execute = command.Execute(document);
+        var style = Assert.IsType<CadTextStyle>(document.Styles[styleId]);
+        Assert.Equal("Meiryo", style.FontFamily);
+        Assert.Equal(2.0, style.TextHeight);
+        Assert.True(style.IsBold);
+        Assert.True(first.RequiresBoundsMeasurement);
+        Assert.Contains(execute.EntityChanges, change => change.EntityId == first.Id);
+        Assert.Contains(execute.EntityChanges, change => change.EntityId == second.Id);
+
+        command.Undo(document);
+        Assert.Equal("Arial", style.FontFamily);
+        Assert.Equal(1.0, style.TextHeight);
+        Assert.False(style.IsBold);
+        Assert.True(execute.AffectsDocumentStructure);
+    }
+
+    [Fact]
+    public void CreateTextStyle_UndoRemovesStyleAndRedoReusesItsId()
+    {
+        var document = CadDocument.Create("Test");
+        var command = new CreateTextStyleCommand("AI Font", "Arial");
+
+        command.Execute(document);
+        var styleId = Assert.IsType<StyleId>(command.CreatedStyleId);
+        Assert.True(document.Styles.ContainsKey(styleId));
+
+        command.Undo(document);
+        Assert.False(document.Styles.ContainsKey(styleId));
+
+        command.Execute(document);
+        Assert.Equal(styleId, command.CreatedStyleId);
+        Assert.True(document.Styles.ContainsKey(styleId));
+    }
+
+    [Fact]
+    public void SetEntityColor_UndoRemovesGeneratedStyleAndRedoRestoresIt()
+    {
+        var document = CadDocument.Create("Test");
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        var command = new SetEntityColorCommand([line.Id], CadColor.Red);
+
+        command.Execute(document);
+        var generatedStyleId = line.GraphicStyleId;
+        Assert.NotNull(generatedStyleId);
+        Assert.True(document.Styles.ContainsKey(generatedStyleId.Value));
+
+        command.Undo(document);
+        Assert.Null(line.GraphicStyleId);
+        Assert.False(document.Styles.ContainsKey(generatedStyleId.Value));
+
+        command.Execute(document);
+        Assert.Equal(generatedStyleId, line.GraphicStyleId);
+        Assert.True(document.Styles.ContainsKey(generatedStyleId.Value));
+    }
+
+    [Fact]
+    public void CreateFillStyle_UndoRemovesStyleAndRedoReusesItsId()
+    {
+        var document = CadDocument.Create("Test");
+        var command = CreateFillStyleCommand.Solid("AI Solid", CadColor.Blue);
+
+        command.Execute(document);
+        var styleId = Assert.IsType<StyleId>(command.CreatedStyleId);
+        Assert.True(document.Styles.ContainsKey(styleId));
+
+        command.Undo(document);
+        Assert.False(document.Styles.ContainsKey(styleId));
+
+        command.Execute(document);
+        Assert.Equal(styleId, command.CreatedStyleId);
+    }
+
+    [Fact]
+    public void SetGraphicStyleProperties_UpdatesSharedReferencesAndUndoRestoresStyle()
+    {
+        var document = CadDocument.Create("Test");
+        var styleId = document.CreateGraphicStyle(
+            "Dashed",
+            CadColor.Red,
+            new CadLineWeight(0.2),
+            LineTypeId.Continuous);
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0), graphicStyleId: styleId);
+        var command = new SetGraphicStylePropertiesCommand(
+            styleId,
+            CadColor.Blue,
+            new CadLineWeight(0.6),
+            new LineTypeId(7));
+
+        command.Execute(document);
+        var style = Assert.IsType<CadGraphicStyle>(document.Styles[styleId]);
+        Assert.Equal(CadColor.Blue, style.StrokeColor);
+        Assert.Equal(new CadLineWeight(0.6), style.LineWeight);
+        Assert.Equal(new LineTypeId(7), style.LineTypeId);
+        Assert.Contains(line.Id, document.Entities.Keys);
+
+        command.Undo(document);
+        Assert.Equal(CadColor.Red, style.StrokeColor);
+        Assert.Equal(new CadLineWeight(0.2), style.LineWeight);
+        Assert.Equal(LineTypeId.Continuous, style.LineTypeId);
     }
 
     [Fact]

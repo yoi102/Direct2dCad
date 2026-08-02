@@ -15,10 +15,12 @@ internal static class CadEntityQueryProtocol
                 @enum = new[] { CadEntityQuery.CurrentSpaceScope, CadEntityQuery.DocumentScope },
                 description = "Current editing space or every entity owned by any model, paper, or block space."
             },
-            ["type"] = String("One entity type. Omit it when asking which types exist."),
-            ["types"] = StringArray("Match any of these entity types."),
+            ["type"] = new { type = "string", @enum = CadEntityQuery.EntityTypeNames, description = "One entity type. Omit it when asking which types exist." },
+            ["types"] = new { type = "array", minItems = 1, uniqueItems = true, items = new { type = "string", @enum = CadEntityQuery.EntityTypeNames }, description = "Match any of these entity types." },
             ["layer"] = String("One layer name or ID."),
             ["layers"] = StringArray("Match any of these layer names or IDs."),
+            ["capability"] = String("One entity capability, such as fill, stroke_style, or rotation."),
+            ["capabilities"] = StringArray("Match entities supporting any of these capabilities."),
             ["owner"] = String("Owner model, paper, or block-space name or ID."),
             ["selected_only"] = new { type = "boolean" }
         };
@@ -49,6 +51,8 @@ internal static class CadEntityQueryProtocol
             OptionalString(arguments, "type"),
             OptionalString(arguments, "layer"),
             OptionalBool(arguments, "selected_only"),
+            OptionalString(arguments, "capability")?.ToLowerInvariant(),
+            OptionalStringArray(arguments, "capabilities")?.Select(value => value.ToLowerInvariant()).ToArray(),
             Types: OptionalStringArray(arguments, "types"),
             Layers: OptionalStringArray(arguments, "layers"),
             EntityIds: OptionalInt64Array(arguments, "entity_ids"),
@@ -101,6 +105,19 @@ internal static class CadEntityQueryProtocol
         properties["name_contains"] = String("Case-insensitive entity-name fragment.");
         properties["text_contains"] = String("Case-insensitive CadText or CadShapeText content fragment.");
         properties["source_name_contains"] = String("Case-insensitive image or OLE source-name fragment.");
+        properties["capability"] = new
+        {
+            type = "string",
+            @enum = CadEntityQuery.CapabilityNames,
+            description = "Require one capability supported by the concrete entity type."
+        };
+        properties["capabilities"] = new
+        {
+            type = "array",
+            minItems = 1,
+            uniqueItems = true,
+            items = new { type = "string", @enum = CadEntityQuery.CapabilityNames }
+        };
         properties["visible"] = new { type = "boolean" };
         properties["locked"] = new { type = "boolean" };
         properties["closed"] = new { type = "boolean", description = "Match closed or open curve entities." };

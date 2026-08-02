@@ -9,6 +9,17 @@ internal static partial class CadEntityQuery
 {
     internal const string CurrentSpaceScope = "current_space";
     internal const string DocumentScope = "document";
+    internal static readonly string[] EntityTypeNames =
+    [
+        "Line", "Circle", "Arc", "Ellipse", "EllipseArc", "Rectangle", "Polyline", "Spline",
+        "CompositePath", "Text", "ShapeText", "Image", "OleObject", "BlockReference"
+    ];
+    internal static readonly string[] CapabilityNames =
+    [
+        "graphic_style", "stroke_style", "start_end_caps", "line_join", "fill",
+        "opacity", "rotation", "grip_handles", "rotation_handle", "embedded_content",
+        "text_content"
+    ];
 
     internal static object CreateStatistics(
         CadDocument document,

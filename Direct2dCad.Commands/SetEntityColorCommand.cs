@@ -1,6 +1,7 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles;
 
 namespace Direct2dCad.Commands;
 
@@ -9,7 +10,7 @@ public sealed class SetEntityColorCommand : ICadCommand
     private readonly EntityId[] _entityIds;
     private readonly CadColor _color;
     private readonly Dictionary<EntityId, StyleId?> _previousGraphicStyles = [];
-    private StyleId? _newGraphicStyleId;
+    private CadGraphicStyle? _createdGraphicStyle;
 
     public string Name => "Set Entity Color";
 
@@ -34,19 +35,15 @@ public sealed class SetEntityColorCommand : ICadCommand
         foreach (var entity in entities)
             EnsureSupportsGraphicStyle(entity);
 
-        _newGraphicStyleId ??= document.CreateGraphicStyle(
-            $"Color {_color.R},{_color.G},{_color.B},{_color.A}",
-            _color,
-            CadLineWeight.ByLayer,
-            LineTypeId.Continuous);
+        EnsureGraphicStyle(document);
 
         foreach (var entity in entities)
         {
             _previousGraphicStyles[entity.Id] = GetGraphicStyleId(entity);
-            SetGraphicStyleId(entity, _newGraphicStyleId);
+            SetGraphicStyleId(entity, _createdGraphicStyle!.Id);
         }
 
-        return CadDocumentChangeSet.ForEntities(_entityIds, CadEntityChangeKind.Appearance);
+        return CreateChangeSet(_entityIds);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -56,8 +53,36 @@ public sealed class SetEntityColorCommand : ICadCommand
         foreach (var (entityId, styleId) in _previousGraphicStyles)
             SetGraphicStyleId(document.GetEntity(entityId), styleId);
 
-        return CadDocumentChangeSet.ForEntities(_previousGraphicStyles.Keys, CadEntityChangeKind.Appearance);
+        if (_createdGraphicStyle is not null &&
+            document.Styles.ContainsKey(_createdGraphicStyle.Id) &&
+            !document.Entities.Values.Any(entity => GetGraphicStyleId(entity) == _createdGraphicStyle.Id))
+        {
+            document.RemoveStyleCore(_createdGraphicStyle.Id);
+        }
+
+        return CreateChangeSet(_previousGraphicStyles.Keys);
     }
+
+    private void EnsureGraphicStyle(CadDocument document)
+    {
+        if (_createdGraphicStyle is null)
+        {
+            var styleId = document.CreateGraphicStyle(
+                $"Color {_color.R},{_color.G},{_color.B},{_color.A}",
+                _color,
+                CadLineWeight.ByLayer,
+                LineTypeId.Continuous);
+            _createdGraphicStyle = (CadGraphicStyle)document.Styles[styleId];
+        }
+        else if (!document.TryGetStyle(_createdGraphicStyle.Id, out _))
+        {
+            document.AddStyleCore(_createdGraphicStyle);
+        }
+    }
+
+    private CadDocumentChangeSet CreateChangeSet(IEnumerable<EntityId> entityIds) =>
+        CadDocumentChangeSet.ForEntities(entityIds, CadEntityChangeKind.Appearance)
+            .WithDocumentStructureChanged();
 
     private static StyleId? GetGraphicStyleId(CadEntity entity)
     {

@@ -78,7 +78,7 @@ internal static class CadEntitySpecificPropertyTools
         {
             var styleId = hasTextStyle
                 ? ResolveTextStyle(document, RequiredString(arguments, "text_style"))
-                : ResolveOrCreateFontStyle(document, RequiredString(arguments, "font_family"));
+                : ResolveOrCreateFontStyle(executor, document, RequiredString(arguments, "font_family"));
             foreach (var entity in entities)
                 executor.ExecuteCommand(new SetTextStyleCommand(entity.Id, styleId));
             changed.Add(hasTextStyle ? "text_style" : "font_family");
@@ -200,7 +200,10 @@ internal static class CadEntitySpecificPropertyTools
         return style?.Id ?? throw new ArgumentException($"Text style not found: {value}");
     }
 
-    private static StyleId? ResolveOrCreateFontStyle(CadDocument document, string fontFamily)
+    private static StyleId? ResolveOrCreateFontStyle(
+        CadDocumentToolExecutor executor,
+        CadDocument document,
+        string fontFamily)
     {
         if (fontFamily.Equals("Meiryo", StringComparison.OrdinalIgnoreCase))
             return null;
@@ -220,7 +223,10 @@ internal static class CadEntitySpecificPropertyTools
         var name = baseName;
         for (var suffix = 2; names.Contains(name); suffix++)
             name = $"{baseName} ({suffix})";
-        return document.CreateTextStyle(name, fontFamily, textHeight: 1.0);
+        var command = new CreateTextStyleCommand(name, fontFamily, textHeight: 1.0);
+        executor.ExecuteCommand(command);
+        return command.CreatedStyleId
+            ?? throw new InvalidOperationException("The text style was not created.");
     }
 
     private static CadShapeFont ResolveShapeFont(string value) =>
@@ -265,6 +271,10 @@ internal static class CadEntitySpecificPropertyTools
             block_definition = new { type = "string", description = "Existing user Block name or ID" }
         },
         required = new[] { "entity_ids" },
+        not = new
+        {
+            required = new[] { "text_style", "font_family" }
+        },
         additionalProperties = false
     };
 

@@ -136,6 +136,17 @@ internal static class FillStyleCatalog
         return null;
     }
 
+    internal static (string Name, IReadOnlyList<CadHatchLineDefinition> Lines, string Description)?
+        GetDefaultHatchDefinition(string name)
+    {
+        var definition = DefaultHatches.FirstOrDefault(hatch =>
+            string.Equals(hatch.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (definition is null)
+            return null;
+
+        return (definition.Name, definition.CreateLines(), definition.Description);
+    }
+
     public static CadColor ResolveFillColor(CadDocument document, StyleId? styleId, CadColor fallback)
     {
         ArgumentNullException.ThrowIfNull(document);

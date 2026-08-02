@@ -187,6 +187,44 @@ public sealed class CadEntityQueryTests
         Assert.Equal(75, options.Limit);
     }
 
+    [Fact]
+    public void Projection_ReportsEffectiveLayerWeightAndHidesInapplicableStrokeState()
+    {
+        var document = CadDocument.Create("Appearance");
+        var layerId = document.CreateLayer("Thin", CadColor.Blue, new CadLineWeight(0.35));
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0), layerId);
+        line.SetLineWeight(new CadLineWeight(2.5));
+        line.SetUseLayerLineWeight(true);
+        var image = document.AddImage(
+            CadRectD.FromXYWH(0, 1, 2, 2),
+            1,
+            1,
+            4,
+            [0, 0, 0, 255],
+            layerId,
+            name: "Preview");
+
+        var lineResult = JsonSerializer.SerializeToElement(CadEntityQuery.CreatePage(
+            document,
+            BlockId.ModelSpace,
+            new HashSet<EntityId>(),
+            new CadEntityQueryOptions(CadEntityQuery.CurrentSpaceScope, "Line", null, false)));
+        var imageResult = JsonSerializer.SerializeToElement(CadEntityQuery.CreatePage(
+            document,
+            BlockId.ModelSpace,
+            new HashSet<EntityId>(),
+            new CadEntityQueryOptions(CadEntityQuery.CurrentSpaceScope, "Image", null, false)));
+
+        var lineDto = Assert.Single(lineResult.GetProperty("entities").EnumerateArray());
+        Assert.Equal(0.35, lineDto.GetProperty("resolved_appearance").GetProperty("line_weight").GetDouble());
+        Assert.Equal(0.35, lineDto.GetProperty("layer_details").GetProperty("line_weight").GetDouble());
+
+        var imageDto = Assert.Single(imageResult.GetProperty("entities").EnumerateArray());
+        Assert.Equal(image.Id.Value, imageDto.GetProperty("id").GetInt64());
+        Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("resolved_appearance").ValueKind);
+        Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("stroke_style").ValueKind);
+    }
+
     private static CadDocument CreateMixedDocument()
     {
         var document = CadDocument.Create("Mixed");

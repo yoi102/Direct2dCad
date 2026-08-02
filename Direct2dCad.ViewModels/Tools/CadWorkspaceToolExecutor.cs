@@ -10,6 +10,7 @@ using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
 namespace Direct2dCad.ViewModels.Tools;
@@ -27,12 +28,16 @@ internal sealed class CadWorkspaceToolExecutor
     ];
 
     private readonly ICadToolWorkspace _workspace;
+    private readonly IImageImportService? _imageImportService;
     private readonly Dictionary<string, CadDocumentToolExecutor> _documentExecutors = new(StringComparer.Ordinal);
     private string? _defaultDocumentId;
 
-    public CadWorkspaceToolExecutor(ICadToolWorkspace workspace)
+    public CadWorkspaceToolExecutor(
+        ICadToolWorkspace workspace,
+        IImageImportService? imageImportService = null)
     {
         _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
+        _imageImportService = imageImportService;
         _defaultDocumentId = workspace.GetActiveDocument()?.DocumentId;
     }
 
@@ -51,11 +56,13 @@ internal sealed class CadWorkspaceToolExecutor
             : "CAD coordinates use +X to the right and +Y upward. Angles exposed by tools are counter-clockwise degrees.";
 
         return $$"""
-            You are the workspace-aware CAD editing assistant inside Direct2dCad. Use tools for every inspection or modification and never claim success before a tool confirms it. Open documents: {{documentSummary}}
+            You are the workspace-aware CAD editing assistant inside Direct2dCad. Use tools for every inspection or modification and never claim success before a tool confirms it. The machine-readable Agent Contract is available through get_agent_capabilities; call it when the task is unfamiliar, multi-step, or involves many entities. Open documents: {{documentSummary}}
 
-            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Use set_entity_specific_properties for text/font/inversion, embedded-object opacity, and BlockReference definition changes. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
+            document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Use set_entity_specific_properties for text/font/inversion, embedded-object opacity, and BlockReference definition changes. Use set_text_style_properties or set_graphic_style_properties for shared styles; those operations affect every reference and are undoable. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
 
             {{activeDetails}}
+
+            Recommended execution order: inspect the workspace and active document, query the relevant entities/layers/styles, choose one coherent mutation or add_entities batch, verify returned IDs and active-space constraints, then report only confirmed changes. For a complex drawing, plan the parts mentally before issuing mutations and prefer add_entities over many single-entity calls.
             """;
     }
 
@@ -77,13 +84,19 @@ internal sealed class CadWorkspaceToolExecutor
                 "rename_document" => RenameDocument(root),
                 "save_document" => await SaveDocumentAsync(root, cancellationToken),
                 "close_document" => await CloseDocumentAsync(root),
+                "get_agent_capabilities" => GetAgentCapabilities(root),
+                "insert_image_from_file" => InsertImageFromFile(root),
+                "add_ole_object" => AddOleObject(root),
                 "list_document_catalog" => ExecuteForDocument(root, ListDocumentCatalog),
                 "set_entity_common_properties" => ExecuteForDocument(root, SetEntityCommonProperties),
                 "set_entity_fill" => ExecuteForDocument(root, SetEntityFill),
                 "set_entity_stroke_style" => ExecuteForDocument(root, SetEntityStrokeStyle),
+                "set_text_style_properties" => ExecuteForDocument(root, CadTextStyleTools.Execute),
+                "set_graphic_style_properties" => ExecuteForDocument(root, CadGraphicStyleTools.Execute),
                 "set_entity_specific_properties" => ExecuteForDocument(
                     root,
                     CadEntitySpecificPropertyTools.Execute),
+                "set_ole_object_data" => ExecuteForDocument(root, SetOleObjectData),
                 "create_block" => ExecuteForDocument(root, CreateBlock),
                 "insert_block" => ExecuteForDocument(root, InsertBlock),
                 "add_composite_path" => ExecuteForDocument(root, AddCompositePath),
@@ -116,6 +129,15 @@ internal sealed class CadWorkspaceToolExecutor
         documents = _workspace.GetDocuments().Select(DocumentDto).ToArray(),
         default_document_id = _defaultDocumentId
     });
+
+    private string GetAgentCapabilities(JsonElement arguments)
+    {
+        var includeExamples = OptionalBool(arguments, "include_examples", true);
+        return Success(CadAgentContract.CreateCapabilities(
+            _workspace.GetDocuments(),
+            _defaultDocumentId,
+            includeExamples));
+    }
 
     private string CreateDocument(JsonElement arguments)
     {
@@ -296,6 +318,120 @@ internal sealed class CadWorkspaceToolExecutor
         return Success(new { document_id = document.DocumentId, result });
     }
 
+    private string InsertImageFromFile(JsonElement arguments)
+    {
+        if (_imageImportService is null)
+            throw new NotSupportedException("Image file import is unavailable in the current host.");
+
+        var filePath = Path.GetFullPath(RequiredString(arguments, "file_path"));
+        var image = _imageImportService.LoadFromFile(filePath);
+        if (image.PixelWidth <= 0 || image.PixelHeight <= 0 || image.Stride <= 0 || image.Pixels.Length == 0)
+            throw new InvalidDataException("The image importer returned empty pixel data.");
+
+        return ExecuteForDocument(arguments, (executor, documentArguments) =>
+        {
+            var bounds = RequiredRect(documentArguments, "bounds");
+            var layerId = HasValue(documentArguments, "layer")
+                ? executor.ResolveLayerForTool(RequiredString(documentArguments, "layer"))
+                : executor.DocumentViewModel.DrawingLayerId;
+            var command = new AddImageCommand(
+                bounds,
+                image.PixelWidth,
+                image.PixelHeight,
+                image.Stride,
+                image.Pixels,
+                layerId,
+                image.ContentType,
+                image.SourceName,
+                OptionalString(documentArguments, "name") ?? "Image",
+                OptionalInt(documentArguments, "z_index", 0),
+                OptionalBool(documentArguments, "visible", true),
+                OptionalUnitInterval(documentArguments, "opacity", 1.0),
+                OptionalFinite(documentArguments, "rotation_degrees", 0) * Math.PI / 180.0);
+            executor.ExecuteCommand(command);
+            var entityId = command.CreatedEntityId ??
+                           throw new InvalidOperationException("The image entity was not created.");
+            if (HasValue(documentArguments, "locked") &&
+                OptionalBool(documentArguments, "locked", false))
+            {
+                executor.ExecuteCommand(new SetEntityLockedCommand([entityId], true));
+            }
+            executor.DocumentViewModel.SelectEntities([entityId]);
+            return new
+            {
+                created_entity_id = entityId.Value,
+                source_name = image.SourceName,
+                content_type = image.ContentType,
+                pixel_width = image.PixelWidth,
+                pixel_height = image.PixelHeight,
+                bounds = RectDto(bounds)
+            };
+        });
+    }
+
+    private string AddOleObject(JsonElement arguments)
+    {
+        var oleBytes = DecodeBase64(RequiredString(arguments, "ole_base64"), "ole_base64");
+        return ExecuteForDocument(arguments, (executor, documentArguments) =>
+        {
+            var bounds = RequiredRect(documentArguments, "bounds");
+            var layerId = HasValue(documentArguments, "layer")
+                ? executor.ResolveLayerForTool(RequiredString(documentArguments, "layer"))
+                : executor.DocumentViewModel.DrawingLayerId;
+            var command = new AddOleObjectCommand(
+                bounds,
+                oleBytes,
+                layerId,
+                OptionalString(documentArguments, "content_type") ?? "application/x-ole-storage",
+                OptionalString(documentArguments, "source_name") ?? string.Empty,
+                OptionalString(documentArguments, "name") ?? "OleObject",
+                OptionalInt(documentArguments, "z_index", 0),
+                OptionalBool(documentArguments, "visible", true),
+                OptionalUnitInterval(documentArguments, "opacity", 1.0));
+            executor.ExecuteCommand(command);
+            var entityId = command.CreatedEntityId ??
+                           throw new InvalidOperationException("The OLE entity was not created.");
+            if (HasValue(documentArguments, "locked") &&
+                OptionalBool(documentArguments, "locked", false))
+            {
+                executor.ExecuteCommand(new SetEntityLockedCommand([entityId], true));
+            }
+            executor.DocumentViewModel.SelectEntities([entityId]);
+            return new
+            {
+                created_entity_id = entityId.Value,
+                bounds = RectDto(bounds),
+                content_type = OptionalString(documentArguments, "content_type") ?? "application/x-ole-storage",
+                byte_length = oleBytes.Length
+            };
+        });
+    }
+
+    private object SetOleObjectData(
+        CadDocumentToolExecutor executor,
+        JsonElement arguments)
+    {
+        var entityId = RequiredEntityId(arguments);
+        var document = executor.DocumentViewModel.CadEditor.Document;
+        var entity = document.GetEntity(entityId);
+        var oleObject = entity as CadOleObject
+            ?? throw new NotSupportedException("set_ole_object_data only supports OleObject entities.");
+        var oleBytes = DecodeBase64(RequiredString(arguments, "ole_base64"), "ole_base64");
+        executor.ExecuteCommand(new SetOleObjectDataCommand(
+            entityId,
+            oleBytes,
+            OptionalString(arguments, "content_type") ?? oleObject.ContentType,
+            OptionalString(arguments, "source_name") ?? oleObject.SourceName));
+        executor.DocumentViewModel.SelectEntities([entityId]);
+        return new
+        {
+            entity_id = entityId.Value,
+            content_type = OptionalString(arguments, "content_type") ?? oleObject.ContentType,
+            source_name = OptionalString(arguments, "source_name") ?? oleObject.SourceName,
+            byte_length = oleBytes.Length
+        };
+    }
+
     private object ListDocumentCatalog(
         CadDocumentToolExecutor executor,
         JsonElement _)
@@ -311,7 +447,12 @@ internal sealed class CadWorkspaceToolExecutor
                 layer.IsLocked,
                 layer.IsFrozen,
                 color = ColorText(layer.Color),
-                line_weight = LineWeightValue(layer.LineWeight)
+                line_weight = LineWeightValue(layer.LineWeight),
+                line_type_id = layer.DefaultGraphicStyleId is { } styleId &&
+                               document.TryGetStyle(styleId, out var layerStyle) &&
+                               layerStyle is CadGraphicStyle layerGraphic
+                    ? layerGraphic.LineTypeId.Value
+                    : LineTypeId.Continuous.Value
             }).ToArray(),
             graphic_styles = document.Styles.Values.OfType<CadGraphicStyle>().Select(style => new
             {
@@ -327,7 +468,15 @@ internal sealed class CadWorkspaceToolExecutor
                 id = pattern.Id.Value,
                 pattern.Name,
                 pattern.Description,
-                line_count = pattern.Lines.Count
+                line_count = pattern.Lines.Count,
+                lines = pattern.Lines.Select(line => new
+                {
+                    angle_degrees = line.Angle,
+                    origin = new { x = line.Origin.X, y = line.Origin.Y },
+                    offset = new { x = line.Offset.X, y = line.Offset.Y },
+                    dash_pattern = line.DashPattern.ToArray(),
+                    is_solid = line.IsSolidLine
+                }).ToArray()
             }).ToArray(),
             text_styles = document.Styles.Values.OfType<CadTextStyle>().Select(style => new
             {
@@ -363,6 +512,7 @@ internal sealed class CadWorkspaceToolExecutor
     {
         var editor = executor.DocumentViewModel.CadEditor;
         var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: true);
+        ValidateCreationAppearance("create_block", arguments, executor);
         var blockName = RequiredString(arguments, "name");
         var basePoint = new CadPointD(
             RequiredFinite(arguments, "base_x"),
@@ -380,19 +530,22 @@ internal sealed class CadWorkspaceToolExecutor
         executor.ExecuteCommand(command);
         var blockId = command.CreatedBlockId ?? throw new InvalidOperationException("The block was not created.");
         var referenceId = command.CreatedReferenceId ?? throw new InvalidOperationException("The block reference was not created.");
+        var appearance = ApplyCreationAppearance(executor, referenceId, arguments);
         executor.DocumentViewModel.SelectEntities([referenceId]);
         return new
         {
             block_id = blockId.Value,
             block_name = blockName,
             reference_entity_id = referenceId.Value,
-            source_entity_ids = ids.Select(id => id.Value).ToArray()
+            source_entity_ids = ids.Select(id => id.Value).ToArray(),
+            applied_appearance = appearance
         };
     }
 
     private object InsertBlock(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         var editor = executor.DocumentViewModel.CadEditor;
+        ValidateCreationAppearance("insert_block", arguments, executor);
         var definition = ResolveBlock(editor.Document, RequiredString(arguments, "block"));
         var layerId = HasValue(arguments, "layer")
             ? executor.ResolveLayerForTool(RequiredString(arguments, "layer"))
@@ -408,12 +561,14 @@ internal sealed class CadWorkspaceToolExecutor
             OptionalString(arguments, "name") ?? definition.Name);
         executor.ExecuteCommand(command);
         var entityId = command.CreatedEntityId ?? throw new InvalidOperationException("The block reference was not created.");
+        var appearance = ApplyCreationAppearance(executor, entityId, arguments);
         executor.DocumentViewModel.SelectEntities([entityId]);
         return new
         {
             entity_id = entityId.Value,
             block_id = definition.Id.Value,
-            block_name = definition.Name
+            block_name = definition.Name,
+            applied_appearance = appearance
         };
     }
 
@@ -434,8 +589,9 @@ internal sealed class CadWorkspaceToolExecutor
         var hasLineWeight = HasValue(arguments, "line_weight");
         var hasZIndex = HasValue(arguments, "z_index");
         var hasVisibility = HasValue(arguments, "visible");
+        var hasLocked = HasValue(arguments, "locked");
         if (!hasLayer && !hasName && !hasColor && !hasColorSource && !hasGraphicStyle &&
-            !hasLineWeight && !hasZIndex && !hasVisibility)
+            !hasLineWeight && !hasZIndex && !hasVisibility && !hasLocked)
         {
             throw new ArgumentException("At least one common property must be supplied.");
         }
@@ -472,6 +628,22 @@ internal sealed class CadWorkspaceToolExecutor
             if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
                 throw new ArgumentException("visible must be a boolean.");
             visible = value.GetBoolean();
+        }
+        bool? locked = null;
+        if (hasLocked)
+        {
+            var value = arguments.GetProperty("locked");
+            if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new ArgumentException("locked must be a boolean.");
+            locked = value.GetBoolean();
+        }
+
+        // An unlock must happen before the other mutations, while a lock is
+        // applied last so the same call can configure and then protect an entity.
+        if (locked == false && entities.Any(entity => entity.IsLocked))
+        {
+            executor.ExecuteCommand(new SetEntityLockedCommand(ids, false));
+            changed.Add("locked");
         }
 
         if (targetLayerId is { } layerId)
@@ -522,6 +694,12 @@ internal sealed class CadWorkspaceToolExecutor
             changed.Add("visible");
         }
 
+        if (locked == true || (locked == false && !changed.Contains("locked")))
+        {
+            executor.ExecuteCommand(new SetEntityLockedCommand(ids, locked.Value));
+            changed.Add("locked");
+        }
+
         executor.DocumentViewModel.SelectEntities(ids);
         return new { entity_ids = ids.Select(id => id.Value).ToArray(), changed_fields = changed };
     }
@@ -535,7 +713,8 @@ internal sealed class CadWorkspaceToolExecutor
         if (ids.Select(document.GetEntity).Any(entity => !CadEntityCapabilities.SupportsFill(entity)))
             throw new NotSupportedException("One or more entities do not support fill styles.");
 
-        var fillStyleId = ResolveFillStyle(document, arguments);
+        ValidateFillArguments(document, arguments);
+        var fillStyleId = ResolveFillStyle(executor, arguments);
         executor.ExecuteCommand(new SetEntityFillStyleCommand(ids, fillStyleId));
         executor.DocumentViewModel.SelectEntities(ids);
         return new
@@ -617,6 +796,11 @@ internal sealed class CadWorkspaceToolExecutor
         {
             throw new ArgumentException("visible must be a boolean.");
         }
+        if (HasValue(arguments, "locked") &&
+            arguments.GetProperty("locked").ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            throw new ArgumentException("locked must be a boolean.");
+        }
 
         if (HasValue(arguments, "fill") &&
             (!arguments.TryGetProperty("fill", out var fill) || fill.ValueKind != JsonValueKind.Object))
@@ -670,17 +854,35 @@ internal sealed class CadWorkspaceToolExecutor
             _ = ResolveExistingFillStyle(document, RequiredString(arguments, "style"));
             return;
         }
-        if (mode is not ("solid" or "hatch"))
+        if (mode is not ("solid" or "hatch" or "gradient"))
             throw new ArgumentException($"Unsupported fill mode: {mode}");
         if (HasValue(arguments, "color"))
             _ = ParseColor(RequiredString(arguments, "color"));
+        if (mode == "gradient" && HasValue(arguments, "color"))
+            throw new ArgumentException("Gradient fill uses stops[].color instead of color.");
         _ = OptionalPositive(arguments, "scale", 1.0);
         _ = OptionalFinite(arguments, "angle_degrees", 0.0);
         _ = OptionalFinite(arguments, "origin_x", 0.0);
         _ = OptionalFinite(arguments, "origin_y", 0.0);
 
         if (mode != "hatch")
+        {
+            if (mode == "gradient")
+            {
+                _ = ParseGradientKind(arguments);
+                _ = ParseGradientStops(arguments);
+                _ = OptionalPositive(arguments, "gradient_scale", 1.0);
+                _ = OptionalFinite(arguments, "gradient_angle_degrees", 0.0);
+                _ = OptionalFinite(arguments, "gradient_origin_x", 0.0);
+                _ = OptionalFinite(arguments, "gradient_origin_y", 0.0);
+                if (HasValue(arguments, "gradient_centered") &&
+                    arguments.GetProperty("gradient_centered").ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                {
+                    throw new ArgumentException("gradient_centered must be a boolean.");
+                }
+            }
             return;
+        }
         var requestedPattern = OptionalString(arguments, "pattern") ?? "ANSI31";
         var exists = document.HatchPatterns.Values.Any(pattern =>
             string.Equals(pattern.Name, requestedPattern, StringComparison.OrdinalIgnoreCase) ||
@@ -833,8 +1035,9 @@ internal sealed class CadWorkspaceToolExecutor
         return style?.Id ?? throw new ArgumentException($"Graphic style not found: {value}");
     }
 
-    private static StyleId? ResolveFillStyle(CadDocument document, JsonElement arguments)
+    private static StyleId? ResolveFillStyle(CadDocumentToolExecutor executor, JsonElement arguments)
     {
+        var document = executor.DocumentViewModel.CadEditor.Document;
         var mode = RequiredString(arguments, "mode").Replace("-", "_", StringComparison.Ordinal).ToLowerInvariant();
         if (mode is "none" or "no_fill")
             return null;
@@ -848,33 +1051,78 @@ internal sealed class CadWorkspaceToolExecutor
         if (mode == "solid")
         {
             var option = options.First(candidate => candidate.Kind == FillStyleOptionKind.Solid);
-            return FillStyleCatalog.ResolveFillStyleId(document, option, color);
+            var solidStyle = document.Styles.Values.OfType<CadGradientFillStyle>().FirstOrDefault(style =>
+                style.IsSolid && style.Stops.Count > 0 && style.Stops[0].Color == color);
+            if (solidStyle is not null)
+                return solidStyle.Id;
+
+            var command = CreateFillStyleCommand.Solid(
+                option.StyleName.Length == 0 ? option.Name : option.StyleName,
+                color);
+            executor.ExecuteCommand(command);
+            return command.CreatedStyleId;
+        }
+        if (mode == "gradient")
+        {
+            var kind = ParseGradientKind(arguments);
+            var stops = ParseGradientStops(arguments);
+            var gradientScale = OptionalPositive(arguments, "gradient_scale", 1.0);
+            var gradientAngle = OptionalFinite(arguments, "gradient_angle_degrees", 0.0) * Math.PI / 180.0;
+            var gradientOrigin = new CadPointD(
+                OptionalFinite(arguments, "gradient_origin_x", 0.0),
+                OptionalFinite(arguments, "gradient_origin_y", 0.0));
+            var centered = OptionalBool(arguments, "gradient_centered", true);
+            var existingGradient = document.Styles.Values.OfType<CadGradientFillStyle>().FirstOrDefault(style =>
+                style.GradientKind == kind &&
+                style.GradientAngle.Equals(gradientAngle) &&
+                style.GradientScale.Equals(gradientScale) &&
+                style.GradientOrigin.Equals(gradientOrigin) &&
+                style.IsCentered == centered &&
+                style.Stops.SequenceEqual(stops));
+            if (existingGradient is not null)
+                return existingGradient.Id;
+
+            var command = CreateFillStyleCommand.Gradient(
+                $"{kind} gradient scale {gradientScale:0.###} angle {gradientAngle:0.###}",
+                kind,
+                stops,
+                gradientAngle,
+                gradientScale,
+                gradientOrigin,
+                centered);
+            executor.ExecuteCommand(command);
+            return command.CreatedStyleId;
         }
         if (mode != "hatch")
             throw new ArgumentException($"Unsupported fill mode: {mode}");
 
         var requestedPattern = OptionalString(arguments, "pattern") ?? "ANSI31";
-        var pattern = ResolveHatchPattern(document, options, requestedPattern, color);
+        var pattern = ResolveHatchPattern(executor, document, options, requestedPattern, color);
         var scale = OptionalPositive(arguments, "scale", 1.0);
         var angle = OptionalFinite(arguments, "angle_degrees", 0.0) * Math.PI / 180.0;
         var origin = new CadPointD(
             OptionalFinite(arguments, "origin_x", 0.0),
             OptionalFinite(arguments, "origin_y", 0.0));
 
-        var existing = document.Styles.Values.OfType<CadHatchFillStyle>().FirstOrDefault(style =>
+        var hatchStyle = document.Styles.Values.OfType<CadHatchFillStyle>().FirstOrDefault(style =>
             style.PatternId.Equals(pattern.Id) &&
             style.ForegroundColor.Equals(color) &&
             style.HatchScale.Equals(scale) &&
             style.HatchAngle.Equals(angle) &&
             style.HatchOrigin.Equals(origin) &&
             !style.IsAnnotative);
-        return existing?.Id ?? document.CreateHatchFillStyle(
+        if (hatchStyle is not null)
+            return hatchStyle.Id;
+
+        var hatchCommand = CreateFillStyleCommand.Hatch(
             $"{pattern.Name} {ColorText(color)} scale {scale:0.###} angle {angle:0.###}",
             pattern.Id,
             color,
             scale,
             angle,
             origin);
+        executor.ExecuteCommand(hatchCommand);
+        return hatchCommand.CreatedStyleId;
     }
 
     private static StyleId ResolveExistingFillStyle(CadDocument document, string value)
@@ -886,6 +1134,7 @@ internal sealed class CadWorkspaceToolExecutor
     }
 
     private static CadHatchPatternDefinition ResolveHatchPattern(
+        CadDocumentToolExecutor executor,
         CadDocument document,
         IReadOnlyList<FillStyleOption> options,
         string requestedPattern,
@@ -904,10 +1153,51 @@ internal sealed class CadWorkspaceToolExecutor
         if (option is null)
             throw new ArgumentException($"Hatch pattern not found: {requestedPattern}");
 
-        var styleId = FillStyleCatalog.ResolveFillStyleId(document, option, color)
+        var definition = FillStyleCatalog.GetDefaultHatchDefinition(option.StyleName)
             ?? throw new InvalidOperationException($"Hatch pattern could not be created: {requestedPattern}");
-        var style = (CadHatchFillStyle)document.Styles[styleId];
-        return document.HatchPatterns[style.PatternId];
+        var command = new CreateHatchPatternCommand(
+            definition.Name,
+            definition.Lines,
+            definition.Description);
+        executor.ExecuteCommand(command);
+        var patternId = command.CreatedPatternId
+            ?? throw new InvalidOperationException($"Hatch pattern could not be created: {requestedPattern}");
+        return document.HatchPatterns[patternId];
+    }
+
+    private static CadGradientKind ParseGradientKind(JsonElement arguments)
+    {
+        var value = OptionalString(arguments, "gradient_kind") ?? "linear";
+        return value.Replace("-", "_", StringComparison.Ordinal).ToLowerInvariant() switch
+        {
+            "linear" => CadGradientKind.Linear,
+            "radial" => CadGradientKind.Radial,
+            _ => throw new ArgumentException("gradient_kind must be linear or radial.")
+        };
+    }
+
+    private static CadGradientStop[] ParseGradientStops(JsonElement arguments)
+    {
+        if (!arguments.TryGetProperty("stops", out var value) || value.ValueKind != JsonValueKind.Array)
+            throw new ArgumentException("stops is required for gradient fill and must be an array.");
+
+        var stops = value.EnumerateArray().Select((item, index) =>
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+                throw new ArgumentException($"stops[{index}] must be an object.");
+            if (!item.TryGetProperty("offset", out var offsetValue) ||
+                !offsetValue.TryGetDouble(out var offset) ||
+                !double.IsFinite(offset))
+            {
+                throw new ArgumentException($"stops[{index}].offset must be a finite number.");
+            }
+            var color = ParseColor(RequiredString(item, "color"));
+            return new CadGradientStop(offset, color);
+        }).OrderBy(stop => stop.Offset).ToArray();
+
+        if (stops.Length < 2 || stops[0].Offset != 0.0 || stops[^1].Offset != 1.0)
+            throw new ArgumentException("Gradient stops require at least two entries with offsets 0 and 1.");
+        return stops;
     }
 
     private static CadLineWeight ParseLineWeight(JsonElement value)
@@ -1005,7 +1295,10 @@ internal sealed class CadWorkspaceToolExecutor
             pattern_id = (long?)hatch.PatternId.Value,
             color = (string?)ColorText(hatch.ForegroundColor),
             scale = (double?)hatch.HatchScale,
-            angle_degrees = (double?)(hatch.HatchAngle * 180.0 / Math.PI)
+            angle_degrees = (double?)(hatch.HatchAngle * 180.0 / Math.PI),
+            origin = new { x = hatch.HatchOrigin.X, y = hatch.HatchOrigin.Y },
+            annotative = hatch.IsAnnotative,
+            stops = (object?)null
         },
         CadGradientFillStyle gradient when gradient.IsSolid => new
         {
@@ -1015,7 +1308,29 @@ internal sealed class CadWorkspaceToolExecutor
             pattern_id = (long?)null,
             color = (string?)ColorText(gradient.Stops[0].Color),
             scale = (double?)null,
-            angle_degrees = (double?)null
+            angle_degrees = (double?)null,
+            origin = (object?)null,
+            annotative = false,
+            stops = (object?)null
+        },
+        CadGradientFillStyle gradient => new
+        {
+            id = style.Id.Value,
+            style.Name,
+            kind = "gradient",
+            gradient_kind = gradient.GradientKind.ToString().ToLowerInvariant(),
+            pattern_id = (long?)null,
+            color = (string?)null,
+            scale = (double?)gradient.GradientScale,
+            angle_degrees = (double?)(gradient.GradientAngle * 180.0 / Math.PI),
+            origin = new { x = gradient.GradientOrigin.X, y = gradient.GradientOrigin.Y },
+            centered = gradient.IsCentered,
+            annotative = false,
+            stops = gradient.Stops.Select(stop => new
+            {
+                offset = stop.Offset,
+                color = ColorText(stop.Color)
+            }).ToArray()
         },
         _ => new
         {
@@ -1025,7 +1340,10 @@ internal sealed class CadWorkspaceToolExecutor
             pattern_id = (long?)null,
             color = (string?)null,
             scale = (double?)null,
-            angle_degrees = (double?)null
+            angle_degrees = (double?)null,
+            origin = (object?)null,
+            annotative = false,
+            stops = (object?)null
         }
     };
 
@@ -1057,10 +1375,73 @@ internal sealed class CadWorkspaceToolExecutor
         return value.GetString()!.Trim();
     }
 
+    private static EntityId RequiredEntityId(JsonElement element)
+    {
+        if (!element.TryGetProperty("entity_id", out var value) ||
+            !value.TryGetInt64(out var id) ||
+            id <= 0)
+        {
+            throw new ArgumentException("entity_id must be a positive integer.");
+        }
+
+        return new EntityId(id);
+    }
+
+    private static byte[] DecodeBase64(string value, string name)
+    {
+        try
+        {
+            var bytes = Convert.FromBase64String(value);
+            return bytes.Length == 0
+                ? throw new ArgumentException($"{name} cannot be empty.")
+                : bytes;
+        }
+        catch (FormatException exception)
+        {
+            throw new ArgumentException($"{name} must be valid base64.", name, exception);
+        }
+    }
+
     private static string? OptionalString(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())
             ? value.GetString()!.Trim()
             : null;
+
+    private static int OptionalInt(JsonElement element, string name, int fallback) =>
+        element.TryGetProperty(name, out var value) && value.TryGetInt32(out var result)
+            ? result
+            : fallback;
+
+    private static bool OptionalBool(JsonElement element, string name, bool fallback)
+    {
+        if (!element.TryGetProperty(name, out var value))
+            return fallback;
+        if (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            throw new ArgumentException($"{name} must be a boolean.");
+        return value.GetBoolean();
+    }
+
+    private static double OptionalUnitInterval(JsonElement element, string name, double fallback)
+    {
+        var result = OptionalFinite(element, name, fallback);
+        return result is >= 0 and <= 1
+            ? result
+            : throw new ArgumentOutOfRangeException(name, "Value must be between 0 and 1.");
+    }
+
+    private static CadRectD RequiredRect(JsonElement element, string name)
+    {
+        if (!element.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Object)
+            throw new ArgumentException($"{name} must be an object with min_x, min_y, max_x, and max_y.");
+
+        var minX = RequiredFinite(value, "min_x");
+        var minY = RequiredFinite(value, "min_y");
+        var maxX = RequiredFinite(value, "max_x");
+        var maxY = RequiredFinite(value, "max_y");
+        if (maxX <= minX || maxY <= minY)
+            throw new ArgumentException($"{name} max values must be greater than min values.");
+        return CadRectD.FromLTRB(minX, minY, maxX, maxY);
+    }
 
     private static double OptionalFinite(JsonElement element, string name, double fallback)
     {
@@ -1119,17 +1500,63 @@ internal sealed class CadWorkspaceToolExecutor
     {
         var tools = CadDocumentToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
         tools.AddRange(WorkspaceToolDefinitions());
+        tools.Add(Tool("insert_image_from_file", "Import an image file and add it as an undoable CadImage in the active editing space. The image is stored in the document; it is not a live external link.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["file_path"] = StringSchema("Absolute image file path"),
+                ["bounds"] = RectSchema("Target CAD world-coordinate image frame"),
+                ["layer"] = StringSchema("Existing target layer name or ID"),
+                ["name"] = StringSchema("Optional image entity name"),
+                ["rotation_degrees"] = NumberSchema("Counter-clockwise image rotation"),
+                ["opacity"] = new { type = "number", minimum = 0.0, maximum = 1.0 },
+                ["z_index"] = new { type = "integer" },
+                ["visible"] = new { type = "boolean" },
+                ["locked"] = new { type = "boolean" }
+            }, ["file_path", "bounds"])));
+        tools.Add(Tool("add_ole_object", "Add an embedded OLE object from persisted OLE storage bytes as an undoable CadOleObject.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["ole_base64"] = Base64Schema("Base64-encoded persisted OLE storage"),
+                ["bounds"] = RectSchema("Target CAD world-coordinate OLE frame"),
+                ["layer"] = StringSchema("Existing target layer name or ID"),
+                ["name"] = StringSchema("Optional OLE entity name"),
+                ["source_name"] = StringSchema("Optional source or application name"),
+                ["content_type"] = StringSchema("Optional OLE content type"),
+                ["opacity"] = new { type = "number", minimum = 0.0, maximum = 1.0 },
+                ["z_index"] = new { type = "integer" },
+                ["visible"] = new { type = "boolean" },
+                ["locked"] = new { type = "boolean" }
+            }, ["ole_base64", "bounds"])));
         tools.AddRange(CadGeometryTools.ToolDefinitions);
         tools.Add(CadEntitySpecificPropertyTools.ToolDefinition);
+        tools.Add(Tool("set_ole_object_data", "Replace persisted OLE storage bytes as one undoable entity update.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(),
+                ["entity_id"] = new { type = "integer", minimum = 1 },
+                ["ole_base64"] = Base64Schema("Base64-encoded persisted OLE storage"),
+                ["source_name"] = StringSchema("Optional source or application name"),
+                ["content_type"] = StringSchema("Optional OLE content type")
+            }, ["entity_id", "ole_base64"])));
+        tools.Add(CadTextStyleTools.ToolDefinition);
+        tools.Add(CadGraphicStyleTools.ToolDefinition);
         tools.AddRange(CadLayerTools.ToolDefinitions);
         tools.Add(CadBulkCreationTools.ToolDefinition);
         tools.Add(CadCompositePathTools.ToolDefinition);
         tools.Add(Tool("list_document_catalog", "List layers and reusable graphic, fill, hatch, and text styles for a document.",
             ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
-        tools.Add(Tool("set_entity_common_properties", "Set undoable common entity properties in one document batch. color overrides graphic_style.",
-            ObjectSchema(CommonPropertySchema(includeEntityIds: true), ["entity_ids"])));
+        tools.Add(Tool("set_entity_common_properties", "Set undoable common entity properties in one document batch. color and graphic_style are mutually exclusive; use one or the other.",
+            ObjectSchema(
+                CommonPropertySchema(includeEntityIds: true),
+                ["entity_ids"],
+                not: MutuallyExclusive("color", "graphic_style"))));
         tools.Add(Tool("set_entity_fill", "Set no fill, an existing fill style, solid fill, or hatch fill on fill-capable entities.",
-            ObjectSchema(FillSchema(includeEntityIds: true), ["entity_ids", "mode"])));
+            ObjectSchema(
+                FillSchema(includeEntityIds: true),
+                ["entity_ids", "mode"],
+                allOf: FillRequirements())));
         tools.Add(Tool("set_entity_stroke_style", "Set one or more stroke cap, dash, or join properties while preserving omitted values.",
             ObjectSchema(StrokeSchema(includeEntityIds: true), ["entity_ids"])));
         tools.Add(Tool("create_block", "Create an undoable reusable Block from entities in the active drawing space and replace them with one reference. Uses the current selection when entity_ids is omitted.",
@@ -1141,8 +1568,22 @@ internal sealed class CadWorkspaceToolExecutor
                 ["base_x"] = new { type = "number" },
                 ["base_y"] = new { type = "number" },
                 ["reference_layer"] = StringSchema("Existing layer name or ID for the created reference"),
-                ["reference_name"] = StringSchema("Optional name for the created reference entity")
-            }, ["name", "base_x", "base_y"])));
+                ["reference_name"] = StringSchema("Optional name for the created reference entity"),
+                ["color_source"] = EnumSchema("by_layer", "explicit", "by_block"),
+                ["color"] = StringSchema("Reference stroke color"),
+                ["line_weight"] = new
+                {
+                    oneOf = new object[]
+                    {
+                        new { type = "number", exclusiveMinimum = 0.0 },
+                        new { type = "string", @enum = new[] { "by_layer" } }
+                    }
+                },
+                ["graphic_style"] = StringSchema("Existing graphic style name or ID; use none to clear"),
+                ["z_index"] = new { type = "integer" },
+                ["visible"] = new { type = "boolean" },
+                ["locked"] = new { type = "boolean" }
+            }, ["name", "base_x", "base_y"], not: MutuallyExclusive("color", "graphic_style"))));
         tools.Add(Tool("insert_block", "Insert an undoable reference to an existing user Block.",
             ObjectSchema(new Dictionary<string, object>
             {
@@ -1154,8 +1595,22 @@ internal sealed class CadWorkspaceToolExecutor
                 ["rotation_degrees"] = new { type = "number" },
                 ["scale_x"] = new { type = "number" },
                 ["scale_y"] = new { type = "number" },
-                ["name"] = StringSchema("Optional Block reference entity name")
-            }, ["block", "x", "y"])));
+                ["name"] = StringSchema("Optional Block reference entity name"),
+                ["color_source"] = EnumSchema("by_layer", "explicit", "by_block"),
+                ["color"] = StringSchema("Reference stroke color"),
+                ["line_weight"] = new
+                {
+                    oneOf = new object[]
+                    {
+                        new { type = "number", exclusiveMinimum = 0.0 },
+                        new { type = "string", @enum = new[] { "by_layer" } }
+                    }
+                },
+                ["graphic_style"] = StringSchema("Existing graphic style name or ID; use none to clear"),
+                ["z_index"] = new { type = "integer" },
+                ["visible"] = new { type = "boolean" },
+                ["locked"] = new { type = "boolean" }
+            }, ["block", "x", "y"], not: MutuallyExclusive("color", "graphic_style"))));
         return tools;
     }
 
@@ -1172,7 +1627,10 @@ internal sealed class CadWorkspaceToolExecutor
             if (definition.Name is not ("add_text" or "add_shape_text"))
                 properties["stroke_style"] = JsonSerializer.SerializeToNode(ObjectSchema(StrokeSchema(false)));
             if (definition.Name is "add_circle" or "add_ellipse" or "add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path")
-                properties["fill"] = JsonSerializer.SerializeToNode(ObjectSchema(FillSchema(false), ["mode"]));
+                properties["fill"] = JsonSerializer.SerializeToNode(ObjectSchema(
+                    FillSchema(false),
+                    ["mode"],
+                    allOf: FillRequirements()));
             if (definition.Name == "add_text")
             {
                 properties["text_style"] = JsonSerializer.SerializeToNode(StringSchema("Existing Text style name or ID; none selects the default"));
@@ -1188,6 +1646,9 @@ internal sealed class CadWorkspaceToolExecutor
             }
         }
 
+        if (CreationToolNames.Contains(definition.Name))
+            schema["not"] = JsonSerializer.SerializeToNode(MutuallyExclusive("color", "graphic_style"));
+
         return new AiToolDefinition(
             definition.Name,
             definition.Description,
@@ -1196,6 +1657,11 @@ internal sealed class CadWorkspaceToolExecutor
 
     private static IEnumerable<AiToolDefinition> WorkspaceToolDefinitions()
     {
+        yield return Tool("get_agent_capabilities", "Return the CAD Agent Contract: coordinate rules, editable-space rules, undo and selection behavior, tool groups, and examples.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["include_examples"] = new { type = "boolean", description = "Include representative tool-call examples; defaults to true." }
+            }));
         yield return Tool("list_documents", "List all open CAD documents and their stable document_id values.",
             ObjectSchema(new Dictionary<string, object>()));
         yield return Tool("create_document", "Create and activate a new CAD document.",
@@ -1241,6 +1707,7 @@ internal sealed class CadWorkspaceToolExecutor
         properties["graphic_style"] = StringSchema("Existing graphic style name or ID; use none to clear");
         properties["z_index"] = new { type = "integer" };
         properties["visible"] = new { type = "boolean" };
+        properties["locked"] = new { type = "boolean", description = "Prevent direct entity edits when true; unlocking is undoable." };
         return properties;
     }
 
@@ -1252,7 +1719,7 @@ internal sealed class CadWorkspaceToolExecutor
             properties["document_id"] = DocumentIdSchema();
             properties["entity_ids"] = EntityIdsSchema();
         }
-        properties["mode"] = EnumSchema("none", "style", "solid", "hatch");
+        properties["mode"] = EnumSchema("none", "style", "solid", "hatch", "gradient");
         properties["style"] = StringSchema("Existing fill style name or ID when mode is style");
         properties["color"] = StringSchema("Solid or hatch foreground color");
         properties["pattern"] = StringSchema("Hatch pattern name or ID; defaults to ANSI31");
@@ -1260,8 +1727,56 @@ internal sealed class CadWorkspaceToolExecutor
         properties["angle_degrees"] = new { type = "number" };
         properties["origin_x"] = new { type = "number" };
         properties["origin_y"] = new { type = "number" };
+        properties["gradient_kind"] = EnumSchema("linear", "radial");
+        properties["stops"] = new
+        {
+            type = "array",
+            minItems = 2,
+            items = new
+            {
+                type = "object",
+                properties = new
+                {
+                    offset = new { type = "number", minimum = 0.0, maximum = 1.0 },
+                    color = StringSchema("Stop color: #RRGGBB, #AARRGGBB, or a named protocol color")
+                },
+                required = new[] { "offset", "color" },
+                additionalProperties = false
+            }
+        };
+        properties["gradient_scale"] = new { type = "number", exclusiveMinimum = 0.0 };
+        properties["gradient_angle_degrees"] = new { type = "number" };
+        properties["gradient_origin_x"] = new { type = "number" };
+        properties["gradient_origin_y"] = new { type = "number" };
+        properties["gradient_centered"] = new { type = "boolean" };
         return properties;
     }
+
+    private static object[] FillRequirements() =>
+    [
+        new Dictionary<string, object>
+        {
+            ["if"] = new Dictionary<string, object>
+            {
+                ["properties"] = new Dictionary<string, object>
+                {
+                ["mode"] = new Dictionary<string, object> { ["const"] = "style" }
+                }
+            },
+            ["then"] = new Dictionary<string, object> { ["required"] = new[] { "style" } }
+        },
+        new Dictionary<string, object>
+        {
+            ["if"] = new Dictionary<string, object>
+            {
+                ["properties"] = new Dictionary<string, object>
+                {
+                    ["mode"] = new Dictionary<string, object> { ["const"] = "gradient" }
+                }
+            },
+            ["then"] = new Dictionary<string, object> { ["required"] = new[] { "stops" } }
+        }
+    ];
 
     private static Dictionary<string, object> StrokeSchema(bool includeEntityIds)
     {
@@ -1281,17 +1796,62 @@ internal sealed class CadWorkspaceToolExecutor
 
     private static object ObjectSchema(
         IReadOnlyDictionary<string, object> properties,
-        IReadOnlyList<string>? required = null) => new
+        IReadOnlyList<string>? required = null,
+        object? not = null,
+        IReadOnlyList<object>? allOf = null)
     {
-        type = "object",
-        properties,
-        required = required ?? [],
-        additionalProperties = false
+        var schema = new Dictionary<string, object>
+        {
+            ["type"] = "object",
+            ["properties"] = properties,
+            ["required"] = required ?? [],
+            ["additionalProperties"] = false
+        };
+        if (not is not null)
+            schema["not"] = not;
+        if (allOf is { Count: > 0 })
+            schema["allOf"] = allOf;
+        return schema;
+    }
+
+    private static object MutuallyExclusive(params string[] properties) => new Dictionary<string, object>
+    {
+        ["required"] = properties
+    };
+
+    private static object RectDto(CadRectD bounds) => new
+    {
+        min_x = bounds.MinX,
+        min_y = bounds.MinY,
+        max_x = bounds.MaxX,
+        max_y = bounds.MaxY
     };
 
     private static object DocumentIdSchema() => StringSchema("Stable open-document ID from list_documents");
     private static object StringSchema(string description) => new { type = "string", description };
+    private static object Base64Schema(string description) => new
+    {
+        type = "string",
+        description,
+        contentEncoding = "base64",
+        minLength = 4
+    };
+    private static object NumberSchema(string description) => new { type = "number", description };
     private static object EnumSchema(params string[] values) => new { type = "string", @enum = values };
+    private static object RectSchema(string description) => new
+    {
+        type = "object",
+        description,
+        properties = new
+        {
+            min_x = NumberSchema("Minimum X"),
+            min_y = NumberSchema("Minimum Y"),
+            max_x = NumberSchema("Maximum X"),
+            max_y = NumberSchema("Maximum Y")
+        },
+        required = new[] { "min_x", "min_y", "max_x", "max_y" },
+        additionalProperties = false
+    };
     private static object EntityIdsSchema() => new
     {
         type = "array",
@@ -1306,6 +1866,7 @@ internal sealed class CadWorkspaceToolExecutor
     private static readonly string[] CommonAppearanceFields =
     [
         "color_source", "color", "line_weight", "graphic_style", "z_index", "visible"
+        , "locked"
     ];
 
     private static readonly string[] StrokeFields =
