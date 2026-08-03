@@ -155,7 +155,12 @@ internal sealed class Direct2DEntityRenderer(
                 resources,
                 options,
                 geometrySimplified);
+            // A custom graphic line type is not part of the realization key. Do
+            // not reuse a realization built for another dash pattern; draw it
+            // with the cached Direct2D stroke style instead.
+            var canUseStrokeRealization = resources.GraphicLineTypeStrokeStyle is null;
             if (!options.EnableGeometryRealizations ||
+                !canUseStrokeRealization ||
                 !resourceCache.TryDrawStrokedGeometry(
                     context,
                     entity,
@@ -425,6 +430,9 @@ internal sealed class Direct2DEntityRenderer(
         CadRenderOptions options,
         bool geometrySimplified = false)
     {
+        if (resources.GraphicLineTypeStrokeStyle is not null)
+            return resources.GraphicLineTypeStrokeStyle;
+
         if (!geometrySimplified &&
             !Direct2DEntityLevelOfDetail.ShouldSimplifyStrokeStyle(
                 entity,

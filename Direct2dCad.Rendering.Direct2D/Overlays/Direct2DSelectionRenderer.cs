@@ -170,7 +170,7 @@ internal sealed class Direct2DSelectionRenderer(
         }
 
         resourceCache.TryGetEntityResources(entity.Id, out var resources);
-        var style = ToTransientStyle(selectionStyle, resources);
+        var style = ToTransientStyle(document, selectionStyle, resources);
         if (TryDrawCachedGeometry(
                 context,
                 entity,
@@ -276,6 +276,23 @@ internal sealed class Direct2DSelectionRenderer(
                     text.ObliqueAngleRadians,
                     style,
                     shapeFontId: text.ShapeFontId);
+                break;
+            case CadText text:
+                transientRenderer.DrawText(
+                    context,
+                    document,
+                    viewport,
+                    text.Text,
+                    text.Position + offset,
+                    text.Height,
+                    text.TextBounds.Translate(offset),
+                    style,
+                    text.IsInverted,
+                    document.ViewSettings.BackgroundColor,
+                    text.InvertedMarginFactor,
+                    text.TextStyleId,
+                    text.RotationRadians,
+                    textFormat: null);
                 break;
             case CadImage image:
                 DrawImageFrame(context, viewport, image, offset, style);
@@ -443,6 +460,11 @@ internal sealed class Direct2DSelectionRenderer(
         CadTransientStyle style,
         CadRenderOptions options)
     {
+        // CadText is rendered through DirectWrite, not through the optional entity geometry.
+        // Keep it on the text path even if a resource bucket happens to contain geometry.
+        if (entity is CadText)
+            return false;
+
         if (resources?.Geometry is null)
             return false;
 
@@ -463,11 +485,17 @@ internal sealed class Direct2DSelectionRenderer(
                                               entity,
                                               context.Transform,
                                               options);
-        var strokeStyle = useLevelOfDetailStrokeStyle
+        // LOD may simplify explicit cap/join details, but it must not turn a
+        // layer-defined/custom dash pattern into a solid line. The normal entity
+        // renderer follows the same rule.
+        var strokeStyle = useLevelOfDetailStrokeStyle &&
+                          resources.GraphicLineTypeStrokeStyle is null
             ? styleResources.GetLevelOfDetailStrokeStyle(
                 resourceCache.Factory,
                 entity.StrokeStyle)
-            : styleResources.GetStrokeStyle(resourceCache.Factory, style);
+            : resources.StrokeStyle ??
+              resources.GraphicLineTypeStrokeStyle ??
+              styleResources.GetStrokeStyle(resourceCache.Factory, style);
         var strokeStyleKey = useLevelOfDetailStrokeStyle
             ? Direct2DStrokeRealizationStyleKey.ForLevelOfDetail(entity.StrokeStyle)
             : Direct2DStrokeRealizationStyleKey.ForTransient(style.LinePattern);
@@ -475,10 +503,12 @@ internal sealed class Direct2DSelectionRenderer(
         var strokeWidthChangesWithScale = style.KeepStrokeWidthScreenConstant ||
                                           Math.Abs(strokeWidth - style.StrokeWidth) >
                                           Math.Max(1e-6, Math.Abs(style.StrokeWidth) * 1e-5);
+        var canUseStrokeRealization = resources.GraphicLineTypeStrokeStyle is null;
         if (offset == CadVectorD.Zero)
         {
             DrawCachedFill(context, entity, resources, geometry, entity.Bounds, style, viewport, options);
-            if (!resourceCache.TryDrawStrokedGeometry(
+            if (!canUseStrokeRealization ||
+                !resourceCache.TryDrawStrokedGeometry(
                     context,
                     entity,
                     resources,
@@ -501,7 +531,8 @@ internal sealed class Direct2DSelectionRenderer(
         try
         {
             DrawCachedFill(context, entity, resources, geometry, entity.Bounds, style, viewport, options);
-            if (!resourceCache.TryDrawStrokedGeometry(
+            if (!canUseStrokeRealization ||
+                !resourceCache.TryDrawStrokedGeometry(
                     context,
                     entity,
                     resources,
@@ -651,6 +682,18 @@ internal sealed class Direct2DSelectionRenderer(
     }
 
     private static CadTransientStyle ToTransientStyle(
+        CadHandleStyle style)
+    {
+        return new CadTransientStyle(
+            style.StrokeColor,
+            style.StrokeWidth,
+            CadTransientLinePattern.Solid,
+            KeepStrokeWidthScreenConstant: style.KeepSizeScreenConstant,
+            MinimumScreenStrokeWidth: 0.5);
+    }
+
+    private static CadTransientStyle ToTransientStyle(
+        CadDocument document,
         CadHandleStyle style,
         Direct2DResourceCache.EntityResourceBucket? resources = null)
     {
@@ -665,13 +708,28 @@ internal sealed class Direct2DSelectionRenderer(
             ? hatch with { ForegroundColor = style.StrokeColor }
             : null;
 
+        CadStrokeStyle? strokeStyle = resources is { StrokeStyleDefinition: var definition } &&
+                                       definition != CadStrokeStyle.Default
+            ? definition
+            : null;
+        CadLineTypeDefinition? lineType = null;
+        if (strokeStyle is null &&
+            resources is { GraphicLineTypeId: var lineTypeId } &&
+            lineTypeId != LineTypeId.Continuous &&
+            document.LineTypes.TryGetValue(lineTypeId, out var resolvedLineType))
+        {
+            lineType = resolvedLineType;
+        }
+
         return new CadTransientStyle(
             style.StrokeColor,
             style.StrokeWidth,
             CadTransientLinePattern.Solid,
             fillColor,
             style.KeepSizeScreenConstant,
-            HatchFill: hatchFill);
+            HatchFill: hatchFill,
+            StrokeStyle: strokeStyle,
+            LineType: lineType);
     }
 
     private static CadColor WithMaximumAlpha(CadColor color, byte maximumAlpha)

@@ -239,14 +239,11 @@ internal static class Direct2DEntityLevelOfDetail
 
         if (entity is CadText or CadShapeText)
         {
-            return ResolveText(
-                    entity,
-                    metrics,
-                    ResolveEffectiveScreenScale(transform, options)) switch
-            {
-                Direct2DTextRenderDetail.Full => Direct2DEntityRenderDetail.Full,
-                _ => Direct2DEntityRenderDetail.Simplified
-            };
+            // Selection is an overlay. A generic rectangle proxy hides the actual
+            // glyphs and makes small/rotated text appear to disappear when selected.
+            // Keep the same DirectWrite/stroke-font path as the normal renderer so
+            // the selection color is the only visual override.
+            return Direct2DEntityRenderDetail.Full;
         }
 
         if (entity is CadImage)

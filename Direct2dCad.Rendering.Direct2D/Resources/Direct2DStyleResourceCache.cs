@@ -86,6 +86,12 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
 
     public ID2D1StrokeStyle? GetStrokeStyle(ID2D1Factory? factory, CadTransientStyle style)
     {
+        if (style.StrokeStyle is { } strokeStyle)
+            return GetEntityStrokeStyle(factory, strokeStyle);
+
+        if (style.LineType is { } lineType)
+            return GetLineTypeStrokeStyle(factory, lineType);
+
         if (style.LinePattern == CadTransientLinePattern.Solid)
             return null;
 
@@ -96,6 +102,36 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             _ => DashStyle.Dash
         };
         return GetStrokeStyleForFrame(factory, StrokeStyleKey.CreateDefault(dashStyle));
+    }
+
+    private ID2D1StrokeStyle? GetEntityStrokeStyle(
+        ID2D1Factory? factory,
+        CadStrokeStyle style)
+    {
+        if (factory is null || style == CadStrokeStyle.Default)
+            return null;
+
+        var key = new StrokeStyleKey(
+            ToD2DCapStyle(style.StartCap),
+            ToD2DCapStyle(style.EndCap),
+            ToD2DCapStyle(style.DashCap),
+            ToD2DLineJoin(style.LineJoin),
+            ToD2DDashStyle(style.DashStyle),
+            DefaultMiterLimit);
+        return GetStrokeStyleForFrame(factory, key);
+    }
+
+    private ID2D1StrokeStyle? GetLineTypeStrokeStyle(
+        ID2D1Factory? factory,
+        CadLineTypeDefinition lineType)
+    {
+        if (factory is null || lineType.IsContinuous)
+            return null;
+
+        var dashes = lineType.DashPattern
+            .Select(value => (float)Math.Max(Math.Abs(value), 0.001))
+            .ToArray();
+        return GetStrokeStyleForFrame(factory, StrokeStyleKey.CreateCustom(dashes));
     }
 
     public ID2D1StrokeStyle? GetOriginStrokeStyle(

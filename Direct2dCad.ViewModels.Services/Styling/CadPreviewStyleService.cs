@@ -82,12 +82,26 @@ internal readonly struct CadPreviewStyleService(
         var lineWeight = ResolveEntityLineWeight(entity, graphic, layer);
 
         var fill = ResolveTransientFill(ResolveEntityFillStyleId(entity));
+        CadStrokeStyle? strokeStyle = entity.StrokeStyle == CadStrokeStyle.Default
+            ? null
+            : entity.StrokeStyle;
+        CadLineTypeDefinition? lineType = null;
+        if (strokeStyle is null &&
+            graphic is not null &&
+            graphic.LineTypeId != LineTypeId.Continuous &&
+            document.LineTypes.TryGetValue(graphic.LineTypeId, out var resolvedLineType))
+        {
+            lineType = resolvedLineType;
+        }
+
         return new CadTransientStyle(
             strokeColor,
             ResolvePreviewStrokeWidth(lineWeight, layer.LineWeight),
             CadTransientLinePattern.Solid,
             fill.FillColor,
-            HatchFill: fill.HatchFill);
+            HatchFill: fill.HatchFill,
+            StrokeStyle: strokeStyle,
+            LineType: lineType);
     }
 
     public CadTransientStyle CreateDrawingAuxiliaryStyle(CadColor strokeColor)

@@ -1,6 +1,7 @@
 using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
@@ -263,13 +264,26 @@ internal readonly struct CadClipboardInteractionService(
             _ => layerColor
         };
         var strokeWidth = ResolveStrokeWidth(item, graphic, effectiveLayer);
+        CadStrokeStyle? strokeStyle = item.Entity.State.StrokeStyle == CadStrokeStyle.Default
+            ? null
+            : item.Entity.State.StrokeStyle;
+        CadLineTypeDefinition? lineType = null;
+        if (strokeStyle is null &&
+            graphic is not null &&
+            graphic.LineTypeId != LineTypeId.Continuous &&
+            document.LineTypes.TryGetValue(graphic.LineTypeId, out var resolvedLineType))
+        {
+            lineType = resolvedLineType;
+        }
 
         return new CadTransientStyle(
             strokeColor,
             strokeWidth,
             CadTransientLinePattern.Solid,
             ResolvePreviewFillColor(item.FillStyle),
-            HatchFill: ResolvePreviewHatchFill(item.FillStyle));
+            HatchFill: ResolvePreviewHatchFill(item.FillStyle),
+            StrokeStyle: strokeStyle,
+            LineType: lineType);
     }
 
     private static double ResolveStrokeWidth(

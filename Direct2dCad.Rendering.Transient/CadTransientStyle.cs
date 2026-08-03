@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 
@@ -18,7 +19,9 @@ public readonly record struct CadTransientStyle(
     CadColor? FillColor = null,
     bool KeepStrokeWidthScreenConstant = true,
     double MinimumScreenStrokeWidth = 0.5,
-    CadTransientHatchFill? HatchFill = null)
+    CadTransientHatchFill? HatchFill = null,
+    CadStrokeStyle? StrokeStyle = null,
+    CadLineTypeDefinition? LineType = null)
 {
     public static CadTransientStyle Construction { get; } = new(
         CadColor.FromArgb(230, 64, 196, 255),
