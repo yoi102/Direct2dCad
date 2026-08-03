@@ -84,6 +84,10 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.True(circle.TryGetProperty("color", out _));
         Assert.True(circle.TryGetProperty("line_weight", out _));
         Assert.True(circle.TryGetProperty("stroke_style", out _));
+        var circleStroke = circle.GetProperty("stroke_style").GetProperty("properties");
+        Assert.False(circleStroke.TryGetProperty("start_cap", out _));
+        Assert.False(circleStroke.TryGetProperty("end_cap", out _));
+        Assert.False(circleStroke.TryGetProperty("line_join", out _));
         Assert.True(circle.TryGetProperty("fill", out _));
         Assert.True(circle.TryGetProperty("locked", out _));
         Assert.True(rectangle.TryGetProperty("corner_radius_x", out _));
@@ -93,6 +97,32 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.False(text.TryGetProperty("stroke_style", out _));
         Assert.True(text.TryGetProperty("font_family", out _));
         Assert.True(text.TryGetProperty("inverted", out _));
+    }
+
+    [Fact]
+    public void CreationStrokeSchemas_ExposeOnlyTypeCompatibleFields()
+    {
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+
+        var lineStroke = tools["add_line"].Parameters
+            .GetProperty("properties").GetProperty("stroke_style").GetProperty("properties");
+        Assert.True(lineStroke.TryGetProperty("start_cap", out _));
+        Assert.True(lineStroke.TryGetProperty("end_cap", out _));
+        Assert.False(lineStroke.TryGetProperty("line_join", out _));
+
+        var polygonStroke = tools["add_polygon"].Parameters
+            .GetProperty("properties").GetProperty("stroke_style").GetProperty("properties");
+        Assert.False(polygonStroke.TryGetProperty("start_cap", out _));
+        Assert.False(polygonStroke.TryGetProperty("end_cap", out _));
+        Assert.True(polygonStroke.TryGetProperty("line_join", out _));
+
+        var polyline = tools["add_polyline"].Parameters;
+        Assert.True(polyline.GetProperty("properties").GetProperty("stroke_style")
+            .GetProperty("properties").TryGetProperty("start_cap", out _));
+        Assert.True(polyline.TryGetProperty("allOf", out var rules));
+        Assert.Contains(rules.EnumerateArray(), rule =>
+            rule.GetProperty("if").GetProperty("properties").GetProperty("closed")
+                .GetProperty("const").GetBoolean());
     }
 
     [Theory]
@@ -150,10 +180,29 @@ public sealed class CadWorkspaceToolExecutorTests
 
         var fill = tools["set_entity_fill"].Parameters;
         Assert.True(fill.TryGetProperty("allOf", out var fillRules));
-        Assert.NotEmpty(fillRules.EnumerateArray());
+        Assert.True(fillRules.GetArrayLength() >= 7);
         var fillProperties = fill.GetProperty("properties");
         Assert.Contains("gradient", fillProperties.GetProperty("mode").GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
         Assert.True(fillProperties.TryGetProperty("stops", out _));
+    }
+
+    [Fact]
+    public void MutationSchemas_RejectEmptyPropertyOperations()
+    {
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+
+        foreach (var name in new[] { "set_entity_common_properties", "set_entity_stroke_style", "set_entity_specific_properties" })
+        {
+            var parameters = tools[name].Parameters;
+            var hasAnyOf = parameters.TryGetProperty("anyOf", out _);
+            if (parameters.TryGetProperty("allOf", out var allOf))
+                hasAnyOf |= allOf.EnumerateArray().Any(rule => rule.TryGetProperty("anyOf", out _));
+            Assert.True(hasAnyOf, name);
+        }
+
+        var geometry = tools["set_entity_geometry"].Parameters;
+        Assert.True(geometry.TryGetProperty("anyOf", out var geometryFields));
+        Assert.NotEmpty(geometryFields.EnumerateArray());
     }
 
     [Fact]

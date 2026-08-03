@@ -221,8 +221,67 @@ public sealed class CadEntityQueryTests
 
         var imageDto = Assert.Single(imageResult.GetProperty("entities").EnumerateArray());
         Assert.Equal(image.Id.Value, imageDto.GetProperty("id").GetInt64());
+        Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("color_source").ValueKind);
+        Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("line_weight").ValueKind);
+        Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("line_weight_source").ValueKind);
         Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("resolved_appearance").ValueKind);
+        Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("fill_kind").ValueKind);
         Assert.Equal(JsonValueKind.Null, imageDto.GetProperty("stroke_style").ValueKind);
+    }
+
+    [Fact]
+    public void DashStyleFilter_ExcludesEntitiesWithoutStrokeStyle()
+    {
+        var document = CadDocument.Create("Dash styles");
+        var circle = document.AddCircle(new CadPointD(0, 0), 2);
+        document.AddText("Label", new CadPointD(0, 3), 1);
+
+        var result = JsonSerializer.SerializeToElement(CadEntityQuery.CreatePage(
+            document,
+            BlockId.ModelSpace,
+            new HashSet<EntityId>(),
+            new CadEntityQueryOptions(
+                CadEntityQuery.CurrentSpaceScope,
+                null,
+                null,
+                SelectedOnly: false,
+                DashStyle: "solid")));
+
+        var entity = Assert.Single(result.GetProperty("entities").EnumerateArray());
+        Assert.Equal(circle.Id.Value, entity.GetProperty("id").GetInt64());
+    }
+
+    [Fact]
+    public void FillFilters_ExcludeEntitiesWithoutFillCapability()
+    {
+        var document = CadDocument.Create("Fill capability");
+        var circle = document.AddCircle(new CadPointD(0, 0), 2);
+        document.AddText("Label", new CadPointD(0, 3), 1);
+        document.AddImage(
+            CadRectD.FromXYWH(5, 0, 2, 2),
+            pixelWidth: 1,
+            pixelHeight: 1,
+            stride: 4,
+            pixels: [0, 0, 0, 255]);
+
+        var result = JsonSerializer.SerializeToElement(CadEntityQuery.CreatePage(
+            document,
+            BlockId.ModelSpace,
+            new HashSet<EntityId>(),
+            new CadEntityQueryOptions(
+                CadEntityQuery.CurrentSpaceScope,
+                null,
+                null,
+                SelectedOnly: false,
+                FillKind: "none",
+                FillStyle: "none",
+                GraphicStyle: "none",
+                ColorSource: "by_layer",
+                LineWeightSource: "by_layer")));
+
+        var entity = Assert.Single(result.GetProperty("entities").EnumerateArray());
+        Assert.Equal(circle.Id.Value, entity.GetProperty("id").GetInt64());
+        Assert.Equal("none", entity.GetProperty("fill_kind").GetString());
     }
 
     private static CadDocument CreateMixedDocument()

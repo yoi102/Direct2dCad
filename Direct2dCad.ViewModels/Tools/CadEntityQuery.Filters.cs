@@ -111,26 +111,35 @@ internal static partial class CadEntityQuery
             entities = entities.Where(entity => SupportsFill(entity) && (FillStyleId(entity) is not null) == hasFill);
         if (!string.IsNullOrWhiteSpace(options.FillKind))
             entities = entities.Where(entity => string.Equals(
-                ResolveFillKind(document, entity),
+                SupportsFill(entity) ? ResolveFillKind(document, entity) : null,
                 options.FillKind,
                 StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(options.ColorSource))
             entities = entities.Where(entity => string.Equals(
-                ProtocolEnum(entity.ColorSource),
+                CadEntityCapabilities.SupportsGraphicStyle(entity)
+                    ? ProtocolEnum(entity.ColorSource)
+                    : null,
                 options.ColorSource,
                 StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(options.LineWeightSource))
             entities = entities.Where(entity => string.Equals(
-                entity.UseLayerLineWeight ? "by_layer" : "explicit",
+                CadEntityCapabilities.SupportsGraphicStyle(entity)
+                    ? entity.UseLayerLineWeight ? "by_layer" : "explicit"
+                    : null,
                 options.LineWeightSource,
                 StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(options.GraphicStyle))
-            entities = entities.Where(entity => StyleMatches(document, GraphicStyleId(entity), options.GraphicStyle));
+            entities = entities.Where(entity =>
+                CadEntityCapabilities.SupportsGraphicStyle(entity) &&
+                StyleMatches(document, GraphicStyleId(entity), options.GraphicStyle));
         if (!string.IsNullOrWhiteSpace(options.FillStyle))
-            entities = entities.Where(entity => StyleMatches(document, FillStyleId(entity), options.FillStyle));
+            entities = entities.Where(entity =>
+                SupportsFill(entity) && StyleMatches(document, FillStyleId(entity), options.FillStyle));
         if (!string.IsNullOrWhiteSpace(options.DashStyle))
             entities = entities.Where(entity => string.Equals(
-                ProtocolEnum(entity.StrokeStyle.DashStyle),
+                CadEntityCapabilities.SupportsStrokeStyle(entity)
+                    ? ProtocolEnum(entity.StrokeStyle.DashStyle)
+                    : null,
                 options.DashStyle,
                 StringComparison.OrdinalIgnoreCase));
 

@@ -122,11 +122,16 @@ internal static class CadEntityQueryProtocol
         properties["locked"] = new { type = "boolean" };
         properties["closed"] = new { type = "boolean", description = "Match closed or open curve entities." };
         properties["has_fill"] = new { type = "boolean", description = "Match fill-capable entities with or without a fill style." };
-        properties["fill_kind"] = new { type = "string", @enum = new[] { "none", "solid", "hatch", "gradient" } };
+        properties["fill_kind"] = new
+        {
+            type = "string",
+            @enum = new[] { "none", "solid", "hatch", "gradient" },
+            description = "Match fill-capable entities by their effective fill kind; non-fill entities are excluded."
+        };
         properties["color_source"] = new { type = "string", @enum = new[] { "by_layer", "explicit", "by_block" } };
         properties["line_weight_source"] = new { type = "string", @enum = new[] { "by_layer", "explicit" } };
-        properties["graphic_style"] = String("Assigned graphic-style name or ID; use none for no assigned style.");
-        properties["fill_style"] = String("Assigned fill-style name or ID; use none for no assigned style.");
+        properties["graphic_style"] = String("Assigned graphic-style name or ID on graphic-style-capable entities; use none for no assigned style.");
+        properties["fill_style"] = String("Assigned fill-style name or ID on fill-capable entities; use none for no assigned style.");
         properties["dash_style"] = new { type = "string", @enum = new[] { "solid", "dash", "dot", "dash_dot", "dash_dot_dot" } };
         properties["min_z_index"] = new { type = "integer" };
         properties["max_z_index"] = new { type = "integer" };

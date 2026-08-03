@@ -64,7 +64,7 @@ internal static class CadBulkCreationTools
         itemProperties["stroke_style"] = new
         {
             type = "object",
-            description = "Optional stroke settings. start_cap/end_cap apply only to open curves; line_join applies only to path entities that expose joins. Unsupported fields are ignored for the target entity.",
+            description = "Optional stroke settings. start_cap/end_cap apply only to open curves; line_join applies only to rectangle, polygon, and path entities that expose joins. In a mixed batch, unsupported stroke fields are filtered for the concrete target entity.",
             properties = new
             {
                 start_cap = new

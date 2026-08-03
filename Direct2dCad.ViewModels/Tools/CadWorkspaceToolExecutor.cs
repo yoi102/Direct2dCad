@@ -778,12 +778,60 @@ internal sealed class CadWorkspaceToolExecutor
         JsonElement arguments,
         CadDocumentToolExecutor executor)
     {
+        ValidateCreationGeometryProperties(toolName, arguments);
         ValidateCreationAppearance(toolName, arguments, executor);
         CadEntitySpecificPropertyTools.ValidateCreationArguments(
             executor.DocumentViewModel.CadEditor.Document,
             toolName,
             arguments);
     }
+
+    private static void ValidateCreationGeometryProperties(string toolName, JsonElement arguments)
+    {
+        var supported = toolName switch
+        {
+            "add_line" => new[] { "x1", "y1", "x2", "y2" },
+            "add_circle" => new[] { "center_x", "center_y", "radius" },
+            "add_rectangle" => new[] { "min_x", "min_y", "max_x", "max_y", "corner_radius", "corner_radius_x", "corner_radius_y" },
+            "add_text" => new[] { "text", "x", "y", "height", "rotation_degrees" },
+            "add_shape_text" => new[] { "text", "x", "y", "height", "rotation_degrees", "width_factor", "character_spacing_factor", "oblique_angle_degrees" },
+            "add_polyline" => new[] { "points", "closed" },
+            "add_arc" => new[] { "center_x", "center_y", "radius", "start_angle_degrees", "sweep_angle_degrees" },
+            "add_ellipse" => new[] { "center_x", "center_y", "radius_x", "radius_y" },
+            "add_ellipse_arc" => new[] { "center_x", "center_y", "radius_x", "radius_y", "start_angle_degrees", "sweep_angle_degrees" },
+            "add_polygon" => new[] { "points" },
+            "add_spline" => new[] { "fit_points", "closed" },
+            "add_composite_path" => new[] { "start", "segments", "closed" },
+            _ => []
+        };
+
+        if (supported.Length == 0)
+            return;
+
+        var unsupported = arguments.EnumerateObject()
+            .Where(property => IsCreationGeometryField(property.Name) &&
+                               !supported.Contains(property.Name, StringComparer.Ordinal))
+            .Select(property => property.Name)
+            .ToArray();
+        if (unsupported.Length > 0)
+        {
+            throw new NotSupportedException(
+                $"{toolName} does not support geometry field(s): {string.Join(", ", unsupported)}.");
+        }
+    }
+
+    private static bool IsCreationGeometryField(string name) => name switch
+    {
+        "x1" or "y1" or "x2" or "y2" or
+        "center_x" or "center_y" or "radius" or "radius_x" or "radius_y" or
+        "start_angle_degrees" or "sweep_angle_degrees" or
+        "min_x" or "min_y" or "max_x" or "max_y" or
+        "corner_radius" or "corner_radius_x" or "corner_radius_y" or
+        "text" or "x" or "y" or "height" or "rotation_degrees" or
+        "width_factor" or "character_spacing_factor" or "oblique_angle_degrees" or
+        "points" or "fit_points" or "start" or "segments" or "closed" => true,
+        _ => false
+    };
 
     private void ValidateCreationAppearance(string toolName, JsonElement arguments, CadDocumentToolExecutor executor)
     {
@@ -854,9 +902,19 @@ internal sealed class CadWorkspaceToolExecutor
     {
         var mode = RequiredString(arguments, "mode").Replace("-", "_", StringComparison.Ordinal).ToLowerInvariant();
         if (mode is "none" or "no_fill")
+        {
+            RejectFillProperties(arguments, mode,
+                "style", "color", "pattern", "scale", "angle_degrees", "origin_x", "origin_y",
+                "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees",
+                "gradient_origin_x", "gradient_origin_y", "gradient_centered");
             return;
+        }
         if (mode == "style")
         {
+            RejectFillProperties(arguments, mode,
+                "color", "pattern", "scale", "angle_degrees", "origin_x", "origin_y",
+                "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees",
+                "gradient_origin_x", "gradient_origin_y", "gradient_centered");
             _ = ResolveExistingFillStyle(document, RequiredString(arguments, "style"));
             return;
         }
@@ -864,8 +922,24 @@ internal sealed class CadWorkspaceToolExecutor
             throw new ArgumentException($"Unsupported fill mode: {mode}");
         if (HasValue(arguments, "color"))
             _ = ParseColor(RequiredString(arguments, "color"));
-        if (mode == "gradient" && HasValue(arguments, "color"))
-            throw new ArgumentException("Gradient fill uses stops[].color instead of color.");
+        if (mode == "solid")
+        {
+            RejectFillProperties(arguments, mode,
+                "style", "pattern", "scale", "angle_degrees", "origin_x", "origin_y",
+                "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees",
+                "gradient_origin_x", "gradient_origin_y", "gradient_centered");
+        }
+        else if (mode == "hatch")
+        {
+            RejectFillProperties(arguments, mode,
+                "style", "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees",
+                "gradient_origin_x", "gradient_origin_y", "gradient_centered");
+        }
+        else
+        {
+            RejectFillProperties(arguments, mode,
+                "style", "color", "pattern", "scale", "angle_degrees", "origin_x", "origin_y");
+        }
         _ = OptionalPositive(arguments, "scale", 1.0);
         _ = OptionalFinite(arguments, "angle_degrees", 0.0);
         _ = OptionalFinite(arguments, "origin_x", 0.0);
@@ -899,6 +973,13 @@ internal sealed class CadWorkspaceToolExecutor
              string.Equals(option.Name, requestedPattern, StringComparison.OrdinalIgnoreCase)));
         if (!exists && !isDefault)
             throw new ArgumentException($"Hatch pattern not found: {requestedPattern}");
+    }
+
+    private static void RejectFillProperties(JsonElement arguments, string mode, params string[] names)
+    {
+        var supplied = names.Where(name => HasValue(arguments, name)).ToArray();
+        if (supplied.Length > 0)
+            throw new ArgumentException($"Fill mode '{mode}' does not accept: {string.Join(", ", supplied)}.");
     }
 
     private static void ValidateStrokeEnum(string field, string value)
@@ -1650,14 +1731,18 @@ internal sealed class CadWorkspaceToolExecutor
             ObjectSchema(
                 CommonPropertySchema(includeEntityIds: true),
                 ["entity_ids"],
-                not: MutuallyExclusive("color", "graphic_style"))));
+                not: MutuallyExclusive("color", "graphic_style"),
+                allOf: [AtLeastOneRequired("layer", "name", "color_source", "color", "line_weight", "graphic_style", "z_index", "visible", "locked")] )));
         tools.Add(Tool("set_entity_fill", "Set no fill, an existing fill style, solid fill, or hatch fill on fill-capable entities.",
             ObjectSchema(
                 FillSchema(includeEntityIds: true),
                 ["entity_ids", "mode"],
                 allOf: FillRequirements())));
-        tools.Add(Tool("set_entity_stroke_style", "Set one or more stroke cap, dash, or join properties while preserving omitted values.",
-            ObjectSchema(StrokeSchema(includeEntityIds: true), ["entity_ids"])));
+        tools.Add(Tool("set_entity_stroke_style", "Set one or more stroke cap, dash, or join properties while preserving omitted values. Query stroke_style capability first; start/end caps and line_join are entity-type dependent.",
+            ObjectSchema(
+                StrokeSchema(includeEntityIds: true),
+                ["entity_ids"],
+                allOf: [AtLeastOneRequired("start_cap", "end_cap", "dash_cap", "dash_style", "line_join")] )));
         tools.Add(Tool("create_block", "Create an undoable reusable Block from entities in the active drawing space and replace them with one reference. Uses the current selection when entity_ids is omitted.",
             ObjectSchema(new Dictionary<string, object>
             {
@@ -1748,7 +1833,8 @@ internal sealed class CadWorkspaceToolExecutor
                 if (name is not ("layer" or "name"))
                     properties[name] = JsonSerializer.SerializeToNode(value);
             if (definition.Name is not ("add_text" or "add_shape_text"))
-                properties["stroke_style"] = JsonSerializer.SerializeToNode(ObjectSchema(StrokeSchema(false)));
+                properties["stroke_style"] = JsonSerializer.SerializeToNode(
+                    ObjectSchema(CreationStrokeSchema(definition.Name)));
             if (definition.Name is "add_circle" or "add_ellipse" or "add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path")
                 properties["fill"] = JsonSerializer.SerializeToNode(ObjectSchema(
                     FillSchema(false),
@@ -1770,12 +1856,96 @@ internal sealed class CadWorkspaceToolExecutor
         }
 
         if (CreationToolNames.Contains(definition.Name))
+        {
             schema["not"] = JsonSerializer.SerializeToNode(MutuallyExclusive("color", "graphic_style"));
+            AddCreationSchemaRules(schema, definition.Name);
+        }
 
         return new AiToolDefinition(
             definition.Name,
             definition.Description,
             JsonSerializer.SerializeToElement(schema));
+    }
+
+    private static Dictionary<string, object> CreationStrokeSchema(string toolName)
+    {
+        var properties = StrokeSchema(false);
+        if (toolName is "add_circle" or "add_ellipse" or "add_rectangle" or "add_polygon")
+        {
+            properties.Remove("start_cap");
+            properties.Remove("end_cap");
+        }
+        if (toolName is "add_line" or "add_circle" or "add_ellipse" or "add_arc" or "add_ellipse_arc")
+            properties.Remove("line_join");
+        return properties;
+    }
+
+    private static void AddCreationSchemaRules(JsonObject schema, string toolName)
+    {
+        if (toolName is not ("add_polyline" or "add_spline" or "add_composite_path"))
+            return;
+
+        var allOf = schema["allOf"] as JsonArray ?? [];
+        allOf.Add(JsonSerializer.SerializeToNode(new Dictionary<string, object>
+        {
+            ["if"] = new Dictionary<string, object>
+            {
+                ["properties"] = new Dictionary<string, object>
+                {
+                    ["closed"] = new Dictionary<string, object> { ["const"] = true }
+                },
+                ["required"] = new[] { "closed" }
+            },
+            ["then"] = new Dictionary<string, object>
+            {
+                ["properties"] = new Dictionary<string, object>
+                {
+                    ["stroke_style"] = new Dictionary<string, object>
+                    {
+                        ["not"] = new Dictionary<string, object>
+                        {
+                            ["anyOf"] = new object[]
+                            {
+                                new Dictionary<string, object> { ["required"] = new[] { "start_cap" } },
+                                new Dictionary<string, object> { ["required"] = new[] { "end_cap" } }
+                            }
+                        }
+                    }
+                }
+            }
+        }));
+        allOf.Add(JsonSerializer.SerializeToNode(new Dictionary<string, object>
+        {
+            ["if"] = new Dictionary<string, object>
+            {
+                ["anyOf"] = new object[]
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["not"] = new Dictionary<string, object>
+                        {
+                            ["required"] = new[] { "closed" }
+                        }
+                    },
+                    new Dictionary<string, object>
+                    {
+                        ["properties"] = new Dictionary<string, object>
+                        {
+                            ["closed"] = new Dictionary<string, object> { ["const"] = false }
+                        },
+                        ["required"] = new[] { "closed" }
+                    }
+                }
+            },
+            ["then"] = new Dictionary<string, object>
+            {
+                ["not"] = new Dictionary<string, object>
+                {
+                    ["required"] = new[] { "fill" }
+                }
+            }
+        }));
+        schema["allOf"] = allOf;
     }
 
     private static IEnumerable<AiToolDefinition> WorkspaceToolDefinitions()
@@ -1898,8 +2068,34 @@ internal sealed class CadWorkspaceToolExecutor
                 }
             },
             ["then"] = new Dictionary<string, object> { ["required"] = new[] { "stops" } }
-        }
+        },
+        FillModeForbids("none", "style", "color", "pattern", "scale", "angle_degrees", "origin_x", "origin_y", "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees", "gradient_origin_x", "gradient_origin_y", "gradient_centered"),
+        FillModeForbids("style", "color", "pattern", "scale", "angle_degrees", "origin_x", "origin_y", "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees", "gradient_origin_x", "gradient_origin_y", "gradient_centered"),
+        FillModeForbids("solid", "style", "pattern", "scale", "angle_degrees", "origin_x", "origin_y", "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees", "gradient_origin_x", "gradient_origin_y", "gradient_centered"),
+        FillModeForbids("hatch", "style", "gradient_kind", "stops", "gradient_scale", "gradient_angle_degrees", "gradient_origin_x", "gradient_origin_y", "gradient_centered"),
+        FillModeForbids("gradient", "style", "color", "pattern", "scale", "angle_degrees", "origin_x", "origin_y")
     ];
+
+    private static object FillModeForbids(string mode, params string[] properties) => new Dictionary<string, object>
+    {
+        ["if"] = new Dictionary<string, object>
+        {
+            ["properties"] = new Dictionary<string, object>
+            {
+                ["mode"] = new Dictionary<string, object> { ["const"] = mode }
+            }
+        },
+        ["then"] = new Dictionary<string, object>
+        {
+            ["not"] = new Dictionary<string, object>
+            {
+                ["anyOf"] = properties.Select(property => (object)new Dictionary<string, object>
+                {
+                    ["required"] = new[] { property }
+                }).ToArray()
+            }
+        }
+    };
 
     private static Dictionary<string, object> StrokeSchema(bool includeEntityIds)
     {
@@ -1961,6 +2157,14 @@ internal sealed class CadWorkspaceToolExecutor
             schema["allOf"] = allOf;
         return schema;
     }
+
+    private static object AtLeastOneRequired(params string[] properties) => new
+    {
+        anyOf = properties.Select(property => new
+        {
+            required = new[] { property }
+        }).ToArray()
+    };
 
     private static object MutuallyExclusive(params string[] properties) => new Dictionary<string, object>
     {

@@ -69,9 +69,15 @@ internal static partial class CadEntityQuery
         bounds = RectDto(entity.Bounds),
         entity.IsVisible,
         entity.IsLocked,
-        color_source = ProtocolEnum(entity.ColorSource),
-        line_weight = entity.UseLayerLineWeight ? (object)"by_layer" : entity.LineWeight?.Value,
-        line_weight_source = entity.UseLayerLineWeight ? "by_layer" : "explicit",
+        color_source = CadEntityCapabilities.SupportsGraphicStyle(entity)
+            ? ProtocolEnum(entity.ColorSource)
+            : null,
+        line_weight = CadEntityCapabilities.SupportsGraphicStyle(entity)
+            ? entity.UseLayerLineWeight ? (object)"by_layer" : entity.LineWeight?.Value
+            : null,
+        line_weight_source = CadEntityCapabilities.SupportsGraphicStyle(entity)
+            ? entity.UseLayerLineWeight ? "by_layer" : "explicit"
+            : null,
         resolved_appearance = ResolvedAppearanceDto(document, entity),
         line_type_id = CadEntityCapabilities.SupportsGraphicStyle(entity)
             ? ResolveLineTypeId(document, entity)?.Value
@@ -86,10 +92,18 @@ internal static partial class CadEntityQuery
         graphic_style_details = CadEntityCapabilities.SupportsGraphicStyle(entity)
             ? GraphicStyleDto(document, entity)
             : null,
-        fill_style_id = FillStyleId(entity)?.Value,
-        fill_style = StyleName(document, FillStyleId(entity)),
-        fill_kind = ResolveFillKind(document, entity),
-        fill_details = FillDto(document, entity),
+        fill_style_id = CadEntityCapabilities.SupportsFill(entity)
+            ? FillStyleId(entity)?.Value
+            : null,
+        fill_style = CadEntityCapabilities.SupportsFill(entity)
+            ? StyleName(document, FillStyleId(entity))
+            : null,
+        fill_kind = CadEntityCapabilities.SupportsFill(entity)
+            ? ResolveFillKind(document, entity)
+            : null,
+        fill_details = CadEntityCapabilities.SupportsFill(entity)
+            ? FillDto(document, entity)
+            : null,
         stroke_style = CadEntityCapabilities.SupportsStrokeStyle(entity)
             ? new
             {

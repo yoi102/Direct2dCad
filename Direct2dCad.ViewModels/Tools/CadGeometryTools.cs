@@ -331,6 +331,33 @@ internal static class CadGeometryTools
             properties,
             required = new[] { "entity_id" },
             additionalProperties = false,
+            anyOf = new[]
+            {
+                new { required = new[] { "start" } },
+                new { required = new[] { "end" } },
+                new { required = new[] { "center" } },
+                new { required = new[] { "radius" } },
+                new { required = new[] { "radius_x" } },
+                new { required = new[] { "radius_y" } },
+                new { required = new[] { "start_angle_degrees" } },
+                new { required = new[] { "sweep_angle_degrees" } },
+                new { required = new[] { "bounds" } },
+                new { required = new[] { "frame_bounds" } },
+                new { required = new[] { "corner_radius_x" } },
+                new { required = new[] { "corner_radius_y" } },
+                new { required = new[] { "points" } },
+                new { required = new[] { "fit_points" } },
+                new { required = new[] { "segments" } },
+                new { required = new[] { "closed" } },
+                new { required = new[] { "position" } },
+                new { required = new[] { "height" } },
+                new { required = new[] { "rotation_degrees" } },
+                new { required = new[] { "width_factor" } },
+                new { required = new[] { "character_spacing_factor" } },
+                new { required = new[] { "oblique_angle_degrees" } },
+                new { required = new[] { "scale_x" } },
+                new { required = new[] { "scale_y" } }
+            },
             allOf = GeometryRequirements()
         };
     }

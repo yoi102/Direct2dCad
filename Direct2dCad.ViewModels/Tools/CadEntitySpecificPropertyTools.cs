@@ -271,6 +271,17 @@ internal static class CadEntitySpecificPropertyTools
             block_definition = new { type = "string", description = "Existing user Block name or ID" }
         },
         required = new[] { "entity_ids" },
+        anyOf = new[]
+        {
+            new { required = new[] { "text" } },
+            new { required = new[] { "text_style" } },
+            new { required = new[] { "font_family" } },
+            new { required = new[] { "shape_font" } },
+            new { required = new[] { "inverted" } },
+            new { required = new[] { "inverted_margin_factor" } },
+            new { required = new[] { "opacity" } },
+            new { required = new[] { "block_definition" } }
+        },
         not = new
         {
             required = new[] { "text_style", "font_family" }
