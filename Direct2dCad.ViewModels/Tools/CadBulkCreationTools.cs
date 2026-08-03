@@ -64,13 +64,39 @@ internal static class CadBulkCreationTools
         itemProperties["stroke_style"] = new
         {
             type = "object",
+            description = "Optional stroke settings. start_cap/end_cap apply only to open curves; line_join applies only to path entities that expose joins. Unsupported fields are ignored for the target entity.",
             properties = new
             {
-                start_cap = Enum("flat", "square", "round", "triangle"),
-                end_cap = Enum("flat", "square", "round", "triangle"),
-                dash_cap = Enum("flat", "square", "round", "triangle"),
-                dash_style = Enum("solid", "dash", "dot", "dash_dot", "dash_dot_dot"),
-                line_join = Enum("miter", "bevel", "round", "miter_or_bevel")
+                start_cap = new
+                {
+                    type = "string",
+                    @enum = new[] { "flat", "square", "round", "triangle" },
+                    description = "Only for open line, arc, ellipse arc, polyline, spline, or composite path entities."
+                },
+                end_cap = new
+                {
+                    type = "string",
+                    @enum = new[] { "flat", "square", "round", "triangle" },
+                    description = "Only for open line, arc, ellipse arc, polyline, spline, or composite path entities."
+                },
+                dash_cap = new
+                {
+                    type = "string",
+                    @enum = new[] { "flat", "square", "round", "triangle" },
+                    description = "Dash cap for stroked curve entities."
+                },
+                dash_style = new
+                {
+                    type = "string",
+                    @enum = new[] { "solid", "dash", "dot", "dash_dot", "dash_dot_dot" },
+                    description = "Dash pattern for stroked curve entities."
+                },
+                line_join = new
+                {
+                    type = "string",
+                    @enum = new[] { "miter", "bevel", "round", "miter_or_bevel" },
+                    description = "Only for rectangles, polygons, polylines, splines, and composite paths."
+                }
             },
             additionalProperties = false
         };

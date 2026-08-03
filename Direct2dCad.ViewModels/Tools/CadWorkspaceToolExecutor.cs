@@ -844,15 +844,9 @@ internal sealed class CadWorkspaceToolExecutor
                 if (HasValue(stroke, field))
                     ValidateStrokeEnum(field, RequiredString(stroke, field));
 
-            var changesStartOrEnd = HasValue(stroke, "start_cap") || HasValue(stroke, "end_cap");
-            var isClosedPath = toolName is "add_polyline" or "add_spline" or "add_composite_path" &&
-                                   arguments.TryGetProperty("closed", out var closed) &&
-                                   closed.ValueKind == JsonValueKind.True;
-            if (changesStartOrEnd && toolName is not ("add_line" or "add_arc" or "add_ellipse_arc") &&
-                (toolName is not ("add_polyline" or "add_spline" or "add_composite_path") || isClosedPath))
-                throw new NotSupportedException($"{toolName} does not support start/end caps.");
-            if (HasValue(stroke, "line_join") && toolName is not ("add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path"))
-                throw new NotSupportedException($"{toolName} does not support line joins.");
+            // The creation schema shares one appearance object between entity types.
+            // Unsupported fields are filtered after creation, when the concrete
+            // entity and its open/closed state are available.
         }
     }
 
@@ -917,6 +911,31 @@ internal sealed class CadWorkspaceToolExecutor
             _ = ParseEnum<CadStrokeLineJoin>(value);
     }
 
+    private static JsonObject FilterSupportedCreationStrokeStyle(
+        CadEntity entity,
+        JsonElement stroke)
+    {
+        var filtered = new JsonObject();
+        foreach (var field in StrokeFields)
+        {
+            if (!HasValue(stroke, field) || !SupportsCreationStrokeField(entity, field))
+                continue;
+
+            filtered[field] = JsonNode.Parse(stroke.GetProperty(field).GetRawText());
+        }
+
+        return filtered;
+    }
+
+    private static bool SupportsCreationStrokeField(CadEntity entity, string field) =>
+        field switch
+        {
+            "start_cap" or "end_cap" => CadEntityCapabilities.SupportsStartEndCaps(entity),
+            "line_join" => CadEntityCapabilities.SupportsLineJoin(entity),
+            "dash_cap" or "dash_style" => CadEntityCapabilities.SupportsStrokeStyle(entity),
+            _ => false
+        };
+
     private IReadOnlyList<string> ApplyCreationAppearance(
         CadDocumentToolExecutor executor,
         EntityId entityId,
@@ -955,11 +974,15 @@ internal sealed class CadWorkspaceToolExecutor
 
         if (arguments.TryGetProperty("stroke_style", out var stroke) && stroke.ValueKind == JsonValueKind.Object)
         {
-            using var strokeDocument = AddEntityIds(stroke, entityId);
-            SetEntityStrokeStyle(
-                executor,
-                strokeDocument.RootElement);
-            changed.Add("stroke_style");
+            var entity = executor.DocumentViewModel.CadEditor.Document.GetEntity(entityId);
+            var supportedStroke = FilterSupportedCreationStrokeStyle(entity, stroke);
+            if (supportedStroke.Count > 0)
+            {
+                using var supportedStrokeDocument = JsonDocument.Parse(supportedStroke.ToJsonString());
+                using var strokeDocument = AddEntityIds(supportedStrokeDocument.RootElement, entityId);
+                SetEntityStrokeStyle(executor, strokeDocument.RootElement);
+                changed.Add("stroke_style");
+            }
         }
 
         return changed;
@@ -1886,11 +1909,36 @@ internal sealed class CadWorkspaceToolExecutor
             properties["document_id"] = DocumentIdSchema();
             properties["entity_ids"] = EntityIdsSchema();
         }
-        properties["start_cap"] = EnumSchema("flat", "square", "round", "triangle");
-        properties["end_cap"] = EnumSchema("flat", "square", "round", "triangle");
-        properties["dash_cap"] = EnumSchema("flat", "square", "round", "triangle");
-        properties["dash_style"] = EnumSchema("solid", "dash", "dot", "dash_dot", "dash_dot_dot");
-        properties["line_join"] = EnumSchema("miter", "bevel", "round", "miter_or_bevel");
+        properties["start_cap"] = new
+        {
+            type = "string",
+            @enum = new[] { "flat", "square", "round", "triangle" },
+            description = "Open-curve start cap only. Do not use for circles, ellipses, polygons, rectangles, or closed paths."
+        };
+        properties["end_cap"] = new
+        {
+            type = "string",
+            @enum = new[] { "flat", "square", "round", "triangle" },
+            description = "Open-curve end cap only. Do not use for circles, ellipses, polygons, rectangles, or closed paths."
+        };
+        properties["dash_cap"] = new
+        {
+            type = "string",
+            @enum = new[] { "flat", "square", "round", "triangle" },
+            description = "Dash cap; available on stroked curve entities."
+        };
+        properties["dash_style"] = new
+        {
+            type = "string",
+            @enum = new[] { "solid", "dash", "dot", "dash_dot", "dash_dot_dot" },
+            description = "Dash pattern for stroked curve entities."
+        };
+        properties["line_join"] = new
+        {
+            type = "string",
+            @enum = new[] { "miter", "bevel", "round", "miter_or_bevel" },
+            description = "Join style for rectangles, polygons, polylines, splines, and composite paths."
+        };
         return properties;
     }
 
