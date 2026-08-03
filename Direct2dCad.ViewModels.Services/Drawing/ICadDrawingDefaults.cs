@@ -59,6 +59,7 @@ public interface ICadDrawingDefaults
     double RectangleCornerRadiusX { get; }
     double RectangleCornerRadiusY { get; }
     string Text { get; }
+    double TextRotationDegrees { get; }
     bool TextInverted { get; }
     double TextInvertedMarginFactor { get; }
     CadColor TextStrokeColor { get; }

@@ -65,6 +65,7 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
     private double _rectangleCornerRadiusX;
     private double _rectangleCornerRadiusY;
     private string _text = "Text";
+    private double _textRotationDegrees;
     private bool _textInverted;
     private double _textInvertedMarginFactor = CadText.DefaultInvertedMarginFactor;
     private CadColor _textStrokeColor = CadColor.Green;
@@ -407,6 +408,12 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _text, value);
     }
 
+    public double TextRotationDegrees
+    {
+        get => _textRotationDegrees;
+        set => SetDrawingSetting(ref _textRotationDegrees, value, IsFinite(value));
+    }
+
     public bool TextInverted
     {
         get => _textInverted;
@@ -592,6 +599,11 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
     private static bool IsFinitePositive(double value)
     {
         return value > 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private static bool IsFinite(double value)
+    {
+        return !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
     private static bool IsFiniteNonNegative(double value)

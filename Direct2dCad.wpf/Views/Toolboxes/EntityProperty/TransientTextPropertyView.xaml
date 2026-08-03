@@ -3,11 +3,12 @@
         <TextBlock Text="{I18N {x:Static r:LangKeys.TextDrawing}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
         <ep:DrawingLayerPropertySection ViewModel="{Binding}" /><ep:EntitySettingsPropertySection ViewModel="{Binding}" />
         <Expander Header="{I18N {x:Static r:LangKeys.Text}}" IsExpanded="True" Margin="0,0,0,8">
-            <Grid Margin="8,6,8,8"><Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+            <Grid Margin="8,6,8,8"><Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Content}}" VerticalAlignment="Top" Margin="0,4,0,0" /><TextBox Grid.Row="0" Grid.Column="1" Text="{Binding TextContent, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" Margin="0,0,0,8" />
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Font}}" VerticalAlignment="Center" /><ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding FontFamilyOptions, Mode=OneWay}" SelectedItem="{Binding SelectedFontFamily, Mode=TwoWay}" IsTextSearchEnabled="True" Margin="0,0,0,8" />
-                <CheckBox Grid.Row="2" Grid.ColumnSpan="2" Content="{I18N {x:Static r:LangKeys.Inverted}}" IsChecked="{Binding IsInverted}" Margin="0,2,0,8" />
-                <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Margin}}" VerticalAlignment="Center" /><mah:NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding InvertedMarginFactor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" StringFormat="F3" Interval="0.01" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Rotation}}" VerticalAlignment="Center" /><mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding RotationDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F2" Interval="5" Margin="0,0,0,8" />
+                <CheckBox Grid.Row="3" Grid.ColumnSpan="2" Content="{I18N {x:Static r:LangKeys.Inverted}}" IsChecked="{Binding IsInverted}" Margin="0,2,0,8" />
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Margin}}" VerticalAlignment="Center" /><mah:NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding InvertedMarginFactor, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" StringFormat="F3" Interval="0.01" />
             </Grid>
         </Expander>
         <ep:StrokeAppearancePropertySection ViewModel="{Binding}" />

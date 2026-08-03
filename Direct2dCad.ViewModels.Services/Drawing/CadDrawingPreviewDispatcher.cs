@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Transient;
@@ -148,6 +149,7 @@ internal readonly struct CadDrawingPreviewDispatcher(
             styleResolver.CreateTextTransientStyle(),
             defaults.TextInverted,
             text.InvertedMarginFactor,
-            text.TextStyleId));
+            text.TextStyleId,
+            CadArc.DegreesToRadians(defaults.TextRotationDegrees)));
     }
 }

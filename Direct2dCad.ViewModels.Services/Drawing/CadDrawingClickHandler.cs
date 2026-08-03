@@ -13,7 +13,8 @@ internal readonly record struct CadContinueArcBase(
 internal readonly record struct CadDrawingTextRequest(
     string Text,
     StyleId? TextStyleId,
-    double InvertedMarginFactor);
+    double InvertedMarginFactor,
+    double RotationRadians);
 
 internal sealed class CadDrawingClickHandler(
     CadCanvasToolMode toolMode,
@@ -85,7 +86,12 @@ internal sealed class CadDrawingClickHandler(
 
             case CadCanvasToolMode.Text:
                 var text = textRequestFactory();
-                creator.AddText(world, text.Text, text.TextStyleId, text.InvertedMarginFactor);
+                creator.AddText(
+                    world,
+                    text.Text,
+                    text.TextStyleId,
+                    text.InvertedMarginFactor,
+                    text.RotationRadians);
                 return true;
 
             case CadCanvasToolMode.SetOrigin:

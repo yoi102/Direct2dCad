@@ -182,12 +182,18 @@ internal sealed class CadDrawingEntityCreator(
         entityCreated();
     }
 
-    public void AddText(CadPointD position, string text, StyleId? textStyleId, double invertedMarginFactor)
+    public void AddText(
+        CadPointD position,
+        string text,
+        StyleId? textStyleId,
+        double invertedMarginFactor,
+        double rotationRadians)
     {
         editor.AddText(
             text,
             position,
             textMeasurementService.ResolveTextBoxHeight(text, textStyleId),
+            rotationRadians,
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveTextGraphicStyleId(),
             textStyleId: textStyleId,

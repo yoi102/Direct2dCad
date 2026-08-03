@@ -860,9 +860,36 @@ internal readonly struct CadRenderInvalidationCalculator(
 
     private static CadRectD ResolveTransientTextBounds(CadTransientText text)
     {
-        return text.IsInverted
+        var bounds = text.IsInverted
             ? text.Bounds.Inflate(text.Height * Math.Max(0, text.InvertedMarginFactor))
             : text.Bounds;
+
+        if (bounds.IsEmpty ||
+            !double.IsFinite(text.RotationRadians) ||
+            Math.Abs(text.RotationRadians) <= 1e-12)
+        {
+            return bounds;
+        }
+
+        var cos = Math.Cos(text.RotationRadians);
+        var sin = Math.Sin(text.RotationRadians);
+        var rotated = CadRectD.Empty;
+        foreach (var corner in new[]
+                 {
+                     new CadPointD(bounds.MinX, bounds.MinY),
+                     new CadPointD(bounds.MaxX, bounds.MinY),
+                     new CadPointD(bounds.MaxX, bounds.MaxY),
+                     new CadPointD(bounds.MinX, bounds.MaxY)
+                 })
+        {
+            var dx = corner.X - text.Position.X;
+            var dy = corner.Y - text.Position.Y;
+            rotated = rotated.ExpandToInclude(new CadPointD(
+                text.Position.X + dx * cos - dy * sin,
+                text.Position.Y + dx * sin + dy * cos));
+        }
+
+        return rotated;
     }
 
     private static CadRectD ResolveTransientShapeTextBounds(CadTransientShapeText text)

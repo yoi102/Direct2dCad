@@ -429,6 +429,9 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel,
     public partial string TextContent { get; set; } = string.Empty;
 
     [ObservableProperty]
+    public partial double RotationDegrees { get; set; }
+
+    [ObservableProperty]
     public partial string? SelectedFontFamily { get; set; }
 
     [ObservableProperty]
@@ -465,6 +468,7 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel,
         {
             RefreshDrawingLayerOptions(_documentViewModel);
             TextContent = _documentViewModel.DrawingDefaults.Text;
+            RotationDegrees = _documentViewModel.DrawingDefaults.TextRotationDegrees;
             RefreshFontFamilyOptions(TextPropertyViewModel.ResolveFontFamily(
                 _documentViewModel.CadEditor.Document,
                 _documentViewModel.DrawingDefaults.TextStyleId));
@@ -489,6 +493,16 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel,
             return;
 
         _documentViewModel.DrawingDefaults.Text = value ?? string.Empty;
+    }
+
+    partial void OnRotationDegreesChanged(double value)
+    {
+        if (_isRefreshing)
+            return;
+
+        _documentViewModel.DrawingDefaults.TextRotationDegrees = IsFinite(value)
+            ? value
+            : 0;
     }
 
     partial void OnSelectedFontFamilyChanged(string? value)
@@ -601,5 +615,10 @@ public partial class TransientTextPropertyViewModel : EntityPropertyViewModel,
     private static bool IsFiniteNonNegative(double value)
     {
         return value >= 0 && !double.IsNaN(value) && !double.IsInfinity(value);
+    }
+
+    private static bool IsFinite(double value)
+    {
+        return !double.IsNaN(value) && !double.IsInfinity(value);
     }
 }

@@ -2274,7 +2274,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadDrawingTextRequest(
             ResolveDrawingText(),
             ResolveDrawingTextStyleId(),
-            ResolveDrawingTextInvertedMarginFactor());
+            ResolveDrawingTextInvertedMarginFactor(),
+            CadArc.DegreesToRadians(DrawingDefaults.TextRotationDegrees));
     }
 
     private void AddDrawingPreview(List<CadTransientItem> items, CadPointD mouseWorld)
