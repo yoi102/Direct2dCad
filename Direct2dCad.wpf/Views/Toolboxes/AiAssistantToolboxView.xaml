@@ -98,6 +98,29 @@
                                      IsReadOnlyCaretVisible="False"
                                      Text="{Binding Content, Mode=OneWay}"
                                      TextWrapping="Wrap" />
+                            <ItemsControl Margin="0,6,0,0"
+                                          ItemsSource="{Binding Images}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type toolboxes:AiImageAttachmentViewModel}">
+                                        <StackPanel Margin="0,0,8,4">
+                                            <Image Width="120"
+                                                   Height="80"
+                                                   Stretch="Uniform"
+                                                   Source="{Binding DataUrl, Converter={x:Static cv:DataUrlToImageSourceConverter.Instance}}" />
+                                            <TextBlock MaxWidth="120"
+                                                       FontSize="10"
+                                                       Opacity="0.7"
+                                                       Text="{Binding SourceName}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
                     <DataTemplate.Triggers>
@@ -133,11 +156,55 @@
                          IsIndeterminate="True"
                          Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />-->
             <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+                <ItemsControl Grid.Row="0"
+                              Margin="0,0,0,5"
+                              ItemsSource="{Binding ImageAttachments}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type toolboxes:AiImageAttachmentViewModel}">
+                            <Border Margin="0,0,5,3"
+                                    Padding="5"
+                                    Background="{DynamicResource MahApps.Brushes.Control.Background}"
+                                    BorderBrush="{DynamicResource MahApps.Brushes.Control.Border}"
+                                    BorderThickness="1"
+                                    CornerRadius="3">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock MaxWidth="150"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding SourceName}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <Button Grid.Column="1"
+                                            Width="22"
+                                            Height="22"
+                                            Padding="0"
+                                            Command="{Binding DataContext.RemoveImageCommand,
+                                                              RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}"
+                                            Content="×"
+                                            Style="{StaticResource MaterialDesignFlatButton}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
                 <TextBox x:Name="PromptTextBox"
+                         Grid.Row="1"
                          MinHeight="54"
                          MaxHeight="120"
                          Padding="8,6"
@@ -147,9 +214,26 @@
                          Text="{Binding UserInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PreviewKeyDown="OnPromptPreviewKeyDown"
                          md:HintAssist.Hint="{I18N {x:Static r:LangKeys.AiPromptHint}}" />
-                <StackPanel Grid.Column="1"
+                <StackPanel Grid.Row="1"
+                            Grid.Column="1"
                             Margin="6,0,0,0"
                             VerticalAlignment="Bottom">
+                    <Button Width="34"
+                            Height="34"
+                            Padding="0"
+                            Command="{Binding AddImageFromFileCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            ToolTip="{I18N {x:Static r:LangKeys.AiAttachImage}}">
+                        <md:PackIcon Kind="ImagePlus" Width="19" Height="19" />
+                    </Button>
+                    <Button Width="34"
+                            Height="34"
+                            Padding="0"
+                            Command="{Binding PasteImageCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            ToolTip="{I18N {x:Static r:LangKeys.AiPasteImage}}">
+                        <md:PackIcon Kind="ContentPaste" Width="19" Height="19" />
+                    </Button>
                     <Button Width="34"
                             Height="34"
                             Padding="0"

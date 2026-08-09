@@ -1511,4 +1511,19 @@
   <data name="ClearMessages" xml:space="preserve">
     <value>Clear messages</value>
   </data>
+  <data name="AiAttachImage" xml:space="preserve">
+    <value>Attach image from file</value>
+  </data>
+  <data name="AiPasteImage" xml:space="preserve">
+    <value>Paste image from clipboard</value>
+  </data>
+  <data name="AiImagePrompt" xml:space="preserve">
+    <value>Please analyze the attached image.</value>
+  </data>
+  <data name="AiClipboardNoImage" xml:space="preserve">
+    <value>The clipboard does not contain an image.</value>
+  </data>
+  <data name="AiImageTooLarge" xml:space="preserve">
+    <value>The image is too large to attach.</value>
+  </data>
 </root>

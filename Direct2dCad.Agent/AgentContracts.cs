@@ -17,10 +17,12 @@ public sealed class AgentConversation
 
     public IReadOnlyList<AiChatMessage> Messages => _messages;
 
-    public void AddUser(string content)
+    public void AddUser(
+        string content,
+        IReadOnlyList<AiChatContentPart>? contentParts = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
-        _messages.Add(AiChatMessage.User(content));
+        _messages.Add(AiChatMessage.User(content, contentParts));
     }
 
     public void Clear() => _messages.Clear();

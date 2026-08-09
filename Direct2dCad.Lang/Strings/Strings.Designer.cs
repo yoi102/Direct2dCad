@@ -734,6 +734,36 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("ClearMessages", resourceCulture);
             }
         }
+
+        public static string AiAttachImage {
+            get {
+                return ResourceManager.GetString("AiAttachImage", resourceCulture);
+            }
+        }
+
+        public static string AiPasteImage {
+            get {
+                return ResourceManager.GetString("AiPasteImage", resourceCulture);
+            }
+        }
+
+        public static string AiImagePrompt {
+            get {
+                return ResourceManager.GetString("AiImagePrompt", resourceCulture);
+            }
+        }
+
+        public static string AiClipboardNoImage {
+            get {
+                return ResourceManager.GetString("AiClipboardNoImage", resourceCulture);
+            }
+        }
+
+        public static string AiImageTooLarge {
+            get {
+                return ResourceManager.GetString("AiImageTooLarge", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   查找类似 Close 的本地化字符串。

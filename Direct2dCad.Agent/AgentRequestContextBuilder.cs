@@ -285,6 +285,14 @@ internal static class AgentRequestContextBuilder
     internal static int EstimateMessageTokens(AiChatMessage message)
     {
         var total = 8 + EstimateTextTokens(message.Content);
+        if (message.ContentParts is { Count: > 0 } contentParts)
+        {
+            total += contentParts.Sum(part => part.Type switch
+            {
+                AiChatContentPartType.Image => 1024,
+                _ => EstimateTextTokens(part.Text)
+            });
+        }
         if (message.ToolCalls is { Count: > 0 })
         {
             total += message.ToolCalls.Sum(call =>

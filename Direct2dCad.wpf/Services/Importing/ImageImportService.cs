@@ -39,6 +39,29 @@ internal sealed class ImageImportService : IImageImportService
             : CreateImportData(image, "image/bgra32", "Clipboard Image");
     }
 
+    public string CreatePngDataUrl(CadImageImportData image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+
+        var topDownPixels = FlipRows(image.Pixels, image.Stride, image.PixelHeight);
+        var bitmap = BitmapSource.Create(
+            image.PixelWidth,
+            image.PixelHeight,
+            96,
+            96,
+            PixelFormats.Pbgra32,
+            null,
+            topDownPixels,
+            image.Stride);
+        bitmap.Freeze();
+
+        using var stream = new MemoryStream();
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        encoder.Save(stream);
+        return $"data:image/png;base64,{Convert.ToBase64String(stream.ToArray())}";
+    }
+
     private static CadImageImportData CreateImportData(
         BitmapSource source,
         string contentType,

@@ -1,4 +1,5 @@
 using Direct2dCad.Agent;
+using Direct2dCad.AI;
 
 namespace Direct2dCad.Agent.Codex;
 
@@ -13,7 +14,8 @@ public sealed record CodexAgentRunRequest(
     string Prompt,
     string WorkspaceContext,
     CodexAgentOptions Options,
-    IAgentToolset? Toolset);
+    IAgentToolset? Toolset,
+    IReadOnlyList<AiChatContentPart>? ContentParts = null);
 
 public sealed record CodexAgentRunResult(
     string? Model,

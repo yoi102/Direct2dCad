@@ -12,14 +12,36 @@ public enum AiChatRole
 
 public sealed record AiToolCall(string Id, string Name, string ArgumentsJson);
 
+public enum AiChatContentPartType
+{
+    Text,
+    Image
+}
+
+public sealed record AiChatContentPart(
+    AiChatContentPartType Type,
+    string? Text = null,
+    string? DataUrl = null)
+{
+    public static AiChatContentPart TextPart(string text) =>
+        new(AiChatContentPartType.Text, Text: text);
+
+    public static AiChatContentPart Image(string dataUrl) =>
+        new(AiChatContentPartType.Image, DataUrl: dataUrl);
+}
+
 public sealed record AiChatMessage(
     AiChatRole Role,
     string? Content,
     IReadOnlyList<AiToolCall>? ToolCalls = null,
-    string? ToolCallId = null)
+    string? ToolCallId = null,
+    IReadOnlyList<AiChatContentPart>? ContentParts = null)
 {
     public static AiChatMessage System(string content) => new(AiChatRole.System, content);
-    public static AiChatMessage User(string content) => new(AiChatRole.User, content);
+    public static AiChatMessage User(
+        string content,
+        IReadOnlyList<AiChatContentPart>? contentParts = null) =>
+        new(AiChatRole.User, content, ContentParts: contentParts);
     public static AiChatMessage Assistant(string? content, IReadOnlyList<AiToolCall>? toolCalls = null) =>
         new(AiChatRole.Assistant, content, toolCalls);
     public static AiChatMessage Tool(string toolCallId, string content) =>

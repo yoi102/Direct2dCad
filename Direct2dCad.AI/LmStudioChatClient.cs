@@ -94,13 +94,29 @@ public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
                 AiChatRole.Tool => "tool",
                 _ => throw new ArgumentOutOfRangeException(nameof(message))
             },
-            Content: message.Content,
+            Content: message.ContentParts is { Count: > 0 } contentParts
+                ? contentParts.Select(CreateContentPartPayload).ToArray()
+                : message.Content,
             ToolCalls: message.ToolCalls?.Select(call => new ToolCallPayload(
                 call.Id,
                 "function",
                 new ToolCallFunctionPayload(call.Name, call.ArgumentsJson))).ToArray(),
             ToolCallId: message.ToolCallId);
     }
+
+    private static MessageContentPartPayload CreateContentPartPayload(AiChatContentPart part) =>
+        part.Type switch
+        {
+            AiChatContentPartType.Text => new MessageContentPartPayload(
+                "text",
+                part.Text,
+                null),
+            AiChatContentPartType.Image => new MessageContentPartPayload(
+                "image_url",
+                null,
+                new ImageUrlPayload(part.DataUrl ?? throw new ArgumentException("Image content requires a data URL."))),
+            _ => throw new ArgumentOutOfRangeException(nameof(part))
+        };
 
     private static ToolDefinitionPayload CreateToolPayload(AiToolDefinition definition) =>
         new("function", new ToolFunctionPayload(
@@ -199,9 +215,17 @@ public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
 
     private sealed record ChatMessagePayload(
         [property: JsonPropertyName("role")] string Role,
-        [property: JsonPropertyName("content")] string? Content,
+        [property: JsonPropertyName("content")] object? Content,
         [property: JsonPropertyName("tool_calls")] IReadOnlyList<ToolCallPayload>? ToolCalls,
         [property: JsonPropertyName("tool_call_id")] string? ToolCallId);
+
+    private sealed record MessageContentPartPayload(
+        [property: JsonPropertyName("type")] string Type,
+        [property: JsonPropertyName("text")] string? Text,
+        [property: JsonPropertyName("image_url")] ImageUrlPayload? ImageUrl);
+
+    private sealed record ImageUrlPayload(
+        [property: JsonPropertyName("url")] string Url);
 
     private sealed record ToolDefinitionPayload(
         [property: JsonPropertyName("type")] string Type,

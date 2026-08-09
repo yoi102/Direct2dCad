@@ -90,6 +90,58 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public async Task RunAsync_SendsImageInputAsDataUrl()
+    {
+        using var server = new FakeAppServer();
+        server.RequestHandler = (method, id, parameters, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    transport.Reply(id, new { thread = new { id = "thread-image" } });
+                    break;
+                case "turn/start":
+                    var input = parameters.GetProperty("input");
+                    Assert.Equal("text", input[0].GetProperty("type").GetString());
+                    Assert.Equal("image", input[1].GetProperty("type").GetString());
+                    Assert.Equal(
+                        "data:image/png;base64,AA==",
+                        input[1].GetProperty("url").GetString());
+                    transport.Reply(id, new { turn = new { id = "turn-image" } });
+                    transport.Send(new
+                    {
+                        method = "item/completed",
+                        @params = new
+                        {
+                            item = new { type = "agentMessage", text = "image received" }
+                        }
+                    });
+                    transport.Send(new
+                    {
+                        method = "turn/completed",
+                        @params = new { turn = new { status = "completed" } }
+                    });
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        var result = await client.RunAsync(new CodexAgentRunRequest(
+            "describe the image",
+            string.Empty,
+            CreateOptions(),
+            null,
+            [AiChatContentPart.Image("data:image/png;base64,AA==")]));
+
+        Assert.False(result.ResponseWasEmpty);
+    }
+
+    [Fact]
     public async Task RunAsync_ExposesDynamicToolsAndReturnsToolResult()
     {
         using var server = new FakeAppServer();

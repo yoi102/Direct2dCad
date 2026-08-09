@@ -59,6 +59,29 @@ public sealed class LmStudioChatClientTests
     }
 
     [Fact]
+    public async Task CompleteAsync_SendsImageContentAsOpenAiImageUrlPart()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse(
+            """{"model":"vision-model","choices":[{"message":{"role":"assistant","content":"I see an image."}}]}"""));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "vision-model",
+            [AiChatMessage.User(
+                "describe this",
+                [
+                    AiChatContentPart.TextPart("describe this"),
+                    AiChatContentPart.Image("data:image/png;base64,AA==")
+                ])],
+            []));
+
+        Assert.Contains("\"type\":\"image_url\"", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("data:image/png;base64,AA==", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CompleteAsync_MapsNestedContextWindowError()
     {
         const string error =

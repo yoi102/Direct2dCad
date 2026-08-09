@@ -98,7 +98,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
                 new
                 {
                     threadId = active.ThreadId,
-                    input = new[] { new { type = "text", text = prompt } },
+                    input = CreateTurnInput(prompt, request.ContentParts),
                     model = NullIfWhiteSpace(request.Options.Model),
                     effort = NormalizeReasoningEffort(request.Options.ReasoningEffort)
                 },
@@ -118,6 +118,26 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
         {
             Interlocked.CompareExchange(ref _activeTurn, null, active);
         }
+    }
+
+    private static IReadOnlyList<object> CreateTurnInput(
+        string prompt,
+        IReadOnlyList<AiChatContentPart>? contentParts)
+    {
+        var input = new List<object> { new { type = "text", text = prompt } };
+        foreach (var part in contentParts ?? [])
+        {
+            if (part.Type != AiChatContentPartType.Image)
+                continue;
+
+            input.Add(new
+            {
+                type = "image",
+                url = part.DataUrl ?? throw new ArgumentException("Image content requires a data URL.")
+            });
+        }
+
+        return input;
     }
 
     public async Task ResetConversationAsync(CancellationToken cancellationToken = default)
