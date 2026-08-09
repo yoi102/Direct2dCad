@@ -1,3 +1,4 @@
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering;
 
 namespace Direct2dCad.Tests;
@@ -48,5 +49,69 @@ public sealed class CadRenderInvalidationTests
                         .Intersects(invalidation.DirtyScreenRects[right]));
             }
         }
+    }
+
+    [Fact]
+    public void FromWorldBounds_ProjectsPaddingAndClampsToSurface()
+    {
+        var viewport = new CadViewport();
+        viewport.SetSize(100, 80);
+        viewport.SetView(2.0, new CadPointD(50, 40));
+
+        var invalidation = CadRenderInvalidation.FromWorldBounds(
+            viewport,
+            CadRectD.FromXYWH(-30, -20, 20, 20),
+            100,
+            80,
+            paddingPixels: 4.0);
+
+        var dirty = Assert.Single(invalidation.DirtyScreenRects);
+        Assert.Equal(new CadScreenRect(0, 36, 34, 44), dirty);
+    }
+
+    [Fact]
+    public void FromWorldBounds_ReturnsEmptyForEmptyBoundsOrSurface()
+    {
+        var viewport = new CadViewport();
+        viewport.SetSize(100, 80);
+        viewport.SetView(1.0, CadPointD.Origin);
+
+        Assert.True(CadRenderInvalidation.FromWorldBounds(
+            viewport,
+            CadRectD.Empty,
+            100,
+            80).IsEmpty);
+        Assert.True(CadRenderInvalidation.FromWorldBounds(
+            viewport,
+            CadRectD.FromXYWH(0, 0, 10, 10),
+            0,
+            80).IsEmpty);
+    }
+
+    [Fact]
+    public void FromWorldBounds_ReturnsFullForNonFinitePadding()
+    {
+        var viewport = new CadViewport();
+        viewport.SetSize(100, 80);
+        viewport.SetView(1.0, CadPointD.Origin);
+
+        var invalidation = CadRenderInvalidation.FromWorldBounds(
+            viewport,
+            CadRectD.FromXYWH(double.MaxValue, 0, 10, 10),
+            100,
+            80,
+            paddingPixels: double.PositiveInfinity);
+
+        Assert.True(invalidation.IsFull);
+    }
+
+    [Fact]
+    public void Union_PropagatesFullAndIgnoresEmptyInvalidations()
+    {
+        var partial = CadRenderInvalidation.FromScreenRect(
+            new CadScreenRect(10, 10, 20, 20));
+
+        Assert.Same(partial, partial.Union(CadRenderInvalidation.Empty));
+        Assert.Same(CadRenderInvalidation.Full, partial.Union(CadRenderInvalidation.Full));
     }
 }
