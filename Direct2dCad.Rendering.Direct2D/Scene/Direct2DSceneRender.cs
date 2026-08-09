@@ -122,6 +122,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(changes);
         ThrowIfDisposed();
+        var hadBackgroundGeometryPreparation =
+            _resourceCache.CancelBackgroundGeometryPreparation();
         _tileCache.ApplyChanges(document, changes);
         _commandListCache.ApplyChanges(document, changes);
         _blockReferenceRenderer.ApplyChanges(document, changes);
@@ -129,6 +131,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _entityOrderCache.ApplyChanges(document, changes);
         _resourceCache.ApplyChanges(document, changes);
         _oleRenderer.ApplyChanges(document, changes);
+        if (hadBackgroundGeometryPreparation)
+            _resourceCache.ScheduleBackgroundGeometryPreparation(document);
     }
 
     public void ResetDeviceResources(
@@ -136,7 +140,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         IDWriteFactory? writeFactory,
         ID2D1Device? device,
         ID2D1DeviceContext? deviceContext,
-        CadDocument? document = null)
+        CadDocument? document = null,
+        bool prepareBackgroundResources = true)
     {
         ThrowIfDisposed();
         _tileCache.Clear();
@@ -150,8 +155,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _resourceCache.ClearCache();
         _styleResources.Reset(factory, deviceContext);
         _textFormatResources.Reset(writeFactory);
-        _resourceCache.ResetDeviceResources(factory, writeFactory, deviceContext, document);
+        _resourceCache.ResetDeviceResources(
+            factory,
+            writeFactory,
+            deviceContext,
+            prepareBackgroundResources ? document : null);
         _commandListCache.ResetBackgroundResources(factory, device);
+
+        if (!prepareBackgroundResources && document is not null)
+            _resourceCache.RebuildAll(document);
     }
 
     internal void SuspendBackgroundChunkRecording()
@@ -175,11 +187,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     {
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
+        var hadBackgroundGeometryPreparation =
+            _resourceCache.CancelBackgroundGeometryPreparation();
         _tileCache.InvalidateEntity(document, entityId);
         _commandListCache.InvalidateEntity(entityId);
         _blockReferenceRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildEntityResources(document, entityId);
+        if (hadBackgroundGeometryPreparation)
+            _resourceCache.ScheduleBackgroundGeometryPreparation(document);
     }
 
     public void RemoveEntity(EntityId entityId)
@@ -369,6 +385,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return false;
 
         options ??= new CadRenderOptions();
+        var backgroundGeometryBuildPending =
+            _resourceCache.ApplyBackgroundGeometryPreparation(
+                document,
+                buildStep ? 64 : 4);
+        if (backgroundGeometryBuildPending)
+            return true;
+
         if (buildStep)
             _resourceCache.BeginGeometryRealizationBuildBatch();
         if (options.ActiveLayoutId is { } layoutId &&

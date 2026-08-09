@@ -98,6 +98,7 @@ public sealed class Direct2DRenderHostIntegrationTests
             ParallelRenderingEntityThreshold = 32
         });
 
+        PrepareAllRenderCaches(host);
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 
         Assert.Equal(1, host.RenderStatistics.ParallelFrameCount);
@@ -143,6 +144,7 @@ public sealed class Direct2DRenderHostIntegrationTests
             ParallelRenderingEntityThreshold = 32
         });
 
+        PrepareAllRenderCaches(host);
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 
         Assert.Equal(1, host.RenderStatistics.ParallelFrameCount);
@@ -201,6 +203,7 @@ public sealed class Direct2DRenderHostIntegrationTests
             ParallelRenderingEntityThreshold = 2
         });
 
+        PrepareAllRenderCaches(host);
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 
         Assert.Equal(1, host.RenderStatistics.ParallelFrameCount);
@@ -218,6 +221,18 @@ public sealed class Direct2DRenderHostIntegrationTests
             firstFrameBuildCount);
         Assert.True(host.RenderStatistics.GeometryRealizationCacheHitCount >= 1);
         Assert.True(host.RenderStatistics.GeometryRealizationStrokeDrawCount >= 1);
+    }
+
+    private static void PrepareAllRenderCaches(Direct2DImageRenderHost host)
+    {
+        var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 5;
+        while (host.PrepareRenderCacheStep())
+        {
+            if (Stopwatch.GetTimestamp() >= deadline)
+                throw new TimeoutException("Timed out while preparing Direct2D render caches.");
+
+            Thread.Yield();
+        }
     }
 
     [Fact]

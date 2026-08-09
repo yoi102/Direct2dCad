@@ -296,7 +296,8 @@ internal sealed class Direct2DSharedDeviceSceneRenderer : IDisposable
                     dwriteFactory,
                     d2dDevice,
                     context,
-                    document);
+                    document,
+                    prepareBackgroundResources: false);
 
                 return new WorkerSlot(
                     context,

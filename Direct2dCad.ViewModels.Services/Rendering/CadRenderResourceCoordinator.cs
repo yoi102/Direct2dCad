@@ -26,7 +26,12 @@ internal sealed class CadRenderResourceCoordinator
         renderHost.SetTransientScene(transientScene);
         renderHost.SetHandleScene(handleScene);
         editor.DocumentChanged += documentChangedHandler;
-        editor.RegisterGeometryResourceManager(renderHost.GeometryResourceManager);
+        // SetScene already reset the device resources and scheduled the initial
+        // background geometry preparation. Rebuilding here would immediately
+        // move the whole document back onto the UI thread.
+        editor.RegisterGeometryResourceManager(
+            renderHost.GeometryResourceManager,
+            rebuildExistingResources: false);
         IsAttached = true;
     }
 

@@ -422,7 +422,8 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                     dwriteFactory,
                     d2dDevice,
                     d2dContext,
-                    document);
+                    document,
+                    prepareBackgroundResources: false);
 
                 return new WorkerSlot(
                     d3dDevice,

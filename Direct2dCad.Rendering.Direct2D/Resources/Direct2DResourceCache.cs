@@ -27,6 +27,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     private readonly Direct2DGeometryRealizationCache _geometryRealizations = new();
     private readonly Direct2DGeometryFactory _geometryFactory = new();
     private readonly Direct2DHatchTileCache _hatchTiles;
+    private Direct2DGeometryPreparationService? _backgroundGeometryPreparation;
     private float _maximumStrokeWidth;
     private bool _maximumStrokeWidthDirty;
     private bool _disposed;
@@ -111,6 +112,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         CadDocument? document = null)
     {
         ClearEntityResources();
+        _backgroundGeometryPreparation?.Dispose();
+        _backgroundGeometryPreparation = null;
         _imageBitmapResources.Reset(deviceContext);
         _hatchTiles.Reset(deviceContext);
         _geometryRealizations.Reset(deviceContext);
@@ -119,7 +122,64 @@ internal sealed class Direct2DResourceCache : IDisposable
         DeviceContext = deviceContext;
 
         if (document is not null)
-            RebuildAll(document);
+            ScheduleBackgroundGeometryPreparation(document);
+    }
+
+    internal void ScheduleBackgroundGeometryPreparation(CadDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ThrowIfDisposed();
+
+        _backgroundGeometryPreparation?.Dispose();
+        _backgroundGeometryPreparation = Factory is { } factory
+            ? new Direct2DGeometryPreparationService(factory)
+            : null;
+        _backgroundGeometryPreparation?.Schedule(document);
+    }
+
+    internal bool CancelBackgroundGeometryPreparation()
+    {
+        ThrowIfDisposed();
+        if (_backgroundGeometryPreparation is not { } preparation)
+            return false;
+
+        preparation.Dispose();
+        _backgroundGeometryPreparation = null;
+        return true;
+    }
+
+    internal bool ApplyBackgroundGeometryPreparation(
+        CadDocument document,
+        int maximumEntityCount)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ThrowIfDisposed();
+        if (_backgroundGeometryPreparation is not { } preparation)
+            return false;
+
+        var applied = 0;
+        while (applied < Math.Max(1, maximumEntityCount) &&
+               preparation.TryTakeNext(out var prepared) &&
+               prepared is not null)
+        {
+            try
+            {
+                RebuildEntityResources(document, prepared.EntityId, prepared);
+            }
+            finally
+            {
+                prepared.Dispose();
+            }
+
+            applied++;
+        }
+
+        if (preparation.IsPending)
+            return true;
+
+        preparation.Dispose();
+        _backgroundGeometryPreparation = null;
+        return false;
     }
 
     public bool TryGetEntityResources(EntityId entityId, out EntityResourceBucket? bucket)
@@ -250,13 +310,18 @@ internal sealed class Direct2DResourceCache : IDisposable
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
 
+        _backgroundGeometryPreparation?.Dispose();
+        _backgroundGeometryPreparation = null;
         ClearEntityResources();
 
         foreach (var entity in document.Entities.Values)
             RebuildEntityResources(document, entity.Id);
     }
 
-    public void RebuildEntityResources(CadDocument document, EntityId entityId)
+    public void RebuildEntityResources(
+        CadDocument document,
+        EntityId entityId,
+        Direct2DPreparedGeometry? preparedGeometry = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
@@ -294,7 +359,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             return;
         }
 
-        var newBucket = CreateEntityResources(document, entity, layer);
+        var newBucket = CreateEntityResources(document, entity, layer, preparedGeometry);
         if (newBucket.IsEmpty)
         {
             newBucket.Dispose();
@@ -328,7 +393,8 @@ internal sealed class Direct2DResourceCache : IDisposable
     private EntityResourceBucket CreateEntityResources(
         CadDocument document,
         CadEntity entity,
-        CadLayer layer)
+        CadLayer layer,
+        Direct2DPreparedGeometry? preparedGeometry = null)
     {
         var bucket = new EntityResourceBucket(entity.Id);
         try
@@ -363,9 +429,17 @@ internal sealed class Direct2DResourceCache : IDisposable
             }
 
             var hasFillStyle = TryResolveFillStyle(document, entity, out var fillStyle);
-            (bucket.Geometry, bucket.GeometryComplexity) = CreateGeometry(
-                entity,
-                fillStyle is CadHatchFillStyle);
+            if (preparedGeometry is not null)
+            {
+                bucket.Geometry = preparedGeometry.TakeGeometry();
+                bucket.GeometryComplexity = preparedGeometry.Complexity;
+            }
+            else
+            {
+                (bucket.Geometry, bucket.GeometryComplexity) = CreateGeometry(
+                    entity,
+                    fillStyle is CadHatchFillStyle);
+            }
 
             if (hasFillStyle)
             {
@@ -688,6 +762,16 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadShapeText shapeText => CreateShapeTextGeometry(shapeText.CreateStrokeSegments()),
             _ => (null, 0)
         };
+    }
+
+    internal Direct2DPreparedGeometry CreatePreparedGeometry(
+        CadEntity entity,
+        bool includePrimitiveFillGeometry)
+    {
+        var (geometry, complexity) = CreateGeometry(
+            entity,
+            includePrimitiveFillGeometry);
+        return new Direct2DPreparedGeometry(entity.Id, geometry, complexity);
     }
 
     private (ID2D1Geometry? Medium, ID2D1Geometry? Low) CreateGeometryLods(CadEntity entity)
@@ -1115,6 +1199,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         if (_disposed)
             return;
 
+        _backgroundGeometryPreparation?.Dispose();
+        _backgroundGeometryPreparation = null;
         ClearCache();
         _imageBitmapResources.Dispose();
         _hatchTiles.Dispose();
