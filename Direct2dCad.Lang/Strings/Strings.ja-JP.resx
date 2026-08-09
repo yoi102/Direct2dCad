@@ -1269,4 +1269,25 @@
   <data name="Advanced" xml:space="preserve">
     <value>詳細設定</value>
   </data>
+  <data name="Messages" xml:space="preserve">
+    <value>メッセージ</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>すべて</value>
+  </data>
+  <data name="Information" xml:space="preserve">
+    <value>情報</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>警告</value>
+  </data>
+  <data name="MessageLevel" xml:space="preserve">
+    <value>メッセージレベル</value>
+  </data>
+  <data name="SearchMessages" xml:space="preserve">
+    <value>メッセージを検索</value>
+  </data>
+  <data name="ClearMessages" xml:space="preserve">
+    <value>メッセージをクリア</value>
+  </data>
 </root>

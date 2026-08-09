@@ -10,6 +10,7 @@ using Direct2dCad.AI;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 using Direct2dCad.wpf;
@@ -81,6 +82,7 @@ public partial class App : System.Windows.Application
             dock.AddToolbox<EntitySearchToolboxViewModel>();
             dock.AddToolbox<SelectionFilterToolboxViewModel>();
             dock.AddToolbox<CommandLineToolboxViewModel>();
+            dock.AddToolbox<MessageToolboxViewModel>();
             dock.AddToolbox<AiAssistantToolboxViewModel>();
         });
 
@@ -94,6 +96,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IToolboxLayoutSettingsStore, JsonToolboxLayoutSettingsStore>();
         services.AddSingleton<ToolboxLayoutPersistenceService>();
         services.AddSingleton<ISystemFontCatalog, WpfSystemFontCatalog>();
+        services.AddSingleton<ICadMessageLog, CadMessageLog>();
         services.AddSingleton<ISnackbarService, SnackbarService>();
         services.AddSingleton<IToolboxIconProvider, ToolboxIconProvider>();
         services.AddSingleton<ICadCommandLineService, CadCommandLineService>();

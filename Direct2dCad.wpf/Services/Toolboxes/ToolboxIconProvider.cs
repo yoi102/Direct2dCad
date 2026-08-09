@@ -19,6 +19,7 @@ internal sealed class ToolboxIconProvider : IToolboxIconProvider
     public object Git => CreateGitIcon();
     public object Problems => CreateProblemsIcon();
     public object Assistant => CreateAssistantIcon();
+    public object Messages => CreateMessagesIcon();
 
     private static Binding ForegroundBinding() => new()
     {
@@ -45,6 +46,30 @@ internal sealed class ToolboxIconProvider : IToolboxIconProvider
         sparkle.SetBinding(Shape.StrokeProperty, ForegroundBinding());
         canvas.Children.Add(bubble);
         canvas.Children.Add(sparkle);
+        return new Viewbox { Width = 16, Height = 16, Child = canvas };
+    }
+
+    private static Viewbox CreateMessagesIcon()
+    {
+        var canvas = new Canvas { Width = 16, Height = 16 };
+        var bubble = new Path
+        {
+            Data = Geometry.Parse("M2,2.5 C2,1.7 2.7,1 3.5,1 L12.5,1 C13.3,1 14,1.7 14,2.5 L14,10 C14,10.8 13.3,11.5 12.5,11.5 L7,11.5 L3.5,14.5 L4.1,11.5 L3.5,11.5 C2.7,11.5 2,10.8 2,10 Z"),
+            StrokeThickness = 1,
+            Fill = Brushes.Transparent
+        };
+        bubble.SetBinding(Shape.StrokeProperty, ForegroundBinding());
+
+        foreach (var left in new[] { 5.0, 8.0, 11.0 })
+        {
+            var dot = new Ellipse { Width = 1.4, Height = 1.4 };
+            Canvas.SetLeft(dot, left - 0.7);
+            Canvas.SetTop(dot, 6 - 0.7);
+            dot.SetBinding(Shape.FillProperty, ForegroundBinding());
+            canvas.Children.Add(dot);
+        }
+
+        canvas.Children.Insert(0, bubble);
         return new Viewbox { Width = 16, Height = 16, Child = canvas };
     }
 

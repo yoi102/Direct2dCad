@@ -1269,4 +1269,25 @@
   <data name="Advanced" xml:space="preserve">
     <value>高级设置</value>
   </data>
+  <data name="Messages" xml:space="preserve">
+    <value>消息</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>全部</value>
+  </data>
+  <data name="Information" xml:space="preserve">
+    <value>信息</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>警告</value>
+  </data>
+  <data name="MessageLevel" xml:space="preserve">
+    <value>消息级别</value>
+  </data>
+  <data name="SearchMessages" xml:space="preserve">
+    <value>搜索消息</value>
+  </data>
+  <data name="ClearMessages" xml:space="preserve">
+    <value>清空消息</value>
+  </data>
 </root>

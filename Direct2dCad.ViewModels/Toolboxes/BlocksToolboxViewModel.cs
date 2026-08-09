@@ -8,6 +8,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
@@ -93,7 +94,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         }
         catch (Exception ex)
         {
-            _snackbarService.Enqueue(ex.Message);
+            _snackbarService.Enqueue(ex.Message, level: CadMessageLevel.Error);
         }
         RefreshBlocks(item.BlockId);
     }
@@ -109,7 +110,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         }
         catch (Exception ex)
         {
-            _snackbarService.Enqueue(ex.Message);
+            _snackbarService.Enqueue(ex.Message, level: CadMessageLevel.Error);
         }
     }
 
@@ -127,7 +128,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         }
         catch (Exception ex)
         {
-            _snackbarService.Enqueue(ex.Message);
+            _snackbarService.Enqueue(ex.Message, level: CadMessageLevel.Error);
         }
     }
 
@@ -160,7 +161,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         }
         catch (Exception ex)
         {
-            _snackbarService.Enqueue(ex.Message);
+            _snackbarService.Enqueue(ex.Message, level: CadMessageLevel.Error);
         }
         RefreshBlocks();
     }

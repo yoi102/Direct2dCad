@@ -15,6 +15,7 @@ using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Layouts;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Settings;
 using MessagePipe;
 
@@ -478,7 +479,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
         catch (Exception ex)
         {
-            _snackbarService.Enqueue(ex.Message);
+            _snackbarService.Enqueue(ex.Message, level: CadMessageLevel.Error);
         }
     }
 

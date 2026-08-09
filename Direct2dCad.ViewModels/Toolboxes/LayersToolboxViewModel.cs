@@ -9,6 +9,7 @@ using Direct2dCad.Lang;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
@@ -102,7 +103,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
                 !x.Id.Equals(layer.LayerId) &&
                 string.Equals(x.Name, name.Trim(), StringComparison.OrdinalIgnoreCase)))
         {
-            _snackbarService.Enqueue(Strings.LayerNameAlreadyExists);
+            _snackbarService.Enqueue(Strings.LayerNameAlreadyExists, level: CadMessageLevel.Warning);
             RefreshLayers(layer.LayerId);
             return;
         }

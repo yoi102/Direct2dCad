@@ -23,6 +23,7 @@ using Direct2dCad.ViewModels.Services.Drawing;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Interactions;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Services.Rendering;
 using Direct2dCad.ViewModels.Services.Snapping;
 using Direct2dCad.ViewModels.Services.Styling;
@@ -397,7 +398,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             ? "Layer \"{0}\" is frozen."
             : "Layer \"{0}\" is locked.";
         var format = Strings.ResourceManager.GetString(resourceKey) ?? fallback;
-        _snackbarService.Enqueue(string.Format(format, layer.Name));
+        _snackbarService.Enqueue(string.Format(format, layer.Name), level: CadMessageLevel.Warning);
         return false;
     }
 

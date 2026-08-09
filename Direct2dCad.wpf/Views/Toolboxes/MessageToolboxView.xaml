@@ -1,0 +1,103 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.MessageToolboxView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
+             xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+             xmlns:notifications="clr-namespace:Direct2dCad.ViewModels.Services.Platform.Notifications;assembly=Direct2dCad.ViewModels.Services"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=toolboxes:MessageToolboxViewModel}"
+             d:DesignHeight="300"
+             d:DesignWidth="600">
+    <Grid Background="{DynamicResource MaterialDesign.Brush.Background}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Margin="8,8,8,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="120" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox MinWidth="120"
+                     Padding="6,3"
+                     ToolTip="{I18N {x:Static r:LangKeys.SearchMessages}}"
+                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <ComboBox Grid.Column="1"
+                      Margin="6,0,0,0"
+                      Padding="6,3"
+                      SelectedValue="{Binding SelectedLevel, Mode=TwoWay}"
+                      SelectedValuePath="Tag"
+                      ToolTip="{I18N {x:Static r:LangKeys.MessageLevel}}">
+                <ComboBoxItem Content="{I18N {x:Static r:LangKeys.All}}"
+                              Tag="{x:Null}" />
+                <ComboBoxItem Content="{I18N {x:Static r:LangKeys.Information}}"
+                              Tag="{x:Static notifications:CadMessageLevel.Information}" />
+                <ComboBoxItem Content="{I18N {x:Static r:LangKeys.Warning}}"
+                              Tag="{x:Static notifications:CadMessageLevel.Warning}" />
+                <ComboBoxItem Content="{I18N {x:Static r:LangKeys.Error}}"
+                              Tag="{x:Static notifications:CadMessageLevel.Error}" />
+            </ComboBox>
+            <Button Grid.Column="2"
+                    Margin="6,0,0,0"
+                    Padding="10,3"
+                    Command="{Binding ClearMessagesCommand}"
+                    Content="{I18N {x:Static r:LangKeys.ClearMessages}}"
+                    ToolTip="{I18N {x:Static r:LangKeys.ClearMessages}}" />
+        </Grid>
+
+        <ListBox Grid.Row="1"
+                 Margin="6,0,6,6"
+                 Padding="0"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 ItemsSource="{Binding VisibleEntries}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                 VirtualizingPanel.IsVirtualizing="True"
+                 VirtualizingPanel.VirtualizationMode="Recycling">
+      
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="{x:Type notifications:CadMessageEntry}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="64" />
+                            <ColumnDefinition Width="76" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontSize="11"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Opacity="0.55"
+                                   Text="{Binding Timestamp, StringFormat={}{0:HH:mm:ss}}" />
+                        <TextBlock x:Name="LevelText"
+                                   Grid.Column="1"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding Level, Converter={x:Static cv:CadMessageLevelToStringConverter.Instance}}" />
+                        <TextBlock Grid.Column="2"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                   Text="{Binding Text}"
+                                   TextWrapping="Wrap" />
+                    </Grid>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding Level}" Value="Warning">
+                            <Setter TargetName="LevelText"
+                                    Property="Foreground"
+                                    Value="#FFFFC857" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Level}" Value="Error">
+                            <Setter TargetName="LevelText"
+                                    Property="Foreground"
+                                    Value="#FFFF6B6B" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Grid>
+</UserControl>

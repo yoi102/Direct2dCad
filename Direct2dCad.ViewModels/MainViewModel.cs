@@ -7,6 +7,7 @@ using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Settings;
 using Direct2dCad.ViewModels.Settings.UserSettings;
 using Direct2dCad.ViewModels.Toolboxes;
@@ -57,6 +58,7 @@ public partial class MainViewModel : ObservableObject
         EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
         SelectionFilter = _dockLayoutService.GetAnchorable<SelectionFilterToolboxViewModel>() ?? throw new ArgumentNullException(nameof(SelectionFilterToolboxViewModel));
         CommandLine = _dockLayoutService.GetAnchorable<CommandLineToolboxViewModel>() ?? throw new ArgumentNullException(nameof(CommandLineToolboxViewModel));
+        Messages = _dockLayoutService.GetAnchorable<MessageToolboxViewModel>() ?? throw new ArgumentNullException(nameof(MessageToolboxViewModel));
         AiAssistant = _dockLayoutService.GetAnchorable<AiAssistantToolboxViewModel>() ?? throw new ArgumentNullException(nameof(AiAssistantToolboxViewModel));
 
         IsDarkTheme = _userSettings.General.IsDarkTheme;
@@ -84,6 +86,7 @@ public partial class MainViewModel : ObservableObject
     public EntitySearchToolboxViewModel EntitySearch { get; }
     public SelectionFilterToolboxViewModel SelectionFilter { get; }
     public CommandLineToolboxViewModel CommandLine { get; }
+    public MessageToolboxViewModel Messages { get; }
     public AiAssistantToolboxViewModel AiAssistant { get; }
 
     [ObservableProperty]
@@ -253,7 +256,7 @@ public partial class MainViewModel : ObservableObject
             var image = _imageImportService.LoadFromClipboard();
             if (image is null)
             {
-                _snackbarService.Enqueue("Clipboard does not contain an image.");
+                _snackbarService.Enqueue("Clipboard does not contain an image.", level: CadMessageLevel.Warning);
                 return;
             }
 
@@ -271,7 +274,7 @@ public partial class MainViewModel : ObservableObject
         var documentViewModel = CurrentEditorTabViewModel?.CadDocumentViewModel;
         if (documentViewModel is null)
         {
-            _snackbarService.Enqueue("Open or create a document before inserting an image.");
+            _snackbarService.Enqueue("Open or create a document before inserting an image.", level: CadMessageLevel.Warning);
             return;
         }
 

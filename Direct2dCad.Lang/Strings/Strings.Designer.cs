@@ -304,6 +304,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 All 的本地化字符串。
+        /// </summary>
+        public static string All {
+            get {
+                return ResourceManager.GetString("All", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Angle 的本地化字符串。
         /// </summary>
         public static string Angle {
@@ -714,6 +723,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string ClearConversation {
             get {
                 return ResourceManager.GetString("ClearConversation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Clear messages 的本地化字符串。
+        /// </summary>
+        public static string ClearMessages {
+            get {
+                return ResourceManager.GetString("ClearMessages", resourceCulture);
             }
         }
         
@@ -1762,6 +1780,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Information 的本地化字符串。
+        /// </summary>
+        public static string Information {
+            get {
+                return ResourceManager.GetString("Information", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Insert block 的本地化字符串。
         /// </summary>
         public static string InsertBlock {
@@ -2100,6 +2127,24 @@ namespace Direct2dCad.Lang.Strings {
         public static string Measure {
             get {
                 return ResourceManager.GetString("Measure", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Message level 的本地化字符串。
+        /// </summary>
+        public static string MessageLevel {
+            get {
+                return ResourceManager.GetString("MessageLevel", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Messages 的本地化字符串。
+        /// </summary>
+        public static string Messages {
+            get {
+                return ResourceManager.GetString("Messages", resourceCulture);
             }
         }
         
@@ -2788,6 +2833,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Search messages 的本地化字符串。
+        /// </summary>
+        public static string SearchMessages {
+            get {
+                return ResourceManager.GetString("SearchMessages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Secondary color 的本地化字符串。
         /// </summary>
         public static string SecondaryColor {
@@ -3459,6 +3513,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Visible {
             get {
                 return ResourceManager.GetString("Visible", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Warning 的本地化字符串。
+        /// </summary>
+        public static string Warning {
+            get {
+                return ResourceManager.GetString("Warning", resourceCulture);
             }
         }
         

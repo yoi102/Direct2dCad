@@ -1490,4 +1490,25 @@
   <data name="Advanced" xml:space="preserve">
     <value>Advanced</value>
   </data>
+  <data name="Messages" xml:space="preserve">
+    <value>Messages</value>
+  </data>
+  <data name="All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Information" xml:space="preserve">
+    <value>Information</value>
+  </data>
+  <data name="Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="MessageLevel" xml:space="preserve">
+    <value>Message level</value>
+  </data>
+  <data name="SearchMessages" xml:space="preserve">
+    <value>Search messages</value>
+  </data>
+  <data name="ClearMessages" xml:space="preserve">
+    <value>Clear messages</value>
+  </data>
 </root>

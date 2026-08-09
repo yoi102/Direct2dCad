@@ -3,6 +3,7 @@ using Direct2dCad.Client.Common;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Blocks;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Settings;
 using Direct2dCad.wpf.Views.Dialogs;
 using Direct2dCad.wpf.Views.Settings.DocumentSettings;
@@ -13,6 +14,13 @@ namespace Direct2dCad.wpf.Services.Dialogs;
 
 internal sealed class DialogService : IDialogService
 {
+    private readonly ICadMessageLog _messageLog;
+
+    public DialogService(ICadMessageLog messageLog)
+    {
+        _messageLog = messageLog ?? throw new ArgumentNullException(nameof(messageLog));
+    }
+
     public IDisposable ShowProgressBarDialog(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost)
     {
         var identifier = NormalizeIdentifier(dialogIdentifier);
@@ -46,6 +54,7 @@ internal sealed class DialogService : IDialogService
         string header = "",
         string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost)
     {
+        _messageLog.Add(message, CadMessageLevel.Error, string.IsNullOrWhiteSpace(header) ? "Dialog" : header);
         return ShowMessageAsync(header, message, dialogIdentifier);
     }
 

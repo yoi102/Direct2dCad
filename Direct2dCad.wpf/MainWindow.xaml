@@ -143,6 +143,9 @@
                         <DataTemplate DataType="{x:Type vm_tb:CommandLineToolboxViewModel}">
                             <v_tb:CommandLineToolboxView />
                         </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm_tb:MessageToolboxViewModel}">
+                            <v_tb:MessageToolboxView />
+                        </DataTemplate>
                         <DataTemplate DataType="{x:Type vm_tb:AiAssistantToolboxViewModel}">
                             <v_tb:AiAssistantToolboxView />
                         </DataTemplate>

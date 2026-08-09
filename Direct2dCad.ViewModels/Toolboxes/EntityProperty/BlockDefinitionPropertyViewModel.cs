@@ -4,6 +4,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Platform.Notifications;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
@@ -100,7 +101,7 @@ public partial class BlockDefinitionPropertyViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _snackbarService.Enqueue(ex.Message);
+            _snackbarService.Enqueue(ex.Message, level: CadMessageLevel.Error);
         }
 
         RefreshFromDefinition();

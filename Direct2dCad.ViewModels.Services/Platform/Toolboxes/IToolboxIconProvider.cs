@@ -12,5 +12,6 @@ public interface IToolboxIconProvider
     object Git { get; }
     object Problems { get; }
     object Assistant { get; }
+    object Messages { get; }
 
 }
