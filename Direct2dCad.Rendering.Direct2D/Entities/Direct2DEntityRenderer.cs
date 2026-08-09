@@ -268,7 +268,8 @@ internal sealed class Direct2DEntityRenderer(
         ID2D1DeviceContext context,
         CadRectD bounds,
         ID2D1Brush brush,
-        double transformScaleMultiplier = 1.0)
+        double transformScaleMultiplier = 1.0,
+        float? strokeWidth = null)
     {
         if (bounds.IsEmpty)
             return;
@@ -276,7 +277,10 @@ internal sealed class Direct2DEntityRenderer(
         var screenScale = ResolveEffectiveScreenScale(
             context,
             transformScaleMultiplier);
-        context.DrawRectangle(ToRawRect(bounds), brush, 1.0f / screenScale);
+        context.DrawRectangle(
+            ToRawRect(bounds),
+            brush,
+            Math.Max(strokeWidth ?? 1.0f / screenScale, 1.0f / screenScale));
     }
 
     private void DrawLine(

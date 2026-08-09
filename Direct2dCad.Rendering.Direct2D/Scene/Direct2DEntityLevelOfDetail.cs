@@ -218,7 +218,8 @@ internal static class Direct2DEntityLevelOfDetail
     public static Direct2DEntityRenderDetail ResolveSelection(
         CadEntity entity,
         Matrix3x2 transform,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        double selectionStrokeWidth)
     {
         if (!options.IsLevelOfDetailEnabled)
             return Direct2DEntityRenderDetail.Full;
@@ -227,11 +228,15 @@ internal static class Direct2DEntityLevelOfDetail
         if (bounds.IsEmpty)
             return Direct2DEntityRenderDetail.Full;
 
+        var screenStrokeWidth = ResolveSelectionScreenStrokeWidth(
+            selectionStrokeWidth,
+            transform,
+            options);
         if (!Direct2DProjectedEntityMetrics.TryCreate(
                 bounds,
                 transform,
                 ResolveTransformScaleMultiplier(options),
-                0.0,
+                screenStrokeWidth,
                 out var metrics))
         {
             return Direct2DEntityRenderDetail.Full;
@@ -259,6 +264,17 @@ internal static class Direct2DEntityLevelOfDetail
         return ShouldUseSimplifiedRendering(entity, metrics)
             ? Direct2DEntityRenderDetail.Simplified
             : Direct2DEntityRenderDetail.Full;
+    }
+
+    private static double ResolveSelectionScreenStrokeWidth(
+        double worldStrokeWidth,
+        Matrix3x2 transform,
+        CadRenderOptions options)
+    {
+        if (!double.IsFinite(worldStrokeWidth) || worldStrokeWidth <= 0)
+            return 0.0;
+
+        return worldStrokeWidth * ResolveEffectiveScreenScale(transform, options);
     }
 
     private static bool ShouldUseSimplifiedRendering(

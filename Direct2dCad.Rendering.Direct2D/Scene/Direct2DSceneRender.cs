@@ -65,13 +65,6 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             transientRenderer,
             new Direct2DTransientImageCache(),
             new Direct2DTransientGroupCommandListCache(_resourceCache));
-        _selectionRenderer = new Direct2DSelectionRenderer(
-            _resourceCache,
-            transientRenderer,
-            _styleResources,
-            handleRenderer,
-            _entityOrderCache,
-            _statistics);
         _entityRenderer = new Direct2DEntityRenderer(
             _resourceCache,
             geometryFactory,
@@ -81,6 +74,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _resourceCache,
             _entityOrderCache,
             _styleResources,
+            _statistics);
+        _selectionRenderer = new Direct2DSelectionRenderer(
+            _resourceCache,
+            _entityRenderer,
+            _oleRenderer,
+            transientRenderer,
+            _styleResources,
+            handleRenderer,
+            _entityOrderCache,
             _statistics);
         _entityReferenceRenderer = new Direct2DEntityReferenceRenderer(
             _resourceCache,

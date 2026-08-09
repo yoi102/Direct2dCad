@@ -4,6 +4,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Entities;
+using Direct2dCad.Rendering.Direct2D.Ole;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Direct2D.Transient;
@@ -15,6 +16,8 @@ namespace Direct2dCad.Rendering.Direct2D.Overlays;
 
 internal sealed class Direct2DSelectionRenderer(
     Direct2DResourceCache resourceCache,
+    Direct2DEntityRenderer entityRenderer,
+    Direct2DOleRenderer oleRenderer,
     Direct2DTransientRenderer transientRenderer,
     Direct2DStyleResourceCache styleResources,
     Direct2DHandleRenderer handleRenderer,
@@ -90,20 +93,11 @@ internal sealed class Direct2DSelectionRenderer(
         CadRenderOptions options,
         HashSet<BlockId> visitedBlocks)
     {
-        if (!IntersectsRenderBounds(
-                reference.EntityBounds,
-                reference.Offset,
-                viewport,
-                dirtyWorldBounds,
-                reference.Style))
-        {
-            return;
-        }
-
         if (!document.TryGetEntity(reference.EntityId, out var entity) ||
             entity is null ||
             entity.IsErased ||
             !entity.IsVisible ||
+            options.HiddenEntityIds.Contains(entity.Id) ||
             !document.TryGetLayer(entity.LayerId, out var layer) ||
             layer is not { IsVisible: true, IsFrozen: false })
             return;
@@ -117,7 +111,9 @@ internal sealed class Direct2DSelectionRenderer(
             reference.Style,
             dirtyWorldBounds,
             options,
-            visitedBlocks);
+            visitedBlocks,
+            containingBlockStyle: null,
+            modelStrokeWidthOverride: null);
     }
 
 
@@ -130,29 +126,51 @@ internal sealed class Direct2DSelectionRenderer(
         CadHandleStyle selectionStyle,
         CadRectD? dirtyWorldBounds,
         CadRenderOptions options,
-        HashSet<BlockId> visitedBlocks)
+        HashSet<BlockId> visitedBlocks,
+        Direct2DBlockRenderStyle? containingBlockStyle,
+        float? modelStrokeWidthOverride)
     {
-        if (!IntersectsRenderBounds(
-                entity,
+        resourceCache.TryGetEntityResources(entity.Id, out var resources);
+        float? entityModelStrokeWidth = UsesStrokeWidth(entity) && resources is not null
+            ? modelStrokeWidthOverride ?? resources.StrokeWidth
+            : null;
+        // Inline selection replaces the normal entity draw. Preserve the entity's
+        // resolved line weight while keeping the configured highlight width as a minimum.
+        var selectionStrokeWidth = ResolveSelectionStrokeWidth(
+            selectionStyle,
+            entityModelStrokeWidth,
+            viewport,
+            options);
+        if (entity is not CadBlockReference &&
+            !IntersectsRenderBounds(
+                entity.Bounds,
                 offset,
                 viewport,
                 dirtyWorldBounds,
-                selectionStyle))
+                selectionStrokeWidth))
+        {
             return;
+        }
 
         statistics.RecordSelectionEntity();
 
         var detail = Direct2DEntityLevelOfDetail.ResolveSelection(
             entity,
             context.Transform,
-            options);
+            options,
+            selectionStrokeWidth);
         if (detail == Direct2DEntityRenderDetail.Skip)
             return;
         if (detail == Direct2DEntityRenderDetail.Simplified)
         {
             var brush = styleResources.GetBrush(context, selectionStyle.StrokeColor);
             var bounds = entity.Bounds.Translate(offset);
-            Direct2DEntityRenderer.DrawRectangularProxy(context, bounds, brush);
+            Direct2DEntityRenderer.DrawRectangularProxy(
+                context,
+                bounds,
+                brush,
+                transformScaleMultiplier: options.TransformScaleMultiplier,
+                strokeWidth: selectionStrokeWidth);
             return;
         }
 
@@ -163,14 +181,18 @@ internal sealed class Direct2DSelectionRenderer(
                 document,
                 viewport,
                 blockReference,
+                offset,
                 selectionStyle,
                 options,
-                visitedBlocks);
+                visitedBlocks,
+                containingBlockStyle);
             return;
         }
 
-        resourceCache.TryGetEntityResources(entity.Id, out var resources);
-        var style = ToTransientStyle(document, selectionStyle, resources);
+        var style = WithResolvedStrokeWidth(
+            ToTransientStyle(document, selectionStyle, resources),
+            selectionStrokeWidth,
+            viewport);
         if (TryDrawCachedGeometry(
                 context,
                 entity,
@@ -275,7 +297,10 @@ internal sealed class Direct2DSelectionRenderer(
                     text.CharacterSpacingFactor,
                     text.ObliqueAngleRadians,
                     style,
-                    shapeFontId: text.ShapeFontId);
+                    text.IsInverted,
+                    document.ViewSettings.BackgroundColor,
+                    text.InvertedMarginFactor,
+                    text.ShapeFontId);
                 break;
             case CadText text:
                 transientRenderer.DrawText(
@@ -295,7 +320,25 @@ internal sealed class Direct2DSelectionRenderer(
                     textFormat: null);
                 break;
             case CadImage image:
-                DrawImageFrame(context, viewport, image, offset, style);
+                DrawSelectedImage(
+                    context,
+                    document,
+                    viewport,
+                    image,
+                    resources,
+                    offset,
+                    style,
+                    options);
+                break;
+            case CadOleObject ole:
+                DrawSelectedOle(
+                    context,
+                    document,
+                    viewport,
+                    ole,
+                    offset,
+                    style,
+                    options);
                 break;
             default:
                 transientRenderer.DrawRectangle(
@@ -397,13 +440,24 @@ internal sealed class Direct2DSelectionRenderer(
         CadDocument document,
         CadViewport viewport,
         CadBlockReference reference,
+        CadVectorD offset,
         CadHandleStyle selectionStyle,
         CadRenderOptions options,
-        HashSet<BlockId> visitedBlocks)
+        HashSet<BlockId> visitedBlocks,
+        Direct2DBlockRenderStyle? parentStyle)
     {
+        var referenceState = Direct2DBlockReferenceRenderState.From(reference) with
+        {
+            Position = reference.Position + offset
+        };
         if (!visitedBlocks.Add(reference.DefinitionBlockId) ||
             !document.TryGetBlock(reference.DefinitionBlockId, out var definition) ||
-            definition is null)
+            definition is null ||
+            !Direct2DBlockReferenceStyleResolver.TryResolve(
+                document,
+                referenceState,
+                parentStyle,
+                out var referenceStyle))
         {
             return;
         }
@@ -415,8 +469,8 @@ internal sealed class Direct2DSelectionRenderer(
                             Matrix3x2.CreateScale((float)reference.ScaleX, (float)reference.ScaleY) *
                             Matrix3x2.CreateRotation((float)reference.RotationRadians) *
                             Matrix3x2.CreateTranslation(
-                                (float)reference.Position.X,
-                                (float)reference.Position.Y) *
+                                (float)referenceState.Position.X,
+                                (float)referenceState.Position.Y) *
                             previousTransform;
         try
         {
@@ -424,13 +478,20 @@ internal sealed class Direct2DSelectionRenderer(
                          document,
                          reference.DefinitionBlockId))
             {
-                if (child.IsErased ||
-                    !child.IsVisible ||
-                    !document.TryGetLayer(child.LayerId, out var layer) ||
-                    layer is not { IsVisible: true, IsFrozen: false })
+                if (!Direct2DBlockReferenceStyleResolver.IsVisible(
+                        document,
+                        child,
+                        referenceStyle,
+                        options))
                 {
                     continue;
                 }
+
+                float? childStrokeWidthOverride =
+                    child.UseLayerLineWeight && child.LayerId.Equals(LayerId.Default)
+                        ? Direct2DBlockReferenceStyleResolver.ResolveLayerStrokeWidth(
+                            referenceStyle.EffectiveLayer)
+                        : null;
 
                 DrawSelectionEntity(
                     context,
@@ -441,7 +502,9 @@ internal sealed class Direct2DSelectionRenderer(
                     selectionStyle,
                     dirtyWorldBounds: null,
                     options,
-                    visitedBlocks: visitedBlocks);
+                    visitedBlocks,
+                    containingBlockStyle: referenceStyle,
+                    modelStrokeWidthOverride: childStrokeWidthOverride);
             }
         }
         finally
@@ -462,7 +525,7 @@ internal sealed class Direct2DSelectionRenderer(
     {
         // CadText is rendered through DirectWrite, not through the optional entity geometry.
         // Keep it on the text path even if a resource bucket happens to contain geometry.
-        if (entity is CadText)
+        if (entity is CadText or CadShapeText { IsInverted: true })
             return false;
 
         if (resources?.Geometry is null)
@@ -498,7 +561,7 @@ internal sealed class Direct2DSelectionRenderer(
               styleResources.GetStrokeStyle(resourceCache.Factory, style);
         var strokeStyleKey = useLevelOfDetailStrokeStyle
             ? Direct2DStrokeRealizationStyleKey.ForLevelOfDetail(entity.StrokeStyle)
-            : Direct2DStrokeRealizationStyleKey.ForTransient(style.LinePattern);
+            : Direct2DStrokeRealizationStyleKey.ForEntity(entity.StrokeStyle);
         var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
         var strokeWidthChangesWithScale = style.KeepStrokeWidthScreenConstant ||
                                           Math.Abs(strokeWidth - style.StrokeWidth) >
@@ -617,6 +680,71 @@ internal sealed class Direct2DSelectionRenderer(
         }
     }
 
+    private void DrawSelectedImage(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadImage image,
+        Direct2DResourceCache.EntityResourceBucket? resources,
+        CadVectorD offset,
+        CadTransientStyle style,
+        CadRenderOptions options)
+    {
+        if (resources is not null)
+        {
+            var previousTransform = context.Transform;
+            context.Transform = Matrix3x2.CreateTranslation(
+                (float)offset.X,
+                (float)offset.Y) * previousTransform;
+            try
+            {
+                entityRenderer.Draw(
+                    context,
+                    document,
+                    image,
+                    resources,
+                    viewport,
+                    options);
+            }
+            finally
+            {
+                context.Transform = previousTransform;
+            }
+        }
+
+        DrawImageFrame(context, viewport, image, offset, style);
+    }
+
+    private void DrawSelectedOle(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadOleObject ole,
+        CadVectorD offset,
+        CadTransientStyle style,
+        CadRenderOptions options)
+    {
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateTranslation(
+            (float)offset.X,
+            (float)offset.Y) * previousTransform;
+        try
+        {
+            oleRenderer.DrawEntity(context, document, ole, viewport, options);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
+
+        transientRenderer.DrawRectangle(
+            context,
+            viewport,
+            ole.Bounds.Translate(offset),
+            style,
+            isLevelOfDetailEnabled: options.IsLevelOfDetailEnabled);
+    }
+
     private static bool IsGripVisible(CadViewport viewport, CadGripHandle grip)
     {
         var screen = viewport.WorldToScreen(grip.Position);
@@ -628,26 +756,11 @@ internal sealed class Direct2DSelectionRenderer(
     }
 
     private static bool IntersectsRenderBounds(
-        CadEntity entity,
-        CadVectorD offset,
-        CadViewport viewport,
-        CadRectD? dirtyWorldBounds,
-        CadHandleStyle style)
-    {
-        return IntersectsRenderBounds(
-            entity.Bounds,
-            offset,
-            viewport,
-            dirtyWorldBounds,
-            style);
-    }
-
-    private static bool IntersectsRenderBounds(
         CadRectD bounds,
         CadVectorD offset,
         CadViewport viewport,
         CadRectD? dirtyWorldBounds,
-        CadHandleStyle style)
+        double strokeWidth)
     {
         var entityBounds = bounds.Translate(offset);
         if (entityBounds.IsEmpty)
@@ -657,11 +770,71 @@ internal sealed class Direct2DSelectionRenderer(
             return true;
 
         var zoom = Math.Max(viewport.Zoom, double.Epsilon);
-        var strokePadding = style.KeepSizeScreenConstant
-            ? (Math.Max(0.0, style.StrokeWidth) * 5.0 + 8.0) / zoom
-            : Math.Max(0.0, style.StrokeWidth) * 5.0 + 8.0 / zoom;
+        var strokePadding = Math.Max(0.0, strokeWidth) * 5.0 + 8.0 / zoom;
         var padding = Math.Max(32.0 / zoom, strokePadding);
         return entityBounds.Intersects(renderBounds.Inflate(padding));
+    }
+
+    internal static float ResolveSelectionStrokeWidth(
+        CadHandleStyle selectionStyle,
+        float? entityModelStrokeWidth,
+        CadViewport viewport,
+        CadRenderOptions options)
+    {
+        var zoom = Math.Max((float)viewport.Zoom, float.Epsilon);
+        var selectionWidth = double.IsFinite(selectionStyle.StrokeWidth)
+            ? Math.Max((float)selectionStyle.StrokeWidth, 0.1f)
+            : 0.1f;
+        var resolvedSelectionWidth = selectionStyle.KeepSizeScreenConstant
+            ? selectionWidth / zoom
+            : selectionWidth;
+        resolvedSelectionWidth = Math.Max(resolvedSelectionWidth, 0.5f / zoom);
+
+        if (entityModelStrokeWidth is not { } modelWidth ||
+            !float.IsFinite(modelWidth) ||
+            modelWidth <= 0)
+        {
+            return resolvedSelectionWidth;
+        }
+
+        var resolvedEntityWidth = options.KeepStrokeWidthScreenConstant
+            ? modelWidth / zoom
+            : modelWidth;
+        resolvedEntityWidth = Math.Max(
+            resolvedEntityWidth,
+            (float)Math.Max(options.MinimumScreenStrokeWidth, 0.0) / zoom);
+        return Math.Max(resolvedSelectionWidth, resolvedEntityWidth);
+    }
+
+    private static CadTransientStyle WithResolvedStrokeWidth(
+        CadTransientStyle style,
+        float resolvedWorldStrokeWidth,
+        CadViewport viewport)
+    {
+        // CadTransientStyle normally stores either model or screen width. Normalize the
+        // already-resolved world width back to a screen width so every transient branch
+        // resolves to the same value and geometry realizations remain scale-aware.
+        var zoom = Math.Max(viewport.Zoom, double.Epsilon);
+        return style with
+        {
+            StrokeWidth = Math.Max(resolvedWorldStrokeWidth * zoom, 0.1),
+            KeepStrokeWidthScreenConstant = true,
+            MinimumScreenStrokeWidth = 0.0
+        };
+    }
+
+    private static bool UsesStrokeWidth(CadEntity entity)
+    {
+        return entity is CadLine or
+            CadCircle or
+            CadEllipse or
+            CadEllipseArc or
+            CadRectangle or
+            CadArc or
+            CadPolyline or
+            CadSpline or
+            CadCompositePath or
+            CadShapeText;
     }
 
     internal static double ResolveSelectionRenderPadding(

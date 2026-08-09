@@ -7,6 +7,7 @@ using Direct2dCad.ChangeTracking;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D.Hosting;
 using Direct2dCad.Rendering.Direct2D.Ole;
+using Direct2dCad.Rendering.Direct2D.Overlays;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
@@ -17,6 +18,52 @@ namespace Direct2dCad.Windows.IntegrationTests;
 
 public sealed class Direct2DRenderHostIntegrationTests
 {
+    [Theory]
+    [InlineData(true, 6.0f, 1.5f)]
+    [InlineData(false, 6.0f, 6.0f)]
+    [Trait("Category", "WindowsIntegration")]
+    public void SelectionStrokeWidth_PreservesThickerEntityLineWeight(
+        bool keepEntityStrokeWidthScreenConstant,
+        float entityModelStrokeWidth,
+        float expectedWorldStrokeWidth)
+    {
+        var viewport = new CadViewport();
+        viewport.SetView(4.0, CadPointD.Origin);
+        var options = new CadRenderOptions
+        {
+            KeepStrokeWidthScreenConstant = keepEntityStrokeWidthScreenConstant,
+            MinimumScreenStrokeWidth = 0.5
+        };
+
+        var actual = Direct2DSelectionRenderer.ResolveSelectionStrokeWidth(
+            CadHandleStyle.SelectionOutline,
+            entityModelStrokeWidth,
+            viewport,
+            options);
+
+        Assert.Equal(expectedWorldStrokeWidth, actual, precision: 5);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void SelectionStrokeWidth_UsesHighlightWidthForThinEntity()
+    {
+        var viewport = new CadViewport();
+        viewport.SetView(4.0, CadPointD.Origin);
+
+        var actual = Direct2DSelectionRenderer.ResolveSelectionStrokeWidth(
+            CadHandleStyle.SelectionOutline,
+            entityModelStrokeWidth: 0.2f,
+            viewport,
+            new CadRenderOptions
+            {
+                KeepStrokeWidthScreenConstant = true,
+                MinimumScreenStrokeWidth = 0.5
+            });
+
+        Assert.Equal(0.5f, actual, precision: 5);
+    }
+
     [Fact]
     [Trait("Category", "WindowsIntegration")]
     public void RenderHost_RendersEntityChunksOnIndependentDevices()
