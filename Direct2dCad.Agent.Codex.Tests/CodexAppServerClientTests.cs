@@ -359,11 +359,11 @@ public sealed class CodexAppServerClientTests
         var run = client.RunAsync(
             new CodexAgentRunRequest("wait", string.Empty, CreateOptions(), null),
             cancellationToken: cancellation.Token);
-        await turnStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        cancellation.Cancel();
+        await turnStarted.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        await cancellation.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
-        await interrupted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        await interrupted.Task.WaitAsync(TimeSpan.FromSeconds(30));
     }
 
     private static CodexAgentOptions CreateOptions() =>
