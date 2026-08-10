@@ -34,6 +34,16 @@ internal class FileDialogService : IFileDialogService
         return dialog.FileName;
     }
 
+    public string? OpenFile()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "All files (*.*)|*.*"
+        };
+
+        return dialog.ShowDialog() == true ? dialog.FileName : null;
+    }
+
     public string? OpenImageFile()
     {
         var dialog = new OpenFileDialog

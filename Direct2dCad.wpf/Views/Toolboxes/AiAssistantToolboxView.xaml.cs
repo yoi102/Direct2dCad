@@ -65,7 +65,7 @@ public partial class AiAssistantToolboxView : UserControl
 
         if (Clipboard.ContainsImage())
         {
-            viewModel.PasteImageCommand.Execute(null);
+            viewModel.PasteFileCommand.Execute(null);
             return true;
         }
 
@@ -80,7 +80,7 @@ public partial class AiAssistantToolboxView : UserControl
             return false;
 
         foreach (var file in files)
-            viewModel.AttachImageFile(file);
+            viewModel.AttachFile(file);
         return true;
     }
 

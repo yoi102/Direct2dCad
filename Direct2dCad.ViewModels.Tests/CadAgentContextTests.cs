@@ -232,6 +232,30 @@ public sealed class AgentRequestContextBuilderTests
     }
 
     [Fact]
+    public void Build_TruncatesLargeTextAttachmentInsideContentParts()
+    {
+        var message = AiChatMessage.User(
+            "summarize the attached file",
+            [AiChatContentPart.FileText(
+                "notes.txt",
+                "text/plain",
+                new string('x', 100_000))]);
+
+        var context = AgentRequestContextBuilder.Build(
+            "system",
+            [message],
+            [],
+            4096);
+
+        var user = Assert.Single(context.Messages, item => item.Role == AiChatRole.User);
+        Assert.Contains(
+            "content truncated to fit the model context window",
+            user.ContentParts![0].Text,
+            StringComparison.Ordinal);
+        Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 4096);
+    }
+
+    [Fact]
     public void Build_RealBulkCreationSchemaFitsDefaultLmStudioContext()
     {
         const string prompt = "画一个猫的侧身图案";
@@ -279,6 +303,56 @@ public sealed class AgentRequestContextBuilderTests
         Assert.DoesNotContain(context.Messages, message => message.Role == AiChatRole.Assistant);
         Assert.DoesNotContain(context.Messages, message => message.Role == AiChatRole.Tool);
         Assert.Contains(context.Messages, message => message.Content == "latest request");
+    }
+
+    [Fact]
+    public void Build_WithEmptyConversationReturnsOnlySystemMessage()
+    {
+        var context = AgentRequestContextBuilder.Build(
+            "system",
+            [],
+            [],
+            AiAssistantSettings.DefaultContextWindowTokens);
+
+        var system = Assert.Single(context.Messages);
+        Assert.Equal(AiChatRole.System, system.Role);
+        Assert.Equal("system", system.Content);
+        Assert.Empty(context.Tools);
+        Assert.Equal(1024, context.MaxOutputTokens);
+    }
+
+    [Fact]
+    public void Build_WithNoUserTurnsKeepsNewestHistoryAndRemovesOrphans()
+    {
+        var conversation = new[]
+        {
+            AiChatMessage.Assistant("old response"),
+            AiChatMessage.Tool("orphan", "orphan result"),
+            AiChatMessage.Assistant("new response")
+        };
+
+        var context = AgentRequestContextBuilder.Build("system", conversation, [], 8192);
+
+        Assert.Contains(context.Messages, message => message.Content == "new response");
+        Assert.DoesNotContain(context.Messages, message => message.Content == "orphan result");
+    }
+
+    [Fact]
+    public void EstimateMessageTokensCountsTextImageAndToolCallContent()
+    {
+        var message = AiChatMessage.User(
+            "prompt",
+            [
+                AiChatContentPart.TextPart("attached text"),
+                AiChatContentPart.Image("data:image/png;base64,AA==")
+            ]) with
+        {
+            ToolCalls = [new AiToolCall("call", "inspect", "{}")]
+        };
+
+        var tokens = AgentRequestContextBuilder.EstimateMessageTokens(message);
+
+        Assert.True(tokens >= 1024);
     }
 
     private static AiToolDefinition CreateLargeTool(string name)

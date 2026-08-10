@@ -8,7 +8,8 @@ public sealed record CodexAgentOptions(
     string Model,
     string ReasoningEffort,
     string ServiceTier,
-    string WorkingDirectory);
+    string WorkingDirectory,
+    int ContextWindowTokens = AiAssistantSettings.DefaultContextWindowTokens);
 
 public sealed record CodexAgentRunRequest(
     string Prompt,

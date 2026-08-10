@@ -12,6 +12,9 @@
              d:DataContext="{d:DesignInstance Type=toolboxes:AiAssistantToolboxViewModel}"
              d:DesignHeight="620"
              d:DesignWidth="360">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
     <Grid Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -99,7 +102,7 @@
                                      Text="{Binding Content, Mode=OneWay}"
                                      TextWrapping="Wrap" />
                             <ItemsControl Margin="0,6,0,0"
-                                          ItemsSource="{Binding Images}">
+                                          ItemsSource="{Binding Attachments}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <WrapPanel />
@@ -111,6 +114,7 @@
                                             <Image Width="120"
                                                    Height="80"
                                                    Stretch="Uniform"
+                                                   Visibility="{Binding IsImage, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                    Source="{Binding DataUrl, Converter={x:Static cv:DataUrlToImageSourceConverter.Instance}}" />
                                             <TextBlock MaxWidth="120"
                                                        FontSize="10"
@@ -164,9 +168,9 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <ItemsControl Grid.Row="0"
-                              Margin="0,0,0,5"
-                              ItemsSource="{Binding ImageAttachments}">
+                    <ItemsControl Grid.Row="0"
+                                  Margin="0,0,0,5"
+                              ItemsSource="{Binding Attachments}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel />
@@ -221,15 +225,15 @@
                     <Button Width="34"
                             Height="34"
                             Padding="0"
-                            Command="{Binding AddImageFromFileCommand}"
+                            Command="{Binding AddFileFromFileCommand}"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             ToolTip="{I18N {x:Static r:LangKeys.AiAttachImage}}">
-                        <md:PackIcon Kind="ImagePlus" Width="19" Height="19" />
+                        <md:PackIcon Kind="Paperclip" Width="19" Height="19" />
                     </Button>
                     <!--<Button Width="34"
                             Height="34"
                             Padding="0"
-                            Command="{Binding PasteImageCommand}"
+                            Command="{Binding PasteFileCommand}"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             ToolTip="{I18N {x:Static r:LangKeys.AiPasteImage}}">
                         <md:PackIcon Kind="ContentPaste" Width="19" Height="19" />

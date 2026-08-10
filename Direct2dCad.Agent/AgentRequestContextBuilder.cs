@@ -237,23 +237,59 @@ internal static class AgentRequestContextBuilder
 
     private static AiChatMessage TruncateMessageToTokenBudget(AiChatMessage message, int tokenBudget)
     {
-        if (EstimateMessageTokens(message) <= tokenBudget || string.IsNullOrEmpty(message.Content))
+        if (EstimateMessageTokens(message) <= tokenBudget)
             return message;
 
-        var content = message.Content;
+        var textLength = (message.Content?.Length ?? 0) +
+                         (message.ContentParts ?? [])
+                         .Where(part => part.Type == AiChatContentPartType.Text)
+                         .Sum(part => part.Text?.Length ?? 0);
+        if (textLength == 0)
+            return message;
+
         var low = 0;
-        var high = content.Length;
+        var high = textLength;
         while (low < high)
         {
             var keptCharacters = low + (high - low + 1) / 2;
-            var candidate = message with { Content = CreateTruncatedContent(content, keptCharacters) };
+            var candidate = CreateCharacterBudgetMessage(message, keptCharacters);
             if (EstimateMessageTokens(candidate) <= tokenBudget)
                 low = keptCharacters;
             else
                 high = keptCharacters - 1;
         }
 
-        return message with { Content = CreateTruncatedContent(content, low) };
+        return CreateCharacterBudgetMessage(message, low);
+    }
+
+    private static AiChatMessage CreateCharacterBudgetMessage(
+        AiChatMessage message,
+        int characterBudget)
+    {
+        var remaining = characterBudget;
+        var content = AllocateTextCharacters(message.Content, ref remaining);
+        var parts = message.ContentParts?
+            .Select(part => part.Type == AiChatContentPartType.Text
+                ? part with { Text = AllocateTextCharacters(part.Text, ref remaining) }
+                : part)
+            .ToArray();
+        return message with
+        {
+            Content = content,
+            ContentParts = parts
+        };
+    }
+
+    private static string? AllocateTextCharacters(string? text, ref int remaining)
+    {
+        if (string.IsNullOrEmpty(text))
+            return text;
+
+        var keptCharacters = Math.Min(text.Length, Math.Max(remaining, 0));
+        remaining -= keptCharacters;
+        return keptCharacters == text.Length
+            ? text
+            : CreateTruncatedContent(text, keptCharacters);
     }
 
     private static string CreateTruncatedContent(string content, int keptCharacters)

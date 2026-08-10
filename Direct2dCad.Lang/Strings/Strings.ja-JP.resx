@@ -1291,16 +1291,16 @@
     <value>メッセージをクリア</value>
   </data>
   <data name="AiAttachImage" xml:space="preserve">
-    <value>ローカルファイルから画像を追加</value>
+    <value>ファイルを添付</value>
   </data>
   <data name="AiPasteImage" xml:space="preserve">
-    <value>クリップボードから画像を貼り付け</value>
+    <value>クリップボードからファイルまたは画像を貼り付け</value>
   </data>
   <data name="AiImagePrompt" xml:space="preserve">
-    <value>添付画像を分析してください。</value>
+    <value>添付ファイルを分析してください。</value>
   </data>
   <data name="AiClipboardNoImage" xml:space="preserve">
-    <value>クリップボードに画像がありません。</value>
+    <value>クリップボードに対応するファイルまたは画像がありません。</value>
   </data>
   <data name="AiImageTooLarge" xml:space="preserve">
     <value>画像が大きすぎるため添付できません。</value>

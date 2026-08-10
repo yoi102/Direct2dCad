@@ -128,7 +128,7 @@ public partial class AiAssistantSettingsDialogViewModel : ObservableObject
                 ? Localize("AiNoModels", "Connected, but no model is loaded")
                 : string.Format(
                     Localize("AiConnectedModelCountFormat", "Connected: {0} model(s)"),
-                    models.Count);
+                    target.Count);
         }
         catch (Exception exception)
         {

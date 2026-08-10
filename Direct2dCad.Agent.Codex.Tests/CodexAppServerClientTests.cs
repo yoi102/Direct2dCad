@@ -90,6 +90,22 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public async Task GetModelsAsync_ReturnsEmptyWhenResponseOmitsData()
+    {
+        using var server = new FakeAppServer();
+        server.RequestHandler = (method, id, _, transport) =>
+        {
+            transport.Reply(id, method == "model/list" ? new { } : new { });
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        var models = await client.GetModelsAsync(CreateOptions());
+
+        Assert.Empty(models);
+    }
+
+    [Fact]
     public async Task RunAsync_SendsImageInputAsDataUrl()
     {
         using var server = new FakeAppServer();
@@ -139,6 +155,145 @@ public sealed class CodexAppServerClientTests
             [AiChatContentPart.Image("data:image/png;base64,AA==")]));
 
         Assert.False(result.ResponseWasEmpty);
+    }
+
+    [Fact]
+    public async Task RunAsync_SendsTextFileInputAsText()
+    {
+        using var server = new FakeAppServer();
+        server.RequestHandler = (method, id, parameters, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    transport.Reply(id, new { thread = new { id = "thread-file" } });
+                    break;
+                case "turn/start":
+                    var input = parameters.GetProperty("input");
+                    Assert.Equal("text", input[1].GetProperty("type").GetString());
+                    Assert.Contains(
+                        "important notes",
+                        input[1].GetProperty("text").GetString(),
+                        StringComparison.Ordinal);
+                    transport.Reply(id, new { turn = new { id = "turn-file" } });
+                    transport.Send(new
+                    {
+                        method = "turn/completed",
+                        @params = new { turn = new { status = "completed" } }
+                    });
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        var result = await client.RunAsync(new CodexAgentRunRequest(
+            "summarize the file",
+            string.Empty,
+            CreateOptions(),
+            null,
+            [AiChatContentPart.FileText("notes.txt", "text/plain", "important notes")]));
+
+        Assert.True(result.ResponseWasEmpty);
+    }
+
+    [Fact]
+    public async Task RunAsync_TruncatesOversizedInputAndReportsContextReduction()
+    {
+        using var server = new FakeAppServer();
+        server.RequestHandler = (method, id, parameters, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    transport.Reply(id, new { thread = new { id = "thread-large-input" } });
+                    break;
+                case "turn/start":
+                    var input = parameters.GetProperty("input");
+                    Assert.Contains(
+                        "content truncated",
+                        input[1].GetProperty("text").GetString(),
+                        StringComparison.Ordinal);
+                    transport.Reply(id, new { turn = new { id = "turn-large-input" } });
+                    transport.Send(new
+                    {
+                        method = "turn/completed",
+                        @params = new { turn = new { status = "completed" } }
+                    });
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        await client.RunAsync(
+            new CodexAgentRunRequest(
+                "summarize",
+                string.Empty,
+                CreateOptions() with { ContextWindowTokens = 4096 },
+                null,
+                [AiChatContentPart.FileText("large.txt", "text/plain", new string('x', 100_000))]));
+    }
+
+    [Fact]
+    public async Task RunAsync_RebuildsThreadWhenLocalContextBudgetIsExhausted()
+    {
+        using var server = new FakeAppServer();
+        var threadStarts = 0;
+        var threadUnsubscribes = 0;
+        var contextReductions = 0;
+        server.RequestHandler = (method, id, _, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    threadStarts++;
+                    transport.Reply(id, new { thread = new { id = $"thread-{threadStarts}" } });
+                    break;
+                case "thread/unsubscribe":
+                    threadUnsubscribes++;
+                    transport.Reply(id, new { });
+                    break;
+                case "turn/start":
+                    transport.Reply(id, new { turn = new { id = Guid.NewGuid().ToString("N") } });
+                    transport.Send(new
+                    {
+                        method = "turn/completed",
+                        @params = new { turn = new { status = "completed" } }
+                    });
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+        var options = CreateOptions() with { ContextWindowTokens = 4096 };
+        var reportEvent = new Func<AgentRunEvent, ValueTask>(agentEvent =>
+        {
+            if (agentEvent.Kind == AgentRunEventKind.ContextReduced)
+                contextReductions++;
+            return ValueTask.CompletedTask;
+        });
+
+        await client.RunAsync(new CodexAgentRunRequest(
+            new string('a', 7_000), string.Empty, options, null), reportEvent);
+        await client.RunAsync(new CodexAgentRunRequest(
+            new string('b', 7_000), string.Empty, options, null), reportEvent);
+
+        Assert.Equal(2, threadStarts);
+        Assert.Equal(1, threadUnsubscribes);
+        Assert.True(contextReductions >= 1);
     }
 
     [Fact]
@@ -323,6 +478,66 @@ public sealed class CodexAppServerClientTests
             () => client.GetModelsAsync(CreateOptions()));
 
         Assert.Contains("invalid model request", exception.Message);
+    }
+
+    [Fact]
+    public async Task RunAsync_RejectsEmptyPromptBeforeConnecting()
+    {
+        using var server = new FakeAppServer();
+        using var client = server.CreateClient();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.RunAsync(
+            new CodexAgentRunRequest(" ", string.Empty, CreateOptions(), null)));
+
+        Assert.Empty(server.Messages);
+    }
+
+    [Fact]
+    public async Task RunAsync_ReportsFailedTurnAsException()
+    {
+        using var server = new FakeAppServer();
+        server.RequestHandler = (method, id, _, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    transport.Reply(id, new { thread = new { id = "thread-failed" } });
+                    break;
+                case "turn/start":
+                    transport.Reply(id, new { turn = new { id = "turn-failed" } });
+                    transport.Send(new
+                    {
+                        method = "turn/completed",
+                        @params = new
+                        {
+                            turn = new { status = "failed", error = "provider unavailable" }
+                        }
+                    });
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => client.RunAsync(
+            new CodexAgentRunRequest("inspect", string.Empty, CreateOptions(), null)));
+
+        Assert.Contains("provider unavailable", exception.Message);
+    }
+
+    [Fact]
+    public async Task ResetConversationAsync_WithoutThreadDoesNotConnect()
+    {
+        using var server = new FakeAppServer();
+        using var client = server.CreateClient();
+
+        await client.ResetConversationAsync();
+
+        Assert.Empty(server.Messages);
     }
 
     [Fact]

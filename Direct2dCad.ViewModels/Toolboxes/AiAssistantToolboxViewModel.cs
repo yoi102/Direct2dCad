@@ -21,6 +21,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private readonly IDialogService _dialogService;
     private readonly ICadToolWorkspace _workspace;
     private readonly IImageImportService _imageImportService;
+    private readonly IAiFileImportService _fileImportService;
     private readonly IFileDialogService _fileDialogService;
     private readonly AgentConversation _conversation = new();
     private CancellationTokenSource? _requestCancellation;
@@ -36,6 +37,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         IDialogService dialogService,
         ICadToolWorkspace workspace,
         IImageImportService imageImportService,
+        IAiFileImportService fileImportService,
         IFileDialogService fileDialogService)
         : base(toolboxLayoutSettingsStore, "toolbox.ai-assistant", DockZone.RightBottom, isOpenByDefault: false)
     {
@@ -46,6 +48,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         _dialogService = dialogService;
         _workspace = workspace;
         _imageImportService = imageImportService;
+        _fileImportService = fileImportService;
         _fileDialogService = fileDialogService;
         Title = Resource("AiAssistant", "AI Assistant");
         Icon = toolboxIconProvider.Assistant;
@@ -60,7 +63,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     }
 
     public ObservableCollection<AiChatItemViewModel> Messages { get; } = [];
-    public ObservableCollection<AiImageAttachmentViewModel> ImageAttachments { get; } = [];
+    public ObservableCollection<AiImageAttachmentViewModel> Attachments { get; } = [];
+    public ObservableCollection<AiImageAttachmentViewModel> ImageAttachments => Attachments;
     public ObservableCollection<string> LmStudioModels { get; } = [];
     public ObservableCollection<string> CodexModels { get; } = [];
 
@@ -105,8 +109,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     [NotifyCanExecuteChangedFor(nameof(SendCommand))]
     [NotifyCanExecuteChangedFor(nameof(StopCommand))]
     [NotifyCanExecuteChangedFor(nameof(OpenSettingsCommand))]
-    [NotifyCanExecuteChangedFor(nameof(AddImageFromFileCommand))]
-    [NotifyCanExecuteChangedFor(nameof(PasteImageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddFileFromFileCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PasteFileCommand))]
     public partial bool IsBusy { get; private set; }
 
     [ObservableProperty]
@@ -154,20 +158,19 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private bool CanOpenSettings() => !IsBusy;
 
     [RelayCommand(CanExecute = nameof(CanManageImages))]
-    private void AddImageFromFile()
+    private void AddFileFromFile()
     {
-        var filePath = _fileDialogService.OpenImageFile();
-        AttachImageFile(filePath);
+        AttachFile(_fileDialogService.OpenFile());
     }
 
-    public void AttachImageFile(string? filePath)
+    public void AttachFile(string? filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             return;
 
         try
         {
-            AddImageAttachment(_imageImportService.LoadFromFile(filePath));
+            AddAttachment(_fileImportService.Load(filePath));
         }
         catch (Exception exception)
         {
@@ -176,10 +179,18 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     }
 
     [RelayCommand(CanExecute = nameof(CanManageImages))]
-    private void PasteImage()
+    private void PasteFile()
     {
         try
         {
+            var files = _fileImportService.LoadFilesFromClipboard();
+            if (files.Count > 0)
+            {
+                foreach (var file in files)
+                    AddAttachment(file);
+                return;
+            }
+
             var image = _imageImportService.LoadFromClipboard();
             if (image is null)
             {
@@ -187,7 +198,10 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
                 return;
             }
 
-            AddImageAttachment(image);
+            AddAttachment(new AiFileImportData(
+                image.SourceName,
+                image.ContentType,
+                DataUrl: _imageImportService.CreatePngDataUrl(image)));
         }
         catch (Exception exception)
         {
@@ -209,25 +223,24 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private async Task SendAsync()
     {
         var prompt = UserInput.Trim();
-        var imageAttachments = ImageAttachments.ToArray();
-        if (prompt.Length == 0 && imageAttachments.Length == 0 ||
+        var attachments = Attachments.ToArray();
+        if (prompt.Length == 0 && attachments.Length == 0 ||
             (Provider == AiAssistantProvider.LmStudio && string.IsNullOrWhiteSpace(SelectedModel)))
             return;
 
         var requestPrompt = prompt.Length > 0
             ? prompt
-            : Resource("AiImagePrompt", "Please analyze the attached image.");
+            : Resource("AiImagePrompt", "Please analyze the attached files.");
         var contentParts = new List<AiChatContentPart>
         {
             AiChatContentPart.TextPart(requestPrompt)
         };
-        contentParts.AddRange(imageAttachments.Select(attachment =>
-            AiChatContentPart.Image(attachment.DataUrl)));
+        contentParts.AddRange(attachments.Select(CreateContentPart));
 
         UserInput = string.Empty;
-        ImageAttachments.Clear();
+        Attachments.Clear();
         SendCommand.NotifyCanExecuteChanged();
-        Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, requestPrompt, imageAttachments));
+        Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, requestPrompt, attachments));
         var toolset = new CadAgentToolset(_workspace, _imageImportService);
 
         BeginRequest();
@@ -324,7 +337,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private bool CanSend() =>
         !IsBusy &&
-        (!string.IsNullOrWhiteSpace(UserInput) || ImageAttachments.Count > 0) &&
+        (!string.IsNullOrWhiteSpace(UserInput) || Attachments.Count > 0) &&
         (Provider == AiAssistantProvider.Codex || !string.IsNullOrWhiteSpace(SelectedModel));
 
     [RelayCommand(CanExecute = nameof(CanStop))]
@@ -338,7 +351,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         await _codexAgentClient.ResetConversationAsync();
         _conversation.Clear();
         Messages.Clear();
-        ImageAttachments.Clear();
+        Attachments.Clear();
         SendCommand.NotifyCanExecuteChanged();
         Messages.Add(new AiChatItemViewModel(
             AiChatItemKind.System,
@@ -418,7 +431,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
             settings.CodexModel,
             settings.CodexReasoningEffort,
             settings.CodexServiceTier,
-            Environment.CurrentDirectory);
+            Environment.CurrentDirectory,
+            settings.ContextWindowTokens);
 
     private ValueTask ReportAgentEventAsync(AgentRunEvent agentEvent)
     {
@@ -451,18 +465,35 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private void AddError(string message) => Messages.Add(new AiChatItemViewModel(AiChatItemKind.Error, message));
 
-    private void AddImageAttachment(CadImageImportData image)
+    private void AddAttachment(AiFileImportData file)
     {
-        var dataUrl = _imageImportService.CreatePngDataUrl(image);
-        if (dataUrl.Length > 14_000_000)
+        if (file.IsImage && file.DataUrl!.Length > 14_000_000)
         {
             AddError(Resource("AiImageTooLarge", "The image is too large to attach."));
             return;
         }
 
-        ImageAttachments.Add(new AiImageAttachmentViewModel(image.SourceName, dataUrl));
+        if (!file.IsImage && string.IsNullOrWhiteSpace(file.TextContent))
+        {
+            AddError("The selected file is empty.");
+            return;
+        }
+
+        Attachments.Add(new AiImageAttachmentViewModel(
+            file.SourceName,
+            file.DataUrl,
+            file.TextContent,
+            file.ContentType));
         SendCommand.NotifyCanExecuteChanged();
     }
+
+    private static AiChatContentPart CreateContentPart(AiImageAttachmentViewModel attachment) =>
+        attachment.IsImage
+            ? AiChatContentPart.Image(attachment.DataUrl!)
+            : AiChatContentPart.FileText(
+                attachment.SourceName,
+                attachment.ContentType,
+                attachment.TextContent!);
 
     private static string CreateToolResultSummary(string result)
     {
@@ -507,11 +538,13 @@ public enum AiChatItemKind
 public sealed class AiChatItemViewModel(
     AiChatItemKind kind,
     string content,
-    IReadOnlyList<AiImageAttachmentViewModel>? images = null)
+    IReadOnlyList<AiImageAttachmentViewModel>? attachments = null)
 {
     public AiChatItemKind Kind { get; } = kind;
     public string Content { get; } = content;
-    public IReadOnlyList<AiImageAttachmentViewModel> Images { get; } = images?.ToArray() ?? [];
+    public IReadOnlyList<AiImageAttachmentViewModel> Attachments { get; } = attachments?.ToArray() ?? [];
+    public IReadOnlyList<AiImageAttachmentViewModel> Images =>
+        Attachments.Where(attachment => attachment.IsImage).ToArray();
     public string Role => Kind switch
     {
         AiChatItemKind.User => Resource("AiYou", "You"),
@@ -525,4 +558,11 @@ public sealed class AiChatItemViewModel(
         Strings.ResourceManager.GetString(key, Strings.Culture) ?? fallback;
 }
 
-public sealed record AiImageAttachmentViewModel(string SourceName, string DataUrl);
+public sealed record AiImageAttachmentViewModel(
+    string SourceName,
+    string? DataUrl = null,
+    string? TextContent = null,
+    string ContentType = "text/plain")
+{
+    public bool IsImage => !string.IsNullOrWhiteSpace(DataUrl);
+}

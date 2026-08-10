@@ -1512,16 +1512,16 @@
     <value>Clear messages</value>
   </data>
   <data name="AiAttachImage" xml:space="preserve">
-    <value>Attach image from file</value>
+    <value>Attach file</value>
   </data>
   <data name="AiPasteImage" xml:space="preserve">
-    <value>Paste image from clipboard</value>
+    <value>Paste file or image from clipboard</value>
   </data>
   <data name="AiImagePrompt" xml:space="preserve">
-    <value>Please analyze the attached image.</value>
+    <value>Please analyze the attached files.</value>
   </data>
   <data name="AiClipboardNoImage" xml:space="preserve">
-    <value>The clipboard does not contain an image.</value>
+    <value>The clipboard does not contain a supported file or image.</value>
   </data>
   <data name="AiImageTooLarge" xml:space="preserve">
     <value>The image is too large to attach.</value>

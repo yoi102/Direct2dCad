@@ -21,13 +21,25 @@ public enum AiChatContentPartType
 public sealed record AiChatContentPart(
     AiChatContentPartType Type,
     string? Text = null,
-    string? DataUrl = null)
+    string? DataUrl = null,
+    string? FileName = null,
+    string? ContentType = null)
 {
     public static AiChatContentPart TextPart(string text) =>
         new(AiChatContentPartType.Text, Text: text);
 
     public static AiChatContentPart Image(string dataUrl) =>
         new(AiChatContentPartType.Image, DataUrl: dataUrl);
+
+    public static AiChatContentPart FileText(
+        string fileName,
+        string contentType,
+        string text) =>
+        new(
+            AiChatContentPartType.Text,
+            Text: $"[Attached file: {fileName} ({contentType})]\n{text}",
+            FileName: fileName,
+            ContentType: contentType);
 }
 
 public sealed record AiChatMessage(

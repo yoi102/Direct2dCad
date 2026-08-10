@@ -1291,16 +1291,16 @@
     <value>清空消息</value>
   </data>
   <data name="AiAttachImage" xml:space="preserve">
-    <value>从本地文件添加图片</value>
+    <value>添加文件</value>
   </data>
   <data name="AiPasteImage" xml:space="preserve">
-    <value>从剪贴板粘贴图片</value>
+    <value>从剪贴板粘贴文件或图片</value>
   </data>
   <data name="AiImagePrompt" xml:space="preserve">
-    <value>请分析附件中的图片。</value>
+    <value>请分析附件中的文件。</value>
   </data>
   <data name="AiClipboardNoImage" xml:space="preserve">
-    <value>剪贴板中没有图片。</value>
+    <value>剪贴板中没有受支持的文件或图片。</value>
   </data>
   <data name="AiImageTooLarge" xml:space="preserve">
     <value>图片太大，无法添加。</value>

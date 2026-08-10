@@ -86,6 +86,50 @@ public sealed class AgentRunnerTests
             item.ContextWindowTokens == 4096);
     }
 
+    [Fact]
+    public async Task RunAsync_RejectsInvalidRequestBeforeCallingClient()
+    {
+        var request = CreateRequest(ConversationWithUser("inspect")) with
+        {
+            MaximumToolRounds = 0
+        };
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => new AgentRunner(new QueuedChatClient([])).RunAsync(request));
+    }
+
+    [Fact]
+    public async Task RunAsync_RejectsToolCallsWhenToolsetIsMissing()
+    {
+        var call = new AiToolCall("call-1", "inspect", "{}");
+        var client = new QueuedChatClient([
+            new AiChatCompletion(null, [call], "test-model")
+        ]);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new AgentRunner(client).RunAsync(CreateRequest(ConversationWithUser("inspect"))));
+
+        Assert.Contains("no agent toolset", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RunAsync_StopsAfterMaximumToolRounds()
+    {
+        var call = new AiToolCall("call-1", "inspect", "{}");
+        var client = new QueuedChatClient([
+            new AiChatCompletion(null, [call], "test-model")
+        ]);
+        var request = CreateRequest(ConversationWithUser("inspect"), new FakeToolset()) with
+        {
+            MaximumToolRounds = 1
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new AgentRunner(client).RunAsync(request));
+
+        Assert.Contains("maximum number of agent tool rounds", exception.Message);
+    }
+
     private static AgentConversation ConversationWithUser(string prompt)
     {
         var conversation = new AgentConversation();

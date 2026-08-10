@@ -19,8 +19,8 @@ public sealed class AiAssistantToolboxViewModelTests
         var codex = new FakeCodexAgentClient();
         using var viewModel = CreateViewModel(fileDialog, imageImport, codex);
 
-        viewModel.AddImageFromFileCommand.Execute(null);
-        viewModel.PasteImageCommand.Execute(null);
+        viewModel.AddFileFromFileCommand.Execute(null);
+        viewModel.PasteFileCommand.Execute(null);
 
         Assert.Equal(2, viewModel.ImageAttachments.Count);
         Assert.True(viewModel.SendCommand.CanExecute(null));
@@ -46,14 +46,14 @@ public sealed class AiAssistantToolboxViewModelTests
         var codex = new FakeCodexAgentClient();
         using var viewModel = CreateViewModel(fileDialog, imageImport, codex);
 
-        viewModel.AddImageFromFileCommand.Execute(null);
+        viewModel.AddFileFromFileCommand.Execute(null);
         await viewModel.SendCommand.ExecuteAsync(null);
 
-        Assert.Equal("Please analyze the attached image.", codex.LastRequest!.Prompt);
+        Assert.Equal("Please analyze the attached files.", codex.LastRequest!.Prompt);
         Assert.Contains(
             viewModel.Messages,
             message => message.Kind == AiChatItemKind.User &&
-                       message.Content == "Please analyze the attached image.");
+                       message.Content == "Please analyze the attached files.");
     }
 
     [Fact]
@@ -64,14 +64,14 @@ public sealed class AiAssistantToolboxViewModelTests
         var codex = new FakeCodexAgentClient();
         using var viewModel = CreateViewModel(fileDialog, imageImport, codex);
 
-        viewModel.PasteImageCommand.Execute(null);
+        viewModel.PasteFileCommand.Execute(null);
         Assert.Empty(viewModel.ImageAttachments);
         Assert.Contains(
             viewModel.Messages,
             message => message.Kind == AiChatItemKind.Error &&
                        message.Content.Contains("clipboard", StringComparison.OrdinalIgnoreCase));
 
-        viewModel.AddImageFromFileCommand.Execute(null);
+        viewModel.AddFileFromFileCommand.Execute(null);
         var attachment = Assert.Single(viewModel.ImageAttachments);
         viewModel.RemoveImageCommand.Execute(attachment);
         Assert.Empty(viewModel.ImageAttachments);
@@ -93,26 +93,275 @@ public sealed class AiAssistantToolboxViewModelTests
             imageImport,
             new FakeCodexAgentClient());
 
-        viewModel.AttachImageFile("pasted-image.png");
+        viewModel.AttachFile("pasted-image.png");
 
         var attachment = Assert.Single(viewModel.ImageAttachments);
         Assert.Equal("sample.png", attachment.SourceName);
     }
 
+    [Fact]
+    public async Task TextFileIsSentAsTextContentPart()
+    {
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService { ImagePath = "notes.txt" },
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            new FakeAiFileImportService(
+                new AiFileImportData("notes.txt", "text/plain", TextContent: "important notes")));
+
+        viewModel.AddFileFromFileCommand.Execute(null);
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        var filePart = Assert.Single(
+            viewModel.Messages.Single(message => message.Kind == AiChatItemKind.User).Attachments,
+            attachment => attachment.SourceName == "notes.txt");
+        Assert.Equal("important notes", filePart.TextContent);
+    }
+
+    [Fact]
+    public void ClipboardFilesCanBeAttached()
+    {
+        var fileImport = new FakeAiFileImportService(
+            new AiFileImportData("notes.txt", "text/plain", TextContent: "important notes"));
+        fileImport.ClipboardFiles = [
+            new AiFileImportData("notes.txt", "text/plain", TextContent: "important notes")
+        ];
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService { ClipboardImage = null },
+            new FakeCodexAgentClient(),
+            fileImport);
+
+        viewModel.PasteFileCommand.Execute(null);
+
+        var attachment = Assert.Single(viewModel.Attachments);
+        Assert.Equal("notes.txt", attachment.SourceName);
+        Assert.Equal("important notes", attachment.TextContent);
+    }
+
+    [Fact]
+    public async Task LmStudioMessageUsesAgentRunnerAndReportsEvents()
+    {
+        var runner = new FakeAgentRunner
+        {
+            Result = new AgentRunResult("local-model", 4096, false),
+            Events = [
+                new AgentRunEvent(AgentRunEventKind.AssistantMessage, "answer"),
+                new AgentRunEvent(AgentRunEventKind.ToolResult, "{\"success\":true}", "list_layers"),
+                new AgentRunEvent(AgentRunEventKind.ContextReduced, ContextWindowTokens: 4096)
+            ]
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            agentRunner: runner);
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.SelectedModel = "local-model";
+        viewModel.UserInput = "inspect";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.NotNull(runner.LastRequest);
+        Assert.Equal("inspect", runner.LastRequest!.UserPrompt);
+        Assert.Equal(4096, viewModel.ContextWindowTokens);
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Assistant && message.Content == "answer");
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Tool && message.Content.Contains("list_layers"));
+        Assert.False(viewModel.IsBusy);
+    }
+
+    [Fact]
+    public async Task SendAsync_ReportsAgentFailureAndRestoresReadyState()
+    {
+        var runner = new FakeAgentRunner
+        {
+            Exception = new InvalidOperationException("model failed")
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            agentRunner: runner);
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.SelectedModel = "local-model";
+        viewModel.UserInput = "inspect";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.IsBusy);
+        Assert.Equal("Request failed", viewModel.ConnectionStatus);
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Error && message.Content == "model failed");
+    }
+
+    [Fact]
+    public async Task StopCommand_CancelsActiveLmStudioRequest()
+    {
+        var runner = new FakeAgentRunner
+        {
+            WaitForCancellation = true,
+            Started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously)
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            agentRunner: runner);
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.SelectedModel = "local-model";
+        viewModel.UserInput = "inspect";
+
+        var send = viewModel.SendCommand.ExecuteAsync(null);
+        await runner.Started.Task;
+        Assert.True(viewModel.IsBusy);
+
+        viewModel.StopCommand.Execute(null);
+        await send;
+
+        Assert.False(viewModel.IsBusy);
+        Assert.Equal("Cancelled", viewModel.ConnectionStatus);
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.System && message.Content == "Cancelled");
+    }
+
+    [Fact]
+    public async Task SendAsync_ReportsEmptyResponse()
+    {
+        var runner = new FakeAgentRunner
+        {
+            Result = new AgentRunResult("local-model", 8192, true)
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            agentRunner: runner);
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.SelectedModel = "local-model";
+        viewModel.UserInput = "inspect";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Error && message.Content.Contains("empty response"));
+    }
+
+    [Fact]
+    public async Task OpenSettingsAsync_AppliesResultSavesAndResetsCodexConversation()
+    {
+        var settingsStore = new FakeSettingsStore();
+        var codex = new FakeCodexAgentClient();
+        var dialog = new FakeDialogService
+        {
+            AiSettingsResult = new AiAssistantSettingsDialogResult(
+                new AiAssistantSettings
+                {
+                    Provider = AiAssistantProvider.LmStudio,
+                    Endpoint = "http://localhost:4321/v1",
+                    Model = "new-model"
+                },
+                ["new-model"],
+                ["codex-model"])
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            codex,
+            settingsStore: settingsStore,
+            dialog: dialog);
+
+        await viewModel.OpenSettingsCommand.ExecuteAsync(null);
+
+        Assert.Equal(AiAssistantProvider.LmStudio, viewModel.Provider);
+        Assert.Equal("new-model", viewModel.SelectedModel);
+        Assert.Equal(["new-model"], viewModel.LmStudioModels);
+        Assert.Equal(1, settingsStore.SaveCount);
+        Assert.Equal(1, codex.ResetCount);
+        Assert.Equal("Ready: new-model", viewModel.ConnectionStatus);
+    }
+
+    [Fact]
+    public void AttachFile_ReportsImportAndValidationErrors()
+    {
+        var importError = new FakeAiFileImportService(exception: new InvalidDataException("unsupported"));
+        using var errorViewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            importError);
+        errorViewModel.AttachFile("broken.bin");
+
+        Assert.Contains(errorViewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Error && message.Content == "unsupported");
+
+        using var emptyViewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            new FakeAiFileImportService(
+                new AiFileImportData("empty.txt", "text/plain", TextContent: "")));
+        emptyViewModel.AttachFile("empty.txt");
+
+        Assert.Contains(emptyViewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Error && message.Content.Contains("empty"));
+    }
+
+    [Fact]
+    public void AttachFile_RejectsOversizedImagePayload()
+    {
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            new FakeAiFileImportService(new AiFileImportData(
+                "large.png",
+                "image/png",
+                DataUrl: new string('a', 14_000_001))));
+
+        viewModel.AttachFile("large.png");
+
+        Assert.Empty(viewModel.Attachments);
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Error && message.Content.Contains("too large"));
+    }
+
+    [Fact]
+    public void SendCommand_RequiresModelForLmStudio()
+    {
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient());
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.UserInput = "inspect";
+
+        Assert.False(viewModel.SendCommand.CanExecute(null));
+
+        viewModel.SelectedModel = "local-model";
+        Assert.True(viewModel.SendCommand.CanExecute(null));
+    }
+
     private static AiAssistantToolboxViewModel CreateViewModel(
         FakeFileDialogService fileDialog,
         FakeImageImportService imageImport,
-        FakeCodexAgentClient codex) =>
+        FakeCodexAgentClient codex,
+        FakeAiFileImportService? fileImport = null,
+        FakeAgentRunner? agentRunner = null,
+        FakeSettingsStore? settingsStore = null,
+        FakeDialogService? dialog = null) =>
         new(
             new InMemoryToolboxLayoutSettingsStore(),
             new TestToolboxIconProvider(),
             new FakeAiChatClient(),
-            new FakeAgentRunner(),
+            agentRunner ?? new FakeAgentRunner(),
             codex,
-            new FakeSettingsStore(),
-            new FakeDialogService(),
+            settingsStore ?? new FakeSettingsStore(),
+            dialog ?? new FakeDialogService(),
             new FakeToolWorkspace(),
             imageImport,
+            fileImport ?? new FakeAiFileImportService(),
             fileDialog);
 
     private sealed class InMemoryToolboxLayoutSettingsStore : IToolboxLayoutSettingsStore
@@ -144,7 +393,36 @@ public sealed class AiAssistantToolboxViewModelTests
 
         public string? SaveAsD2cad(string fileName) => null;
         public string? OpenD2cadFile() => null;
+        public string? OpenFile() => ImagePath;
         public string? OpenImageFile() => ImagePath;
+    }
+
+    private sealed class FakeAiFileImportService : IAiFileImportService
+    {
+        private readonly AiFileImportData _data;
+        private readonly Exception? _exception;
+
+        public FakeAiFileImportService(
+            AiFileImportData? data = null,
+            Exception? exception = null)
+        {
+            _data = data ?? new AiFileImportData(
+                "sample.png",
+                "image/png",
+                DataUrl: "data:image/png;base64,AA==");
+            _exception = exception;
+        }
+
+        public IReadOnlyList<AiFileImportData> ClipboardFiles { get; set; } = [];
+
+        public AiFileImportData Load(string filePath)
+        {
+            if (_exception is not null)
+                throw _exception;
+            return _data;
+        }
+
+        public IReadOnlyList<AiFileImportData> LoadFilesFromClipboard() => ClipboardFiles;
     }
 
     private sealed class FakeImageImportService : IImageImportService
@@ -163,6 +441,8 @@ public sealed class AiAssistantToolboxViewModelTests
 
     private sealed class FakeSettingsStore : IAiAssistantSettingsStore
     {
+        public int SaveCount { get; private set; }
+
         public AiAssistantSettings Load() => new()
         {
             Provider = AiAssistantProvider.Codex,
@@ -171,6 +451,7 @@ public sealed class AiAssistantToolboxViewModelTests
 
         public void Save(AiAssistantSettings settings)
         {
+            SaveCount++;
         }
     }
 
@@ -189,16 +470,42 @@ public sealed class AiAssistantToolboxViewModelTests
 
     private sealed class FakeAgentRunner : IAgentRunner
     {
+        public AgentRunResult Result { get; set; } = new("test-model", 8192, false);
+        public Exception? Exception { get; set; }
+        public IReadOnlyList<AgentRunEvent> Events { get; set; } = [];
+        public AgentRunRequest? LastRequest { get; private set; }
+        public bool WaitForCancellation { get; set; }
+        public TaskCompletionSource<bool>? Started { get; set; }
+
         public Task<AgentRunResult> RunAsync(
             AgentRunRequest request,
             Func<AgentRunEvent, ValueTask>? reportEvent = null,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(new AgentRunResult(request.Model, 8192, false));
+            RunCoreAsync(request, reportEvent, cancellationToken);
+
+        private async Task<AgentRunResult> RunCoreAsync(
+            AgentRunRequest request,
+            Func<AgentRunEvent, ValueTask>? reportEvent,
+            CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            Started?.TrySetResult(true);
+            if (Exception is not null)
+                throw Exception;
+            if (WaitForCancellation)
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            foreach (var agentEvent in Events)
+                if (reportEvent is not null)
+                    await reportEvent(agentEvent);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Result;
+        }
     }
 
     private sealed class FakeCodexAgentClient : ICodexAgentClient
     {
         public CodexAgentRunRequest? LastRequest { get; private set; }
+        public int ResetCount { get; private set; }
 
         public Task<IReadOnlyList<string>> GetModelsAsync(
             CodexAgentOptions options,
@@ -214,8 +521,11 @@ public sealed class AiAssistantToolboxViewModelTests
             return Task.FromResult(new CodexAgentRunResult(request.Options.Model, false));
         }
 
-        public Task ResetConversationAsync(CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task ResetConversationAsync(CancellationToken cancellationToken = default)
+        {
+            ResetCount++;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeToolWorkspace : ICadToolWorkspace
@@ -233,6 +543,8 @@ public sealed class AiAssistantToolboxViewModelTests
 
     private sealed class FakeDialogService : IDialogService
     {
+        public AiAssistantSettingsDialogResult? AiSettingsResult { get; init; }
+
         public void Close(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost) { }
         public Task ShowOrReplaceMessageDialogAsync(string message, string header = "", string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost) => Task.CompletedTask;
         public Task<bool> ShowOrReplaceMessageDialogWithCancelAsync(string message, string header = "", string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost) => Task.FromResult(false);
@@ -242,7 +554,7 @@ public sealed class AiAssistantToolboxViewModelTests
         public Task<UnsavedDocumentDialogResult> ShowUnsavedDocumentsDialogAsync(IReadOnlyList<UnsavedDocumentInfo> documents, string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost) => Task.FromResult(UnsavedDocumentDialogResult.Cancel);
         public Task<GridSpacingPresetDialogResult?> ShowGridSpacingPresetDialogAsync(GridSpacingPresetDialogRequest request, string dialogIdentifier = ViewServiceIdentifiers.DocumentSettingsDialogHost) => Task.FromResult<GridSpacingPresetDialogResult?>(null);
         public Task<CreateBlockDialogResult?> ShowCreateBlockDialogAsync(CreateBlockDialogRequest request, string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost) => Task.FromResult<CreateBlockDialogResult?>(null);
-        public Task<AiAssistantSettingsDialogResult?> ShowAiAssistantSettingsDialogAsync(AiAssistantSettingsDialogRequest request, string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost) => Task.FromResult<AiAssistantSettingsDialogResult?>(null);
+        public Task<AiAssistantSettingsDialogResult?> ShowAiAssistantSettingsDialogAsync(AiAssistantSettingsDialogRequest request, string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost) => Task.FromResult(AiSettingsResult);
         public void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel) { }
         public void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel) { }
     }

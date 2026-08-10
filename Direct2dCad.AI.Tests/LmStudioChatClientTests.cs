@@ -22,6 +22,32 @@ public sealed class LmStudioChatClientTests
     }
 
     [Fact]
+    public async Task GetModelsAsync_ReturnsEmptyWhenServerOmitsData()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse("{}"));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        var models = await client.GetModelsAsync("");
+
+        Assert.Empty(models);
+        Assert.Equal(
+            "http://localhost:1234/v1/models",
+            handler.LastRequestUri?.AbsoluteUri);
+    }
+
+    [Fact]
+    public async Task GetModelsAsync_RejectsInvalidEndpoint()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse("{}"));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => client.GetModelsAsync("not-an-http-url"));
+    }
+
+    [Fact]
     public async Task CompleteAsync_ParsesToolCallsAndSendsOpenAiToolSchema()
     {
         using var handler = new StubHttpMessageHandler(_ => JsonResponse(
@@ -79,6 +105,100 @@ public sealed class LmStudioChatClientTests
 
         Assert.Contains("\"type\":\"image_url\"", handler.LastRequestBody, StringComparison.Ordinal);
         Assert.Contains("data:image/png;base64,AA==", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_SendsTextFileAsTextContentPart()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse(
+            """{"model":"text-model","choices":[{"message":{"role":"assistant","content":"read"}}]}"""));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "text-model",
+            [AiChatMessage.User(
+                "summarize",
+                [AiChatContentPart.TextPart("summarize"),
+                 AiChatContentPart.FileText("notes.txt", "text/plain", "important notes")])],
+            []));
+
+        Assert.Contains("important notes", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("notes.txt", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"type\":\"text\"", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_ClampsTemperatureAndOutputTokens()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse(
+            """{"choices":[{"message":{"content":"ok"}}]}"""));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "local-model",
+            [AiChatMessage.User("hello")],
+            [],
+            Temperature: 99,
+            MaxOutputTokens: 999999));
+
+        Assert.Contains("\"temperature\":2", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Contains("\"max_tokens\":32768", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_RejectsMissingModel()
+    {
+        var client = new LmStudioChatClient(new HttpClient(
+            new StubHttpMessageHandler(_ => JsonResponse("{}"))));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                " ",
+                [AiChatMessage.User("hello")],
+                [])));
+    }
+
+    [Fact]
+    public async Task CompleteAsync_RejectsResponseWithoutAssistantMessage()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse("{\"choices\":[]}"));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                "local-model",
+                [AiChatMessage.User("hello")],
+                [])));
+    }
+
+    [Fact]
+    public async Task CompleteAsync_IgnoresMalformedToolCalls()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse(
+            """
+            {"choices":[{"message":{"content":null,"tool_calls":[
+              {"id":"missing-function"},
+              {"function":{"name":"missing-id"}},
+              {"id":"call-1","function":{"name":"valid","arguments":null}}
+            ]}}]}
+            """));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+
+        var completion = await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "local-model",
+            [AiChatMessage.User("hello")],
+            []));
+
+        var call = Assert.Single(completion.ToolCalls);
+        Assert.Equal("valid", call.Name);
+        Assert.Equal("{}", call.ArgumentsJson);
     }
 
     [Fact]

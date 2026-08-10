@@ -88,6 +88,7 @@ public partial class App : System.Windows.Application
 
         services.AddTransient<IFileDialogService, FileDialogService>();
         services.AddSingleton<IImageImportService, ImageImportService>();
+        services.AddSingleton<IAiFileImportService, AiFileImportService>();
         services.AddSingleton<IClipboardTextService, ClipboardTextService>();
         services.AddSingleton<IOleHostService, OleHostService>();
         services.AddSingleton<IDialogService, DialogService>();

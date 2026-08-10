@@ -76,4 +76,53 @@ public sealed class JsonAiAssistantSettingsStoreTests
                 Directory.Delete(directory, recursive: true);
         }
     }
+
+    [Fact]
+    public void Load_ReturnsDefaultsWhenFileIsMissingOrMalformed()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Direct2dCad.AI.Tests.{Guid.NewGuid():N}");
+        var filePath = Path.Combine(directory, "settings.json");
+        try
+        {
+            var store = new JsonAiAssistantSettingsStore(filePath);
+
+            var missing = store.Load();
+            Assert.Equal(AiAssistantSettings.DefaultEndpoint, missing.Endpoint);
+
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(filePath, "{ not valid json }");
+
+            var malformed = store.Load();
+            Assert.Equal(AiAssistantSettings.DefaultEndpoint, malformed.Endpoint);
+            Assert.Equal(AiAssistantProvider.LmStudio, malformed.Provider);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Normalize_ClampsInvalidValuesAndUsesSafeDefaults()
+    {
+        var settings = new AiAssistantSettings
+        {
+            Endpoint = " ",
+            Temperature = double.NaN,
+            ContextWindowTokens = int.MinValue,
+            CodexExecutablePath = " ",
+            CodexReasoningEffort = "unsupported",
+            CodexServiceTier = "unsupported"
+        };
+
+        settings.Normalize();
+
+        Assert.Equal(AiAssistantSettings.DefaultEndpoint, settings.Endpoint);
+        Assert.Equal(0.2, settings.Temperature);
+        Assert.Equal(AiAssistantSettings.MinimumContextWindowTokens, settings.ContextWindowTokens);
+        Assert.Equal("codex", settings.CodexExecutablePath);
+        Assert.Equal("medium", settings.CodexReasoningEffort);
+        Assert.Equal(AiAssistantSettings.DefaultCodexServiceTier, settings.CodexServiceTier);
+    }
 }

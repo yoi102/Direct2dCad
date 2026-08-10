@@ -10,8 +10,8 @@
 
 namespace Direct2dCad.Lang.Strings {
     using System;
-    
-    
+
+
     /// <summary>
     ///   一个强类型的资源类，用于查找本地化的字符串等。
     /// </summary>
@@ -23,9 +23,9 @@ namespace Direct2dCad.Lang.Strings {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Strings {
-        
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
         
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
@@ -151,6 +151,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Attach file 的本地化字符串。
+        /// </summary>
+        public static string AiAttachImage {
+            get {
+                return ResourceManager.GetString("AiAttachImage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 CAD tool 的本地化字符串。
         /// </summary>
         public static string AiCadTool {
@@ -165,6 +174,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string AiCancelled {
             get {
                 return ResourceManager.GetString("AiCancelled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 The clipboard does not contain a supported file or image. 的本地化字符串。
+        /// </summary>
+        public static string AiClipboardNoImage {
+            get {
+                return ResourceManager.GetString("AiClipboardNoImage", resourceCulture);
             }
         }
         
@@ -232,11 +250,38 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Please analyze the attached files. 的本地化字符串。
+        /// </summary>
+        public static string AiImagePrompt {
+            get {
+                return ResourceManager.GetString("AiImagePrompt", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 The image is too large to attach. 的本地化字符串。
+        /// </summary>
+        public static string AiImageTooLarge {
+            get {
+                return ResourceManager.GetString("AiImageTooLarge", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Connected, but no model is loaded 的本地化字符串。
         /// </summary>
         public static string AiNoModels {
             get {
                 return ResourceManager.GetString("AiNoModels", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Paste file or image from clipboard 的本地化字符串。
+        /// </summary>
+        public static string AiPasteImage {
+            get {
+                return ResourceManager.GetString("AiPasteImage", resourceCulture);
             }
         }
         
@@ -732,36 +777,6 @@ namespace Direct2dCad.Lang.Strings {
         public static string ClearMessages {
             get {
                 return ResourceManager.GetString("ClearMessages", resourceCulture);
-            }
-        }
-
-        public static string AiAttachImage {
-            get {
-                return ResourceManager.GetString("AiAttachImage", resourceCulture);
-            }
-        }
-
-        public static string AiPasteImage {
-            get {
-                return ResourceManager.GetString("AiPasteImage", resourceCulture);
-            }
-        }
-
-        public static string AiImagePrompt {
-            get {
-                return ResourceManager.GetString("AiImagePrompt", resourceCulture);
-            }
-        }
-
-        public static string AiClipboardNoImage {
-            get {
-                return ResourceManager.GetString("AiClipboardNoImage", resourceCulture);
-            }
-        }
-
-        public static string AiImageTooLarge {
-            get {
-                return ResourceManager.GetString("AiImageTooLarge", resourceCulture);
             }
         }
         

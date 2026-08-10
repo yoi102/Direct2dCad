@@ -8,6 +8,10 @@ namespace Direct2dCad.Agent.Codex;
 public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
 {
     private const string CadToolNamespace = "direct2dcad";
+    private const int NormalSafetyTokens = 640;
+    private const int EstimatedThreadOverheadTokens = 256;
+    private const string TruncatedContentMarker =
+        "\n[content truncated to fit the model context window]";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly ICodexAppServerTransportFactory _transportFactory;
@@ -21,6 +25,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
     private string? _connectionKey;
     private string? _threadId;
     private string? _threadKey;
+    private int _estimatedThreadTokens;
     private long _nextRequestId;
     private bool _disposed;
 
@@ -93,12 +98,50 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
                    {request.Prompt}
                    </user_request>
                    """;
+            var contextWindow = Math.Clamp(
+                request.Options.ContextWindowTokens,
+                AiAssistantSettings.MinimumContextWindowTokens,
+                AiAssistantSettings.MaximumContextWindowTokens);
+            var maxOutputTokens = Math.Clamp(contextWindow / 8, 512, 2048);
+            var contextReduced = false;
+            var inputTokens = EstimateInputTokens(prompt, request.ContentParts);
+            var freshThreadBudget = Math.Max(
+                1024,
+                contextWindow - EstimatedThreadOverheadTokens - maxOutputTokens - NormalSafetyTokens);
+            if (_estimatedThreadTokens > 0 &&
+                inputTokens <= freshThreadBudget &&
+                _estimatedThreadTokens + inputTokens + maxOutputTokens + NormalSafetyTokens > contextWindow)
+            {
+                await ResetConversationAsync(cancellationToken);
+                await EnsureThreadAsync(request, cancellationToken);
+                active.ThreadId = _threadId!;
+                contextReduced = true;
+            }
+
+            var availableTokens = Math.Max(
+                1024,
+                contextWindow - _estimatedThreadTokens - maxOutputTokens - NormalSafetyTokens);
+            var limitedInput = inputTokens > availableTokens
+                ? LimitInputToTokenBudget(prompt, request.ContentParts, availableTokens)
+                : (Prompt: prompt, ContentParts: request.ContentParts);
+            inputTokens = EstimateInputTokens(limitedInput.Prompt, limitedInput.ContentParts);
+            contextReduced |= inputTokens < EstimateInputTokens(prompt, request.ContentParts);
+            _estimatedThreadTokens += inputTokens + maxOutputTokens;
+            if (contextReduced)
+            {
+                await ReportAsync(
+                    active,
+                    new AgentRunEvent(
+                        AgentRunEventKind.ContextReduced,
+                        ContextWindowTokens: contextWindow));
+            }
+
             var turnResult = await SendRequestAsync(
                 "turn/start",
                 new
                 {
                     threadId = active.ThreadId,
-                    input = CreateTurnInput(prompt, request.ContentParts),
+                    input = CreateTurnInput(limitedInput.Prompt, limitedInput.ContentParts),
                     model = NullIfWhiteSpace(request.Options.Model),
                     effort = NormalizeReasoningEffort(request.Options.ReasoningEffort)
                 },
@@ -127,18 +170,108 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
         var input = new List<object> { new { type = "text", text = prompt } };
         foreach (var part in contentParts ?? [])
         {
-            if (part.Type != AiChatContentPartType.Image)
-                continue;
-
-            input.Add(new
+            if (part.Type == AiChatContentPartType.Image)
             {
-                type = "image",
-                url = part.DataUrl ?? throw new ArgumentException("Image content requires a data URL.")
-            });
+                input.Add(new
+                {
+                    type = "image",
+                    url = part.DataUrl ?? throw new ArgumentException("Image content requires a data URL.")
+                });
+                continue;
+            }
+
+            if (part.Type == AiChatContentPartType.Text && part.FileName is not null)
+                input.Add(new { type = "text", text = part.Text ?? string.Empty });
         }
 
         return input;
     }
+
+    private static (string Prompt, IReadOnlyList<AiChatContentPart>? ContentParts) LimitInputToTokenBudget(
+        string prompt,
+        IReadOnlyList<AiChatContentPart>? contentParts,
+        int tokenBudget)
+    {
+        var textLength = prompt.Length + (contentParts ?? [])
+            .Where(part => part.Type == AiChatContentPartType.Text)
+            .Sum(part => part.Text?.Length ?? 0);
+        if (textLength == 0)
+            return (prompt, contentParts);
+
+        var low = 0;
+        var high = textLength;
+        while (low < high)
+        {
+            var keptCharacters = low + (high - low + 1) / 2;
+            var candidate = CreateCharacterBudgetInput(prompt, contentParts, keptCharacters);
+            if (EstimateInputTokens(candidate.Prompt, candidate.ContentParts) <= tokenBudget)
+                low = keptCharacters;
+            else
+                high = keptCharacters - 1;
+        }
+
+        return CreateCharacterBudgetInput(prompt, contentParts, low);
+    }
+
+    private static (string Prompt, IReadOnlyList<AiChatContentPart>? ContentParts) CreateCharacterBudgetInput(
+        string prompt,
+        IReadOnlyList<AiChatContentPart>? contentParts,
+        int characterBudget)
+    {
+        var remaining = characterBudget;
+        var limitedPrompt = AllocateText(prompt, ref remaining);
+        var limitedParts = contentParts?
+            .Select(part => part.Type == AiChatContentPartType.Text
+                ? part with { Text = AllocateText(part.Text ?? string.Empty, ref remaining) }
+                : part)
+            .ToArray();
+        return (limitedPrompt, limitedParts);
+    }
+
+    private static string AllocateText(string text, ref int remaining)
+    {
+        var kept = Math.Min(text.Length, Math.Max(remaining, 0));
+        remaining -= kept;
+        if (kept == text.Length)
+            return text;
+        if (kept <= TruncatedContentMarker.Length + 8)
+            return text[..kept];
+
+        var contentCharacters = kept - TruncatedContentMarker.Length;
+        var prefixLength = (int)(contentCharacters * 0.75);
+        var suffixLength = contentCharacters - prefixLength;
+        return string.Concat(
+            text.AsSpan(0, prefixLength),
+            TruncatedContentMarker,
+            text.AsSpan(text.Length - suffixLength));
+    }
+
+    private static int EstimateInputTokens(
+        string prompt,
+        IReadOnlyList<AiChatContentPart>? contentParts)
+    {
+        var total = 8 + EstimateTextTokens(prompt);
+        foreach (var part in contentParts ?? [])
+            total += part.Type == AiChatContentPartType.Image
+                ? 1024
+                : EstimateTextTokens(part.Text);
+        return total;
+    }
+
+    private static int EstimateTextTokens(string? text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return 0;
+        var ascii = text.Count(character => character <= 0x7f);
+        return (int)Math.Ceiling(ascii / 3.6 + (text.Length - ascii) / 1.25);
+    }
+
+    private static int EstimateThreadTokens(IReadOnlyList<AiToolDefinition> definitions) =>
+        EstimatedThreadOverheadTokens + definitions.Sum(definition =>
+            20 +
+            EstimateTextTokens(definition.Name) +
+            EstimateTextTokens(definition.Description) +
+            EstimateTextTokens(definition.Parameters.GetRawText()));
 
     public async Task ResetConversationAsync(CancellationToken cancellationToken = default)
     {
@@ -161,6 +294,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
 
             _threadId = null;
             _threadKey = null;
+            _estimatedThreadTokens = 0;
         }
         finally
         {
@@ -202,6 +336,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
             _connectionKey = key;
             _threadId = null;
             _threadKey = null;
+            _estimatedThreadTokens = 0;
             _readLoop = ReadLoopAsync(_transport, _connectionCancellation.Token);
 
             await SendRequestAsync(
@@ -244,7 +379,11 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
             NormalizeReasoningEffort(request.Options.ReasoningEffort),
             NormalizeServiceTier(request.Options.ServiceTier),
             definitions.Count,
-            toolNames);
+            toolNames,
+            Math.Clamp(
+                request.Options.ContextWindowTokens,
+                AiAssistantSettings.MinimumContextWindowTokens,
+                AiAssistantSettings.MaximumContextWindowTokens));
         if (_threadId is not null && string.Equals(_threadKey, key, StringComparison.Ordinal))
             return;
 
@@ -284,6 +423,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
 
         _threadId = id.GetString();
         _threadKey = key;
+        _estimatedThreadTokens = EstimateThreadTokens(definitions);
     }
 
     private async Task<JsonElement> SendRequestAsync(
@@ -626,7 +766,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
         Func<AgentRunEvent, ValueTask>? reportEvent,
         SynchronizationContext? synchronizationContext)
     {
-        public string ThreadId { get; } = threadId;
+        public string ThreadId { get; set; } = threadId;
         public IAgentToolset? Toolset { get; } = toolset;
         public Func<AgentRunEvent, ValueTask>? ReportEvent { get; } = reportEvent;
         public SynchronizationContext? SynchronizationContext { get; } = synchronizationContext;
