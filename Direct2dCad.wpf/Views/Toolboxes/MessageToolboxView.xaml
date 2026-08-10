@@ -26,6 +26,7 @@
             </Grid.ColumnDefinitions>
             <TextBox MinWidth="120"
                      Padding="6,3"
+                     md:HintAssist.Hint="{I18N {x:Static r:LangKeys.SearchMessages}}"
                      ToolTip="{I18N {x:Static r:LangKeys.SearchMessages}}"
                      Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
             <ComboBox Grid.Column="1"
