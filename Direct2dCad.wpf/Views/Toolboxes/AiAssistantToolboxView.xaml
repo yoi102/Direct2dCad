@@ -226,14 +226,14 @@
                             ToolTip="{I18N {x:Static r:LangKeys.AiAttachImage}}">
                         <md:PackIcon Kind="ImagePlus" Width="19" Height="19" />
                     </Button>
-                    <Button Width="34"
+                    <!--<Button Width="34"
                             Height="34"
                             Padding="0"
                             Command="{Binding PasteImageCommand}"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             ToolTip="{I18N {x:Static r:LangKeys.AiPasteImage}}">
                         <md:PackIcon Kind="ContentPaste" Width="19" Height="19" />
-                    </Button>
+                    </Button>-->
                     <Button Width="34"
                             Height="34"
                             Padding="0"

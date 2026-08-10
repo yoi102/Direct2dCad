@@ -84,6 +84,21 @@ public sealed class AiAssistantToolboxViewModelTests
         Assert.Equal("Conversation cleared.", cleared.Content);
     }
 
+    [Fact]
+    public void ImageFileCanBeAttachedWithoutOpeningTheFilePicker()
+    {
+        var imageImport = new FakeImageImportService();
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService { ImagePath = null },
+            imageImport,
+            new FakeCodexAgentClient());
+
+        viewModel.AttachImageFile("pasted-image.png");
+
+        var attachment = Assert.Single(viewModel.ImageAttachments);
+        Assert.Equal("sample.png", attachment.SourceName);
+    }
+
     private static AiAssistantToolboxViewModel CreateViewModel(
         FakeFileDialogService fileDialog,
         FakeImageImportService imageImport,

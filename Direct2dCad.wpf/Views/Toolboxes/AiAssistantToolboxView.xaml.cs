@@ -38,14 +38,50 @@ public partial class AiAssistantToolboxView : UserControl
 
     private void OnPromptPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.V &&
+            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
+            DataContext is AiAssistantToolboxViewModel viewModel &&
+            TryPasteAttachment(viewModel))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
             return;
 
-        if (DataContext is AiAssistantToolboxViewModel viewModel && viewModel.SendCommand.CanExecute(null))
+        if (DataContext is AiAssistantToolboxViewModel sendViewModel &&
+            sendViewModel.SendCommand.CanExecute(null))
         {
             e.Handled = true;
-            viewModel.SendCommand.Execute(null);
+            sendViewModel.SendCommand.Execute(null);
         }
+    }
+
+    private static bool TryPasteAttachment(AiAssistantToolboxViewModel viewModel)
+    {
+        if (viewModel.IsBusy)
+            return false;
+
+        if (Clipboard.ContainsImage())
+        {
+            viewModel.PasteImageCommand.Execute(null);
+            return true;
+        }
+
+        if (!Clipboard.ContainsFileDropList())
+            return false;
+
+        var files = Clipboard.GetFileDropList()
+            .Cast<string>()
+            .Where(file => !string.IsNullOrWhiteSpace(file))
+            .ToArray();
+        if (files.Length == 0)
+            return false;
+
+        foreach (var file in files)
+            viewModel.AttachImageFile(file);
+        return true;
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e) => DetachMessages();

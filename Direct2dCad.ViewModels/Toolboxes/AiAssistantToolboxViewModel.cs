@@ -157,6 +157,11 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private void AddImageFromFile()
     {
         var filePath = _fileDialogService.OpenImageFile();
+        AttachImageFile(filePath);
+    }
+
+    public void AttachImageFile(string? filePath)
+    {
         if (string.IsNullOrWhiteSpace(filePath))
             return;
 
