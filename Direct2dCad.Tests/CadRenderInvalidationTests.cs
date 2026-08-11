@@ -106,6 +106,30 @@ public sealed class CadRenderInvalidationTests
     }
 
     [Fact]
+    public void FromWorldBounds_NegativePaddingDoesNotShrinkDirtyRegion()
+    {
+        var viewport = new CadViewport();
+        viewport.SetSize(100, 80);
+        viewport.SetView(1.0, new CadPointD(50, 40));
+        var bounds = CadRectD.FromXYWH(-10, -10, 20, 20);
+
+        var invalidation = CadRenderInvalidation.FromWorldBounds(
+            viewport,
+            bounds,
+            100,
+            80,
+            paddingPixels: -100);
+        var expected = CadRenderInvalidation.FromWorldBounds(
+            viewport,
+            bounds,
+            100,
+            80,
+            paddingPixels: 0);
+
+        Assert.Equal(expected.DirtyScreenRects, invalidation.DirtyScreenRects);
+    }
+
+    [Fact]
     public void Union_PropagatesFullAndIgnoresEmptyInvalidations()
     {
         var partial = CadRenderInvalidation.FromScreenRect(

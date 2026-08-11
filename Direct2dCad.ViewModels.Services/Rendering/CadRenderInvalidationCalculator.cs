@@ -822,6 +822,9 @@ internal readonly struct CadRenderInvalidationCalculator(
                 continue;
 
             var invalidation = CreateWorldBoundsInvalidation(item, paddingPixels);
+            if (invalidation.IsFull)
+                return CadRenderInvalidation.Full;
+
             rects.AddRange(invalidation.DirtyScreenRects);
         }
 

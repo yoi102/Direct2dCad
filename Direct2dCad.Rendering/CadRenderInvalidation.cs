@@ -124,6 +124,7 @@ public sealed class CadRenderInvalidation
         if (bounds.IsEmpty || surfaceWidth <= 0 || surfaceHeight <= 0)
             return FromScreenRect(default);
 
+        paddingPixels = Math.Max(0.0, paddingPixels);
         var p1 = viewport.WorldToScreen(new CadPointD(bounds.MinX, bounds.MinY));
         var p2 = viewport.WorldToScreen(new CadPointD(bounds.MaxX, bounds.MaxY));
         var left = Math.Min(p1.X, p2.X) - paddingPixels;

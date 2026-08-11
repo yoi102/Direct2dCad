@@ -138,4 +138,29 @@ public sealed class CadRenderInvalidationCalculatorTests
         Assert.False(hidden.IsRenderable);
         Assert.False(calculator.TryCaptureEntitySnapshot(new EntityId(99999), out _));
     }
+
+    [Fact]
+    public void CurrentPolylineWithOverflowingProjection_RequiresFullInvalidation()
+    {
+        var document = CadDocument.Create("Overflowing polyline dirty region");
+        var polyline = document.AddPolyline(
+        [
+            CadPointD.Origin,
+            new CadPointD(double.MaxValue, 0)
+        ]);
+        var viewport = new CadViewport();
+        viewport.SetSize(1000, 1000);
+        viewport.SetView(1_000_000, new CadPointD(0, 1000));
+        var calculator = new CadRenderInvalidationCalculator(
+            document,
+            viewport,
+            1000,
+            1000,
+            _ => new CadTransientStyle(CadColor.FromRgb(255, 255, 255)));
+        Assert.True(calculator.TryCaptureEntitySnapshot(polyline.Id, out var snapshot));
+
+        var invalidation = calculator.CreateCurrentEntityInvalidation(polyline.Id, snapshot);
+
+        Assert.True(invalidation.IsFull);
+    }
 }
