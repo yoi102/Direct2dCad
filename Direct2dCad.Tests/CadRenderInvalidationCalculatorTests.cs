@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Handles;
@@ -75,5 +76,66 @@ public sealed class CadRenderInvalidationCalculatorTests
         var invalidation = calculator.CreateTransientSceneInvalidation(scene);
 
         Assert.Equal(new CadScreenRect(0, 0, 320, 240), Assert.Single(invalidation.DirtyScreenRects));
+    }
+
+    [Fact]
+    public void HandleScene_CanExcludeGripHandlesFromInvalidation()
+    {
+        var document = CadDocument.Create("Handle dirty region filtering");
+        var line = document.AddLine(new CadPointD(20, 20), new CadPointD(60, 20));
+        var viewport = new CadViewport();
+        viewport.SetSize(1000, 1000);
+        viewport.SetView(1.0, new CadPointD(0, 1000));
+        var calculator = new CadRenderInvalidationCalculator(
+            document,
+            viewport,
+            1000,
+            1000,
+            _ => new CadTransientStyle(CadColor.FromRgb(255, 255, 255)));
+        var scene = new CadHandleScene();
+        scene.Replace(
+        [
+            new CadSelectionEntityReference(
+                line.Id,
+                line.Bounds,
+                CadVectorD.Zero,
+                CadHandleStyle.SelectionOutline),
+            new CadGripHandle(
+                line.Id,
+                new CadPointD(700, 700),
+                CadHandleType.Center,
+                CadHandleStyle.Grip)
+        ]);
+
+        var withoutGrips = calculator.CreateHandleSceneInvalidation(
+            scene,
+            includeGripHandles: false);
+        var withGrips = calculator.CreateHandleSceneInvalidation(
+            scene,
+            includeGripHandles: true);
+
+        Assert.Single(withoutGrips.DirtyScreenRects);
+        Assert.Equal(2, withGrips.DirtyScreenRects.Count);
+    }
+
+    [Fact]
+    public void TryCaptureEntitySnapshot_ReportsMissingAndHiddenEntitiesCorrectly()
+    {
+        var document = CadDocument.Create("Entity snapshot states");
+        var line = document.AddLine(new CadPointD(20, 20), new CadPointD(60, 20));
+        line.SetVisible(false);
+        var viewport = new CadViewport();
+        viewport.SetSize(1000, 1000);
+        viewport.SetView(1.0, new CadPointD(0, 1000));
+        var calculator = new CadRenderInvalidationCalculator(
+            document,
+            viewport,
+            1000,
+            1000,
+            _ => new CadTransientStyle(CadColor.FromRgb(255, 255, 255)));
+
+        Assert.True(calculator.TryCaptureEntitySnapshot(line.Id, out var hidden));
+        Assert.False(hidden.IsRenderable);
+        Assert.False(calculator.TryCaptureEntitySnapshot(new EntityId(99999), out _));
     }
 }

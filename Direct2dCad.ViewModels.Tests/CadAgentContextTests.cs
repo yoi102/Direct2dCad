@@ -256,6 +256,22 @@ public sealed class AgentRequestContextBuilderTests
     }
 
     [Fact]
+    public void Build_DropsImagesWhenSystemPromptLeavesNoImageBudget()
+    {
+        var context = AgentRequestContextBuilder.Build(
+            new string('s', 10_000),
+            [AiChatMessage.User(
+                "describe the image",
+                [AiChatContentPart.Image("data:image/png;base64,AA==")])],
+            [],
+            4096);
+
+        var user = Assert.Single(context.Messages, message => message.Role == AiChatRole.User);
+        Assert.Empty(user.ContentParts ?? []);
+        Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 4096);
+    }
+
+    [Fact]
     public void Build_RealBulkCreationSchemaFitsDefaultLmStudioContext()
     {
         const string prompt = "画一个猫的侧身图案";

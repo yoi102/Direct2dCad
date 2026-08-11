@@ -48,6 +48,23 @@ public sealed class LmStudioChatClientTests
     }
 
     [Fact]
+    public async Task GetModelsAsync_PropagatesServerErrorDetails()
+    {
+        using var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+        {
+            Content = new StringContent("model server unavailable", Encoding.UTF8, "text/plain")
+        });
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(
+            () => client.GetModelsAsync("http://localhost:1234/v1"));
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, exception.StatusCode);
+        Assert.Contains("model server unavailable", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CompleteAsync_ParsesToolCallsAndSendsOpenAiToolSchema()
     {
         using var handler = new StubHttpMessageHandler(_ => JsonResponse(
@@ -160,7 +177,62 @@ public sealed class LmStudioChatClientTests
                 "http://localhost:1234/v1",
                 " ",
                 [AiChatMessage.User("hello")],
+            [])));
+    }
+
+    [Fact]
+    public async Task CompleteAsync_RejectsUnsupportedMessageRoleBeforeSending()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse("{}"));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                "local-model",
+                [new AiChatMessage((AiChatRole)99, "hello")],
                 [])));
+
+        Assert.Null(handler.LastRequestUri);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_RejectsImageWithoutDataUrlBeforeSending()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse("{}"));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                "local-model",
+                [AiChatMessage.User(
+                    "describe",
+                    [new AiChatContentPart(AiChatContentPartType.Image)])],
+                [])));
+
+        Assert.Null(handler.LastRequestUri);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_RejectsUnsupportedContentPartBeforeSending()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse("{}"));
+        using var httpClient = new HttpClient(handler);
+        var client = new LmStudioChatClient(httpClient);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                "local-model",
+                [AiChatMessage.User(
+                    "describe",
+                    [new AiChatContentPart((AiChatContentPartType)99)])],
+                [])));
+
+        Assert.Null(handler.LastRequestUri);
     }
 
     [Fact]

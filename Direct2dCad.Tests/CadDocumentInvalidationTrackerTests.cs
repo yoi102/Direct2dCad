@@ -273,6 +273,91 @@ public sealed class CadDocumentInvalidationTrackerTests
         Assert.True(invalidation.IsFull);
     }
 
+    [Fact]
+    public void EmptyChangeSetOnSameDocument_ReturnsEmptyInvalidation()
+    {
+        var document = CadDocument.Create("Dirty regions");
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, CreateViewport());
+        tracker.Reset(document, calculator);
+
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.Empty,
+            calculator);
+
+        Assert.True(invalidation.IsEmpty);
+    }
+
+    [Fact]
+    public void MetadataOnlyChange_DoesNotInvalidatePixels()
+    {
+        var document = CadDocument.Create("Dirty regions");
+        var line = document.AddLine(new CadPointD(20, 20), new CadPointD(60, 20));
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, CreateViewport());
+        tracker.Reset(document, calculator);
+
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.ForEntity(line.Id, CadEntityChangeKind.Metadata),
+            calculator);
+
+        Assert.True(invalidation.IsEmpty);
+    }
+
+    [Fact]
+    public void UntrackedMutationWithoutCreatedFlag_RequiresFullRender()
+    {
+        var document = CadDocument.Create("Dirty regions");
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, CreateViewport());
+        tracker.Reset(document, calculator);
+        var line = document.AddLine(new CadPointD(20, 20), new CadPointD(60, 20));
+
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.ForEntity(line.Id, CadEntityChangeKind.Geometry),
+            calculator);
+
+        Assert.True(invalidation.IsFull);
+    }
+
+    [Fact]
+    public void AlreadyHiddenEntityChange_DoesNotCreateDirtyPixels()
+    {
+        var document = CadDocument.Create("Dirty regions");
+        var line = document.AddLine(new CadPointD(20, 20), new CadPointD(60, 20));
+        line.SetVisible(false);
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, CreateViewport());
+        tracker.Reset(document, calculator);
+
+        line.SetGeometry(new CadPointD(700, 700), new CadPointD(740, 700));
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.ForEntity(line.Id, CadEntityChangeKind.Geometry),
+            calculator);
+
+        Assert.True(invalidation.IsEmpty);
+    }
+
+    [Fact]
+    public void ViewSettingsChange_RequiresFullRender()
+    {
+        var document = CadDocument.Create("Dirty regions");
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, CreateViewport());
+        tracker.Reset(document, calculator);
+
+        var invalidation = tracker.CreateInvalidation(
+            document,
+            CadDocumentChangeSet.Empty.WithViewSettingsChanged(),
+            calculator);
+
+        Assert.True(invalidation.IsFull);
+    }
+
     private static CadViewport CreateViewport()
     {
         var viewport = new CadViewport();

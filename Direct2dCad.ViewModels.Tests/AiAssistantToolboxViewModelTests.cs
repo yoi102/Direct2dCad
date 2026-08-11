@@ -11,6 +11,27 @@ namespace Direct2dCad.ViewModels.Tests;
 
 public sealed class AiAssistantToolboxViewModelTests
 {
+    [Theory]
+    [InlineData(AiChatItemKind.System)]
+    [InlineData(AiChatItemKind.User)]
+    [InlineData(AiChatItemKind.Assistant)]
+    [InlineData(AiChatItemKind.Tool)]
+    [InlineData(AiChatItemKind.Error)]
+    public void ChatItem_MapsEveryKindToDisplayRole(AiChatItemKind kind)
+    {
+        var image = new AiImageAttachmentViewModel("preview.png", "data:image/png;base64,AA==");
+        var text = new AiImageAttachmentViewModel(
+            "notes.txt",
+            TextContent: "notes",
+            ContentType: "text/plain");
+        var item = new AiChatItemViewModel(kind, "content", [image, text]);
+
+        Assert.False(string.IsNullOrWhiteSpace(item.Role));
+        Assert.Equal(2, item.Attachments.Count);
+        Assert.Single(item.Images);
+        Assert.Same(image, item.Images[0]);
+    }
+
     [Fact]
     public async Task FileAndClipboardImagesAreAttachedAndSentToCodex()
     {
@@ -280,6 +301,26 @@ public sealed class AiAssistantToolboxViewModelTests
         Assert.Equal(1, settingsStore.SaveCount);
         Assert.Equal(1, codex.ResetCount);
         Assert.Equal("Ready: new-model", viewModel.ConnectionStatus);
+    }
+
+    [Fact]
+    public async Task OpenSettingsAsync_CancelLeavesCurrentStateUntouched()
+    {
+        var settingsStore = new FakeSettingsStore();
+        var codex = new FakeCodexAgentClient();
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            codex,
+            settingsStore: settingsStore,
+            dialog: new FakeDialogService());
+        var originalStatus = viewModel.ConnectionStatus;
+
+        await viewModel.OpenSettingsCommand.ExecuteAsync(null);
+
+        Assert.Equal(originalStatus, viewModel.ConnectionStatus);
+        Assert.Equal(0, settingsStore.SaveCount);
+        Assert.Equal(0, codex.ResetCount);
     }
 
     [Fact]

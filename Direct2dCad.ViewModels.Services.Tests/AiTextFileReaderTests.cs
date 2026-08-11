@@ -85,6 +85,16 @@ public sealed class AiTextFileReaderTests
     }
 
     [Fact]
+    public void Read_AllowsEmptyTextFiles()
+    {
+        using var files = new TemporaryFiles();
+        var result = AiTextFileReader.Read(files.WriteText("empty.txt", string.Empty));
+
+        Assert.Equal(string.Empty, result.TextContent);
+        Assert.Equal("text/plain", result.ContentType);
+    }
+
+    [Fact]
     public void Read_MapsCommonSourceExtensionsToContentTypes()
     {
         using var files = new TemporaryFiles();
@@ -102,6 +112,28 @@ public sealed class AiTextFileReaderTests
             var result = AiTextFileReader.Read(files.WriteText(pair.Key, "content"));
             Assert.Equal(pair.Value, result.ContentType);
         }
+    }
+
+    [Theory]
+    [InlineData("source.c", "text/x-c")]
+    [InlineData("source.hpp", "text/x-c++")]
+    [InlineData("source.cs", "text/x-csharp")]
+    [InlineData("styles.css", "text/css")]
+    [InlineData("page.html", "text/html")]
+    [InlineData("script.js", "text/javascript")]
+    [InlineData("query.sql", "application/sql")]
+    [InlineData("source.ts", "text/typescript")]
+    [InlineData("document.xml", "application/xml")]
+    [InlineData("drawing.SVG", "image/svg+xml")]
+    public void Read_MapsAdditionalSupportedExtensionsToContentTypes(
+        string fileName,
+        string contentType)
+    {
+        using var files = new TemporaryFiles();
+
+        var result = AiTextFileReader.Read(files.WriteText(fileName, "content"));
+
+        Assert.Equal(contentType, result.ContentType);
     }
 
     private sealed class TemporaryFiles : IDisposable

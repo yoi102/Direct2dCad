@@ -87,6 +87,26 @@ public sealed class AgentRunnerTests
     }
 
     [Fact]
+    public async Task RunAsync_ReportsFailureWhenRetryStillExceedsContextWindow()
+    {
+        var client = new AlwaysContextRetryChatClient();
+        var events = new List<AgentRunEvent>();
+
+        var exception = await Assert.ThrowsAsync<AiContextWindowExceededException>(() =>
+            new AgentRunner(client).RunAsync(
+                CreateRequest(ConversationWithUser("inspect")),
+                agentEvent =>
+                {
+                    events.Add(agentEvent);
+                    return ValueTask.CompletedTask;
+                }));
+
+        Assert.Contains("still too large", exception.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(2, client.CallCount);
+        Assert.Single(events, item => item.Kind == AgentRunEventKind.ContextReduced);
+    }
+
+    [Fact]
     public async Task RunAsync_RejectsInvalidRequestBeforeCallingClient()
     {
         var request = CreateRequest(ConversationWithUser("inspect")) with
@@ -213,6 +233,28 @@ public sealed class AgentRunnerTests
             }
 
             return Task.FromResult(new AiChatCompletion("done", [], request.Model));
+        }
+    }
+
+    private sealed class AlwaysContextRetryChatClient : IAiChatClient
+    {
+        public int CallCount { get; private set; }
+
+        public Task<IReadOnlyList<string>> GetModelsAsync(
+            string endpoint,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<AiChatCompletion> CompleteAsync(
+            AiChatRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            throw new AiContextWindowExceededException(
+                "still too large",
+                HttpStatusCode.BadRequest,
+                9000,
+                4096);
         }
     }
 }

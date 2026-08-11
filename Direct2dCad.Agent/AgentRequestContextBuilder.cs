@@ -240,6 +240,20 @@ internal static class AgentRequestContextBuilder
         if (EstimateMessageTokens(message) <= tokenBudget)
             return message;
 
+        if (message.ContentParts is { Count: > 0 } contentParts &&
+            contentParts.Any(part => part.Type == AiChatContentPartType.Image) &&
+            contentParts.Count(part => part.Type == AiChatContentPartType.Image) * 1024 > tokenBudget)
+        {
+            message = message with
+            {
+                ContentParts = contentParts
+                    .Where(part => part.Type != AiChatContentPartType.Image)
+                    .ToArray()
+            };
+            if (EstimateMessageTokens(message) <= tokenBudget)
+                return message;
+        }
+
         var textLength = (message.Content?.Length ?? 0) +
                          (message.ContentParts ?? [])
                          .Where(part => part.Type == AiChatContentPartType.Text)

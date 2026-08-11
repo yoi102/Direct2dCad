@@ -56,6 +56,49 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public void ProcessTransport_RejectsMissingAbsoluteExecutable()
+    {
+        var missingPath = Path.Combine(
+            Path.GetTempPath(),
+            $"direct2dcad-missing-codex-{Guid.NewGuid():N}.exe");
+
+        Assert.Throws<FileNotFoundException>(() => new ProcessCodexAppServerTransport(
+            CreateOptions() with { ExecutablePath = missingPath }));
+    }
+
+    [Fact]
+    public async Task ProcessTransport_WritesAndReadsStdio()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            $"Direct2dCad.CodexTransportTests.{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var scriptPath = Path.Combine(directory, "fake-codex.cmd");
+        File.WriteAllText(
+            scriptPath,
+            "@echo off\r\nset /p line=\r\necho %line%\r\n");
+        try
+        {
+            using var transport = new ProcessCodexAppServerTransport(
+                CreateOptions() with { ExecutablePath = scriptPath });
+
+            await transport.WriteLineAsync("ping", CancellationToken.None);
+            var line = await transport.ReadLineAsync(CancellationToken.None)
+                .WaitAsync(TimeSpan.FromSeconds(5));
+
+            Assert.Equal("ping", line);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task GetModelsAsync_InitializesConnectionAndReturnsDistinctModels()
     {
         using var server = new FakeAppServer();
@@ -538,6 +581,44 @@ public sealed class CodexAppServerClientTests
         await client.ResetConversationAsync();
 
         Assert.Empty(server.Messages);
+    }
+
+    [Fact]
+    public async Task ResetConversationAsync_IgnoresUnsubscribeFailureAndClearsThread()
+    {
+        using var server = new FakeAppServer();
+        server.RequestHandler = (method, id, _, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    transport.Reply(id, new { thread = new { id = "thread-reset-error" } });
+                    break;
+                case "turn/start":
+                    transport.Reply(id, new { turn = new { id = "turn-reset-error" } });
+                    transport.Send(new
+                    {
+                        method = "turn/completed",
+                        @params = new { turn = new { status = "completed" } }
+                    });
+                    break;
+                case "thread/unsubscribe":
+                    transport.ReplyError(id, -32602, "thread already gone");
+                    break;
+            }
+
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        await client.RunAsync(new CodexAgentRunRequest(
+            "inspect", string.Empty, CreateOptions(), null));
+        await client.ResetConversationAsync();
+
+        Assert.Contains(server.Messages, message => GetMethod(message) == "thread/unsubscribe");
     }
 
     [Fact]
