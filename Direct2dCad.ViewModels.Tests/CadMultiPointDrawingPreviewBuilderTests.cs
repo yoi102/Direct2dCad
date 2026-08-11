@@ -41,15 +41,23 @@ public sealed class CadMultiPointDrawingPreviewBuilderTests
         Assert.Equal(CadTransientLinePattern.Solid, confirmedOutline.Style.LinePattern);
         Assert.Null(confirmedOutline.Style.FillColor);
 
-        var nextEdge = Assert.IsType<CadTransientLine>(items[2]);
+        var guides = items.OfType<CadTransientLine>().ToArray();
+        Assert.Equal(2, guides.Length);
+
+        var nextEdge = guides[0];
         Assert.Equal(points[^1], nextEdge.Start);
         Assert.Equal(mouse, nextEdge.End);
         Assert.Equal(CadTransientLinePattern.Dash, nextEdge.Style.LinePattern);
 
-        var closingEdge = Assert.IsType<CadTransientLine>(items[3]);
+        var closingEdge = guides[1];
         Assert.Equal(mouse, closingEdge.Start);
         Assert.Equal(points[0], closingEdge.End);
         Assert.Equal(CadTransientLinePattern.Dash, closingEdge.Style.LinePattern);
+
+        var labels = items.OfType<CadTransientText>().Select(item => item.Text).ToArray();
+        Assert.Equal(4, labels.Length);
+        Assert.Equal(2, labels.Count(label => label.StartsWith("L ", StringComparison.Ordinal)));
+        Assert.Equal(2, labels.Count(label => label.StartsWith("A ", StringComparison.Ordinal)));
     }
 
     [Fact]
@@ -97,6 +105,10 @@ public sealed class CadMultiPointDrawingPreviewBuilderTests
             document.GetLayer(LayerId.Default),
             defaults,
             styles);
-        return new CadMultiPointDrawingPreviewBuilder(document, viewport, resolver);
+        return new CadMultiPointDrawingPreviewBuilder(
+            document,
+            viewport,
+            resolver,
+            new CadTransientMeasurementBuilder(document, viewport));
     }
 }

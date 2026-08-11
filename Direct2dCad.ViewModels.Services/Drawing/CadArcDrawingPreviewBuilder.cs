@@ -68,8 +68,15 @@ internal readonly struct CadArcDrawingPreviewBuilder(
             items,
             start,
             mouseWorld,
-            $"R {measurementBuilder.FormatLength(geometry.Radius)}",
+            $"R {measurementBuilder.FormatLengthLabel(geometry.Radius)}",
             auxiliaryStyle);
+        AddArcMeasurementPreview(
+            items,
+            start,
+            mouseWorld,
+            $"A {measurementBuilder.FormatAngleLabel(Math.Abs(geometry.SweepAngleRadians))}",
+            auxiliaryStyle,
+            stackIndex: 1);
     }
 
     private void AddArcFirstStagePreview(
@@ -87,7 +94,15 @@ internal readonly struct CadArcDrawingPreviewBuilder(
             case CadCanvasToolMode.ArcStartCenterLength:
                 var startCenterRadius = first.DistanceTo(mouseWorld);
                 if (startCenterRadius > double.Epsilon)
+                {
                     items.Add(new CadTransientCircle(mouseWorld, startCenterRadius, auxiliaryStyle));
+                    AddArcMeasurementPreview(
+                        items,
+                        first,
+                        mouseWorld,
+                        $"R {measurementBuilder.FormatLengthLabel(startCenterRadius)}",
+                        auxiliaryStyle);
+                }
                 break;
 
             case CadCanvasToolMode.ArcCenterStartEnd:
@@ -95,7 +110,15 @@ internal readonly struct CadArcDrawingPreviewBuilder(
             case CadCanvasToolMode.ArcCenterStartLength:
                 var centerStartRadius = first.DistanceTo(mouseWorld);
                 if (centerStartRadius > double.Epsilon)
+                {
                     items.Add(new CadTransientCircle(first, centerStartRadius, auxiliaryStyle));
+                    AddArcMeasurementPreview(
+                        items,
+                        first,
+                        mouseWorld,
+                        $"R {measurementBuilder.FormatLengthLabel(centerStartRadius)}",
+                        auxiliaryStyle);
+                }
                 break;
         }
     }
@@ -169,6 +192,18 @@ internal readonly struct CadArcDrawingPreviewBuilder(
         switch (toolMode)
         {
             case CadCanvasToolMode.ArcThreePoint:
+                AddArcMeasurementPreview(
+                    items,
+                    geometry.Center,
+                    startPoint,
+                    $"R {measurementBuilder.FormatLengthLabel(geometry.Radius)}",
+                    auxiliaryStyle);
+                AddArcMeasurementPreview(
+                    items,
+                    geometry.Center,
+                    endPoint,
+                    $"A {measurementBuilder.FormatAngleLabel(Math.Abs(geometry.SweepAngleRadians))}",
+                    auxiliaryStyle);
                 break;
 
             case CadCanvasToolMode.ArcStartCenterEnd:
@@ -180,7 +215,7 @@ internal readonly struct CadArcDrawingPreviewBuilder(
                     items,
                     geometry.Center,
                     endPoint,
-                    $"A {measurementBuilder.FormatAngleDegrees(Math.Abs(geometry.SweepAngleRadians))}",
+                    $"A {measurementBuilder.FormatAngleLabel(Math.Abs(geometry.SweepAngleRadians))}",
                     auxiliaryStyle);
                 break;
 
@@ -190,7 +225,7 @@ internal readonly struct CadArcDrawingPreviewBuilder(
                     items,
                     startPoint,
                     endPoint,
-                    $"L {measurementBuilder.FormatLength(startPoint.DistanceTo(endPoint))}",
+                    $"L {measurementBuilder.FormatLengthLabel(startPoint.DistanceTo(endPoint))}",
                     auxiliaryStyle);
                 break;
 
@@ -199,7 +234,7 @@ internal readonly struct CadArcDrawingPreviewBuilder(
                     items,
                     geometry.Center,
                     startPoint,
-                    $"R {measurementBuilder.FormatLength(geometry.Radius)}",
+                    $"R {measurementBuilder.FormatLengthLabel(geometry.Radius)}",
                     auxiliaryStyle);
                 break;
 
@@ -208,7 +243,7 @@ internal readonly struct CadArcDrawingPreviewBuilder(
                     items,
                     first,
                     third,
-                    $"D {measurementBuilder.FormatAngleDegrees(NormalizePositive(AngleFrom(first, third)))}",
+                    $"D {measurementBuilder.FormatAngleLabel(NormalizePositive(AngleFrom(first, third)))}",
                     auxiliaryStyle);
                 break;
         }
@@ -219,11 +254,12 @@ internal readonly struct CadArcDrawingPreviewBuilder(
         CadPointD lineStart,
         CadPointD lineEnd,
         string text,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        int stackIndex = 0)
     {
         if (string.IsNullOrWhiteSpace(text))
             return;
 
-        measurementBuilder.AddText(items, lineStart, lineEnd, text, style);
+        measurementBuilder.AddText(items, lineStart, lineEnd, text, style, stackIndex);
     }
 }

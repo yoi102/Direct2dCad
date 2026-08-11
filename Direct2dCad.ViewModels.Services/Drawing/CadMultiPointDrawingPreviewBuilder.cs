@@ -8,7 +8,8 @@ namespace Direct2dCad.ViewModels.Services.Drawing;
 internal readonly struct CadMultiPointDrawingPreviewBuilder(
     CadDocument document,
     CadViewport viewport,
-    CadDrawingStyleResolver styleResolver)
+    CadDrawingStyleResolver styleResolver,
+    CadTransientMeasurementBuilder measurementBuilder)
 {
     public void AddPolylinePreview(
         List<CadTransientItem> items,
@@ -24,6 +25,11 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
 
         var closed = styleResolver.ResolvePolylineClosed(previewPoints.Length);
         items.Add(new CadTransientPolyline(previewPoints, closed, styleResolver.CreatePolylineTransientStyle(closed)));
+        measurementBuilder.AddSegmentMeasurements(
+            items,
+            previewPoints[^2],
+            previewPoints[^1],
+            styleResolver.CreatePolylineGuideStyle());
     }
 
     public void AddSplinePreview(
@@ -43,6 +49,12 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
             previewPoints,
             closed,
             styleResolver.CreateSplineTransientStyle(closed)));
+        measurementBuilder.AddSegmentMeasurements(
+            items,
+            previewPoints[^2],
+            previewPoints[^1],
+            styleResolver.CreateSplineGuideStyle(),
+            includeAngle: false);
     }
 
     public void AddPolygonPreview(
@@ -85,6 +97,12 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
                 styleResolver.CreatePolygonTransientStyle(includeFill: false)));
         }
 
+        measurementBuilder.AddSegmentMeasurements(
+            items,
+            pendingPoints[^1],
+            mouseWorld,
+            styleResolver.CreatePolygonGuideStyle());
+
         items.Add(new CadTransientLine(
             pendingPoints[^1],
             mouseWorld,
@@ -96,6 +114,12 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
                 mouseWorld,
                 pendingPoints[0],
                 styleResolver.CreatePolygonGuideStyle()));
+
+            measurementBuilder.AddSegmentMeasurements(
+                items,
+                mouseWorld,
+                pendingPoints[0],
+                styleResolver.CreatePolygonGuideStyle());
         }
     }
 

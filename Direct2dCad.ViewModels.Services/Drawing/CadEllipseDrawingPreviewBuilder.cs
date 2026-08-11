@@ -136,7 +136,7 @@ internal readonly struct CadEllipseDrawingPreviewBuilder(
             items,
             arc.Center,
             endPoint,
-            $"A {measurementBuilder.FormatAngleDegrees(Math.Abs(arc.SweepAngleRadians))}",
+            $"A {measurementBuilder.FormatAngleLabel(Math.Abs(arc.SweepAngleRadians))}",
             auxiliaryStyle);
     }
 
@@ -149,13 +149,13 @@ internal readonly struct CadEllipseDrawingPreviewBuilder(
             items,
             geometry.Center,
             new CadPointD(geometry.Center.X + geometry.RadiusX, geometry.Center.Y),
-            $"X {measurementBuilder.FormatLength(geometry.RadiusX)}",
+            $"X {measurementBuilder.FormatLengthLabel(geometry.RadiusX)}",
             style);
         AddMeasurementPreview(
             items,
             geometry.Center,
             new CadPointD(geometry.Center.X, geometry.Center.Y + geometry.RadiusY),
-            $"Y {measurementBuilder.FormatLength(geometry.RadiusY)}",
+            $"Y {measurementBuilder.FormatLengthLabel(geometry.RadiusY)}",
             style);
     }
 

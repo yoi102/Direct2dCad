@@ -18,6 +18,11 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(ResolveLineStrokeColor(), ResolveLineLineWeight());
     }
 
+    public CadTransientStyle CreateLineGuideStyle()
+    {
+        return previewStyleService.CreateDrawingAuxiliaryStyle(ResolveLineStrokeColor());
+    }
+
     public StyleId? ResolveLineGraphicStyleId()
     {
         return ResolveGraphicStyleId("Line", defaults.LineStrokeColor, defaults.LineUseLayerColor);
@@ -64,6 +69,11 @@ internal readonly struct CadDrawingStyleResolver(
             includeFill ? ResolvePolygonFillStyleId() : null);
     }
 
+    public CadTransientStyle CreatePolylineGuideStyle()
+    {
+        return previewStyleService.CreateDrawingAuxiliaryStyle(ResolvePolylineStrokeColor());
+    }
+
     public CadTransientStyle CreatePolygonGuideStyle()
     {
         return previewStyleService.CreateDrawingAuxiliaryStyle(
@@ -91,6 +101,11 @@ internal readonly struct CadDrawingStyleResolver(
             ResolveSplineStrokeColor(),
             ResolveSplineLineWeight(),
             includeFill ? ResolveSplineFillStyleId() : null);
+    }
+
+    public CadTransientStyle CreateSplineGuideStyle()
+    {
+        return previewStyleService.CreateDrawingAuxiliaryStyle(ResolveSplineStrokeColor());
     }
 
     public StyleId? ResolveSplineGraphicStyleId()

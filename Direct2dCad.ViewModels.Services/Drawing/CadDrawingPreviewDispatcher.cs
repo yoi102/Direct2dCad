@@ -29,6 +29,11 @@ internal readonly struct CadDrawingPreviewDispatcher(
         {
             case CadCanvasToolMode.Line when state.PendingWorldPoint is { } start:
                 items.Add(new CadTransientLine(start, mouseWorld, styleResolver.CreateLineTransientStyle()));
+                measurementBuilder.AddSegmentMeasurements(
+                    items,
+                    start,
+                    mouseWorld,
+                    previewStyleService.CreateDrawingAuxiliaryStyle(styleResolver.ResolveLineStrokeColor()));
                 break;
 
             case CadCanvasToolMode.CircleCenterRadius:
@@ -135,6 +140,34 @@ internal readonly struct CadDrawingPreviewDispatcher(
             styleResolver.CreateRectangleTransientStyle(),
             styleResolver.ResolveRectangleCornerRadiusX(bounds),
             styleResolver.ResolveRectangleCornerRadiusY(bounds)));
+
+        var auxiliaryStyle = previewStyleService.CreateDrawingAuxiliaryStyle(
+            styleResolver.ResolveRectangleStrokeColor());
+        measurementBuilder.AddText(
+            items,
+            new CadPointD(bounds.Left, bounds.Bottom),
+            new CadPointD(bounds.Right, bounds.Bottom),
+            $"W {measurementBuilder.FormatLengthLabel(bounds.Width)}",
+            auxiliaryStyle);
+        measurementBuilder.AddText(
+            items,
+            new CadPointD(bounds.Right, bounds.Bottom),
+            new CadPointD(bounds.Right, bounds.Top),
+            $"H {measurementBuilder.FormatLengthLabel(bounds.Height)}",
+            auxiliaryStyle);
+
+        var cornerRadiusX = styleResolver.ResolveRectangleCornerRadiusX(bounds);
+        var cornerRadiusY = styleResolver.ResolveRectangleCornerRadiusY(bounds);
+        if (cornerRadiusX > double.Epsilon && cornerRadiusY > double.Epsilon)
+        {
+            measurementBuilder.AddText(
+                items,
+                bounds.Center,
+                new CadPointD(bounds.Center.X + cornerRadiusX, bounds.Center.Y),
+                $"R {measurementBuilder.FormatLengthLabel(Math.Min(cornerRadiusX, cornerRadiusY))}",
+                auxiliaryStyle,
+                stackIndex: 1);
+        }
     }
 
     private void AddTextPreview(List<CadTransientItem> items, CadPointD mouseWorld)

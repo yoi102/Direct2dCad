@@ -61,7 +61,7 @@ internal readonly struct CadCircleDrawingPreviewBuilder(
 
         items.Add(new CadTransientCircle(center, radius, style));
         items.Add(new CadTransientLine(center, edge, auxiliaryStyle));
-        AddCircleMeasurementPreview(items, center, edge, radius, auxiliaryStyle);
+        AddCircleMeasurementPreview(items, center, edge, $"R {measurementBuilder.FormatLengthLabel(radius)}", auxiliaryStyle);
     }
 
     private void AddCircleCenterDiameterPreview(
@@ -84,7 +84,7 @@ internal readonly struct CadCircleDrawingPreviewBuilder(
         var start = center - unit * radius;
         var end = center + unit * radius;
         items.Add(new CadTransientLine(start, end, auxiliaryStyle));
-        AddCircleMeasurementPreview(items, start, end, radius * 2.0, auxiliaryStyle);
+        AddCircleMeasurementPreview(items, start, end, $"D {measurementBuilder.FormatLengthLabel(radius * 2.0)}", auxiliaryStyle);
     }
 
     private void AddCircleTwoPointPreview(
@@ -99,10 +99,10 @@ internal readonly struct CadCircleDrawingPreviewBuilder(
 
         items.Add(new CadTransientCircle(center, radius, style));
         items.Add(new CadTransientLine(first, second, auxiliaryStyle));
-        AddCircleMeasurementPreview(items, first, second, radius * 2.0, auxiliaryStyle);
+        AddCircleMeasurementPreview(items, first, second, $"D {measurementBuilder.FormatLengthLabel(radius * 2.0)}", auxiliaryStyle);
     }
 
-    private static void AddCircleThreePointPreview(
+    private void AddCircleThreePointPreview(
         List<CadTransientItem> items,
         CadPointD first,
         CadPointD second,
@@ -117,15 +117,21 @@ internal readonly struct CadCircleDrawingPreviewBuilder(
             return;
 
         items.Add(new CadTransientCircle(center, radius, style));
+        AddCircleMeasurementPreview(
+            items,
+            center,
+            third,
+            $"R {measurementBuilder.FormatLengthLabel(radius)}",
+            auxiliaryStyle);
     }
 
     private void AddCircleMeasurementPreview(
         List<CadTransientItem> items,
         CadPointD lineStart,
         CadPointD lineEnd,
-        double value,
+        string text,
         CadTransientStyle style)
     {
-        measurementBuilder.AddLength(items, lineStart, lineEnd, value, style);
+        measurementBuilder.AddText(items, lineStart, lineEnd, text, style);
     }
 }

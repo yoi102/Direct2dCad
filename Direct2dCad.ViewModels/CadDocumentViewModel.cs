@@ -2319,7 +2319,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadMultiPointDrawingPreviewBuilder(
             CadEditor.Document,
             InteractionViewport,
-            CreateDrawingStyleResolver());
+            CreateDrawingStyleResolver(),
+            CreateMeasurementBuilder());
     }
 
     private void AddSnapMarker(List<CadTransientItem> items, CadPointD rawWorld, CadPointD snappedWorld)
