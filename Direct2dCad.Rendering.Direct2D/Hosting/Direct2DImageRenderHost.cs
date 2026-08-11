@@ -45,6 +45,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private CadDocument? _baseSceneDocument;
     private bool _baseSceneValid;
     private bool _baseSceneDirty = true;
+    private bool _deferInitialPresentationUntilResourcesReady;
     private bool _hasRenderedFrame;
     private bool _disposed;
 
@@ -168,6 +169,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _document = document ?? throw new ArgumentNullException(nameof(document));
         _viewport = viewport ?? throw new ArgumentNullException(nameof(viewport));
         _hasRenderedFrame = false;
+        _deferInitialPresentationUntilResourcesReady = true;
         InvalidateBaseScene(releaseSnapshot: true);
         EndViewportInteraction();
         RefreshPendingTextMeasurements(document);
@@ -706,6 +708,20 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                             Stopwatch.GetElapsedTime(cacheStarted).TotalMilliseconds);
                     }
                 }
+
+                if (_deferInitialPresentationUntilResourcesReady &&
+                    renderCacheBuildPending &&
+                    RenderCacheBuildRequested is not null)
+                {
+                    // Geometry is prepared off the UI thread, but resources tied to the
+                    // device context must be attached here. Let the UI idle scheduler finish
+                    // those batches before the first Present so a new document never appears
+                    // as a progressively populated scene.
+                    RenderCacheBuildRequested.Invoke(this, EventArgs.Empty);
+                    return;
+                }
+
+                _deferInitialPresentationUntilResourcesReady = false;
 
                 var surfaceStarted = Stopwatch.GetTimestamp();
                 try

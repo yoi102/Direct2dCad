@@ -158,6 +158,44 @@ public sealed class Direct2DRenderHostIntegrationTests
         Assert.Equal(1, imageSource.PresentCount);
     }
 
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void RenderHost_DefersFirstPresentationUntilInitialResourcesAreReady()
+    {
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(640, 480);
+        host.AttachImageSource(imageSource);
+        host.SetSize(640, 480);
+
+        var document = CadDocument.Create("Deferred initial presentation");
+        for (var index = 0; index < 96; index++)
+        {
+            document.AddPolyline(
+            [
+                new CadPointD(index - 48, -10),
+                new CadPointD(index - 48, 10)
+            ]);
+        }
+
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(6, new CadPointD(320, 240));
+        host.SetScene(document, viewport);
+        var cacheBuildRequests = 0;
+        host.RenderCacheBuildRequested += (_, _) => cacheBuildRequests++;
+
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(0, imageSource.PresentCount);
+        Assert.Equal(1, cacheBuildRequests);
+
+        PrepareAllRenderCaches(host);
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+
+        Assert.Equal(1, imageSource.PresentCount);
+        Assert.Equal(96, host.RenderStatistics.VisibleEntityCount);
+    }
+
     [Theory]
     [InlineData(CadParallelRenderingMode.MultipleDevices)]
     [InlineData(CadParallelRenderingMode.SharedDeviceContexts)]
