@@ -31,7 +31,8 @@ internal readonly struct CadTransientMeasurementBuilder(
         CadTransientStyle style,
         bool includeAngle = true,
         string lengthPrefix = "L",
-        string anglePrefix = "A")
+        string anglePrefix = "A",
+        int normalSign = 1)
     {
         var length = lineStart.DistanceTo(lineEnd);
         if (length <= double.Epsilon || !IsFinite(length))
@@ -43,7 +44,8 @@ internal readonly struct CadTransientMeasurementBuilder(
             lineEnd,
             $"{lengthPrefix} {FormatLengthLabel(length)}",
             style,
-            stackIndex: 0);
+            stackIndex: 0,
+            normalSign: normalSign);
 
         if (includeAngle)
         {
@@ -53,7 +55,8 @@ internal readonly struct CadTransientMeasurementBuilder(
                 lineEnd,
                 $"{anglePrefix} {FormatDirectionLabel(lineStart, lineEnd)}",
                 style,
-                stackIndex: 1);
+                stackIndex: 1,
+                normalSign: normalSign);
         }
     }
 
@@ -63,7 +66,8 @@ internal readonly struct CadTransientMeasurementBuilder(
         CadPointD lineEnd,
         string text,
         CadTransientStyle style,
-        int stackIndex = 0)
+        int stackIndex = 0,
+        int normalSign = 1)
     {
         var zoom = Math.Max(viewport.Zoom, double.Epsilon);
         var textHeight = 13.0 / zoom;
@@ -75,9 +79,10 @@ internal readonly struct CadTransientMeasurementBuilder(
 
         var normal = unit.Perpendicular();
         var midpoint = lineStart + direction * 0.5;
-        var position = midpoint + normal * padding * (stackIndex + 1) + unit * padding;
         var width = EstimateLabelWidth(text, textHeight);
         var boundsHeight = textHeight * 1.35;
+        var normalOffset = normalSign * (padding + stackIndex * (boundsHeight + padding * 0.25));
+        var position = midpoint + normal * normalOffset + unit * padding;
         var bounds = CadRectD.FromLTRB(
             position.X,
             position.Y,
@@ -151,4 +156,5 @@ internal readonly struct CadTransientMeasurementBuilder(
     {
         return !double.IsNaN(value) && !double.IsInfinity(value);
     }
+
 }

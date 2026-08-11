@@ -97,16 +97,17 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
                 styleResolver.CreatePolygonTransientStyle(includeFill: false)));
         }
 
-        measurementBuilder.AddSegmentMeasurements(
-            items,
-            pendingPoints[^1],
-            mouseWorld,
-            styleResolver.CreatePolygonGuideStyle());
-
         items.Add(new CadTransientLine(
             pendingPoints[^1],
             mouseWorld,
             styleResolver.CreatePolygonGuideStyle()));
+
+        measurementBuilder.AddSegmentMeasurements(
+            items,
+            pendingPoints[^1],
+            mouseWorld,
+            styleResolver.CreatePolygonGuideStyle(),
+            normalSign: 1);
 
         if (pendingPoints.Count >= 2)
         {
@@ -115,11 +116,6 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
                 pendingPoints[0],
                 styleResolver.CreatePolygonGuideStyle()));
 
-            measurementBuilder.AddSegmentMeasurements(
-                items,
-                mouseWorld,
-                pendingPoints[0],
-                styleResolver.CreatePolygonGuideStyle());
         }
     }
 

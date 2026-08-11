@@ -55,9 +55,16 @@ public sealed class CadMultiPointDrawingPreviewBuilderTests
         Assert.Equal(CadTransientLinePattern.Dash, closingEdge.Style.LinePattern);
 
         var labels = items.OfType<CadTransientText>().Select(item => item.Text).ToArray();
-        Assert.Equal(4, labels.Length);
-        Assert.Equal(2, labels.Count(label => label.StartsWith("L ", StringComparison.Ordinal)));
-        Assert.Equal(2, labels.Count(label => label.StartsWith("A ", StringComparison.Ordinal)));
+        Assert.Equal(2, labels.Length);
+        Assert.Single(labels, label => label.StartsWith("L ", StringComparison.Ordinal));
+        Assert.Single(labels, label => label.StartsWith("A ", StringComparison.Ordinal));
+
+        var textItems = items.OfType<CadTransientText>().ToArray();
+        for (var first = 0; first < textItems.Length; first++)
+        {
+            for (var second = first + 1; second < textItems.Length; second++)
+                Assert.False(textItems[first].Bounds.Intersects(textItems[second].Bounds));
+        }
     }
 
     [Fact]
