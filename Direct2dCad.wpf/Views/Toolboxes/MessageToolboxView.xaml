@@ -48,8 +48,10 @@
                     Margin="6,0,0,0"
                     Padding="10,3"
                     Command="{Binding ClearMessagesCommand}"
-                    Content="{I18N {x:Static r:LangKeys.ClearMessages}}"
-                    ToolTip="{I18N {x:Static r:LangKeys.ClearMessages}}" />
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    ToolTip="{I18N {x:Static r:LangKeys.ClearMessages}}" >
+                <md:PackIcon Kind="Broom"/>
+            </Button>
         </Grid>
 
         <ListBox Grid.Row="1"
