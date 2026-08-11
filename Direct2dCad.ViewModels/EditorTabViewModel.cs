@@ -228,9 +228,32 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     [ObservableProperty]
     public partial CadCanvasToolMode CadCanvasToolMode { get; set; } = CadCanvasToolMode.Select;
 
+    [ObservableProperty]
+    public partial ViewModelCadUnit ViewModelCadUnit { get; set; } = ViewModelCadUnit.Millimeter;
+
+    public string DocumentUnitSymbol => CadUnitConversion.GetSymbol((CadUnit)ViewModelCadUnit);
+
     partial void OnTextInputChanged(string value)
     {
         CadDocumentViewModel.DrawingDefaults.Text = value;
+        CadDocumentViewModel.RequestRender();
+    }
+
+    partial void OnViewModelCadUnitChanged(ViewModelCadUnit value)
+    {
+        OnPropertyChanged(nameof(DocumentUnitSymbol));
+        if (_isSyncingViewSettings)
+            return;
+
+        var document = CadDocumentViewModel.CadEditor.Document;
+        var unit = (CadUnit)value;
+        if (document.DocumentSettings.Unit == unit)
+            return;
+
+        document.DocumentSettings.SetUnit(unit);
+        CadDocumentViewModel.NotifyDocumentUnitChanged();
+        ApplyDocumentViewSettingsToToolbar();
+        MarkDirectDocumentChanged();
         CadDocumentViewModel.RequestRender();
     }
 
@@ -654,11 +677,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         try
         {
             var grid = CadDocumentViewModel.CadEditor.Document.ViewSettings.Grid;
+            ViewModelCadUnit = (ViewModelCadUnit)CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit;
             ViewModelCadGridType = (ViewModelCadGridType)grid.Type;
             ViewModelCadSnapMarkerType = (ViewModelCadSnapMarkerType)grid.SnapMarkerType;
             GridSpacingPresets.Clear();
             foreach (var preset in grid.SpacingPresets)
-                GridSpacingPresets.Add(GridSpacingPresetItemViewModel.From(preset));
+                GridSpacingPresets.Add(GridSpacingPresetItemViewModel.From(
+                    preset,
+                    CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit));
             GridSpacingPresets.Add(GridSpacingPresetItemViewModel.CreateGridSettingsAction());
             SelectedMajorGridSpacingPreset = FindGridSpacingPreset(grid.MajorSpacingPresetId, grid.SpacingX, grid.SpacingY);
             SelectedMinorGridSpacingPreset = FindGridSpacingPreset(

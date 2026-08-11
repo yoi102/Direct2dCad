@@ -537,6 +537,30 @@
   <data name="Length" xml:space="preserve">
     <value>長さ</value>
   </data>
+  <data name="Unit" xml:space="preserve">
+    <value>単位</value>
+  </data>
+  <data name="Unitless" xml:space="preserve">
+    <value>単位なし</value>
+  </data>
+  <data name="Millimeter" xml:space="preserve">
+    <value>ミリメートル</value>
+  </data>
+  <data name="Centimeter" xml:space="preserve">
+    <value>センチメートル</value>
+  </data>
+  <data name="Meter" xml:space="preserve">
+    <value>メートル</value>
+  </data>
+  <data name="Inch" xml:space="preserve">
+    <value>インチ</value>
+  </data>
+  <data name="Foot" xml:space="preserve">
+    <value>フィート</value>
+  </data>
+  <data name="Mil" xml:space="preserve">
+    <value>ミル</value>
+  </data>
   <data name="Angle" xml:space="preserve">
     <value>角度</value>
   </data>

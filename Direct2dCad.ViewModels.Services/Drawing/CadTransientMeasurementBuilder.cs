@@ -106,18 +106,11 @@ internal readonly struct CadTransientMeasurementBuilder(
 
     public string FormatLengthLabel(double value)
     {
-        var suffix = document.DocumentSettings.Unit switch
-        {
-            CadUnit.Millimeter => " mm",
-            CadUnit.Centimeter => " cm",
-            CadUnit.Meter => " m",
-            CadUnit.Inch => " in",
-            CadUnit.Foot => " ft",
-            CadUnit.Mil => " mil",
-            _ => string.Empty
-        };
+        var unit = document.DocumentSettings.Unit;
+        var displayValue = CadUnitConversion.FromMillimeters(value, unit);
+        var symbol = CadUnitConversion.GetSymbol(unit);
 
-        return FormatLength(value) + suffix;
+        return FormatLength(displayValue) + (string.IsNullOrEmpty(symbol) ? string.Empty : $" {symbol}");
     }
 
     public string FormatAngleDegrees(double radians)

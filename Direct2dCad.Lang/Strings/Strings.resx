@@ -676,6 +676,38 @@
     <value>Length</value>
     <comment>Length</comment>
   </data>
+  <data name="Unit" xml:space="preserve">
+    <value>Unit</value>
+    <comment>Drawing unit selector</comment>
+  </data>
+  <data name="Unitless" xml:space="preserve">
+    <value>Unitless</value>
+    <comment>Drawing unit</comment>
+  </data>
+  <data name="Millimeter" xml:space="preserve">
+    <value>Millimeter</value>
+    <comment>Drawing unit</comment>
+  </data>
+  <data name="Centimeter" xml:space="preserve">
+    <value>Centimeter</value>
+    <comment>Drawing unit</comment>
+  </data>
+  <data name="Meter" xml:space="preserve">
+    <value>Meter</value>
+    <comment>Drawing unit</comment>
+  </data>
+  <data name="Inch" xml:space="preserve">
+    <value>Inch</value>
+    <comment>Drawing unit</comment>
+  </data>
+  <data name="Foot" xml:space="preserve">
+    <value>Foot</value>
+    <comment>Drawing unit</comment>
+  </data>
+  <data name="Mil" xml:space="preserve">
+    <value>Mil</value>
+    <comment>Drawing unit</comment>
+  </data>
   <data name="Angle" xml:space="preserve">
     <value>Angle</value>
     <comment>Angle</comment>

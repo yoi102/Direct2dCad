@@ -1,11 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System.Globalization;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.CommandLine;
 using Direct2dCad.Commands;
 using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
@@ -106,6 +108,30 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     [ObservableProperty]
     public partial double CurrentPointerWorldY { get; private set; }
+
+    public string CurrentPointerWorldXDisplay => FormatPointerCoordinate(CurrentPointerWorldX);
+    public string CurrentPointerWorldYDisplay => FormatPointerCoordinate(CurrentPointerWorldY);
+
+    partial void OnCurrentPointerWorldXChanged(double value) =>
+        OnPropertyChanged(nameof(CurrentPointerWorldXDisplay));
+
+    partial void OnCurrentPointerWorldYChanged(double value) =>
+        OnPropertyChanged(nameof(CurrentPointerWorldYDisplay));
+
+    public void NotifyDocumentUnitChanged()
+    {
+        OnPropertyChanged(nameof(CurrentPointerWorldXDisplay));
+        OnPropertyChanged(nameof(CurrentPointerWorldYDisplay));
+    }
+
+    private string FormatPointerCoordinate(double value)
+    {
+        var displayValue = CadUnitConversion.FromMillimeters(
+            value,
+            CadEditor.Document.DocumentSettings.Unit);
+        var precision = Math.Clamp(CadEditor.Document.DocumentSettings.LengthPrecision, 0, 12);
+        return displayValue.ToString($"F{precision}", CultureInfo.CurrentCulture);
+    }
 
     [ObservableProperty]
     public partial double RenderFramesPerSecond { get; private set; }

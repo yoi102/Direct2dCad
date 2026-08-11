@@ -289,7 +289,8 @@ public sealed record GridSpacingPresetItemViewModel(
     double SpacingX,
     double SpacingY,
     bool LinkAxes,
-    bool OpensGridSettings = false)
+    bool OpensGridSettings = false,
+    CadUnit DisplayUnit = CadUnit.Millimeter)
 {
     public string DisplayName
     {
@@ -298,9 +299,13 @@ public sealed record GridSpacingPresetItemViewModel(
             if (OpensGridSettings)
                 return Strings.EditGridSpacingPreset;
 
+            var displayX = CadUnitConversion.FromMillimeters(SpacingX, DisplayUnit);
+            var displayY = CadUnitConversion.FromMillimeters(SpacingY, DisplayUnit);
+            var symbol = CadUnitConversion.GetSymbol(DisplayUnit);
+            var suffix = string.IsNullOrEmpty(symbol) ? string.Empty : $" {symbol}";
             var spacing = NearlyEqual(SpacingX, SpacingY)
-                ? $"{SpacingX:0.###} mm"
-                : $"{SpacingX:0.###} x {SpacingY:0.###} mm";
+                ? $"{displayX:0.###}{suffix}"
+                : $"{displayX:0.###} x {displayY:0.###}{suffix}";
             return string.IsNullOrWhiteSpace(Name) ? spacing : $"{Name}: {spacing}";
         }
     }
@@ -310,8 +315,10 @@ public sealed record GridSpacingPresetItemViewModel(
     public static GridSpacingPresetItemViewModel CreateGridSettingsAction() =>
         new(Guid.Empty, string.Empty, 0, 0, true, true);
 
-    public static GridSpacingPresetItemViewModel From(CadGridSpacingPreset preset) =>
-        new(preset.Id, preset.Name, preset.SpacingX, preset.SpacingY, preset.LinkAxes);
+    public static GridSpacingPresetItemViewModel From(
+        CadGridSpacingPreset preset,
+        CadUnit displayUnit = CadUnit.Millimeter) =>
+        new(preset.Id, preset.Name, preset.SpacingX, preset.SpacingY, preset.LinkAxes, DisplayUnit: displayUnit);
 
     private static bool NearlyEqual(double left, double right) =>
         Math.Abs(left - right) <= Math.Max(1.0, Math.Max(Math.Abs(left), Math.Abs(right))) * 1e-9;

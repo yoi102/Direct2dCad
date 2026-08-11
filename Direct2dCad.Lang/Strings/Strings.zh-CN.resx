@@ -537,6 +537,30 @@
   <data name="Length" xml:space="preserve">
     <value>长度</value>
   </data>
+  <data name="Unit" xml:space="preserve">
+    <value>单位</value>
+  </data>
+  <data name="Unitless" xml:space="preserve">
+    <value>无单位</value>
+  </data>
+  <data name="Millimeter" xml:space="preserve">
+    <value>毫米</value>
+  </data>
+  <data name="Centimeter" xml:space="preserve">
+    <value>厘米</value>
+  </data>
+  <data name="Meter" xml:space="preserve">
+    <value>米</value>
+  </data>
+  <data name="Inch" xml:space="preserve">
+    <value>英寸</value>
+  </data>
+  <data name="Foot" xml:space="preserve">
+    <value>英尺</value>
+  </data>
+  <data name="Mil" xml:space="preserve">
+    <value>密耳</value>
+  </data>
   <data name="Angle" xml:space="preserve">
     <value>角度</value>
   </data>

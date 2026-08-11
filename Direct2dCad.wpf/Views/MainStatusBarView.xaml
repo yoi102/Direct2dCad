@@ -28,16 +28,34 @@
 
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.Unit}}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,4,0" />
+                    <ComboBox Width="100"
+                              Height="24"
+                              Margin="5,0,0,0"
+                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadUnit}}}"
+                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadUnit}" />
+                </StackPanel>
+            </StatusBarItem>
+
+            <Separator />
+
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{I18N {x:Static r:LangKeys.X}}"
                                VerticalAlignment="Center" />
                     <TextBlock Width="78"
                                Margin="4,0,10,0"
-                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldX, StringFormat={}{0:F3}}" />
+                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldXDisplay}" />
                     <TextBlock Text="{I18N {x:Static r:LangKeys.Y}}"
                                VerticalAlignment="Center" />
                     <TextBlock Width="78"
                                Margin="4,0,0,0"
-                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldY, StringFormat={}{0:F3}}" />
+                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldYDisplay}" />
+                    <TextBlock Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               Text="{Binding CurrentEditorTabViewModel.DocumentUnitSymbol}" />
                 </StackPanel>
             </StatusBarItem>
 

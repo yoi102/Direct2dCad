@@ -18,7 +18,27 @@ public sealed class CadTransientMeasurementBuilderTests
         document.DocumentSettings.SetUnit(CadUnit.Centimeter);
         var builder = CreateBuilder(document);
 
-        Assert.Equal("12.35 cm", builder.FormatLengthLabel(12.345));
+        Assert.Equal("1.23 cm", builder.FormatLengthLabel(12.345));
+    }
+
+    [Theory]
+    [InlineData(CadUnit.Millimeter, 25.4, 25.4, "mm")]
+    [InlineData(CadUnit.Centimeter, 25.4, 2.54, "cm")]
+    [InlineData(CadUnit.Inch, 25.4, 1.0, "in")]
+    [InlineData(CadUnit.Foot, 304.8, 1.0, "ft")]
+    [InlineData(CadUnit.Mil, 0.0254, 1.0, "mil")]
+    public void FormatLengthLabel_ConvertsCanonicalMillimetersToSelectedUnit(
+        CadUnit unit,
+        double millimeters,
+        double expectedValue,
+        string symbol)
+    {
+        var document = CadDocument.Create("Measurements");
+        document.DocumentSettings.SetLengthPrecision(2);
+        document.DocumentSettings.SetUnit(unit);
+        var builder = CreateBuilder(document);
+
+        Assert.Equal($"{expectedValue:F2} {symbol}", builder.FormatLengthLabel(millimeters));
     }
 
     [Fact]
