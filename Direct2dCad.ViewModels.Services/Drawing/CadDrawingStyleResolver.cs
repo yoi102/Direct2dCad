@@ -64,6 +64,12 @@ internal readonly struct CadDrawingStyleResolver(
             includeFill ? ResolvePolygonFillStyleId() : null);
     }
 
+    public CadTransientStyle CreatePolygonGuideStyle()
+    {
+        return previewStyleService.CreateDrawingAuxiliaryStyle(
+            ResolvePolygonStrokeColor());
+    }
+
     public StyleId? ResolvePolygonGraphicStyleId()
     {
         return ResolveGraphicStyleId("Polygon", defaults.PolygonStrokeColor, defaults.PolygonUseLayerColor);

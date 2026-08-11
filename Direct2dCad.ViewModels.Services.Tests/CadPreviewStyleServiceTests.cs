@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Services.Styling;
 
 namespace Direct2dCad.ViewModels.Services.Tests;
@@ -24,6 +25,27 @@ public sealed class CadPreviewStyleServiceTests
         Assert.Equal(settings.Interaction.SelectionWindowStrokeColor, style.StrokeColor);
         Assert.Equal(settings.Interaction.SelectionWindowFillColor, style.FillColor);
         Assert.Equal(3.5, style.StrokeWidth);
+    }
+
+    [Fact]
+    public void DrawingAndGripAuxiliaryStyles_AreDashedAndUnfilled()
+    {
+        var document = CadDocument.Create("Auxiliary styles");
+        var settings = CadUserSettings.CreateDefault();
+        settings.Interaction.GripPreviewStrokeColor = CadColor.FromRgb(12, 34, 56);
+        settings.Interaction.GripPreviewStrokeWidth = 2.5;
+        var service = new CadPreviewStyleService(document, settings);
+
+        var drawing = service.CreateDrawingAuxiliaryStyle(CadColor.Green);
+        var grip = service.CreateGripAuxiliaryStyle();
+
+        Assert.Equal(CadTransientLinePattern.Dash, drawing.LinePattern);
+        Assert.Null(drawing.FillColor);
+        Assert.Equal(CadColor.Green, drawing.StrokeColor);
+        Assert.Equal(CadTransientLinePattern.Dash, grip.LinePattern);
+        Assert.Null(grip.FillColor);
+        Assert.Equal(settings.Interaction.GripPreviewStrokeColor, grip.StrokeColor);
+        Assert.Equal(settings.Interaction.GripPreviewStrokeWidth, grip.StrokeWidth);
     }
 
     [Fact]

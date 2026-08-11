@@ -62,20 +62,40 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
             return;
         }
 
+        // A polygon is always previewed as a closed contour. The two edges
+        // incident to the cursor are provisional, so they remain dashed until
+        // the cursor position is committed as the next vertex.
         var previewPoints = AppendPoint(pendingPoints, mouseWorld);
         if (previewPoints.Length >= 3)
         {
             items.Add(new CadTransientPolyline(
                 previewPoints,
                 Closed: true,
-                styleResolver.CreatePolygonTransientStyle()));
+                styleResolver.CreatePolygonTransientStyle() with
+                {
+                    StrokeColor = CadColor.Transparent
+                }));
         }
-        else if (previewPoints.Length >= 2)
+
+        if (pendingPoints.Count >= 2)
         {
             items.Add(new CadTransientPolyline(
-                previewPoints,
+                pendingPoints.ToArray(),
                 Closed: false,
                 styleResolver.CreatePolygonTransientStyle(includeFill: false)));
+        }
+
+        items.Add(new CadTransientLine(
+            pendingPoints[^1],
+            mouseWorld,
+            styleResolver.CreatePolygonGuideStyle()));
+
+        if (pendingPoints.Count >= 2)
+        {
+            items.Add(new CadTransientLine(
+                mouseWorld,
+                pendingPoints[0],
+                styleResolver.CreatePolygonGuideStyle()));
         }
     }
 
