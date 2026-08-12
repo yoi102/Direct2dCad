@@ -1,3 +1,5 @@
+using Direct2dCad.Db.Cad.Settings;
+
 namespace Direct2dCad.CommandLine;
 
 public interface ICadCommandLineContext
@@ -9,6 +11,7 @@ public interface ICadCommandLineContext
     bool CanUndo { get; }
     bool CanRedo { get; }
     CadCommandLinePoint? LastInputPoint { get; }
+    CadUnit Unit => CadUnit.Millimeter;
 
     void SetToolMode(CadCommandLineDrawingMode mode);
     void Cancel();

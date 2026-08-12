@@ -1,8 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang.Strings;
 
 namespace Direct2dCad.ViewModels.Toolboxes.EntityProperty;
@@ -31,6 +33,22 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     private bool _supportsLineJoin;
 
     public bool IsEditable { get; private set; } = true;
+    protected double ToDisplayLength(double millimeters) =>
+        CadUnitConversion.FromMillimeters(millimeters, DocumentUnit);
+
+    protected double ToModelLength(double value) =>
+        CadUnitConversion.ToMillimeters(value, DocumentUnit);
+
+    protected CadPointD ToDisplayPoint(CadPointD point) =>
+        new(ToDisplayLength(point.X), ToDisplayLength(point.Y));
+
+    protected CadPointD ToModelPoint(CadPointD point) =>
+        new(ToModelLength(point.X), ToModelLength(point.Y));
+
+    protected CadUnit DocumentUnit =>
+        _layerDocumentViewModel?.CadEditor.Document.DocumentSettings.Unit ?? CadUnit.Millimeter;
+
+    public double MinimumPositiveLength => ToDisplayLength(0.001);
     public bool SupportsStartEndCaps
     {
         get => _supportsStartEndCaps;
@@ -167,6 +185,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         RefreshStrokeStyleCapabilities(entity);
         RefreshStrokeStyle(entity.StrokeStyle);
         RefreshColorSourceOptions(documentViewModel, entity);
+        OnPropertyChanged(nameof(MinimumPositiveLength));
 
         RefreshLayerOptionsCore(documentViewModel, entity.LayerId);
     }
@@ -181,6 +200,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         _isPasteLayerSelection = false;
         ClearColorSourceSelection();
         RefreshEntityName(documentViewModel.DrawingDefaults.EntityName);
+        OnPropertyChanged(nameof(MinimumPositiveLength));
 
         RefreshLayerOptionsCore(documentViewModel, documentViewModel.DrawingLayerId);
     }
@@ -195,6 +215,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         _isPasteLayerSelection = true;
         ClearColorSourceSelection();
 
+        OnPropertyChanged(nameof(MinimumPositiveLength));
         RefreshLayerOptionsCore(documentViewModel, documentViewModel.PasteTargetLayerId);
     }
 

@@ -8,19 +8,21 @@ namespace Direct2dCad.ViewModels.Settings;
 public partial class GridSpacingPresetEditorViewModel : ObservableObject
 {
     private readonly HashSet<string> _unavailableNames;
+    private readonly CadUnit _unit;
     private bool _synchronizingAxes;
 
     public GridSpacingPresetEditorViewModel(GridSpacingPresetDialogRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         IsEditing = request.IsEditing;
+        _unit = request.Unit;
         _unavailableNames = request.UnavailableNames
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Select(name => name.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         Name = request.Name;
-        SpacingX = request.SpacingX;
-        SpacingY = request.SpacingY;
+        SpacingX = CadUnitConversion.FromMillimeters(request.SpacingX, _unit);
+        SpacingY = CadUnitConversion.FromMillimeters(request.SpacingY, _unit);
         LinkAxes = request.LinkAxes;
         if (LinkAxes)
             SpacingY = SpacingX;
@@ -30,6 +32,9 @@ public partial class GridSpacingPresetEditorViewModel : ObservableObject
     public bool IsEditing { get; }
 
     public string Title => Localize(IsEditing ? "EditGridSpacingPreset" : "AddGridSpacingPreset");
+    public string UnitSymbol => CadUnitConversion.GetSymbol(_unit);
+    public double MinimumSpacing => CadUnitConversion.FromMillimeters(CadGridSettings.MinimumSpacingMillimeters, _unit);
+    public double MaximumSpacing => CadUnitConversion.FromMillimeters(CadGridSettings.MaximumSpacingMillimeters, _unit);
 
     public bool IsValid => string.IsNullOrEmpty(ValidationError);
 
@@ -40,8 +45,16 @@ public partial class GridSpacingPresetEditorViewModel : ObservableObject
             var trimmedName = Name?.Trim();
             if (!string.IsNullOrEmpty(trimmedName) && _unavailableNames.Contains(trimmedName))
                 return Localize("GridSpacingPresetNameExists");
-            if (!IsSpacingValid(SpacingX) || !IsSpacingValid(SpacingY))
-                return Localize("GridSpacingPresetRangeError");
+            if (!IsSpacingValid(CadUnitConversion.ToMillimeters(SpacingX, _unit)) ||
+                !IsSpacingValid(CadUnitConversion.ToMillimeters(SpacingY, _unit)))
+            {
+                return string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    Localize("GridSpacingPresetRangeError"),
+                    MinimumSpacing,
+                    MaximumSpacing,
+                    UnitSymbol);
+            }
             return null;
         }
     }
@@ -55,8 +68,8 @@ public partial class GridSpacingPresetEditorViewModel : ObservableObject
     {
         return new GridSpacingPresetDialogResult(
             Name?.Trim() ?? string.Empty,
-            SpacingX,
-            LinkAxes ? SpacingX : SpacingY,
+            CadUnitConversion.ToMillimeters(SpacingX, _unit),
+            CadUnitConversion.ToMillimeters(LinkAxes ? SpacingX : SpacingY, _unit),
             LinkAxes);
     }
 

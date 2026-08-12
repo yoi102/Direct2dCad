@@ -99,8 +99,9 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
             var definition = document.GetBlock(reference.DefinitionBlockId);
             DefinitionEntityCount = definition.EntityIds.Count;
             ReferenceCount = document.GetBlockReferenceCount(definition.Id);
-            PositionX = reference.Position.X;
-            PositionY = reference.Position.Y;
+            var displayPosition = ToDisplayPoint(reference.Position);
+            PositionX = displayPosition.X;
+            PositionY = displayPosition.Y;
             RotationDegrees = reference.RotationRadians * 180.0 / Math.PI;
             ScaleX = reference.ScaleX;
             ScaleY = reference.ScaleY;
@@ -216,7 +217,7 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
             return;
         }
 
-        var position = new CadPointD(PositionX, PositionY);
+        var position = ToModelPoint(new CadPointD(PositionX, PositionY));
         var rotation = RotationDegrees * Math.PI / 180.0;
         if (reference.Position.NearEquals(position, Epsilon) &&
             Math.Abs(reference.RotationRadians - rotation) <= Epsilon &&

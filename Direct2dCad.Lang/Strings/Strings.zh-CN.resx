@@ -1144,7 +1144,7 @@
     <value>已存在同名的栅格规格。</value>
   </data>
   <data name="GridSpacingPresetRangeError" xml:space="preserve">
-    <value>间距必须在 0.001 mm 到 100000 mm 之间。</value>
+    <value>间距必须在 {0} {2} 到 {1} {2} 之间。</value>
   </data>
   <data name="ColorSource" xml:space="preserve">
     <value>颜色来源</value>

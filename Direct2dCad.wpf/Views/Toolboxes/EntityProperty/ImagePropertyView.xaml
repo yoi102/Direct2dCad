@@ -53,9 +53,9 @@
                     <TextBlock Grid.Row="6" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterY}}" VerticalAlignment="Center" />
                     <mah:NumericUpDown Grid.Row="6" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="7" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Width}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="8" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Height}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="8" Grid.Column="1" Value="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" />
+                    <mah:NumericUpDown Grid.Row="8" Grid.Column="1" Value="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" />
                 </Grid>
             </Expander>
         </StackPanel>

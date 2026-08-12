@@ -79,9 +79,10 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel,
         try
         {
             RefreshLayerOptions(_documentViewModel, circle);
-            CenterX = circle.Center.X;
-            CenterY = circle.Center.Y;
-            Radius = circle.Radius;
+            var displayCenter = ToDisplayPoint(circle.Center);
+            CenterX = displayCenter.X;
+            CenterY = displayCenter.Y;
+            Radius = ToDisplayLength(circle.Radius);
             RefreshFillStyleOptions(circle.FillStyleId);
             FillColor = ResolveFillColor(_documentViewModel.CadEditor.Document, circle.FillStyleId);
             StrokeColor = ResolveStrokeColor(circle);
@@ -218,8 +219,8 @@ public partial class CirclePropertyViewModel : EntityPropertyViewModel,
 
     private bool TryCreateGeometry(out CadPointD center, out double radius)
     {
-        center = new CadPointD(CenterX, CenterY);
-        radius = Radius;
+        center = ToModelPoint(new CadPointD(CenterX, CenterY));
+        radius = ToModelLength(Radius);
 
         return IsFinite(CenterX) &&
                IsFinite(CenterY) &&

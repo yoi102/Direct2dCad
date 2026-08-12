@@ -36,7 +36,7 @@
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.EndY}}" VerticalAlignment="Center" />
                     <mah:NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding EndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Length}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding Length, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding Length, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Angle}}" VerticalAlignment="Center" />
                     <mah:NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding AngleDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F2" Interval="5" />
                 </Grid>

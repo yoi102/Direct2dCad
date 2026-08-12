@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db;
+using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -67,8 +68,8 @@ public partial class BlockDefinitionPropertyViewModel : ObservableObject
             Name = block.Name;
             EntityCount = block.EntityIds.Count;
             ReferenceCount = _documentViewModel.CadEditor.Document.GetBlockReferenceCount(BlockId);
-            BasePointX = block.BasePoint.X;
-            BasePointY = block.BasePoint.Y;
+            BasePointX = CadUnitConversion.FromMillimeters(block.BasePoint.X, DocumentUnit);
+            BasePointY = CadUnitConversion.FromMillimeters(block.BasePoint.Y, DocumentUnit);
             IsEditable = !block.IsReadOnly && !block.IsSystem;
         }
         finally
@@ -91,7 +92,9 @@ public partial class BlockDefinitionPropertyViewModel : ObservableObject
             return;
         }
 
-        var basePoint = new CadPointD(BasePointX, BasePointY);
+        var basePoint = new CadPointD(
+            CadUnitConversion.ToMillimeters(BasePointX, DocumentUnit),
+            CadUnitConversion.ToMillimeters(BasePointY, DocumentUnit));
         if (block.BasePoint.NearEquals(basePoint, 1e-9))
             return;
 
@@ -108,6 +111,8 @@ public partial class BlockDefinitionPropertyViewModel : ObservableObject
     }
 
     private bool CanApplyBasePoint() => IsEditable;
+
+    private CadUnit DocumentUnit => _documentViewModel.CadEditor.Document.DocumentSettings.Unit;
 
     private static string Localize(string key, string fallback) =>
         Strings.ResourceManager.GetString(key) ?? fallback;

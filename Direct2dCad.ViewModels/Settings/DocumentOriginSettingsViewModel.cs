@@ -9,9 +9,12 @@ namespace Direct2dCad.ViewModels.Settings;
 
 public partial class DocumentOriginSettingsViewModel : DocumentSettingsSectionViewModel
 {
-    public DocumentOriginSettingsViewModel(CadOriginSettings settings)
+    private readonly CadUnit _unit;
+
+    public DocumentOriginSettingsViewModel(CadOriginSettings settings, CadUnit unit = CadUnit.Millimeter)
         : base(Strings.Origin)
     {
+        _unit = unit;
         Load(settings);
     }
 
@@ -21,8 +24,8 @@ public partial class DocumentOriginSettingsViewModel : DocumentSettingsSectionVi
         OriginMarkerType = (ViewModelCadOriginMarkerType)settings.MarkerType;
         OriginLinePattern = (ViewModelCadOriginLinePattern)settings.LinePattern;
         OriginColor = settings.Color;
-        OriginX = settings.Position.X;
-        OriginY = settings.Position.Y;
+        OriginX = CadUnitConversion.FromMillimeters(settings.Position.X, _unit);
+        OriginY = CadUnitConversion.FromMillimeters(settings.Position.Y, _unit);
         OriginSize = settings.Size;
         OriginStrokeWidth = settings.StrokeWidth;
     }
@@ -49,7 +52,9 @@ public partial class DocumentOriginSettingsViewModel : DocumentSettingsSectionVi
         origin.MarkerType = (CadOriginMarkerType)OriginMarkerType;
         origin.LinePattern = (CadOriginLinePattern)OriginLinePattern;
         origin.Color = OriginColor;
-        origin.Position = new CadPointD(OriginX, OriginY);
+        origin.Position = new CadPointD(
+            CadUnitConversion.ToMillimeters(OriginX, _unit),
+            CadUnitConversion.ToMillimeters(OriginY, _unit));
         origin.Size = OriginSize;
         origin.StrokeWidth = OriginStrokeWidth;
         return true;

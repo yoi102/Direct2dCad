@@ -1,4 +1,5 @@
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.AI;
 
 namespace Direct2dCad.ViewModels.Services.Platform;
@@ -48,7 +49,8 @@ public sealed record GridSpacingPresetDialogRequest(
     double SpacingX,
     double SpacingY,
     bool LinkAxes,
-    IReadOnlyList<string> UnavailableNames);
+    IReadOnlyList<string> UnavailableNames,
+    CadUnit Unit = CadUnit.Millimeter);
 
 public sealed record GridSpacingPresetDialogResult(
     string Name,

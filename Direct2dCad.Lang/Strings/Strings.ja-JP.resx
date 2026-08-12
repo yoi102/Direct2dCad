@@ -1144,7 +1144,7 @@
     <value>同じ名前のグリッド間隔が既に存在します。</value>
   </data>
   <data name="GridSpacingPresetRangeError" xml:space="preserve">
-    <value>間隔は 0.001 mm から 100000 mm の範囲で指定してください。</value>
+    <value>間隔は {0} {2} から {1} {2} の範囲で指定してください。</value>
   </data>
   <data name="ColorSource" xml:space="preserve">
     <value>色のソース</value>

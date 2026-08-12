@@ -218,7 +218,11 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel,
 
     private bool TryCreateBoundsFromEdges(out CadRectD bounds)
     {
-        bounds = new CadRectD(Left, Bottom, Right, Top);
+        bounds = CadRectD.FromLTRB(
+            ToModelLength(Left),
+            ToModelLength(Bottom),
+            ToModelLength(Right),
+            ToModelLength(Top));
         return IsFinite(Left) &&
                IsFinite(Bottom) &&
                IsFinite(Right) &&
@@ -229,7 +233,10 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel,
 
     private bool TryCreateBoundsFromCenterSize(out CadRectD bounds)
     {
-        bounds = CadRectD.FromCenter(new CadPointD(CenterX, CenterY), Width, Height);
+        bounds = CadRectD.FromCenter(
+            ToModelPoint(new CadPointD(CenterX, CenterY)),
+            ToModelLength(Width),
+            ToModelLength(Height));
         return IsFinite(CenterX) &&
                IsFinite(CenterY) &&
                IsFinitePositive(Width) &&
@@ -244,18 +251,19 @@ public partial class ImagePropertyViewModel : EntityPropertyViewModel,
 
     private void UpdateEdgeProperties(CadRectD bounds)
     {
-        Left = bounds.Left;
-        Bottom = bounds.Bottom;
-        Right = bounds.Right;
-        Top = bounds.Top;
+        Left = ToDisplayLength(bounds.Left);
+        Bottom = ToDisplayLength(bounds.Bottom);
+        Right = ToDisplayLength(bounds.Right);
+        Top = ToDisplayLength(bounds.Top);
     }
 
     private void UpdateCenterSizeProperties(CadRectD bounds)
     {
-        CenterX = bounds.Center.X;
-        CenterY = bounds.Center.Y;
-        Width = bounds.Width;
-        Height = bounds.Height;
+        var displayCenter = ToDisplayPoint(bounds.Center);
+        CenterX = displayCenter.X;
+        CenterY = displayCenter.Y;
+        Width = ToDisplayLength(bounds.Width);
+        Height = ToDisplayLength(bounds.Height);
     }
 
     private bool TryGetImage(out CadImage image)

@@ -111,6 +111,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public string CurrentPointerWorldXDisplay => FormatPointerCoordinate(CurrentPointerWorldX);
     public string CurrentPointerWorldYDisplay => FormatPointerCoordinate(CurrentPointerWorldY);
+    public CadUnit DocumentUnit => CadEditor.Document.DocumentSettings.Unit;
 
     partial void OnCurrentPointerWorldXChanged(double value) =>
         OnPropertyChanged(nameof(CurrentPointerWorldXDisplay));
@@ -120,8 +121,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void NotifyDocumentUnitChanged()
     {
+        OnPropertyChanged(nameof(DocumentUnit));
         OnPropertyChanged(nameof(CurrentPointerWorldXDisplay));
         OnPropertyChanged(nameof(CurrentPointerWorldYDisplay));
+        RaiseInteractionStateChanged();
     }
 
     private string FormatPointerCoordinate(double value)
@@ -2673,6 +2676,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     bool ICadCommandLineContext.CanRedo => CadEditor.DocumentCommands.CanRedo;
 
     CadCommandLinePoint? ICadCommandLineContext.LastInputPoint => _lastCommandLineInputPoint;
+
+    CadUnit ICadCommandLineContext.Unit => CadEditor.Document.DocumentSettings.Unit;
 
     void ICadCommandLineContext.SetToolMode(CadCommandLineDrawingMode mode)
     {

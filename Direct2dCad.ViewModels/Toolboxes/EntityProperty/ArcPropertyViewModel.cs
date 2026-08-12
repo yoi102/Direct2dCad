@@ -76,9 +76,10 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel,
         try
         {
             RefreshLayerOptions(_documentViewModel, arc);
-            CenterX = arc.Center.X;
-            CenterY = arc.Center.Y;
-            Radius = arc.Radius;
+            var displayCenter = ToDisplayPoint(arc.Center);
+            CenterX = displayCenter.X;
+            CenterY = displayCenter.Y;
+            Radius = ToDisplayLength(arc.Radius);
             StartAngleDegrees = CadArc.RadiansToDegrees(arc.StartAngleRadians);
             SweepAngleDegrees = CadArc.RadiansToDegrees(arc.SweepAngleRadians);
             IsCounterClockwise = arc.IsCounterClockwise;
@@ -216,8 +217,8 @@ public partial class ArcPropertyViewModel : EntityPropertyViewModel,
         out double startAngleRadians,
         out double sweepAngleRadians)
     {
-        center = new CadPointD(CenterX, CenterY);
-        radius = Radius;
+        center = ToModelPoint(new CadPointD(CenterX, CenterY));
+        radius = ToModelLength(Radius);
         startAngleRadians = CadArc.DegreesToRadians(StartAngleDegrees);
         sweepAngleRadians = CadArc.DegreesToRadians(SweepAngleDegrees);
 

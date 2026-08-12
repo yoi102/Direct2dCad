@@ -40,7 +40,7 @@
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterY}}" VerticalAlignment="Center" />
                     <mah:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Radius}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Radius, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0.001" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Radius, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Diameter}}" VerticalAlignment="Center" />
                     <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Diameter, Mode=OneWay, StringFormat=F3}" IsReadOnly="True" />
                 </Grid>

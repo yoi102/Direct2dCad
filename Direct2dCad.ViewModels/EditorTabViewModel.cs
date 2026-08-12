@@ -698,8 +698,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             ViewModelCadOriginStrokeWidth = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.StrokeWidth;
             ViewModelCadOriginColorText = FormatColor(CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Color);
             ViewModelCadBackgroundColor = CadDocumentViewModel.CadEditor.Document.ViewSettings.BackgroundColor;
-            ViewModelCadOriginX = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Position.X;
-            ViewModelCadOriginY = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Position.Y;
+            var originPosition = CadDocumentViewModel.CadEditor.Document.ViewSettings.Origin.Position;
+            var documentUnit = CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit;
+            ViewModelCadOriginX = CadUnitConversion.FromMillimeters(originPosition.X, documentUnit);
+            ViewModelCadOriginY = CadUnitConversion.FromMillimeters(originPosition.Y, documentUnit);
         }
         finally
         {
@@ -781,7 +783,13 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
 
         CadDocumentViewModel.CadEditor.SetOriginPosition(
-            new CadPointD(ViewModelCadOriginX, ViewModelCadOriginY));
+            new CadPointD(
+                CadUnitConversion.ToMillimeters(
+                    ViewModelCadOriginX,
+                    CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit),
+                CadUnitConversion.ToMillimeters(
+                    ViewModelCadOriginY,
+                    CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit)));
     }
 
     public void ApplyUserSettings(CadUserSettings settings)

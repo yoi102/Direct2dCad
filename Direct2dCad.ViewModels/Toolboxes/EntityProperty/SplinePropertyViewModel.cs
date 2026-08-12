@@ -32,7 +32,9 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
     public partial ObservableCollection<PolylineVertexPropertyViewModel> FitPoints { get; private set; } = [];
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
     public int FitPointCount => FitPoints.Count;
-    public double Length => TryGetSpline(out var spline) ? spline.Length : CalculateLength(FitPoints.Select(x => x.ToPoint()), IsClosed);
+    public double Length => TryGetSpline(out var spline)
+        ? ToDisplayLength(spline.Length)
+        : CalculateLength(FitPoints.Select(x => x.ToPoint()), IsClosed);
 
     [ObservableProperty]
     public partial PolylineVertexPropertyViewModel? SelectedFitPoint { get; set; }
@@ -272,7 +274,8 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
         if (_isRefreshing || !TryGetSpline(out var spline))
             return;
 
-        var fitPoints = FitPoints.Select(point => point.ToPoint()).ToArray();
+        var displayFitPoints = FitPoints.Select(point => point.ToPoint()).ToArray();
+        var fitPoints = displayFitPoints.Select(ToModelPoint).ToArray();
         if (!TryValidateGeometry(fitPoints, IsClosed))
         {
             RefreshFromEntity();
@@ -288,7 +291,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
 
     private void RebuildFitPoints(IReadOnlyList<CadPointD> fitPoints)
     {
-        if (FitPointCollectionMatches(FitPoints, fitPoints))
+        if (FitPointCollectionMatches(FitPoints, fitPoints.Select(ToDisplayPoint).ToArray()))
             return;
 
         var selectedIndex = SelectedFitPoint is not null
@@ -329,7 +332,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
 
     private PolylineVertexPropertyViewModel CreateFitPoint(int index, CadPointD point)
     {
-        var fitPoint = new PolylineVertexPropertyViewModel(index, point);
+        var fitPoint = new PolylineVertexPropertyViewModel(index, ToDisplayPoint(point));
         fitPoint.Changed += OnFitPointChanged;
         return fitPoint;
     }

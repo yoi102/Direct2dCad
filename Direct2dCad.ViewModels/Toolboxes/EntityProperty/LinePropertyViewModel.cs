@@ -76,10 +76,12 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel,
         try
         {
             RefreshLayerOptions(_documentViewModel, line);
-            StartX = line.Start.X;
-            StartY = line.Start.Y;
-            EndX = line.End.X;
-            EndY = line.End.Y;
+            var displayStart = ToDisplayPoint(line.Start);
+            var displayEnd = ToDisplayPoint(line.End);
+            StartX = displayStart.X;
+            StartY = displayStart.Y;
+            EndX = displayEnd.X;
+            EndY = displayEnd.Y;
             RefreshDerivedGeometry(line.Start, line.End);
             StrokeColor = ResolveStrokeColor(line);
             UseByLayerColor = line.UseLayerColor;
@@ -232,8 +234,8 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel,
 
     private bool TryCreatePointGeometry(out CadPointD start, out CadPointD end)
     {
-        start = new CadPointD(StartX, StartY);
-        end = new CadPointD(EndX, EndY);
+        start = ToModelPoint(new CadPointD(StartX, StartY));
+        end = ToModelPoint(new CadPointD(EndX, EndY));
 
         return IsFinite(StartX) &&
                IsFinite(StartY) &&
@@ -244,11 +246,11 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel,
 
     private bool TryCreatePolarGeometry(out CadPointD start, out CadPointD end)
     {
-        start = new CadPointD(StartX, StartY);
+        start = ToModelPoint(new CadPointD(StartX, StartY));
         var angleRadians = DegreesToRadians(AngleDegrees);
         end = new CadPointD(
-            start.X + Math.Cos(angleRadians) * Length,
-            start.Y + Math.Sin(angleRadians) * Length);
+            start.X + Math.Cos(angleRadians) * ToModelLength(Length),
+            start.Y + Math.Sin(angleRadians) * ToModelLength(Length));
 
         return IsFinite(StartX) &&
                IsFinite(StartY) &&
@@ -259,7 +261,7 @@ public partial class LinePropertyViewModel : EntityPropertyViewModel,
     private void RefreshDerivedGeometry(CadPointD start, CadPointD end)
     {
         var delta = end - start;
-        Length = delta.Length;
+        Length = ToDisplayLength(delta.Length);
         AngleDegrees = RadiansToDegrees(Math.Atan2(delta.Y, delta.X));
     }
 

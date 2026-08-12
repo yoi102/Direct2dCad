@@ -12,13 +12,20 @@ namespace Direct2dCad.ViewModels.Settings;
 public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionViewModel
 {
     private readonly IDialogService _dialogService;
+    private readonly CadUnit _displayUnit;
 
-    public DocumentGridSettingsViewModel(CadGridSettings settings, IDialogService dialogService)
+    public DocumentGridSettingsViewModel(
+        CadGridSettings settings,
+        IDialogService dialogService,
+        CadUnit displayUnit = CadUnit.Millimeter)
         : base(Strings.GridAndSnapping)
     {
         _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
+        _displayUnit = displayUnit;
         Load(settings);
     }
+
+    public string DisplayUnitSymbol => CadUnitConversion.GetSymbol(_displayUnit);
 
     public ObservableCollection<GridSpacingPresetItemViewModel> GridSpacingPresets { get; } = [];
 
@@ -97,7 +104,8 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
                 1.0,
                 1.0,
                 true,
-                GetUsedNames()));
+                GetUsedNames(),
+                _displayUnit));
         if (result is null)
             return;
 
@@ -126,7 +134,8 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
                 current.SpacingX,
                 current.SpacingY,
                 current.LinkAxes,
-                GetUsedNames(current)));
+                GetUsedNames(current),
+                _displayUnit));
         if (result is null)
             return;
 
@@ -199,7 +208,7 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
         GridType = (ViewModelCadGridType)settings.Type;
         GridSpacingPresets.Clear();
         foreach (var preset in settings.SpacingPresets)
-            GridSpacingPresets.Add(GridSpacingPresetItemViewModel.From(preset));
+            GridSpacingPresets.Add(GridSpacingPresetItemViewModel.From(preset, _displayUnit));
 
         var major = FindById(settings.MajorSpacingPresetId)
                     ?? FindBySpacing(settings.SpacingX, settings.SpacingY)
@@ -229,7 +238,8 @@ public partial class DocumentGridSettingsViewModel : DocumentSettingsSectionView
             string.Empty,
             spacingX,
             spacingY,
-            NearlyEqual(spacingX, spacingY));
+            NearlyEqual(spacingX, spacingY),
+            DisplayUnit: _displayUnit);
         GridSpacingPresets.Add(item);
         return item;
     }

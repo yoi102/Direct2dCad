@@ -83,10 +83,11 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel,
         try
         {
             RefreshLayerOptions(_documentViewModel, ellipse);
-            CenterX = ellipse.Center.X;
-            CenterY = ellipse.Center.Y;
-            RadiusX = ellipse.RadiusX;
-            RadiusY = ellipse.RadiusY;
+            var displayCenter = ToDisplayPoint(ellipse.Center);
+            CenterX = displayCenter.X;
+            CenterY = displayCenter.Y;
+            RadiusX = ToDisplayLength(ellipse.RadiusX);
+            RadiusY = ToDisplayLength(ellipse.RadiusY);
             RefreshFillStyleOptions(ellipse.FillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, ellipse.FillStyleId);
             StrokeColor = ResolveStrokeColor(ellipse);
@@ -231,9 +232,9 @@ public partial class EllipsePropertyViewModel : EntityPropertyViewModel,
 
     private bool TryCreateGeometry(out CadPointD center, out double radiusX, out double radiusY)
     {
-        center = new CadPointD(CenterX, CenterY);
-        radiusX = RadiusX;
-        radiusY = RadiusY;
+        center = ToModelPoint(new CadPointD(CenterX, CenterY));
+        radiusX = ToModelLength(RadiusX);
+        radiusY = ToModelLength(RadiusY);
 
         return IsFinite(CenterX) &&
                IsFinite(CenterY) &&

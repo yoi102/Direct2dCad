@@ -1,4 +1,5 @@
 using System.Globalization;
+using Direct2dCad.Db.Cad.Settings;
 
 namespace Direct2dCad.CommandLine;
 
@@ -15,6 +16,16 @@ public static class CadCommandLinePointParser
         out CadCommandLinePoint point,
         out string? error)
     {
+        return TryParse(value, relativeBase, CadUnit.Millimeter, out point, out error);
+    }
+
+    public static bool TryParse(
+        string value,
+        CadCommandLinePoint? relativeBase,
+        CadUnit unit,
+        out CadCommandLinePoint point,
+        out string? error)
+    {
         var text = value.Trim();
         var isRelative = text.StartsWith('@');
         if (isRelative)
@@ -28,7 +39,7 @@ public static class CadCommandLinePointParser
         }
 
         if (text.Contains('<'))
-            return TryParsePolar(text, relativeBase, isRelative, out point, out error);
+            return TryParsePolar(text, relativeBase, isRelative, unit, out point, out error);
 
         var parts = text.Split(',', StringSplitOptions.TrimEntries);
         if (parts.Length != 2 || !TryParseNumber(parts[0], out var x) || !TryParseNumber(parts[1], out var y))
@@ -39,7 +50,9 @@ public static class CadCommandLinePointParser
         }
 
         var origin = isRelative ? relativeBase!.Value : default;
-        point = new CadCommandLinePoint(origin.X + x, origin.Y + y);
+        point = new CadCommandLinePoint(
+            origin.X + CadUnitConversion.ToMillimeters(x, unit),
+            origin.Y + CadUnitConversion.ToMillimeters(y, unit));
         error = null;
         return true;
     }
@@ -48,6 +61,7 @@ public static class CadCommandLinePointParser
         string text,
         CadCommandLinePoint? relativeBase,
         bool isRelative,
+        CadUnit unit,
         out CadCommandLinePoint point,
         out string? error)
     {
@@ -63,9 +77,10 @@ public static class CadCommandLinePointParser
 
         var origin = isRelative ? relativeBase!.Value : default;
         var angleRadians = angleDegrees * Math.PI / 180.0;
+        var distanceMillimeters = CadUnitConversion.ToMillimeters(distance, unit);
         point = new CadCommandLinePoint(
-            origin.X + distance * Math.Cos(angleRadians),
-            origin.Y + distance * Math.Sin(angleRadians));
+            origin.X + distanceMillimeters * Math.Cos(angleRadians),
+            origin.Y + distanceMillimeters * Math.Sin(angleRadians));
         error = null;
         return true;
     }

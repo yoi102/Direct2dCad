@@ -1,3 +1,5 @@
+using Direct2dCad.Db.Cad.Settings;
+
 namespace Direct2dCad.CommandLine;
 
 public sealed class CadCommandLineService : ICadCommandLineService
@@ -264,6 +266,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
         if (!CadCommandLinePointParser.TryParse(
                 commandLine,
                 context.LastInputPoint,
+                context.Unit,
                 out var point,
                 out var error))
         {
@@ -271,7 +274,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
         }
 
         return context.SubmitDrawingPoint(point)
-            ? Success($"Point accepted: {point.X:G10},{point.Y:G10}")
+            ? Success($"Point accepted: {CadUnitConversion.FromMillimeters(point.X, context.Unit):G10},{CadUnitConversion.FromMillimeters(point.Y, context.Unit):G10}")
             : Failure("The current tool does not accept point input.");
     }
 
@@ -376,6 +379,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
         public bool CanUndo => false;
         public bool CanRedo => false;
         public CadCommandLinePoint? LastInputPoint => null;
+        public CadUnit Unit => CadUnit.Millimeter;
         public void SetToolMode(CadCommandLineDrawingMode mode) { }
         public void Cancel() { }
         public void Undo() { }

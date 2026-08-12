@@ -80,7 +80,9 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel,
     public partial ObservableCollection<PolylineVertexPropertyViewModel> Vertices { get; private set; } = [];
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
     public int PointCount => Vertices.Count;
-    public double Length => TryGetPolyline(out var polyline) ? polyline.Length : CalculateLength(Vertices.Select(x => x.ToPoint()), IsClosed);
+    public double Length => TryGetPolyline(out var polyline)
+        ? ToDisplayLength(polyline.Length)
+        : CalculateLength(Vertices.Select(x => x.ToPoint()), IsClosed);
 
     [ObservableProperty]
     public partial PolylineVertexPropertyViewModel? SelectedVertex { get; set; }
@@ -313,7 +315,8 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel,
         if (_isRefreshing || !TryGetPolyline(out var polyline))
             return;
 
-        var points = Vertices.Select(vertex => vertex.ToPoint()).ToArray();
+        var displayPoints = Vertices.Select(vertex => vertex.ToPoint()).ToArray();
+        var points = displayPoints.Select(ToModelPoint).ToArray();
         if (!TryValidateGeometry(points, IsClosed))
         {
             RefreshFromEntity();
@@ -329,7 +332,7 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel,
 
     private void RebuildVertices(IReadOnlyList<CadPointD> points)
     {
-        if (VertexCollectionMatches(Vertices, points))
+        if (VertexCollectionMatches(Vertices, points.Select(ToDisplayPoint).ToArray()))
             return;
 
         var selectedIndex = SelectedVertex is not null
@@ -370,7 +373,7 @@ public partial class PolylinePropertyViewModel : EntityPropertyViewModel,
 
     private PolylineVertexPropertyViewModel CreateVertex(int index, CadPointD point)
     {
-        var vertex = new PolylineVertexPropertyViewModel(index, point);
+        var vertex = new PolylineVertexPropertyViewModel(index, ToDisplayPoint(point));
         vertex.Changed += OnVertexChanged;
         return vertex;
     }

@@ -32,8 +32,8 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel,
     public EntityId EntityId { get; }
     public string EntityIdText => EntityId.ToString();
     public IReadOnlyList<string> FontFamilyOptions { get; private set; } = [];
-    public double BoundsWidth => TryGetText(out var text) ? text.TextBounds.Width : 0;
-    public double BoundsHeight => TryGetText(out var text) ? text.TextBounds.Height : 0;
+    public double BoundsWidth => TryGetText(out var text) ? ToDisplayLength(text.TextBounds.Width) : 0;
+    public double BoundsHeight => TryGetText(out var text) ? ToDisplayLength(text.TextBounds.Height) : 0;
     public string BoundsSizeText => $"{BoundsWidth:F3} x {BoundsHeight:F3}";
 
     [ObservableProperty]
@@ -92,9 +92,10 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel,
         {
             RefreshLayerOptions(_documentViewModel, text);
             TextContent = text.Text;
-            PositionX = text.Position.X;
-            PositionY = text.Position.Y;
-            Height = text.Height;
+            var displayPosition = ToDisplayPoint(text.Position);
+            PositionX = displayPosition.X;
+            PositionY = displayPosition.Y;
+            Height = ToDisplayLength(text.Height);
             RotationDegrees = RadiansToDegrees(text.RotationRadians);
             RefreshFontFamilyOptions(ResolveFontFamily(_documentViewModel.CadEditor.Document, text.TextStyleId));
             StrokeColor = ResolveStrokeColor(text);
@@ -258,8 +259,8 @@ public partial class TextPropertyViewModel : EntityPropertyViewModel,
 
     private bool TryCreateGeometry(out CadPointD position, out double height, out double rotationRadians)
     {
-        position = new CadPointD(PositionX, PositionY);
-        height = Height;
+        position = ToModelPoint(new CadPointD(PositionX, PositionY));
+        height = ToModelLength(Height);
         rotationRadians = DegreesToRadians(RotationDegrees);
 
         return IsFinite(PositionX) &&

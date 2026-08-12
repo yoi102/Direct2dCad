@@ -1373,7 +1373,7 @@
     <value>A grid spacing with this name already exists.</value>
   </data>
   <data name="GridSpacingPresetRangeError" xml:space="preserve">
-    <value>Spacing must be between 0.001 mm and 100000 mm.</value>
+    <value>Spacing must be between {0} {2} and {1} {2}.</value>
   </data>
   <data name="ColorSource" xml:space="preserve">
     <value>Color source</value>

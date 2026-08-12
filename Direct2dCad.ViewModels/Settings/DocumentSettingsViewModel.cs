@@ -14,8 +14,13 @@ public partial class DocumentSettingsViewModel : ObservableObject, IDocumentSett
         var settings = editorTab.CadDocumentViewModel.CadEditor.Document.ViewSettings;
 
         Display = new DocumentDisplaySettingsViewModel(settings);
-        GridAndSnapping = new DocumentGridSettingsViewModel(settings.Grid, dialogService);
-        Origin = new DocumentOriginSettingsViewModel(settings.Origin);
+        GridAndSnapping = new DocumentGridSettingsViewModel(
+            settings.Grid,
+            dialogService,
+            editorTab.CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit);
+        Origin = new DocumentOriginSettingsViewModel(
+            settings.Origin,
+            editorTab.CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit);
         Sections = [Display, GridAndSnapping, Origin];
         SelectedSection = Sections[0];
     }
