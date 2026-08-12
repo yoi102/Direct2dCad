@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Direct2dCad.ViewModels.Toolboxes;
 
 namespace Direct2dCad.wpf.Views.Toolboxes;
@@ -9,6 +10,7 @@ namespace Direct2dCad.wpf.Views.Toolboxes;
 public partial class AiAssistantToolboxView : UserControl
 {
     private INotifyCollectionChanged? _messages;
+    private bool _scrollPending;
 
     public AiAssistantToolboxView()
     {
@@ -29,11 +31,22 @@ public partial class AiAssistantToolboxView : UserControl
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        Dispatcher.BeginInvoke(() =>
+        if (_scrollPending)
+            return;
+
+        _scrollPending = true;
+        Dispatcher.BeginInvoke(new Action(() =>
         {
-            if (MessagesList.Items.Count > 0)
-                MessagesList.ScrollIntoView(MessagesList.Items[^1]);
-        });
+            try
+            {
+                if (IsLoaded && MessagesList.Items.Count > 0)
+                    MessagesList.ScrollIntoView(MessagesList.Items[^1]);
+            }
+            finally
+            {
+                _scrollPending = false;
+            }
+        }), DispatcherPriority.Background);
     }
 
     private void OnPromptPreviewKeyDown(object sender, KeyEventArgs e)

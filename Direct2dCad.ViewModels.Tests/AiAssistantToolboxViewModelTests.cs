@@ -237,11 +237,14 @@ public sealed class AiAssistantToolboxViewModelTests
         var send = viewModel.SendCommand.ExecuteAsync(null);
         await runner.Started.Task;
         Assert.True(viewModel.IsBusy);
+        Assert.False(viewModel.ClearConversationCommand.CanExecute(null));
+        Assert.False(viewModel.RemoveImageCommand.CanExecute(null));
 
         viewModel.StopCommand.Execute(null);
         await send;
 
         Assert.False(viewModel.IsBusy);
+        Assert.True(viewModel.ClearConversationCommand.CanExecute(null));
         Assert.Equal("Cancelled", viewModel.ConnectionStatus);
         Assert.Contains(viewModel.Messages, message =>
             message.Kind == AiChatItemKind.System && message.Content == "Cancelled");

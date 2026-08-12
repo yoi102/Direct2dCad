@@ -111,6 +111,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     [NotifyCanExecuteChangedFor(nameof(OpenSettingsCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddFileFromFileCommand))]
     [NotifyCanExecuteChangedFor(nameof(PasteFileCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveImageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ClearConversationCommand))]
     public partial bool IsBusy { get; private set; }
 
     [ObservableProperty]
@@ -209,7 +211,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManageImages))]
     private void RemoveImage(AiImageAttachmentViewModel? attachment)
     {
         if (attachment is not null)
@@ -345,7 +347,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private bool CanStop() => IsBusy;
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanClearConversation))]
     private async Task ClearConversationAsync()
     {
         await _codexAgentClient.ResetConversationAsync();
@@ -462,6 +464,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         _requestCancellation?.Dispose();
         _requestCancellation = null;
     }
+
+    private bool CanClearConversation() => !IsBusy;
 
     private void AddError(string message) => Messages.Add(new AiChatItemViewModel(AiChatItemKind.Error, message));
 

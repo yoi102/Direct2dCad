@@ -42,6 +42,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private bool _isSyncingViewSettings;
     private bool _isSyncingUserSettings;
     private bool _isRestoringWorkspaceSettings;
+    private bool _disposed;
     private CadEditor? _trackedEditor;
     private object? _savedDocumentHistorySnapshot;
     private int _directChangeVersion;
@@ -940,6 +941,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
         SaveWorkspaceSettings();
         SaveUserSettings();
         DetachDocumentChangeTracking();

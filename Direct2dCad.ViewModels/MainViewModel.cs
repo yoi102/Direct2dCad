@@ -373,12 +373,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ActiveContentChanged()
     {
-        if (_dockLayoutService.ActiveDockable is EditorTabViewModel editorTabView)
-        {
-            CurrentEditorTabViewModel = editorTabView;
-        }
-
-
+        CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
     }
 
     #region TitleBar

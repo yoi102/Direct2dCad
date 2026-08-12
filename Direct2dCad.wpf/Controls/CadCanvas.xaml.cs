@@ -589,8 +589,10 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is { } viewModel)
         {
             viewModel.SetRenderScheduler(null);
+            viewModel.PropertyChanged -= OnDocumentViewModelPropertyChanged;
             viewModel.Direct2DImageRenderHost.RenderCacheBuildRequested -=
                 OnRenderCacheBuildRequested;
+            viewModel.DetachRenderResources();
         }
         CancelPendingViewportInteraction();
         UnschedulePointerMove();
