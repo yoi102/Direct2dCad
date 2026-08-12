@@ -273,6 +273,24 @@
   <data name="Redo" xml:space="preserve">
     <value>重做</value>
   </data>
+  <data name="DeleteSelection" xml:space="preserve">
+    <value>删除选中实体</value>
+  </data>
+  <data name="CopySelection" xml:space="preserve">
+    <value>复制选中实体</value>
+  </data>
+  <data name="CutSelection" xml:space="preserve">
+    <value>剪切选中实体</value>
+  </data>
+  <data name="SelectAll" xml:space="preserve">
+    <value>全选实体</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>清除选择</value>
+  </data>
+  <data name="CancelCurrentInteraction" xml:space="preserve">
+    <value>取消当前操作</value>
+  </data>
   <data name="Grid" xml:space="preserve">
     <value>网格</value>
   </data>

@@ -682,6 +682,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Cancel current interaction 的本地化字符串。
+        /// </summary>
+        public static string CancelCurrentInteraction {
+            get {
+                return ResourceManager.GetString("CancelCurrentInteraction", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Center X 的本地化字符串。
         /// </summary>
         public static string CenterX {
@@ -786,6 +795,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string ClearMessages {
             get {
                 return ResourceManager.GetString("ClearMessages", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Clear selection 的本地化字符串。
+        /// </summary>
+        public static string ClearSelection {
+            get {
+                return ResourceManager.GetString("ClearSelection", resourceCulture);
             }
         }
         
@@ -952,6 +970,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Copy selected entities 的本地化字符串。
+        /// </summary>
+        public static string CopySelection {
+            get {
+                return ResourceManager.GetString("CopySelection", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Corner X 的本地化字符串。
         /// </summary>
         public static string CornerX {
@@ -1020,6 +1047,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Cross {
             get {
                 return ResourceManager.GetString("Cross", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Cut selected entities 的本地化字符串。
+        /// </summary>
+        public static string CutSelection {
+            get {
+                return ResourceManager.GetString("CutSelection", resourceCulture);
             }
         }
         
@@ -1110,6 +1146,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string DeleteLayout {
             get {
                 return ResourceManager.GetString("DeleteLayout", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Delete selected entities 的本地化字符串。
+        /// </summary>
+        public static string DeleteSelection {
+            get {
+                return ResourceManager.GetString("DeleteSelection", resourceCulture);
             }
         }
         
@@ -2955,6 +3000,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Select {
             get {
                 return ResourceManager.GetString("Select", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Select all entities 的本地化字符串。
+        /// </summary>
+        public static string SelectAll {
+            get {
+                return ResourceManager.GetString("SelectAll", resourceCulture);
             }
         }
         

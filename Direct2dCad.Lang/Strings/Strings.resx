@@ -324,6 +324,30 @@
     <value>Redo</value>
     <comment>Redo</comment>
   </data>
+  <data name="DeleteSelection" xml:space="preserve">
+    <value>Delete selected entities</value>
+    <comment>Delete selected entities from the drawing</comment>
+  </data>
+  <data name="CopySelection" xml:space="preserve">
+    <value>Copy selected entities</value>
+    <comment>Copy selected entities</comment>
+  </data>
+  <data name="CutSelection" xml:space="preserve">
+    <value>Cut selected entities</value>
+    <comment>Cut selected entities</comment>
+  </data>
+  <data name="SelectAll" xml:space="preserve">
+    <value>Select all entities</value>
+    <comment>Select all entities</comment>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>Clear selection</value>
+    <comment>Clear the current selection</comment>
+  </data>
+  <data name="CancelCurrentInteraction" xml:space="preserve">
+    <value>Cancel current interaction</value>
+    <comment>Cancel the active drawing or editing interaction</comment>
+  </data>
   <data name="Grid" xml:space="preserve">
     <value>Grid</value>
     <comment>Grid</comment>

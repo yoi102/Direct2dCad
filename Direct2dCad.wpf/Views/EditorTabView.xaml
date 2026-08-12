@@ -17,6 +17,128 @@
              d:DesignHeight="720"
              d:DesignWidth="1100">
     <UserControl.Resources>
+        <views:BindingProxy x:Key="EditorTabCommandProxy"
+                            Data="{Binding}" />
+        <ContextMenu x:Key="CadCanvasContextMenu"
+                     DataContext="{Binding Data, Source={StaticResource EditorTabCommandProxy}}">
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Undo}}"
+                      Command="{Binding UndoCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Redo}}"
+                      Command="{Binding RedoCommand}" />
+            <Separator />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Save}}"
+                      Command="{Binding SaveFileCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.SaveAs}}"
+                      Command="{Binding SaveAsFileCommand}" />
+            <Separator />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.DeleteSelection}}"
+                      Command="{Binding DeleteSelectedEntitiesCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.CopySelection}}"
+                      Command="{Binding CopySelectedEntitiesCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.CutSelection}}"
+                      Command="{Binding CutSelectedEntitiesCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Paste}}"
+                      Command="{Binding PasteEntitiesCommand}" />
+            <Separator />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.SelectAll}}"
+                      Command="{Binding SelectAllEntitiesCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.ClearSelection}}"
+                      Command="{Binding ClearSelectionCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.CancelCurrentInteraction}}"
+                      Command="{Binding CancelCurrentInteractionCommand}" />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Fit}}"
+                      Command="{Binding FitToWindowCommand}" />
+            <Separator />
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Draw}}">
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Select}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="Select" />
+                <Separator />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Line}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="Line" />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Rectangle}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="Rectangle" />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Polyline}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="Polyline" />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Polygon}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="Polygon" />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.CircleCenterRadius}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="CircleCenterRadius" />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Circle}}">
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.CircleCenterDiameter}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="CircleCenterDiameter" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.CircleTwoPoint}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="CircleTwoPoint" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.CircleThreePoint}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="CircleThreePoint" />
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Ellipse}}">
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.EllipseCenter}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="EllipseCenter" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.EllipseAxisEnd}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="EllipseAxisEnd" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.EllipseArc}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="EllipseArc" />
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Arc}}">
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcThreePoint}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcThreePoint" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcStartCenterEnd}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcStartCenterEnd" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcStartCenterAngle}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcStartCenterAngle" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcStartCenterLength}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcStartCenterLength" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcStartEndAngle}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcStartEndAngle" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcStartEndDirection}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcStartEndDirection" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcStartEndRadius}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcStartEndRadius" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcCenterStartEnd}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcCenterStartEnd" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcCenterStartAngle}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcCenterStartAngle" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcCenterStartLength}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcCenterStartLength" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.ArcContinue}}"
+                              Command="{Binding SetCadCanvasToolModeCommand}"
+                              CommandParameter="ArcContinue" />
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Spline}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="Spline" />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Text}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="Text" />
+                <MenuItem Header="{I18N {x:Static r:LangKeys.SetOrigin}}"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="SetOrigin" />
+            </MenuItem>
+            <MenuItem Header="{I18N {x:Static r:LangKeys.CreateBlock}}"
+                      Command="{Binding CreateBlockFromSelectionCommand}" />
+        </ContextMenu>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <Style x:Key="LayoutFieldLabel"
                TargetType="TextBlock">
@@ -49,6 +171,7 @@
         <views:CadDocumentView x:Name="cadDocumentView"
                                Grid.Row="0"
                                DataContext="{Binding CadDocumentViewModel}"
+                               ContextMenu="{StaticResource CadCanvasContextMenu}"
                                SaveCommand="{Binding DataContext.SaveFileCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}" />
 
         <Button Grid.Row="0"

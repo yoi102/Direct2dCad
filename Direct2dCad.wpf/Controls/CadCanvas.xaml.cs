@@ -18,6 +18,9 @@ public partial class CadCanvas : IDisposable
     private bool _viewportPresentationScheduled;
     private bool _renderCacheBuildScheduled;
     private bool _renderCacheBuildDeferred;
+    private bool _rightPanPending;
+    private bool _rightPanActive;
+    private CadPointD _rightPanStart;
     private bool _disposed;
     private Action? _pendingRenderFlush;
     private readonly DispatcherTimer _viewportInteractionCompletionTimer;
@@ -144,6 +147,18 @@ public partial class CadCanvas : IDisposable
         var screen = ToCadPoint(e.GetPosition(this));
         FlushPendingPointerMove(screen);
 
+        if (e.ChangedButton == MouseButton.Right)
+        {
+            // Do not start panning on mouse-down. WPF opens the ContextMenu
+            // after a normal right click; only promote it to a pan after the
+            // pointer crosses the system drag threshold.
+            _rightPanPending = true;
+            _rightPanActive = false;
+            _rightPanStart = screen;
+            e.Handled = false;
+            return;
+        }
+
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
         {
             ApplyInteractionResult(
@@ -186,6 +201,19 @@ public partial class CadCanvas : IDisposable
 
         var screen = ToCadPoint(e.GetPosition(this));
         FlushPendingPointerMove(screen);
+
+        if (e.ChangedButton == MouseButton.Right)
+        {
+            if (_rightPanPending && !_rightPanActive)
+            {
+                // A right click without a drag belongs to ContextMenuService.
+                ResetRightPanState();
+                return;
+            }
+
+            ResetRightPanState();
+        }
+
         var result = DocumentViewModel.PointerUp(
             screen,
             ToPointerButton(e.ChangedButton));
@@ -469,8 +497,45 @@ public partial class CadCanvas : IDisposable
             _pendingPointerScreen = screen;
 
         _pointerMovePending = false;
-        if (DocumentViewModel is { } viewModel)
-            ApplyInteractionResult(viewModel.PointerMove(_pendingPointerScreen));
+        if (DocumentViewModel is not { } viewModel)
+            return;
+
+        if (_rightPanPending && !_rightPanActive)
+        {
+            if (HasExceededRightPanThreshold(_pendingPointerScreen))
+            {
+                var startResult = viewModel.PointerDown(
+                    _rightPanStart,
+                    CadCanvasPointerButton.Right,
+                    forcePan: false,
+                    modifiers: ToInputModifiers(Keyboard.Modifiers));
+                _rightPanActive = startResult.CaptureMouse;
+                ApplyInteractionResult(startResult);
+                ApplyInteractionResult(viewModel.PointerMove(_pendingPointerScreen));
+            }
+            else
+            {
+                // Keep hover coordinates and overlays current while waiting
+                // to decide whether this is a click or a drag.
+                ApplyInteractionResult(viewModel.PointerMove(_pendingPointerScreen));
+            }
+
+            return;
+        }
+
+        ApplyInteractionResult(viewModel.PointerMove(_pendingPointerScreen));
+    }
+
+    private bool HasExceededRightPanThreshold(CadPointD current)
+    {
+        return Math.Abs(current.X - _rightPanStart.X) >= SystemParameters.MinimumHorizontalDragDistance ||
+               Math.Abs(current.Y - _rightPanStart.Y) >= SystemParameters.MinimumVerticalDragDistance;
+    }
+
+    private void ResetRightPanState()
+    {
+        _rightPanPending = false;
+        _rightPanActive = false;
     }
 
     private void UnschedulePointerMove()

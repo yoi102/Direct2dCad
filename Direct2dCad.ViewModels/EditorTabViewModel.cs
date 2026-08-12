@@ -580,6 +580,67 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ApplyDocumentViewSettingsToToolbar();
     }
 
+    [RelayCommand(CanExecute = nameof(CanDeleteSelection))]
+    private void DeleteSelectedEntities()
+    {
+        CadDocumentViewModel.DeleteSelection();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanCopySelection))]
+    private void CopySelectedEntities()
+    {
+        CadDocumentViewModel.CopySelection();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDeleteSelection))]
+    private void CutSelectedEntities()
+    {
+        if (CadDocumentViewModel.CopySelection() is not null)
+            CadDocumentViewModel.DeleteSelection();
+    }
+
+    [RelayCommand]
+    private void PasteEntities()
+    {
+        CadDocumentViewModel.BeginClipboardPastePreview();
+    }
+
+    [RelayCommand]
+    private void SelectAllEntities()
+    {
+        CadDocumentViewModel.SelectAllEntities();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanClearSelection))]
+    private void ClearSelection()
+    {
+        CadDocumentViewModel.ClearSelection();
+    }
+
+    [RelayCommand]
+    private void CancelCurrentInteraction()
+    {
+        CadDocumentViewModel.Escape();
+    }
+
+    private bool CanDeleteSelection()
+    {
+        return CadDocumentViewModel.CadEditor.Selection.EntityIds.Any(entityId =>
+            CadDocumentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) &&
+            entity is not null &&
+            CadEntityAccessPolicy.IsEditable(CadDocumentViewModel.CadEditor.Document, entity));
+    }
+
+    private bool CanCopySelection()
+    {
+        return CadDocumentViewModel.CadEditor.Selection.EntityIds.Count > 0;
+    }
+
+    private bool CanClearSelection()
+    {
+        return CadDocumentViewModel.CadEditor.Selection.EntityIds.Count > 0;
+    }
+
     [RelayCommand]
     private void SetCadCanvasToolMode(string mode_string)
     {
@@ -900,6 +961,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
 
         CreateBlockFromSelectionCommand.NotifyCanExecuteChanged();
+        DeleteSelectedEntitiesCommand.NotifyCanExecuteChanged();
+        CopySelectedEntitiesCommand.NotifyCanExecuteChanged();
+        CutSelectedEntitiesCommand.NotifyCanExecuteChanged();
+        ClearSelectionCommand.NotifyCanExecuteChanged();
     }
 
     private void OnCadDocumentViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -930,6 +995,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
             ApplyDocumentViewSettingsToToolbar();
             CreateBlockFromSelectionCommand.NotifyCanExecuteChanged();
+            DeleteSelectedEntitiesCommand.NotifyCanExecuteChanged();
+            CopySelectedEntitiesCommand.NotifyCanExecuteChanged();
+            CutSelectedEntitiesCommand.NotifyCanExecuteChanged();
+            ClearSelectionCommand.NotifyCanExecuteChanged();
         }
     }
 

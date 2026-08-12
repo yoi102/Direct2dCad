@@ -1239,6 +1239,18 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             Cursor: CadCanvasCursorKind.Cross);
     }
 
+    public CadCanvasInteractionResult ClearSelection()
+    {
+        if (CadEditor.Selection.EntityIds.Count == 0)
+            return CadCanvasInteractionResult.NotHandled;
+
+        CadEditor.Selection.Clear();
+        ClearInteractionState(clearClipboard: false, render: false);
+        RaiseInteractionStateChanged();
+        RequestOverlayRender(updateHandleScene: true);
+        return CadCanvasInteractionResult.HandledOnly;
+    }
+
     public CadCanvasInteractionResult BeginPastePreview()
     {
         if (!_paste.BeginPreview(CreateClipboardInteractionService()))
