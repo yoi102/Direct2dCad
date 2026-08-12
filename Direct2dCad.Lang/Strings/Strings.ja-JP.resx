@@ -273,6 +273,24 @@
   <data name="Redo" xml:space="preserve">
     <value>やり直し</value>
   </data>
+  <data name="DeleteSelection" xml:space="preserve">
+    <value>選択したエンティティを削除</value>
+  </data>
+  <data name="CopySelection" xml:space="preserve">
+    <value>選択したエンティティをコピー</value>
+  </data>
+  <data name="CutSelection" xml:space="preserve">
+    <value>選択したエンティティを切り取り</value>
+  </data>
+  <data name="SelectAll" xml:space="preserve">
+    <value>すべてのエンティティを選択</value>
+  </data>
+  <data name="ClearSelection" xml:space="preserve">
+    <value>選択を解除</value>
+  </data>
+  <data name="CancelCurrentInteraction" xml:space="preserve">
+    <value>現在の操作をキャンセル</value>
+  </data>
   <data name="Grid" xml:space="preserve">
     <value>グリッド</value>
   </data>
