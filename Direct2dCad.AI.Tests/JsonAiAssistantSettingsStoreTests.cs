@@ -1,4 +1,5 @@
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
+using Direct2dCad.AI.LmStudio;
 
 namespace Direct2dCad.AI.Tests;
 

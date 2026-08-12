@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Direct2dCad.AI;
+namespace Direct2dCad.AI.Contracts;
 
 public enum AiChatRole
 {

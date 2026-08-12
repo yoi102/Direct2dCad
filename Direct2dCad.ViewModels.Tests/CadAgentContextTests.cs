@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Direct2dCad.Agent;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 using Direct2dCad.ViewModels.Agents;
 using Direct2dCad.ViewModels.Tools;
 

@@ -6,7 +6,7 @@
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
-             xmlns:ai="clr-namespace:Direct2dCad.AI;assembly=Direct2dCad.AI"
+             xmlns:ai="clr-namespace:Direct2dCad.AI.Contracts;assembly=Direct2dCad.AI.Contracts"
              xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services.Platform;assembly=Direct2dCad.ViewModels.Services"
              xmlns:settings="clr-namespace:Direct2dCad.ViewModels.Settings;assembly=Direct2dCad.ViewModels"
              d:DataContext="{d:DesignInstance Type=settings:AiAssistantSettingsDialogViewModel}"

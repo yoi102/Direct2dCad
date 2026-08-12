@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 using Direct2dCad.Commands;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;

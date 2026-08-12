@@ -10,9 +10,4 @@
     <ProjectReference Include="..\Direct2dCad.AI.Contracts\Direct2dCad.AI.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <InternalsVisibleTo Include="Direct2dCad.Agent.Tests" />
-    <InternalsVisibleTo Include="Direct2dCad.ViewModels.Tests" />
-  </ItemGroup>
-
 </Project>

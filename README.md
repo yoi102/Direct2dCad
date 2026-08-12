@@ -64,7 +64,7 @@ https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509
 | 分层 | 项目 |
 |---|---|
 | 核心编辑 | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
-| AI 与 Agent | `Direct2dCad.AI`, `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex` |
+| AI 与 Agent | `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex` |
 | 查询与存储 | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
 | 渲染 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
 | 客户端公共能力 | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
@@ -85,7 +85,8 @@ flowchart TD
     Editor["Editor<br/>Direct2dCad.Editor"]
     Commands["Commands<br/>Direct2dCad.Commands"]
     CommandLine["Command Line<br/>Direct2dCad.CommandLine"]
-    AI["Local AI Protocol<br/>Direct2dCad.AI"]
+    AIContracts["AI Contracts<br/>Direct2dCad.AI.Contracts"]
+    LmStudio["LM Studio Adapter<br/>Direct2dCad.AI.LmStudio"]
     Agent["Agent Orchestration<br/>Direct2dCad.Agent"]
     Codex["Codex App Server Adapter<br/>Direct2dCad.Agent.Codex"]
     ChangeTracking["Change Tracking<br/>Direct2dCad.ChangeTracking"]
@@ -100,11 +101,12 @@ flowchart TD
     UI --> VM
     UI --> VMAbs
     UI --> CommandLine
-    UI --> AI
+    UI --> AIContracts
+    UI --> LmStudio
     UI --> Codex
     VM --> VMAbs
     VM --> CommandLine
-    VM --> AI
+    VM --> AIContracts
     VM --> Agent
     VM --> Codex
     VM --> VMServices
@@ -136,19 +138,25 @@ flowchart TD
     Direct2D --> Db
     IO --> Db
     Client --> Db
-    Agent --> AI
+    Agent --> AIContracts
     Codex --> Agent
-    Codex --> AI
+    Codex --> AIContracts
 ```
 
 ## 项目职责
 
-### Direct2dCad.AI
+### Direct2dCad.AI.Contracts
 
-LM Studio/OpenAI-compatible 协议层，不引用 WPF 和 CAD 数据模型。
+AI 对话、工具和设置的共享契约，不引用 WPF、具体模型服务和 CAD 数据模型。
+
+- 定义 assistant、tool call 和 tool result 消息协议。
+- 定义 AI 客户端、设置和设置存储接口，供 Agent 与各模型适配器复用。
+
+### Direct2dCad.AI.LmStudio
+
+LM Studio/OpenAI-compatible 协议实现，只依赖 `Direct2dCad.AI.Contracts`。
 
 - 获取 LM Studio 已加载的模型，并调用 `/v1/chat/completions`。
-- 定义 assistant、tool call 和 tool result 消息协议。
 - 保存连接地址、模型、temperature 和 CAD 工具开关等用户级设置。
 
 ### Direct2dCad.Agent
@@ -474,9 +482,10 @@ SetOrigin
 
 | 项目 | 当前项目引用 |
 |---|---|
-| `Direct2dCad.AI` | 无 |
-| `Direct2dCad.Agent` | `Direct2dCad.AI` |
-| `Direct2dCad.Agent.Codex` | `Direct2dCad.Agent`, `Direct2dCad.AI` |
+| `Direct2dCad.AI.Contracts` | 无 |
+| `Direct2dCad.AI.LmStudio` | `Direct2dCad.AI.Contracts` |
+| `Direct2dCad.Agent` | `Direct2dCad.AI.Contracts` |
+| `Direct2dCad.Agent.Codex` | `Direct2dCad.Agent`, `Direct2dCad.AI.Contracts` |
 | `Direct2dCad.Db` | 无 |
 | `Direct2dCad.ChangeTracking` | `Direct2dCad.Db` |
 | `Direct2dCad.Commands` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
@@ -494,9 +503,9 @@ SetOrigin
 | `Direct2dCad.Lang` | 无 |
 | `Direct2dCad.ViewModels.Abstractions` | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
 | `Direct2dCad.ViewModels.Services` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions` |
-| `Direct2dCad.ViewModels` | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.ViewModels` | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.wpf.Controls` | 无 |
-| `Direct2dCad.wpf` | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
+| `Direct2dCad.wpf` | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.Benchmarks` | `Direct2dCad.Db`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |
 
 ## NuGet 依赖

@@ -1,5 +1,5 @@
 using Direct2dCad.Agent;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 
 namespace Direct2dCad.Agent.Codex;
 

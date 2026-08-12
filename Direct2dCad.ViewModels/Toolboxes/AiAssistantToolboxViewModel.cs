@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Agent;
 using Direct2dCad.Agent.Codex;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Agents;
 using Direct2dCad.ViewModels.Tools;

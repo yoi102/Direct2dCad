@@ -1,7 +1,8 @@
 using System.Net;
 using System.Text;
 using System.Text.Json;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
+using Direct2dCad.AI.LmStudio;
 
 namespace Direct2dCad.AI.Tests;
 

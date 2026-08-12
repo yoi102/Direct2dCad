@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Platform;
 

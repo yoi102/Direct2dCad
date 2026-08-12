@@ -36,7 +36,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.Agent.Codex\Direct2dCad.Agent.Codex.csproj" />
-    <ProjectReference Include="..\Direct2dCad.AI\Direct2dCad.AI.csproj" />
+    <ProjectReference Include="..\Direct2dCad.AI.Contracts\Direct2dCad.AI.Contracts.csproj" />
+    <ProjectReference Include="..\Direct2dCad.AI.LmStudio\Direct2dCad.AI.LmStudio.csproj" />
     <ProjectReference Include="..\Direct2dCad.CommandLine\Direct2dCad.CommandLine.csproj" />
     <ProjectReference Include="..\Direct2dCad.wpf.Controls\Direct2dCad.wpf.Controls.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />

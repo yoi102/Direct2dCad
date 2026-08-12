@@ -2,8 +2,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Direct2dCad.AI.Contracts;
 
-namespace Direct2dCad.AI;
+namespace Direct2dCad.AI.LmStudio;
 
 public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
 {

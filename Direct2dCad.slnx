@@ -1,7 +1,8 @@
 <Solution>
   <Project Path="Direct2dCad.Agent/Direct2dCad.Agent.csproj" />
   <Project Path="Direct2dCad.Agent.Codex/Direct2dCad.Agent.Codex.csproj" />
-  <Project Path="Direct2dCad.AI/Direct2dCad.AI.csproj" />
+  <Project Path="Direct2dCad.AI.Contracts/Direct2dCad.AI.Contracts.csproj" />
+  <Project Path="Direct2dCad.AI.LmStudio/Direct2dCad.AI.LmStudio.csproj" />
   <Folder Name="/clients/">
     <Project Path="Direct2dCad.Client.Common/Direct2dCad.Client.Common.csproj" Id="d3f18ae1-15bb-4994-bc9f-5d45016cd932" />
     <Project Path="Direct2dCad.Lang/Direct2dCad.Lang.csproj" Id="2c6d1214-aa4a-4bb0-9c67-cf2fe44a4a76" />

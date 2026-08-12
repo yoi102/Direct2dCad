@@ -1,6 +1,7 @@
 using System.Text.Json;
+using Direct2dCad.AI.Contracts;
 
-namespace Direct2dCad.AI;
+namespace Direct2dCad.AI.LmStudio;
 
 public sealed class JsonAiAssistantSettingsStore : IAiAssistantSettingsStore
 {

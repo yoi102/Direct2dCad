@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 
 namespace Direct2dCad.ViewModels.Tools;
 

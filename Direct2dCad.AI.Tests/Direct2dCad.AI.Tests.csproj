@@ -19,7 +19,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Direct2dCad.AI\Direct2dCad.AI.csproj" />
+    <ProjectReference Include="..\Direct2dCad.AI.Contracts\Direct2dCad.AI.Contracts.csproj" />
+    <ProjectReference Include="..\Direct2dCad.AI.LmStudio\Direct2dCad.AI.LmStudio.csproj" />
   </ItemGroup>
 
 </Project>

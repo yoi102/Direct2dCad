@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Threading.Channels;
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 
 namespace Direct2dCad.Agent.Codex.Tests;
 

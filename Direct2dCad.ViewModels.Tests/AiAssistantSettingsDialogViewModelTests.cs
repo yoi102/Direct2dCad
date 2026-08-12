@@ -1,4 +1,4 @@
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Settings;
 

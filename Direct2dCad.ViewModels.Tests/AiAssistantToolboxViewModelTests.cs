@@ -1,4 +1,4 @@
-using Direct2dCad.AI;
+using Direct2dCad.AI.Contracts;
 using Direct2dCad.Agent;
 using Direct2dCad.Agent.Codex;
 using Direct2dCad.Client.Common.Settings;

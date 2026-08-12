@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.Agent\Direct2dCad.Agent.csproj" />
-    <ProjectReference Include="..\Direct2dCad.AI\Direct2dCad.AI.csproj" />
+    <ProjectReference Include="..\Direct2dCad.AI.Contracts\Direct2dCad.AI.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
