@@ -353,6 +353,13 @@ public partial class CadCanvas : IDisposable
                 e.Handled = true;
                 break;
 
+            case Key.X:
+                if (DocumentViewModel.CopySelection() is not null)
+                    DocumentViewModel.DeleteSelection();
+
+                e.Handled = true;
+                break;
+
             case Key.V:
                 ApplyInteractionResult(DocumentViewModel.BeginClipboardPastePreview(), e);
                 break;

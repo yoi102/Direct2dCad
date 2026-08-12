@@ -48,12 +48,14 @@
                 </Style>
             </ContextMenu.Resources>
             <MenuItem Header="{I18N {x:Static r:LangKeys.Undo}}"
+                      InputGestureText="Ctrl+Z"
                       Command="{Binding UndoCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="Undo" />
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.Redo}}"
+                      InputGestureText="Ctrl+Y"
                       Command="{Binding RedoCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="Redo" />
@@ -61,6 +63,7 @@
             </MenuItem>
             <Separator />
             <MenuItem Header="{I18N {x:Static r:LangKeys.Save}}"
+                      InputGestureText="Ctrl+S"
                       Command="{Binding SaveFileCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="ContentSave" />
@@ -74,24 +77,28 @@
             </MenuItem>
             <Separator />
             <MenuItem Header="{I18N {x:Static r:LangKeys.DeleteSelection}}"
+                      InputGestureText="Delete"
                       Command="{Binding DeleteSelectedEntitiesCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="Delete" />
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.CopySelection}}"
+                      InputGestureText="Ctrl+C"
                       Command="{Binding CopySelectedEntitiesCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="ContentCopy" />
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.CutSelection}}"
+                      InputGestureText="Ctrl+X"
                       Command="{Binding CutSelectedEntitiesCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="ContentCut" />
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.Paste}}"
+                      InputGestureText="Ctrl+V"
                       Command="{Binding PasteEntitiesCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="ContentPaste" />
@@ -99,6 +106,7 @@
             </MenuItem>
             <Separator />
             <MenuItem Header="{I18N {x:Static r:LangKeys.SelectAll}}"
+                      InputGestureText="Ctrl+A"
                       Command="{Binding SelectAllEntitiesCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="SelectAll" />
@@ -111,6 +119,7 @@
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.CancelCurrentInteraction}}"
+                      InputGestureText="Esc"
                       Command="{Binding CancelCurrentInteractionCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="Cancel" />
