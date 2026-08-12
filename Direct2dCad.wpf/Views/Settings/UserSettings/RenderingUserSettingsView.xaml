@@ -11,6 +11,19 @@
              xmlns:usersettings="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels"
              d:DataContext="{d:DesignInstance Type=usersettings:RenderingUserSettingsViewModel}">
     <StackPanel>
+        <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="220" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Margin="0,0,12,0"
+                       VerticalAlignment="Center"
+                       Text="{I18N {x:Static r:UserSettingsLangKeys.GraphicsDeviceMode}}" />
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding GraphicsDeviceModeOptions}"
+                      DisplayMemberPath="DisplayName"
+                      SelectedItem="{Binding SelectedGraphicsDeviceMode}" />
+        </Grid>
         <CheckBox Margin="0,0,0,12"
                   Content="{I18N {x:Static r:UserSettingsLangKeys.Antialiasing}}"
                   IsChecked="{Binding IsAntialiasingEnabled}" />

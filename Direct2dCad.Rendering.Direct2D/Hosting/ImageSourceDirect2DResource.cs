@@ -10,6 +10,7 @@ using Vortice.Direct3D9;
 using Vortice.DirectWrite;
 using Vortice.DXGI;
 using Vortice.Mathematics;
+using Direct2dCad.Rendering;
 
 using D3D9Api = Vortice.Direct3D9.D3D9;
 using D3D9Format = Vortice.Direct3D9.Format;
@@ -55,6 +56,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     private Vortice.Direct3D.FeatureLevel _featureLevel;
     private bool _usingWarp;
+    private CadGraphicsDeviceMode _graphicsDeviceMode = CadGraphicsDeviceMode.Automatic;
     private bool _disposed;
     private bool _isDrawing;
     private IReadOnlyList<CadScreenRect>? _pendingPresentDirtyRects;
@@ -62,6 +64,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     public int Width => _width;
     public int Height => _height;
     public bool UsingWarp => _usingWarp;
+    public CadGraphicsDeviceMode GraphicsDeviceMode => _graphicsDeviceMode;
     public Vortice.Direct3D.FeatureLevel FeatureLevel => _featureLevel;
 
     public IDWriteFactory? DwriteFactory => _dwriteFactory;
@@ -138,6 +141,20 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         SetSize(width, height);
     }
 
+    public void SetGraphicsDeviceMode(CadGraphicsDeviceMode mode)
+    {
+        ThrowIfDisposed();
+
+        if (!Enum.IsDefined(mode))
+            mode = CadGraphicsDeviceMode.Automatic;
+
+        if (_graphicsDeviceMode == mode)
+            return;
+
+        _graphicsDeviceMode = mode;
+        RecoverFromDeviceLoss();
+    }
+
     public void SetSize(int width, int height)
     {
         ThrowIfDisposed();
@@ -168,8 +185,8 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         _d2dContext.Target = _targetBitmap;
 
-        _imageSource.SetSurface(_sharedSurface9.NativePointer);
-        _imageSource.Invalidate();
+        _imageSource!.SetSurface(_sharedSurface9.NativePointer);
+        _imageSource!.Invalidate();
     }
 
     public void BeginDraw()
@@ -626,13 +643,29 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             Vortice.Direct3D.FeatureLevel.Level_9_1
         };
 
-        if (TryCreateD3D11Device(DriverType.Hardware, featureLevels, false))
-            return;
+        switch (_graphicsDeviceMode)
+        {
+            case CadGraphicsDeviceMode.Hardware:
+                if (TryCreateD3D11Device(DriverType.Hardware, featureLevels, false))
+                    return;
+                break;
 
-        if (TryCreateD3D11Device(DriverType.Warp, featureLevels, true))
-            return;
+            case CadGraphicsDeviceMode.Warp:
+                if (TryCreateD3D11Device(DriverType.Warp, featureLevels, true))
+                    return;
+                break;
 
-        throw new InvalidOperationException("Failed to create D3D11 device.");
+            default:
+                if (TryCreateD3D11Device(DriverType.Hardware, featureLevels, false))
+                    return;
+
+                if (TryCreateD3D11Device(DriverType.Warp, featureLevels, true))
+                    return;
+                break;
+        }
+
+        throw new InvalidOperationException(
+            $"Failed to create D3D11 device using {_graphicsDeviceMode} mode.");
     }
 
     private bool TryCreateD3D11Device(
@@ -822,19 +855,20 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     {
         ThrowIfDisposed();
 
-        if (_imageSource is null)
-            return;
-
         var width = Math.Max(1, _width);
         var height = Math.Max(1, _height);
+        var hasImageSource = _imageSource is not null;
 
-        try
+        if (hasImageSource)
         {
-            _imageSource.SetSurface(nint.Zero);
-        }
-        catch
-        {
-            // The old shared surface may already be invalid when the device is lost.
+            try
+            {
+                _imageSource!.SetSurface(nint.Zero);
+            }
+            catch
+            {
+                // The old shared surface may already be invalid when the device is lost.
+            }
         }
 
         _beforeDeviceResourcesReleased?.Invoke();
@@ -847,6 +881,9 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         CreateD3D9Device();
         GetDWriteFactory();
 
+        if (!hasImageSource)
+            return;
+
         _width = width;
         _height = height;
 
@@ -858,8 +895,8 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             throw new InvalidOperationException("Failed to recreate Direct2D device resources.");
 
         _d2dContext.Target = _targetBitmap;
-        _imageSource.SetSurface(_sharedSurface9.NativePointer);
-        _imageSource.Invalidate();
+        _imageSource!.SetSurface(_sharedSurface9.NativePointer);
+        _imageSource!.Invalidate();
     }
 
     private void ReleaseImageTarget()

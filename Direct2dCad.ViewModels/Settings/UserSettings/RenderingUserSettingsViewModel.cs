@@ -9,11 +9,35 @@ public sealed record ParallelRenderingModeOption(
     CadParallelRenderingMode Mode,
     string DisplayName);
 
+public sealed record GraphicsDeviceModeOption(
+    CadGraphicsDeviceMode Mode,
+    string DisplayName);
+
 public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewModel
 {
-    public RenderingUserSettingsViewModel(CadRenderingUserSettings settings)
+    public RenderingUserSettingsViewModel(
+        CadRenderingUserSettings settings,
+        CadGraphicsDeviceMode? actualGraphicsDeviceMode = null)
         : base(Localized("Rendering"))
     {
+        var automaticDisplayName = actualGraphicsDeviceMode switch
+        {
+            CadGraphicsDeviceMode.Hardware => Localized("GraphicsDeviceAutomaticHardware"),
+            CadGraphicsDeviceMode.Warp => Localized("GraphicsDeviceAutomaticWarp"),
+            _ => Localized("GraphicsDeviceAutomatic")
+        };
+        GraphicsDeviceModeOptions =
+        [
+            new(
+                CadGraphicsDeviceMode.Automatic,
+                automaticDisplayName),
+            new(
+                CadGraphicsDeviceMode.Hardware,
+                Localized("GraphicsDeviceHardware")),
+            new(
+                CadGraphicsDeviceMode.Warp,
+                Localized("GraphicsDeviceWarp"))
+        ];
         ParallelRenderingModeOptions =
         [
             new(
@@ -30,6 +54,8 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     {
         IsAntialiasingEnabled = settings.IsAntialiasingEnabled;
         IsTextAntialiasingEnabled = settings.IsTextAntialiasingEnabled;
+        SelectedGraphicsDeviceMode = GraphicsDeviceModeOptions.First(option =>
+            option.Mode == settings.GraphicsDeviceMode);
         ShowFramesPerSecond = settings.ShowFramesPerSecond;
         IsZoomSnapshotPreviewEnabled =
             settings.IsZoomSnapshotPreviewEnabled;
@@ -47,6 +73,9 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     [ObservableProperty] public partial bool IsAntialiasingEnabled { get; set; }
 
     [ObservableProperty] public partial bool IsTextAntialiasingEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial GraphicsDeviceModeOption? SelectedGraphicsDeviceMode { get; set; }
 
     [ObservableProperty] public partial bool ShowFramesPerSecond { get; set; }
 
@@ -72,11 +101,14 @@ public partial class RenderingUserSettingsViewModel : UserSettingsSectionViewMod
     public partial int ParallelRenderingWorkerCount { get; set; }
 
     public IReadOnlyList<ParallelRenderingModeOption> ParallelRenderingModeOptions { get; }
+    public IReadOnlyList<GraphicsDeviceModeOption> GraphicsDeviceModeOptions { get; }
 
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         settings.Rendering.IsAntialiasingEnabled = IsAntialiasingEnabled;
         settings.Rendering.IsTextAntialiasingEnabled = IsTextAntialiasingEnabled;
+        settings.Rendering.GraphicsDeviceMode =
+            SelectedGraphicsDeviceMode?.Mode ?? CadGraphicsDeviceMode.Automatic;
         settings.Rendering.ShowFramesPerSecond = ShowFramesPerSecond;
         settings.Rendering.IsZoomSnapshotPreviewEnabled =
             IsZoomSnapshotPreviewEnabled;

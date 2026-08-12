@@ -1516,6 +1516,18 @@
   <data name="ParallelRendering" xml:space="preserve">
     <value>Experimental parallel rendering</value>
   </data>
+  <data name="GraphicsDeviceMode" xml:space="preserve">
+    <value>Graphics device mode</value>
+  </data>
+  <data name="GraphicsDeviceAutomatic" xml:space="preserve">
+    <value>Automatic (hardware with WARP fallback)</value>
+  </data>
+  <data name="GraphicsDeviceHardware" xml:space="preserve">
+    <value>Hardware acceleration</value>
+  </data>
+  <data name="GraphicsDeviceWarp" xml:space="preserve">
+    <value>WARP software rendering</value>
+  </data>
   <data name="ParallelRenderingMode" xml:space="preserve">
     <value>Resource strategy</value>
   </data>
@@ -1581,5 +1593,11 @@
   </data>
   <data name="AiImageTooLarge" xml:space="preserve">
     <value>The image is too large to attach.</value>
+  </data>
+  <data name="GraphicsDeviceAutomaticHardware" xml:space="preserve">
+    <value>Automatic (current: hardware acceleration)</value>
+  </data>
+  <data name="GraphicsDeviceAutomaticWarp" xml:space="preserve">
+    <value>Automatic (current: WARP)</value>
   </data>
 </root>

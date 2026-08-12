@@ -1,6 +1,7 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.Rendering;
 using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Settings.UserSettings;
@@ -13,7 +14,8 @@ public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDial
     public UserSettingsViewModel(
         CadUserSettings settings,
         IUserSettingsStore settingsStore,
-        Action<CadUserSettings> applySettings)
+        Action<CadUserSettings> applySettings,
+        CadGraphicsDeviceMode? actualGraphicsDeviceMode = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
@@ -21,7 +23,9 @@ public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDial
 
         var workingCopy = settings.Clone();
         General = new GeneralUserSettingsViewModel(workingCopy.General);
-        Rendering = new RenderingUserSettingsViewModel(workingCopy.Rendering);
+        Rendering = new RenderingUserSettingsViewModel(
+            workingCopy.Rendering,
+            actualGraphicsDeviceMode);
         Interaction = new InteractionUserSettingsViewModel(workingCopy.Interaction);
         Sections = [General, Rendering, Interaction];
         SelectedSection = Sections[0];

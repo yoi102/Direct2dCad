@@ -389,6 +389,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
+        Direct2DImageRenderHost.SetGraphicsDeviceMode(
+            UserSettings.Rendering.GraphicsDeviceMode);
         ShowFramesPerSecond = UserSettings.Rendering.ShowFramesPerSecond;
         RequestRender();
     }

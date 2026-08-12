@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO;
+using Direct2dCad.Rendering;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Settings;
@@ -207,8 +208,21 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void OpenUserSettingsDialog()
     {
+        CadGraphicsDeviceMode? actualGraphicsDeviceMode = null;
+        if (CurrentEditorTabViewModel is not null)
+        {
+            actualGraphicsDeviceMode = CurrentEditorTabViewModel
+                .CadDocumentViewModel.Direct2DImageRenderHost.UsingWarp
+                ? CadGraphicsDeviceMode.Warp
+                : CadGraphicsDeviceMode.Hardware;
+        }
+
         _dialogService.ShowUserSettingsDialog(
-            new UserSettingsViewModel(_userSettings, _userSettingsStore, ApplyUserSettings));
+            new UserSettingsViewModel(
+                _userSettings,
+                _userSettingsStore,
+                ApplyUserSettings,
+                actualGraphicsDeviceMode));
     }
 
     private void ApplyUserSettings(CadUserSettings settings)

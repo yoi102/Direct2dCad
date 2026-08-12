@@ -1281,6 +1281,18 @@
   <data name="ParallelRendering" xml:space="preserve">
     <value>实验性并行绘制</value>
   </data>
+  <data name="GraphicsDeviceMode" xml:space="preserve">
+    <value>图形设备模式</value>
+  </data>
+  <data name="GraphicsDeviceAutomatic" xml:space="preserve">
+    <value>自动（硬件加速失败时使用 WARP）</value>
+  </data>
+  <data name="GraphicsDeviceHardware" xml:space="preserve">
+    <value>硬件加速</value>
+  </data>
+  <data name="GraphicsDeviceWarp" xml:space="preserve">
+    <value>WARP 软件渲染</value>
+  </data>
   <data name="ParallelRenderingMode" xml:space="preserve">
     <value>资源策略</value>
   </data>
@@ -1346,5 +1358,11 @@
   </data>
   <data name="AiImageTooLarge" xml:space="preserve">
     <value>图片太大，无法添加。</value>
+  </data>
+  <data name="GraphicsDeviceAutomaticHardware" xml:space="preserve">
+    <value>自动（当前：硬件加速）</value>
+  </data>
+  <data name="GraphicsDeviceAutomaticWarp" xml:space="preserve">
+    <value>自动（当前：WARP）</value>
   </data>
 </root>

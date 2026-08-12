@@ -49,6 +49,7 @@ public sealed class CadUserSettings
         {
             IsAntialiasingEnabled = source.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = source.Rendering.IsTextAntialiasingEnabled,
+            GraphicsDeviceMode = source.Rendering.GraphicsDeviceMode,
             ShowFramesPerSecond = source.Rendering.ShowFramesPerSecond,
             IsZoomSnapshotPreviewEnabled =
                 source.Rendering.IsZoomSnapshotPreviewEnabled,
@@ -106,6 +107,8 @@ public sealed class CadRenderingUserSettings
 {
     public bool IsAntialiasingEnabled { get; set; } = true;
     public bool IsTextAntialiasingEnabled { get; set; } = true;
+    public CadGraphicsDeviceMode GraphicsDeviceMode { get; set; } =
+        CadGraphicsDeviceMode.Automatic;
     public bool ShowFramesPerSecond { get; set; } = true;
     public bool IsZoomSnapshotPreviewEnabled { get; set; } = false;
     public bool IsLevelOfDetailEnabled { get; set; } = true;
@@ -118,6 +121,8 @@ public sealed class CadRenderingUserSettings
 
     internal void Normalize()
     {
+        if (!Enum.IsDefined(GraphicsDeviceMode))
+            GraphicsDeviceMode = CadGraphicsDeviceMode.Automatic;
         if (!Enum.IsDefined(ParallelRenderingMode))
             ParallelRenderingMode = CadParallelRenderingMode.MultipleDevices;
         ParallelRenderingWorkerCount =

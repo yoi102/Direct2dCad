@@ -7,6 +7,12 @@ public static class UserSettingsLangKeys
     public const string Rendering = nameof(Rendering);
     public const string Interaction = nameof(Interaction);
     public const string Antialiasing = nameof(Antialiasing);
+    public const string GraphicsDeviceMode = nameof(GraphicsDeviceMode);
+    public const string GraphicsDeviceAutomatic = nameof(GraphicsDeviceAutomatic);
+    public const string GraphicsDeviceAutomaticHardware = nameof(GraphicsDeviceAutomaticHardware);
+    public const string GraphicsDeviceAutomaticWarp = nameof(GraphicsDeviceAutomaticWarp);
+    public const string GraphicsDeviceHardware = nameof(GraphicsDeviceHardware);
+    public const string GraphicsDeviceWarp = nameof(GraphicsDeviceWarp);
     public const string ShowFramesPerSecond = nameof(ShowFramesPerSecond);
     public const string ZoomSnapshotPreview = nameof(ZoomSnapshotPreview);
     public const string ApproximateTileScaleFallback = nameof(ApproximateTileScaleFallback);

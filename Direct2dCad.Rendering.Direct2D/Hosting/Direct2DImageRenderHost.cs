@@ -85,6 +85,10 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
     public bool IsViewportInteractionActive => _viewportInteractionSnapshot is not null;
 
+    public CadGraphicsDeviceMode GraphicsDeviceMode => _target.GraphicsDeviceMode;
+
+    public bool UsingWarp => _target.UsingWarp;
+
     public Color4 FallbackBackgroundColor { get; set; } = new(0.08f, 0.09f, 0.10f, 1.0f);
 
     public CadDocumentChangeSet UpdateTextMeasurements(CadDocument document)
@@ -250,6 +254,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             ResetParallelRenderers();
         }
         _renderOptions = nextOptions;
+    }
+
+    public void SetGraphicsDeviceMode(CadGraphicsDeviceMode mode)
+    {
+        ThrowIfDisposed();
+        _target.SetGraphicsDeviceMode(mode);
+        ResetRendererDeviceResources();
     }
 
     public void SetOleDrawCallback(Direct2DOleDrawCallback? callback)
@@ -1085,6 +1096,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     {
         frameLease = null;
         if (!_renderOptions.IsParallelRenderingEnabled ||
+            _target.UsingWarp ||
             _handleScene is { SelectionReferenceCount: > 0 } ||
             _target.D3DDevice is not { } d3dDevice ||
             _target.Factory is not { } d2dFactory ||

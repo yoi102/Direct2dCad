@@ -1744,6 +1744,60 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Automatic (hardware with WARP fallback) 的本地化字符串。
+        /// </summary>
+        public static string GraphicsDeviceAutomatic {
+            get {
+                return ResourceManager.GetString("GraphicsDeviceAutomatic", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Automatic (current: hardware acceleration) 的本地化字符串。
+        /// </summary>
+        public static string GraphicsDeviceAutomaticHardware {
+            get {
+                return ResourceManager.GetString("GraphicsDeviceAutomaticHardware", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Automatic (current: WARP) 的本地化字符串。
+        /// </summary>
+        public static string GraphicsDeviceAutomaticWarp {
+            get {
+                return ResourceManager.GetString("GraphicsDeviceAutomaticWarp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Hardware acceleration 的本地化字符串。
+        /// </summary>
+        public static string GraphicsDeviceHardware {
+            get {
+                return ResourceManager.GetString("GraphicsDeviceHardware", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Graphics device mode 的本地化字符串。
+        /// </summary>
+        public static string GraphicsDeviceMode {
+            get {
+                return ResourceManager.GetString("GraphicsDeviceMode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 WARP software rendering 的本地化字符串。
+        /// </summary>
+        public static string GraphicsDeviceWarp {
+            get {
+                return ResourceManager.GetString("GraphicsDeviceWarp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Grid 的本地化字符串。
         /// </summary>
         public static string Grid {

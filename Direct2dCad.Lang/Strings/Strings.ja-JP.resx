@@ -1281,6 +1281,18 @@
   <data name="ParallelRendering" xml:space="preserve">
     <value>実験的な並列描画</value>
   </data>
+  <data name="GraphicsDeviceMode" xml:space="preserve">
+    <value>グラフィックスデバイスモード</value>
+  </data>
+  <data name="GraphicsDeviceAutomatic" xml:space="preserve">
+    <value>自動（ハードウェア失敗時は WARP）</value>
+  </data>
+  <data name="GraphicsDeviceHardware" xml:space="preserve">
+    <value>ハードウェアアクセラレーション</value>
+  </data>
+  <data name="GraphicsDeviceWarp" xml:space="preserve">
+    <value>WARP ソフトウェアレンダリング</value>
+  </data>
   <data name="ParallelRenderingMode" xml:space="preserve">
     <value>リソース方式</value>
   </data>
@@ -1346,5 +1358,11 @@
   </data>
   <data name="AiImageTooLarge" xml:space="preserve">
     <value>画像が大きすぎるため添付できません。</value>
+  </data>
+  <data name="GraphicsDeviceAutomaticHardware" xml:space="preserve">
+    <value>自動（現在：ハードウェアアクセラレーション）</value>
+  </data>
+  <data name="GraphicsDeviceAutomaticWarp" xml:space="preserve">
+    <value>自動（現在：WARP）</value>
   </data>
 </root>
