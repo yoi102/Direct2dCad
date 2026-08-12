@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor.Commands;
 
@@ -67,6 +68,24 @@ public sealed class SelectionAndViewportCommandTests
     }
 
     [Fact]
+    public void FilterSelection_SelectsByTypeAndUndoRestoresPreviousSelection()
+    {
+        var document = CadDocument.Create("Test");
+        var circle = document.AddCircle(CadPointD.Origin, 2);
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        var editor = new CadEditor(document);
+        editor.Selection.Add(line.Id);
+
+        editor.Execute(new FilterSelectionCommand(
+            entity => entity is CadCircle,
+            CadSelectionMode.Replace));
+
+        Assert.Equal([circle.Id], editor.Selection.EntityIds);
+        editor.UndoEditor();
+        Assert.Equal([line.Id], editor.Selection.EntityIds);
+    }
+
+    [Fact]
     public void ClickSelect_ExposesAllOverlappingCandidatesInDisplayOrder()
     {
         var document = CadDocument.Create("Test");
@@ -121,5 +140,21 @@ public sealed class SelectionAndViewportCommandTests
         Assert.Equal(9, editor.Viewport.Zoom, 6);
         Assert.Equal(new CadPointD(50, 525), editor.Viewport.Offset);
         Assert.False(visible.IsErased);
+    }
+
+    [Fact]
+    public void FitViewportBounds_CentersRequestedBoundsAndIsUndoable()
+    {
+        var document = CadDocument.Create("Test");
+        var editor = new CadEditor(document);
+        editor.Viewport.SetSize(1000, 600);
+        var previousOffset = editor.Viewport.Offset;
+
+        editor.Execute(new FitViewportBoundsCommand(CadRectD.FromLTRB(100, 50, 200, 150), 50));
+
+        Assert.Equal(5, editor.Viewport.Zoom, 6);
+        Assert.Equal(new CadPointD(-250, 800), editor.Viewport.Offset);
+        editor.UndoEditor();
+        Assert.Equal(previousOffset, editor.Viewport.Offset);
     }
 }

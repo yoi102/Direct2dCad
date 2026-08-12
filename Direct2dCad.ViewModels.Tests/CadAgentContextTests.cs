@@ -17,7 +17,9 @@ public sealed class CadAgentToolSelectorTests
         "transform_entities", "open_document", "activate_document", "rename_document",
         "save_document", "close_document", "get_document_summary", "get_entity_statistics", "list_entities",
         "list_document_catalog", "list_documents", "create_document", "select_entities",
-        "undo", "redo", "set_entity_common_properties", "set_entity_specific_properties");
+        "undo", "redo", "set_entity_common_properties", "set_entity_specific_properties",
+        "get_view_settings", "set_view_settings", "manage_grid_presets", "set_viewport", "select_by_bounds", "select_by_polygon", "select_by_filter",
+        "clear_selection", "undo_view", "redo_view", "measure_geometry", "set_drawing_layer");
 
     [Fact]
     public void Select_ComplexDrawing_PrefersBulkCreationTool()
@@ -121,6 +123,36 @@ public sealed class CadAgentToolSelectorTests
         Assert.Contains(selected, tool => tool.Name == "rename_document");
         Assert.Contains(selected, tool => tool.Name == "save_document");
         Assert.Contains(selected, tool => tool.Name == "close_document");
+    }
+
+    [Theory]
+    [InlineData("switch the drawing unit to inches")]
+    [InlineData("设置网格和捕捉标记")]
+    [InlineData("change the CAD background")]
+    public void Select_ViewSettingsRequest_IncludesViewSettingsTools(string prompt)
+    {
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
+
+        Assert.Equal("get_view_settings", selected[0].Name);
+        Assert.Contains(selected, tool => tool.Name == "set_view_settings");
+    }
+
+    [Theory]
+    [InlineData("measure the distance and area", "measure_geometry")]
+    [InlineData("测量这几个实体的长度", "measure_geometry")]
+    [InlineData("zoom to fit the drawing", "set_viewport")]
+    [InlineData("框选这个矩形区域", "select_by_bounds")]
+    [InlineData("select by polygon", "select_by_polygon")]
+    [InlineData("select all circles", "select_by_filter")]
+    [InlineData("clear selection", "clear_selection")]
+    [InlineData("undo viewport zoom", "undo_view")]
+    [InlineData("create a grid spacing preset", "manage_grid_presets")]
+    public void Select_ExpandedCadIntent_PrioritizesMatchingTool(string prompt, string expectedTool)
+    {
+        var selected = CadAgentToolSelector.Select(prompt, AvailableTools);
+
+        Assert.NotEmpty(selected);
+        Assert.Equal(expectedTool, selected[0].Name);
     }
 
     [Theory]

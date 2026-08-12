@@ -250,11 +250,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (document.DocumentSettings.Unit == unit)
             return;
 
-        document.DocumentSettings.SetUnit(unit);
-        CadDocumentViewModel.NotifyDocumentUnitChanged();
-        ApplyDocumentViewSettingsToToolbar();
-        MarkDirectDocumentChanged();
-        CadDocumentViewModel.RequestRender();
+        CadDocumentViewModel.SetDocumentUnit(unit);
     }
 
     partial void OnViewModelCadGridTypeChanged(ViewModelCadGridType value)
@@ -908,6 +904,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private void OnCadDocumentViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(CadDocumentViewModel.DocumentUnit) or
+            nameof(CadDocumentViewModel.DocumentLengthPrecision) or
+            nameof(CadDocumentViewModel.DocumentAnglePrecision))
+        {
+            MarkDirectDocumentChanged();
+            return;
+        }
+
         if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
         {
             CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;

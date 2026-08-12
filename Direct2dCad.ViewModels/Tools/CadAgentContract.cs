@@ -2,7 +2,7 @@ namespace Direct2dCad.ViewModels.Tools;
 
 internal static class CadAgentContract
 {
-    internal const string Version = "1.3";
+    internal const string Version = "1.5";
 
     internal static object CreateCapabilities(
         IReadOnlyList<CadToolWorkspaceDocument> documents,
@@ -30,10 +30,11 @@ internal static class CadAgentContract
             },
             rules = new
             {
-                coordinates = "World coordinates use +X to the right and +Y upward. Angles are counter-clockwise degrees.",
+                coordinates = "World coordinates use +X to the right and +Y upward. Geometry tool inputs and outputs use canonical millimetres regardless of the display unit. Angles are counter-clockwise degrees.",
+                view_settings = "Use get_view_settings to inspect the status-bar unit, grid, snap marker, origin display, background, precision, and viewport settings. Use set_view_settings to change document display settings, manage_grid_presets to list/create/rename/delete named grid presets, and set_viewport to fit, fit_bounds, zoom, zoom_entity, pan, or center the active viewport. Display-unit values in the view-settings result are for UI presentation; geometry and measurement coordinates remain in canonical millimetres.",
                 document_selection = "Use document_id whenever the user names a document. Never create a document unless explicitly requested.",
                 editable_space = "document_id selects the document tab; the current active_space selects the editable owner. Mutations affect only that active model space, paper space, layout viewport model space, or block-edit space. Query scope=document is read-only across spaces.",
-                undo = "All document mutations are undoable. Mutations in one request share one undo batch per document.",
+                undo = "Document mutations and document view settings are undoable with undo/redo. Viewport and selection changes use the separate editor history and are undone with undo_view/redo_view. Mutations in one request share one undo batch per document.",
                 selection_fallback = "Only move_entities, transform_entities, delete_entities, duplicate_entities, and create_block may use the current selection when entity_ids is omitted.",
                 appearance = "color and graphic_style are mutually exclusive. By-layer color and line weight resolve from the entity layer. Shared Text and Graphic styles can be changed with their dedicated undoable tools.",
                 fill = "Fill mode none clears fill; style requires an existing style; solid and hatch accept optional colors; hatch defaults to ANSI31 when pattern is omitted; gradient requires stops with offsets 0 and 1.",
@@ -43,7 +44,7 @@ internal static class CadAgentContract
                 transforms = "move supports all editable entities. rotate rejects EllipseArc and OleObject and requires multiples of 90 degrees for Ellipse and Rectangle. scale rejects EllipseArc and requires a factor greater than zero. mirror rejects EllipseArc, requires multiples of 45 degrees for Ellipse and Rectangle, and horizontal or vertical axes for OleObject. The tool validates every selected entity before changing any of them.",
                 locking = "locked is a common entity property. Locked entities cannot be edited; unlocking remains allowed and is undoable. A lock requested together with other properties is applied last.",
                 deletion = "delete_entities requires confirm=true. delete_layer requires delete_entities=true and confirm=true.",
-                query = "get_entity_statistics is complete and unpaged. list_entities is paged; use total_matches and has_more and never assume one page is the whole drawing.",
+                query = "get_entity_statistics is complete and unpaged. list_entities is paged; use total_matches and has_more and never assume one page is the whole drawing. measure_geometry returns exact entity lengths where available, analytic areas for closed primitives, and polygonal area estimates for flattened closed paths. Its intersections, nearest_point, project_point, and non-line chord results are marked approximate when curve sampling is used.",
                 verification = "After a mutation, inspect the tool result and query the document when the operation is complex or batch-sized."
             },
             common_entity_properties = new[]
@@ -61,12 +62,14 @@ internal static class CadAgentContract
             },
             tool_groups = new
             {
-                inspect = new[] { "get_agent_capabilities", "get_document_summary", "get_entity_statistics", "list_entities", "list_document_catalog" },
+                inspect = new[] { "get_agent_capabilities", "get_document_summary", "get_view_settings", "get_entity_statistics", "list_entities", "list_document_catalog", "measure_geometry" },
                 create = new[] { "add_line", "add_circle", "add_arc", "add_ellipse", "add_rectangle", "add_polygon", "add_polyline", "add_spline", "add_composite_path", "add_shape_text", "add_text", "add_entities", "insert_image_from_file", "add_ole_object" },
-                geometry = new[] { "get_entity_geometry", "set_entity_geometry", "transform_entities", "duplicate_entities", "move_entities" },
+                geometry = new[] { "get_entity_geometry", "set_entity_geometry", "transform_entities", "duplicate_entities", "move_entities", "measure_geometry" },
                 appearance = new[] { "set_entity_common_properties", "set_entity_fill", "set_entity_stroke_style", "set_entity_specific_properties", "set_ole_object_data", "set_text_style_properties", "set_graphic_style_properties", "list_styles", "create_graphic_style", "create_line_type", "rename_line_type", "delete_line_type", "create_text_style", "create_fill_style", "create_hatch_pattern", "rename_style", "delete_style", "delete_hatch_pattern", "list_system_fonts" },
                 organization = new[] { "list_layers", "create_layer", "rename_layer", "delete_layer", "set_layer_properties", "reorder_layers", "create_block", "insert_block", "list_blocks", "rename_block", "delete_block", "edit_block", "exit_block_edit" },
-                history = new[] { "undo", "redo" },
+                history = new[] { "undo", "redo", "undo_view", "redo_view" },
+                selection = new[] { "select_entities", "select_by_bounds", "select_by_polygon", "select_by_filter", "clear_selection" },
+                view = new[] { "get_view_settings", "set_view_settings", "manage_grid_presets", "set_viewport", "set_drawing_layer" },
                 workspace = new[] { "list_documents", "create_document", "open_document", "activate_document", "rename_document", "save_document", "close_document" }
             },
             entity_capabilities = EntityCapabilities(),

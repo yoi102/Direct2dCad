@@ -343,6 +343,31 @@ public sealed class MainWindowUiTests : IDisposable
             "Selecting the model tab did not update the active layout tab.");
     }
 
+    [Fact]
+    [Trait("Category", "UiAutomation")]
+    public void AiToolCommands_CreateMeasureAndManageGridPreset()
+    {
+        CreateNewDocument();
+        var commandInput = GetOrOpenCommandLineInput();
+        var commandOutput = fixture.WaitForElement("CommandLineOutput");
+
+        ExecuteCommandAndWaitForOutput(
+            commandInput,
+            commandOutput,
+            "TOOL add_line {\"x1\":0,\"y1\":0,\"x2\":10,\"y2\":0}",
+            "created_entity_id");
+        ExecuteCommandAndWaitForOutput(
+            commandInput,
+            commandOutput,
+            "TOOL measure_geometry {\"points\":[{\"x\":0,\"y\":0},{\"x\":3,\"y\":4}]}",
+            "total_distance_millimeters");
+        ExecuteCommandAndWaitForOutput(
+            commandInput,
+            commandOutput,
+            "TOOL manage_grid_presets {\"operation\":\"list\"}",
+            "presets");
+    }
+
     private static void ExecuteCommand(TextBox commandInput, string command)
     {
         commandInput.Focus();

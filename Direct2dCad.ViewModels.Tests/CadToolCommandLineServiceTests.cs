@@ -10,15 +10,31 @@ public sealed class CadToolCommandLineServiceTests
         var service = new CadToolCommandLineService(new EmptyWorkspace());
 
         var tools = await service.TryExecuteAsync("TOOLS circle");
+        var allTools = await service.TryExecuteAsync("TOOLS");
         var help = await service.TryExecuteAsync("TOOLHELP add_circle");
 
         Assert.NotNull(tools);
         Assert.True(tools.Success);
         Assert.Contains("add_circle", tools.Message, StringComparison.Ordinal);
+        Assert.NotNull(allTools);
+        Assert.Contains("manage_grid_presets", allTools.Message, StringComparison.Ordinal);
         Assert.NotNull(help);
         Assert.True(help.Success);
         Assert.Contains("center_x", help.Message, StringComparison.Ordinal);
         Assert.Contains("TOOL add_circle", help.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ToolHelp_ExposesAdvancedMeasurementOperations()
+    {
+        var service = new CadToolCommandLineService(new EmptyWorkspace());
+
+        var help = await service.TryExecuteAsync("TOOLHELP measure_geometry");
+
+        Assert.NotNull(help);
+        Assert.True(help.Success);
+        Assert.Contains("intersections", help.Message, StringComparison.Ordinal);
+        Assert.Contains("nearest_point", help.Message, StringComparison.Ordinal);
     }
 
     [Fact]

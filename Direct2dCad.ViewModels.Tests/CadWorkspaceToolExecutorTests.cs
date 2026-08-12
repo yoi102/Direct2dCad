@@ -3,6 +3,7 @@ using Direct2dCad.AI;
 using Direct2dCad.Commands;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.ViewModels.Tools;
@@ -58,6 +59,85 @@ public sealed class CadWorkspaceToolExecutorTests
         Assert.Contains(tools, tool => tool.Name == "add_ole_object");
         Assert.Contains(tools, tool => tool.Name == "set_ole_object_data");
         Assert.Contains(tools, tool => tool.Name == "get_agent_capabilities");
+        Assert.Contains(tools, tool => tool.Name == "get_view_settings");
+        Assert.Contains(tools, tool => tool.Name == "set_view_settings");
+        Assert.Contains(tools, tool => tool.Name == "manage_grid_presets");
+        Assert.Contains(tools, tool => tool.Name == "set_viewport");
+        Assert.Contains(tools, tool => tool.Name == "select_by_bounds");
+        Assert.Contains(tools, tool => tool.Name == "select_by_polygon");
+        Assert.Contains(tools, tool => tool.Name == "select_by_filter");
+        Assert.Contains(tools, tool => tool.Name == "clear_selection");
+        Assert.Contains(tools, tool => tool.Name == "undo_view");
+        Assert.Contains(tools, tool => tool.Name == "redo_view");
+        Assert.Contains(tools, tool => tool.Name == "set_drawing_layer");
+        Assert.Contains(tools, tool => tool.Name == "measure_geometry");
+    }
+
+    [Fact]
+    public void ViewSettingsTool_ExposesStatusBarSettingsAndUnitContract()
+    {
+        var tool = CadWorkspaceToolExecutor.ToolDefinitions.Single(candidate => candidate.Name == "set_view_settings");
+        var properties = tool.Parameters.GetProperty("properties");
+
+        Assert.True(properties.TryGetProperty("unit", out var unit));
+        Assert.Contains("Inch", unit.GetProperty("enum").EnumerateArray().Select(item => item.GetString()));
+        Assert.True(properties.TryGetProperty("grid_type", out _));
+        Assert.True(properties.TryGetProperty("major_grid_preset", out _));
+        Assert.True(properties.TryGetProperty("minor_grid_preset", out _));
+        Assert.True(properties.TryGetProperty("snap_marker_type", out _));
+        Assert.True(properties.TryGetProperty("origin_display_type", out _));
+        Assert.True(properties.TryGetProperty("background_color", out _));
+        Assert.True(properties.TryGetProperty("grid_spacing_x_millimeters", out _));
+        Assert.True(properties.TryGetProperty("grid_minor_line_color", out _));
+        Assert.True(properties.TryGetProperty("origin_position_x_millimeters", out _));
+        Assert.True(properties.TryGetProperty("length_precision", out _));
+        Assert.Contains("millimetres", tool.Description, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ViewportSelectionAndMeasurementSchemasExposeStructuredInputs()
+    {
+        var tools = CadWorkspaceToolExecutor.ToolDefinitions.ToDictionary(tool => tool.Name);
+        var viewport = tools["set_viewport"].Parameters.GetProperty("properties");
+        Assert.Contains("fit", viewport.GetProperty("operation").GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
+        Assert.Contains("zoom_entity", viewport.GetProperty("operation").GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
+        Assert.True(viewport.TryGetProperty("factor", out _));
+
+        var bounds = tools["select_by_bounds"].Parameters.GetProperty("properties");
+        Assert.True(bounds.TryGetProperty("mode", out _));
+        Assert.True(bounds.TryGetProperty("require_contained", out _));
+
+        var measurement = tools["measure_geometry"].Parameters.GetProperty("properties");
+        Assert.True(measurement.TryGetProperty("entity_ids", out _));
+        Assert.True(measurement.TryGetProperty("points", out _));
+        Assert.Contains("intersections", measurement.GetProperty("operation").GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
+        Assert.True(measurement.TryGetProperty("point", out _));
+
+        var filter = tools["select_by_filter"].Parameters.GetProperty("properties");
+        Assert.True(filter.TryGetProperty("type", out _));
+        Assert.True(filter.TryGetProperty("layer", out _));
+        Assert.True(filter.TryGetProperty("name_contains", out _));
+
+        var gridPresets = tools["manage_grid_presets"].Parameters.GetProperty("properties");
+        Assert.Contains("create", gridPresets.GetProperty("operation").GetProperty("enum").EnumerateArray().Select(value => value.GetString()));
+        Assert.True(gridPresets.TryGetProperty("spacing_x_millimeters", out _));
+    }
+
+    [Fact]
+    public void AdvancedMeasurementGeometry_FindsLineIntersection()
+    {
+        var document = CadDocument.Create("Measure");
+        var first = document.AddLine(new CadPointD(0, 0), new CadPointD(10, 10));
+        var second = document.AddLine(new CadPointD(0, 10), new CadPointD(10, 0));
+        var method = typeof(CadDocumentToolExecutor).GetMethod(
+            "FindIntersections",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        Assert.NotNull(method);
+        var points = Assert.IsAssignableFrom<IReadOnlyList<CadPointD>>(
+            method.Invoke(null, new object[] { new CadEntity[] { first, second } }));
+        var point = Assert.Single(points);
+        Assert.True(point.NearEquals(new CadPointD(5, 5)));
     }
 
     [Fact]
@@ -312,7 +392,7 @@ public sealed class CadWorkspaceToolExecutorTests
         var capabilities = CadAgentContract.CreateCapabilities([], null, includeExamples: false);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(capabilities));
         var root = json.RootElement;
-        Assert.Equal("1.3", root.GetProperty("contract_version").GetString());
+        Assert.Equal("1.5", root.GetProperty("contract_version").GetString());
         Assert.Contains("line_types", root.GetProperty("rules").EnumerateObject().Select(property => property.Name));
         var circle = root.GetProperty("entity_capabilities").EnumerateArray()
             .Single(item => item.GetProperty("type").GetString() == "Circle");

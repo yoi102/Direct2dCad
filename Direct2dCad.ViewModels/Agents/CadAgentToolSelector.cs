@@ -7,7 +7,12 @@ internal static class CadAgentToolSelector
     private static readonly string[] CoreTools =
     [
         "get_agent_capabilities", "get_document_summary", "get_entity_statistics", "list_entities", "list_document_catalog",
-        "list_documents", "create_document", "select_entities", "undo", "redo"
+        "get_view_settings", "list_documents", "create_document", "select_entities", "clear_selection", "undo", "redo", "undo_view", "redo_view"
+    ];
+
+    private static readonly string[] ViewSettingsTools =
+    [
+        "get_view_settings", "set_view_settings", "set_viewport", "manage_grid_presets"
     ];
 
     private static readonly string[] EditingTools =
@@ -22,7 +27,7 @@ internal static class CadAgentToolSelector
     [
         "list_layers", "create_layer", "rename_layer", "delete_layer",
         "set_layer_properties", "reorder_layers",
-        "change_entity_layer", "set_entity_common_properties"
+        "change_entity_layer", "set_entity_common_properties", "set_drawing_layer"
     ];
 
     private static readonly string[] BlockTools =
@@ -120,14 +125,66 @@ internal static class CadAgentToolSelector
         if (ContainsAny(normalized, EntityStatisticsTerms))
             Add(["get_entity_statistics"]);
         var isEntityQuery = ContainsAny(normalized, EntityQueryTerms);
-        if (isEntityQuery)
+        if (isEntityQuery && !ContainsAny(normalized,
+                "measure", "measurement", "distance", "perimeter", "area", "angle", "length",
+                "\u6d4b\u91cf", "\u8ddd\u79bb", "\u5468\u957f", "\u9762\u79ef", "\u89d2\u5ea6", "\u957f\u5ea6",
+                "æµ‹é‡", "è·ç¦»", "å‘¨é•¿", "é¢ç§¯", "è§’åº¦", "é•¿åº¦"))
             Add(["list_entities"]);
 
         if (ContainsAny(normalized, ImageTerms))
             Add(["insert_image_from_file"]);
 
-        var isDrawing = ContainsAny(normalized, DrawingTerms) ||
-                        EntityCreationTools.Any(item => ContainsAny(normalized, item.Terms));
+        var isMeasurement = ContainsAny(normalized,
+            "measure", "measurement", "distance", "perimeter", "area", "angle", "length",
+            "\u6d4b\u91cf", "\u8ddd\u79bb", "\u5468\u957f", "\u9762\u79ef", "\u89d2\u5ea6", "\u957f\u5ea6",
+            "测量", "距离", "周长", "面积", "角度", "长度");
+        if (isMeasurement)
+            Add(["measure_geometry"]);
+
+        if (ContainsAny(normalized, "grid preset", "grid presets", "spacing preset", "网格预设", "网格间距预设"))
+            Add(["manage_grid_presets"]);
+
+        var isSelection = ContainsAny(normalized,
+            "select", "selection", "window select", "crossing select", "框选", "选择", "选中", "多边形选择");
+        if (isSelection)
+        {
+            if (ContainsAny(normalized, "clear selection", "deselect", "cancel selection", "清空选择", "取消选择", "取消选中"))
+                Add(["clear_selection"]);
+            var isFilterSelection = ContainsAny(normalized,
+                "select all", "select every", "select by type", "select by layer", "select named", "按类型选择", "按图层选择", "按名称选择", "选择所有");
+            if (isFilterSelection)
+                Add(["select_by_filter"]);
+            if (ContainsAny(normalized, "window", "box", "框", "矩形"))
+                Add(["select_by_bounds"]);
+            if (ContainsAny(normalized, "polygon", "多边形"))
+                Add(["select_by_polygon"]);
+            if (!isFilterSelection && !requestedSet.Contains("select_by_bounds") && !requestedSet.Contains("select_by_polygon") &&
+                !requestedSet.Contains("clear_selection"))
+            {
+                Add(["select_entities"]);
+            }
+        }
+
+        if (ContainsAny(normalized, "undo view", "undo viewport", "undo zoom", "undo selection", "撤销视图", "撤销缩放", "撤销选择"))
+            Add(["undo_view"]);
+        if (ContainsAny(normalized, "redo view", "redo viewport", "redo zoom", "redo selection", "重做视图", "重做缩放", "重做选择"))
+            Add(["redo_view"]);
+
+        var isViewSettings = ContainsAny(normalized,
+            "unit", "units", "millimeter", "centimeter", "inch", "foot", "grid", "snap", "origin", "background",
+            "zoom", "pan", "viewport", "fit to window", "center view",
+            "单位", "网格", "捕捉", "原点", "背景", "英寸", "毫米", "厘米", "缩放", "平移", "视口", "适合窗口", "居中");
+        if (isViewSettings)
+        {
+            var isViewport = ContainsAny(normalized,
+                "zoom", "pan", "viewport", "fit to window", "center view", "缩放", "平移", "视口", "适合窗口", "居中");
+            Add(isViewport
+                ? ["set_viewport", "get_view_settings", "set_view_settings"]
+                : ViewSettingsTools);
+        }
+
+        var isDrawing = !isViewSettings && (ContainsAny(normalized, DrawingTerms) ||
+                        EntityCreationTools.Any(item => ContainsAny(normalized, item.Terms)));
         if (isDrawing)
         {
             var specificTools = EntityCreationTools
@@ -184,7 +241,7 @@ internal static class CadAgentToolSelector
                 Add(["create_layer"]);
             Add(LayerTools);
         }
-        if (ContainsAny(normalized, EditingTerms))
+        if (!isViewSettings && ContainsAny(normalized, EditingTerms))
             Add(EditingTools);
         if (ContainsAny(normalized, "block", "块", "块定义", "块引用"))
             Add(BlockTools);
@@ -197,7 +254,7 @@ internal static class CadAgentToolSelector
             Add(DocumentTools);
         }
 
-        if (!isDrawing && !ContainsAny(normalized, EditingTerms) && !isEntityQuery && !aggressive)
+        if (!isViewSettings && !isDrawing && !isMeasurement && !isSelection && !ContainsAny(normalized, EditingTerms) && !isEntityQuery && !aggressive)
             Add(["get_entity_geometry", "set_entity_common_properties"]);
 
         // Intent-specific tools are deliberately first so budget fitting never

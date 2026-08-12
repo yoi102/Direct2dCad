@@ -1107,6 +1107,17 @@ public sealed class CadEditor
         return DocumentCommands.Execute(new SetViewSettingsCommand(settings));
     }
 
+    public CadDocumentChangeSet SetDocumentSettings(
+        CadUnit unit,
+        int lengthPrecision,
+        int anglePrecision)
+    {
+        return DocumentCommands.Execute(new SetDocumentSettingsCommand(
+            unit,
+            lengthPrecision,
+            anglePrecision));
+    }
+
     private static bool TryResolveGridSubdivision(double major, double minor, out int subdivision)
     {
         subdivision = 0;
