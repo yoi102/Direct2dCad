@@ -565,19 +565,23 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
         CadDocumentViewModel.Undo();
         ApplyDocumentViewSettingsToToolbar();
         LayoutWorkspace.RefreshDocumentStructure();
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanRedo))]
     private void Redo()
     {
         CadDocumentViewModel.Redo();
         ApplyDocumentViewSettingsToToolbar();
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand(CanExecute = nameof(CanDeleteSelection))]
@@ -639,6 +643,16 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private bool CanClearSelection()
     {
         return CadDocumentViewModel.CadEditor.Selection.EntityIds.Count > 0;
+    }
+
+    private bool CanUndo()
+    {
+        return CadDocumentViewModel.CadEditor.DocumentCommands.CanUndo;
+    }
+
+    private bool CanRedo()
+    {
+        return CadDocumentViewModel.CadEditor.DocumentCommands.CanRedo;
     }
 
     [RelayCommand]
@@ -965,6 +979,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         CopySelectedEntitiesCommand.NotifyCanExecuteChanged();
         CutSelectedEntitiesCommand.NotifyCanExecuteChanged();
         ClearSelectionCommand.NotifyCanExecuteChanged();
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
     private void OnCadDocumentViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -999,6 +1015,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             CopySelectedEntitiesCommand.NotifyCanExecuteChanged();
             CutSelectedEntitiesCommand.NotifyCanExecuteChanged();
             ClearSelectionCommand.NotifyCanExecuteChanged();
+            UndoCommand.NotifyCanExecuteChanged();
+            RedoCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -1028,6 +1046,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         else if (e.AffectsLayouts)
             LayoutWorkspace.HandleLayoutSettingsChanged();
         RefreshModifiedState();
+        UndoCommand.NotifyCanExecuteChanged();
+        RedoCommand.NotifyCanExecuteChanged();
     }
 
     private void MarkDirectDocumentChanged()

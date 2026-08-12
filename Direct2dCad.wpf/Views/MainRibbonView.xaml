@@ -17,7 +17,11 @@
              d:DesignWidth="1500">
     <Grid>
         <Grid.Resources>
-            <Style TargetType="ToggleButton">
+            <ResourceDictionary>
+                <ResourceDictionary.MergedDictionaries>
+                    <ResourceDictionary Source="CadToolIconResources.xaml" />
+                </ResourceDictionary.MergedDictionaries>
+                <Style TargetType="ToggleButton">
                 <!--<Style x:Key="LayoutToggleButton"
                          TargetType="ToggleButton">-->
                 <Setter Property="Width"
@@ -70,7 +74,8 @@
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
-            </Style>
+                </Style>
+            </ResourceDictionary>
         </Grid.Resources>
 
         <StackPanel HorizontalAlignment="Right"
@@ -1157,22 +1162,9 @@
                                       Padding="0"
                                       Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                       CommandParameter="Line">
-                            <Viewbox Width="33"
-                                     Height="33"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     Stretch="Uniform">
-                                <Canvas Width="512"
-                                        Height="512">
-                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
-                                          StrokeThickness="35"
-                                          StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round"
-                                          Fill="Transparent"
-                                          d:Stroke="#616161"
-                                          Data="M 96,416 L 416,96" />
-                                </Canvas>
-                            </Viewbox>
+                            <ContentControl Width="33"
+                                            Height="33"
+                                            ContentTemplate="{StaticResource CadLineIconTemplate}" />
                         </ToggleButton>
 
                         <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Rectangle}}"
@@ -1193,26 +1185,9 @@
                                       Padding="0"
                                       Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                       CommandParameter="Polyline">
-                            <Viewbox Width="33"
-                                     Height="33"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     Stretch="Uniform">
-                                <Canvas Width="512"
-                                        Height="512">
-                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
-                                          StrokeThickness="42"
-                                          StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round"
-                                          StrokeLineJoin="Round"
-                                          Fill="Transparent"
-                                          d:Stroke="#616161"
-                                          Data="M 80,360
-                                                      L 180,180
-                                                      L 280,300
-                                                      L 420,120" />
-                                </Canvas>
-                            </Viewbox>
+                            <ContentControl Width="33"
+                                            Height="33"
+                                            ContentTemplate="{StaticResource CadPolylineIconTemplate}" />
                         </ToggleButton>
 
                         <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Polygon}}"
@@ -1223,28 +1198,9 @@
                                       Padding="0"
                                       Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                       CommandParameter="Polygon">
-                            <Viewbox Width="33"
-                                     Height="33"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     Stretch="Uniform">
-                                <Canvas Width="512"
-                                        Height="512">
-                                    <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
-                                          StrokeThickness="42"
-                                          StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round"
-                                          StrokeLineJoin="Round"
-                                          Fill="Transparent"
-                                          d:Stroke="#616161"
-                                          Data="M 96,360
-                                                      L 180,170
-                                                      L 320,140
-                                                      L 420,260
-                                                      L 300,390
-                                                      Z" />
-                                </Canvas>
-                            </Viewbox>
+                            <ContentControl Width="33"
+                                            Height="33"
+                                            ContentTemplate="{StaticResource CadPolygonIconTemplate}" />
                         </ToggleButton>
 
                         <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Spline}}"
@@ -1256,19 +1212,9 @@
                                       x:Name="SplineToggleButton"
                                       Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                       CommandParameter="Spline">
-                            <Viewbox Width="33"
-                                     Height="33"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     Stretch="Uniform">
-                                <Path Stroke="{Binding ElementName=SplineToggleButton, Path=Foreground}"
-                                      StrokeThickness="35"
-                                      d:Stroke="#616161"
-                                      Fill="Transparent"
-                                      Data="M 50,200 
-                                                  C 100,50 180,50 230,200
-                                                  C 280,350 360,350 410,200" />
-                            </Viewbox>
+                            <ContentControl Width="33"
+                                            Height="33"
+                                            ContentTemplate="{StaticResource CadSplineIconTemplate}" />
 
                         </ToggleButton>
 
