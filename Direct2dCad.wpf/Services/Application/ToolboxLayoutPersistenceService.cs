@@ -87,6 +87,8 @@ public sealed class ToolboxLayoutPersistenceService
                 RestoreLayoutContent(args, toolboxes, startupDocuments);
             serializer.Deserialize(stream);
 
+            EnsureStartupDocuments(dockingManager, startupDocuments.Values);
+
             SynchronizeToolboxZones(dockingManager);
             return true;
         }
@@ -127,7 +129,7 @@ public sealed class ToolboxLayoutPersistenceService
     private static void RestoreLayoutContent(
         LayoutSerializationCallbackEventArgs args,
         IReadOnlyDictionary<string, IToolbox> toolboxes,
-        IReadOnlyDictionary<string, object> startupDocuments)
+        IReadOnlyDictionary<string, StartupDocument> startupDocuments)
     {
         if (args.Model is ISerializableLayoutAnchorable)
         {
@@ -151,7 +153,7 @@ public sealed class ToolboxLayoutPersistenceService
             if (!string.IsNullOrWhiteSpace(contentId) &&
                 startupDocuments.TryGetValue(contentId, out var content))
             {
-                args.Content = content;
+                args.Content = content.Content;
             }
             else
             {
@@ -162,7 +164,7 @@ public sealed class ToolboxLayoutPersistenceService
         }
     }
 
-    private static IReadOnlyDictionary<string, object> CaptureStartupDocuments(
+    private static IReadOnlyDictionary<string, StartupDocument> CaptureStartupDocuments(
         ToggleDockingManager dockingManager)
     {
         return dockingManager.Layout
@@ -172,8 +174,54 @@ public sealed class ToolboxLayoutPersistenceService
                 !string.IsNullOrWhiteSpace(document.ContentId) &&
                 document.Content is not null)
             .GroupBy(document => document.ContentId.Trim(), StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First().Content!, StringComparer.Ordinal);
+            .ToDictionary(
+                group => group.Key,
+                group => new StartupDocument(
+                    group.Key,
+                    group.First().Title,
+                    group.First().ToolTip,
+                    group.First().Content!),
+                StringComparer.Ordinal);
     }
+
+    private static void EnsureStartupDocuments(
+        ToggleDockingManager dockingManager,
+        IEnumerable<StartupDocument> startupDocuments)
+    {
+        var documentPane = dockingManager.Layout
+            .Descendents()
+            .OfType<LayoutDocumentPane>()
+            .FirstOrDefault();
+        if (documentPane is null)
+            return;
+
+        foreach (var startupDocument in startupDocuments)
+        {
+            var exists = dockingManager.Layout
+                .Descendents()
+                .OfType<LayoutDocument>()
+                .Any(document => string.Equals(
+                    document.ContentId,
+                    startupDocument.ContentId,
+                    StringComparison.Ordinal));
+            if (exists)
+                continue;
+
+            documentPane.Children.Add(new LayoutDocument
+            {
+                ContentId = startupDocument.ContentId,
+                Title = startupDocument.Title,
+                ToolTip = startupDocument.ToolTip,
+                Content = startupDocument.Content
+            });
+        }
+    }
+
+    private sealed record StartupDocument(
+        string ContentId,
+        string? Title,
+        object? ToolTip,
+        object Content);
 
     private static Dictionary<string, IToolbox> CollectToolboxes(
         IEnumerable<IDockable> anchorables)
