@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Threading;
 using AvalonDock;
 using AvalonDock.DependencyInjection;
 using AvalonDock.Themes;
@@ -17,8 +18,10 @@ public partial class MainWindow
 {
     private readonly MainViewModel _viewModel;
     private readonly ToolboxLayoutPersistenceService _toolboxLayoutPersistence;
+    private readonly DispatcherTimer _toolboxLayoutSaveTimer;
     private bool _isExitConfirmationRunning;
     private bool _allowWindowClose;
+    private bool _isToolboxLayoutPersistenceActive;
 
     public MainWindow(MainViewModel viewModel, ISubscriber<ThemeChangedEvent> subscriber, IApplicationThemeService applicationThemeService,
         ToggleDockOptions dockOptions,
@@ -28,6 +31,16 @@ public partial class MainWindow
         _viewModel = viewModel;
         _toolboxLayoutPersistence = toolboxLayoutPersistence;
         DataContext = _viewModel;
+
+        _toolboxLayoutSaveTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(600)
+        };
+        _toolboxLayoutSaveTimer.Tick += OnToolboxLayoutSaveTimerTick;
+        _viewModel.LayoutService.AnchorableStateChanged += OnAnchorableStateChanged;
+        dockManager.LayoutChanged += OnDockLayoutChanged;
+        dockManager.ContentDocked += OnDockLayoutChanged;
+        dockManager.ContentFloated += OnDockLayoutChanged;
 
         dockManager.ButtonSize = dockOptions.ButtonSize;
         dockManager.DefaultDockWidth = dockOptions.DefaultDockWidth;
@@ -55,15 +68,68 @@ public partial class MainWindow
             }
         });
         Closing += OnWindowClosing;
-        Loaded += (s, e) =>
-        {
-            if (!applicationThemeService.IsDarkTheme)
-            {
-                dockManager.Theme = new ArcLightTheme();
-            }
-        };
+        Loaded += (_, _) => OnWindowLoaded(applicationThemeService);
+        Deactivated += OnWindowDeactivated;
+        Closed += OnWindowClosed;
     }
 
+    private void OnWindowLoaded(IApplicationThemeService applicationThemeService)
+    {
+        if (!applicationThemeService.IsDarkTheme)
+            dockManager.Theme = new ArcLightTheme();
+
+        _toolboxLayoutPersistence.Restore(
+            dockManager,
+            _viewModel.LayoutService.Anchorables);
+        _isToolboxLayoutPersistenceActive = true;
+    }
+
+    private void OnAnchorableStateChanged(object? sender, EventArgs e)
+        => ScheduleToolboxLayoutSave();
+
+    private void OnToolboxLayoutSaveTimerTick(object? sender, EventArgs e)
+    {
+        _toolboxLayoutSaveTimer.Stop();
+        PersistToolboxLayout();
+    }
+
+    private void OnWindowDeactivated(object? sender, EventArgs e)
+    {
+        if (_isToolboxLayoutPersistenceActive && !_allowWindowClose)
+            PersistToolboxLayout();
+    }
+
+    private void OnWindowClosed(object? sender, EventArgs e)
+    {
+        _isToolboxLayoutPersistenceActive = false;
+        _toolboxLayoutSaveTimer.Stop();
+        _toolboxLayoutSaveTimer.Tick -= OnToolboxLayoutSaveTimerTick;
+        _viewModel.LayoutService.AnchorableStateChanged -= OnAnchorableStateChanged;
+        dockManager.LayoutChanged -= OnDockLayoutChanged;
+        dockManager.ContentDocked -= OnDockLayoutChanged;
+        dockManager.ContentFloated -= OnDockLayoutChanged;
+        Deactivated -= OnWindowDeactivated;
+        Closed -= OnWindowClosed;
+    }
+
+    private void OnDockLayoutChanged(object? sender, EventArgs e) =>
+        ScheduleToolboxLayoutSave();
+
+    private void ScheduleToolboxLayoutSave()
+    {
+        if (!_isToolboxLayoutPersistenceActive || _allowWindowClose)
+            return;
+
+        _toolboxLayoutSaveTimer.Stop();
+        _toolboxLayoutSaveTimer.Start();
+    }
+
+    private void PersistToolboxLayout()
+    {
+        _toolboxLayoutPersistence.Save(
+            dockManager,
+            _viewModel.LayoutService.Anchorables);
+    }
 
     private void OnWindowClosing(object? sender, CancelEventArgs e)
     {
@@ -93,9 +159,8 @@ public partial class MainWindow
             if (!await _viewModel.ConfirmCloseApplicationAsync())
                 return;
 
-            _toolboxLayoutPersistence.Save(
-                dockManager,
-                _viewModel.LayoutService.Anchorables);
+            _toolboxLayoutSaveTimer.Stop();
+            PersistToolboxLayout();
 
             _allowWindowClose = true;
             Closing -= OnWindowClosing;

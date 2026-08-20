@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -43,14 +44,19 @@ internal sealed class JsonToolboxLayoutSettingsStore : IToolboxLayoutSettingsSto
         ArgumentNullException.ThrowIfNull(toolboxes);
         lock (_syncRoot)
         {
+            var savedToolboxes = new Dictionary<string, CadToolboxState>(StringComparer.Ordinal);
+            foreach (var (contentId, state) in toolboxes)
+            {
+                var normalizedContentId = contentId?.Trim();
+                if (string.IsNullOrWhiteSpace(normalizedContentId) || state is null)
+                    continue;
+
+                savedToolboxes[normalizedContentId] = state.Clone();
+            }
+
             var settings = new CadToolboxLayoutSettings
             {
-                Toolboxes = toolboxes
-                    .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
-                    .ToDictionary(
-                        pair => pair.Key,
-                        pair => pair.Value.Clone(),
-                        StringComparer.Ordinal)
+                Toolboxes = savedToolboxes
             };
             settings.Normalize();
 
@@ -58,11 +64,7 @@ internal sealed class JsonToolboxLayoutSettingsStore : IToolboxLayoutSettingsSto
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
 
-            var temporaryFilePath = _filePath + ".tmp";
-            File.WriteAllText(
-                temporaryFilePath,
-                JsonSerializer.Serialize(settings, SerializerOptions));
-            File.Move(temporaryFilePath, _filePath, overwrite: true);
+            WriteSettingsAtomically(settings);
             _settings = settings;
         }
     }
@@ -84,9 +86,36 @@ internal sealed class JsonToolboxLayoutSettingsStore : IToolboxLayoutSettingsSto
             settings.Normalize();
             return _settings = settings;
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException or ArgumentException)
         {
             return _settings = new CadToolboxLayoutSettings();
+        }
+    }
+
+    private void WriteSettingsAtomically(CadToolboxLayoutSettings settings)
+    {
+        var temporaryFilePath = $"{_filePath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            var json = JsonSerializer.Serialize(settings, SerializerOptions);
+            using (var stream = new FileStream(
+                       temporaryFilePath,
+                       FileMode.CreateNew,
+                       FileAccess.Write,
+                       FileShare.None))
+            using (var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+            {
+                writer.Write(json);
+                writer.Flush();
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Move(temporaryFilePath, _filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryFilePath))
+                File.Delete(temporaryFilePath);
         }
     }
 }

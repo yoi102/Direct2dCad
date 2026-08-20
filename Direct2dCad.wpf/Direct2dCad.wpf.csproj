@@ -24,9 +24,10 @@
   <ItemGroup>
     <PackageReference Include="Antelcat.I18N.WPF" Version="2.0.0-preview-1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.0-preview.100" />
-    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.0-preview.100" />
-    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.0-preview.100" />
+    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.0" />
+    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.0" />
+    <PackageReference Include="Dirkster.AvalonDock.Serializer.Json" Version="5.0.0" />
+    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.0" />
     <PackageReference Include="gong-wpf-dragdrop" Version="4.0.0" />
     <PackageReference Include="MahApps.Metro" Version="3.0.0-rc0529" />
     <PackageReference Include="MaterialDesignThemes.MahApps" Version="5.3.3-ci1419" />
@@ -44,6 +45,10 @@
     <ProjectReference Include="..\Direct2dCad.Ole.Windows\Direct2dCad.Ole.Windows.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels.Services\Direct2dCad.ViewModels.Services.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Direct2dCad.Windows.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

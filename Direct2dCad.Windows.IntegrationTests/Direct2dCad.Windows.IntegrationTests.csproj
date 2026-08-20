@@ -24,6 +24,7 @@
     <ProjectReference Include="..\Direct2dCad.Ole.Windows\Direct2dCad.Ole.Windows.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering\Direct2dCad.Rendering.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Direct2D\Direct2dCad.Rendering.Direct2D.csproj" />
+    <ProjectReference Include="..\Direct2dCad.wpf\Direct2dCad.wpf.csproj" />
   </ItemGroup>
 
 </Project>
