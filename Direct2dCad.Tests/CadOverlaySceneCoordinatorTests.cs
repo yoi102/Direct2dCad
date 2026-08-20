@@ -46,6 +46,43 @@ public sealed class CadOverlaySceneCoordinatorTests
     }
 
     [Fact]
+    public void MovingInfiniteCross_DoesNotPromoteOverlayInvalidationToFullViewport()
+    {
+        var document = CadDocument.Create("Moving infinite cross dirty regions");
+        var editor = CreateEditor(document);
+        var coordinator = new CadOverlaySceneCoordinator();
+        var calculator = CreateCalculator(document, editor.Viewport);
+        var style = new CadTransientStyle(
+            CadColor.FromRgb(255, 214, 92),
+            1.25);
+
+        coordinator.UpdateOverlayScenesAndCreateInvalidation(
+            calculator,
+            editor,
+            [new CadTransientInfiniteCross(new CadPointD(250, 250), style)],
+            includeGripHandles: true,
+            updateHandleScene: false,
+            activeHandleItems: null,
+            CadHandleSceneBuildOptions.Default,
+            interactionZoom: 1.0);
+
+        var invalidation = coordinator.UpdateOverlayScenesAndCreateInvalidation(
+            calculator,
+            editor,
+            [new CadTransientInfiniteCross(new CadPointD(750, 750), style)],
+            includeGripHandles: true,
+            updateHandleScene: false,
+            activeHandleItems: null,
+            CadHandleSceneBuildOptions.Default,
+            interactionZoom: 1.0);
+
+        Assert.False(invalidation.IsFull);
+        Assert.Equal(new CadScreenRect(0, 0, 1000, 1000), invalidation.DirtyScreenRect);
+        Assert.True(invalidation.DirtyScreenRects.Count > 1);
+        Assert.True(invalidation.DirtyScreenRects.Sum(rect => rect.Area) < 1000L * 1000 / 5);
+    }
+
+    [Fact]
     public void MovingGripHandle_InvalidatesPreviousAndCurrentLocations()
     {
         var document = CadDocument.Create("Handle dirty regions");

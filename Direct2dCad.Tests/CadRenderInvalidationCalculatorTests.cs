@@ -53,7 +53,7 @@ public sealed class CadRenderInvalidationCalculatorTests
     }
 
     [Fact]
-    public void InfiniteCross_InvalidatesTheCurrentViewport()
+    public void InfiniteCross_InvalidatesOnlyHorizontalAndVerticalStrips()
     {
         var document = CadDocument.Create("Infinite snap marker dirty region");
         var viewport = new CadViewport();
@@ -75,7 +75,17 @@ public sealed class CadRenderInvalidationCalculatorTests
 
         var invalidation = calculator.CreateTransientSceneInvalidation(scene);
 
-        Assert.Equal(new CadScreenRect(0, 0, 320, 240), Assert.Single(invalidation.DirtyScreenRects));
+        Assert.False(invalidation.IsFull);
+        Assert.Equal(new CadScreenRect(0, 0, 320, 240), invalidation.DirtyScreenRect);
+        Assert.Equal(3, invalidation.DirtyScreenRects.Count);
+        Assert.True(invalidation.DirtyScreenRects.Sum(rect => rect.Area) < 320L * 240 / 4);
+
+        var center = viewport.WorldToScreen(CadPointD.Origin);
+        AssertCovered(invalidation, 0, (int)center.Y);
+        AssertCovered(invalidation, 319, (int)center.Y);
+        AssertCovered(invalidation, (int)center.X, 0);
+        AssertCovered(invalidation, (int)center.X, 239);
+        AssertNotCovered(invalidation, 0, 0);
     }
 
     [Fact]
@@ -162,5 +172,31 @@ public sealed class CadRenderInvalidationCalculatorTests
         var invalidation = calculator.CreateCurrentEntityInvalidation(polyline.Id, snapshot);
 
         Assert.True(invalidation.IsFull);
+    }
+
+    private static void AssertCovered(
+        CadRenderInvalidation invalidation,
+        int x,
+        int y)
+    {
+        Assert.Contains(
+            invalidation.DirtyScreenRects,
+            rect => x >= rect.X &&
+                    x < (long)rect.X + rect.Width &&
+                    y >= rect.Y &&
+                    y < (long)rect.Y + rect.Height);
+    }
+
+    private static void AssertNotCovered(
+        CadRenderInvalidation invalidation,
+        int x,
+        int y)
+    {
+        Assert.DoesNotContain(
+            invalidation.DirtyScreenRects,
+            rect => x >= rect.X &&
+                    x < (long)rect.X + rect.Width &&
+                    y >= rect.Y &&
+                    y < (long)rect.Y + rect.Height);
     }
 }

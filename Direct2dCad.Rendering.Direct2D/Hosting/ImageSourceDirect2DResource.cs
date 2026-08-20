@@ -435,6 +435,84 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         }
     }
 
+    internal byte[] CaptureBackBufferPixels()
+    {
+        ThrowIfDisposed();
+        EnsureTargetReady();
+        if (_isDrawing ||
+            _d3dDevice is null ||
+            _d3dContext is null ||
+            _d3d11BackBuffer is null)
+        {
+            return [];
+        }
+
+        return CaptureTexturePixels(_d3d11BackBuffer);
+    }
+
+    internal byte[] CapturePresentedPixels()
+    {
+        ThrowIfDisposed();
+        EnsureTargetReady();
+        if (_isDrawing ||
+            _d3dDevice is null ||
+            _d3dContext is null ||
+            _d3d11RenderTarget is null)
+        {
+            return [];
+        }
+
+        return CaptureTexturePixels(_d3d11RenderTarget);
+    }
+
+    private byte[] CaptureTexturePixels(ID3D11Texture2D source)
+    {
+        if (_d3dDevice is null || _d3dContext is null)
+            return [];
+
+        using var staging = _d3dDevice.CreateTexture2D(new Texture2DDescription
+        {
+            Width = (uint)_width,
+            Height = (uint)_height,
+            MipLevels = 1,
+            ArraySize = 1,
+            Format = DXGIFormat.B8G8R8A8_UNorm,
+            SampleDescription = new SampleDescription(1, 0),
+            Usage = ResourceUsage.Staging,
+            BindFlags = BindFlags.None,
+            CPUAccessFlags = CpuAccessFlags.Read,
+            MiscFlags = ResourceOptionFlags.None
+        });
+        _d3dContext.CopyResource(staging, source);
+        _d3dContext.Flush();
+
+        _d3dContext.Map(
+            staging,
+            0,
+            MapMode.Read,
+            Vortice.Direct3D11.MapFlags.None,
+            out var mapped).CheckError();
+        try
+        {
+            var rowBytes = checked(_width * 4);
+            var pixels = new byte[checked(rowBytes * _height)];
+            for (var row = 0; row < _height; row++)
+            {
+                Marshal.Copy(
+                    IntPtr.Add(mapped.DataPointer, checked((int)(row * mapped.RowPitch))),
+                    pixels,
+                    row * rowBytes,
+                    rowBytes);
+            }
+
+            return pixels;
+        }
+        finally
+        {
+            _d3dContext.Unmap(staging, 0);
+        }
+    }
+
     public bool DrawFrameSnapshot(
         System.Numerics.Matrix3x2 screenTransform,
         Color4 background,

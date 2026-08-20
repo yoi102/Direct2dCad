@@ -112,6 +112,43 @@ public sealed class CadRenderInvalidation
         return CreateFromMergedRects(merged);
     }
 
+    public static CadRenderInvalidation FromScreenRectsPreservingCoverage(
+        IEnumerable<CadScreenRect> dirtyScreenRects)
+    {
+        ArgumentNullException.ThrowIfNull(dirtyScreenRects);
+
+        var source = dirtyScreenRects
+            .Where(static rect => !rect.IsEmpty)
+            .ToArray();
+        if (source.Length == 0)
+            return Empty;
+
+        var disjoint = new List<CadScreenRect>(source.Length);
+        var fragments = new List<CadScreenRect>(4);
+        var nextFragments = new List<CadScreenRect>(4);
+        foreach (var rect in source)
+        {
+            fragments.Clear();
+            fragments.Add(rect);
+            foreach (var existing in disjoint)
+            {
+                nextFragments.Clear();
+                foreach (var fragment in fragments)
+                    AddDifference(nextFragments, fragment, existing);
+
+                (fragments, nextFragments) = (nextFragments, fragments);
+                if (fragments.Count == 0)
+                    break;
+            }
+
+            disjoint.AddRange(fragments);
+            if (disjoint.Count > MaxDirtyScreenRectCount)
+                return FromScreenRects(source);
+        }
+
+        return CreateFromMergedRects(disjoint);
+    }
+
     public static CadRenderInvalidation FromWorldBounds(
         CadViewport viewport,
         CadRectD bounds,
@@ -168,6 +205,21 @@ public sealed class CadRenderInvalidation
         return CreateFromMergedRects(merged);
     }
 
+    public CadRenderInvalidation UnionPreservingCoverage(CadRenderInvalidation? other)
+    {
+        if (other is null || other.IsEmpty)
+            return this;
+
+        if (IsEmpty)
+            return other;
+
+        if (IsFull || other.IsFull)
+            return Full;
+
+        return FromScreenRectsPreservingCoverage(
+            _dirtyScreenRects.Concat(other._dirtyScreenRects));
+    }
+
     private static CadRenderInvalidation CreateFromMergedRects(List<CadScreenRect> merged)
     {
         var aggregate = CalculateAggregate(merged);
@@ -193,6 +245,61 @@ public sealed class CadRenderInvalidation
 
         if (rects.Count > MaxDirtyScreenRectCount)
             MergeLowestWastePair(rects);
+    }
+
+    private static void AddDifference(
+        List<CadScreenRect> destination,
+        CadScreenRect source,
+        CadScreenRect covered)
+    {
+        if (!source.Intersects(covered))
+        {
+            destination.Add(source);
+            return;
+        }
+
+        var sourceRight = (long)source.X + source.Width;
+        var sourceBottom = (long)source.Y + source.Height;
+        var intersectionLeft = Math.Max(source.X, covered.X);
+        var intersectionTop = Math.Max(source.Y, covered.Y);
+        var intersectionRight = Math.Min(
+            sourceRight,
+            (long)covered.X + covered.Width);
+        var intersectionBottom = Math.Min(
+            sourceBottom,
+            (long)covered.Y + covered.Height);
+
+        AddIfNotEmpty(destination, source.X, source.Y, sourceRight, intersectionTop);
+        AddIfNotEmpty(destination, source.X, intersectionBottom, sourceRight, sourceBottom);
+        AddIfNotEmpty(
+            destination,
+            source.X,
+            intersectionTop,
+            intersectionLeft,
+            intersectionBottom);
+        AddIfNotEmpty(
+            destination,
+            intersectionRight,
+            intersectionTop,
+            sourceRight,
+            intersectionBottom);
+    }
+
+    private static void AddIfNotEmpty(
+        List<CadScreenRect> destination,
+        long left,
+        long top,
+        long right,
+        long bottom)
+    {
+        if (right <= left || bottom <= top)
+            return;
+
+        destination.Add(new CadScreenRect(
+            (int)Math.Clamp(left, int.MinValue, int.MaxValue),
+            (int)Math.Clamp(top, int.MinValue, int.MaxValue),
+            (int)Math.Clamp(right - left, 0L, int.MaxValue),
+            (int)Math.Clamp(bottom - top, 0L, int.MaxValue)));
     }
 
     private static void MergeLowestWastePair(List<CadScreenRect> rects)

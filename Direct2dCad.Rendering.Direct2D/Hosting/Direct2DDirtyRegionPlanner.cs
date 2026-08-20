@@ -41,7 +41,7 @@ internal sealed class Direct2DDirtyRegionPlanner
         if (_rects.Count == 0)
             return CadRenderInvalidation.Empty;
 
-        var normalized = CadRenderInvalidation.FromScreenRects(_rects);
+        var normalized = CadRenderInvalidation.FromScreenRectsPreservingCoverage(_rects);
         if (normalized.DirtyScreenRects.Count >= CostOptimizationThreshold)
             normalized = Optimize(normalized, estimateCost);
 
@@ -147,7 +147,7 @@ internal sealed class Direct2DDirtyRegionPlanner
             ReplacePair(bestLeft, bestRight, bestUnion, bestUnionCost);
         }
 
-        return CadRenderInvalidation.FromScreenRects(_rects);
+        return CadRenderInvalidation.FromScreenRectsPreservingCoverage(_rects);
     }
 
     private void CompactToPairwiseLimit(Func<CadScreenRect, double> estimateCost)

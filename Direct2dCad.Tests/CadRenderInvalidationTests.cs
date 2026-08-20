@@ -31,6 +31,52 @@ public sealed class CadRenderInvalidationTests
     }
 
     [Fact]
+    public void FromScreenRectsPreservingCoverage_DecomposesCrossWithoutExpandingToBounds()
+    {
+        var horizontal = new CadScreenRect(0, 90, 200, 20);
+        var vertical = new CadScreenRect(90, 0, 20, 200);
+
+        var invalidation = CadRenderInvalidation.FromScreenRectsPreservingCoverage(
+            [horizontal, vertical]);
+
+        Assert.Equal(new CadScreenRect(0, 0, 200, 200), invalidation.DirtyScreenRect);
+        Assert.Equal(3, invalidation.DirtyScreenRects.Count);
+        Assert.Equal(7_600, invalidation.DirtyScreenRects.Sum(rect => rect.Area));
+        for (var left = 0; left < invalidation.DirtyScreenRects.Count - 1; left++)
+        {
+            for (var right = left + 1; right < invalidation.DirtyScreenRects.Count; right++)
+            {
+                Assert.False(invalidation.DirtyScreenRects[left]
+                    .Intersects(invalidation.DirtyScreenRects[right]));
+            }
+        }
+    }
+
+    [Fact]
+    public void UnionPreservingCoverage_KeepsMovedCrossesAsDisjointStrips()
+    {
+        var first = CadRenderInvalidation.FromScreenRectsPreservingCoverage(
+        [
+            new CadScreenRect(0, 40, 200, 20),
+            new CadScreenRect(40, 0, 20, 200)
+        ]);
+        var second = CadRenderInvalidation.FromScreenRectsPreservingCoverage(
+        [
+            new CadScreenRect(0, 140, 200, 20),
+            new CadScreenRect(140, 0, 20, 200)
+        ]);
+
+        var invalidation = first.UnionPreservingCoverage(second);
+
+        Assert.Equal(new CadScreenRect(0, 0, 200, 200), invalidation.DirtyScreenRect);
+        Assert.True(invalidation.DirtyScreenRects.Count > 1);
+        Assert.Equal(14_400, invalidation.DirtyScreenRects.Sum(rect => rect.Area));
+        Assert.All(
+            invalidation.DirtyScreenRects,
+            rect => Assert.True(rect.Area < 200L * 200));
+    }
+
+    [Fact]
     public void FromScreenRects_NormalizesForcedMergeAgainstRemainingRects()
     {
         var rects = Enumerable.Range(0, 33)

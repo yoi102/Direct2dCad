@@ -97,6 +97,29 @@ public sealed class Direct2DDirtyRegionPlannerTests
 
     [Fact]
     [Trait("Category", "WindowsIntegration")]
+    public void Normalize_PreservesInfiniteCrossStripsAfterCostOptimization()
+    {
+        var planner = new Direct2DDirtyRegionPlanner();
+        var invalidation = CadRenderInvalidation.FromScreenRectsPreservingCoverage(
+        [
+            new CadScreenRect(0, 108, 320, 24),
+            new CadScreenRect(148, 0, 24, 240)
+        ]);
+
+        var normalized = planner.Normalize(
+            invalidation,
+            320,
+            240,
+            ConstantCost);
+
+        Assert.False(normalized.IsFull);
+        Assert.Equal(new CadScreenRect(0, 0, 320, 240), normalized.DirtyScreenRect);
+        Assert.Equal(3, normalized.DirtyScreenRects.Count);
+        Assert.Equal(12_864, normalized.DirtyScreenRects.Sum(rect => rect.Area));
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void Normalize_KeepsSeparatedRectsWhenUnionIsMoreExpensive()
     {
         var planner = new Direct2DDirtyRegionPlanner();

@@ -612,6 +612,15 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return CadCanvasInteractionResult.HandledOnly;
     }
 
+    public void PointerLeave()
+    {
+        if (_currentMousePoint is null)
+            return;
+
+        _currentMousePoint = null;
+        RequestOverlayRender();
+    }
+
     public CadCanvasInteractionResult PointerUp(CadPointD screen, CadCanvasPointerButton button)
     {
         _currentMousePoint = screen;
@@ -2062,9 +2071,17 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private CadRenderInvalidationCalculator CreateRenderInvalidationCalculator()
     {
+        // Transient markers and handles are rendered through the active model
+        // viewport while editing inside a layout viewport. Using the paper
+        // viewport here produces a dirty rectangle at the wrong screen position
+        // (and sometimes the wrong size), which can leave the previous marker
+        // behind during fast pointer movement.
+        var viewport = IsLayoutViewportActive
+            ? InteractionViewport
+            : CadEditor.Viewport;
         return new CadRenderInvalidationCalculator(
             CadEditor.Document,
-            CadEditor.Viewport,
+            viewport,
             Direct2DImageRenderHost.TargetWidth,
             Direct2DImageRenderHost.TargetHeight,
             _createEntityPreviewStyle);

@@ -362,9 +362,12 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 (float)translationX,
                 (float)translationY);
         var exposedRects = ResolveSnapshotExposedRects(
+            _target.Width,
+            _target.Height,
             scale,
             translationX,
-            translationY);
+            translationY,
+            _snapshotExposedRects);
         if (exposedRects is null)
             return false;
 
@@ -431,18 +434,21 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         }
     }
 
-    private IReadOnlyList<CadScreenRect>? ResolveSnapshotExposedRects(
+    internal static IReadOnlyList<CadScreenRect>? ResolveSnapshotExposedRects(
+        int targetWidth,
+        int targetHeight,
         double scale,
         double translationX,
-        double translationY)
+        double translationY,
+        List<CadScreenRect>? result = null)
     {
-        if (_target.Width <= 0 || _target.Height <= 0)
+        if (targetWidth <= 0 || targetHeight <= 0)
             return [];
 
         var snapshotLeft = translationX;
         var snapshotTop = translationY;
-        var snapshotRight = translationX + _target.Width * scale;
-        var snapshotBottom = translationY + _target.Height * scale;
+        var snapshotRight = translationX + targetWidth * scale;
+        var snapshotBottom = translationY + targetHeight * scale;
         if (!double.IsFinite(snapshotLeft) ||
             !double.IsFinite(snapshotTop) ||
             !double.IsFinite(snapshotRight) ||
@@ -452,31 +458,31 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         }
 
         var coveredLeft = (int)Math.Ceiling(
-            Math.Clamp(snapshotLeft, 0.0, _target.Width));
+            Math.Clamp(snapshotLeft, 0.0, targetWidth));
         var coveredTop = (int)Math.Ceiling(
-            Math.Clamp(snapshotTop, 0.0, _target.Height));
+            Math.Clamp(snapshotTop, 0.0, targetHeight));
         var coveredRight = (int)Math.Floor(
-            Math.Clamp(snapshotRight, 0.0, _target.Width));
+            Math.Clamp(snapshotRight, 0.0, targetWidth));
         var coveredBottom = (int)Math.Floor(
-            Math.Clamp(snapshotBottom, 0.0, _target.Height));
+            Math.Clamp(snapshotBottom, 0.0, targetHeight));
         if (coveredRight <= coveredLeft || coveredBottom <= coveredTop)
             return null;
 
-        _snapshotExposedRects.Clear();
-        var result = _snapshotExposedRects;
+        result ??= [];
+        result.Clear();
         if (coveredTop > 0)
         {
             result.Add(new CadScreenRect(
                 0,
                 0,
-                _target.Width,
+                targetWidth,
                 Math.Min(
-                    _target.Height,
+                    targetHeight,
                     coveredTop + InteractionPreviewSeamOverlapPixels)));
         }
 
-        var bottomStart = _target.Height;
-        if (coveredBottom < _target.Height)
+        var bottomStart = targetHeight;
+        if (coveredBottom < targetHeight)
         {
             bottomStart = Math.Max(
                 0,
@@ -484,18 +490,18 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             result.Add(new CadScreenRect(
                 0,
                 bottomStart,
-                _target.Width,
-                _target.Height - bottomStart));
+                targetWidth,
+                targetHeight - bottomStart));
         }
 
         var middleTop = coveredTop > 0
             ? Math.Min(
-                _target.Height,
+                targetHeight,
                 coveredTop + InteractionPreviewSeamOverlapPixels)
             : 0;
-        var middleBottom = coveredBottom < _target.Height
+        var middleBottom = coveredBottom < targetHeight
             ? bottomStart
-            : _target.Height;
+            : targetHeight;
         var middleHeight = Math.Max(0, middleBottom - middleTop);
         if (coveredLeft > 0 && middleHeight > 0)
         {
@@ -503,11 +509,11 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 0,
                 middleTop,
                 Math.Min(
-                    _target.Width,
+                    targetWidth,
                     coveredLeft + InteractionPreviewSeamOverlapPixels),
                 middleHeight));
         }
-        if (coveredRight < _target.Width && middleHeight > 0)
+        if (coveredRight < targetWidth && middleHeight > 0)
         {
             var rightStart = Math.Max(
                 0,
@@ -515,14 +521,14 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             result.Add(new CadScreenRect(
                 rightStart,
                 middleTop,
-                _target.Width - rightStart,
+                targetWidth - rightStart,
                 middleHeight));
         }
 
         long exposedArea = 0;
         foreach (var rect in result)
             exposedArea += rect.Area;
-        var targetArea = (double)_target.Width * _target.Height;
+        var targetArea = (double)targetWidth * targetHeight;
         if (targetArea > 0 &&
             exposedArea / targetArea > InteractionPreviewMaxExposedAreaRatio)
         {
@@ -572,6 +578,10 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     {
         return Math.Round(translation, MidpointRounding.AwayFromZero);
     }
+
+    internal byte[] CaptureBackBufferPixels() => _target.CaptureBackBufferPixels();
+
+    internal byte[] CapturePresentedPixels() => _target.CapturePresentedPixels();
 
     public void EndViewportInteraction()
     {

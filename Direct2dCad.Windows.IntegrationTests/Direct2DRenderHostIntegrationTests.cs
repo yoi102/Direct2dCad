@@ -582,6 +582,244 @@ public sealed class Direct2DRenderHostIntegrationTests
 
     [Fact]
     [Trait("Category", "WindowsIntegration")]
+    public void PanPreviewExposedRegions_IncludeGridSeamOverlapOnBothAxes()
+    {
+        var exposed = Direct2DImageRenderHost.ResolveSnapshotExposedRects(
+            targetWidth: 320,
+            targetHeight: 240,
+            scale: 1.0,
+            translationX: 37,
+            translationY: -19);
+
+        Assert.NotNull(exposed);
+        Assert.Equal(
+        [
+            new CadScreenRect(0, 219, 320, 21),
+            new CadScreenRect(0, 0, 39, 219)
+        ],
+            exposed);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void MovingInfiniteCross_PartialFramesMatchAFullRedrawWithoutTrails()
+    {
+        const int width = 320;
+        const int height = 240;
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(width, height);
+        host.AttachImageSource(imageSource);
+        host.SetSize(width, height);
+
+        var document = CadDocument.Create("Infinite cross trail regression");
+        var viewport = new CadViewport();
+        viewport.SetSize(width, height);
+        viewport.SetView(1.0, new CadPointD(width / 2.0, height / 2.0));
+        var scene = new CadTransientScene();
+        var style = new CadTransientStyle(
+            CadColor.FromRgb(255, 214, 92),
+            1.25);
+        var positions = new[]
+        {
+            new CadPointD(-120, 70),
+            new CadPointD(110, -75),
+            new CadPointD(-90, -60),
+            new CadPointD(95, 65),
+            new CadPointD(0, 0)
+        };
+
+        host.SetScene(document, viewport);
+        host.SetTransientScene(scene);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false
+        });
+
+        scene.Replace([new CadTransientInfiniteCross(positions[0], style)]);
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+        var previousDamage = CreateInfiniteCrossDamage(
+            viewport,
+            positions[0],
+            width,
+            height);
+
+        foreach (var position in positions.Skip(1))
+        {
+            scene.Replace([new CadTransientInfiniteCross(position, style)]);
+            var currentDamage = CreateInfiniteCrossDamage(
+                viewport,
+                position,
+                width,
+                height);
+            host.Render(
+                previousDamage.UnionPreservingCoverage(currentDamage),
+                baseSceneChanged: false);
+            previousDamage = currentDamage;
+        }
+
+        var partialBackBufferPixels = host.CaptureBackBufferPixels();
+        var partialPresentedPixels = host.CapturePresentedPixels();
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: false);
+        var fullBackBufferPixels = host.CaptureBackBufferPixels();
+        var fullPresentedPixels = host.CapturePresentedPixels();
+
+        Assert.Equal(fullBackBufferPixels, partialBackBufferPixels);
+        Assert.Equal(fullPresentedPixels, partialPresentedPixels);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void MovingSnapMarkerX_PartialFramesMatchAFullRedrawWithoutTrails()
+    {
+        const int width = 320;
+        const int height = 240;
+        const double halfSize = 7.0;
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(width, height);
+        host.AttachImageSource(imageSource);
+        host.SetSize(width, height);
+
+        var document = CadDocument.Create("Snap marker X trail regression");
+        var viewport = new CadViewport();
+        viewport.SetSize(width, height);
+        viewport.SetView(1.0, new CadPointD(width / 2.0, height / 2.0));
+        var scene = new CadTransientScene();
+        var style = new CadTransientStyle(
+            CadColor.FromRgb(255, 214, 92),
+            1.25);
+        var positions = new[]
+        {
+            new CadPointD(-120, 70),
+            new CadPointD(110, -75),
+            new CadPointD(-90, -60),
+            new CadPointD(95, 65),
+            new CadPointD(0, 0)
+        };
+
+        host.SetScene(document, viewport);
+        host.SetTransientScene(scene);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false
+        });
+
+        scene.Replace(CreateSnapMarkerX(positions[0], halfSize, style));
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+        var previousDamage = CreateSnapMarkerXDamage(
+            viewport,
+            positions[0],
+            halfSize,
+            width,
+            height);
+
+        foreach (var position in positions.Skip(1))
+        {
+            scene.Replace(CreateSnapMarkerX(position, halfSize, style));
+            var currentDamage = CreateSnapMarkerXDamage(
+                viewport,
+                position,
+                halfSize,
+                width,
+                height);
+            host.Render(
+                previousDamage.UnionPreservingCoverage(currentDamage),
+                baseSceneChanged: false);
+            previousDamage = currentDamage;
+        }
+
+        var partialBackBufferPixels = host.CaptureBackBufferPixels();
+        var partialPresentedPixels = host.CapturePresentedPixels();
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: false);
+        var fullBackBufferPixels = host.CaptureBackBufferPixels();
+        var fullPresentedPixels = host.CapturePresentedPixels();
+
+        Assert.Equal(fullBackBufferPixels, partialBackBufferPixels);
+        Assert.Equal(fullPresentedPixels, partialPresentedPixels);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void MovingSnapMarkerX_RandomSubpixelFramesMatchAFullRedrawWithoutTrails()
+    {
+        const int width = 320;
+        const int height = 240;
+        const double markerLength = 14.0;
+        using var host = new Direct2DImageRenderHost();
+        var imageSource = new RecordingImageSource(width, height);
+        host.AttachImageSource(imageSource);
+        host.SetSize(width, height);
+
+        var document = CadDocument.Create("Random snap marker X trail regression");
+        var viewport = new CadViewport();
+        viewport.SetSize(width, height);
+        var scene = new CadTransientScene();
+        var style = new CadTransientStyle(
+            CadColor.FromRgb(255, 214, 92),
+            1.25);
+        var random = new Random(1729);
+
+        host.SetScene(document, viewport);
+        host.SetTransientScene(scene);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            DrawGripHandles = false
+        });
+
+        foreach (var zoom in new[] { 0.125, 0.75, 1.0, 4.0, 24.0 })
+        {
+            viewport.SetView(zoom, new CadPointD(width / 2.0, height / 2.0));
+            var halfSize = markerLength * 0.5 / zoom;
+            CadPointD? previousPosition = null;
+            CadRenderInvalidation previousDamage = CadRenderInvalidation.Empty;
+
+            for (var index = 0; index < 24; index++)
+            {
+                var screen = new CadPointD(
+                    14.25 + random.NextDouble() * (width - 28.5),
+                    14.25 + random.NextDouble() * (height - 28.5));
+                var position = viewport.ScreenToWorld(screen);
+                scene.Replace(CreateSnapMarkerX(position, halfSize, style));
+                var currentDamage = CreateSnapMarkerXDamage(
+                    viewport,
+                    position,
+                    halfSize,
+                    width,
+                    height);
+
+                if (previousPosition is null)
+                {
+                    host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+                }
+                else
+                {
+                    host.Render(
+                        previousDamage.UnionPreservingCoverage(currentDamage),
+                        baseSceneChanged: false);
+                }
+
+                previousPosition = position;
+                previousDamage = currentDamage;
+            }
+        }
+
+        var partialBackBufferPixels = host.CaptureBackBufferPixels();
+        var partialPresentedPixels = host.CapturePresentedPixels();
+        host.Render(CadRenderInvalidation.Full, baseSceneChanged: false);
+        var fullBackBufferPixels = host.CaptureBackBufferPixels();
+        var fullPresentedPixels = host.CapturePresentedPixels();
+
+        Assert.Equal(fullBackBufferPixels, partialBackBufferPixels);
+        Assert.Equal(fullPresentedPixels, partialPresentedPixels);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public void DeviceFailureClassifier_RecognizesOnlyRecoverableDeviceFailures()
     {
         Result[] recoverableResults =
@@ -1021,6 +1259,54 @@ public sealed class Direct2DRenderHostIntegrationTests
         }
 
         return pixels;
+    }
+
+    private static CadRenderInvalidation CreateInfiniteCrossDamage(
+        CadViewport viewport,
+        CadPointD center,
+        int width,
+        int height)
+    {
+        const int padding = 12;
+        var screen = viewport.WorldToScreen(center);
+        var x = (int)Math.Round(screen.X);
+        var y = (int)Math.Round(screen.Y);
+        return CadRenderInvalidation.FromScreenRectsPreservingCoverage(
+        [
+            new CadScreenRect(0, y - padding, width, padding * 2),
+            new CadScreenRect(x - padding, 0, padding * 2, height)
+        ]);
+    }
+
+    private static IReadOnlyList<CadTransientItem> CreateSnapMarkerX(
+        CadPointD center,
+        double halfSize,
+        CadTransientStyle style) =>
+    [
+        new CadTransientLine(
+            new CadPointD(center.X - halfSize, center.Y - halfSize),
+            new CadPointD(center.X + halfSize, center.Y + halfSize),
+            style),
+        new CadTransientLine(
+            new CadPointD(center.X - halfSize, center.Y + halfSize),
+            new CadPointD(center.X + halfSize, center.Y - halfSize),
+            style)
+    ];
+
+    private static CadRenderInvalidation CreateSnapMarkerXDamage(
+        CadViewport viewport,
+        CadPointD center,
+        double halfSize,
+        int width,
+        int height)
+    {
+        const int padding = 12;
+        var screen = viewport.WorldToScreen(center);
+        var x = (int)Math.Floor(screen.X - halfSize) - padding;
+        var y = (int)Math.Floor(screen.Y - halfSize) - padding;
+        var size = (int)Math.Ceiling(halfSize * 2) + padding * 2 + 2;
+        return CadRenderInvalidation.FromScreenRect(
+            new CadScreenRect(x, y, Math.Min(size, width - x), Math.Min(size, height - y)));
     }
 
     private static CadRenderOptions CreateParallelRenderOptions(

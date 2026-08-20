@@ -25,7 +25,7 @@ internal readonly struct CadRenderInvalidationCalculator(
     public CadRenderInvalidation CreateTransientSceneInvalidation(
         CadTransientScene transientScene)
     {
-        var dirtyRects = new List<CadScreenRect>();
+        var invalidation = CadRenderInvalidation.Empty;
 
         foreach (var item in transientScene.Items)
         {
@@ -33,10 +33,10 @@ internal readonly struct CadRenderInvalidationCalculator(
             if (itemInvalidation.IsFull)
                 return CadRenderInvalidation.Full;
 
-            dirtyRects.AddRange(itemInvalidation.DirtyScreenRects);
+            invalidation = invalidation.UnionPreservingCoverage(itemInvalidation);
         }
 
-        return CadRenderInvalidation.FromScreenRects(dirtyRects);
+        return invalidation;
     }
 
     public CadRenderInvalidation CreateHandleSceneInvalidation(
@@ -176,9 +176,8 @@ internal readonly struct CadRenderInvalidationCalculator(
             CadTransientLine line => CreateTransientBoundsInvalidation(
                 BoundsFromPoints(line.Start, line.End),
                 line.Style),
-            CadTransientInfiniteCross infiniteCross => CreateTransientBoundsInvalidation(
-                viewport.VisibleWorldBounds,
-                infiniteCross.Style),
+            CadTransientInfiniteCross infiniteCross =>
+                CreateInfiniteCrossInvalidation(infiniteCross),
             CadTransientCircle circle when circle.Radius > 0 => CreateTransientBoundsInvalidation(
                 CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2),
                 circle.Style,
@@ -383,6 +382,30 @@ internal readonly struct CadRenderInvalidationCalculator(
                 style,
                 minimumPaddingPixels,
                 strokeExtentMultiplier));
+    }
+
+    private CadRenderInvalidation CreateInfiniteCrossInvalidation(
+        CadTransientInfiniteCross infiniteCross)
+    {
+        var visible = viewport.VisibleWorldBounds;
+        if (visible.IsEmpty)
+            return CadRenderInvalidation.Empty;
+
+        var horizontal = CreateTransientBoundsInvalidation(
+            CadRectD.FromLTRB(
+                visible.MinX,
+                infiniteCross.Center.Y,
+                visible.MaxX,
+                infiniteCross.Center.Y),
+            infiniteCross.Style);
+        var vertical = CreateTransientBoundsInvalidation(
+            CadRectD.FromLTRB(
+                infiniteCross.Center.X,
+                visible.MinY,
+                infiniteCross.Center.X,
+                visible.MaxY),
+            infiniteCross.Style);
+        return horizontal.UnionPreservingCoverage(vertical);
     }
 
     private CadRenderInvalidation CreateTransientSplineInvalidation(CadTransientSpline spline)

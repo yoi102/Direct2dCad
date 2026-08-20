@@ -43,6 +43,7 @@ public partial class CadCanvas : IDisposable
         SizeChanged += CadCanvas_SizeChanged;
         MouseDown += CadCanvas_MouseDown;
         MouseMove += CadCanvas_MouseMove;
+        MouseLeave += CadCanvas_MouseLeave;
         MouseUp += CadCanvas_MouseUp;
         MouseWheel += CadCanvas_MouseWheel;
         KeyDown += CadCanvas_KeyDown;
@@ -194,6 +195,16 @@ public partial class CadCanvas : IDisposable
         e.Handled = true;
     }
 
+    private void CadCanvas_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (DocumentViewModel is null || IsMouseCaptured)
+            return;
+
+        UnschedulePointerMove();
+        _pointerMovePending = false;
+        DocumentViewModel.PointerLeave();
+    }
+
     private void CadCanvas_MouseUp(object sender, MouseButtonEventArgs e)
     {
         if (DocumentViewModel is null)
@@ -219,6 +230,8 @@ public partial class CadCanvas : IDisposable
             ToPointerButton(e.ChangedButton));
 
         ApplyInteractionResult(result, e);
+        if (result.ReleaseMouseCapture && !IsMouseOver)
+            DocumentViewModel.PointerLeave();
     }
 
     private void CadCanvas_MouseWheel(object sender, MouseWheelEventArgs e)
@@ -423,6 +436,11 @@ public partial class CadCanvas : IDisposable
 
     private void OnRenderFlush(object? sender, EventArgs e)
     {
+        FlushScheduledRender();
+    }
+
+    private void FlushScheduledRender()
+    {
         UnscheduleRenderFlush();
         var flush = _pendingRenderFlush;
         _pendingRenderFlush = null;
@@ -442,6 +460,9 @@ public partial class CadCanvas : IDisposable
     {
         UnschedulePointerMove();
         FlushPendingPointerMove();
+        // PointerMove schedules its overlay render while this composition tick is
+        // already running. Flush it now so the marker does not trail by one frame.
+        FlushScheduledRender();
     }
 
     private void ScheduleViewportInteractionCompletion()

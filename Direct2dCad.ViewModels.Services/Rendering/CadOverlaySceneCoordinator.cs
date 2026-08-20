@@ -92,7 +92,7 @@ internal sealed class CadOverlaySceneCoordinator
 
         var currentTransient = invalidationCalculator.CreateTransientSceneInvalidation(TransientScene);
         _lastTransientInvalidation = currentTransient;
-        var invalidation = previousTransient.Union(currentTransient);
+        var invalidation = previousTransient.UnionPreservingCoverage(currentTransient);
 
         if (!updateHandleScene)
             return invalidation;
@@ -102,8 +102,8 @@ internal sealed class CadOverlaySceneCoordinator
             includeGripHandles);
         _lastHandleInvalidation = currentHandles;
         return invalidation
-            .Union(previousHandles)
-            .Union(currentHandles);
+            .UnionPreservingCoverage(previousHandles)
+            .UnionPreservingCoverage(currentHandles);
     }
 
     public void RefreshLastOverlayInvalidation(
