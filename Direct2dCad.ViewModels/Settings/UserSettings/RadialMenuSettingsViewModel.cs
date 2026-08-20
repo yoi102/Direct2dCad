@@ -74,7 +74,10 @@ public sealed class RadialMenuProfileViewModel
         _actionOptions = actionOptions;
         Slots = new ObservableCollection<RadialMenuSlotViewModel>();
         for (var index = 0; index < CadRadialMenuSettings.SectorCount; index++)
-            Slots.Add(new RadialMenuSlotViewModel(index, ResolveOption(actions[index])));
+            Slots.Add(new RadialMenuSlotViewModel(
+                index,
+                ResolveOption(actions[index]),
+                ResolveOption(CadRadialMenuAction.None)));
     }
 
     public CadRadialMenuGesture Gesture { get; }
@@ -93,10 +96,16 @@ public sealed class RadialMenuProfileViewModel
 
 public sealed partial class RadialMenuSlotViewModel : ObservableObject
 {
-    internal RadialMenuSlotViewModel(int index, CadRadialMenuActionOption selectedAction)
+    private readonly CadRadialMenuActionOption _emptyAction;
+
+    internal RadialMenuSlotViewModel(
+        int index,
+        CadRadialMenuActionOption selectedAction,
+        CadRadialMenuActionOption emptyAction)
     {
         Index = index;
         SelectedAction = selectedAction;
+        _emptyAction = emptyAction;
     }
 
     public int Index { get; }
@@ -105,4 +114,6 @@ public sealed partial class RadialMenuSlotViewModel : ObservableObject
         Index + 1);
 
     [ObservableProperty] public partial CadRadialMenuActionOption SelectedAction { get; set; }
+
+    public void Clear() => SelectedAction = _emptyAction;
 }

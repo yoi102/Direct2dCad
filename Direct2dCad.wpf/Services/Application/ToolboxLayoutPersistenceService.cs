@@ -7,6 +7,7 @@ using AvalonDock;
 using AvalonDock.Controls;
 using AvalonDock.Core;
 using AvalonDock.Core.Serialization;
+using AvalonDock.Layout;
 using AvalonDock.Serializer.Json;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -75,6 +76,7 @@ public sealed class ToolboxLayoutPersistenceService
         try
         {
             var toolboxes = CollectToolboxes(anchorables);
+            var startupDocuments = CaptureStartupDocuments(dockingManager);
             using var stream = new FileStream(
                 _layoutFilePath,
                 FileMode.Open,
@@ -82,7 +84,7 @@ public sealed class ToolboxLayoutPersistenceService
                 FileShare.Read);
             var serializer = new JsonLayoutSerializer(dockingManager);
             serializer.LayoutSerializationCallback += (_, args) =>
-                RestoreLayoutContent(args, toolboxes);
+                RestoreLayoutContent(args, toolboxes, startupDocuments);
             serializer.Deserialize(stream);
 
             SynchronizeToolboxZones(dockingManager);
@@ -124,7 +126,8 @@ public sealed class ToolboxLayoutPersistenceService
 
     private static void RestoreLayoutContent(
         LayoutSerializationCallbackEventArgs args,
-        IReadOnlyDictionary<string, IToolbox> toolboxes)
+        IReadOnlyDictionary<string, IToolbox> toolboxes,
+        IReadOnlyDictionary<string, object> startupDocuments)
     {
         if (args.Model is ISerializableLayoutAnchorable)
         {
@@ -142,10 +145,34 @@ public sealed class ToolboxLayoutPersistenceService
             return;
         }
 
-        // Keep only documents that already exist in the startup layout, such as Welcome.
-        // Stored editor tabs are restored by document services, not by the toolbox layout.
-        if (args.Model is ISerializableLayoutDocument && args.Content is null)
-            args.Cancel = true;
+        if (args.Model is ISerializableLayoutDocument document)
+        {
+            var contentId = document.ContentId?.Trim();
+            if (!string.IsNullOrWhiteSpace(contentId) &&
+                startupDocuments.TryGetValue(contentId, out var content))
+            {
+                args.Content = content;
+            }
+            else
+            {
+                // Stored editor tabs are restored by document services, not by
+                // the toolbox layout.
+                args.Cancel = true;
+            }
+        }
+    }
+
+    private static IReadOnlyDictionary<string, object> CaptureStartupDocuments(
+        ToggleDockingManager dockingManager)
+    {
+        return dockingManager.Layout
+            .Descendents()
+            .OfType<LayoutDocument>()
+            .Where(document =>
+                !string.IsNullOrWhiteSpace(document.ContentId) &&
+                document.Content is not null)
+            .GroupBy(document => document.ContentId.Trim(), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First().Content!, StringComparer.Ordinal);
     }
 
     private static Dictionary<string, IToolbox> CollectToolboxes(

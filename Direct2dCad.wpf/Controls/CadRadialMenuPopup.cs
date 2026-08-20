@@ -269,7 +269,7 @@ internal sealed class CadRadialMenuPopup : IDisposable
         private void ApplyIcon(ContentControl host, CadRadialMenuAction action)
         {
             host.Tag = action;
-            var templateKey = GetIconTemplateKey(action);
+            var templateKey = CadRadialMenuActionIconCatalog.GetTemplateKey(action);
             if (templateKey is not null &&
                 _resourceOwner?.TryFindResource(templateKey) is DataTemplate template)
             {
@@ -281,7 +281,7 @@ internal sealed class CadRadialMenuPopup : IDisposable
             host.ContentTemplate = null;
             host.Content = new PackIcon
             {
-                Kind = GetIconKind(action),
+                Kind = CadRadialMenuActionIconCatalog.GetFallbackKind(action),
                 Width = IconSize,
                 Height = IconSize,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -289,65 +289,6 @@ internal sealed class CadRadialMenuPopup : IDisposable
                 IsHitTestVisible = false
             };
         }
-
-        private static string? GetIconTemplateKey(CadRadialMenuAction action) => action switch
-        {
-            CadRadialMenuAction.Line => "CadLineIconTemplate",
-            CadRadialMenuAction.Polyline => "CadPolylineIconTemplate",
-            CadRadialMenuAction.Polygon => "CadPolygonIconTemplate",
-            CadRadialMenuAction.CircleCenterRadius => "CadCircleCenterRadiusIconTemplate",
-            CadRadialMenuAction.CircleCenterDiameter => "CadCircleCenterDiameterIconTemplate",
-            CadRadialMenuAction.CircleTwoPoint => "CadCircleTwoPointIconTemplate",
-            CadRadialMenuAction.CircleThreePoint => "CadCircleThreePointIconTemplate",
-            CadRadialMenuAction.EllipseCenter => "CadEllipseCenterIconTemplate",
-            CadRadialMenuAction.EllipseAxisEnd => "CadEllipseAxisEndIconTemplate",
-            CadRadialMenuAction.EllipseArc => "CadEllipseArcIconTemplate",
-            CadRadialMenuAction.ArcThreePoint => "CadArcThreePointIconTemplate",
-            CadRadialMenuAction.ArcStartCenterEnd => "CadArcStartCenterEndIconTemplate",
-            CadRadialMenuAction.ArcStartCenterAngle => "CadArcStartCenterAngleIconTemplate",
-            CadRadialMenuAction.ArcStartCenterLength => "CadArcStartCenterLengthIconTemplate",
-            CadRadialMenuAction.ArcStartEndAngle => "CadArcStartEndAngleIconTemplate",
-            CadRadialMenuAction.ArcStartEndDirection => "CadArcStartEndDirectionIconTemplate",
-            CadRadialMenuAction.ArcStartEndRadius => "CadArcStartEndRadiusIconTemplate",
-            CadRadialMenuAction.ArcCenterStartEnd => "CadArcCenterStartEndIconTemplate",
-            CadRadialMenuAction.ArcCenterStartAngle => "CadArcCenterStartAngleIconTemplate",
-            CadRadialMenuAction.ArcCenterStartLength => "CadArcCenterStartLengthIconTemplate",
-            CadRadialMenuAction.ArcContinue => "CadArcContinueIconTemplate",
-            CadRadialMenuAction.Spline => "CadSplineIconTemplate",
-            _ => null
-        };
-
-        private static PackIconKind GetIconKind(CadRadialMenuAction action) => action switch
-        {
-            CadRadialMenuAction.Select => PackIconKind.ArrowAll,
-            CadRadialMenuAction.Line or CadRadialMenuAction.Polyline or CadRadialMenuAction.Spline => PackIconKind.Drawing,
-            CadRadialMenuAction.CircleCenterRadius or CadRadialMenuAction.CircleCenterDiameter or
-                CadRadialMenuAction.CircleTwoPoint or CadRadialMenuAction.CircleThreePoint or
-                CadRadialMenuAction.EllipseCenter or CadRadialMenuAction.EllipseAxisEnd or
-                CadRadialMenuAction.EllipseArc => PackIconKind.Circle,
-            CadRadialMenuAction.ArcThreePoint or CadRadialMenuAction.ArcStartCenterEnd or
-                CadRadialMenuAction.ArcStartCenterAngle or CadRadialMenuAction.ArcStartCenterLength or
-                CadRadialMenuAction.ArcStartEndAngle or CadRadialMenuAction.ArcStartEndDirection or
-                CadRadialMenuAction.ArcStartEndRadius or CadRadialMenuAction.ArcCenterStartEnd or
-                CadRadialMenuAction.ArcCenterStartAngle or CadRadialMenuAction.ArcCenterStartLength or
-                CadRadialMenuAction.ArcContinue => PackIconKind.Drawing,
-            CadRadialMenuAction.Rectangle => PackIconKind.RectangleOutline,
-            CadRadialMenuAction.Polygon or CadRadialMenuAction.CreateBlock => PackIconKind.ShapePlus,
-            CadRadialMenuAction.Text => PackIconKind.TextShadow,
-            CadRadialMenuAction.SetOrigin => PackIconKind.Target,
-            CadRadialMenuAction.Undo => PackIconKind.Undo,
-            CadRadialMenuAction.Redo => PackIconKind.Redo,
-            CadRadialMenuAction.CopySelection => PackIconKind.ContentCopy,
-            CadRadialMenuAction.CutSelection => PackIconKind.ContentCut,
-            CadRadialMenuAction.Paste => PackIconKind.ContentPaste,
-            CadRadialMenuAction.DeleteSelection => PackIconKind.Delete,
-            CadRadialMenuAction.SelectAll => PackIconKind.SelectAll,
-            CadRadialMenuAction.ClearSelection or CadRadialMenuAction.CancelCurrentInteraction => PackIconKind.SelectionOff,
-            CadRadialMenuAction.FitToWindow => PackIconKind.FitToScreen,
-            CadRadialMenuAction.Save => PackIconKind.ContentSave,
-            CadRadialMenuAction.SaveAs => PackIconKind.ContentSaveAdd,
-            _ => PackIconKind.Cancel
-        };
 
         private static int GetSectorIndex(Vector offset)
         {
