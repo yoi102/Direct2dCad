@@ -12,6 +12,7 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Enums;
+using Direct2dCad.ViewModels.Interactions;
 using Direct2dCad.ViewModels.Layouts;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -663,6 +664,66 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
         CadCanvasToolMode = mode;
         CadDocumentViewModel.SetToolMode(mode);
+    }
+
+    [RelayCommand]
+    private void ExecuteRadialMenuAction(CadRadialMenuAction action)
+    {
+        if (CadRadialMenuActionMapper.TryGetToolMode(action, out var toolMode))
+        {
+            SetCadCanvasToolMode(toolMode.ToString());
+            return;
+        }
+
+        switch (action)
+        {
+            case CadRadialMenuAction.Undo:
+                if (UndoCommand.CanExecute(null))
+                    UndoCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.Redo:
+                if (RedoCommand.CanExecute(null))
+                    RedoCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.CopySelection:
+                if (CopySelectedEntitiesCommand.CanExecute(null))
+                    CopySelectedEntitiesCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.CutSelection:
+                if (CutSelectedEntitiesCommand.CanExecute(null))
+                    CutSelectedEntitiesCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.Paste:
+                PasteEntitiesCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.DeleteSelection:
+                if (DeleteSelectedEntitiesCommand.CanExecute(null))
+                    DeleteSelectedEntitiesCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.SelectAll:
+                SelectAllEntitiesCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.ClearSelection:
+                if (ClearSelectionCommand.CanExecute(null))
+                    ClearSelectionCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.CancelCurrentInteraction:
+                CancelCurrentInteractionCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.FitToWindow:
+                FitToWindowCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.Save:
+                SaveFileCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.SaveAs:
+                SaveAsFileCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.CreateBlock:
+                if (CreateBlockFromSelectionCommand.CanExecute(null))
+                    CreateBlockFromSelectionCommand.Execute(null);
+                break;
+        }
     }
 
 

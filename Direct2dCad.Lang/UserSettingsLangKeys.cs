@@ -33,4 +33,6 @@ public static class UserSettingsLangKeys
     public const string PrimaryColor = nameof(PrimaryColor);
     public const string SecondaryColor = nameof(SecondaryColor);
     public const string Reset = nameof(Reset);
+    public const string RadialMenu = nameof(RadialMenu);
+    public const string RadialMenuEnabled = nameof(RadialMenuEnabled);
 }

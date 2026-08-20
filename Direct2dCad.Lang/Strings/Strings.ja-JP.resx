@@ -1365,4 +1365,25 @@
   <data name="GraphicsDeviceAutomaticWarp" xml:space="preserve">
     <value>自動（現在：WARP）</value>
   </data>
+  <data name="RadialMenu" xml:space="preserve">
+    <value>ラジアルメニュー</value>
+  </data>
+  <data name="RadialMenuEnabled" xml:space="preserve">
+    <value>中ボタンのラジアルメニューを有効にする</value>
+  </data>
+  <data name="RadialMenuMiddleMouse" xml:space="preserve">
+    <value>中ボタン</value>
+  </data>
+  <data name="RadialMenuShiftMiddleMouse" xml:space="preserve">
+    <value>Shift + 中ボタン</value>
+  </data>
+  <data name="RadialMenuControlMiddleMouse" xml:space="preserve">
+    <value>Ctrl + 中ボタン</value>
+  </data>
+  <data name="RadialMenuAltMiddleMouse" xml:space="preserve">
+    <value>Alt + 中ボタン</value>
+  </data>
+  <data name="RadialMenuSlot" xml:space="preserve">
+    <value>スロット {0}</value>
+  </data>
 </root>

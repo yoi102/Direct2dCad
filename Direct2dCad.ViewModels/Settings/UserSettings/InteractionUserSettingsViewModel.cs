@@ -15,6 +15,7 @@ public partial class InteractionUserSettingsViewModel : UserSettingsSectionViewM
 
     private void Load(CadInteractionUserSettings settings)
     {
+        RadialMenu = new RadialMenuSettingsViewModel(settings.RadialMenu);
         SelectedEntityStrokeColor = settings.SelectedEntityStrokeColor;
         SelectedEntityStrokeWidth = settings.SelectedEntityStrokeWidth;
         GripStrokeColor = settings.GripStrokeColor;
@@ -31,6 +32,9 @@ public partial class InteractionUserSettingsViewModel : UserSettingsSectionViewM
         SelectionCrossingFillColor = settings.SelectionCrossingFillColor;
         SelectionCrossingStrokeWidth = settings.SelectionCrossingStrokeWidth;
     }
+
+    [ObservableProperty]
+    public partial RadialMenuSettingsViewModel RadialMenu { get; private set; } = null!;
 
     [ObservableProperty] public partial CadColor SelectedEntityStrokeColor { get; set; }
     [ObservableProperty] public partial double SelectedEntityStrokeWidth { get; set; }
@@ -61,6 +65,7 @@ public partial class InteractionUserSettingsViewModel : UserSettingsSectionViewM
         }
 
         var interaction = settings.Interaction;
+        RadialMenu.ApplyTo(interaction.RadialMenu);
         interaction.SelectedEntityStrokeColor = SelectedEntityStrokeColor;
         interaction.SelectedEntityStrokeWidth = SelectedEntityStrokeWidth;
         interaction.GripStrokeColor = GripStrokeColor;

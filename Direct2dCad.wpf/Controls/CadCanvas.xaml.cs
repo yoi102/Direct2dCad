@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels;
 
@@ -24,6 +25,8 @@ public partial class CadCanvas : IDisposable
     private bool _disposed;
     private Action? _pendingRenderFlush;
     private readonly DispatcherTimer _viewportInteractionCompletionTimer;
+    private readonly CadRadialMenuPopup _radialMenu = new();
+    private bool _isRadialMenuActive;
 
     public CadCanvas()
     {
@@ -47,6 +50,7 @@ public partial class CadCanvas : IDisposable
         MouseUp += CadCanvas_MouseUp;
         MouseWheel += CadCanvas_MouseWheel;
         KeyDown += CadCanvas_KeyDown;
+        KeyUp += CadCanvas_KeyUp;
     }
 
     public CadDocumentViewModel? DocumentViewModel
@@ -71,6 +75,19 @@ public partial class CadCanvas : IDisposable
     public static readonly DependencyProperty SaveCommandProperty =
         DependencyProperty.Register(
             nameof(SaveCommand),
+            typeof(ICommand),
+            typeof(CadCanvas),
+            new PropertyMetadata(null));
+
+    public ICommand? RadialMenuActionCommand
+    {
+        get => (ICommand?)GetValue(RadialMenuActionCommandProperty);
+        set => SetValue(RadialMenuActionCommandProperty, value);
+    }
+
+    public static readonly DependencyProperty RadialMenuActionCommandProperty =
+        DependencyProperty.Register(
+            nameof(RadialMenuActionCommand),
             typeof(ICommand),
             typeof(CadCanvas),
             new PropertyMetadata(null));
@@ -160,6 +177,13 @@ public partial class CadCanvas : IDisposable
             return;
         }
 
+        if (e.ChangedButton == MouseButton.Middle &&
+            TryOpenRadialMenu(e.GetPosition(this), Keyboard.Modifiers))
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
         {
             ApplyInteractionResult(
@@ -189,6 +213,13 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
+        if (_isRadialMenuActive)
+        {
+            _radialMenu.UpdatePointer(e.GetPosition(this));
+            e.Handled = true;
+            return;
+        }
+
         _pendingPointerScreen = ToCadPoint(e.GetPosition(this));
         _pointerMovePending = true;
         SchedulePointerMove();
@@ -209,6 +240,23 @@ public partial class CadCanvas : IDisposable
     {
         if (DocumentViewModel is null)
             return;
+
+        if (_isRadialMenuActive && e.ChangedButton == MouseButton.Middle)
+        {
+            var action = _radialMenu.Complete(e.GetPosition(this));
+            _isRadialMenuActive = false;
+            if (IsMouseCaptured)
+                ReleaseMouseCapture();
+            if (action is { } selectedAction &&
+                selectedAction != CadRadialMenuAction.None &&
+                RadialMenuActionCommand?.CanExecute(selectedAction) == true)
+            {
+                RadialMenuActionCommand.Execute(selectedAction);
+            }
+
+            e.Handled = true;
+            return;
+        }
 
         var screen = ToCadPoint(e.GetPosition(this));
         FlushPendingPointerMove(screen);
@@ -302,6 +350,20 @@ public partial class CadCanvas : IDisposable
 
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
 
+        if (_isRadialMenuActive)
+        {
+            if (key == Key.Escape)
+            {
+                CloseRadialMenu();
+                e.Handled = true;
+                return;
+            }
+
+            UpdateRadialMenuProfile(Keyboard.Modifiers);
+            e.Handled = true;
+            return;
+        }
+
         if (key == Key.Escape)
         {
             ApplyInteractionResult(DocumentViewModel.Escape(), e);
@@ -379,9 +441,49 @@ public partial class CadCanvas : IDisposable
         }
     }
 
+    private void CadCanvas_KeyUp(object sender, KeyEventArgs e)
+    {
+        if (!_isRadialMenuActive)
+            return;
+
+        UpdateRadialMenuProfile(Keyboard.Modifiers);
+        e.Handled = true;
+    }
+
     private void UpdateViewportSize()
     {
         DocumentViewModel?.SetViewportSize(ActualWidth, ActualHeight);
+    }
+
+    private bool TryOpenRadialMenu(Point position, ModifierKeys modifiers)
+    {
+        if (DocumentViewModel?.UserSettings.Interaction.RadialMenu is not { IsEnabled: true } settings)
+            return false;
+
+        var gesture = ToRadialMenuGesture(modifiers);
+        _radialMenu.Show(this, position, settings.GetActions(gesture));
+        _isRadialMenuActive = CaptureMouse();
+        if (!_isRadialMenuActive)
+            _radialMenu.Close();
+        return _isRadialMenuActive;
+    }
+
+    private void CloseRadialMenu()
+    {
+        _radialMenu.Close();
+        _isRadialMenuActive = false;
+        if (IsMouseCaptured)
+            ReleaseMouseCapture();
+    }
+
+    private void UpdateRadialMenuProfile(ModifierKeys modifiers)
+    {
+        var settings = DocumentViewModel?.UserSettings.Interaction.RadialMenu;
+        if (settings is not { IsEnabled: true })
+            return;
+
+        _radialMenu.SetActions(settings.GetActions(ToRadialMenuGesture(modifiers)));
+        _radialMenu.UpdatePointer(Mouse.GetPosition(this));
     }
 
     private void UpdateRenderSize()
@@ -603,6 +705,17 @@ public partial class CadCanvas : IDisposable
         return result;
     }
 
+    private static CadRadialMenuGesture ToRadialMenuGesture(ModifierKeys modifiers)
+    {
+        if ((modifiers & ModifierKeys.Shift) != 0)
+            return CadRadialMenuGesture.ShiftMiddle;
+        if ((modifiers & ModifierKeys.Control) != 0)
+            return CadRadialMenuGesture.ControlMiddle;
+        if ((modifiers & ModifierKeys.Alt) != 0)
+            return CadRadialMenuGesture.AltMiddle;
+        return CadRadialMenuGesture.Middle;
+    }
+
     private static CadPointD ToCadPoint(Point point)
     {
         return new CadPointD(point.X, point.Y);
@@ -623,9 +736,11 @@ public partial class CadCanvas : IDisposable
             viewModel.DetachRenderResources();
         }
         CancelPendingViewportInteraction();
+        CloseRadialMenu();
         UnschedulePointerMove();
         UnscheduleRenderFlush();
         _pendingRenderFlush = null;
         d3d11ImageSource.Dispose();
+        _radialMenu.Dispose();
     }
 }

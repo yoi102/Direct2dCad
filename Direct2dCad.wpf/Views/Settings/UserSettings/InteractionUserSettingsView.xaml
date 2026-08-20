@@ -38,7 +38,8 @@
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Margin="0,0,8,0">
+        <StackPanel Margin="0,0,8,0">
+        <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="190" />
                 <ColumnDefinition Width="*" />
@@ -217,5 +218,52 @@
                                Interval="0.1"
                                Value="{Binding SelectionCrossingStrokeWidth}" />
         </Grid>
+
+        <Expander Margin="0,12,0,8"
+                  IsExpanded="True"
+                  Header="{I18N {x:Static r:UserSettingsLangKeys.RadialMenu}}">
+            <StackPanel Margin="12,8,8,8">
+                <CheckBox Margin="0,0,0,10"
+                          Content="{I18N {x:Static r:UserSettingsLangKeys.RadialMenuEnabled}}"
+                          IsChecked="{Binding RadialMenu.IsEnabled, Mode=TwoWay}" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ListBox Grid.Column="0"
+                             Margin="0,0,12,0"
+                             ItemsSource="{Binding RadialMenu.Profiles}"
+                             SelectedItem="{Binding RadialMenu.SelectedProfile, Mode=TwoWay}"
+                             DisplayMemberPath="DisplayName" />
+                    <ItemsControl Grid.Column="1"
+                                  ItemsSource="{Binding RadialMenu.SelectedProfile.Slots}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,10,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="64" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding DisplayName}" />
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding DataContext.RadialMenu.ActionOptions, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedItem="{Binding SelectedAction, Mode=TwoWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </StackPanel>
+        </Expander>
+        </StackPanel>
     </ScrollViewer>
 </UserControl>

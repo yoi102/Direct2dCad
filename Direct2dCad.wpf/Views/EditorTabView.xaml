@@ -376,7 +376,8 @@
                                Grid.Row="0"
                                DataContext="{Binding CadDocumentViewModel}"
                                ContextMenu="{StaticResource CadCanvasContextMenu}"
-                               SaveCommand="{Binding DataContext.SaveFileCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}" />
+                               SaveCommand="{Binding DataContext.SaveFileCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}"
+                               RadialMenuActionCommand="{Binding DataContext.ExecuteRadialMenuActionCommand, RelativeSource={RelativeSource AncestorType=views:EditorTabView}}" />
 
         <Button Grid.Row="0"
                 HorizontalAlignment="Left"

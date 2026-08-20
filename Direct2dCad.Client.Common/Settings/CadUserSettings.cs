@@ -5,7 +5,7 @@ namespace Direct2dCad.Client.Common.Settings;
 
 public sealed class CadUserSettings
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
 
     public int Version { get; set; } = CurrentVersion;
     public CadGeneralUserSettings General { get; set; } = new();
@@ -80,7 +80,15 @@ public sealed class CadUserSettings
             SelectionWindowStrokeWidth = source.Interaction.SelectionWindowStrokeWidth,
             SelectionCrossingStrokeColor = source.Interaction.SelectionCrossingStrokeColor,
             SelectionCrossingFillColor = source.Interaction.SelectionCrossingFillColor,
-            SelectionCrossingStrokeWidth = source.Interaction.SelectionCrossingStrokeWidth
+            SelectionCrossingStrokeWidth = source.Interaction.SelectionCrossingStrokeWidth,
+            RadialMenu = new CadRadialMenuSettings
+            {
+                IsEnabled = source.Interaction.RadialMenu.IsEnabled,
+                MiddleActions = [.. source.Interaction.RadialMenu.MiddleActions],
+                ShiftMiddleActions = [.. source.Interaction.RadialMenu.ShiftMiddleActions],
+                ControlMiddleActions = [.. source.Interaction.RadialMenu.ControlMiddleActions],
+                AltMiddleActions = [.. source.Interaction.RadialMenu.AltMiddleActions]
+            }
         };
         Normalize();
     }
@@ -132,6 +140,8 @@ public sealed class CadRenderingUserSettings
 
 public sealed class CadInteractionUserSettings
 {
+    public CadRadialMenuSettings RadialMenu { get; set; } = new();
+
     public CadColor SelectedEntityStrokeColor { get; set; } = CadColor.FromArgb(240, 255, 214, 92);
     public double SelectedEntityStrokeWidth { get; set; } = 2.0;
 
@@ -154,6 +164,8 @@ public sealed class CadInteractionUserSettings
 
     internal void Normalize()
     {
+        RadialMenu ??= new CadRadialMenuSettings();
+        RadialMenu.Normalize();
         SelectedEntityStrokeWidth = GuardPositive(SelectedEntityStrokeWidth, 2.0);
         GripSize = GuardPositive(GripSize, 7.0);
         GripStrokeWidth = GuardPositive(GripStrokeWidth, 1.0);

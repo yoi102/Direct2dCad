@@ -1365,4 +1365,25 @@
   <data name="GraphicsDeviceAutomaticWarp" xml:space="preserve">
     <value>自动（当前：WARP）</value>
   </data>
+  <data name="RadialMenu" xml:space="preserve">
+    <value>轮盘菜单</value>
+  </data>
+  <data name="RadialMenuEnabled" xml:space="preserve">
+    <value>启用鼠标中键轮盘菜单</value>
+  </data>
+  <data name="RadialMenuMiddleMouse" xml:space="preserve">
+    <value>鼠标中键</value>
+  </data>
+  <data name="RadialMenuShiftMiddleMouse" xml:space="preserve">
+    <value>Shift + 鼠标中键</value>
+  </data>
+  <data name="RadialMenuControlMiddleMouse" xml:space="preserve">
+    <value>Ctrl + 鼠标中键</value>
+  </data>
+  <data name="RadialMenuAltMiddleMouse" xml:space="preserve">
+    <value>Alt + 鼠标中键</value>
+  </data>
+  <data name="RadialMenuSlot" xml:space="preserve">
+    <value>扇区 {0}</value>
+  </data>
 </root>

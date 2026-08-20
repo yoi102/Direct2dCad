@@ -14,6 +14,7 @@
         <controls:CadCanvas x:Name="cadCanvas"
                             AutomationProperties.AutomationId="CadCanvas"
                             DocumentViewModel="{Binding}"
-                            SaveCommand="{Binding SaveCommand, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}" />
+                            SaveCommand="{Binding SaveCommand, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}"
+                            RadialMenuActionCommand="{Binding RadialMenuActionCommand, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}" />
     </Grid>
 </UserControl>

@@ -1600,4 +1600,25 @@
   <data name="GraphicsDeviceAutomaticWarp" xml:space="preserve">
     <value>Automatic (current: WARP)</value>
   </data>
+  <data name="RadialMenu" xml:space="preserve">
+    <value>Radial menu</value>
+  </data>
+  <data name="RadialMenuEnabled" xml:space="preserve">
+    <value>Enable middle mouse radial menus</value>
+  </data>
+  <data name="RadialMenuMiddleMouse" xml:space="preserve">
+    <value>Middle mouse</value>
+  </data>
+  <data name="RadialMenuShiftMiddleMouse" xml:space="preserve">
+    <value>Shift + middle mouse</value>
+  </data>
+  <data name="RadialMenuControlMiddleMouse" xml:space="preserve">
+    <value>Ctrl + middle mouse</value>
+  </data>
+  <data name="RadialMenuAltMiddleMouse" xml:space="preserve">
+    <value>Alt + middle mouse</value>
+  </data>
+  <data name="RadialMenuSlot" xml:space="preserve">
+    <value>Slot {0}</value>
+  </data>
 </root>

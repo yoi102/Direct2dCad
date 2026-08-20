@@ -24,6 +24,13 @@ public partial class CadDocumentView : IDisposable
             typeof(CadDocumentView),
             new PropertyMetadata(null));
 
+    public static readonly DependencyProperty RadialMenuActionCommandProperty =
+        DependencyProperty.Register(
+            nameof(RadialMenuActionCommand),
+            typeof(ICommand),
+            typeof(CadDocumentView),
+            new PropertyMetadata(null));
+
     public CadDocumentView()
     {
         InitializeComponent();
@@ -32,7 +39,13 @@ public partial class CadDocumentView : IDisposable
     public ICommand? SaveCommand
     {
         get => (ICommand?)GetValue(SaveCommandProperty);
-        set => SetValue(SaveCommandProperty, value);
+            set => SetValue(SaveCommandProperty, value);
+    }
+
+    public ICommand? RadialMenuActionCommand
+    {
+        get => (ICommand?)GetValue(RadialMenuActionCommandProperty);
+        set => SetValue(RadialMenuActionCommandProperty, value);
     }
 
     public void Dispose()

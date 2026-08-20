@@ -2842,6 +2842,69 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Radial menu 的本地化字符串。
+        /// </summary>
+        public static string RadialMenu {
+            get {
+                return ResourceManager.GetString("RadialMenu", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Alt + middle mouse 的本地化字符串。
+        /// </summary>
+        public static string RadialMenuAltMiddleMouse {
+            get {
+                return ResourceManager.GetString("RadialMenuAltMiddleMouse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Ctrl + middle mouse 的本地化字符串。
+        /// </summary>
+        public static string RadialMenuControlMiddleMouse {
+            get {
+                return ResourceManager.GetString("RadialMenuControlMiddleMouse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Enable middle mouse radial menus 的本地化字符串。
+        /// </summary>
+        public static string RadialMenuEnabled {
+            get {
+                return ResourceManager.GetString("RadialMenuEnabled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Middle mouse 的本地化字符串。
+        /// </summary>
+        public static string RadialMenuMiddleMouse {
+            get {
+                return ResourceManager.GetString("RadialMenuMiddleMouse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Shift + middle mouse 的本地化字符串。
+        /// </summary>
+        public static string RadialMenuShiftMiddleMouse {
+            get {
+                return ResourceManager.GetString("RadialMenuShiftMiddleMouse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Slot {0} 的本地化字符串。
+        /// </summary>
+        public static string RadialMenuSlot {
+            get {
+                return ResourceManager.GetString("RadialMenuSlot", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Radius 的本地化字符串。
         /// </summary>
         public static string Radius {
