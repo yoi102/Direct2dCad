@@ -20,14 +20,36 @@ Direct2dCad は、WPF、Direct2D、DirectWrite で作成しているデスクト
 
 ## デモとデザイン
 
-- [基本操作](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)
-- [基本操作 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
-- [Block](https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310)
-- [Layout](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
-- [OLE オブジェクト](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
-- [CAD Terminal](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
-- [LM Studio AI](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7)
-- [LM Studio AI 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
+- [基本操作]
+  
+https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
+
+
+https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed
+
+- [Block デモ]
+  
+https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310
+
+- [Layout デモ]
+
+https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906
+
+- [OLE オブジェクト デモ]
+
+https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
+
+- [CAD Terminal デモ]
+
+https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761
+
+- [LM Studio AI デモ]
+
+https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7
+
+
+https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509
+
 - [Figma デザイン](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
 ## ソリューション構成
