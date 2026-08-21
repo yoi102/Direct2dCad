@@ -2,6 +2,8 @@
 
 # Direct2dCad
 
+[中文](README.md) | [日本語](README.ja.md) | [English](README.en.md)
+
 ## 项目简介
 
 Direct2dCad 是一个基于 WPF、Direct2D 和 DirectWrite 的桌面 CAD 编辑器项目，用于实现并验证可维护的 CAD 编辑架构与高性能渲染方案。
