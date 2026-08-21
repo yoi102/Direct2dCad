@@ -75,7 +75,7 @@ internal sealed class CadRadialMenuPopup : IDisposable
     {
         private const double InnerRadius = 44;
         private const double OuterRadius = 136;
-        private const double IconSize = 30;
+        private const double IconSize = CadRadialMenuActionIcon.DefaultIconSize;
         private static readonly Brush NormalIconBrush = CreateBrush(Color.FromArgb(238, 232, 232, 236));
         private static readonly Brush SelectedIconBrush = Brushes.White;
         private CadRadialMenuAction[] _actions = new CadRadialMenuAction[CadRadialMenuSettings.SectorCount];
@@ -97,6 +97,8 @@ internal sealed class CadRadialMenuPopup : IDisposable
                 {
                     Width = IconSize,
                     Height = IconSize,
+                    HorizontalContentAlignment = HorizontalAlignment.Center,
+                    VerticalContentAlignment = VerticalAlignment.Center,
                     Foreground = NormalIconBrush,
                     IsHitTestVisible = false
                 };
@@ -269,6 +271,13 @@ internal sealed class CadRadialMenuPopup : IDisposable
         private void ApplyIcon(ContentControl host, CadRadialMenuAction action)
         {
             host.Tag = action;
+            if (action == CadRadialMenuAction.None)
+            {
+                host.Content = null;
+                host.ContentTemplate = null;
+                return;
+            }
+
             var templateKey = CadRadialMenuActionIconCatalog.GetTemplateKey(action);
             if (templateKey is not null &&
                 _resourceOwner?.TryFindResource(templateKey) is DataTemplate template)

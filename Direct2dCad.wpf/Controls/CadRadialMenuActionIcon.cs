@@ -8,10 +8,15 @@ namespace Direct2dCad.wpf.Controls;
 /// <summary>Displays the same glyph used by the editor toolbar for a radial-menu action.</summary>
 public sealed class CadRadialMenuActionIcon : ContentControl
 {
+    public const double DefaultIconSize = 28;
+
     public CadRadialMenuActionIcon()
     {
-        HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        VerticalContentAlignment = VerticalAlignment.Stretch;
+        Width = DefaultIconSize;
+        Height = DefaultIconSize;
+        HorizontalContentAlignment = HorizontalAlignment.Center;
+        VerticalContentAlignment = VerticalAlignment.Center;
+        SnapsToDevicePixels = true;
         Loaded += (_, _) => UpdateIcon();
     }
 
@@ -33,6 +38,13 @@ public sealed class CadRadialMenuActionIcon : ContentControl
 
     private void UpdateIcon()
     {
+        if (Action == CadRadialMenuAction.None)
+        {
+            Content = null;
+            ContentTemplate = null;
+            return;
+        }
+
         var templateKey = CadRadialMenuActionIconCatalog.GetTemplateKey(Action);
         if (templateKey is not null && TryFindResource(templateKey) is DataTemplate template)
         {
@@ -45,6 +57,8 @@ public sealed class CadRadialMenuActionIcon : ContentControl
         Content = new PackIcon
         {
             Kind = CadRadialMenuActionIconCatalog.GetFallbackKind(Action),
+            Width = DefaultIconSize,
+            Height = DefaultIconSize,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             IsHitTestVisible = false
