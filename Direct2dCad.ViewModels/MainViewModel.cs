@@ -387,7 +387,11 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ActiveContentChanged()
     {
-        CurrentEditorTabViewModel = _dockLayoutService.ActiveDockable as EditorTabViewModel;
+        // A toolbox can become AvalonDock's active content while the current
+        // CAD document remains selected. Only document activation should
+        // reattach document-scoped toolboxes.
+        if (_dockLayoutService.ActiveDockable is EditorTabViewModel editorTabViewModel)
+            CurrentEditorTabViewModel = editorTabViewModel;
     }
 
     #region TitleBar
