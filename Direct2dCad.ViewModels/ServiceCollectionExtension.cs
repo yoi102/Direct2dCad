@@ -13,6 +13,7 @@ public static class ServiceCollectionExtension
         services.AddTransient<EditorTabViewModel>();
         services.AddTransient<CadDocumentViewModel>();
         services.AddSingleton<ICadClipboardStore, CadClipboardStore>();
+        services.AddSingleton<IActiveEditorContext, ActiveEditorContext>();
         services.AddSingleton<ICadToolWorkspace, CadToolWorkspace>();
         services.AddSingleton<ICadToolCommandLineService, CadToolCommandLineService>();
         services.AddSingleton<IAgentRunner, AgentRunner>();

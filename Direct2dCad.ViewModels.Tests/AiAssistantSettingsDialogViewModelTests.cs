@@ -1,4 +1,5 @@
 using Direct2dCad.AI.Contracts;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Settings;
 
@@ -69,7 +70,9 @@ public sealed class AiAssistantSettingsDialogViewModelTests
         Assert.Equal(["new-model", "z-model"], viewModel.LmStudioModels);
         Assert.Equal("new-model", viewModel.SelectedModel);
         Assert.Equal("old-model", loadedSettings!.Model);
-        Assert.Equal("Connected: 2 model(s)", viewModel.ConnectionStatus);
+        Assert.Equal(
+            string.Format(Strings.AiConnectedModelCountFormat, 2),
+            viewModel.ConnectionStatus);
         Assert.False(viewModel.IsBusy);
     }
 
@@ -89,7 +92,9 @@ public sealed class AiAssistantSettingsDialogViewModelTests
 
         Assert.Equal(["codex-a", "codex-b"], viewModel.CodexModels);
         Assert.Equal("codex-a", viewModel.SelectedCodexModel);
-        Assert.Equal("Connected: 2 model(s)", viewModel.ConnectionStatus);
+        Assert.Equal(
+            string.Format(Strings.AiConnectedModelCountFormat, 2),
+            viewModel.ConnectionStatus);
     }
 
     [Fact]
@@ -101,7 +106,7 @@ public sealed class AiAssistantSettingsDialogViewModelTests
 
         await viewModel.RefreshModelsCommand.ExecuteAsync(null);
 
-        Assert.Equal("Connected, but no model is loaded", viewModel.ConnectionStatus);
+        Assert.Equal(Strings.AiNoModels, viewModel.ConnectionStatus);
         Assert.False(viewModel.IsBusy);
         Assert.True(viewModel.RefreshModelsCommand.CanExecute(null));
     }

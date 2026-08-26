@@ -13,6 +13,7 @@ using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Settings;
 using Direct2dCad.ViewModels.Settings.UserSettings;
 using Direct2dCad.ViewModels.Toolboxes;
+using Direct2dCad.ViewModels.Tools;
 
 namespace Direct2dCad.ViewModels;
 
@@ -28,6 +29,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IApplicationThemeService _themeSettingService;
     private readonly IUserSettingsStore _userSettingsStore;
     private readonly CadUserSettings _userSettings;
+    private readonly IActiveEditorContext _activeEditorContext;
     private readonly CadDocumentStorage _storage = new();
     private CadDocumentViewModel? _printAvailabilityDocument;
     private bool _isDocumentContextActive;
@@ -39,7 +41,8 @@ public partial class MainViewModel : ObservableObject
         IImageImportService imageImportService,
         IDialogService dialogService,
         IUserSettingsStore userSettingsStore,
-        ISnackbarService snackbarService
+        ISnackbarService snackbarService,
+        IActiveEditorContext activeEditorContext
         )
     {
         dockLayoutService.AnchorableStateChanged += OnAnchorableStateChanged;
@@ -54,6 +57,7 @@ public partial class MainViewModel : ObservableObject
         _userSettingsStore = userSettingsStore;
         _userSettings = userSettingsStore.Load();
         _snackbarService = snackbarService;
+        _activeEditorContext = activeEditorContext;
         DocumentExplorer = _dockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DocumentExplorerToolboxViewModel));
         DocumentExplorer.Attach(_dockLayoutService);
         Layers = _dockLayoutService.GetAnchorable<LayersToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayersToolboxViewModel));
@@ -98,6 +102,8 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnCurrentEditorTabViewModelChanged(EditorTabViewModel? value)
     {
+        _activeEditorContext.SetCurrent(value);
+
         if (_printAvailabilityDocument is not null)
         {
             _printAvailabilityDocument.PropertyChanged -=

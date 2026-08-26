@@ -33,7 +33,8 @@ public interface ICadToolWorkspace
 
 internal sealed class CadToolWorkspace(
     IServiceProvider serviceProvider,
-    IDialogService dialogService) : ICadToolWorkspace
+    IDialogService dialogService,
+    IActiveEditorContext activeEditorContext) : ICadToolWorkspace
 {
     private readonly CadDocumentStorage _storage = new();
     private IDockLayoutService DockLayoutService =>
@@ -42,7 +43,7 @@ internal sealed class CadToolWorkspace(
     public IReadOnlyList<CadToolWorkspaceDocument> GetDocuments()
     {
         var dockLayoutService = DockLayoutService;
-        var active = dockLayoutService.ActiveDockable;
+        var active = ResolveActiveEditor(dockLayoutService);
         return dockLayoutService.Documents
             .OfType<EditorTabViewModel>()
             .Select(tab => Describe(tab, ReferenceEquals(active, tab)))
@@ -52,7 +53,7 @@ internal sealed class CadToolWorkspace(
     public CadToolWorkspaceDocument? GetActiveDocument()
     {
         var dockLayoutService = DockLayoutService;
-        return dockLayoutService.ActiveDockable is EditorTabViewModel tab
+        return ResolveActiveEditor(dockLayoutService) is { } tab
             ? Describe(tab, isActive: true)
             : null;
     }
@@ -64,9 +65,10 @@ internal sealed class CadToolWorkspace(
         var tab = dockLayoutService.Documents
             .OfType<EditorTabViewModel>()
             .FirstOrDefault(candidate => string.Equals(candidate.ContentId, documentId, StringComparison.Ordinal));
+        var active = ResolveActiveEditor(dockLayoutService);
         return tab is null
             ? throw new ArgumentException($"Open document not found: {documentId}", nameof(documentId))
-            : Describe(tab, ReferenceEquals(dockLayoutService.ActiveDockable, tab));
+            : Describe(tab, ReferenceEquals(active, tab));
     }
 
     public CadToolWorkspaceDocument CreateDocument(string? name)
@@ -79,6 +81,7 @@ internal sealed class CadToolWorkspace(
             throw new ArgumentException("Document name cannot be empty.", nameof(name));
 
         dockLayoutService.ActiveDockable = tab;
+        activeEditorContext.SetCurrent(tab);
         RefreshDocumentExplorer();
         return Describe(tab, isActive: true);
     }
@@ -96,6 +99,7 @@ internal sealed class CadToolWorkspace(
         if (existing is not null)
         {
             dockLayoutService.ActiveDockable = existing;
+            activeEditorContext.SetCurrent(existing);
             return Describe(existing, isActive: true);
         }
 
@@ -112,6 +116,7 @@ internal sealed class CadToolWorkspace(
                 return created;
             });
         dockLayoutService.ActiveDockable = tab;
+        activeEditorContext.SetCurrent(tab);
         RefreshDocumentExplorer();
         return Describe(tab, isActive: true);
     }
@@ -120,6 +125,7 @@ internal sealed class CadToolWorkspace(
     {
         var document = GetRequiredDocument(documentId);
         DockLayoutService.ActiveDockable = document.EditorTab;
+        activeEditorContext.SetCurrent(document.EditorTab);
         return true;
     }
 
@@ -149,9 +155,35 @@ internal sealed class CadToolWorkspace(
         if (!await document.EditorTab.ConfirmCloseAsync())
             return false;
 
-        DockLayoutService.CloseDocument(document.EditorTab);
+        var dockLayoutService = DockLayoutService;
+        var wasCurrent = ReferenceEquals(activeEditorContext.Current, document.EditorTab);
+        dockLayoutService.CloseDocument(document.EditorTab);
+        if (wasCurrent)
+        {
+            var next = dockLayoutService.ActiveDockable as EditorTabViewModel ??
+                       dockLayoutService.Documents
+                           .OfType<EditorTabViewModel>()
+                           .LastOrDefault();
+            activeEditorContext.SetCurrent(next);
+        }
+
         RefreshDocumentExplorer();
         return true;
+    }
+
+    private EditorTabViewModel? ResolveActiveEditor(IDockLayoutService dockLayoutService)
+    {
+        if (dockLayoutService.ActiveDockable is EditorTabViewModel active)
+        {
+            activeEditorContext.SetCurrent(active);
+            return active;
+        }
+
+        var remembered = activeEditorContext.Current;
+        return remembered is not null && dockLayoutService.Documents.Any(
+            document => ReferenceEquals(document, remembered))
+            ? remembered
+            : null;
     }
 
     private void RefreshDocumentExplorer()

@@ -73,6 +73,8 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     public ObservableRangeCollection<CadCommandLineEntryViewModel> Entries { get; } = [];
     public ObservableCollection<string> Suggestions { get; } = [];
 
+    public string LatestOutputText { get; private set; } = string.Empty;
+
     public bool HasDocument => _documentViewModel is not null;
     public bool HasSuggestions => Suggestions.Count > 0;
     public bool HasPendingEntries
@@ -357,10 +359,14 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         }
 
         Entries.Clear();
+        LatestOutputText = string.Empty;
+        OnPropertyChanged(nameof(LatestOutputText));
     }
 
     private void AddMessage(CadCommandLineEntryKind kind, string message)
     {
+        LatestOutputText = message;
+        OnPropertyChanged(nameof(LatestOutputText));
         foreach (var line in message.Replace("\r\n", "\n").Split('\n'))
             AddEntry(kind, line);
     }

@@ -416,38 +416,55 @@ public sealed class MainWindowUiTests : IDisposable
         if (existing is not null && !existing.IsOffscreen)
             return existing;
 
-        fixture.MainWindow.Focus();
-        switch (toolboxContentId)
+        var shortcut = toolboxContentId switch
         {
-            case "toolbox.entity-properties":
-                ToggleToolboxShortcut(VirtualKeyShort.KEY_G);
-                break;
-            case "toolbox.layers":
-                ToggleToolboxShortcut(VirtualKeyShort.KEY_L);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(toolboxContentId),
-                    toolboxContentId,
-                    "No UI shortcut is registered for this toolbox.");
-        }
+            "toolbox.entity-properties" => VirtualKeyShort.KEY_G,
+            "toolbox.layers" => VirtualKeyShort.KEY_L,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(toolboxContentId),
+                toolboxContentId,
+                "No UI shortcut is registered for this toolbox.")
+        };
+
+        fixture.MainWindow.Focus();
+        ToggleToolboxShortcut(shortcut);
+        var activated = WaitForVisibleElement(automationId, TimeSpan.FromSeconds(2));
+        if (activated is not null)
+            return activated;
+
+        // A visible toolbox is hidden by its toggle shortcut. Toggle once more
+        // when the first press found it open but its content had not been in the
+        // automation tree at the time of the initial lookup.
+        ToggleToolboxShortcut(shortcut);
 
         return fixture.WaitForElement(automationId);
     }
 
     private static void ToggleToolboxShortcut(VirtualKeyShort key)
     {
-        // Toolboxes are open by default. Close and reopen the requested toolbox so
-        // AvalonDock deterministically makes it the active pane.
         Keyboard.TypeSimultaneously(
             VirtualKeyShort.CONTROL,
             VirtualKeyShort.SHIFT,
             key);
-        Thread.Sleep(100);
-        Keyboard.TypeSimultaneously(
-            VirtualKeyShort.CONTROL,
-            VirtualKeyShort.SHIFT,
-            key);
+    }
+
+    private AutomationElement? WaitForVisibleElement(
+        string automationId,
+        TimeSpan timeout)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (stopwatch.Elapsed < timeout)
+        {
+            fixture.EnsureApplicationIsRunning();
+            var element = fixture.MainWindow.FindFirstDescendant(
+                condition => condition.ByAutomationId(automationId));
+            if (element is not null && !element.IsOffscreen)
+                return element;
+
+            Thread.Sleep(50);
+        }
+
+        return null;
     }
 
     private void ClickWhenEnabled(string automationId)
@@ -469,8 +486,17 @@ public sealed class MainWindowUiTests : IDisposable
         ExecuteCommand(commandInput, command);
         fixture.WaitUntil(
             () => CountOutputMatches(commandOutput, expectedText) > 0,
-            $"Command output did not contain '{expectedText}'.");
+            $"Command output did not contain '{expectedText}'. " +
+            $"Visible output: {ReadCommandOutput(commandOutput)}");
     }
+
+    private static string ReadCommandOutput(AutomationElement commandOutput) =>
+        $"Latest result: {commandOutput.Properties.HelpText.ValueOrDefault}; visible rows: " + string.Join(
+            " | ",
+            commandOutput.FindAllDescendants(
+                    condition => condition.ByControlType(ControlType.ListItem))
+                .Select(element => element.Name)
+                .Where(text => !string.IsNullOrWhiteSpace(text)));
 
     private void ClearCommandOutput(
         TextBox commandInput,
@@ -481,11 +507,11 @@ public sealed class MainWindowUiTests : IDisposable
         {
             ExecuteCommand(commandInput, "CLEAR");
             Thread.Sleep(100);
-            if (CountOutputTextElements(commandOutput) != 0)
+            if (CountOutputEntries(commandOutput) != 0)
                 continue;
 
             Thread.Sleep(100);
-            if (CountOutputTextElements(commandOutput) == 0)
+            if (CountOutputEntries(commandOutput) == 0)
                 return;
         }
 
@@ -499,8 +525,14 @@ public sealed class MainWindowUiTests : IDisposable
         var matchCount = 0;
         try
         {
-            foreach (var element in commandOutput.FindAllDescendants(
-                         condition => condition.ByControlType(ControlType.Text)))
+            if (commandOutput.Properties.HelpText.ValueOrDefault?.Contains(
+                    expectedText,
+                    StringComparison.Ordinal) == true)
+            {
+                return 1;
+            }
+
+            foreach (var element in commandOutput.FindAllDescendants())
             {
                 try
                 {
@@ -521,12 +553,12 @@ public sealed class MainWindowUiTests : IDisposable
         return matchCount;
     }
 
-    private static int CountOutputTextElements(AutomationElement commandOutput)
+    private static int CountOutputEntries(AutomationElement commandOutput)
     {
         try
         {
             return commandOutput.FindAllDescendants(
-                condition => condition.ByControlType(ControlType.Text)).Length;
+                condition => condition.ByControlType(ControlType.ListItem)).Length;
         }
         catch (COMException)
         {

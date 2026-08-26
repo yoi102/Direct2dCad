@@ -1,6 +1,7 @@
 using Direct2dCad.Client.Common.Settings;
-using Direct2dCad.ViewModels.Settings.UserSettings;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.Rendering;
+using Direct2dCad.ViewModels.Settings.UserSettings;
 
 namespace Direct2dCad.ViewModels.Tests;
 
@@ -30,8 +31,9 @@ public sealed class RenderingUserSettingsTests
             CadUserSettings.CreateDefault().Rendering,
             CadGraphicsDeviceMode.Hardware);
 
-        Assert.Contains("hardware", viewModel.GraphicsDeviceModeOptions[0].DisplayName,
-            StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(
+            Strings.GraphicsDeviceAutomaticHardware,
+            viewModel.GraphicsDeviceModeOptions[0].DisplayName);
     }
 
     [Fact]
@@ -41,7 +43,9 @@ public sealed class RenderingUserSettingsTests
             CadUserSettings.CreateDefault().Rendering,
             CadGraphicsDeviceMode.Warp);
 
-        Assert.Contains("WARP", viewModel.GraphicsDeviceModeOptions[0].DisplayName);
+        Assert.Equal(
+            Strings.GraphicsDeviceAutomaticWarp,
+            viewModel.GraphicsDeviceModeOptions[0].DisplayName);
     }
 
     [Fact]

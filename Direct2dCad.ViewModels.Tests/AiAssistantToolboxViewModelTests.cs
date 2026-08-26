@@ -3,6 +3,7 @@ using Direct2dCad.Agent;
 using Direct2dCad.Agent.Codex;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.ViewModels.Tools;
@@ -70,11 +71,11 @@ public sealed class AiAssistantToolboxViewModelTests
         viewModel.AddFileFromFileCommand.Execute(null);
         await viewModel.SendCommand.ExecuteAsync(null);
 
-        Assert.Equal("Please analyze the attached files.", codex.LastRequest!.Prompt);
+        Assert.Equal(Strings.AiImagePrompt, codex.LastRequest!.Prompt);
         Assert.Contains(
             viewModel.Messages,
             message => message.Kind == AiChatItemKind.User &&
-                       message.Content == "Please analyze the attached files.");
+                       message.Content == Strings.AiImagePrompt);
     }
 
     [Fact]
@@ -90,7 +91,7 @@ public sealed class AiAssistantToolboxViewModelTests
         Assert.Contains(
             viewModel.Messages,
             message => message.Kind == AiChatItemKind.Error &&
-                       message.Content.Contains("clipboard", StringComparison.OrdinalIgnoreCase));
+                       message.Content == Strings.AiClipboardNoImage);
 
         viewModel.AddFileFromFileCommand.Execute(null);
         var attachment = Assert.Single(viewModel.ImageAttachments);
@@ -102,7 +103,7 @@ public sealed class AiAssistantToolboxViewModelTests
 
         var cleared = Assert.Single(viewModel.Messages);
         Assert.Equal(AiChatItemKind.System, cleared.Kind);
-        Assert.Equal("Conversation cleared.", cleared.Content);
+        Assert.Equal(Strings.AiConversationCleared, cleared.Content);
     }
 
     [Fact]
@@ -212,7 +213,7 @@ public sealed class AiAssistantToolboxViewModelTests
         await viewModel.SendCommand.ExecuteAsync(null);
 
         Assert.False(viewModel.IsBusy);
-        Assert.Equal("Request failed", viewModel.ConnectionStatus);
+        Assert.Equal(Strings.AiRequestFailed, viewModel.ConnectionStatus);
         Assert.Contains(viewModel.Messages, message =>
             message.Kind == AiChatItemKind.Error && message.Content == "model failed");
     }
@@ -245,9 +246,9 @@ public sealed class AiAssistantToolboxViewModelTests
 
         Assert.False(viewModel.IsBusy);
         Assert.True(viewModel.ClearConversationCommand.CanExecute(null));
-        Assert.Equal("Cancelled", viewModel.ConnectionStatus);
+        Assert.Equal(Strings.AiCancelled, viewModel.ConnectionStatus);
         Assert.Contains(viewModel.Messages, message =>
-            message.Kind == AiChatItemKind.System && message.Content == "Cancelled");
+            message.Kind == AiChatItemKind.System && message.Content == Strings.AiCancelled);
     }
 
     [Fact]
@@ -269,7 +270,7 @@ public sealed class AiAssistantToolboxViewModelTests
         await viewModel.SendCommand.ExecuteAsync(null);
 
         Assert.Contains(viewModel.Messages, message =>
-            message.Kind == AiChatItemKind.Error && message.Content.Contains("empty response"));
+            message.Kind == AiChatItemKind.Error && message.Content == Strings.AiEmptyResponse);
     }
 
     [Fact]
@@ -303,7 +304,9 @@ public sealed class AiAssistantToolboxViewModelTests
         Assert.Equal(["new-model"], viewModel.LmStudioModels);
         Assert.Equal(1, settingsStore.SaveCount);
         Assert.Equal(1, codex.ResetCount);
-        Assert.Equal("Ready: new-model", viewModel.ConnectionStatus);
+        Assert.Equal(
+            string.Format(Strings.AiReadyModelFormat, "new-model"),
+            viewModel.ConnectionStatus);
     }
 
     [Fact]
@@ -368,7 +371,7 @@ public sealed class AiAssistantToolboxViewModelTests
 
         Assert.Empty(viewModel.Attachments);
         Assert.Contains(viewModel.Messages, message =>
-            message.Kind == AiChatItemKind.Error && message.Content.Contains("too large"));
+            message.Kind == AiChatItemKind.Error && message.Content == Strings.AiImageTooLarge);
     }
 
     [Fact]

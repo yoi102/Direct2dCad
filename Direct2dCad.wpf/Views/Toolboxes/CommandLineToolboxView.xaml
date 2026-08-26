@@ -18,6 +18,7 @@
 
         <ListBox x:Name="OutputList"
                  AutomationProperties.AutomationId="CommandLineOutput"
+                 AutomationProperties.HelpText="{Binding LatestOutputText}"
                  Margin="6,4,6,0"
                  Padding="0"
                  HorizontalContentAlignment="Stretch"
@@ -36,6 +37,7 @@
                 <Style TargetType="ListBoxItem">
                     <Setter Property="Padding" Value="2,1" />
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding Text}" />
                     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Template">
