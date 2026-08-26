@@ -287,6 +287,25 @@
 
                         </Grid>
                     </Button>
+                    <Button ToolTip="{I18N {x:Static r:LangKeys.Print}}"
+                            AutomationProperties.AutomationId="PrintDocumentButton"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Width="80"
+                            Height="80"
+                            Padding="0"
+                            Visibility="{Binding IsPrintAvailable, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                            Command="{Binding CurrentEditorTabViewModel.PrintCommand}">
+                        <Grid RowDefinitions="* auto">
+                            <md:PackIcon Kind="Printer"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Width="50"
+                                         Height="50" />
+                            <TextBlock Grid.Row="1"
+                                       HorizontalAlignment="Center"
+                                       Text="{I18N {x:Static r:LangKeys.Print}}" />
+                        </Grid>
+                    </Button>
                 </WrapPanel>
             </TabItem>
 

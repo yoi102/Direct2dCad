@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using System.Windows.Data;
 
 namespace Direct2dCad.wpf.Converters;
@@ -16,7 +17,9 @@ internal class DefaultConverter<T>(T defaultValue, T nonDefaultValue) : IValueCo
 
     private static bool IsDefaultValue(object? value)
     {
-        if (value is null)
+        if (value is null ||
+            ReferenceEquals(value, DependencyProperty.UnsetValue) ||
+            ReferenceEquals(value, Binding.DoNothing))
             return true;
 
         var valueType = value.GetType();

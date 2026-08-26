@@ -17,6 +17,7 @@ using Direct2dCad.ViewModels.Layouts;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
+using Direct2dCad.ViewModels.Services.Platform.Printing;
 using Direct2dCad.ViewModels.Settings;
 using MessagePipe;
 
@@ -39,6 +40,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private readonly IFileDialogService _fileDialogService;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
+    private readonly ICadPrintService _printService;
     private readonly IDockLayoutService _dockLayoutService;
     private bool _isSyncingViewSettings;
     private bool _isSyncingUserSettings;
@@ -60,6 +62,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         IFileDialogService fileDialogService,
         IDialogService dialogService,
         ISnackbarService snackbarService,
+        ICadPrintService printService,
         ISubscriber<CadDocumentViewSettingsChangedMessage> viewSettingsChangedSubscriber,
         ISubscriber<CadSelectionFilterChangedMessage> selectionFilterChangedSubscriber,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber,
@@ -73,6 +76,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         _fileDialogService = fileDialogService;
         _dialogService = dialogService;
         _snackbarService = snackbarService;
+        _printService = printService;
         _documentSummaryChangedPublisher = documentSummaryChangedPublisher;
         CadDocumentViewModel = cadDocumentViewModel;
         LayoutWorkspace = new LayoutWorkspaceViewModel(CadDocumentViewModel);
@@ -454,6 +458,24 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
 
         return false;
+    }
+
+    private bool CanPrint() => CadDocumentViewModel.ActiveLayoutId is not null;
+
+    [RelayCommand(CanExecute = nameof(CanPrint))]
+    private async Task PrintAsync()
+    {
+        try
+        {
+            _printService.Print(
+                CadDocumentViewModel.CreatePrintRequest(DocumentName));
+        }
+        catch (Exception ex)
+        {
+            var title = Direct2dCad.Lang.Strings.Strings.ResourceManager.GetString("PrintFailed") ??
+                        "Print failed";
+            await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, title);
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanCreateBlockFromSelection))]
@@ -1068,6 +1090,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (e.PropertyName is nameof(CadDocumentViewModel.ActiveLayoutId) or
             nameof(CadDocumentViewModel.ActiveLayoutViewportId))
         {
+            PrintCommand.NotifyCanExecuteChanged();
             LayoutWorkspace.RefreshDocumentStructure();
             return;
         }
@@ -1081,6 +1104,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             CopySelectedEntitiesCommand.NotifyCanExecuteChanged();
             CutSelectedEntitiesCommand.NotifyCanExecuteChanged();
             ClearSelectionCommand.NotifyCanExecuteChanged();
+            PrintCommand.NotifyCanExecuteChanged();
             UndoCommand.NotifyCanExecuteChanged();
             RedoCommand.NotifyCanExecuteChanged();
         }

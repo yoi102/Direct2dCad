@@ -26,6 +26,7 @@ using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Interactions;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
+using Direct2dCad.ViewModels.Services.Platform.Printing;
 using Direct2dCad.ViewModels.Services.Rendering;
 using Direct2dCad.ViewModels.Services.Snapping;
 using Direct2dCad.ViewModels.Services.Styling;
@@ -1849,6 +1850,43 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             EntityBoundsQueryInto = _entityBoundsQueryInto,
             HiddenEntityIds = _gripDrag.HiddenEntityIds
         };
+    }
+
+    public CadPrintRequest CreatePrintRequest(string documentName)
+    {
+        var document = CadEditor.Document;
+        if (ActiveLayoutId is not { } layoutId ||
+            !document.TryGetLayout(layoutId, out var layout) ||
+            layout is null)
+        {
+            throw new InvalidOperationException("Printing is only available in layout space.");
+        }
+
+        return new CadPrintRequest(
+            documentName,
+            document,
+            layout.PaperBounds,
+            new CadRenderOptions
+            {
+                ActiveOwnerBlockId = CadEditor.ActiveOwnerBlockId,
+                ActiveLayoutId = ActiveLayoutId,
+                ActiveLayoutViewportId = null,
+                DrawGrid = false,
+                DrawOrigin = false,
+                DrawGripHandles = false,
+                DrawLayoutGuides = false,
+                IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
+                IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
+                IsLevelOfDetailEnabled = false,
+                AllowApproximateTileScaleFallback = false,
+                IsBackgroundChunkRecordingEnabled = false,
+                IsParallelRenderingEnabled = false,
+                EnableGeometryRealizations = true,
+                EntityBoundsQuery = _entityBoundsQuery,
+                EntityBoundsQueryInto = _entityBoundsQueryInto,
+                HiddenEntityIds = CadRenderOptions.NoHiddenEntities
+            },
+            DrawOleObjectForRender);
     }
 
     private void FitBounds(CadRectD bounds, double padding)

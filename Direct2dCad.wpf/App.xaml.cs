@@ -12,6 +12,7 @@ using Direct2dCad.Editor;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
+using Direct2dCad.ViewModels.Services.Platform.Printing;
 using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 using Direct2dCad.wpf;
@@ -20,6 +21,7 @@ using Direct2dCad.wpf.Services.Dialogs;
 using Direct2dCad.wpf.Services.Importing;
 using Direct2dCad.wpf.Services.Notifications;
 using Direct2dCad.wpf.Services.Ole;
+using Direct2dCad.wpf.Services.Printing;
 using Direct2dCad.wpf.Services.Toolboxes;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -92,6 +94,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IAiFileImportService, AiFileImportService>();
         services.AddSingleton<IClipboardTextService, ClipboardTextService>();
         services.AddSingleton<IOleHostService, OleHostService>();
+        services.AddSingleton<ICadPrintService, CadPrintService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IUserSettingsStore, JsonUserSettingsStore>();
         services.AddSingleton<IWorkspaceSettingsStore, JsonWorkspaceSettingsStore>();

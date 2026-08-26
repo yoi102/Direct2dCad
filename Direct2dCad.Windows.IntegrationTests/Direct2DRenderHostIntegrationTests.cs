@@ -18,6 +18,69 @@ namespace Direct2dCad.Windows.IntegrationTests;
 
 public sealed class Direct2DRenderHostIntegrationTests
 {
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void OffscreenRenderer_RendersCadSceneWithoutWpfImageSource()
+    {
+        var document = CadDocument.Create("Offscreen rendering");
+        document.AddLine(new CadPointD(-10, 0), new CadPointD(10, 0));
+        var viewport = new CadViewport();
+        viewport.SetSize(128, 128);
+        viewport.SetView(4, new CadPointD(64, 64));
+
+        var frame = Direct2DOffscreenRenderer.Render(
+            document,
+            viewport,
+            new CadRenderOptions
+            {
+                DrawGrid = false,
+                DrawOrigin = false,
+                DrawGripHandles = false
+            },
+            128,
+            128);
+
+        Assert.Equal(128, frame.PixelWidth);
+        Assert.Equal(128, frame.PixelHeight);
+        Assert.Equal(128 * 4, frame.Stride);
+        Assert.Equal(128 * 128 * 4, frame.Pixels.Length);
+        Assert.True(ContainsNonBlackPixel(frame.Pixels));
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void OffscreenRenderer_RendersCompleteLayoutPaperAndModelViewport()
+    {
+        var document = CadDocument.Create("Layout printing");
+        document.AddLine(new CadPointD(-10, 0), new CadPointD(10, 0));
+        var layout = document.GetLayout(LayoutId.Default);
+        var viewport = new CadViewport();
+        viewport.SetSize(840, 594);
+        viewport.SetView(2, new CadPointD(0, 594));
+
+        var frame = Direct2DOffscreenRenderer.Render(
+            document,
+            viewport,
+            new CadRenderOptions
+            {
+                ActiveLayoutId = layout.Id,
+                ActiveLayoutViewportId = null,
+                DrawGrid = false,
+                DrawOrigin = false,
+                DrawGripHandles = false,
+                DrawLayoutGuides = false
+            },
+            840,
+            594);
+
+        Assert.True(ContainsGreenPixel(
+            frame,
+            left: 390,
+            top: 288,
+            right: 450,
+            bottom: 306));
+    }
+
     [Theory]
     [InlineData(true, 6.0f, 1.5f)]
     [InlineData(false, 6.0f, 6.0f)]
@@ -42,6 +105,40 @@ public sealed class Direct2DRenderHostIntegrationTests
             options);
 
         Assert.Equal(expectedWorldStrokeWidth, actual, precision: 5);
+    }
+
+    private static bool ContainsNonBlackPixel(byte[] pixels)
+    {
+        for (var offset = 0; offset < pixels.Length; offset += 4)
+        {
+            if (pixels[offset] != 0 || pixels[offset + 1] != 0 || pixels[offset + 2] != 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsGreenPixel(
+        Direct2DRenderedFrame frame,
+        int left,
+        int top,
+        int right,
+        int bottom)
+    {
+        for (var y = top; y < bottom; y++)
+        {
+            for (var x = left; x < right; x++)
+            {
+                var offset = y * frame.Stride + x * 4;
+                var blue = frame.Pixels[offset];
+                var green = frame.Pixels[offset + 1];
+                var red = frame.Pixels[offset + 2];
+                if (green > 160 && green >= red + 50 && green >= blue + 50)
+                    return true;
+            }
+        }
+
+        return false;
     }
 
     [Fact]

@@ -1386,4 +1386,10 @@
   <data name="RadialMenuSlot" xml:space="preserve">
     <value>扇区 {0}</value>
   </data>
+  <data name="Print" xml:space="preserve">
+    <value>打印</value>
+  </data>
+  <data name="PrintFailed" xml:space="preserve">
+    <value>打印失败</value>
+  </data>
 </root>

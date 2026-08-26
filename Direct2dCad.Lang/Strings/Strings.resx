@@ -1621,4 +1621,10 @@
   <data name="RadialMenuSlot" xml:space="preserve">
     <value>Slot {0}</value>
   </data>
+  <data name="Print" xml:space="preserve">
+    <value>Print</value>
+  </data>
+  <data name="PrintFailed" xml:space="preserve">
+    <value>Print failed</value>
+  </data>
 </root>

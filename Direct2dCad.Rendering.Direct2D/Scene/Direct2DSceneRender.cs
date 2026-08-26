@@ -787,7 +787,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 if ((passes & Direct2DScenePasses.Base) != 0)
                 {
                     var backgroundStarted = Stopwatch.GetTimestamp();
-                    DrawPaper(deviceContext, activeLayout);
+                    DrawPaper(deviceContext, activeLayout, options.DrawLayoutGuides);
                     _statistics.RecordBackgroundRender(ElapsedMilliseconds(backgroundStarted));
                     DrawLayoutViewportsBase(
                         deviceContext,
@@ -906,13 +906,19 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
     }
 
-    private void DrawPaper(ID2D1DeviceContext context, CadLayout layout)
+    private void DrawPaper(
+        ID2D1DeviceContext context,
+        CadLayout layout,
+        bool drawLayoutGuides)
     {
         var bounds = ToRawRect(layout.PaperBounds);
         var paperBrush = _styleResources.GetBrush(context, layout.PaperColor);
+        context.FillRectangle(bounds, paperBrush);
+        if (!drawLayoutGuides)
+            return;
+
         var edgeBrush = _styleResources.GetBrush(context, CadColor.FromRgb(64, 64, 64));
         var marginBrush = _styleResources.GetBrush(context, CadColor.FromArgb(217, 115, 115, 115));
-        context.FillRectangle(bounds, paperBrush);
         context.DrawRectangle(bounds, edgeBrush, 1f / Math.Max((float)CadEditorZoom(context), 1e-6f));
         context.DrawRectangle(
             ToRawRect(layout.PrintableBounds),
@@ -973,11 +979,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 context.Transform = paperTransform;
             }
 
-            context.DrawRectangle(
-                ToRawRect(layoutViewport.Bounds),
-                borderBrush,
-                (options.ActiveLayoutViewportId == layoutViewport.Id ? 2f : 1f) /
-                Math.Max((float)paperViewport.Zoom, 1e-6f));
+            if (options.DrawLayoutGuides)
+            {
+                context.DrawRectangle(
+                    ToRawRect(layoutViewport.Bounds),
+                    borderBrush,
+                    (options.ActiveLayoutViewportId == layoutViewport.Id ? 2f : 1f) /
+                    Math.Max((float)paperViewport.Zoom, 1e-6f));
+            }
         }
     }
 

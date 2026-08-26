@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -28,6 +29,8 @@ public partial class MainViewModel : ObservableObject
     private readonly IUserSettingsStore _userSettingsStore;
     private readonly CadUserSettings _userSettings;
     private readonly CadDocumentStorage _storage = new();
+    private CadDocumentViewModel? _printAvailabilityDocument;
+    private bool _isDocumentContextActive;
 
     public MainViewModel(IDockLayoutService dockLayoutService, SideToggleManager sideToggleManager,
         IApplicationCultureService cultureSettingService,
@@ -95,6 +98,25 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnCurrentEditorTabViewModelChanged(EditorTabViewModel? value)
     {
+        if (_printAvailabilityDocument is not null)
+        {
+            _printAvailabilityDocument.PropertyChanged -=
+                OnPrintAvailabilityDocumentPropertyChanged;
+        }
+
+        _printAvailabilityDocument = value?.CadDocumentViewModel;
+        if (_printAvailabilityDocument is not null)
+        {
+            _printAvailabilityDocument.PropertyChanged +=
+                OnPrintAvailabilityDocumentPropertyChanged;
+            _isDocumentContextActive = true;
+        }
+        else
+        {
+            _isDocumentContextActive = false;
+        }
+
+        UpdatePrintAvailability();
         DocumentExplorer.SetActiveDocument(value);
         Layers.Attach(value?.CadDocumentViewModel);
         EntityProperties.Attach(value?.CadDocumentViewModel);
@@ -116,6 +138,28 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     public partial int TabControlSelectedIndex { get; set; } = 0;
+
+    [ObservableProperty]
+    public partial bool IsPrintAvailable { get; private set; }
+
+    [ObservableProperty]
+    public partial object? ActiveDockContent { get; set; }
+
+    partial void OnActiveDockContentChanged(object? value)
+    {
+        if (value is EditorTabViewModel editorTabViewModel)
+        {
+            _isDocumentContextActive = true;
+            CurrentEditorTabViewModel = editorTabViewModel;
+        }
+        else if (value is not CadToolboxViewModelBase)
+        {
+            // Static documents such as the welcome page are not CAD contexts.
+            _isDocumentContextActive = false;
+        }
+
+        UpdatePrintAvailability();
+    }
 
     private void OnAnchorableStateChanged(object? sender, EventArgs e)
     {
@@ -384,14 +428,19 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private void ActiveContentChanged()
+    private void OnPrintAvailabilityDocumentPropertyChanged(
+        object? sender,
+        PropertyChangedEventArgs e)
     {
-        // A toolbox can become AvalonDock's active content while the current
-        // CAD document remains selected. Only document activation should
-        // reattach document-scoped toolboxes.
-        if (_dockLayoutService.ActiveDockable is EditorTabViewModel editorTabViewModel)
-            CurrentEditorTabViewModel = editorTabViewModel;
+        if (e.PropertyName == nameof(CadDocumentViewModel.ActiveLayoutId))
+            UpdatePrintAvailability();
+    }
+
+    private void UpdatePrintAvailability()
+    {
+        IsPrintAvailable =
+            _isDocumentContextActive &&
+            CurrentEditorTabViewModel?.CadDocumentViewModel.ActiveLayoutId is not null;
     }
 
     #region TitleBar

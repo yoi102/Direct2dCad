@@ -31,6 +31,11 @@
                  WindowStartupLocation="CenterScreen"
                  Height="900"
                  Width="1300">
+    <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="P"
+                    Modifiers="Control"
+                    Command="{Binding CurrentEditorTabViewModel.PrintCommand}" />
+    </mah:MetroWindow.InputBindings>
     <mah:MetroWindow.LeftWindowCommands>
         <mah:WindowCommands>
             <Button Margin="15 0 0 0"
@@ -60,6 +65,13 @@
                               Foreground="White"
                               Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.SaveAs}}" />
+                    <Separator />
+                    <MenuItem Command="{Binding CurrentEditorTabViewModel.PrintCommand}"
+                              Icon="{md:PackIcon Kind=Printer}"
+                              InputGestureText="Ctrl+P"
+                              Foreground="White"
+                              Visibility="{Binding IsPrintAvailable, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                              Header="{I18N {x:Static r:LangKeys.Print}}" />
                 </MenuItem>
             </Menu>
 
@@ -201,6 +213,7 @@
                     <avalonDock:ToggleDockingManager x:Name="dockManager"
                                                      Grid.Row="1"
                                                      BorderThickness="0"
+                                                     ActiveContent="{Binding ActiveDockContent, Mode=OneWayToSource}"
                                                      DocumentClosing="dockManager_DocumentClosing"
                                                      DockLayout="{Binding DockLayout}"
                                                      DocumentHeaderTemplate="{StaticResource DocumentTabHeaderTemplate}"
@@ -214,10 +227,6 @@
                                                        PassEventArgsToCommand="True" />
                             </i:EventTrigger>
 
-                            <!-- Active 文档切换 -->
-                            <i:EventTrigger EventName="ActiveContentChanged">
-                                <i:InvokeCommandAction Command="{Binding ActiveContentChangedCommand}" />
-                            </i:EventTrigger>
                         </i:Interaction.Triggers>
 
                         <avalonDock:ToggleDockingManager.Theme>

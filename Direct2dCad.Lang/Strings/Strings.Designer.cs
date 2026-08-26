@@ -31,7 +31,7 @@ namespace Direct2dCad.Lang.Strings {
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Strings() {
         }
-        
+
         /// <summary>
         ///   返回此类使用的缓存的 ResourceManager 实例。
         /// </summary>
@@ -45,7 +45,7 @@ namespace Direct2dCad.Lang.Strings {
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   重写当前线程的 CurrentUICulture 属性，对
         ///   使用此强类型资源类的所有资源查找执行重写。
@@ -2823,6 +2823,24 @@ namespace Direct2dCad.Lang.Strings {
             }
         }
         
+        /// <summary>
+        ///   查找类似 Print 的本地化字符串。
+        /// </summary>
+        public static string Print {
+            get {
+                return ResourceManager.GetString("Print", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   查找类似 Print failed 的本地化字符串。
+        /// </summary>
+        public static string PrintFailed {
+            get {
+                return ResourceManager.GetString("PrintFailed", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Priority 的本地化字符串。
         /// </summary>
