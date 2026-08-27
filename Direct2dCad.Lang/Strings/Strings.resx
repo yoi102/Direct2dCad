@@ -1654,6 +1654,9 @@
   <data name="Copies" xml:space="preserve">
     <value>Copies</value>
   </data>
+  <data name="PrintResolution" xml:space="preserve">
+    <value>Resolution (DPI)</value>
+  </data>
   <data name="CustomPaperSize" xml:space="preserve">
     <value>Custom</value>
   </data>

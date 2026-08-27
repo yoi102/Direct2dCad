@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Rendering.Direct2D.Ole;
 
@@ -26,10 +25,14 @@ public static class Direct2DOffscreenRenderer
         var imageSource = new OffscreenImageSource(pixelWidth, pixelHeight);
         host.AttachImageSource(imageSource);
         host.SetSize(pixelWidth, pixelHeight);
-        host.SetScene(document, viewport);
+        // An offscreen frame is consumed once, so prepare entity resources now
+        // instead of starting the interactive host's background preparation.
+        host.SetScene(document, viewport, prepareResourcesInBackground: false);
         host.SetRenderOptions(options);
         host.SetOleDrawCallback(oleDrawCallback);
-        PrepareRenderCaches(host);
+        // Let the renderer use its complete immediate fallback. Warming retained
+        // command-list and tile caches has no reuse value for printing and can take
+        // an unbounded number of batches for large drawings.
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 
         var pixels = host.CaptureBackBufferPixels();
@@ -45,21 +48,6 @@ public static class Direct2DOffscreenRenderer
             pixelHeight,
             checked(pixelWidth * 4),
             pixels);
-    }
-
-    private static void PrepareRenderCaches(Direct2DImageRenderHost host)
-    {
-        var deadline = Stopwatch.GetTimestamp() + Stopwatch.Frequency * 30;
-        while (host.PrepareRenderCacheStep())
-        {
-            if (Stopwatch.GetTimestamp() >= deadline)
-            {
-                throw new TimeoutException(
-                    "Timed out while preparing the offscreen Direct2D render caches.");
-            }
-
-            Thread.Yield();
-        }
     }
 
     private sealed class OffscreenImageSource(int width, int height) : ID3D11ImageSource

@@ -31,7 +31,7 @@ namespace Direct2dCad.Lang.Strings {
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
         internal Strings() {
         }
-
+        
         /// <summary>
         ///   返回此类使用的缓存的 ResourceManager 实例。
         /// </summary>
@@ -45,7 +45,7 @@ namespace Direct2dCad.Lang.Strings {
                 return resourceMan;
             }
         }
-
+        
         /// <summary>
         ///   重写当前线程的 CurrentUICulture 属性，对
         ///   使用此强类型资源类的所有资源查找执行重写。
@@ -970,6 +970,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Copies 的本地化字符串。
+        /// </summary>
+        public static string Copies {
+            get {
+                return ResourceManager.GetString("Copies", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Copy selected entities 的本地化字符串。
         /// </summary>
         public static string CopySelection {
@@ -1047,6 +1056,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string Cross {
             get {
                 return ResourceManager.GetString("Cross", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Custom 的本地化字符串。
+        /// </summary>
+        public static string CustomPaperSize {
+            get {
+                return ResourceManager.GetString("CustomPaperSize", resourceCulture);
             }
         }
         
@@ -2005,6 +2023,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Landscape 的本地化字符串。
+        /// </summary>
+        public static string Landscape {
+            get {
+                return ResourceManager.GetString("Landscape", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Language 的本地化字符串。
         /// </summary>
         public static string Language {
@@ -2509,6 +2536,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 No printers are installed or available. 的本地化字符串。
+        /// </summary>
+        public static string NoPrintersAvailable {
+            get {
+                return ResourceManager.GetString("NoPrintersAvailable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Object settings 的本地化字符串。
         /// </summary>
         public static string ObjectSettings {
@@ -2541,6 +2577,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string OpenFile {
             get {
                 return ResourceManager.GetString("OpenFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Orientation 的本地化字符串。
+        /// </summary>
+        public static string Orientation {
+            get {
+                return ResourceManager.GetString("Orientation", resourceCulture);
             }
         }
         
@@ -2658,6 +2703,15 @@ namespace Direct2dCad.Lang.Strings {
         public static string PaperHeight {
             get {
                 return ResourceManager.GetString("PaperHeight", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Paper size 的本地化字符串。
+        /// </summary>
+        public static string PaperSize {
+            get {
+                return ResourceManager.GetString("PaperSize", resourceCulture);
             }
         }
         
@@ -2797,6 +2851,15 @@ namespace Direct2dCad.Lang.Strings {
         }
         
         /// <summary>
+        ///   查找类似 Portrait 的本地化字符串。
+        /// </summary>
+        public static string Portrait {
+            get {
+                return ResourceManager.GetString("Portrait", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   查找类似 Position X 的本地化字符串。
         /// </summary>
         public static string PositionX {
@@ -2831,7 +2894,34 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("Print", resourceCulture);
             }
         }
-
+        
+        /// <summary>
+        ///   查找类似 Printing completed. 的本地化字符串。
+        /// </summary>
+        public static string PrintCompleted {
+            get {
+                return ResourceManager.GetString("PrintCompleted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Printer 的本地化字符串。
+        /// </summary>
+        public static string Printer {
+            get {
+                return ResourceManager.GetString("Printer", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Printer settings 的本地化字符串。
+        /// </summary>
+        public static string PrinterSettings {
+            get {
+                return ResourceManager.GetString("PrinterSettings", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   查找类似 Print failed 的本地化字符串。
         /// </summary>
@@ -2840,7 +2930,61 @@ namespace Direct2dCad.Lang.Strings {
                 return ResourceManager.GetString("PrintFailed", resourceCulture);
             }
         }
-
+        
+        /// <summary>
+        ///   查找类似 Print preview 的本地化字符串。
+        /// </summary>
+        public static string PrintPreview {
+            get {
+                return ResourceManager.GetString("PrintPreview", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Review the layout and choose the print settings. 的本地化字符串。
+        /// </summary>
+        public static string PrintPreviewDescription {
+            get {
+                return ResourceManager.GetString("PrintPreviewDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 The preview uses the selected paper and orientation. Printer margins are applied when printing. 的本地化字符串。
+        /// </summary>
+        public static string PrintPreviewPrinterNote {
+            get {
+                return ResourceManager.GetString("PrintPreviewPrinterNote", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Resolution (DPI) 的本地化字符串。
+        /// </summary>
+        public static string PrintResolution {
+            get {
+                return ResourceManager.GetString("PrintResolution", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Printing started. 的本地化字符串。
+        /// </summary>
+        public static string PrintStarted {
+            get {
+                return ResourceManager.GetString("PrintStarted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Print job submitted. 的本地化字符串。
+        /// </summary>
+        public static string PrintSubmitted {
+            get {
+                return ResourceManager.GetString("PrintSubmitted", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   查找类似 Priority 的本地化字符串。
         /// </summary>
@@ -3876,96 +4020,6 @@ namespace Direct2dCad.Lang.Strings {
             }
         }
         
-        public static string Copies {
-            get {
-                return ResourceManager.GetString("Copies", resourceCulture);
-            }
-        }
-
-        public static string CustomPaperSize {
-            get {
-                return ResourceManager.GetString("CustomPaperSize", resourceCulture);
-            }
-        }
-
-        public static string Landscape {
-            get {
-                return ResourceManager.GetString("Landscape", resourceCulture);
-            }
-        }
-
-        public static string NoPrintersAvailable {
-            get {
-                return ResourceManager.GetString("NoPrintersAvailable", resourceCulture);
-            }
-        }
-
-        public static string Orientation {
-            get {
-                return ResourceManager.GetString("Orientation", resourceCulture);
-            }
-        }
-
-        public static string PaperSize {
-            get {
-                return ResourceManager.GetString("PaperSize", resourceCulture);
-            }
-        }
-
-        public static string Portrait {
-            get {
-                return ResourceManager.GetString("Portrait", resourceCulture);
-            }
-        }
-
-        public static string Printer {
-            get {
-                return ResourceManager.GetString("Printer", resourceCulture);
-            }
-        }
-
-        public static string PrinterSettings {
-            get {
-                return ResourceManager.GetString("PrinterSettings", resourceCulture);
-            }
-        }
-
-        public static string PrintPreview {
-            get {
-                return ResourceManager.GetString("PrintPreview", resourceCulture);
-            }
-        }
-
-        public static string PrintPreviewDescription {
-            get {
-                return ResourceManager.GetString("PrintPreviewDescription", resourceCulture);
-            }
-        }
-
-        public static string PrintPreviewPrinterNote {
-            get {
-                return ResourceManager.GetString("PrintPreviewPrinterNote", resourceCulture);
-            }
-        }
-
-        public static string PrintStarted {
-            get {
-                return ResourceManager.GetString("PrintStarted", resourceCulture);
-            }
-        }
-
-        public static string PrintSubmitted {
-            get {
-                return ResourceManager.GetString("PrintSubmitted", resourceCulture);
-            }
-        }
-
-        public static string PrintCompleted {
-            get {
-                return ResourceManager.GetString("PrintCompleted", resourceCulture);
-            }
-        }
-
         /// <summary>
         ///   查找类似 Zoom snapshot preview 的本地化字符串。
         /// </summary>

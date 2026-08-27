@@ -2,6 +2,7 @@ using System.Printing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using Direct2dCad.wpf.Services.Printing;
 
 namespace Direct2dCad.wpf.Views.Dialogs;
 
@@ -26,6 +27,7 @@ public partial class CadPrintPreviewDialog
         PreviewImage.Source = preview;
 
         OrientationCombo.SelectedValue = initialOrientation;
+        DpiInput.Value = CadPrintService.DefaultRenderDpi;
 
         PrinterCombo.ItemsSource = _printers;
         PrinterCombo.SelectedItem = _printers.FirstOrDefault(printer => printer.IsDefault) ?? _printers[0];
@@ -92,7 +94,11 @@ public partial class CadPrintPreviewDialog
             printer.QueueName,
             paper.MediaSize,
             orientation,
-            Math.Clamp((int)Math.Round(CopiesInput.Value ?? 1.0), 1, 999));
+            Math.Clamp((int)Math.Round(CopiesInput.Value ?? 1.0), 1, 999),
+            Math.Clamp(
+                (int)Math.Round(DpiInput.Value ?? CadPrintService.DefaultRenderDpi),
+                CadPrintService.MinimumRenderDpi,
+                CadPrintService.MaximumRenderDpi));
         DialogResult = true;
     }
 
@@ -126,4 +132,5 @@ internal sealed record CadPrintPreviewSelection(
     string QueueName,
     PageMediaSize MediaSize,
     PageOrientation Orientation,
-    int Copies);
+    int Copies,
+    int RenderDpi);

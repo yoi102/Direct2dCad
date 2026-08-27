@@ -1419,6 +1419,9 @@
   <data name="Copies" xml:space="preserve">
     <value>部数</value>
   </data>
+  <data name="PrintResolution" xml:space="preserve">
+    <value>印刷解像度 (DPI)</value>
+  </data>
   <data name="CustomPaperSize" xml:space="preserve">
     <value>カスタム</value>
   </data>

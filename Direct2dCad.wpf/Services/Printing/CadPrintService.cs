@@ -15,8 +15,11 @@ namespace Direct2dCad.wpf.Services.Printing;
 
 public sealed class CadPrintService : ICadPrintService
 {
-    private const double DefaultRenderDpi = 300.0;
-    private const int MaximumRenderPixelSide = 4096;
+    internal const int DefaultRenderDpi = 300;
+    internal const int MinimumRenderDpi = 72;
+    internal const int MaximumRenderDpi = 1200;
+    private const int MaximumRenderPixelSide = 16384;
+    private const long MaximumRenderPixelCount = 144_000_000;
     private const int MaximumPreviewPixelSide = 1600;
     private const double DefaultPageWidth = 816.0;
     private const double DefaultPageHeight = 1056.0;
@@ -159,11 +162,18 @@ public sealed class CadPrintService : ICadPrintService
                 requestedTicket.PageMediaSize = selection.MediaSize;
                 requestedTicket.PageOrientation = selection.Orientation;
                 requestedTicket.CopyCount = selection.Copies;
+                requestedTicket.PageResolution = new PageResolution(
+                    selection.RenderDpi,
+                    selection.RenderDpi);
 
                 var printTicket = printQueue
                     .MergeAndValidatePrintTicket(baseTicket, requestedTicket)
                     .ValidatedPrintTicket;
-                var page = ResolvePageMetrics(printQueue, printTicket, renderBounds);
+                var page = ResolvePageMetrics(
+                    printQueue,
+                    printTicket,
+                    renderBounds,
+                    selection.RenderDpi);
                 var viewport = CreateViewport(renderBounds, page.PixelWidth, page.PixelHeight);
                 var frame = Direct2DOffscreenRenderer.Render(
                     request.Document,
@@ -372,7 +382,8 @@ public sealed class CadPrintService : ICadPrintService
     private static CadPrintPageMetrics ResolvePageMetrics(
         PrintQueue printQueue,
         PrintTicket printTicket,
-        CadRectD renderBounds)
+        CadRectD renderBounds,
+        int renderDpi)
     {
         var capabilities = printQueue.GetPrintCapabilities(printTicket);
         var imageableArea = capabilities.PageImageableArea;
@@ -402,15 +413,10 @@ public sealed class CadPrintService : ICadPrintService
             outputWidth = outputHeight * contentAspect;
         }
 
-        var pixelWidth = Math.Max(1, (int)Math.Ceiling(outputWidth / 96.0 * DefaultRenderDpi));
-        var pixelHeight = Math.Max(1, (int)Math.Ceiling(outputHeight / 96.0 * DefaultRenderDpi));
-        var maximumSide = Math.Max(pixelWidth, pixelHeight);
-        if (maximumSide > MaximumRenderPixelSide)
-        {
-            var scale = MaximumRenderPixelSide / (double)maximumSide;
-            pixelWidth = Math.Max(1, (int)Math.Round(pixelWidth * scale));
-            pixelHeight = Math.Max(1, (int)Math.Round(pixelHeight * scale));
-        }
+        var (pixelWidth, pixelHeight) = ResolveRenderPixelSize(
+            outputWidth,
+            outputHeight,
+            renderDpi);
 
         return new CadPrintPageMetrics(
             printableX + (printableWidth - outputWidth) * 0.5,
@@ -419,6 +425,30 @@ public sealed class CadPrintService : ICadPrintService
             outputHeight,
             pixelWidth,
             pixelHeight);
+    }
+
+    internal static (int Width, int Height) ResolveRenderPixelSize(
+        double outputWidth,
+        double outputHeight,
+        int renderDpi)
+    {
+        var dpi = Math.Clamp(renderDpi, MinimumRenderDpi, MaximumRenderDpi);
+        var width = Math.Max(1.0, Math.Ceiling(outputWidth / 96.0 * dpi));
+        var height = Math.Max(1.0, Math.Ceiling(outputHeight / 96.0 * dpi));
+        var scale = Math.Min(
+            1.0,
+            MaximumRenderPixelSide / Math.Max(width, height));
+        var pixelCount = width * height;
+        if (pixelCount > MaximumRenderPixelCount)
+        {
+            scale = Math.Min(
+                scale,
+                Math.Sqrt(MaximumRenderPixelCount / pixelCount));
+        }
+
+        return (
+            Math.Max(1, (int)Math.Round(width * scale)),
+            Math.Max(1, (int)Math.Round(height * scale)));
     }
 
     private static CadViewport CreateViewport(CadRectD bounds, int width, int height)

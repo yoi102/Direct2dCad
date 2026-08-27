@@ -49,6 +49,39 @@ public sealed class Direct2DRenderHostIntegrationTests
         Assert.Equal((expectedWidth, expectedHeight), actual);
     }
 
+    [Theory]
+    [InlineData(96, 96, 72, 72, 72)]
+    [InlineData(96, 96, 300, 300, 300)]
+    [InlineData(96, 96, 1200, 1200, 1200)]
+    [InlineData(96, 96, 2400, 1200, 1200)]
+    [Trait("Category", "WindowsIntegration")]
+    public void PrintRenderPixelSize_UsesSelectedDpiWithinSupportedRange(
+        double outputWidth,
+        double outputHeight,
+        int dpi,
+        int expectedWidth,
+        int expectedHeight)
+    {
+        var actual = CadPrintService.ResolveRenderPixelSize(
+            outputWidth,
+            outputHeight,
+            dpi);
+
+        Assert.Equal((expectedWidth, expectedHeight), actual);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void PrintRenderPixelSize_LimitsLargePagesWithoutChangingAspectRatio()
+    {
+        var actual = CadPrintService.ResolveRenderPixelSize(
+            outputWidth: 2000,
+            outputHeight: 2000,
+            renderDpi: 1200);
+
+        Assert.Equal((12000, 12000), actual);
+    }
+
     [Fact]
     [Trait("Category", "WindowsIntegration")]
     public void OffscreenRenderer_RendersCadSceneWithoutWpfImageSource()

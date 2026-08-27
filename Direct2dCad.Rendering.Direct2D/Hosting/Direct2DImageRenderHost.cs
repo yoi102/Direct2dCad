@@ -166,7 +166,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ResetRendererDeviceResources();
     }
 
-    public void SetScene(CadDocument document, CadViewport viewport)
+    public void SetScene(CadDocument document, CadViewport viewport) =>
+        SetScene(document, viewport, prepareResourcesInBackground: true);
+
+    internal void SetScene(
+        CadDocument document,
+        CadViewport viewport,
+        bool prepareResourcesInBackground)
     {
         ThrowIfDisposed();
 
@@ -177,7 +183,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         InvalidateBaseScene(releaseSnapshot: true);
         EndViewportInteraction();
         RefreshPendingTextMeasurements(document);
-        ResetRendererDeviceResources();
+        ResetRendererDeviceResources(prepareResourcesInBackground);
     }
 
     public void RebuildAll(CadDocument document)
@@ -1271,7 +1277,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         }
     }
 
-    private void ResetRendererDeviceResources()
+    private void ResetRendererDeviceResources(bool prepareResourcesInBackground = true)
     {
         EndViewportInteraction();
         _hasRenderedFrame = false;
@@ -1286,7 +1292,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             _target.DwriteFactory,
             _target.Device,
             _target.Context,
-            _document);
+            _document,
+            prepareResourcesInBackground);
     }
 
     private void BeforeDeviceResourcesReleased()

@@ -1419,6 +1419,9 @@
   <data name="Copies" xml:space="preserve">
     <value>份数</value>
   </data>
+  <data name="PrintResolution" xml:space="preserve">
+    <value>打印分辨率（DPI）</value>
+  </data>
   <data name="CustomPaperSize" xml:space="preserve">
     <value>自定义</value>
   </data>

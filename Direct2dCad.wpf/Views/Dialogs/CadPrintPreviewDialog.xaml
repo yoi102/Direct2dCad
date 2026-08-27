@@ -89,6 +89,17 @@
                                        Value="1"
                                        AutomationProperties.AutomationId="PrintPreviewCopiesInput" />
 
+                    <TextBlock Margin="0,0,0,5"
+                               Text="{I18N {x:Static r:LangKeys.PrintResolution}}" />
+                    <mah:NumericUpDown x:Name="DpiInput"
+                                       MinHeight="32"
+                                       Minimum="72"
+                                       Maximum="1200"
+                                       Interval="50"
+                                       StringFormat="F0"
+                                       Value="300"
+                                       AutomationProperties.AutomationId="PrintPreviewDpiInput" />
+
                     <TextBlock Margin="0,20,0,0"
                                Opacity="0.68"
                                Text="{I18N {x:Static r:LangKeys.PrintPreviewPrinterNote}}"
