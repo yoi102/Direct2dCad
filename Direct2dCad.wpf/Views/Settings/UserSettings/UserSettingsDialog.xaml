@@ -10,7 +10,7 @@
                  d:DataContext="{d:DesignInstance Type=usersettings:UserSettingsViewModel}"
                  mc:Ignorable="d"
                  AutomationProperties.AutomationId="UserSettingsDialog"
-                 Title="{I18N {x:Static r:UserSettingsLangKeys.ApplicationSettings}}"
+                 Title="{I18N {x:Static r:LangKeys.ApplicationSettings}}"
                  Background="{DynamicResource MaterialDesign.Brush.Background}"
                  TitleCharacterCasing="Normal"
                  Width="760"
@@ -40,7 +40,7 @@
                         AutomationProperties.AutomationId="ResetUserSettingsButton"
                         HorizontalAlignment="Left"
                         Click="Reset_Click"
-                        Content="{I18N {x:Static r:UserSettingsLangKeys.Reset}}" />
+                        Content="{I18N {x:Static r:LangKeys.Reset}}" />
                 <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                     <Button MinWidth="88"
                             AutomationProperties.AutomationId="ConfirmUserSettingsButton"

@@ -1389,6 +1389,51 @@
   <data name="Print" xml:space="preserve">
     <value>印刷</value>
   </data>
+  <data name="PrintPreview" xml:space="preserve">
+    <value>印刷プレビュー</value>
+  </data>
+  <data name="PrintPreviewDescription" xml:space="preserve">
+    <value>現在のレイアウトを確認し、印刷設定を選択してください。</value>
+  </data>
+  <data name="PrintPreviewPrinterNote" xml:space="preserve">
+    <value>プレビューには選択した用紙と向きが反映されます。印刷時にプリンターの余白が適用されます。</value>
+  </data>
+  <data name="PrinterSettings" xml:space="preserve">
+    <value>プリンター設定</value>
+  </data>
+  <data name="Printer" xml:space="preserve">
+    <value>プリンター</value>
+  </data>
+  <data name="PaperSize" xml:space="preserve">
+    <value>用紙サイズ</value>
+  </data>
+  <data name="Orientation" xml:space="preserve">
+    <value>印刷の向き</value>
+  </data>
+  <data name="Portrait" xml:space="preserve">
+    <value>縦</value>
+  </data>
+  <data name="Landscape" xml:space="preserve">
+    <value>横</value>
+  </data>
+  <data name="Copies" xml:space="preserve">
+    <value>部数</value>
+  </data>
+  <data name="CustomPaperSize" xml:space="preserve">
+    <value>カスタム</value>
+  </data>
+  <data name="NoPrintersAvailable" xml:space="preserve">
+    <value>インストール済みまたは利用可能なプリンターがありません。</value>
+  </data>
+  <data name="PrintStarted" xml:space="preserve">
+    <value>印刷を開始しました。</value>
+  </data>
+  <data name="PrintSubmitted" xml:space="preserve">
+    <value>印刷ジョブを送信しました。</value>
+  </data>
+  <data name="PrintCompleted" xml:space="preserve">
+    <value>印刷が完了しました。</value>
+  </data>
   <data name="PrintFailed" xml:space="preserve">
     <value>印刷に失敗しました</value>
   </data>

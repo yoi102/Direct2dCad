@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows.Controls;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -11,13 +10,10 @@ public partial class UnsavedDocumentsDialog : UserControl
     {
         InitializeComponent();
 
-        var unsavedLocation = Strings.ResourceManager.GetString(
-            "UnsavedDocumentNoPath",
-            CultureInfo.CurrentUICulture) ?? "Not saved yet";
         DocumentsList.ItemsSource = documents.Select(document => new DocumentListItem(
             document.Name,
             string.IsNullOrWhiteSpace(document.FilePath)
-                ? unsavedLocation
+                ? Strings.UnsavedDocumentNoPath
                 : document.FilePath));
     }
 

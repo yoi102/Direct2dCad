@@ -25,7 +25,7 @@
         <TextBlock Grid.Row="0"
                    Margin="0,0,16,12"
                    VerticalAlignment="Center"
-                   Text="{I18N {x:Static r:UserSettingsLangKeys.DarkTheme}}" />
+                   Text="{I18N {x:Static r:LangKeys.DarkTheme}}" />
         <CheckBox Grid.Row="0"
                   Grid.Column="1"
                   AutomationProperties.AutomationId="DarkThemeCheckBox"
@@ -36,7 +36,7 @@
         <TextBlock Grid.Row="1"
                    Margin="0,0,16,12"
                    VerticalAlignment="Center"
-                   Text="{I18N {x:Static r:UserSettingsLangKeys.Language}}" />
+                   Text="{I18N {x:Static r:LangKeys.Language}}" />
         <ComboBox Grid.Row="1"
                   Grid.Column="1"
                   MinWidth="190"
@@ -47,7 +47,7 @@
         <TextBlock Grid.Row="2"
                    Margin="0,0,16,12"
                    VerticalAlignment="Center"
-                   Text="{I18N {x:Static r:UserSettingsLangKeys.PrimaryColor}}" />
+                   Text="{I18N {x:Static r:LangKeys.PrimaryColor}}" />
         <mah:ColorPicker Grid.Row="2"
                          Grid.Column="1"
                          MinWidth="190"
@@ -59,7 +59,7 @@
         <TextBlock Grid.Row="3"
                    Margin="0,0,16,12"
                    VerticalAlignment="Center"
-                   Text="{I18N {x:Static r:UserSettingsLangKeys.SecondaryColor}}" />
+                   Text="{I18N {x:Static r:LangKeys.SecondaryColor}}" />
         <mah:ColorPicker Grid.Row="3"
                          Grid.Column="1"
                          MinWidth="190"

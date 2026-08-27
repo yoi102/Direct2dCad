@@ -3876,6 +3876,96 @@ namespace Direct2dCad.Lang.Strings {
             }
         }
         
+        public static string Copies {
+            get {
+                return ResourceManager.GetString("Copies", resourceCulture);
+            }
+        }
+
+        public static string CustomPaperSize {
+            get {
+                return ResourceManager.GetString("CustomPaperSize", resourceCulture);
+            }
+        }
+
+        public static string Landscape {
+            get {
+                return ResourceManager.GetString("Landscape", resourceCulture);
+            }
+        }
+
+        public static string NoPrintersAvailable {
+            get {
+                return ResourceManager.GetString("NoPrintersAvailable", resourceCulture);
+            }
+        }
+
+        public static string Orientation {
+            get {
+                return ResourceManager.GetString("Orientation", resourceCulture);
+            }
+        }
+
+        public static string PaperSize {
+            get {
+                return ResourceManager.GetString("PaperSize", resourceCulture);
+            }
+        }
+
+        public static string Portrait {
+            get {
+                return ResourceManager.GetString("Portrait", resourceCulture);
+            }
+        }
+
+        public static string Printer {
+            get {
+                return ResourceManager.GetString("Printer", resourceCulture);
+            }
+        }
+
+        public static string PrinterSettings {
+            get {
+                return ResourceManager.GetString("PrinterSettings", resourceCulture);
+            }
+        }
+
+        public static string PrintPreview {
+            get {
+                return ResourceManager.GetString("PrintPreview", resourceCulture);
+            }
+        }
+
+        public static string PrintPreviewDescription {
+            get {
+                return ResourceManager.GetString("PrintPreviewDescription", resourceCulture);
+            }
+        }
+
+        public static string PrintPreviewPrinterNote {
+            get {
+                return ResourceManager.GetString("PrintPreviewPrinterNote", resourceCulture);
+            }
+        }
+
+        public static string PrintStarted {
+            get {
+                return ResourceManager.GetString("PrintStarted", resourceCulture);
+            }
+        }
+
+        public static string PrintSubmitted {
+            get {
+                return ResourceManager.GetString("PrintSubmitted", resourceCulture);
+            }
+        }
+
+        public static string PrintCompleted {
+            get {
+                return ResourceManager.GetString("PrintCompleted", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   查找类似 Zoom snapshot preview 的本地化字符串。
         /// </summary>

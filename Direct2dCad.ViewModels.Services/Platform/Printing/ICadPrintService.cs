@@ -7,7 +7,11 @@ namespace Direct2dCad.ViewModels.Services.Platform.Printing;
 
 public interface ICadPrintService
 {
-    bool Print(CadPrintRequest request);
+    Task<bool> PrintAsync(
+        CadPrintRequest request,
+        Action? onPrintStarted = null,
+        Action<bool>? onBusyChanged = null,
+        Action? onPrintCompleted = null);
 }
 
 public sealed record CadPrintRequest(

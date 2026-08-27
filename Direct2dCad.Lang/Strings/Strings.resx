@@ -1624,6 +1624,51 @@
   <data name="Print" xml:space="preserve">
     <value>Print</value>
   </data>
+  <data name="PrintPreview" xml:space="preserve">
+    <value>Print preview</value>
+  </data>
+  <data name="PrintPreviewDescription" xml:space="preserve">
+    <value>Review the layout and choose the print settings.</value>
+  </data>
+  <data name="PrintPreviewPrinterNote" xml:space="preserve">
+    <value>The preview uses the selected paper and orientation. Printer margins are applied when printing.</value>
+  </data>
+  <data name="PrinterSettings" xml:space="preserve">
+    <value>Printer settings</value>
+  </data>
+  <data name="Printer" xml:space="preserve">
+    <value>Printer</value>
+  </data>
+  <data name="PaperSize" xml:space="preserve">
+    <value>Paper size</value>
+  </data>
+  <data name="Orientation" xml:space="preserve">
+    <value>Orientation</value>
+  </data>
+  <data name="Portrait" xml:space="preserve">
+    <value>Portrait</value>
+  </data>
+  <data name="Landscape" xml:space="preserve">
+    <value>Landscape</value>
+  </data>
+  <data name="Copies" xml:space="preserve">
+    <value>Copies</value>
+  </data>
+  <data name="CustomPaperSize" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="NoPrintersAvailable" xml:space="preserve">
+    <value>No printers are installed or available.</value>
+  </data>
+  <data name="PrintStarted" xml:space="preserve">
+    <value>Printing started.</value>
+  </data>
+  <data name="PrintSubmitted" xml:space="preserve">
+    <value>Print job submitted.</value>
+  </data>
+  <data name="PrintCompleted" xml:space="preserve">
+    <value>Printing completed.</value>
+  </data>
   <data name="PrintFailed" xml:space="preserve">
     <value>Print failed</value>
   </data>

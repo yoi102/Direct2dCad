@@ -11,6 +11,7 @@ using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.IO;
+using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Interactions;
 using Direct2dCad.ViewModels.Layouts;
@@ -465,16 +466,45 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     [RelayCommand(CanExecute = nameof(CanPrint))]
     private async Task PrintAsync()
     {
+        IDisposable? progressDialog = null;
+
+        void SetPrintBusy(bool isBusy)
+        {
+            if (isBusy)
+            {
+                progressDialog ??= _dialogService.ShowProgressBarDialog();
+                return;
+            }
+
+            progressDialog?.Dispose();
+            progressDialog = null;
+        }
+
         try
         {
-            _printService.Print(
-                CadDocumentViewModel.CreatePrintRequest(DocumentName));
+            var printed = await _printService.PrintAsync(
+                CadDocumentViewModel.CreatePrintRequest(DocumentName),
+                onPrintStarted: () => _snackbarService.Enqueue(
+                    Strings.PrintStarted,
+                    neverConsiderToBeDuplicate: true),
+                onBusyChanged: SetPrintBusy,
+                onPrintCompleted: () => _snackbarService.Enqueue(
+                    Strings.PrintCompleted,
+                    neverConsiderToBeDuplicate: true));
+            if (printed)
+            {
+                _snackbarService.Enqueue(
+                    Strings.PrintSubmitted,
+                    neverConsiderToBeDuplicate: true);
+            }
         }
         catch (Exception ex)
         {
-            var title = Direct2dCad.Lang.Strings.Strings.ResourceManager.GetString("PrintFailed") ??
-                        "Print failed";
-            await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, title);
+            await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, Strings.PrintFailed);
+        }
+        finally
+        {
+            progressDialog?.Dispose();
         }
     }
 

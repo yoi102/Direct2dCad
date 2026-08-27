@@ -11,6 +11,7 @@ using Direct2dCad.Rendering.Direct2D.Overlays;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
+using Direct2dCad.wpf.Services.Printing;
 using SharpGen.Runtime;
 using Vortice.Mathematics;
 
@@ -18,6 +19,36 @@ namespace Direct2dCad.Windows.IntegrationTests;
 
 public sealed class Direct2DRenderHostIntegrationTests
 {
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public async Task PrintWorker_RunsOffCallerOnStaThread()
+    {
+        var callerThreadId = Environment.CurrentManagedThreadId;
+
+        var result = await CadPrintService.RunOnStaThreadAsync(() =>
+            (Environment.CurrentManagedThreadId, Thread.CurrentThread.GetApartmentState()));
+
+        Assert.NotEqual(callerThreadId, result.CurrentManagedThreadId);
+        Assert.Equal(ApartmentState.STA, result.Item2);
+    }
+
+    [Theory]
+    [InlineData(297, 210, 1600, 1131)]
+    [InlineData(210, 297, 1131, 1600)]
+    [InlineData(100, 100, 1600, 1600)]
+    [Trait("Category", "WindowsIntegration")]
+    public void PrintPreviewPixelSize_PreservesPaperAspectRatio(
+        double paperWidth,
+        double paperHeight,
+        int expectedWidth,
+        int expectedHeight)
+    {
+        var actual = CadPrintService.ResolvePreviewPixelSize(
+            CadRectD.FromLTRB(0, 0, paperWidth, paperHeight));
+
+        Assert.Equal((expectedWidth, expectedHeight), actual);
+    }
+
     [Fact]
     [Trait("Category", "WindowsIntegration")]
     public void OffscreenRenderer_RendersCadSceneWithoutWpfImageSource()

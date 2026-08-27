@@ -1389,6 +1389,51 @@
   <data name="Print" xml:space="preserve">
     <value>打印</value>
   </data>
+  <data name="PrintPreview" xml:space="preserve">
+    <value>打印预览</value>
+  </data>
+  <data name="PrintPreviewDescription" xml:space="preserve">
+    <value>检查当前布局并选择打印设置。</value>
+  </data>
+  <data name="PrintPreviewPrinterNote" xml:space="preserve">
+    <value>预览会使用所选纸张和方向；打印时将自动应用打印机边距。</value>
+  </data>
+  <data name="PrinterSettings" xml:space="preserve">
+    <value>打印机设置</value>
+  </data>
+  <data name="Printer" xml:space="preserve">
+    <value>打印机</value>
+  </data>
+  <data name="PaperSize" xml:space="preserve">
+    <value>纸张大小</value>
+  </data>
+  <data name="Orientation" xml:space="preserve">
+    <value>方向</value>
+  </data>
+  <data name="Portrait" xml:space="preserve">
+    <value>纵向</value>
+  </data>
+  <data name="Landscape" xml:space="preserve">
+    <value>横向</value>
+  </data>
+  <data name="Copies" xml:space="preserve">
+    <value>份数</value>
+  </data>
+  <data name="CustomPaperSize" xml:space="preserve">
+    <value>自定义</value>
+  </data>
+  <data name="NoPrintersAvailable" xml:space="preserve">
+    <value>没有已安装或可用的打印机。</value>
+  </data>
+  <data name="PrintStarted" xml:space="preserve">
+    <value>已开始打印。</value>
+  </data>
+  <data name="PrintSubmitted" xml:space="preserve">
+    <value>打印任务已提交。</value>
+  </data>
+  <data name="PrintCompleted" xml:space="preserve">
+    <value>打印已完成。</value>
+  </data>
   <data name="PrintFailed" xml:space="preserve">
     <value>打印失败</value>
   </data>

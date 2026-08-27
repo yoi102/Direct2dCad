@@ -18,35 +18,35 @@
             </Grid.ColumnDefinitions>
             <TextBlock Margin="0,0,12,0"
                        VerticalAlignment="Center"
-                       Text="{I18N {x:Static r:UserSettingsLangKeys.GraphicsDeviceMode}}" />
+                       Text="{I18N {x:Static r:LangKeys.GraphicsDeviceMode}}" />
             <ComboBox Grid.Column="1"
                       ItemsSource="{Binding GraphicsDeviceModeOptions}"
                       DisplayMemberPath="DisplayName"
                       SelectedItem="{Binding SelectedGraphicsDeviceMode}" />
         </Grid>
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.Antialiasing}}"
+                  Content="{I18N {x:Static r:LangKeys.Antialiasing}}"
                   IsChecked="{Binding IsAntialiasingEnabled}" />
         <CheckBox Margin="0,0,0,12"
                   Content="{I18N {x:Static r:LangKeys.TextAntialiasing}}"
                   IsChecked="{Binding IsTextAntialiasingEnabled}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.ShowFramesPerSecond}}"
+                  Content="{I18N {x:Static r:LangKeys.ShowFramesPerSecond}}"
                   IsChecked="{Binding ShowFramesPerSecond}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.ZoomSnapshotPreview}}"
+                  Content="{I18N {x:Static r:LangKeys.ZoomSnapshotPreview}}"
                   IsChecked="{Binding IsZoomSnapshotPreviewEnabled}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.ApproximateTileScaleFallback}}"
+                  Content="{I18N {x:Static r:LangKeys.ApproximateTileScaleFallback}}"
                   IsChecked="{Binding AllowApproximateTileScaleFallback}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.LevelOfDetailOptimization}}"
+                  Content="{I18N {x:Static r:LangKeys.LevelOfDetailOptimization}}"
                   IsChecked="{Binding IsLevelOfDetailEnabled}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.BackgroundChunkRecording}}"
+                  Content="{I18N {x:Static r:LangKeys.BackgroundChunkRecording}}"
                   IsChecked="{Binding IsBackgroundChunkRecordingEnabled}" />
         <CheckBox Margin="0,0,0,12"
-                  Content="{I18N {x:Static r:UserSettingsLangKeys.ParallelRendering}}"
+                  Content="{I18N {x:Static r:LangKeys.ParallelRendering}}"
                   IsChecked="{Binding IsParallelRenderingEnabled}" />
         <Grid Margin="24,0,0,0"
               IsEnabled="{Binding IsParallelRenderingEnabled}">
@@ -60,7 +60,7 @@
             </Grid.RowDefinitions>
             <TextBlock Margin="0,0,12,10"
                        VerticalAlignment="Center"
-                       Text="{I18N {x:Static r:UserSettingsLangKeys.ParallelRenderingMode}}" />
+                       Text="{I18N {x:Static r:LangKeys.ParallelRenderingMode}}" />
             <ComboBox Grid.Column="1"
                       Margin="0,0,0,10"
                       ItemsSource="{Binding ParallelRenderingModeOptions}"
@@ -69,7 +69,7 @@
             <TextBlock Grid.Row="1"
                        Margin="0,0,12,0"
                        VerticalAlignment="Center"
-                       Text="{I18N {x:Static r:UserSettingsLangKeys.ParallelRenderingWorkerCount}}" />
+                       Text="{I18N {x:Static r:LangKeys.ParallelRenderingWorkerCount}}" />
             <mah:NumericUpDown Grid.Row="1"
                                Grid.Column="1"
                                Width="100"

@@ -185,7 +185,7 @@
                      Style="{StaticResource MahApps.Styles.TabItem}">
                 <WrapPanel Margin="10">
 
-                    <Button ToolTip="{I18N {x:Static r:UserSettingsLangKeys.ApplicationSettings}}"
+                    <Button ToolTip="{I18N {x:Static r:LangKeys.ApplicationSettings}}"
                             AutomationProperties.AutomationId="UserSettingsButton"
                             Style="{StaticResource MaterialDesignFlatButton}"
                             Width="80"

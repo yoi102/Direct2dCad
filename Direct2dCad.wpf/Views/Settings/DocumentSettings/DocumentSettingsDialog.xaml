@@ -45,7 +45,7 @@
                     AutomationProperties.AutomationId="ResetDocumentSettingsButton"
                     HorizontalAlignment="Left"
                     Click="Reset_Click"
-                    Content="{I18N {x:Static r:UserSettingsLangKeys.Reset}}" />
+                    Content="{I18N {x:Static r:LangKeys.Reset}}" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                 <Button MinWidth="88"
                         AutomationProperties.AutomationId="ConfirmDocumentSettingsButton"
