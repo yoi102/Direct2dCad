@@ -577,8 +577,9 @@ internal static class Direct2DEntityVisibility
         var maximumStrokeWidth = Math.Max(
             resourceCache.MaximumStrokeWidth,
             (float)options.MinimumScreenStrokeWidth);
+        var strokeScale = ResolveEntityStrokeScaleMultiplier(options);
         var maximumWorldStrokeWidth = options.KeepStrokeWidthScreenConstant
-            ? maximumStrokeWidth / zoom
+            ? maximumStrokeWidth * strokeScale / zoom
             : maximumStrokeWidth;
         return Math.Max(
             minimumPadding,
@@ -627,10 +628,21 @@ internal static class Direct2DEntityVisibility
         CadRenderOptions options)
     {
         var zoom = Math.Max((float)viewport.Zoom, float.Epsilon);
+        var strokeScale = ResolveEntityStrokeScaleMultiplier(options);
         var strokeWidth = options.KeepStrokeWidthScreenConstant
-            ? modelStrokeWidth / zoom
+            ? modelStrokeWidth * strokeScale / zoom
             : modelStrokeWidth;
-        return Math.Max(strokeWidth, (float)options.MinimumScreenStrokeWidth / zoom);
+        return Math.Max(
+            strokeWidth,
+            (float)options.MinimumScreenStrokeWidth * strokeScale / zoom);
+    }
+
+    private static float ResolveEntityStrokeScaleMultiplier(CadRenderOptions options)
+    {
+        var multiplier = options.EntityStrokeScaleMultiplier;
+        return double.IsFinite(multiplier) && multiplier > double.Epsilon
+            ? (float)multiplier
+            : 1.0f;
     }
 }
 

@@ -2,13 +2,11 @@ using System.Printing;
 using System.Windows;
 using System.Windows.Documents.Serialization;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang.Strings;
-using Direct2dCad.Rendering;
-using Direct2dCad.Rendering.Direct2D.Hosting;
 using Direct2dCad.ViewModels.Services.Platform.Printing;
+using Direct2dCad.wpf.Services.Printing.Vector;
 using Direct2dCad.wpf.Views.Dialogs;
 
 namespace Direct2dCad.wpf.Services.Printing;
@@ -18,9 +16,7 @@ public sealed class CadPrintService : ICadPrintService
     internal const int DefaultRenderDpi = 300;
     internal const int MinimumRenderDpi = 72;
     internal const int MaximumRenderDpi = 1200;
-    private const int MaximumRenderPixelSide = 16384;
-    private const long MaximumRenderPixelCount = 144_000_000;
-    private const int MaximumPreviewPixelSide = 1600;
+    private const int PreviewEmbeddedRasterDpi = 150;
     private const double DefaultPageWidth = 816.0;
     private const double DefaultPageHeight = 1056.0;
 
@@ -77,7 +73,7 @@ public sealed class CadPrintService : ICadPrintService
 
         return new CadPrintPreparation(
             printers,
-            CreatePreviewBitmap(request, renderBounds));
+            CreatePreviewImage(request));
     }
 
     private static async Task<T> RunWithBusyIndicatorAsync<T>(
@@ -172,18 +168,17 @@ public sealed class CadPrintService : ICadPrintService
                 var page = ResolvePageMetrics(
                     printQueue,
                     printTicket,
-                    renderBounds,
+                    renderBounds);
+                var layout = request.Document.GetLayout(request.ActiveLayoutId);
+                var visual = CadVectorPrintRenderer.CreateVisual(
+                    request,
+                    layout,
+                    new Rect(
+                        page.OutputX,
+                        page.OutputY,
+                        page.OutputWidth,
+                        page.OutputHeight),
                     selection.RenderDpi);
-                var viewport = CreateViewport(renderBounds, page.PixelWidth, page.PixelHeight);
-                var frame = Direct2DOffscreenRenderer.Render(
-                    request.Document,
-                    viewport,
-                    request.RenderOptions,
-                    page.PixelWidth,
-                    page.PixelHeight,
-                    request.OleDrawCallback);
-                var bitmap = CreateBitmap(frame, page.OutputWidth, page.OutputHeight);
-                var visual = CreatePrintVisual(bitmap, page);
                 printQueue.CurrentJobSettings.Description = request.DocumentName;
                 printQueue.CurrentJobSettings.CurrentPrintTicket = printTicket;
 
@@ -337,38 +332,25 @@ public sealed class CadPrintService : ICadPrintService
         return $"{name}  ({width * millimetersPerDip:0.#} × {height * millimetersPerDip:0.#} mm)";
     }
 
-    private static BitmapSource CreatePreviewBitmap(
-        CadPrintRequest request,
-        CadRectD renderBounds)
+    internal static ImageSource CreatePreviewImage(CadPrintRequest request)
     {
-        var (width, height) = ResolvePreviewPixelSize(renderBounds);
-        var viewport = CreateViewport(renderBounds, width, height);
-        var frame = Direct2DOffscreenRenderer.Render(
-            request.Document,
-            viewport,
-            request.RenderOptions,
-            width,
-            height,
-            request.OleDrawCallback);
-        return CreateBitmap(frame, width, height);
-    }
-
-    internal static (int Width, int Height) ResolvePreviewPixelSize(CadRectD bounds)
-    {
-        var maximumSide = Math.Max(bounds.Width, bounds.Height);
-        if (!(maximumSide > 0) || !double.IsFinite(maximumSide))
-            return (1, 1);
-
-        var scale = MaximumPreviewPixelSide / maximumSide;
-        return (
-            Math.Max(1, (int)Math.Round(bounds.Width * scale)),
-            Math.Max(1, (int)Math.Round(bounds.Height * scale)));
+        var layout = request.Document.GetLayout(request.ActiveLayoutId);
+        var visual = CadVectorPrintRenderer.CreateVisual(
+            request,
+            layout,
+            new Rect(0, 0, request.PaperBounds.Width, request.PaperBounds.Height),
+            PreviewEmbeddedRasterDpi);
+        var drawing = VisualTreeHelper.GetDrawing(visual)?.CloneCurrentValue() ??
+                      throw new InvalidOperationException("The print preview contains no drawing.");
+        drawing.Freeze();
+        var image = new DrawingImage(drawing);
+        image.Freeze();
+        return image;
     }
 
     private static CadRectD ResolveRenderBounds(CadPrintRequest request)
     {
-        if (request.RenderOptions.ActiveLayoutId is null)
-            throw new InvalidOperationException("Printing is only available in layout space.");
+        request.Document.GetLayout(request.ActiveLayoutId);
         if (request.PaperBounds.IsEmpty ||
             !double.IsFinite(request.PaperBounds.Width) ||
             !double.IsFinite(request.PaperBounds.Height))
@@ -382,8 +364,7 @@ public sealed class CadPrintService : ICadPrintService
     private static CadPrintPageMetrics ResolvePageMetrics(
         PrintQueue printQueue,
         PrintTicket printTicket,
-        CadRectD renderBounds,
-        int renderDpi)
+        CadRectD renderBounds)
     {
         var capabilities = printQueue.GetPrintCapabilities(printTicket);
         var imageableArea = capabilities.PageImageableArea;
@@ -413,93 +394,11 @@ public sealed class CadPrintService : ICadPrintService
             outputWidth = outputHeight * contentAspect;
         }
 
-        var (pixelWidth, pixelHeight) = ResolveRenderPixelSize(
-            outputWidth,
-            outputHeight,
-            renderDpi);
-
         return new CadPrintPageMetrics(
             printableX + (printableWidth - outputWidth) * 0.5,
             printableY + (printableHeight - outputHeight) * 0.5,
             outputWidth,
-            outputHeight,
-            pixelWidth,
-            pixelHeight);
-    }
-
-    internal static (int Width, int Height) ResolveRenderPixelSize(
-        double outputWidth,
-        double outputHeight,
-        int renderDpi)
-    {
-        var dpi = Math.Clamp(renderDpi, MinimumRenderDpi, MaximumRenderDpi);
-        var width = Math.Max(1.0, Math.Ceiling(outputWidth / 96.0 * dpi));
-        var height = Math.Max(1.0, Math.Ceiling(outputHeight / 96.0 * dpi));
-        var scale = Math.Min(
-            1.0,
-            MaximumRenderPixelSide / Math.Max(width, height));
-        var pixelCount = width * height;
-        if (pixelCount > MaximumRenderPixelCount)
-        {
-            scale = Math.Min(
-                scale,
-                Math.Sqrt(MaximumRenderPixelCount / pixelCount));
-        }
-
-        return (
-            Math.Max(1, (int)Math.Round(width * scale)),
-            Math.Max(1, (int)Math.Round(height * scale)));
-    }
-
-    private static CadViewport CreateViewport(CadRectD bounds, int width, int height)
-    {
-        var viewport = new CadViewport();
-        viewport.SetSize(width, height);
-        var zoom = Math.Min(
-            width / Math.Max(bounds.Width, double.Epsilon),
-            height / Math.Max(bounds.Height, double.Epsilon));
-        viewport.SetView(
-            zoom,
-            new CadPointD(
-                width * 0.5 - bounds.Center.X * zoom,
-                height * 0.5 + bounds.Center.Y * zoom));
-        return viewport;
-    }
-
-    private static BitmapSource CreateBitmap(
-        Direct2DRenderedFrame frame,
-        double outputWidth,
-        double outputHeight)
-    {
-        var dpiX = frame.PixelWidth / outputWidth * 96.0;
-        var dpiY = frame.PixelHeight / outputHeight * 96.0;
-        var bitmap = BitmapSource.Create(
-            frame.PixelWidth,
-            frame.PixelHeight,
-            dpiX,
-            dpiY,
-            PixelFormats.Bgra32,
-            null,
-            frame.Pixels,
-            frame.Stride);
-        bitmap.Freeze();
-        return bitmap;
-    }
-
-    private static DrawingVisual CreatePrintVisual(
-        BitmapSource bitmap,
-        CadPrintPageMetrics metrics)
-    {
-        var visual = new DrawingVisual();
-        using var context = visual.RenderOpen();
-        context.DrawImage(
-            bitmap,
-            new Rect(
-                metrics.OutputX,
-                metrics.OutputY,
-                metrics.OutputWidth,
-                metrics.OutputHeight));
-        return visual;
+            outputHeight);
     }
 
     private static double PositiveOrFallback(double value, double fallback) =>
@@ -510,7 +409,7 @@ public sealed class CadPrintService : ICadPrintService
 
     private sealed record CadPrintPreparation(
         IReadOnlyList<CadPrinterChoice> Printers,
-        BitmapSource Preview);
+        ImageSource Preview);
 
     private sealed record CadPrintSubmission(Task WritingCompletion);
 
@@ -518,7 +417,5 @@ public sealed class CadPrintService : ICadPrintService
         double OutputX,
         double OutputY,
         double OutputWidth,
-        double OutputHeight,
-        int PixelWidth,
-        int PixelHeight);
+        double OutputHeight);
 }

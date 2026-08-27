@@ -468,6 +468,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             TransformScaleMultiplier = source.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+            EntityStrokeScaleMultiplier = source.EntityStrokeScaleMultiplier,
             HiddenEntityIds = CadRenderOptions.NoHiddenEntities,
             DirtyWorldBounds = worldBounds.Inflate(TileGutterPixels / zoom),
             EntityBoundsQuery = source.EntityBoundsQuery,
@@ -493,7 +494,9 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                     key.KeepStrokeWidthScreenConstant,
                     key.Zoom,
                     BitConverter.Int64BitsToDouble(
-                        key.MinimumScreenStrokeWidthBits)))
+                        key.MinimumScreenStrokeWidthBits),
+                    BitConverter.Int64BitsToDouble(
+                        key.EntityStrokeScaleMultiplierBits)))
             {
                 return false;
             }
@@ -509,19 +512,25 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         return IsStrokeExtentCacheSafe(
             options.KeepStrokeWidthScreenConstant,
             zoom,
-            options.MinimumScreenStrokeWidth);
+            options.MinimumScreenStrokeWidth,
+            options.EntityStrokeScaleMultiplier);
     }
 
     private bool IsStrokeExtentCacheSafe(
         bool keepStrokeWidthScreenConstant,
         double zoom,
-        double minimumScreenStrokeWidth)
+        double minimumScreenStrokeWidth,
+        double entityStrokeScaleMultiplier)
     {
+        var strokeScale = double.IsFinite(entityStrokeScaleMultiplier) &&
+                          entityStrokeScaleMultiplier > double.Epsilon
+            ? entityStrokeScaleMultiplier
+            : 1.0;
         var maximumStrokeWidth = Math.Max(
             _resourceCache.MaximumStrokeWidth,
             (float)Math.Max(0.0, minimumScreenStrokeWidth));
         var screenStrokeWidth = keepStrokeWidthScreenConstant
-            ? maximumStrokeWidth
+            ? maximumStrokeWidth * strokeScale
             : maximumStrokeWidth * Math.Max(zoom, double.Epsilon);
         var maximumPaintExtent =
             screenStrokeWidth * MaximumStrokeExtentMultiplier + 2.0;
@@ -842,7 +851,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         long TransformScaleMultiplierBits,
         bool IsLevelOfDetailEnabled,
         bool KeepStrokeWidthScreenConstant,
-        long MinimumScreenStrokeWidthBits)
+        long MinimumScreenStrokeWidthBits,
+        long EntityStrokeScaleMultiplierBits)
     {
         public double Zoom => BitConverter.Int64BitsToDouble(ZoomBits);
 
@@ -860,7 +870,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                         ResolveTransformScaleMultiplier(options.TransformScaleMultiplier))),
                 options.IsLevelOfDetailEnabled,
                 options.KeepStrokeWidthScreenConstant,
-                BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
+                BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth),
+                BitConverter.DoubleToInt64Bits(options.EntityStrokeScaleMultiplier));
         }
 
         public bool IsCompatibleWith(TileProfileKey other) =>
@@ -871,7 +882,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             TransformScaleMultiplierBits == other.TransformScaleMultiplierBits &&
             IsLevelOfDetailEnabled == other.IsLevelOfDetailEnabled &&
             KeepStrokeWidthScreenConstant == other.KeepStrokeWidthScreenConstant &&
-            MinimumScreenStrokeWidthBits == other.MinimumScreenStrokeWidthBits;
+            MinimumScreenStrokeWidthBits == other.MinimumScreenStrokeWidthBits &&
+            EntityStrokeScaleMultiplierBits == other.EntityStrokeScaleMultiplierBits;
 
         private static double ResolveTransformScaleMultiplier(double value) =>
             double.IsFinite(value) && value > double.Epsilon ? value : 1.0;

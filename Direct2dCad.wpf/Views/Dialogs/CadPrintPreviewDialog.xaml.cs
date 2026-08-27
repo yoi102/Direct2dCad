@@ -1,7 +1,7 @@
 using System.Printing;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media.Imaging;
+using System.Windows.Media;
 using Direct2dCad.wpf.Services.Printing;
 
 namespace Direct2dCad.wpf.Views.Dialogs;
@@ -13,7 +13,7 @@ public partial class CadPrintPreviewDialog
     private readonly IReadOnlyList<CadPrinterChoice> _printers;
 
     internal CadPrintPreviewDialog(
-        BitmapSource preview,
+        ImageSource preview,
         string documentName,
         IReadOnlyList<CadPrinterChoice> printers,
         PageOrientation initialOrientation)

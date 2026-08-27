@@ -704,11 +704,24 @@ internal sealed class Direct2DEntityRenderer(
         }
     }
 
-    private static float ResolveStrokeWidth(float modelWidth, CadViewport viewport, CadRenderOptions options)
+    internal static float ResolveStrokeWidth(float modelWidth, CadViewport viewport, CadRenderOptions options)
     {
         var zoom = Math.Max((float)viewport.Zoom, float.Epsilon);
-        var width = options.KeepStrokeWidthScreenConstant ? modelWidth / zoom : modelWidth;
-        return Math.Max(width, (float)options.MinimumScreenStrokeWidth / zoom);
+        var rasterScale = ResolveEntityStrokeScaleMultiplier(options);
+        var width = options.KeepStrokeWidthScreenConstant
+            ? modelWidth * rasterScale / zoom
+            : modelWidth;
+        return Math.Max(
+            width,
+            (float)options.MinimumScreenStrokeWidth * rasterScale / zoom);
+    }
+
+    private static float ResolveEntityStrokeScaleMultiplier(CadRenderOptions options)
+    {
+        var multiplier = options.EntityStrokeScaleMultiplier;
+        return double.IsFinite(multiplier) && multiplier > double.Epsilon
+            ? (float)multiplier
+            : 1.0f;
     }
 
     private static bool StrokeWidthChangesWithScale(

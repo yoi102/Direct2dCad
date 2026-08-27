@@ -30,6 +30,8 @@ public sealed class CadRenderOptions
     public double TransformScaleMultiplier { get; init; } = 1.0;
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;
+    // Keeps screen-constant entity strokes physically consistent on high-density raster targets.
+    public double EntityStrokeScaleMultiplier { get; init; } = 1.0;
     public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = NoHiddenEntities;
     public CadRectD? DirtyWorldBounds { get; init; }
     public Func<BlockId, CadRectD, IReadOnlyList<EntityId>>? EntityBoundsQuery { get; init; }

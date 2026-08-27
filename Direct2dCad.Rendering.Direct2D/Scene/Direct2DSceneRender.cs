@@ -1619,6 +1619,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             TransformScaleMultiplier = source.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+            EntityStrokeScaleMultiplier = source.EntityStrokeScaleMultiplier,
             HiddenEntityIds = source.HiddenEntityIds,
             DirtyWorldBounds = dirtyWorldBounds,
             EntityBoundsQuery = source.EntityBoundsQuery,
@@ -1718,6 +1719,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             TransformScaleMultiplier = options.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
+            EntityStrokeScaleMultiplier = options.EntityStrokeScaleMultiplier,
             EntityBoundsQuery = options.EntityBoundsQuery,
             EntityBoundsQueryInto = options.EntityBoundsQueryInto,
             HiddenEntityIds = includeHiddenEntities
@@ -1742,6 +1744,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             TransformScaleMultiplier = options.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
+            EntityStrokeScaleMultiplier = options.EntityStrokeScaleMultiplier,
             HiddenEntityIds = options.HiddenEntityIds,
             DirtyWorldBounds = options.DirtyWorldBounds,
             EntityBoundsQuery = options.EntityBoundsQuery,

@@ -797,12 +797,16 @@ internal sealed class Direct2DSelectionRenderer(
             return resolvedSelectionWidth;
         }
 
+        var strokeScale = double.IsFinite(options.EntityStrokeScaleMultiplier) &&
+                          options.EntityStrokeScaleMultiplier > double.Epsilon
+            ? (float)options.EntityStrokeScaleMultiplier
+            : 1.0f;
         var resolvedEntityWidth = options.KeepStrokeWidthScreenConstant
-            ? modelWidth / zoom
+            ? modelWidth * strokeScale / zoom
             : modelWidth;
         resolvedEntityWidth = Math.Max(
             resolvedEntityWidth,
-            (float)Math.Max(options.MinimumScreenStrokeWidth, 0.0) / zoom);
+            (float)Math.Max(options.MinimumScreenStrokeWidth, 0.0) * strokeScale / zoom);
         return Math.Max(resolvedSelectionWidth, resolvedEntityWidth);
     }
 

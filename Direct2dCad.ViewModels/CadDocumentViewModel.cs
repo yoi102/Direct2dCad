@@ -1866,26 +1866,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             documentName,
             document,
             layout.PaperBounds,
-            new CadRenderOptions
-            {
-                ActiveOwnerBlockId = CadEditor.ActiveOwnerBlockId,
-                ActiveLayoutId = ActiveLayoutId,
-                ActiveLayoutViewportId = null,
-                DrawGrid = false,
-                DrawOrigin = false,
-                DrawGripHandles = false,
-                DrawLayoutGuides = false,
-                IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
-                IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
-                IsLevelOfDetailEnabled = false,
-                AllowApproximateTileScaleFallback = false,
-                IsBackgroundChunkRecordingEnabled = false,
-                IsParallelRenderingEnabled = false,
-                EnableGeometryRealizations = true,
-                EntityBoundsQuery = _entityBoundsQuery,
-                EntityBoundsQueryInto = _entityBoundsQueryInto,
-                HiddenEntityIds = CadRenderOptions.NoHiddenEntities
-            },
+            layout.Id,
             DrawOleObjectForRender);
     }
 

@@ -381,10 +381,16 @@ internal static class Direct2DEntityLevelOfDetail
             return 0;
 
         var strokeWidth = strokeWidthOverride ?? resources.StrokeWidth;
+        var strokeScale = double.IsFinite(options.EntityStrokeScaleMultiplier) &&
+                          options.EntityStrokeScaleMultiplier > double.Epsilon
+            ? options.EntityStrokeScaleMultiplier
+            : 1.0;
         var screenWidth = options.KeepStrokeWidthScreenConstant
-            ? strokeWidth
+            ? strokeWidth * strokeScale
             : strokeWidth * zoom;
-        return Math.Max(screenWidth, options.MinimumScreenStrokeWidth);
+        return Math.Max(
+            screenWidth,
+            options.MinimumScreenStrokeWidth * strokeScale);
     }
 
     private static Direct2DTextRenderDetail ResolveText(

@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Windows;
+using System.Windows.Media;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Styles.FillStyles;
@@ -11,7 +13,9 @@ using Direct2dCad.Rendering.Direct2D.Overlays;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
+using Direct2dCad.ViewModels.Services.Platform.Printing;
 using Direct2dCad.wpf.Services.Printing;
+using Direct2dCad.wpf.Services.Printing.Vector;
 using SharpGen.Runtime;
 using Vortice.Mathematics;
 
@@ -32,54 +36,173 @@ public sealed class Direct2DRenderHostIntegrationTests
         Assert.Equal(ApartmentState.STA, result.Item2);
     }
 
-    [Theory]
-    [InlineData(297, 210, 1600, 1131)]
-    [InlineData(210, 297, 1131, 1600)]
-    [InlineData(100, 100, 1600, 1600)]
+    [Fact]
     [Trait("Category", "WindowsIntegration")]
-    public void PrintPreviewPixelSize_PreservesPaperAspectRatio(
-        double paperWidth,
-        double paperHeight,
-        int expectedWidth,
-        int expectedHeight)
+    public void PrintPreview_KeepsCadGeometryVector()
     {
-        var actual = CadPrintService.ResolvePreviewPixelSize(
-            CadRectD.FromLTRB(0, 0, paperWidth, paperHeight));
+        var document = CadDocument.Create("Vector preview");
+        document.AddLine(new CadPointD(-10, 0), new CadPointD(10, 0));
+        var layout = document.GetLayout(LayoutId.Default);
+        var request = new CadPrintRequest(
+            "Vector preview",
+            document,
+            layout.PaperBounds,
+            layout.Id);
 
-        Assert.Equal((expectedWidth, expectedHeight), actual);
-    }
+        var preview = Assert.IsType<DrawingImage>(
+            CadPrintService.CreatePreviewImage(request));
+        var drawings = EnumerateDrawings(preview.Drawing).ToArray();
 
-    [Theory]
-    [InlineData(96, 96, 72, 72, 72)]
-    [InlineData(96, 96, 300, 300, 300)]
-    [InlineData(96, 96, 1200, 1200, 1200)]
-    [InlineData(96, 96, 2400, 1200, 1200)]
-    [Trait("Category", "WindowsIntegration")]
-    public void PrintRenderPixelSize_UsesSelectedDpiWithinSupportedRange(
-        double outputWidth,
-        double outputHeight,
-        int dpi,
-        int expectedWidth,
-        int expectedHeight)
-    {
-        var actual = CadPrintService.ResolveRenderPixelSize(
-            outputWidth,
-            outputHeight,
-            dpi);
-
-        Assert.Equal((expectedWidth, expectedHeight), actual);
+        Assert.DoesNotContain(drawings, item => item is ImageDrawing);
+        Assert.True(drawings.Count(item => item is GeometryDrawing) >= 2);
     }
 
     [Fact]
     [Trait("Category", "WindowsIntegration")]
-    public void PrintRenderPixelSize_LimitsLargePagesWithoutChangingAspectRatio()
+    public void VectorPrintRenderer_KeepsCadGeometryOutOfPageBitmap()
     {
-        var actual = CadPrintService.ResolveRenderPixelSize(
-            outputWidth: 2000,
-            outputHeight: 2000,
-            renderDpi: 1200);
+        var document = CadDocument.Create("Vector printing");
+        document.AddLine(new CadPointD(-10, 0), new CadPointD(10, 0));
+        var layout = document.GetLayout(LayoutId.Default);
+        var request = new CadPrintRequest(
+            "Vector printing",
+            document,
+            layout.PaperBounds,
+            layout.Id);
 
-        Assert.Equal((12000, 12000), actual);
+        var visual = CadVectorPrintRenderer.CreateVisual(
+            request,
+            layout,
+            new System.Windows.Rect(0, 0, 816, 1056),
+            embeddedRasterDpi: 1200);
+        var drawing = VisualTreeHelper.GetDrawing(visual);
+        var drawings = EnumerateDrawings(drawing).ToArray();
+
+        Assert.DoesNotContain(drawings, item => item is ImageDrawing);
+        Assert.True(drawings.Count(item => item is GeometryDrawing) >= 2);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void VectorPrintRenderer_KeepsCurvesTextHatchBlocksAndViewportsVector()
+    {
+        var document = CadDocument.Create("Vector entity printing");
+        var hatchPatternId = document.CreateHatchPattern(
+            "Print grid",
+            CadHatchPatternLines.Grid(2));
+        var hatchStyleId = document.CreateHatchFillStyle(
+            "Print hatch",
+            hatchPatternId,
+            CadColor.Green);
+        document.AddArc(CadPointD.Origin, 8, 0.2, 2.4);
+        document.AddEllipseArc(new CadPointD(20, 0), 10, 4, 0.4, -2.2);
+        document.AddSpline(
+        [
+            new CadPointD(-12, -8),
+            new CadPointD(-4, 5),
+            new CadPointD(6, -4),
+            new CadPointD(12, 6)
+        ]);
+        document.AddRectangle(
+            CadRectD.FromXYWH(-8, -18, 16, 8),
+            fillStyleId: hatchStyleId);
+        document.AddText("Vector text", new CadPointD(-15, 14), 4, rotationRadians: 0.25);
+        document.AddShapeText("CAD", new CadPointD(8, 14), 4, rotationRadians: -0.2);
+
+        var definitionId = document.CreateBlockDefinition("Print block", CadPointD.Origin);
+        var definitionLine = document.AddLine(
+            new CadPointD(-3, -3),
+            new CadPointD(3, 3));
+        document.MoveEntityToBlock(definitionLine.Id, definitionId);
+        document.AddBlockReference(
+            definitionId,
+            new CadPointD(25, 15),
+            rotationRadians: 0.3,
+            scaleX: 1.5,
+            scaleY: 0.75);
+
+        var layout = document.GetLayout(LayoutId.Default);
+        var request = new CadPrintRequest(
+            "Vector entity printing",
+            document,
+            layout.PaperBounds,
+            layout.Id);
+
+        var visual = CadVectorPrintRenderer.CreateVisual(
+            request,
+            layout,
+            new System.Windows.Rect(0, 0, 1120, 792),
+            embeddedRasterDpi: 1200);
+        var drawings = EnumerateDrawings(VisualTreeHelper.GetDrawing(visual)).ToArray();
+
+        Assert.DoesNotContain(drawings, item => item is ImageDrawing);
+        Assert.Contains(drawings, item => item is GlyphRunDrawing);
+        Assert.True(drawings.Count(item => item is GeometryDrawing) >= 11);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void VectorPrintRenderer_RasterizesOnlyImageAndOleContent()
+    {
+        var document = CadDocument.Create("Embedded raster printing");
+        var image = document.AddImage(
+            CadRectD.FromXYWH(20, 20, 40, 30),
+            pixelWidth: 2,
+            pixelHeight: 2,
+            stride: 8,
+            pixels:
+            [
+                0, 0, 255, 255,
+                0, 255, 0, 255,
+                255, 0, 0, 255,
+                255, 255, 255, 255
+            ],
+            opacity: 0.75,
+            rotationRadians: 0.2);
+        var layout = document.GetLayout(LayoutId.Default);
+        document.MoveEntityToBlock(image.Id, layout.PaperSpaceBlockId);
+        var ole = document.AddOleObject(
+            CadRectD.FromXYWH(80, 20, 40, 30),
+            [1, 2, 3, 4]);
+        document.MoveEntityToBlock(ole.Id, layout.PaperSpaceBlockId);
+        document.AddLine(new CadPointD(-10, 0), new CadPointD(10, 0));
+        var oleRequests = new List<Direct2DOleDrawRequest>();
+        var request = new CadPrintRequest(
+            "Embedded raster printing",
+            document,
+            layout.PaperBounds,
+            layout.Id,
+            oleRequest =>
+            {
+                oleRequests.Add(oleRequest);
+                return new Direct2DOleDrawData(
+                    oleRequest.PixelWidth,
+                    oleRequest.PixelHeight,
+                    checked(oleRequest.PixelWidth * 4),
+                    CreatePixels(oleRequest.PixelWidth, oleRequest.PixelHeight));
+            });
+
+        var visual = CadVectorPrintRenderer.CreateVisual(
+            request,
+            layout,
+            new System.Windows.Rect(0, 0, 1120, 792),
+            embeddedRasterDpi: 1200);
+        var drawings = EnumerateDrawings(VisualTreeHelper.GetDrawing(visual)).ToArray();
+        var imageDrawings = drawings.OfType<ImageDrawing>().ToArray();
+        var imageDrawing = imageDrawings[0];
+
+        var bitmap = Assert.IsAssignableFrom<System.Windows.Media.Imaging.BitmapSource>(
+            imageDrawing.ImageSource);
+        Assert.Equal(2, bitmap.PixelWidth);
+        Assert.Equal(2, bitmap.PixelHeight);
+        Assert.Equal(1 + oleRequests.Count, imageDrawings.Length);
+        Assert.True(oleRequests.Count > 1);
+        Assert.All(oleRequests, oleRequest =>
+        {
+            Assert.InRange(oleRequest.PixelWidth, 1, 1024);
+            Assert.InRange(oleRequest.PixelHeight, 1, 1024);
+        });
+        Assert.True(drawings.Count(item => item is GeometryDrawing) >= 2);
     }
 
     [Fact]
@@ -180,6 +303,21 @@ public sealed class Direct2DRenderHostIntegrationTests
         }
 
         return false;
+    }
+
+    private static IEnumerable<Drawing> EnumerateDrawings(Drawing? drawing)
+    {
+        if (drawing is null)
+            yield break;
+
+        yield return drawing;
+        if (drawing is not DrawingGroup group)
+            yield break;
+        foreach (var child in group.Children)
+        {
+            foreach (var descendant in EnumerateDrawings(child))
+                yield return descendant;
+        }
     }
 
     private static bool ContainsGreenPixel(
