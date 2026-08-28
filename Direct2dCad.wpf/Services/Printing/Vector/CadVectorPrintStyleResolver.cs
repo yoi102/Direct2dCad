@@ -5,6 +5,7 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering;
 
 namespace Direct2dCad.wpf.Services.Printing.Vector;
 
@@ -79,8 +80,9 @@ internal static class CadVectorPrintStyleResolver
         double paperScale,
         CadMatrixD ownerToPaper)
     {
-        var thickness = Math.Max(style.LineWeight, 0.01) /
-                        Math.Max(paperScale, double.Epsilon);
+        var outputThickness = CadLineWeightDisplay.ToDips(
+            Math.Max(style.LineWeight, 0.01));
+        var thickness = outputThickness / Math.Max(paperScale, double.Epsilon);
         var pen = new Pen(CreateBrush(style.StrokeColor), thickness)
         {
             StartLineCap = ToLineCap(style.StrokeStyle.StartCap),
@@ -93,7 +95,6 @@ internal static class CadVectorPrintStyleResolver
         if (style.LineType is { IsContinuous: false } lineType)
         {
             var ownerScale = ResolveMaximumScale(ownerToPaper);
-            var outputThickness = Math.Max(style.LineWeight, 0.01);
             var dashes = lineType.DashPattern
                 .Select(value => Math.Max(
                     Math.Abs(value) * ownerScale * paperScale / outputThickness,

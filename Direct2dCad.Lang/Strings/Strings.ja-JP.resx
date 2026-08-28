@@ -544,7 +544,7 @@
     <value>塗り</value>
   </data>
   <data name="LineWeight" xml:space="preserve">
-    <value>線幅</value>
+    <value>線幅 (mm)</value>
   </data>
   <data name="ByLayer" xml:space="preserve">
     <value>レイヤー依存</value>

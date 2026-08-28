@@ -823,7 +823,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
             TransformScaleMultiplier = buildScreenScale,
             KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
-            EntityStrokeScaleMultiplier = source.EntityStrokeScaleMultiplier,
+            EntityLineWeightWorldScale = source.EntityLineWeightWorldScale,
             HiddenEntityIds = CadRenderOptions.NoHiddenEntities
         };
 

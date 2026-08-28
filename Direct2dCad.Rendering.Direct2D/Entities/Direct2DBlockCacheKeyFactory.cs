@@ -53,7 +53,7 @@ internal static class Direct2DBlockCacheKeyFactory
             options.IsLevelOfDetailEnabled,
             options.KeepStrokeWidthScreenConstant,
             BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth),
-            BitConverter.DoubleToInt64Bits(options.EntityStrokeScaleMultiplier));
+            BitConverter.DoubleToInt64Bits(options.EntityLineWeightWorldScale));
     }
 
     public static double ResolveScaleMultiplier(CadRenderOptions options)
@@ -75,7 +75,7 @@ internal readonly record struct Direct2DBlockCacheRequestProfileKey(
     bool IsLevelOfDetailEnabled,
     bool KeepStrokeWidthScreenConstant,
     long MinimumScreenStrokeWidthBits,
-    long EntityStrokeScaleMultiplierBits)
+    long EntityLineWeightWorldScaleBits)
 {
     public static Direct2DBlockCacheRequestProfileKey Create(
         CadRenderOptions options,
@@ -91,5 +91,5 @@ internal readonly record struct Direct2DBlockCacheRequestProfileKey(
         options.IsLevelOfDetailEnabled,
         options.KeepStrokeWidthScreenConstant,
         BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth),
-        BitConverter.DoubleToInt64Bits(options.EntityStrokeScaleMultiplier));
+        BitConverter.DoubleToInt64Bits(options.EntityLineWeightWorldScale));
 }

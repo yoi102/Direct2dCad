@@ -544,7 +544,7 @@
     <value>填充</value>
   </data>
   <data name="LineWeight" xml:space="preserve">
-    <value>线宽</value>
+    <value>线宽 (mm)</value>
   </data>
   <data name="ByLayer" xml:space="preserve">
     <value>随图层</value>

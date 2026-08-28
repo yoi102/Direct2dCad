@@ -3,6 +3,7 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.HitTesting;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Services.Styling;
@@ -12,7 +13,7 @@ namespace Direct2dCad.ViewModels.Services.Interactions;
 internal readonly struct CadSelectionInteractionService(
     CadEditor editor,
     Func<CadPointD, CadPointD> screenToWorld,
-    double zoom,
+    CadHitTestOptions hitTestOptions,
     CadPreviewStyleService styleService,
     Func<CadEntity, bool> selectionFilter)
 {
@@ -26,10 +27,11 @@ internal readonly struct CadSelectionInteractionService(
             var baseSelection = editor.Selection.EntityIds.ToArray();
             var command = new ClickSelectCommand(
                 screenToWorld(endScreen),
-                6.0 / Math.Max(zoom, double.Epsilon),
+                6.0 / Math.Max(hitTestOptions.ViewportZoom, double.Epsilon),
                 selectionMode,
                 selectionFilter: selectionFilter,
-                ownerBlockId: editor.ActiveOwnerBlockId);
+                ownerBlockId: editor.ActiveOwnerBlockId,
+                hitTestOptions: hitTestOptions);
             editor.Execute(command);
             return command.SelectedEntityId is null
                 ? null
@@ -48,8 +50,9 @@ internal readonly struct CadSelectionInteractionService(
                 selectionMode,
                 requireContained,
                 selectionFilter,
-                zoom,
-                editor.ActiveOwnerBlockId));
+                hitTestOptions.ViewportZoom,
+                editor.ActiveOwnerBlockId,
+                hitTestOptions));
         }
         else
         {
@@ -58,8 +61,9 @@ internal readonly struct CadSelectionInteractionService(
                 selectionMode,
                 requireContained,
                 selectionFilter,
-                zoom,
-                editor.ActiveOwnerBlockId));
+                hitTestOptions.ViewportZoom,
+                editor.ActiveOwnerBlockId,
+                hitTestOptions));
         }
         return null;
     }

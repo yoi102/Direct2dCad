@@ -134,7 +134,9 @@ public sealed class CadHitTestService
         var cacheKey = new MaxStrokeHitPaddingCacheKey(
             resolvedOptions.ViewportZoom,
             resolvedOptions.KeepStrokeWidthScreenConstant,
-            resolvedOptions.MinimumScreenStrokeWidth);
+            resolvedOptions.MinimumScreenStrokeWidth,
+            resolvedOptions.LineWeightScreenUnitsPerMillimeter,
+            resolvedOptions.EntityLineWeightWorldScale);
         if (_maxStrokeHitPaddingCacheKey == cacheKey)
             return _maxStrokeHitPaddingCache;
 
@@ -356,5 +358,7 @@ public sealed class CadHitTestService
     private readonly record struct MaxStrokeHitPaddingCacheKey(
         double ViewportZoom,
         bool KeepStrokeWidthScreenConstant,
-        double MinimumScreenStrokeWidth);
+        double MinimumScreenStrokeWidth,
+        double LineWeightScreenUnitsPerMillimeter,
+        double EntityLineWeightWorldScale);
 }

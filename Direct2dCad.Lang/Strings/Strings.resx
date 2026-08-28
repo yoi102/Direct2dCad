@@ -685,8 +685,8 @@
     <comment>Fill</comment>
   </data>
   <data name="LineWeight" xml:space="preserve">
-    <value>Line weight</value>
-    <comment>Line weight</comment>
+    <value>Line weight (mm)</value>
+    <comment>Plotted line weight in millimeters</comment>
   </data>
   <data name="ByLayer" xml:space="preserve">
     <value>By layer</value>

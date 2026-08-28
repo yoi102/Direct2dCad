@@ -253,7 +253,7 @@ internal readonly record struct Direct2DBlockDefinitionCacheKey(
     bool IsLevelOfDetailEnabled,
     bool KeepStrokeWidthScreenConstant,
     long MinimumScreenStrokeWidthBits,
-    long EntityStrokeScaleMultiplierBits);
+    long EntityLineWeightWorldScaleBits);
 
 internal readonly record struct Direct2DBlockDefinitionCacheRequest(
     Direct2DBlockDefinitionCacheKey Key,

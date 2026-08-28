@@ -3,10 +3,12 @@ using System.Windows;
 using System.Windows.Media;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ChangeTracking;
 using Direct2dCad.Rendering;
+using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Direct2D.Hosting;
 using Direct2dCad.Rendering.Direct2D.Ole;
 using Direct2dCad.Rendering.Direct2D.Overlays;
@@ -80,6 +82,28 @@ public sealed class Direct2DRenderHostIntegrationTests
 
         Assert.DoesNotContain(drawings, item => item is ImageDrawing);
         Assert.True(drawings.Count(item => item is GeometryDrawing) >= 2);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void VectorPrintPen_ConvertsMillimetersToOutputDips()
+    {
+        var document = CadDocument.Create("Physical line weight");
+        var style = new CadVectorPrintEntityStyle(
+            document.GetLayer(LayerId.Default),
+            CadColor.Green,
+            LineWeight: 25.4,
+            CadStrokeStyle.Default,
+            LineType: null,
+            FillStyle: null);
+
+        var pen = CadVectorPrintStyleResolver.CreatePen(
+            style,
+            paperScale: 4.0,
+            CadMatrixD.Identity);
+
+        Assert.Equal(24.0, pen.Thickness, 8);
+        Assert.Equal(96.0, pen.Thickness * 4.0, 8);
     }
 
     [Fact]
@@ -269,7 +293,7 @@ public sealed class Direct2DRenderHostIntegrationTests
     }
 
     [Theory]
-    [InlineData(true, 6.0f, 1.5f)]
+    [InlineData(true, 6.0f, 5.6692915f)]
     [InlineData(false, 6.0f, 6.0f)]
     [Trait("Category", "WindowsIntegration")]
     public void SelectionStrokeWidth_PreservesThickerEntityLineWeight(
@@ -292,6 +316,51 @@ public sealed class Direct2DRenderHostIntegrationTests
             options);
 
         Assert.Equal(expectedWorldStrokeWidth, actual, precision: 5);
+    }
+
+    [Theory]
+    [InlineData(0.5)]
+    [InlineData(1.0)]
+    [InlineData(8.0)]
+    [Trait("Category", "WindowsIntegration")]
+    public void EntityStrokeWidth_ModelSpaceKeepsPhysicalDisplayWidth(double zoom)
+    {
+        var viewport = new CadViewport();
+        viewport.SetView(zoom, CadPointD.Origin);
+
+        var worldWidth = Direct2DEntityRenderer.ResolveStrokeWidth(
+            0.25f,
+            viewport,
+            new CadRenderOptions
+            {
+                KeepStrokeWidthScreenConstant = true,
+                MinimumScreenStrokeWidth = 0
+            });
+
+        Assert.Equal(
+            CadLineWeightDisplay.ToDips(0.25),
+            worldWidth * zoom,
+            precision: 5);
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void EntityStrokeWidth_LayoutViewportUsesOwnerWorldScale()
+    {
+        var viewport = new CadViewport();
+        viewport.SetView(12.0, CadPointD.Origin);
+
+        var worldWidth = Direct2DEntityRenderer.ResolveStrokeWidth(
+            0.5f,
+            viewport,
+            new CadRenderOptions
+            {
+                KeepStrokeWidthScreenConstant = false,
+                EntityLineWeightWorldScale = 0.25,
+                MinimumScreenStrokeWidth = 0
+            });
+
+        Assert.Equal(0.125f, worldWidth, precision: 6);
     }
 
     private static bool ContainsNonBlackPixel(byte[] pixels)

@@ -468,7 +468,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             TransformScaleMultiplier = source.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
-            EntityStrokeScaleMultiplier = source.EntityStrokeScaleMultiplier,
+            EntityLineWeightWorldScale = source.EntityLineWeightWorldScale,
             HiddenEntityIds = CadRenderOptions.NoHiddenEntities,
             DirtyWorldBounds = worldBounds.Inflate(TileGutterPixels / zoom),
             EntityBoundsQuery = source.EntityBoundsQuery,
@@ -496,7 +496,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                     BitConverter.Int64BitsToDouble(
                         key.MinimumScreenStrokeWidthBits),
                     BitConverter.Int64BitsToDouble(
-                        key.EntityStrokeScaleMultiplierBits)))
+                        key.EntityLineWeightWorldScaleBits)))
             {
                 return false;
             }
@@ -513,25 +513,26 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             options.KeepStrokeWidthScreenConstant,
             zoom,
             options.MinimumScreenStrokeWidth,
-            options.EntityStrokeScaleMultiplier);
+            options.EntityLineWeightWorldScale);
     }
 
     private bool IsStrokeExtentCacheSafe(
         bool keepStrokeWidthScreenConstant,
         double zoom,
         double minimumScreenStrokeWidth,
-        double entityStrokeScaleMultiplier)
+        double entityLineWeightWorldScale)
     {
-        var strokeScale = double.IsFinite(entityStrokeScaleMultiplier) &&
-                          entityStrokeScaleMultiplier > double.Epsilon
-            ? entityStrokeScaleMultiplier
+        var worldScale = double.IsFinite(entityLineWeightWorldScale) &&
+                         entityLineWeightWorldScale > double.Epsilon
+            ? entityLineWeightWorldScale
             : 1.0;
-        var maximumStrokeWidth = Math.Max(
-            _resourceCache.MaximumStrokeWidth,
-            (float)Math.Max(0.0, minimumScreenStrokeWidth));
+        var maximumStrokeWidth = Math.Max(_resourceCache.MaximumStrokeWidth, 0.0f);
         var screenStrokeWidth = keepStrokeWidthScreenConstant
-            ? maximumStrokeWidth * strokeScale
-            : maximumStrokeWidth * Math.Max(zoom, double.Epsilon);
+            ? CadLineWeightDisplay.ToDipsSingle(maximumStrokeWidth)
+            : maximumStrokeWidth * worldScale * Math.Max(zoom, double.Epsilon);
+        screenStrokeWidth = Math.Max(
+            screenStrokeWidth,
+            Math.Max(0.0, minimumScreenStrokeWidth));
         var maximumPaintExtent =
             screenStrokeWidth * MaximumStrokeExtentMultiplier + 2.0;
         return maximumPaintExtent <= MaximumCachedStrokeExtentPixels;
@@ -852,7 +853,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         bool IsLevelOfDetailEnabled,
         bool KeepStrokeWidthScreenConstant,
         long MinimumScreenStrokeWidthBits,
-        long EntityStrokeScaleMultiplierBits)
+        long EntityLineWeightWorldScaleBits)
     {
         public double Zoom => BitConverter.Int64BitsToDouble(ZoomBits);
 
@@ -871,7 +872,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                 options.IsLevelOfDetailEnabled,
                 options.KeepStrokeWidthScreenConstant,
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth),
-                BitConverter.DoubleToInt64Bits(options.EntityStrokeScaleMultiplier));
+                BitConverter.DoubleToInt64Bits(options.EntityLineWeightWorldScale));
         }
 
         public bool IsCompatibleWith(TileProfileKey other) =>
@@ -883,7 +884,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             IsLevelOfDetailEnabled == other.IsLevelOfDetailEnabled &&
             KeepStrokeWidthScreenConstant == other.KeepStrokeWidthScreenConstant &&
             MinimumScreenStrokeWidthBits == other.MinimumScreenStrokeWidthBits &&
-            EntityStrokeScaleMultiplierBits == other.EntityStrokeScaleMultiplierBits;
+            EntityLineWeightWorldScaleBits == other.EntityLineWeightWorldScaleBits;
 
         private static double ResolveTransformScaleMultiplier(double value) =>
             double.IsFinite(value) && value > double.Epsilon ? value : 1.0;

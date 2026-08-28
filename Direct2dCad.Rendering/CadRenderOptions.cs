@@ -28,10 +28,13 @@ public sealed class CadRenderOptions
     public int ParallelRenderingEntityThreshold { get; init; } = 1000;
     public bool EnableGeometryRealizations { get; init; } = true;
     public double TransformScaleMultiplier { get; init; } = 1.0;
+    // Model space uses a stable on-screen representation of the plotted millimeter width.
+    // Layout space disables this so the line width follows the paper zoom.
     public bool KeepStrokeWidthScreenConstant { get; init; } = true;
     public double MinimumScreenStrokeWidth { get; init; } = 0.5;
-    // Keeps screen-constant entity strokes physically consistent on high-density raster targets.
-    public double EntityStrokeScaleMultiplier { get; init; } = 1.0;
+    // Converts plotted paper millimeters to the current entity owner's world units.
+    // Paper space is 1; a model shown through a layout viewport is 1 / viewport.Scale.
+    public double EntityLineWeightWorldScale { get; init; } = 1.0;
     public IReadOnlySet<EntityId> HiddenEntityIds { get; init; } = NoHiddenEntities;
     public CadRectD? DirtyWorldBounds { get; init; }
     public Func<BlockId, CadRectD, IReadOnlyList<EntityId>>? EntityBoundsQuery { get; init; }

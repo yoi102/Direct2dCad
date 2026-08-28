@@ -1,6 +1,7 @@
 using System.Numerics;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Vortice.Direct2D1;
 
@@ -381,16 +382,14 @@ internal static class Direct2DEntityLevelOfDetail
             return 0;
 
         var strokeWidth = strokeWidthOverride ?? resources.StrokeWidth;
-        var strokeScale = double.IsFinite(options.EntityStrokeScaleMultiplier) &&
-                          options.EntityStrokeScaleMultiplier > double.Epsilon
-            ? options.EntityStrokeScaleMultiplier
-            : 1.0;
         var screenWidth = options.KeepStrokeWidthScreenConstant
-            ? strokeWidth * strokeScale
-            : strokeWidth * zoom;
+            ? CadLineWeightDisplay.ToDipsSingle(strokeWidth)
+            : strokeWidth *
+              Direct2DEntityRenderer.ResolveEntityLineWeightWorldScale(options) *
+              zoom;
         return Math.Max(
             screenWidth,
-            options.MinimumScreenStrokeWidth * strokeScale);
+            Math.Max(options.MinimumScreenStrokeWidth, 0.0));
     }
 
     private static Direct2DTextRenderDetail ResolveText(

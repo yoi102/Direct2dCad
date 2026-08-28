@@ -4,6 +4,7 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 
@@ -11,7 +12,9 @@ namespace Direct2dCad.ViewModels.Services.Styling;
 
 internal readonly struct CadPreviewStyleService(
     CadDocument document,
-    CadUserSettings userSettings)
+    CadUserSettings userSettings,
+    bool keepEntityStrokeWidthScreenConstant = true,
+    double entityLineWeightWorldScale = 1.0)
 {
     public CadHandleSceneBuildOptions CreateHandleSceneBuildOptions()
     {
@@ -67,6 +70,7 @@ internal readonly struct CadPreviewStyleService(
             ResolvePreviewStrokeWidth(lineWeight, layerLineWeight),
             CadTransientLinePattern.Solid,
             fill.FillColor,
+            KeepStrokeWidthScreenConstant: keepEntityStrokeWidthScreenConstant,
             HatchFill: fill.HatchFill);
     }
 
@@ -99,6 +103,7 @@ internal readonly struct CadPreviewStyleService(
             ResolvePreviewStrokeWidth(lineWeight, layer.LineWeight),
             CadTransientLinePattern.Solid,
             fill.FillColor,
+            KeepStrokeWidthScreenConstant: keepEntityStrokeWidthScreenConstant,
             HatchFill: fill.HatchFill,
             StrokeStyle: strokeStyle,
             LineType: lineType);
@@ -233,9 +238,17 @@ internal readonly struct CadPreviewStyleService(
         };
     }
 
-    private static double ResolvePreviewStrokeWidth(CadLineWeight lineWeight, CadLineWeight layerLineWeight)
+    private double ResolvePreviewStrokeWidth(CadLineWeight lineWeight, CadLineWeight layerLineWeight)
     {
         var resolved = lineWeight.IsByLayer ? layerLineWeight : lineWeight;
-        return ResolveLineWeightDisplayValue(resolved);
+        var millimeters = ResolveLineWeightDisplayValue(resolved);
+        if (keepEntityStrokeWidthScreenConstant)
+            return CadLineWeightDisplay.ToDips(millimeters);
+
+        var worldScale = double.IsFinite(entityLineWeightWorldScale) &&
+                         entityLineWeightWorldScale > double.Epsilon
+            ? entityLineWeightWorldScale
+            : 1.0;
+        return millimeters * worldScale;
     }
 }

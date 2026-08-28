@@ -4,6 +4,7 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.HitTesting;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Services.Interactions;
 using Direct2dCad.ViewModels.Services.Styling;
@@ -105,7 +106,7 @@ public sealed class CadSelectionInteractionServiceTests
         return new CadSelectionInteractionService(
             editor,
             screenToWorld,
-            zoom: 1,
+            new CadHitTestOptions(viewportZoom: 1),
             new CadPreviewStyleService(document, settings),
             selectionFilter ?? (static _ => true));
     }

@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Services.Styling;
 
@@ -70,7 +71,8 @@ public sealed class CadPreviewStyleServiceTests
         var style = service.CreateEntityPreviewStyle(circle);
 
         Assert.Equal(document.GetLayer(layerId).Color, style.StrokeColor);
-        Assert.Equal(2.25, style.StrokeWidth);
+        Assert.Equal(CadLineWeightDisplay.ToDips(2.25), style.StrokeWidth, 8);
+        Assert.True(style.KeepStrokeWidthScreenConstant);
         Assert.Equal(fillColor, style.FillColor);
         Assert.Null(style.HatchFill);
     }
@@ -87,7 +89,26 @@ public sealed class CadPreviewStyleServiceTests
 
         var style = service.CreateEntityPreviewStyle(line);
 
-        Assert.Equal(4.5, style.StrokeWidth);
+        Assert.Equal(CadLineWeightDisplay.ToDips(4.5), style.StrokeWidth, 8);
+        Assert.True(style.KeepStrokeWidthScreenConstant);
+    }
+
+    [Fact]
+    public void EntityPreviewUsesOwnerWorldScaleInLayoutSpace()
+    {
+        var document = CadDocument.Create("Layout preview");
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        line.SetLineWeight(new CadLineWeight(0.5));
+        var service = new CadPreviewStyleService(
+            document,
+            CadUserSettings.CreateDefault(),
+            keepEntityStrokeWidthScreenConstant: false,
+            entityLineWeightWorldScale: 0.25);
+
+        var style = service.CreateEntityPreviewStyle(line);
+
+        Assert.False(style.KeepStrokeWidthScreenConstant);
+        Assert.Equal(0.125, style.StrokeWidth, 8);
     }
 
     [Fact]
@@ -118,7 +139,7 @@ public sealed class CadPreviewStyleServiceTests
         var style = service.CreateEntityPreviewStyle(path);
 
         Assert.Equal(strokeColor, style.StrokeColor);
-        Assert.Equal(24, style.StrokeWidth);
+        Assert.Equal(CadLineWeightDisplay.ToDips(24.0), style.StrokeWidth, 8);
         Assert.Equal(fillColor, style.FillColor);
     }
 }

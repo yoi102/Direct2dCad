@@ -666,7 +666,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             TransformScaleMultiplier = viewportZoom,
             KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
-            EntityStrokeScaleMultiplier = options.EntityStrokeScaleMultiplier,
+            EntityLineWeightWorldScale = options.EntityLineWeightWorldScale,
             HiddenEntityIds = CadRenderOptions.NoHiddenEntities
         };
 
@@ -864,7 +864,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         bool IsLevelOfDetailEnabled,
         bool KeepStrokeWidthScreenConstant,
         long MinimumScreenStrokeWidthBits,
-        long EntityStrokeScaleMultiplierBits)
+        long EntityLineWeightWorldScaleBits)
     {
         public static RenderProfileKey Create(CadRenderOptions options, double zoom)
         {
@@ -878,7 +878,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                 options.IsLevelOfDetailEnabled,
                 options.KeepStrokeWidthScreenConstant,
                 BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth),
-                BitConverter.DoubleToInt64Bits(options.EntityStrokeScaleMultiplier));
+                BitConverter.DoubleToInt64Bits(options.EntityLineWeightWorldScale));
         }
 
     }

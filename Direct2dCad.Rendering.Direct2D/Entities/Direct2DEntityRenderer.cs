@@ -707,20 +707,19 @@ internal sealed class Direct2DEntityRenderer(
     internal static float ResolveStrokeWidth(float modelWidth, CadViewport viewport, CadRenderOptions options)
     {
         var zoom = Math.Max((float)viewport.Zoom, float.Epsilon);
-        var rasterScale = ResolveEntityStrokeScaleMultiplier(options);
         var width = options.KeepStrokeWidthScreenConstant
-            ? modelWidth * rasterScale / zoom
-            : modelWidth;
+            ? CadLineWeightDisplay.ToDipsSingle(modelWidth) / zoom
+            : modelWidth * ResolveEntityLineWeightWorldScale(options);
         return Math.Max(
             width,
-            (float)options.MinimumScreenStrokeWidth * rasterScale / zoom);
+            (float)Math.Max(options.MinimumScreenStrokeWidth, 0.0) / zoom);
     }
 
-    private static float ResolveEntityStrokeScaleMultiplier(CadRenderOptions options)
+    internal static float ResolveEntityLineWeightWorldScale(CadRenderOptions options)
     {
-        var multiplier = options.EntityStrokeScaleMultiplier;
-        return double.IsFinite(multiplier) && multiplier > double.Epsilon
-            ? (float)multiplier
+        var worldScale = options.EntityLineWeightWorldScale;
+        return double.IsFinite(worldScale) && worldScale > double.Epsilon
+            ? (float)worldScale
             : 1.0f;
     }
 

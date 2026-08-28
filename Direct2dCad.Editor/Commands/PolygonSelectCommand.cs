@@ -14,6 +14,7 @@ public sealed class PolygonSelectCommand : SelectionCommandBase
     private readonly Func<CadEntity, bool> _selectionFilter;
     private readonly double? _viewportZoom;
     private readonly BlockId _ownerBlockId;
+    private readonly CadHitTestOptions? _hitTestOptions;
 
     public override string Name => "Polygon Select";
 
@@ -23,7 +24,8 @@ public sealed class PolygonSelectCommand : SelectionCommandBase
         bool requireContained = false,
         Func<CadEntity, bool>? selectionFilter = null,
         double? viewportZoom = null,
-        BlockId? ownerBlockId = null)
+        BlockId? ownerBlockId = null,
+        CadHitTestOptions? hitTestOptions = null)
     {
         ArgumentNullException.ThrowIfNull(polygon);
         _polygon = polygon.ToArray();
@@ -41,11 +43,13 @@ public sealed class PolygonSelectCommand : SelectionCommandBase
             ? viewportZoom
             : null;
         _ownerBlockId = ownerBlockId ?? BlockId.ModelSpace;
+        _hitTestOptions = hitTestOptions;
     }
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
     {
-        var options = new CadHitTestOptions(_viewportZoom ?? context.Viewport.Zoom);
+        var options = _hitTestOptions ??
+                      new CadHitTestOptions(_viewportZoom ?? context.Viewport.Zoom);
         var queryArea = _queryBounds.Inflate(context.HitTesting.GetMaxStrokeHitPadding(options));
         var entityIds = context.SpatialIndex.Query(_ownerBlockId, queryArea)
             .Where(entityId =>

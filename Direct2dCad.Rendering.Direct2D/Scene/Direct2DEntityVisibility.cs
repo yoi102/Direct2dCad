@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Direct2D.Resources;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
@@ -576,11 +577,13 @@ internal static class Direct2DEntityVisibility
         var minimumPadding = DefaultBroadPhasePaddingPixels / zoom;
         var maximumStrokeWidth = Math.Max(
             resourceCache.MaximumStrokeWidth,
-            (float)options.MinimumScreenStrokeWidth);
-        var strokeScale = ResolveEntityStrokeScaleMultiplier(options);
+            0.0f);
         var maximumWorldStrokeWidth = options.KeepStrokeWidthScreenConstant
-            ? maximumStrokeWidth * strokeScale / zoom
-            : maximumStrokeWidth;
+            ? CadLineWeightDisplay.ToDipsSingle(maximumStrokeWidth) / zoom
+            : maximumStrokeWidth * Direct2DEntityRenderer.ResolveEntityLineWeightWorldScale(options);
+        maximumWorldStrokeWidth = Math.Max(
+            maximumWorldStrokeWidth,
+            Math.Max(options.MinimumScreenStrokeWidth, 0.0) / zoom);
         return Math.Max(
             minimumPadding,
             maximumWorldStrokeWidth * (Direct2DDefaultMiterLimit * 0.5));
@@ -627,22 +630,7 @@ internal static class Direct2DEntityVisibility
         CadViewport viewport,
         CadRenderOptions options)
     {
-        var zoom = Math.Max((float)viewport.Zoom, float.Epsilon);
-        var strokeScale = ResolveEntityStrokeScaleMultiplier(options);
-        var strokeWidth = options.KeepStrokeWidthScreenConstant
-            ? modelStrokeWidth * strokeScale / zoom
-            : modelStrokeWidth;
-        return Math.Max(
-            strokeWidth,
-            (float)options.MinimumScreenStrokeWidth * strokeScale / zoom);
-    }
-
-    private static float ResolveEntityStrokeScaleMultiplier(CadRenderOptions options)
-    {
-        var multiplier = options.EntityStrokeScaleMultiplier;
-        return double.IsFinite(multiplier) && multiplier > double.Epsilon
-            ? (float)multiplier
-            : 1.0f;
+        return Direct2DEntityRenderer.ResolveStrokeWidth(modelStrokeWidth, viewport, options);
     }
 }
 

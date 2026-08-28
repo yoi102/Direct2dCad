@@ -13,6 +13,7 @@ using Direct2dCad.Db.Data.Styles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Editor;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.HitTesting;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Direct2D.Hosting;
@@ -1833,6 +1834,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             DrawGrid = ActiveLayoutId is null,
             DrawOrigin = ActiveLayoutId is null,
             DrawGripHandles = drawGripHandles,
+            KeepStrokeWidthScreenConstant = ActiveLayoutId is null,
+            EntityLineWeightWorldScale = 1.0,
             IsAntialiasingEnabled = UserSettings.Rendering.IsAntialiasingEnabled,
             IsTextAntialiasingEnabled = UserSettings.Rendering.IsTextAntialiasingEnabled,
             IsLevelOfDetailEnabled = UserSettings.Rendering.IsLevelOfDetailEnabled,
@@ -2203,9 +2206,21 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadSelectionInteractionService(
             CadEditor,
             _screenToWorld,
-            InteractionZoom,
+            CreateHitTestOptions(),
             CreatePreviewStyleService(),
             _canSelectEntity);
+    }
+
+    private CadHitTestOptions CreateHitTestOptions()
+    {
+        var worldScale = TryGetActiveLayoutViewport(out _, out var layoutViewport)
+            ? 1.0 / Math.Max(layoutViewport.Scale, double.Epsilon)
+            : 1.0;
+        return new CadHitTestOptions(InteractionZoom)
+        {
+            KeepStrokeWidthScreenConstant = ActiveLayoutId is null,
+            EntityLineWeightWorldScale = worldScale
+        };
     }
 
     private CadClipboardSnapshot CreateImageClipboardSnapshot(CadImageImportData image)
@@ -2336,7 +2351,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private CadPreviewStyleService CreatePreviewStyleService()
     {
-        return new CadPreviewStyleService(CadEditor.Document, UserSettings);
+        var worldScale = TryGetActiveLayoutViewport(out _, out var layoutViewport)
+            ? 1.0 / Math.Max(layoutViewport.Scale, double.Epsilon)
+            : 1.0;
+        return new CadPreviewStyleService(
+            CadEditor.Document,
+            UserSettings,
+            keepEntityStrokeWidthScreenConstant: ActiveLayoutId is null,
+            entityLineWeightWorldScale: worldScale);
     }
 
     private static double ResolveDrawingLineWeightDisplayValue(CadLineWeight lineWeight)

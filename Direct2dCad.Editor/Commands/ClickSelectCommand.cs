@@ -13,6 +13,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
     private readonly bool _clearWhenMiss;
     private readonly Func<CadEntity, bool> _selectionFilter;
     private readonly BlockId _ownerBlockId;
+    private readonly CadHitTestOptions? _hitTestOptions;
 
     public override string Name => "Click Select";
     public IReadOnlyList<EntityId> HitEntityIds { get; private set; } = [];
@@ -24,7 +25,8 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         CadSelectionMode mode = CadSelectionMode.Replace,
         bool clearWhenMiss = true,
         Func<CadEntity, bool>? selectionFilter = null,
-        BlockId? ownerBlockId = null)
+        BlockId? ownerBlockId = null,
+        CadHitTestOptions? hitTestOptions = null)
     {
         if (tolerance < 0 || double.IsNaN(tolerance) || double.IsInfinity(tolerance))
             throw new ArgumentOutOfRangeException(nameof(tolerance));
@@ -35,6 +37,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
         _clearWhenMiss = clearWhenMiss;
         _selectionFilter = selectionFilter ?? (_ => true);
         _ownerBlockId = ownerBlockId ?? BlockId.ModelSpace;
+        _hitTestOptions = hitTestOptions;
     }
 
     protected override void ExecuteSelection(CadEditorCommandContext context)
@@ -54,7 +57,7 @@ public sealed class ClickSelectCommand : SelectionCommandBase
 
     private IReadOnlyList<EntityId> FindHits(CadEditorCommandContext context)
     {
-        var options = new CadHitTestOptions(context.Viewport.Zoom);
+        var options = _hitTestOptions ?? new CadHitTestOptions(context.Viewport.Zoom);
         var queryPadding = _tolerance + context.HitTesting.GetMaxStrokeHitPadding(options);
         var queryArea = CadRectD.FromCenter(
             _worldPoint,

@@ -333,7 +333,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 continue;
 
             var modelViewport = CreateModelViewport(viewport, layoutViewport);
-            var modelOptions = CreateModelViewportOptions(options);
+            var modelOptions = CreateModelViewportOptions(options, layoutViewport);
             var modelToScreen = CreateModelToPaperTransform(layoutViewport) * paperTransform;
             var orderedOleEntities = _entityOrderCache.GetOrderedOleEntities(
                 document,
@@ -954,6 +954,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 var isActiveViewport = options.ActiveLayoutViewportId == layoutViewport.Id;
                 var modelOptions = CreateModelViewportOptions(
                     options,
+                    layoutViewport,
                     includeHiddenEntities: isActiveViewport);
 
                 var entityStarted = Stopwatch.GetTimestamp();
@@ -1102,6 +1103,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         var modelViewport = CreateModelViewport(paperViewport, layoutViewport);
         var modelOptions = CreateModelViewportOptions(
             options,
+            layoutViewport,
             drawGripHandles: isActiveViewport,
             includeHiddenEntities: isActiveViewport);
         var orderedEntities = _entityOrderCache.GetOrderedEntities(
@@ -1332,6 +1334,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             var modelViewport = CreateModelViewport(paperViewport, layoutViewport);
             var activeModelOptions = CreateModelViewportOptions(
                 options,
+                layoutViewport,
                 drawGripHandles: true,
                 includeHiddenEntities: true);
 
@@ -1619,7 +1622,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             TransformScaleMultiplier = source.TransformScaleMultiplier,
             KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
             MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
-            EntityStrokeScaleMultiplier = source.EntityStrokeScaleMultiplier,
+            EntityLineWeightWorldScale = source.EntityLineWeightWorldScale,
             HiddenEntityIds = source.HiddenEntityIds,
             DirtyWorldBounds = dirtyWorldBounds,
             EntityBoundsQuery = source.EntityBoundsQuery,
@@ -1704,6 +1707,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     private static CadRenderOptions CreateModelViewportOptions(
         CadRenderOptions options,
+        CadLayoutViewport layoutViewport,
         bool drawGripHandles = false,
         bool includeHiddenEntities = true) => new()
         {
@@ -1717,9 +1721,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
             AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
             TransformScaleMultiplier = options.TransformScaleMultiplier,
-            KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
+            KeepStrokeWidthScreenConstant = false,
             MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
-            EntityStrokeScaleMultiplier = options.EntityStrokeScaleMultiplier,
+            EntityLineWeightWorldScale = 1.0 / Math.Max(layoutViewport.Scale, double.Epsilon),
             EntityBoundsQuery = options.EntityBoundsQuery,
             EntityBoundsQueryInto = options.EntityBoundsQueryInto,
             HiddenEntityIds = includeHiddenEntities
@@ -1742,9 +1746,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             IsLevelOfDetailEnabled = options.IsLevelOfDetailEnabled,
             AllowApproximateTileScaleFallback = options.AllowApproximateTileScaleFallback,
             TransformScaleMultiplier = options.TransformScaleMultiplier,
-            KeepStrokeWidthScreenConstant = options.KeepStrokeWidthScreenConstant,
+            KeepStrokeWidthScreenConstant = false,
             MinimumScreenStrokeWidth = options.MinimumScreenStrokeWidth,
-            EntityStrokeScaleMultiplier = options.EntityStrokeScaleMultiplier,
+            EntityLineWeightWorldScale = 1.0,
             HiddenEntityIds = options.HiddenEntityIds,
             DirtyWorldBounds = options.DirtyWorldBounds,
             EntityBoundsQuery = options.EntityBoundsQuery,

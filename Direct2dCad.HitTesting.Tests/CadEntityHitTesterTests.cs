@@ -32,6 +32,36 @@ public sealed class CadEntityHitTesterTests
     }
 
     [Fact]
+    public void HitTestEdge_ConvertsMillimeterLineWeightToScreenUnits()
+    {
+        var document = CadDocument.Create("Test");
+        var line = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        line.SetLineWeight(new CadLineWeight(0.25));
+        var options = new CadHitTestOptions(viewportZoom: 2.0)
+        {
+            KeepStrokeWidthScreenConstant = true,
+            MinimumScreenStrokeWidth = 0
+        };
+        var halfWorldWidth =
+            0.25 * CadHitTestOptions.DefaultScreenUnitsPerMillimeter / 2.0 / 2.0;
+
+        Assert.True(CadEntityHitTester.HitTestEdge(
+            document,
+            line,
+            new CadPointD(5, halfWorldWidth - 1e-6),
+            tolerance: 0,
+            options,
+            out _));
+        Assert.False(CadEntityHitTester.HitTestEdge(
+            document,
+            line,
+            new CadPointD(5, halfWorldWidth + 1e-6),
+            tolerance: 0,
+            options,
+            out _));
+    }
+
+    [Fact]
     public void HitTestFill_CircleRequiresFillStyle()
     {
         var document = CadDocument.Create("Test");
