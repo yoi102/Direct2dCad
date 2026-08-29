@@ -7,6 +7,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Direct2dCad.ico</ApplicationIcon>
+    <Version>0.0.0.1</Version>
+    <AssemblyVersion>0.0.0.1</AssemblyVersion>
+    <FileVersion>0.0.0.1</FileVersion>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -16,9 +20,13 @@
     <PublishAot>false</PublishAot>
     <AssemblyName>Direct2dCad</AssemblyName>
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <None Remove="Direct2dCad.ico" />
+    <Resource Include="Direct2dCad.ico" />
+
+    <None Include="Direct2dCad.ico"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,10 +57,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Direct2dCad.Windows.IntegrationTests" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="Direct2dCad.ico" />
   </ItemGroup>
 
 </Project>

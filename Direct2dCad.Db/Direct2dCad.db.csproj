@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyTitle>Direct2dCad.Db</AssemblyTitle>
     <AssemblyName>Direct2dCad.Db</AssemblyName>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
