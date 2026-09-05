@@ -1,6 +1,7 @@
 using AvalonDock.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Enums;
@@ -271,8 +272,28 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             editor.ActiveOwnerBlockId, _selectedBlockDefinitionId, _documentViewModel.CadCanvasToolMode);
         if (_lastSelectionRefresh == refreshState)
             return;
+        if (_lastSelectionRefresh is { } last && ReferenceEquals(last.Editor, editor) &&
+            last.SelectionVersion == editor.Selection.Version && last.Owner == editor.ActiveOwnerBlockId &&
+            last.Definition == _selectedBlockDefinitionId && last.Mode == _documentViewModel.CadCanvasToolMode &&
+            unchecked(last.DocumentVersion + 1) == editor.DocumentChangeVersion &&
+            _selectedBlockDefinitionId is null && !RequiresSelectionRefresh(editor))
+        {
+            _lastSelectionRefresh = refreshState;
+            return;
+        }
         if (_lastSelectionRefresh is { } previous && !ReferenceEquals(previous.Editor, editor))
             Entity = null;
+        CadEntityChangeKind? propertyChanges = null;
+        if (_lastSelectionRefresh is { } prior && ReferenceEquals(prior.Editor, editor) &&
+            prior.SelectionVersion == editor.Selection.Version && prior.Owner == editor.ActiveOwnerBlockId &&
+            unchecked(prior.DocumentVersion + 1) == editor.DocumentChangeVersion &&
+            !editor.LastDocumentChanges.AffectsDocumentStructure && !editor.LastDocumentChanges.AffectsViewSettings &&
+            !editor.LastDocumentChanges.AffectsLayouts && !editor.LastDocumentChanges.AffectsLayoutStructure)
+        {
+            propertyChanges = CadEntityChangeKind.None;
+            foreach (var change in editor.LastDocumentChanges.EntityChanges)
+                propertyChanges |= change.Kind;
+        }
         _lastSelectionRefresh = refreshState;
 
         var selectedEntityIds = _documentViewModel.CadEditor.Selection.EntityIds;
@@ -287,7 +308,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             if (Entity is MultiEntityPropertyViewModel multiEntityViewModel &&
                 multiEntityViewModel.Matches(validSelectedEntityIds))
             {
-                multiEntityViewModel.RefreshFromEntities();
+                multiEntityViewModel.RefreshFromEntities(propertyChanges);
             }
             else
             {
@@ -542,6 +563,24 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             CadCanvasToolMode.CircleCenterDiameter or
             CadCanvasToolMode.CircleTwoPoint or
             CadCanvasToolMode.CircleThreePoint;
+    }
+
+    private bool RequiresSelectionRefresh(Editor.CadEditor editor)
+    {
+        var changes = editor.LastDocumentChanges;
+        if (changes.AffectsDocumentStructure || changes.AffectsViewSettings || changes.AffectsLayouts ||
+            changes.AffectsLayoutStructure || Entity is BlockReferencePropertyViewModel)
+            return true;
+        foreach (var change in changes.EntityChanges)
+        {
+            if (editor.Selection.Contains(change.EntityId))
+                return true;
+            // A definition edit can also change the bounds of selected references.
+            if (editor.Document.TryGetEntity(change.EntityId, out var entity) && entity is not null &&
+                editor.Document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false })
+                return true;
+        }
+        return false;
     }
 
     private static bool IsEllipseDrawingMode(CadCanvasToolMode toolMode)

@@ -9,6 +9,72 @@ namespace Direct2dCad.Windows.IntegrationTests;
 public sealed class Direct2DBackgroundPreparationTests
 {
     [Fact]
+    public void RetargetedDefinitionDoesNotReuseOldTransitiveDependencies()
+    {
+        var document = CadDocument.Create("Retarget dependency");
+        var a = new BlockId(20);
+        var b = new BlockId(21);
+        var root = new OwnerPreparationSnapshot(BlockId.ModelSpace, [Snapshot(document, a)]);
+        var first = new OwnerPreparationSnapshot(a, [Snapshot(document)]);
+        var second = new OwnerPreparationSnapshot(b, [Snapshot(document), Snapshot(document)]);
+        using var service = new Direct2DBackgroundPreparationService();
+        var before = Prepare(service, document, [root, first, second]);
+        var changedRoot = root with { Entities = [root.Entities[0] with { DefinitionBlockId = b }] };
+        var after = Prepare(service, document, [changedRoot, first, second], 2);
+        var dependencies = after.Owners[BlockId.ModelSpace].DependencyEntityIds;
+        Assert.NotSame(before.Owners[BlockId.ModelSpace].DependencyEntityIds, dependencies);
+        Assert.DoesNotContain(first.Entities[0].Entity.Id, dependencies);
+        Assert.All(second.Entities, item => Assert.Contains(item.Entity.Id, dependencies));
+        Assert.Equal(3, after.Owners[BlockId.ModelSpace].EstimatedRenderWork);
+    }
+
+    [Fact]
+    public void LocalOrderChangesPreserveOtherOwnerPacketsAndPreparedArrays()
+    {
+        var document = CadDocument.Create("Local order");
+        var modelLine = document.AddLine(CadPointD.Origin, new CadPointD(10, 0));
+        var paperLine = document.AddLine(CadPointD.Origin, new CadPointD(20, 0));
+        document.MoveEntityToBlock(paperLine.Id, BlockId.PaperSpace);
+        using var cache = new Direct2DEntityOrderCache();
+        var paperPacket = cache.GetRenderPacket(document, BlockId.PaperSpace);
+        cache.ScheduleBackgroundPreparation(document);
+        var initialPaper = WaitForOwner(cache, document, BlockId.PaperSpace);
+        foreach (var kind in new[] { CadEntityChangeKind.Created, CadEntityChangeKind.DrawOrder,
+                     CadEntityChangeKind.Layer, CadEntityChangeKind.Deleted })
+        {
+            cache.ApplyChanges(document, CadDocumentChangeSet.ForEntity(modelLine.Id, kind));
+            Assert.Same(paperPacket, cache.GetRenderPacket(document, BlockId.PaperSpace));
+            cache.ScheduleBackgroundPreparation(document);
+            Assert.Same(initialPaper.OrderedEntities,
+                WaitForOwner(cache, document, BlockId.PaperSpace).OrderedEntities);
+        }
+    }
+
+    [Fact]
+    public void SnapshotPagesRemainImmutableAndOrderChangesResort()
+    {
+        var document = CadDocument.Create("Paged snapshots");
+        var original = Enumerable.Range(0, 600).Select(_ => Snapshot(document)).ToArray();
+        var pages = new EntityPreparationSnapshots(original);
+        var replacement = original[256] with { Bounds = CadRectD.FromXYWH(100, 100, 1, 1) };
+        var updated = pages.WithUpdates(new Dictionary<int, EntityPreparationSnapshot> { [256] = replacement });
+        Assert.Equal(original[256], pages[256]);
+        Assert.Equal(replacement, updated[256]);
+        Assert.Equal(original[255], updated[255]);
+        Assert.Equal(original[599], updated[599]);
+        using var cache = new Direct2DEntityOrderCache();
+        cache.ScheduleBackgroundPreparation(document);
+        var first = WaitForOwner(cache, document, BlockId.ModelSpace);
+        var entity = original[0].Entity;
+        entity.SetZIndex(100);
+        cache.ApplyChanges(document, CadDocumentChangeSet.ForEntity(entity.Id, CadEntityChangeKind.DrawOrder));
+        cache.ScheduleBackgroundPreparation(document);
+        var second = WaitForOwner(cache, document, BlockId.ModelSpace);
+        Assert.NotSame(first.OrderedSourceIndices, second.OrderedSourceIndices);
+        Assert.Equal(entity.Id, second.OrderedEntities[^1].Id);
+    }
+
+    [Fact]
     public void CyclicWorkRemainsPathDependentAndIndependentOfOwnerIterationOrder()
     {
         var document = CadDocument.Create("Cycle cost");
@@ -63,6 +129,13 @@ public sealed class Direct2DBackgroundPreparationTests
         var updatedModel = WaitForOwner(cache, document, BlockId.ModelSpace);
         var updatedPaper = WaitForOwner(cache, document, BlockId.PaperSpace);
         Assert.NotSame(initialModel.SourceSnapshot, updatedModel.SourceSnapshot);
+        Assert.Same(initialModel.OrderedSourceIndices, updatedModel.OrderedSourceIndices);
+        Assert.Same(initialModel.OrderedEntities, updatedModel.OrderedEntities);
+        Assert.Same(initialModel.OwnedEntityIds, updatedModel.OwnedEntityIds);
+        Assert.Same(initialModel.NestedDefinitionBlockIds, updatedModel.NestedDefinitionBlockIds);
+        Assert.Same(initialModel.DependencyEntityIds, updatedModel.DependencyEntityIds);
+        Assert.Same(initialPaper.DependencyEntityIds, updatedPaper.DependencyEntityIds);
+        Assert.Equal(CadRectD.FromLTRB(0, 0, 10, 0), initialModel.SourceSnapshot!.Entities[0].Bounds);
         Assert.Same(initialPaper.SourceSnapshot, updatedPaper.SourceSnapshot);
         Assert.Same(initialPaper.OrderedEntities, updatedPaper.OrderedEntities);
         Assert.Equal(line.Bounds, updatedModel.Bounds);

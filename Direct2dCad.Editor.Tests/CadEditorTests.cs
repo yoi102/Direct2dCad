@@ -10,6 +10,85 @@ namespace Direct2dCad.Editor.Tests;
 
 public sealed class CadEditorTests
 {
+    [Theory]
+    [InlineData(0)] [InlineData(1)] [InlineData(2)] [InlineData(3)]
+    [InlineData(4)] [InlineData(5)] [InlineData(6)] [InlineData(7)]
+    [InlineData(8)] [InlineData(9)] [InlineData(10)] [InlineData(11)]
+    [InlineData(12)] [InlineData(13)]
+    public void CreationPublishesFinalOwnerAndRedoKeepsOriginalDestination(int kind)
+    {
+        var document = CadDocument.Create("Paper creation");
+        var definition = document.CreateBlockDefinition("Part", CadPointD.Origin);
+        var editor = new CadEditor(document) { ActiveOwnerBlockId = BlockId.PaperSpace };
+        var publications = 0;
+        editor.DocumentChanged += (_, changes) =>
+        {
+            foreach (var change in changes.EntityChanges)
+            {
+                if ((change.Kind & CadEntityChangeKind.Created) == 0)
+                    continue;
+                publications++;
+                var entity = document.GetEntity(change.EntityId);
+                Assert.Equal(BlockId.PaperSpace, entity.OwnerBlockId);
+                if (!entity.Bounds.IsEmpty)
+                    Assert.Contains(entity.Id, editor.SpatialIndex.Query(BlockId.PaperSpace, entity.Bounds));
+                Assert.DoesNotContain(entity.Id, editor.SpatialIndex.Query(BlockId.ModelSpace,
+                    CadRectD.FromXYWH(-100, -100, 1000, 1000)));
+            }
+        };
+        CadPointD[] points = [new(0, 0), new(10, 0), new(10, 10)];
+        var bounds = CadRectD.FromXYWH(0, 0, 10, 10);
+        var id = kind switch
+        {
+            0 => editor.AddLine(points[0], points[1]),
+            1 => editor.AddCircle(points[0], 5),
+            2 => editor.AddEllipse(points[0], 5, 3),
+            3 => editor.AddEllipseArc(points[0], 5, 3, 0, Math.PI),
+            4 => editor.AddArc(points[0], 5, 0, Math.PI),
+            5 => editor.AddRectangle(bounds),
+            6 => editor.AddImage(bounds, 1, 1, 4, [0, 0, 0, 255]),
+            7 => editor.AddOleObject(bounds, [1, 2, 3]),
+            8 => editor.AddPolygon(points),
+            9 => editor.AddPolyline(points),
+            10 => editor.AddSpline(points),
+            11 => editor.AddText("Paper", points[0], 5),
+            12 => editor.AddShapeText("Paper", points[0], 5),
+            _ => editor.InsertBlockReference(definition, points[0], LayerId.Default)
+        };
+        editor.Undo();
+        Assert.True(document.GetEntity(id).IsErased);
+        editor.ActiveOwnerBlockId = BlockId.ModelSpace;
+        editor.Redo();
+        Assert.False(document.GetEntity(id).IsErased);
+        Assert.Equal(2, publications);
+    }
+
+    [Fact]
+    public void InvalidCreationOwnerDoesNotMutateDocumentOrHistory()
+    {
+        var editor = new CadEditor(CadDocument.Create("Invalid destination"))
+        { ActiveOwnerBlockId = new BlockId(99999) };
+        Assert.Throws<InvalidOperationException>(() => editor.AddCircle(CadPointD.Origin, 5));
+        Assert.Empty(editor.Document.Entities);
+        Assert.False(editor.DocumentCommands.CanUndo);
+    }
+
+    [Fact]
+    public void LayerVersionIgnoresGeometryButTracksMembershipAndUndo()
+    {
+        var editor = new CadEditor(CadDocument.Create("Layer version"));
+        var id = editor.AddLine(CadPointD.Origin, new CadPointD(10, 10));
+        var version = editor.LayerChangeVersion;
+        editor.MoveEntities([id], new CadVectorD(1, 1));
+        Assert.Equal(version, editor.LayerChangeVersion);
+        editor.Undo();
+        Assert.Equal(version, editor.LayerChangeVersion);
+        editor.DeleteEntities([id]);
+        Assert.Equal(version + 1, editor.LayerChangeVersion);
+        editor.Undo();
+        Assert.Equal(version + 2, editor.LayerChangeVersion);
+    }
+
     [Fact]
     public void DocumentChangeVersionTracksCommandsUndoRedoWithoutRendererAttachment()
     {

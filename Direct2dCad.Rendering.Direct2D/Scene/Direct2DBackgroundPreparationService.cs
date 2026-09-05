@@ -109,27 +109,48 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
         foreach (var owner in owners)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (reusableOwners is not null &&
-                reusableOwners.TryGetValue(owner.OwnerBlockId, out var previous) &&
-                ReferenceEquals(previous.SourceSnapshot, owner))
+            PreparedOwnerPlan? previous = null;
+            reusableOwners?.TryGetValue(owner.OwnerBlockId, out previous);
+            if (previous is not null && ReferenceEquals(previous.SourceSnapshot, owner))
             {
                 // Local arrays are immutable. Dependency metrics belong to this new plan.
                 plans[owner.OwnerBlockId] = new PreparedOwnerPlan(
                     previous.OrderedEntities, previous.Bounds, previous.LocalEstimatedRenderWork,
                     previous.AdaptiveChunkBreakEntityIds, previous.OwnedEntityIds,
-                    previous.NestedDefinitionBlockIds) { SourceSnapshot = owner };
+                    previous.NestedDefinitionBlockIds)
+                {
+                    SourceSnapshot = owner,
+                    OrderedSourceIndices = previous.OrderedSourceIndices,
+                    MembershipIdentity = previous.MembershipIdentity
+                };
                 continue;
             }
-            var ordered = owner.Entities
-                .OrderBy(static entity => entity.LayerPriority)
-                .ThenBy(static entity => entity.ZIndex)
-                .ThenBy(static entity => entity.InsertionIndex)
-                .ThenBy(static entity => entity.Entity.Id.Value)
-                .ToArray();
+            var sameOrder = previous?.SourceSnapshot is { } oldSnapshot &&
+                ReferenceEquals(oldSnapshot.OrderIdentity, owner.OrderIdentity) &&
+                previous.OrderedSourceIndices.Count == owner.Entities.Count;
+            var order = sameOrder
+                ? previous!.OrderedSourceIndices
+                : Enumerable.Range(0, owner.Entities.Count)
+                    .OrderBy(index => owner.Entities[index].LayerPriority)
+                    .ThenBy(index => owner.Entities[index].ZIndex)
+                    .ThenBy(index => owner.Entities[index].InsertionIndex)
+                    .ThenBy(index => owner.Entities[index].Entity.Id.Value)
+                    .ToArray();
+            var ordered = order.Select(index => owner.Entities[index]).ToArray();
             var bounds = CadRectD.Empty;
             var localWork = 0;
-            foreach (var entity in ordered)
+            var sameMembers = sameOrder;
+            var sameReferences = sameOrder;
+            for (var index = 0; index < ordered.Length; index++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                var entity = ordered[index];
+                if (sameOrder)
+                {
+                    var old = previous!.SourceSnapshot!.Entities[order[index]];
+                    sameMembers &= old.Entity.Id == entity.Entity.Id && old.DefinitionBlockId == entity.DefinitionBlockId;
+                    sameReferences &= ReferenceEquals(old.Entity, entity.Entity);
+                }
                 if (!entity.IsErased && entity.IsVisible)
                     bounds = bounds.Union(entity.Bounds);
                 localWork = Math.Min(
@@ -138,17 +159,26 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
             }
 
             plans[owner.OwnerBlockId] = new PreparedOwnerPlan(
-                ordered.Select(static entity => entity.Entity).ToArray(),
+                sameReferences ? previous!.OrderedEntities : ordered.Select(static entity => entity.Entity).ToArray(),
                 bounds,
                 localWork,
                 BuildAdaptiveChunkBreaks(ordered, cancellationToken),
-                ordered.Select(static entity => entity.Entity.Id).ToArray(),
-                ordered
+                sameMembers ? previous!.OwnedEntityIds : ordered.Select(static entity => entity.Entity.Id).ToArray(),
+                sameMembers ? previous!.NestedDefinitionBlockIds : ordered
                     .Where(static entity => entity.DefinitionBlockId is not null)
                     .Select(static entity => entity.DefinitionBlockId!.Value)
-                    .ToArray()) { SourceSnapshot = owner };
+                    .ToArray())
+                {
+                    SourceSnapshot = owner,
+                    OrderedSourceIndices = order,
+                    MembershipIdentity = sameMembers ? previous!.MembershipIdentity : new object()
+                };
         }
 
+        // Geometry changes do not alter the transitive block membership graph.
+        var sameTopology = reusableOwners is not null && reusableOwners.Count == plans.Count &&
+            plans.All(pair => reusableOwners.TryGetValue(pair.Key, out var old) &&
+                ReferenceEquals(old.MembershipIdentity, pair.Value.MembershipIdentity));
         var workCache = new Dictionary<BlockId, int>(plans.Count);
         var visiting = new HashSet<BlockId>();
         foreach (var ownerId in plans.Keys)
@@ -161,7 +191,7 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
                 workCache,
                 cancellationToken,
                 out _);
-            plans[ownerId].DependencyEntityIds = ResolveDependencies(
+            plans[ownerId].DependencyEntityIds = sameTopology ? reusableOwners![ownerId].DependencyEntityIds : ResolveDependencies(
                 plans,
                 ownerId,
                 cancellationToken);
@@ -294,6 +324,8 @@ internal sealed class PreparedOwnerPlan(
     IReadOnlyList<BlockId> nestedDefinitionBlockIds)
 {
     public OwnerPreparationSnapshot? SourceSnapshot { get; init; }
+    public object MembershipIdentity { get; init; } = new();
+    public IReadOnlyList<int> OrderedSourceIndices { get; init; } = [];
     public IReadOnlyList<CadEntity> OrderedEntities { get; } = orderedEntities;
     public CadRectD Bounds { get; } = bounds;
     public int LocalEstimatedRenderWork { get; } = localEstimatedRenderWork;
@@ -306,7 +338,10 @@ internal sealed class PreparedOwnerPlan(
 
 internal sealed record OwnerPreparationSnapshot(
     BlockId OwnerBlockId,
-    IReadOnlyList<EntityPreparationSnapshot> Entities);
+    IReadOnlyList<EntityPreparationSnapshot> Entities)
+{
+    public object OrderIdentity { get; init; } = new();
+}
 
 internal readonly record struct EntityPreparationSnapshot(
     CadEntity Entity,

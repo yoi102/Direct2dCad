@@ -12,6 +12,37 @@ namespace Direct2dCad.IO.Tests;
 public sealed class CadDocumentStorageTests
 {
     [Fact]
+    public async Task SectionStreamingProducesIdenticalSyncAndAsyncFilesAndCapturesBeforeYield()
+    {
+        var syncPath = CreateTempPath();
+        var asyncPath = CreateTempPath();
+        try
+        {
+            var document = CadDocument.Create("Snapshot");
+            for (var i = 0; i < 2000; i++)
+            {
+                document.AddLine(new CadPointD(i, 0), new CadPointD(i, 10));
+                document.AddCircle(new CadPointD(i, 20), 5);
+            }
+            var text = document.AddText("Original", CadPointD.Origin, 10);
+            var storage = new CadDocumentStorage();
+            storage.Save(document, syncPath);
+            var saving = storage.SaveAsync(document, asyncPath);
+            text.SetText("Changed after capture");
+            await saving;
+            Assert.Equal(await File.ReadAllBytesAsync(syncPath), await File.ReadAllBytesAsync(asyncPath));
+            var loaded = await storage.LoadAsync(asyncPath);
+            Assert.Equal(document.Entities.Count, loaded.Entities.Count);
+            Assert.Equal("Original", Assert.IsType<CadText>(loaded.GetEntity(text.Id)).Text);
+        }
+        finally
+        {
+            DeleteIfExists(syncPath);
+            DeleteIfExists(asyncPath);
+        }
+    }
+
+    [Fact]
     public async Task SaveAndLoadAsync_RoundTripsDocumentStructureAndSettings()
     {
         var path = CreateTempPath();

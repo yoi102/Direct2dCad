@@ -2,6 +2,7 @@ using AvalonDock.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Db;
+using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
@@ -19,6 +20,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     private readonly IDisposable _interactionStateChangedSubscription;
     private CadDocumentViewModel? _documentViewModel;
     private bool _isRefreshing;
+    private readonly Dictionary<EntityId, int> _resultIndices = [];
     private (CadEditor? Editor, long Version, BlockId? Owner)? _lastRefreshState;
 
     public EntitySearchToolboxViewModel(
@@ -173,8 +175,57 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
 
     private void RefreshIfChanged()
     {
-        if (!_isRefreshing && _lastRefreshState != GetRefreshState())
+        if (_isRefreshing || _lastRefreshState == GetRefreshState())
+            return;
+        if (!TryRefreshChangedResults())
             Refresh();
+    }
+
+    private bool TryRefreshChangedResults()
+    {
+        var state = GetRefreshState();
+        if (_lastRefreshState is not { } previous || state.Editor is not { } editor ||
+            !ReferenceEquals(previous.Editor, editor) || previous.Owner != state.Owner ||
+            unchecked(previous.Version + 1) != state.Version)
+            return false;
+
+        var changes = editor.LastDocumentChanges;
+        const CadEntityChangeKind membershipOrOrder = CadEntityChangeKind.Created |
+            CadEntityChangeKind.Deleted | CadEntityChangeKind.Layer |
+            CadEntityChangeKind.DrawOrder | CadEntityChangeKind.Visibility;
+        if (changes.AffectsDocumentStructure || changes.AffectsLayouts || changes.AffectsLayoutStructure ||
+            changes.EntityChanges.Any(change => (change.Kind & membershipOrOrder) != 0))
+            return false;
+
+        foreach (var change in changes.EntityChanges)
+        {
+            if (!editor.Document.TryGetEntity(change.EntityId, out var entity) || entity is null ||
+                (change.Kind.HasFlag(CadEntityChangeKind.Metadata) && !string.IsNullOrWhiteSpace(SearchText)) ||
+                (editor.Document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false }))
+                return false;
+        }
+
+        _isRefreshing = true;
+        try
+        {
+            var selectedId = SelectedResult?.EntityId;
+            var replacements = new Dictionary<int, EntitySearchResultItemViewModel>();
+            foreach (var change in changes.EntityChanges)
+            {
+                if (!_resultIndices.TryGetValue(change.EntityId, out var index))
+                    continue;
+                var item = CreateResultItem(editor.Document, editor.Document.GetEntity(change.EntityId));
+                if (item == Results[index])
+                    continue;
+                replacements[index] = item;
+            }
+            Results.ReplaceItems(replacements);
+            if (selectedId is { } id && _resultIndices.TryGetValue(id, out var selectedIndex))
+                SelectedResult = Results[selectedIndex];
+            _lastRefreshState = state;
+            return true;
+        }
+        finally { _isRefreshing = false; }
     }
 
     private (CadEditor? Editor, long Version, BlockId? Owner) GetRefreshState()
@@ -263,7 +314,9 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
                          .ThenBy(x => x.ZIndex)
                          .ThenBy(x => x.Id.Value))
             {
-                results.Add(CreateResultItem(document, entity));
+                var item = CreateResultItem(document, entity);
+                results.Add(_resultIndices.TryGetValue(entity.Id, out var index) && Results[index] == item
+                    ? Results[index] : item);
             }
         }
 
@@ -272,6 +325,9 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
         try
         {
             Results.ReplaceRange(results);
+            _resultIndices.Clear();
+            for (var index = 0; index < Results.Count; index++)
+                _resultIndices.Add(Results[index].EntityId, index);
             SelectedResult = selectedEntityId is { } entityId
                 ? Results.FirstOrDefault(x => x.EntityId.Equals(entityId))
                 : null;
@@ -394,32 +450,16 @@ public enum CadEntitySearchScope
     EntireDocument
 }
 
-public sealed class EntitySearchResultItemViewModel(
-    EntityId entityId,
-    string name,
-    string entityType,
-    string layerName,
-    int zIndex,
-    CadRectD bounds,
-    bool isVisible,
-    bool isLocked)
+public sealed record EntitySearchResultItemViewModel(
+    EntityId EntityId,
+    string Name,
+    string EntityType,
+    string LayerName,
+    int ZIndex,
+    CadRectD Bounds,
+    bool IsVisible,
+    bool IsLocked)
 {
-    public EntityId EntityId { get; } = entityId;
-
-    public string Name { get; } = name;
-
-    public string EntityType { get; } = entityType;
-
-    public string LayerName { get; } = layerName;
-
-    public int ZIndex { get; } = zIndex;
-
-    public CadRectD Bounds { get; } = bounds;
-
-    public bool IsVisible { get; } = isVisible;
-
-    public bool IsLocked { get; } = isLocked;
-
     public string EntityIdText => EntityId.Value.ToString();
 
     public string BoundsText => Bounds.IsEmpty

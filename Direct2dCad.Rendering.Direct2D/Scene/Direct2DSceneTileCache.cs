@@ -61,6 +61,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     }
 
     public long EstimatedBytes => _profiles.Values.Sum(static profile => profile.EstimatedBytes);
+    internal int LastInvalidatedTileCount { get; private set; }
 
     public bool Prepare(
         ID2D1DeviceContext context,
@@ -213,6 +214,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
 
     public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
     {
+        LastInvalidatedTileCount = 0;
         ThrowIfDisposed();
         EnsureDocument(document);
         if (_profiles.Count > 0 && !AreExistingProfileStrokeExtentsCacheSafe())
@@ -230,11 +232,20 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         }
 
         _affectedBlocks.Clear();
-        foreach (var change in changes.EntityChanges)
-            InvalidateChangedEntity(document, change, _affectedBlocks);
-
-        if (_affectedBlocks.Count > 0)
-            InvalidateBlockInstances(document, _affectedBlocks);
+        foreach (var profile in _profiles.Values)
+            profile.BeginInvalidationBatch();
+        try
+        {
+            foreach (var change in changes.EntityChanges)
+                InvalidateChangedEntity(document, change, _affectedBlocks);
+            if (_affectedBlocks.Count > 0)
+                InvalidateBlockInstances(document, _affectedBlocks);
+        }
+        finally
+        {
+            foreach (var profile in _profiles.Values)
+                LastInvalidatedTileCount += profile.EndInvalidationBatch();
+        }
     }
 
     public void InvalidateEntity(CadDocument document, EntityId entityId)
@@ -900,6 +911,9 @@ internal sealed class Direct2DSceneTileCache : IDisposable
 
     private sealed class TileProfile(TileProfileKey key, double zoom) : IDisposable
     {
+        private readonly HashSet<TileCoordinate> _invalidTiles = [];
+        private readonly HashSet<CadRectD> _invalidBounds = [];
+        private bool _invalidationBatch;
         private readonly CacheEvictionQueue<TileCoordinate> _evictionCandidates = new();
         private readonly HashSet<TileCoordinate> _protectedTiles = [];
         public TileProfileKey Key { get; } = key;
@@ -956,25 +970,60 @@ internal sealed class Direct2DSceneTileCache : IDisposable
 
         public void Invalidate(CadRectD entityBounds)
         {
-            if (entityBounds.IsEmpty)
+            if (entityBounds.IsEmpty || Tiles.Count + FailedTiles.Count == 0 ||
+                !_invalidBounds.Add(entityBounds))
                 return;
 
             var paintBounds = entityBounds.Inflate(
                 MaximumCachedStrokeExtentPixels /
                 Math.Max(Zoom, double.Epsilon));
-            foreach (var pair in Tiles
-                         .Where(pair => Intersects(pair.Value.WorldBounds, paintBounds))
-                         .ToArray())
+            var worldSize = TilePixelSize / Zoom;
+            var minX = FloorToInt(Math.BitDecrement(paintBounds.MinX / worldSize));
+            var maxX = FloorToInt(paintBounds.MaxX / worldSize);
+            var minY = FloorToInt(Math.BitDecrement(paintBounds.MinY / worldSize));
+            var maxY = FloorToInt(paintBounds.MaxY / worldSize);
+            var keyCount = ((double)maxX - minX + 1) * ((double)maxY - minY + 1);
+            if (keyCount <= Tiles.Count + FailedTiles.Count)
             {
-                pair.Value.Dispose();
-                Tiles.Remove(pair.Key);
+                for (long y = minY; y <= maxY; y++)
+                for (long x = minX; x <= maxX; x++)
+                {
+                    var key = new TileCoordinate((int)x, (int)y);
+                    if (Tiles.ContainsKey(key) || FailedTiles.Contains(key))
+                        _invalidTiles.Add(key);
+                }
             }
-
-            foreach (var tileKey in FailedTiles
-                         .Where(tileKey => Intersects(ResolveWorldBounds(tileKey, Zoom), paintBounds))
-                         .ToArray())
+            else
             {
-                FailedTiles.Remove(tileKey);
+                foreach (var pair in Tiles)
+                    if (!_invalidTiles.Contains(pair.Key) && Intersects(pair.Value.WorldBounds, paintBounds))
+                        _invalidTiles.Add(pair.Key);
+                foreach (var key in FailedTiles)
+                    if (!_invalidTiles.Contains(key) && Intersects(ResolveWorldBounds(key, Zoom), paintBounds))
+                        _invalidTiles.Add(key);
+            }
+            if (!_invalidationBatch)
+                EndInvalidationBatch();
+        }
+
+        public void BeginInvalidationBatch() => _invalidationBatch = true;
+
+        public int EndInvalidationBatch()
+        {
+            try
+            {
+                foreach (var key in _invalidTiles)
+                {
+                    RemoveTile(key);
+                    FailedTiles.Remove(key);
+                }
+                return _invalidTiles.Count;
+            }
+            finally
+            {
+                _invalidTiles.Clear();
+                _invalidBounds.Clear();
+                _invalidationBatch = false;
             }
         }
 

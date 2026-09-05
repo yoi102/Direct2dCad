@@ -77,6 +77,30 @@ public class ObservableRangeCollection<T> : ObservableCollection<T>
         RaiseReset();
     }
 
+    public void ReplaceItems(IReadOnlyDictionary<int, T> replacements)
+    {
+        ArgumentNullException.ThrowIfNull(replacements);
+        if (replacements.Count == 0)
+            return;
+        CheckReentrancy();
+        foreach (var index in replacements.Keys)
+            if (index < 0 || index >= Count)
+                throw new ArgumentOutOfRangeException(nameof(replacements));
+
+        if (replacements.Count == 1)
+        {
+            foreach (var (index, value) in replacements)
+                SetItem(index, value);
+            return;
+        }
+
+        foreach (var (index, value) in replacements)
+            Items[index] = value;
+        // WPF collection views do not support multi-item Replace notifications.
+        OnPropertyChanged(IndexerChangedEventArgs);
+        OnCollectionChanged(CollectionResetEventArgs);
+    }
+
     private void RaiseReset()
     {
         OnPropertyChanged(CountChangedEventArgs);

@@ -1,4 +1,5 @@
 using System.Resources;
+using Direct2dCad.ChangeTracking;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
@@ -161,7 +162,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
     public bool Matches(IEnumerable<EntityId> entityIds) =>
         _entityIdSet.SetEquals(entityIds);
 
-    public void RefreshFromEntities()
+    public void RefreshFromEntities(CadEntityChangeKind? changes = null)
     {
         var entities = ResolveEntities();
         if (entities.Count < 2)
@@ -170,6 +171,8 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         _isRefreshing = true;
         try
         {
+            if (changes is { } kinds && TryRefreshPropertyGroups(entities, kinds))
+                return;
             IsEditable = entities.All(entity =>
                 CadEntityAccessPolicy.IsEditable(_documentViewModel.CadEditor.Document, entity));
             IsSameType = entities.All(entity => entity.GetType() == entities[0].GetType());
@@ -189,11 +192,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             SupportsLineJoin = SupportsStrokeStyle && entities.All(CadEntityCapabilities.SupportsLineJoin);
             if (SupportsStrokeAppearance)
             {
-                RefreshColorSourceProperties(entities);
-                StrokeColor = ResolveStrokeColor(entities[0]);
-                HasMixedStrokeColor = entities.Skip(1).Any(entity => ResolveStrokeColor(entity) != StrokeColor);
-                UseByLayerLineWeight = GetCommonValue(entities, entity => entity.UseLayerLineWeight);
-                LineWeight = GetCommonValue(entities, entity => ResolveLineWeight(entity).Value);
+                RefreshStrokeAppearanceProperties(entities);
             }
             else
             {
@@ -221,6 +220,41 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         OnPropertyChanged(nameof(ColorControlsEnabled));
         OnPropertyChanged(nameof(LineWeightControlsEnabled));
         OnPropertyChanged(nameof(FillColorControlsEnabled));
+    }
+
+    private bool TryRefreshPropertyGroups(IReadOnlyList<CadEntity> entities,
+        CadEntityChangeKind kinds)
+    {
+        const CadEntityChangeKind supported =
+            CadEntityChangeKind.Appearance |
+            CadEntityChangeKind.Fill |
+            CadEntityChangeKind.Opacity |
+            CadEntityChangeKind.DrawOrder;
+        if ((kinds & ~supported) != 0)
+            return false;
+        if ((kinds & CadEntityChangeKind.Appearance) != 0)
+        {
+            if (SupportsStrokeAppearance)
+            {
+                RefreshStrokeAppearanceProperties(entities);
+            }
+            RefreshStrokeStyleProperties(entities);
+            OnPropertyChanged(nameof(ColorControlsEnabled));
+            OnPropertyChanged(nameof(LineWeightControlsEnabled));
+        }
+        if ((kinds & CadEntityChangeKind.Fill) != 0)
+        {
+            RefreshFillProperties(entities);
+            OnPropertyChanged(nameof(FillColorControlsEnabled));
+        }
+        if ((kinds & CadEntityChangeKind.Opacity) != 0)
+            Opacity = SupportsOpacity ? GetCommonValue(entities, ResolveOpacity) : null;
+        if ((kinds & CadEntityChangeKind.DrawOrder) != 0)
+        {
+            ZIndex = GetCommonValue(entities, entity => entity.ZIndex);
+            HasMixedZIndex = ZIndex is null;
+        }
+        return true;
     }
 
     partial void OnSelectedLayerOptionChanged(EntityLayerOption? value)
@@ -400,6 +434,15 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         FillColor = FillStyleCatalog.ResolveFillColor(document, GetFillStyleId(entities[0]), FillStyleCatalog.DefaultFillColor);
         HasMixedFillColor = entities.Skip(1).Any(entity =>
             FillStyleCatalog.ResolveFillColor(document, GetFillStyleId(entity), FillStyleCatalog.DefaultFillColor) != FillColor);
+    }
+
+    private void RefreshStrokeAppearanceProperties(IReadOnlyList<CadEntity> entities)
+    {
+        RefreshColorSourceProperties(entities);
+        StrokeColor = ResolveStrokeColor(entities[0]);
+        HasMixedStrokeColor = entities.Skip(1).Any(entity => ResolveStrokeColor(entity) != StrokeColor);
+        UseByLayerLineWeight = GetCommonValue(entities, entity => entity.UseLayerLineWeight);
+        LineWeight = GetCommonValue(entities, entity => ResolveLineWeight(entity).Value);
     }
 
     private void RefreshColorSourceProperties(IReadOnlyList<CadEntity> entities)

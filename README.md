@@ -549,6 +549,7 @@ dotnet test .\Direct2dCad.slnx -m:1
 | `CacheEvictionBenchmarks` | 128 / 1,024 个缓存候选项的排序淘汰与复用优先队列对照，检查耗时和托管分配；不创建 GPU 资源 |
 | `SelectionOverlayBenchmarks` | 1 / 512 / 20,000 个选中实体的 handle/outline 构建，对比新集合、复用缓冲区、场景复用和版本化排序复用 |
 | `OwnerBoundsUpdateBenchmarks` | 20,000 / 100,000 实体空间中，单个实体修改后的全量边界扫描与增量边界树更新 |
+| `PreparationSnapshotBenchmarks` | 20,000 / 100,000 实体的后台准备快照，全量复制与修改页复制的耗时和分配对比 |
 | `DirtyRegionBatchBenchmarks` | 512 / 20,000 个脏矩形的批量归并，保守覆盖原区域并限制输出数量 |
 | `Direct2DSelectionOverlayBenchmarks` | 512 / 20,000 个选中实体实际进入 Direct2D selection overlay 的缓存回放和大选择集 fallback |
 | `DirtyRegionBenchmarks` | 8 / 32 / 128 个脏矩形的批量规划和增量 Union |
@@ -557,6 +558,10 @@ dotnet test .\Direct2dCad.slnx -m:1
 | `ComplexSceneRenderingBenchmarks` | 5,000 个文字、2,000 个 hatch、2,000 个 Block Reference（每个展开 12 个实体）以及 512 个图像的热帧、资源重建和首帧 |
 | `DocumentIoBenchmarks` | 生成文档或指定 `.d2cad` 的同步/异步读写、Section 读取、空间索引构建以及加载到 Direct2D 首帧的完整管线 |
 | `LayoutRenderingBenchmarks` | Layout 纸空间、模型 Viewport、激活/未激活 Viewport 的热帧、资源重建和首帧 |
+
+后台准备快照使用不可变分页，仅复制发生变化的页；只修改几何时复用原有绘制顺序。chunk / tile 在一次变更批次内去重失效，实体排序缓存按受影响的所属空间失效，文档结构变化仍保守地全量失效。实体换层时保留可复用的 geometry 和文字布局，并更新外观资源。编辑器创建实体会先确定目标空间再发布变更，Redo 也保持原目标空间。这些优化不改变绘制精度或 LOD 设置；快照复制基准不代表完整帧耗时。
+
+搜索面板在连续变更版本下按实体更新结果，批量更新合并集合通知；多选属性跳过无关实体变更，并按属性类别刷新。后台准备复用成员数组和未变化的块依赖，chunk 计划按所属空间及引用关系失效。仅淘汰缩放缓存时可异步取消录制，修改共享资源前仍等待后台退出。保存先获取一致的 DTO 快照，再逐 section 序列化、写入临时文件并补写目录表，避免同时保留全部压缩载荷；文件格式和原子替换机制不变。
 
 先列出所有基准：
 

@@ -139,7 +139,7 @@ public sealed class EntitySearchToolboxViewModelTests
     }
 
     [Fact]
-    public void ManualRefreshAndSearchStillRebuildAndDetachClearsResults()
+    public void ManualRefreshReusesUnchangedRowsButReadsCurrentValuesAndDetachClearsResults()
     {
         using var fixture = new CadToolboxTestContext();
         var editor = fixture.Document.CadEditor;
@@ -147,7 +147,10 @@ public sealed class EntitySearchToolboxViewModelTests
         fixture.Search.Attach(fixture.Document);
         var original = Assert.Single(fixture.Search.Results);
         fixture.Search.RefreshCommand.Execute(null);
-        Assert.NotSame(original, Assert.Single(fixture.Search.Results));
+        Assert.Same(original, Assert.Single(fixture.Search.Results));
+        editor.Document.GetEntity(original.EntityId).Rename("Updated Line");
+        fixture.Search.RefreshCommand.Execute(null);
+        Assert.Equal("Updated Line", Assert.Single(fixture.Search.Results).Name);
         fixture.Search.SearchText = "No matching entity";
         Assert.Empty(fixture.Search.Results);
         fixture.Search.SearchText = "Line";

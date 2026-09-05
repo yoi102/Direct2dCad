@@ -30,6 +30,8 @@ public sealed class CadEditor
 
     // Runtime invalidation token, not a saved revision or an undo-history position.
     public long DocumentChangeVersion { get; private set; }
+    public CadDocumentChangeSet LastDocumentChanges { get; private set; } = CadDocumentChangeSet.Empty;
+    public long LayerChangeVersion { get; private set; }
 
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
     public event EventHandler<CadEditorCommandResult>? EditorStateChanged;
@@ -68,6 +70,13 @@ public sealed class CadEditor
         _documentChanges.DocumentChanged += (_, result) =>
         {
             DocumentChangeVersion = unchecked(DocumentChangeVersion + 1);
+            LastDocumentChanges = result;
+            const CadEntityChangeKind layerMembershipChanges =
+                CadEntityChangeKind.Created | CadEntityChangeKind.Deleted |
+                CadEntityChangeKind.Layer | CadEntityChangeKind.Visibility;
+            if (result.AffectsDocumentStructure ||
+                result.EntityChanges.Any(change => (change.Kind & layerMembershipChanges) != 0))
+                LayerChangeVersion = unchecked(LayerChangeVersion + 1);
             DocumentChanged?.Invoke(this, result);
         };
         EditorCommands.Changed += (_, result) => EditorStateChanged?.Invoke(this, result);
@@ -297,7 +306,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -322,7 +331,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -349,7 +358,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -378,7 +387,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -405,7 +414,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -432,7 +441,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -465,7 +474,7 @@ public sealed class CadEditor
             isVisible,
             opacity,
             rotationRadians);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -490,7 +499,7 @@ public sealed class CadEditor
             zIndex,
             isVisible,
             opacity);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -513,7 +522,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -538,7 +547,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -563,7 +572,7 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -597,7 +606,7 @@ public sealed class CadEditor
             zIndex,
             isVisible);
 
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -631,7 +640,7 @@ public sealed class CadEditor
             invertedMarginFactor,
             shapeFontId);
 
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -686,7 +695,7 @@ public sealed class CadEditor
             scaleX,
             scaleY,
             name);
-        DocumentCommands.Execute(command);
+        ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
 
@@ -1171,12 +1180,13 @@ public sealed class CadEditor
         SpatialIndex.Rebuild(Document);
     }
 
-    private EntityId GetCreatedEntityId(EntityId? entityId, string commandName)
+    private void ExecuteCreation(ICadCommand command) => DocumentCommands.Execute(
+        new CreateEntitiesInOwnerCommand(command, ActiveOwnerBlockId));
+
+    private static EntityId GetCreatedEntityId(EntityId? entityId, string commandName)
     {
         var createdEntityId = entityId ??
                               throw new InvalidOperationException($"{commandName} did not create an entity.");
-        if (!ActiveOwnerBlockId.Equals(BlockId.ModelSpace))
-            Document.MoveEntityToBlock(createdEntityId, ActiveOwnerBlockId);
         return createdEntityId;
     }
 }

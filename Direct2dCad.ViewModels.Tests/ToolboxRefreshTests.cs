@@ -9,6 +9,114 @@ namespace Direct2dCad.ViewModels.Tests;
 public sealed class ToolboxRefreshTests
 {
     [Fact]
+    public void SearchBatchMovePublishesOneCollectionNotification()
+    {
+        using var context = new CadToolboxTestContext();
+        AddSelectedLines(context, 1000);
+        var editor = context.Document.CadEditor;
+        context.Search.Attach(context.Document);
+        context.Search.SelectedResult = context.Search.Results[10];
+        var selectedId = context.Search.SelectedResult.EntityId;
+        var notifications = 0;
+        context.Search.Results.CollectionChanged += (_, _) => notifications++;
+        editor.MoveEntities(editor.Document.Entities.Keys, new CadVectorD(10, 0));
+        context.Publish();
+        Assert.Equal(1, notifications);
+        Assert.Equal(selectedId, context.Search.SelectedResult!.EntityId);
+        Assert.All(context.Search.Results, item =>
+            Assert.Equal(editor.Document.GetEntity(item.EntityId).Bounds, item.Bounds));
+    }
+
+    [Fact]
+    public void SearchGeometryUpdatesOnlyChangedRowAndPreservesSelectionAndFilters()
+    {
+        using var context = new CadToolboxTestContext();
+        var editor = context.Document.CadEditor;
+        var first = editor.AddCircle(CadPointD.Origin, 5);
+        var second = editor.AddCircle(new CadPointD(20, 0), 5);
+        context.Search.Attach(context.Document);
+        var unchanged = context.Search.Results.Single(item => item.EntityId == second);
+        context.Search.SelectedResult = context.Search.Results.Single(item => item.EntityId == first);
+        var filters = context.Search.LayerFilters.ToArray();
+        var notifications = new List<System.Collections.Specialized.NotifyCollectionChangedAction>();
+        context.Search.Results.CollectionChanged += (_, e) => notifications.Add(e.Action);
+        editor.MoveEntities([first], new CadVectorD(10, 0));
+        context.Publish();
+        Assert.Equal([System.Collections.Specialized.NotifyCollectionChangedAction.Replace], notifications);
+        Assert.Same(unchanged, context.Search.Results.Single(item => item.EntityId == second));
+        Assert.Equal(first, context.Search.SelectedResult!.EntityId);
+        Assert.Equal(editor.Document.GetEntity(first).Bounds, context.Search.SelectedResult.Bounds);
+        Assert.Same(filters[0], context.Search.LayerFilters[0]);
+        editor.Undo();
+        context.Publish();
+        Assert.Equal(editor.Document.GetEntity(first).Bounds, context.Search.SelectedResult.Bounds);
+    }
+
+    [Fact]
+    public void SearchFallsBackAfterMissedVersionsAndReevaluatesRenameFilter()
+    {
+        using var context = new CadToolboxTestContext();
+        var editor = context.Document.CadEditor;
+        var first = editor.AddCircle(CadPointD.Origin, 5);
+        var second = editor.AddCircle(new CadPointD(20, 0), 5);
+        context.Search.Attach(context.Document);
+        editor.MoveEntities([first], new CadVectorD(10, 0));
+        editor.MoveEntities([second], new CadVectorD(10, 0));
+        context.Publish();
+        Assert.All(context.Search.Results, item => Assert.Equal(editor.Document.GetEntity(item.EntityId).Bounds, item.Bounds));
+        context.Search.SearchText = "Renamed";
+        Assert.Empty(context.Search.Results);
+        editor.RenameEntity(first, "Renamed");
+        context.Publish();
+        Assert.Equal(first, Assert.Single(context.Search.Results).EntityId);
+        editor.Undo();
+        context.Publish();
+        Assert.Empty(context.Search.Results);
+    }
+
+    [Fact]
+    public void MultiSelectionSkipsUnselectedEditsAndZIndexDoesNotRebuildFillOptions()
+    {
+        using var context = new CadToolboxTestContext();
+        AddSelectedLines(context, 1000);
+        var editor = context.Document.CadEditor;
+        var other = editor.AddCircle(CadPointD.Origin, 5);
+        context.Properties.Attach(context.Document);
+        var panel = Assert.IsType<MultiEntityPropertyViewModel>(context.Properties.Entity);
+        var notifications = new List<string?>();
+        panel.PropertyChanged += (_, e) => notifications.Add(e.PropertyName);
+        editor.MoveEntities([other], new CadVectorD(10, 0));
+        context.Publish();
+        Assert.Empty(notifications);
+        var layers = panel.LayerOptions;
+        editor.SetEntityZIndex(editor.Selection.EntityIds, 7);
+        context.Publish();
+        Assert.Equal(7, panel.ZIndex);
+        Assert.Same(layers, panel.LayerOptions);
+        Assert.DoesNotContain(nameof(panel.FillStyleOptions), notifications);
+    }
+
+    [Fact]
+    public void GeometryChangesDoNotRefreshLayerPanelButMembershipChangesDo()
+    {
+        using var context = new CadToolboxTestContext();
+        var editor = context.Document.CadEditor;
+        var id = editor.AddCircle(CadPointD.Origin, 5);
+        context.Layers.Attach(context.Document);
+        var notifications = 0;
+        context.Layers.PropertyChanged += (_, _) => notifications++;
+        editor.MoveEntities([id], new CadVectorD(10, 10));
+        context.Publish();
+        Assert.Equal(0, notifications);
+        editor.Undo();
+        context.Publish();
+        Assert.Equal(0, notifications);
+        editor.DeleteEntities([id]);
+        context.Publish();
+        Assert.True(notifications > 0);
+    }
+
+    [Fact]
     public void MultiSelectionPreservesCommonAndMixedFillValuesWithoutTemporaryArrays()
     {
         using var context = new CadToolboxTestContext();

@@ -204,6 +204,10 @@ dotnet test .\Direct2dCad.slnx -m:1
 
 `CacheEvictionBenchmarks` compares sorting-based eviction with a reusable priority queue for 128 / 1,024 candidates, measuring time and managed allocations without creating GPU resources.
 
+`PreparationSnapshotBenchmarks` compares full snapshot copying with copy-on-write pages for 20,000 / 100,000 entities. Geometry-only updates reuse the existing draw-order permutation; chunk and tile invalidation is deduplicated within each change batch. Editor creation commands publish entities only after assigning their destination owner, which is preserved across redo.
+
+Search results update changed rows and batch collection notifications; multi-selection properties skip unrelated edits and refresh by property group. Background preparation reuses membership arrays and unchanged block dependencies. Chunk plans invalidate affected owners and referencing owners. Zoom-cache eviction can cancel recording without waiting, but shared-resource updates still wait for the worker. Saving captures consistent DTOs, writes compressed sections one at a time to a temporary file, then fills in the directory and atomically replaces the destination without changing the file format.
+
 `OwnerBoundsUpdateBenchmarks` compares a full bounds scan with incremental bounds-tree updates in 20,000 / 100,000-entity owners. `DirtyRegionBatchBenchmarks` measures conservative reduction of 512 / 20,000 dirty rectangles. `SelectionOverlayBenchmarks` also compares scene reuse with versioned selection-order reuse. Spatial count benchmarks include pending edits: counts correct the immutable tree using old/new bounds. Subsequent large-index rebuilds run on value snapshots in the background; initial builds and snapshot capture remain on the calling thread. The index is not a concurrent read/write collection.
 
 ```powershell

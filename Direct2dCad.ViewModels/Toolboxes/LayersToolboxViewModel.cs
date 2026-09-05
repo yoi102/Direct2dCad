@@ -289,7 +289,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
     {
         var editor = _documentViewModel?.CadEditor;
         if (ReferenceEquals(editor, _lastRefreshedEditor) &&
-            (editor?.DocumentChangeVersion ?? 0) == _lastRefreshVersion &&
+            (editor?.LayerChangeVersion ?? 0) == _lastRefreshVersion &&
             (selectedLayerId is null || SelectedLayer?.LayerId == selectedLayerId))
             return;
 
@@ -318,7 +318,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
         if (!Layers.SequenceEqual(items))
             Layers.ReplaceRange(items);
         _lastRefreshedEditor = editor;
-        _lastRefreshVersion = editor?.DocumentChangeVersion ?? 0;
+        _lastRefreshVersion = editor?.LayerChangeVersion ?? 0;
 
         OnPropertyChanged(nameof(HasLayers));
         SelectedLayer = selectedLayerId is { } layerId

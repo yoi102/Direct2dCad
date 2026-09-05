@@ -273,7 +273,6 @@ internal sealed class Direct2DResourceCache : IDisposable
                 CadEntityChangeKind.Created |
                 CadEntityChangeKind.Deleted |
                 CadEntityChangeKind.Visibility |
-                CadEntityChangeKind.Layer |
                 CadEntityChangeKind.EmbeddedData;
             if ((resourceChanges & fullRebuildChanges) != 0 ||
                 !document.TryGetEntity(change.EntityId, out var entity) ||
@@ -282,6 +281,20 @@ internal sealed class Direct2DResourceCache : IDisposable
             {
                 RebuildEntityResources(document, change.EntityId);
                 continue;
+            }
+
+            if ((resourceChanges & CadEntityChangeKind.Layer) != 0)
+            {
+                var reusableDefinition = document.TryGetBlock(entity.OwnerBlockId, out var owner) &&
+                    owner is { IsSystem: false };
+                if (entity.IsErased || !entity.IsVisible ||
+                    !document.TryGetLayer(entity.LayerId, out var layer) || layer is null ||
+                    (!reusableDefinition && (!layer.IsVisible || layer.IsFrozen)))
+                {
+                    RemoveEntity(entity.Id);
+                    continue;
+                }
+                resourceChanges |= CadEntityChangeKind.Appearance;
             }
 
             if ((resourceChanges & CadEntityChangeKind.Fill) != 0 &&

@@ -34,6 +34,25 @@ internal sealed class Direct2DChunkRecordingWorker : IDisposable
     }
 
     public bool IsReady => _thread is { IsAlive: true };
+    public bool CanSchedule
+    {
+        get
+        {
+            lock (_gate)
+                return _thread is { IsAlive: true } && !_stopping && !_isRecording && _pending is null;
+        }
+    }
+    internal double LastCancellationWaitMilliseconds { get; private set; }
+
+    // Only for invalidating outputs while keeping shared entity resources alive.
+    public void CancelPending()
+    {
+        ThrowIfDisposed();
+        Interlocked.Increment(ref _generation);
+        lock (_gate)
+            _pending = null;
+        DisposeCompleted();
+    }
 
     public void Reset(ID2D1Factory? factory, ID2D1Device? device)
     {
@@ -143,14 +162,14 @@ internal sealed class Direct2DChunkRecordingWorker : IDisposable
 
     private void CancelAndWaitCore()
     {
-        Interlocked.Increment(ref _generation);
+        CancelPending();
+        var started = Stopwatch.GetTimestamp();
         lock (_gate)
         {
-            _pending = null;
             while (_isRecording)
                 Monitor.Wait(_gate);
         }
-
+        LastCancellationWaitMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         DisposeCompleted();
     }
 

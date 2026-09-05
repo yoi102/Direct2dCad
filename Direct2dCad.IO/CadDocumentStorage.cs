@@ -20,62 +20,8 @@ public sealed class CadDocumentStorage
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-
-        var sections = CreateSections(document);
-        var tableOffset = CadContainerFormat.FileHeaderLength;
-        var tableLength = sections.Count * CadContainerFormat.SectionEntryLength;
-        var payloadOffset = tableOffset + tableLength;
-
-        var entries = new List<CadSectionEntry>(sections.Count);
-        foreach (var section in sections)
-        {
-            entries.Add(new CadSectionEntry(
-                section.Kind,
-                CadSectionMigrationRegistry.GetCurrentVersion(section.Kind),
-                section.Compression,
-                payloadOffset,
-                section.Payload.Length));
-
-            payloadOffset += section.Payload.Length;
-        }
-
-        var destinationPath = PrepareDestinationPath(filePath);
-        var temporaryPath = CreateTemporaryPath(destinationPath);
-        try
-        {
-            using (var stream = new FileStream(
-                       temporaryPath,
-                       FileMode.CreateNew,
-                       FileAccess.Write,
-                       FileShare.None,
-                       bufferSize: 64 * 1024,
-                       FileOptions.SequentialScan))
-            using (var writer = new BinaryWriter(stream))
-            {
-                CadContainerFormat.WriteHeader(
-                    writer,
-                    new CadFileHeader(
-                        CadContainerFormat.CurrentContainerVersion,
-                        entries.Count,
-                        tableOffset,
-                        tableLength));
-
-                foreach (var entry in entries)
-                    CadContainerFormat.WriteSectionEntry(writer, entry);
-
-                foreach (var section in sections)
-                    writer.Write(section.Payload);
-
-                writer.Flush();
-                stream.Flush(flushToDisk: true);
-            }
-
-            CommitTemporaryFile(temporaryPath, destinationPath);
-        }
-        finally
-        {
-            DeleteTemporaryFile(temporaryPath);
-        }
+        WriteSectionsAsync(CreateSectionPayloads(document), filePath, asyncIo: false, CancellationToken.None)
+            .GetAwaiter().GetResult();
     }
 
     public async Task SaveAsync(
@@ -87,61 +33,57 @@ public sealed class CadDocumentStorage
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         cancellationToken.ThrowIfCancellationRequested();
 
-        // CadDocument is edited on the UI/editor thread and is not a concurrent
-        // collection. Capture detached section DTOs before yielding to the pool;
-        // only serialization and file I/O run asynchronously.
-        var sectionPayloads = CreateSectionPayloads(document);
-        var sections = await Task.Run(
-            () => SerializeSections(sectionPayloads),
+        // Capture a detached, consistent snapshot on the editor thread.
+        var payloads = CreateSectionPayloads(document);
+        await Task.Run(() => WriteSectionsAsync(payloads, filePath, asyncIo: true, cancellationToken),
             cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task WriteSectionsAsync(
+        Queue<ISectionPayload> payloads,
+        string filePath,
+        bool asyncIo,
+        CancellationToken cancellationToken)
+    {
         var tableOffset = CadContainerFormat.FileHeaderLength;
-        var tableLength = sections.Count * CadContainerFormat.SectionEntryLength;
-        var payloadOffset = tableOffset + tableLength;
-        var entries = new List<CadSectionEntry>(sections.Count);
-        foreach (var section in sections)
-        {
-            entries.Add(new CadSectionEntry(
-                section.Kind,
-                CadSectionMigrationRegistry.GetCurrentVersion(section.Kind),
-                section.Compression,
-                payloadOffset,
-                section.Payload.Length));
-            payloadOffset += section.Payload.Length;
-        }
-
-        byte[] headerAndTable;
-        using (var buffer = new MemoryStream(tableOffset + tableLength))
-        {
-            using var writer = new BinaryWriter(buffer, System.Text.Encoding.UTF8, leaveOpen: true);
-            CadContainerFormat.WriteHeader(
-                writer,
-                new CadFileHeader(
-                    CadContainerFormat.CurrentContainerVersion,
-                    entries.Count,
-                    tableOffset,
-                    tableLength));
-            foreach (var entry in entries)
-                CadContainerFormat.WriteSectionEntry(writer, entry);
-            writer.Flush();
-            headerAndTable = buffer.ToArray();
-        }
-
+        var tableLength = checked(payloads.Count * CadContainerFormat.SectionEntryLength);
+        var entries = new List<CadSectionEntry>(payloads.Count);
         var destinationPath = PrepareDestinationPath(filePath);
         var temporaryPath = CreateTemporaryPath(destinationPath);
         try
         {
-            await using (var stream = new FileStream(
-                             temporaryPath,
-                             FileMode.CreateNew,
-                             FileAccess.Write,
-                             FileShare.None,
-                             bufferSize: 64 * 1024,
-                             FileOptions.Asynchronous | FileOptions.SequentialScan))
+            using (var stream = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write,
+                       FileShare.None, 64 * 1024,
+                       asyncIo ? FileOptions.Asynchronous : FileOptions.None))
             {
-                await stream.WriteAsync(headerAndTable, cancellationToken).ConfigureAwait(false);
-                foreach (var section in sections)
-                    await stream.WriteAsync(section.Payload, cancellationToken).ConfigureAwait(false);
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                // Reserve the directory, then release each DTO and compressed payload after writing.
+                stream.Position = checked(tableOffset + tableLength);
+                while (payloads.Count > 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var section = payloads.Dequeue().Serialize();
+                    entries.Add(new CadSectionEntry(section.Kind,
+                        CadSectionMigrationRegistry.GetCurrentVersion(section.Kind), section.Compression,
+                        stream.Position, section.Payload.Length));
+                    if (asyncIo)
+                        await stream.WriteAsync(section.Payload, cancellationToken).ConfigureAwait(false);
+                    else
+                        stream.Write(section.Payload);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                stream.Position = 0;
+                using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
+                {
+                    CadContainerFormat.WriteHeader(writer, new CadFileHeader(
+                        CadContainerFormat.CurrentContainerVersion, entries.Count, tableOffset, tableLength));
+                    foreach (var entry in entries)
+                        CadContainerFormat.WriteSectionEntry(writer, entry);
+                }
+                if (asyncIo)
+                    await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                else
+                    stream.Flush(flushToDisk: true);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -149,6 +91,7 @@ public sealed class CadDocumentStorage
         }
         finally
         {
+            payloads.Clear();
             DeleteTemporaryFile(temporaryPath);
         }
     }
@@ -436,16 +379,11 @@ public sealed class CadDocumentStorage
         }
     }
 
-    private static List<SerializedSection> CreateSections(CadDocument document)
-    {
-        return SerializeSections(CreateSectionPayloads(document));
-    }
-
-    private static List<ISectionPayload> CreateSectionPayloads(CadDocument document)
+    private static Queue<ISectionPayload> CreateSectionPayloads(CadDocument document)
     {
         var entities = CadDocumentMapper.IndexEntities(document);
 
-        return
+        return new Queue<ISectionPayload>(
         [
             Capture(CadSectionKind.Document, CadDocumentMapper.ToDocumentSection(document)),
             Capture(CadSectionKind.Settings, CadDocumentMapper.ToSettingsSection(document)),
@@ -466,15 +404,7 @@ public sealed class CadDocumentStorage
             Capture(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(entities)),
             Capture(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(entities)),
             Capture(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document, entities))
-        ];
-    }
-
-    private static List<SerializedSection> SerializeSections(
-        IReadOnlyList<ISectionPayload> payloads)
-    {
-        return payloads
-            .Select(static payload => payload.Serialize())
-            .ToList();
+        ]);
     }
 
     private static ISectionPayload Capture<TPayload>(CadSectionKind kind, TPayload payload) =>

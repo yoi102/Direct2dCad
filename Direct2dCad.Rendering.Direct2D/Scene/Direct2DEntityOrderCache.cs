@@ -15,7 +15,8 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
     private readonly Dictionary<BlockId, int> _estimatedRenderWorkByOwner = [];
     private readonly Direct2DBackgroundPreparationService _backgroundPreparation = new();
     private readonly Dictionary<BlockId, OwnerPreparationSnapshot> _preparationSnapshots = [];
-    private readonly HashSet<BlockId> _invalidPreparationOwners = [];
+    private readonly Dictionary<BlockId, Dictionary<EntityId, int>> _preparationIndices = [];
+    private readonly Dictionary<BlockId, HashSet<EntityId>> _pendingPreparationChanges = [];
     private CadDocument? _document;
     private long _preparationVersion;
 
@@ -162,39 +163,61 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         var owners = new List<OwnerPreparationSnapshot>(document.Blocks.Count);
         foreach (var block in document.Blocks.Values)
         {
-            if (_preparationSnapshots.TryGetValue(block.Id, out var cachedSnapshot) &&
-                !_invalidPreparationOwners.Contains(block.Id))
+            if (_preparationSnapshots.TryGetValue(block.Id, out var cachedSnapshot))
             {
+                if (_pendingPreparationChanges.TryGetValue(block.Id, out var changedIds))
+                {
+                    var updates = new Dictionary<int, EntityPreparationSnapshot>(changedIds.Count);
+                    var indices = _preparationIndices[block.Id];
+                    foreach (var id in changedIds)
+                    {
+                        var index = indices[id];
+                        updates[index] = CaptureEntity(document, document.GetEntity(id),
+                            cachedSnapshot.Entities[index].InsertionIndex);
+                    }
+                    cachedSnapshot = cachedSnapshot with
+                    {
+                        Entities = ((EntityPreparationSnapshots)cachedSnapshot.Entities).WithUpdates(updates)
+                    };
+                    _preparationSnapshots[block.Id] = cachedSnapshot;
+                }
                 owners.Add(cachedSnapshot);
                 continue;
             }
             var entities = new List<EntityPreparationSnapshot>(block.EntityIds.Count);
+            var entityIndices = new Dictionary<EntityId, int>(block.EntityIds.Count);
             for (var insertionIndex = 0; insertionIndex < block.EntityIds.Count; insertionIndex++)
             {
                 var entityId = block.EntityIds[insertionIndex];
                 if (!document.TryGetEntity(entityId, out var entity) || entity is null)
                     continue;
-                entities.Add(new EntityPreparationSnapshot(
-                    entity,
-                    document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId),
-                    entity.ZIndex,
-                    insertionIndex,
-                    entity.Bounds,
-                    entity.IsErased,
-                    entity.IsVisible,
-                    EstimateEntityRenderWork(document, entity),
-                    entity is CadBlockReference reference
-                        ? reference.DefinitionBlockId
-                        : null));
+                entityIndices[entityId] = entities.Count;
+                entities.Add(CaptureEntity(document, entity, insertionIndex));
             }
 
-            var snapshot = new OwnerPreparationSnapshot(block.Id, entities);
+            var snapshot = new OwnerPreparationSnapshot(block.Id, new EntityPreparationSnapshots(entities));
             _preparationSnapshots[block.Id] = snapshot;
+            _preparationIndices[block.Id] = entityIndices;
             owners.Add(snapshot);
         }
 
-        _invalidPreparationOwners.Clear();
+        _pendingPreparationChanges.Clear();
         _backgroundPreparation.Schedule(document, _preparationVersion, owners);
+    }
+
+    private static EntityPreparationSnapshot CaptureEntity(CadDocument document, CadEntity entity, int insertionIndex) =>
+        new(entity, document.DocumentSettings.LayerDrawingPriority.GetPriority(entity.LayerId),
+            entity.ZIndex, insertionIndex, entity.Bounds, entity.IsErased, entity.IsVisible,
+            EstimateEntityRenderWork(document, entity),
+            entity is CadBlockReference reference ? reference.DefinitionBlockId : null);
+
+    private void InvalidateOwner(BlockId ownerId)
+    {
+        _packetsByOwner.Remove(ownerId);
+        _oleEntitiesByOwner.Remove(ownerId);
+        _preparationSnapshots.Remove(ownerId);
+        _preparationIndices.Remove(ownerId);
+        _pendingPreparationChanges.Remove(ownerId);
     }
 
     public void InvalidateOwnerMetrics()
@@ -224,8 +247,7 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
             CadEntityChangeKind.Deleted |
             CadEntityChangeKind.DrawOrder |
             CadEntityChangeKind.Layer;
-        if (changes.AffectsDocumentStructure ||
-            changes.EntityChanges.Any(change => (change.Kind & orderChanges) != 0))
+        if (changes.AffectsDocumentStructure)
         {
             Invalidate();
             return;
@@ -241,15 +263,38 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         var metricsChanged = false;
         foreach (var change in changes.EntityChanges)
         {
+            if ((change.Kind & (metricChanges | orderChanges)) == 0)
+                continue;
+            if (!document.TryGetEntity(change.EntityId, out var changedEntity) || changedEntity is null)
+            {
+                // Without the old owner, physical removal requires conservative invalidation.
+                Invalidate();
+                return;
+            }
+            if ((change.Kind & orderChanges) != 0)
+            {
+                InvalidateOwner(changedEntity.OwnerBlockId);
+                metricsChanged = true;
+                continue;
+            }
             metricsChanged |= (change.Kind & metricChanges) != 0;
-            if ((change.Kind & metricChanges) != 0 &&
-                document.TryGetEntity(change.EntityId, out var changedEntity) && changedEntity is not null)
-                _invalidPreparationOwners.Add(changedEntity.OwnerBlockId);
+            if (_preparationIndices.TryGetValue(changedEntity.OwnerBlockId, out var indices))
+            {
+                if (!indices.ContainsKey(change.EntityId))
+                {
+                    InvalidateOwner(changedEntity.OwnerBlockId);
+                }
+                else
+                {
+                    if (!_pendingPreparationChanges.TryGetValue(changedEntity.OwnerBlockId, out var pending))
+                        _pendingPreparationChanges[changedEntity.OwnerBlockId] = pending = [];
+                    pending.Add(change.EntityId);
+                }
+            }
             if ((change.Kind & packetChanges) == 0)
                 continue;
 
-            if (document.TryGetEntity(change.EntityId, out var entity) && entity is not null &&
-                _packetsByOwner.TryGetValue(entity.OwnerBlockId, out var packet))
+            if (_packetsByOwner.TryGetValue(changedEntity.OwnerBlockId, out var packet))
             {
                 if (!packet.TryUpdate(
                         document,
@@ -420,7 +465,8 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         if (!preserveSnapshots)
         {
             _preparationSnapshots.Clear();
-            _invalidPreparationOwners.Clear();
+            _preparationIndices.Clear();
+            _pendingPreparationChanges.Clear();
         }
         _backgroundPreparation.Invalidate(preserveReusableOwners: preserveSnapshots);
     }
