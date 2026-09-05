@@ -28,6 +28,9 @@ public sealed class CadEditor
     public CommandHistorySettings EditorHistorySettings => EditorCommands.Settings;
     public BlockId ActiveOwnerBlockId { get; set; } = BlockId.ModelSpace;
 
+    // Runtime invalidation token, not a saved revision or an undo-history position.
+    public long DocumentChangeVersion { get; private set; }
+
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
     public event EventHandler<CadEditorCommandResult>? EditorStateChanged;
     public event EventHandler<CadCommandActivity>? CommandActivity;
@@ -62,7 +65,11 @@ public sealed class CadEditor
             _documentChanges,
             new CommandHistory<ICadEditorCommand>());
 
-        _documentChanges.DocumentChanged += (_, result) => DocumentChanged?.Invoke(this, result);
+        _documentChanges.DocumentChanged += (_, result) =>
+        {
+            DocumentChangeVersion = unchecked(DocumentChangeVersion + 1);
+            DocumentChanged?.Invoke(this, result);
+        };
         EditorCommands.Changed += (_, result) => EditorStateChanged?.Invoke(this, result);
         DocumentCommands.Activity += (_, activity) => CommandActivity?.Invoke(this, activity);
         EditorCommands.Activity += (_, activity) => CommandActivity?.Invoke(this, activity);

@@ -60,7 +60,7 @@ internal sealed class CadDocumentInvalidationTracker
             return CadRenderInvalidation.Full;
         }
 
-        var dirtyRects = new List<CadScreenRect>();
+        List<CadScreenRect>? dirtyRects = null;
         var requiresFullRender =
             changes.AffectsLayouts ||
             changes.AffectsLayoutStructure ||
@@ -76,10 +76,10 @@ internal sealed class CadDocumentInvalidationTracker
 
             if (hadPrevious)
             {
-                if (previous.IsRenderable)
+                if (!requiresFullRender && previous.IsRenderable)
                 {
                     requiresFullRender |= !TryAddDirtyRects(
-                        dirtyRects,
+                        dirtyRects ??= [],
                         calculator.CreateEntitySnapshotInvalidation(previous));
                 }
             }
@@ -92,10 +92,10 @@ internal sealed class CadDocumentInvalidationTracker
             if (hasCurrent)
             {
                 _snapshots[change.EntityId] = current;
-                if (current.IsRenderable)
+                if (!requiresFullRender && current.IsRenderable)
                 {
                     requiresFullRender |= !TryAddDirtyRects(
-                        dirtyRects,
+                        dirtyRects ??= [],
                         calculator.CreateCurrentEntityInvalidation(
                             change.EntityId,
                             current));
@@ -110,7 +110,9 @@ internal sealed class CadDocumentInvalidationTracker
         if (requiresFullRender)
             return CadRenderInvalidation.Full;
 
-        return CadRenderInvalidation.FromScreenRects(dirtyRects);
+        return dirtyRects is null
+            ? CadRenderInvalidation.Empty
+            : CadRenderInvalidation.FromScreenRects(dirtyRects);
     }
 
     private static bool TryAddDirtyRects(

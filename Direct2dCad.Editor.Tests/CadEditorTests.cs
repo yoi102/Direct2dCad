@@ -11,6 +11,21 @@ namespace Direct2dCad.Editor.Tests;
 public sealed class CadEditorTests
 {
     [Fact]
+    public void DocumentChangeVersionTracksCommandsUndoRedoWithoutRendererAttachment()
+    {
+        var editor = new CadEditor(CadDocument.Create("Versions"));
+        var observedVersions = new List<long>();
+        editor.DocumentChanged += (_, _) => observedVersions.Add(editor.DocumentChangeVersion);
+        editor.Execute(new AddLineCommand(CadPointD.Origin, new CadPointD(10, 0)));
+        editor.Execute(new PanViewportCommand(new CadVectorD(10, 20)));
+        editor.UndoEditor();
+        Assert.Equal(1, editor.DocumentChangeVersion);
+        editor.Undo();
+        editor.Redo();
+        Assert.Equal(new long[] { 1, 2, 3 }, observedVersions);
+    }
+
+    [Fact]
     public void DocumentAndEditorCommandHistoriesUndoIndependently()
     {
         var editor = new CadEditor(CadDocument.Create("Test"));

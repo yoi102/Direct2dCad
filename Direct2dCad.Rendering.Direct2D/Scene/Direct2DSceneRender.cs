@@ -1626,7 +1626,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             HiddenEntityIds = source.HiddenEntityIds,
             DirtyWorldBounds = dirtyWorldBounds,
             EntityBoundsQuery = source.EntityBoundsQuery,
-            EntityBoundsQueryInto = source.EntityBoundsQueryInto
+            EntityBoundsQueryInto = source.EntityBoundsQueryInto,
+            EntityBoundsCount = source.EntityBoundsCount
         };
 
     private bool DrawRetainedScene(
@@ -1726,6 +1727,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             EntityLineWeightWorldScale = 1.0 / Math.Max(layoutViewport.Scale, double.Epsilon),
             EntityBoundsQuery = options.EntityBoundsQuery,
             EntityBoundsQueryInto = options.EntityBoundsQueryInto,
+            EntityBoundsCount = options.EntityBoundsCount,
             HiddenEntityIds = includeHiddenEntities
             ? options.HiddenEntityIds
             : CadRenderOptions.NoHiddenEntities
@@ -1752,7 +1754,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             HiddenEntityIds = options.HiddenEntityIds,
             DirtyWorldBounds = options.DirtyWorldBounds,
             EntityBoundsQuery = options.EntityBoundsQuery,
-            EntityBoundsQueryInto = options.EntityBoundsQueryInto
+            EntityBoundsQueryInto = options.EntityBoundsQueryInto,
+            EntityBoundsCount = options.EntityBoundsCount
         };
 
     private static System.Numerics.Matrix3x2 ToMatrix3x2(CadMatrixD matrix) => new(

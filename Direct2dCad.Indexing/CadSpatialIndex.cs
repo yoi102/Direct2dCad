@@ -6,6 +6,8 @@ namespace Direct2dCad.Indexing;
 
 public sealed class CadSpatialIndex : ICadSpatialIndex
 {
+    private static readonly SemaphoreSlim BackgroundBuildSlots =
+        new(Math.Clamp(Environment.ProcessorCount / 2, 1, 2));
     private readonly Dictionary<EntityId, SpatialEntry> _entries = [];
     private readonly Dictionary<BlockId, OwnerIndex> _indexesByOwner = [];
 
@@ -97,9 +99,16 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
 
     public void Clear()
     {
+        foreach (var index in _indexesByOwner.Values)
+            index.CancelBuild();
         _entries.Clear();
         _indexesByOwner.Clear();
     }
+
+    public int CountIntersecting(BlockId ownerBlockId, CadRectD area) =>
+        !area.IsEmpty && _indexesByOwner.TryGetValue(ownerBlockId, out var index)
+            ? index.CountIntersecting(area)
+            : 0;
 
     public void Rebuild(CadDocument document)
     {
@@ -151,8 +160,14 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
     private void RemoveOwnerIfEmpty(BlockId ownerBlockId, OwnerIndex index)
     {
         if (index.Count == 0)
+        {
+            index.CancelBuild();
             _indexesByOwner.Remove(ownerBlockId);
+        }
     }
+
+    internal Task PendingRebuilds => Task.WhenAll(
+        _indexesByOwner.Values.Select(index => index.PendingBuild ?? Task.CompletedTask));
 
     private static bool IsFinite(CadRectD bounds)
     {
@@ -167,9 +182,15 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
     private sealed class OwnerIndex
     {
         private const int LeafCapacity = 8;
+        private const int MinimumBackgroundBuildCount = 1024;
         private readonly Dictionary<EntityId, CadRectD> _boundsByEntity = [];
-        private readonly HashSet<EntityId> _pendingChanges = [];
+        private Dictionary<EntityId, CadRectD> _pendingChanges = [];
+        private Dictionary<EntityId, CadRectD>? _changesDuringBuild;
+        private Task<BvhNode>? _pendingBuild;
+        private CancellationTokenSource? _buildCancellation;
         private BvhNode? _root;
+
+        public Task? PendingBuild => _pendingBuild;
 
         public OwnerIndex(int capacity = 0)
         {
@@ -187,14 +208,14 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
                 return;
             }
 
+            MarkChanged(entityId, _boundsByEntity.GetValueOrDefault(entityId, CadRectD.Empty));
             _boundsByEntity[entityId] = bounds;
-            MarkChanged(entityId);
         }
 
         public void Remove(EntityId entityId)
         {
-            if (_boundsByEntity.Remove(entityId))
-                MarkChanged(entityId);
+            if (_boundsByEntity.Remove(entityId, out var previous))
+                MarkChanged(entityId, previous);
         }
 
         public void Query(CadRectD area, List<EntityId> results)
@@ -208,7 +229,7 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
             if (!hasPendingChanges)
                 return;
 
-            foreach (var entityId in _pendingChanges)
+            foreach (var entityId in _pendingChanges.Keys)
             {
                 if (_boundsByEntity.TryGetValue(entityId, out var bounds) &&
                     bounds.Intersects(area))
@@ -232,16 +253,105 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
             return results;
         }
 
-        private void MarkChanged(EntityId entityId)
+        private void MarkChanged(EntityId entityId, CadRectD previous)
         {
             if (_root is not null)
-                _pendingChanges.Add(entityId);
+                _pendingChanges.TryAdd(entityId, previous);
+            _changesDuringBuild?.TryAdd(entityId, previous);
+        }
+
+        public int CountIntersecting(CadRectD area)
+        {
+            EnsureTree();
+            if (_root is null)
+                return 0;
+            var count = CountNode(_root, area);
+            foreach (var (id, original) in _pendingChanges)
+            {
+                if (!original.IsEmpty && original.Intersects(area))
+                    count--;
+                if (_boundsByEntity.TryGetValue(id, out var bounds) && bounds.Intersects(area))
+                    count++;
+            }
+            return count;
+        }
+
+        private static int CountNode(BvhNode node, CadRectD area)
+        {
+            if (!node.Bounds.Intersects(area))
+                return 0;
+            var containsNode = area.Contains(node.Bounds);
+            if (containsNode)
+                return node.EntryLength;
+            if (node.Left is null)
+            {
+                var count = 0;
+                for (var index = node.EntryStart; index < node.EntryStart + node.EntryLength; index++)
+                {
+                    var entry = node.Entries[index];
+                    if (entry.Bounds.Intersects(area))
+                        count++;
+                }
+                return count;
+            }
+            return CountNode(node.Left, area) +
+                   (node.Right is null ? 0 : CountNode(node.Right, area));
         }
 
         private void EnsureTree()
         {
-            if (_root is null || _pendingChanges.Count >= ResolveRebuildThreshold())
+            PublishCompletedBuild();
+            if (_root is null)
                 RebuildTree();
+            else if (_pendingBuild is null && _pendingChanges.Count >= ResolveRebuildThreshold())
+            {
+                if (_boundsByEntity.Count < MinimumBackgroundBuildCount)
+                    RebuildTree();
+                else
+                    ScheduleBuild();
+            }
+        }
+
+        private void ScheduleBuild()
+        {
+            var entries = CaptureEntries();
+            _changesDuringBuild = [];
+            _buildCancellation = new CancellationTokenSource();
+            var token = _buildCancellation.Token;
+            // Only value snapshots cross threads; the live document/index remains thread-affine.
+            _pendingBuild = Task.Run(async () =>
+            {
+                await BackgroundBuildSlots.WaitAsync(token).ConfigureAwait(false);
+                try { return BuildSnapshot(entries, token); }
+                finally { BackgroundBuildSlots.Release(); }
+            }, token);
+            _ = _pendingBuild.ContinueWith(static task => _ = task.Exception,
+                CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted |
+                TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+
+        private void PublishCompletedBuild()
+        {
+            if (_pendingBuild is not { IsCompleted: true } task)
+                return;
+            if (task.IsCompletedSuccessfully)
+            {
+                _root = task.Result;
+                _pendingChanges = _changesDuringBuild!;
+            }
+            _pendingBuild = null;
+            _changesDuringBuild = null;
+            _buildCancellation?.Dispose();
+            _buildCancellation = null;
+        }
+
+        public void CancelBuild()
+        {
+            _buildCancellation?.Cancel();
+            _buildCancellation?.Dispose();
+            _buildCancellation = null;
+            _pendingBuild = null;
+            _changesDuringBuild = null;
         }
 
         private int ResolveRebuildThreshold() =>
@@ -249,6 +359,7 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
 
         public void RebuildTree()
         {
+            CancelBuild();
             if (_boundsByEntity.Count == 0)
             {
                 _root = null;
@@ -256,18 +367,29 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
                 return;
             }
 
+            _root = BuildSnapshot(CaptureEntries(), CancellationToken.None);
+            _pendingChanges.Clear();
+        }
+
+        private BvhEntry[] CaptureEntries()
+        {
             var entries = new BvhEntry[_boundsByEntity.Count];
             var entryIndex = 0;
             foreach (var pair in _boundsByEntity)
                 entries[entryIndex++] = new BvhEntry(pair.Key, pair.Value);
 
-            OrderEntriesForBulkLoad(entries);
-            _root = BuildNode(entries, 0, entries.Length);
-            _pendingChanges.Clear();
+            return entries;
         }
 
-        private static void OrderEntriesForBulkLoad(BvhEntry[] entries)
+        private static BvhNode BuildSnapshot(BvhEntry[] entries, CancellationToken token)
         {
+            OrderEntriesForBulkLoad(entries, token);
+            return BuildNode(entries, 0, entries.Length, token);
+        }
+
+        private static void OrderEntriesForBulkLoad(BvhEntry[] entries, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
             Array.Sort(entries, BvhEntry.XComparer);
             var leafCount = (entries.Length + LeafCapacity - 1) / LeafCapacity;
             var sliceCount = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(leafCount)));
@@ -276,6 +398,7 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
 
             for (var start = 0; start < entries.Length; start += sliceLength)
             {
+                token.ThrowIfCancellationRequested();
                 Array.Sort(
                     entries,
                     start,
@@ -284,8 +407,9 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
             }
         }
 
-        private static BvhNode BuildNode(BvhEntry[] entries, int start, int length)
+        private static BvhNode BuildNode(BvhEntry[] entries, int start, int length, CancellationToken token)
         {
+            token.ThrowIfCancellationRequested();
             if (length <= LeafCapacity)
             {
                 var leafBounds = CadRectD.Empty;
@@ -302,8 +426,8 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
                     leftLength / LeafCapacity * LeafCapacity);
             }
 
-            var left = BuildNode(entries, start, leftLength);
-            var right = BuildNode(entries, start + leftLength, length - leftLength);
+            var left = BuildNode(entries, start, leftLength, token);
+            var right = BuildNode(entries, start + leftLength, length - leftLength, token);
             return new BvhNode(left.Bounds.Union(right.Bounds), left, right);
         }
 
@@ -316,13 +440,15 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
             if (!node.Bounds.Intersects(area))
                 return;
 
-            if (node.Entries is { } entries)
+            var containsNode = area.Contains(node.Bounds);
+            if (containsNode || node.Left is null)
             {
+                var entries = node.Entries;
                 for (var index = node.EntryStart; index < node.EntryStart + node.EntryLength; index++)
                 {
                     var entry = entries[index];
-                    if ((!excludePendingChanges || !_pendingChanges.Contains(entry.EntityId)) &&
-                        entry.Bounds.Intersects(area))
+                    if ((!excludePendingChanges || !_pendingChanges.ContainsKey(entry.EntityId)) &&
+                        (containsNode || entry.Bounds.Intersects(area)))
                     {
                         results.Add(entry.EntityId);
                     }
@@ -354,7 +480,7 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
         public CadRectD Bounds { get; }
         public BvhNode? Left { get; }
         public BvhNode? Right { get; }
-        public BvhEntry[]? Entries { get; }
+        public BvhEntry[] Entries { get; }
         public int EntryStart { get; }
         public int EntryLength { get; }
 
@@ -375,6 +501,10 @@ public sealed class CadSpatialIndex : ICadSpatialIndex
             Bounds = bounds;
             Left = left;
             Right = right;
+            // Bulk loading keeps every subtree in one contiguous array range.
+            Entries = left.Entries;
+            EntryStart = left.EntryStart;
+            EntryLength = left.EntryLength + right.EntryLength;
         }
     }
 }

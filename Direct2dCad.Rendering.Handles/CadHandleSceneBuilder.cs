@@ -17,16 +17,8 @@ public sealed class CadHandleSceneBuilder
 
         options ??= CadHandleSceneBuildOptions.Default;
 
-        selectedEntityIds.TryGetNonEnumeratedCount(out var selectedEntityCount);
-        var items = new List<CadHandleItem>(selectedEntityCount);
-        var selectedEntities = new List<CadEntity>(selectedEntityCount);
-        BuildSelectionHandlesCore(
-            document,
-            selectedEntityIds,
-            options,
-            items,
-            selectedEntities);
-        return items;
+        return BuildSelectionHandles(document, selectedEntityIds,
+            new CadHandleSceneBuildBuffer(), options);
     }
 
     public IReadOnlyList<CadHandleItem> BuildSelectionHandles(
@@ -48,7 +40,8 @@ public sealed class CadHandleSceneBuilder
         IEnumerable<EntityId> selectedEntityIds,
         CadHandleSceneBuildBuffer buffer,
         CadHandleScene? reusableScene,
-        CadHandleSceneBuildOptions? options = null)
+        CadHandleSceneBuildOptions? options = null,
+        CadHandleSelectionCacheKey? cacheKey = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(selectedEntityIds);
@@ -56,7 +49,6 @@ public sealed class CadHandleSceneBuilder
 
         options ??= CadHandleSceneBuildOptions.Default;
         buffer.Items.Clear();
-        buffer.SelectedEntities.Clear();
         if (selectedEntityIds.TryGetNonEnumeratedCount(out var selectedEntityCount))
         {
             if (buffer.Items.Capacity < selectedEntityCount)
@@ -71,7 +63,9 @@ public sealed class CadHandleSceneBuilder
             options,
             buffer.Items,
             buffer.SelectedEntities,
-            reusableScene);
+            reusableScene,
+            buffer,
+            cacheKey);
         return buffer.Items;
     }
 
@@ -81,39 +75,21 @@ public sealed class CadHandleSceneBuilder
         CadHandleSceneBuildOptions options,
         List<CadHandleItem> items,
         List<CadEntity> selectedEntities,
-        CadHandleScene? reusableScene = null)
+        CadHandleScene? reusableScene,
+        CadHandleSceneBuildBuffer buffer,
+        CadHandleSelectionCacheKey? cacheKey)
     {
-        foreach (var entityId in selectedEntityIds)
+        if (!buffer.IsOrderCurrent(document, cacheKey))
         {
-            if (!TryGetSelectableEntity(document, entityId, out var entity))
-                continue;
-
-            selectedEntities.Add(entity);
+            buffer.InvalidateOrder();
+            selectedEntities.Clear();
+            foreach (var entityId in selectedEntityIds)
+            {
+                if (TryGetSelectableEntity(document, entityId, out var entity))
+                    selectedEntities.Add(entity);
+            }
+            buffer.Sort(document, cacheKey);
         }
-
-        // Selection input order is not a drawing-order contract. Keep selected
-        // references in the same order as the normal scene so overlapping
-        // selected entities retain their visual stacking order.
-        var insertionIndices = selectedEntities.ToDictionary(
-            entity => entity.Id,
-            entity => document.GetEntityInsertionIndex(entity.Id));
-        selectedEntities.Sort((left, right) =>
-        {
-            var result = document.DocumentSettings.LayerDrawingPriority
-                .GetPriority(left.LayerId)
-                .CompareTo(document.DocumentSettings.LayerDrawingPriority.GetPriority(right.LayerId));
-            if (result != 0)
-                return result;
-
-            result = left.ZIndex.CompareTo(right.ZIndex);
-            if (result != 0)
-                return result;
-
-            result = insertionIndices[left.Id].CompareTo(insertionIndices[right.Id]);
-            return result != 0
-                ? result
-                : left.Id.Value.CompareTo(right.Id.Value);
-        });
 
         var includeIndividualGrips =
             options.IncludeGripHandles &&

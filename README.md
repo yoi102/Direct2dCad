@@ -270,6 +270,7 @@ WPF Terminal 的日志、输入历史和当前文档适配仍由 ViewModel 层�
 - 记录实体 bounds。
 - 按区域查询候选实体。
 - 为框选、命中测试、局部刷新提供候选集合。
+- 范围计数复用 BVH 节点计数，并用修改前后的 bounds 修正增量；大索引的后续重建基于值快照在后台执行，期间查询合并最新修改。首次构建和快照采集仍在调用线程完成，索引本身不是并发读写容器。
 - 当实体 geometry / line weight / fill / visibility / layer 等影响 bounds 或可见性的属性改变时，需要通过变更通知更新索引。
 
 ### Direct2dCad.Rendering
@@ -545,7 +546,10 @@ dotnet test .\Direct2dCad.slnx -m:1
 | 基准类 | 覆盖内容 |
 |---|---|
 | `SpatialIndexBenchmarks` | 20,000 / 100,000 实体的 BVH 构建、分配式查询、复用缓冲区查询、1% 实体更新后查询 |
-| `SelectionOverlayBenchmarks` | 1 / 512 / 20,000 个选中实体的 handle/outline 构建，以及复用缓冲区和新集合的差异 |
+| `CacheEvictionBenchmarks` | 128 / 1,024 个缓存候选项的排序淘汰与复用优先队列对照，检查耗时和托管分配；不创建 GPU 资源 |
+| `SelectionOverlayBenchmarks` | 1 / 512 / 20,000 个选中实体的 handle/outline 构建，对比新集合、复用缓冲区、场景复用和版本化排序复用 |
+| `OwnerBoundsUpdateBenchmarks` | 20,000 / 100,000 实体空间中，单个实体修改后的全量边界扫描与增量边界树更新 |
+| `DirtyRegionBatchBenchmarks` | 512 / 20,000 个脏矩形的批量归并，保守覆盖原区域并限制输出数量 |
 | `Direct2DSelectionOverlayBenchmarks` | 512 / 20,000 个选中实体实际进入 Direct2D selection overlay 的缓存回放和大选择集 fallback |
 | `DirtyRegionBenchmarks` | 8 / 32 / 128 个脏矩形的批量规划和增量 Union |
 | `Direct2DRenderingBenchmarks` | line-only / mixed 文档、LOD 开关、完整帧、单/多脏区域、缓存恢复、GPU 资源冷重建、单帧及连续 16 帧 pan/zoom、缩放快照预览 |

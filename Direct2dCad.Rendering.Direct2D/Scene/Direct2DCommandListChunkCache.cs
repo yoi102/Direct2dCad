@@ -31,6 +31,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     private readonly Direct2DChunkRecordingWorker _backgroundWorker;
     private readonly Dictionary<long, RenderChunk> _backgroundChunks = [];
     private readonly Dictionary<RenderProfileKey, RenderProfile> _profiles = [];
+    private readonly CacheEvictionQueue<RenderChunk> _evictionCandidates = new();
     private readonly Dictionary<BlockId, IReadOnlyList<RenderChunkPlan>> _chunkPlans = [];
     private readonly Dictionary<BlockId, RenderChunkPlanBuilder> _planBuilders = [];
     private ID2D1Factory? _backgroundFactory;
@@ -748,19 +749,25 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         if (overflow <= 0)
             return;
 
-        foreach (var chunk in _profiles.Values
-                     .SelectMany(static profile => profile.Chunks)
-                     .Where(chunk =>
-                         !ReferenceEquals(chunk, protectedChunk) &&
-                         chunk.CommandList is not null)
-                     .OrderBy(static chunk => chunk.LastUsed)
-                     .ToArray())
+        try
         {
-            if (overflow <= 0)
-                break;
-            overflow -= chunk.EstimatedBytes;
-            chunk.EvictForBudget();
-            _statistics.RecordGpuCacheEviction();
+            foreach (var profile in _profiles.Values)
+            foreach (var chunk in profile.Chunks)
+            {
+                if (!ReferenceEquals(chunk, protectedChunk) && chunk.CommandList is not null)
+                    _evictionCandidates.Add(chunk, chunk.LastUsed);
+            }
+
+            while (overflow > 0 && _evictionCandidates.TryTake(out var chunk))
+            {
+                overflow -= chunk.EstimatedBytes;
+                chunk.EvictForBudget();
+                _statistics.RecordGpuCacheEviction();
+            }
+        }
+        finally
+        {
+            _evictionCandidates.Clear();
         }
     }
 
@@ -807,11 +814,16 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             CancelBackgroundRecordings();
         while (_profiles.Count > MaximumProfiles)
         {
-            var oldest = _profiles
-                .Where(pair => !pair.Key.Equals(currentKey))
-                .OrderBy(pair => pair.Value.LastUsed)
-                .First();
-            oldest.Value.Dispose();
+            RenderProfile? oldest = null;
+            foreach (var pair in _profiles)
+            {
+                if (!pair.Key.Equals(currentKey) &&
+                    (oldest is null || pair.Value.LastUsed < oldest.LastUsed))
+                    oldest = pair.Value;
+            }
+            if (oldest is null)
+                break;
+            oldest.Dispose();
             _profiles.Remove(oldest.Key);
         }
     }

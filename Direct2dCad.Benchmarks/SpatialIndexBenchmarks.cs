@@ -16,6 +16,7 @@ public class SpatialIndexBenchmarks
     private CadRectD[] _firstBounds = null!;
     private CadRectD[] _secondBounds = null!;
     private bool _useSecondBounds;
+    private CadSpatialIndex _pendingIndex = null!;
 
     [Params(20_000, 100_000)]
     public int EntityCount { get; set; }
@@ -26,6 +27,11 @@ public class SpatialIndexBenchmarks
         _data = BenchmarkDocumentFactory.Create(EntityCount, BenchmarkDocumentKind.Lines);
         _index = new CadSpatialIndex();
         _index.Rebuild(_data.Document);
+        _pendingIndex = new CadSpatialIndex();
+        _pendingIndex.Rebuild(_data.Document);
+        var changedId = _data.EntityIds[0];
+        _pendingIndex.Update(changedId, _data.Document.Entities[changedId].Bounds
+            .Translate(new CadVectorD(0.25, 0.25)));
         _visibleArea = CadRectD.FromXYWH(
             _data.Bounds.MinX + _data.Width * 0.25,
             _data.Bounds.MinY + _data.Height * 0.25,
@@ -57,6 +63,31 @@ public class SpatialIndexBenchmarks
         _queryBuffer.Clear();
         _index.Query(BlockId.ModelSpace, _visibleArea, _queryBuffer);
         return _queryBuffer.Count;
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("Query")]
+    public int QueryEntireOwnerIntoReusableBuffer()
+    {
+        _queryBuffer.Clear();
+        _index.Query(BlockId.ModelSpace, _data.Bounds, _queryBuffer);
+        return _queryBuffer.Count;
+    }
+
+    [Benchmark]
+    [BenchmarkCategory("Query")]
+    public int CountVisibleArea() => _index.CountIntersecting(BlockId.ModelSpace, _visibleArea);
+
+    [Benchmark]
+    [BenchmarkCategory("Query")]
+    public int CountEntireOwnerWithPendingEdit() =>
+        _pendingIndex.CountIntersecting(BlockId.ModelSpace, _data.Bounds);
+
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        _index.Clear();
+        _pendingIndex.Clear();
     }
 
     [Benchmark]

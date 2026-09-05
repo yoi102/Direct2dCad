@@ -12,6 +12,31 @@ namespace Direct2dCad.Tests;
 public sealed class CadDocumentInvalidationTrackerTests
 {
     [Fact]
+    public void FullRenderStillUpdatesSnapshotsForTheFollowingMoveAndDelete()
+    {
+        var document = CadDocument.Create("Full render snapshots");
+        var line = document.AddLine(new CadPointD(20, 20), new CadPointD(40, 20));
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, CreateViewport());
+        tracker.Reset(document, calculator);
+        line.SetGeometry(new CadPointD(400, 400), new CadPointD(420, 400));
+        Assert.True(tracker.CreateInvalidation(document,
+            CadDocumentChangeSet.ForEntity(line.Id, CadEntityChangeKind.Geometry).WithViewSettingsChanged(),
+            calculator).IsFull);
+        line.SetGeometry(new CadPointD(800, 800), new CadPointD(820, 800));
+        var move = tracker.CreateInvalidation(document,
+            CadDocumentChangeSet.ForEntity(line.Id, CadEntityChangeKind.Geometry), calculator);
+        Assert.False(move.IsFull);
+        Assert.Equal(2, move.DirtyScreenRects.Count);
+        Assert.Contains(move.DirtyScreenRects, rect => rect.X > 350 && rect.X < 450);
+        Assert.DoesNotContain(move.DirtyScreenRects, rect => rect.X < 100);
+        var delete = new DeleteEntitiesCommand([line.Id]);
+        Assert.True(tracker.CreateInvalidation(document,
+            delete.Execute(document).WithViewSettingsChanged(), calculator).IsFull);
+        Assert.False(tracker.CreateInvalidation(document, delete.Undo(document), calculator).IsFull);
+    }
+
+    [Fact]
     public void GeometryChange_InvalidatesOldAndNewLocationsSeparately()
     {
         var document = CadDocument.Create("Dirty regions");

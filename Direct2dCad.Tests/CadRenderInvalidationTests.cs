@@ -5,6 +5,40 @@ namespace Direct2dCad.Tests;
 
 public sealed class CadRenderInvalidationTests
 {
+    [Theory]
+    [InlineData(257)]
+    [InlineData(20000)]
+    public void BulkReductionRetainsEveryInputRectangleAndLimitsOutput(int count)
+    {
+        var random = new Random(73);
+        var rects = Enumerable.Range(0, count).Select(_ => new CadScreenRect(
+            random.Next(-10000, 10000), random.Next(-10000, 10000),
+            random.Next(1, 100), random.Next(1, 100))).ToArray();
+        var result = CadRenderInvalidation.FromScreenRects(rects);
+        Assert.False(result.IsFull);
+        Assert.InRange(result.DirtyScreenRects.Count, 1, 32);
+        foreach (var rect in rects)
+            Assert.Contains(result.DirtyScreenRects, coverage => Contains(coverage, rect));
+        for (var left = 0; left < result.DirtyScreenRects.Count; left++)
+        for (var right = left + 1; right < result.DirtyScreenRects.Count; right++)
+            Assert.False(result.DirtyScreenRects[left].Intersects(result.DirtyScreenRects[right]));
+    }
+
+    [Fact]
+    public void BulkReductionDoesNotConnectTwoDistantClusters()
+    {
+        var rects = Enumerable.Range(0, 1000).Select(i => i % 2 == 0
+            ? new CadScreenRect(0, 0, 10, 10)
+            : new CadScreenRect(10000, 10000, 10, 10)).ToArray();
+        Assert.Equal(2, CadRenderInvalidation.FromScreenRects(rects).DirtyScreenRects.Count);
+        Assert.True(CadRenderInvalidation.FromScreenRects(new CadScreenRect[1000]).IsEmpty);
+    }
+
+    private static bool Contains(CadScreenRect outer, CadScreenRect inner) =>
+        outer.X <= inner.X && outer.Y <= inner.Y &&
+        (long)outer.X + outer.Width >= (long)inner.X + inner.Width &&
+        (long)outer.Y + outer.Height >= (long)inner.Y + inner.Height;
+
     [Fact]
     public void FromScreenRects_KeepsCornerTouchingThinRectsSeparate()
     {

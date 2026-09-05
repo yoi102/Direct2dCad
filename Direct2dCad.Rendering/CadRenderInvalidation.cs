@@ -97,6 +97,8 @@ public sealed class CadRenderInvalidation
         ArgumentNullException.ThrowIfNull(dirtyScreenRects);
 
         dirtyScreenRects.TryGetNonEnumeratedCount(out var dirtyRectCount);
+        if (dirtyRectCount > 256)
+            return ReduceLargeBatch(dirtyScreenRects);
         var merged = new List<CadScreenRect>(dirtyRectCount);
         foreach (var rect in dirtyScreenRects)
         {
@@ -110,6 +112,30 @@ public sealed class CadRenderInvalidation
             return Empty;
 
         return CreateFromMergedRects(merged);
+    }
+
+    private static CadRenderInvalidation ReduceLargeBatch(IEnumerable<CadScreenRect> rectangles)
+    {
+        var source = rectangles as IReadOnlyList<CadScreenRect> ?? rectangles.ToArray();
+        var aggregate = CalculateAggregate(source);
+        if (aggregate.IsEmpty)
+            return Empty;
+
+        // Bound planning work for bulk edits. Each bucket conservatively contains
+        // its complete input rectangles, including those crossing bucket boundaries.
+        var buckets = new CadScreenRect[MaxDirtyScreenRectCount];
+        foreach (var rect in source)
+        {
+            if (rect.IsEmpty)
+                continue;
+            var column = (int)Math.Clamp(
+                ((double)rect.X + rect.Width * 0.5 - aggregate.X) / aggregate.Width * 8, 0, 7);
+            var row = (int)Math.Clamp(
+                ((double)rect.Y + rect.Height * 0.5 - aggregate.Y) / aggregate.Height * 4, 0, 3);
+            var index = row * 8 + column;
+            buckets[index] = buckets[index].Union(rect);
+        }
+        return FromScreenRects(buckets);
     }
 
     public static CadRenderInvalidation FromScreenRectsPreservingCoverage(

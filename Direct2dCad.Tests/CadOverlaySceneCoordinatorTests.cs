@@ -11,6 +11,28 @@ namespace Direct2dCad.Tests;
 public sealed class CadOverlaySceneCoordinatorTests
 {
     [Fact]
+    public void DrawOrderChangeAndUndoRefreshCachedSelectionOrder()
+    {
+        var document = CadDocument.Create("Selection order");
+        var first = document.AddLine(CadPointD.Origin, new CadPointD(10, 10));
+        var second = document.AddLine(CadPointD.Origin, new CadPointD(20, 20));
+        var editor = CreateEditor(document);
+        editor.Selection.Replace([first.Id, second.Id]);
+        var coordinator = new CadOverlaySceneCoordinator();
+        var options = CadHandleSceneBuildOptions.Default with { IncludeGripHandles = false };
+        void Refresh() => coordinator.UpdateHandleScene(editor, null, options, 1);
+        Refresh();
+        Assert.Equal(first.Id, coordinator.HandleScene.SelectionReferences[0].EntityId);
+        var changes = editor.Execute(new Direct2dCad.Commands.SetEntityZIndexCommand([first.Id], 10));
+        coordinator.ApplyDocumentChanges(changes, editor.Selection.EntityIds);
+        Refresh();
+        Assert.Equal(second.Id, coordinator.HandleScene.SelectionReferences[0].EntityId);
+        coordinator.ApplyDocumentChanges(editor.Undo(), editor.Selection.EntityIds);
+        Refresh();
+        Assert.Equal(first.Id, coordinator.HandleScene.SelectionReferences[0].EntityId);
+    }
+
+    [Fact]
     public void MovingTransient_InvalidatesPreviousAndCurrentLocations()
     {
         var document = CadDocument.Create("Transient dirty regions");

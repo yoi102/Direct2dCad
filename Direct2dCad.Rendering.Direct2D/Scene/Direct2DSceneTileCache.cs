@@ -41,6 +41,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private readonly List<TileCoordinate> _availableTiles = new(16);
     private readonly List<CadRectD> _missingWorldBounds = new(4);
     private readonly List<TileProfile> _candidateProfiles = new(MaximumProfiles);
+    private readonly CacheEvictionQueue<(TileProfile Profile, TileCoordinate Coordinate)> _evictionCandidates = new();
+    private readonly HashSet<TileCoordinate> _protectedTiles = [];
     private readonly HashSet<BlockId> _affectedBlocks = [];
     private readonly HashSet<BlockId> _visitedBlocks = [];
     private readonly Queue<BlockId> _pendingBlocks = [];
@@ -472,7 +474,8 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             HiddenEntityIds = CadRenderOptions.NoHiddenEntities,
             DirtyWorldBounds = worldBounds.Inflate(TileGutterPixels / zoom),
             EntityBoundsQuery = source.EntityBoundsQuery,
-            EntityBoundsQueryInto = source.EntityBoundsQueryInto
+            EntityBoundsQueryInto = source.EntityBoundsQueryInto,
+            EntityBoundsCount = source.EntityBoundsCount
         };
 
     private bool CanUse(
@@ -766,27 +769,27 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         if (overflowBytes <= 0)
             return;
 
-        var protectedSet = protectedTiles as IReadOnlySet<TileCoordinate> ??
-                           protectedTiles.ToHashSet();
-        var candidates = _profiles.Values
-            .SelectMany(profile => profile.Tiles.Select(pair => new
-            {
-                Profile = profile,
-                Coordinate = pair.Key,
-                Tile = pair.Value
-            }))
-            .Where(candidate =>
-                !ReferenceEquals(candidate.Profile, protectedProfile) ||
-                !protectedSet.Contains(candidate.Coordinate))
-            .OrderBy(static candidate => candidate.Tile.LastUsed)
-            .ToArray();
-        foreach (var candidate in candidates)
+        try
         {
-            if (overflowBytes <= 0)
-                break;
-            overflowBytes -= candidate.Tile.EstimatedBytes;
-            candidate.Profile.RemoveTile(candidate.Coordinate);
-            _statistics.RecordGpuCacheEviction();
+            _protectedTiles.UnionWith(protectedTiles);
+            foreach (var profile in _profiles.Values)
+            foreach (var pair in profile.Tiles)
+            {
+                if (!ReferenceEquals(profile, protectedProfile) || !_protectedTiles.Contains(pair.Key))
+                    _evictionCandidates.Add((profile, pair.Key), pair.Value.LastUsed);
+            }
+
+            while (overflowBytes > 0 && _evictionCandidates.TryTake(out var candidate))
+            {
+                overflowBytes -= candidate.Profile.Tiles[candidate.Coordinate].EstimatedBytes;
+                candidate.Profile.RemoveTile(candidate.Coordinate);
+                _statistics.RecordGpuCacheEviction();
+            }
+        }
+        finally
+        {
+            _evictionCandidates.Clear();
+            _protectedTiles.Clear();
         }
     }
 
@@ -794,11 +797,16 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         while (_profiles.Count > MaximumProfiles)
         {
-            var oldest = _profiles
-                .Where(pair => !pair.Key.Equals(currentKey))
-                .OrderBy(pair => pair.Value.LastUsed)
-                .First();
-            oldest.Value.Dispose();
+            TileProfile? oldest = null;
+            foreach (var pair in _profiles)
+            {
+                if (!pair.Key.Equals(currentKey) &&
+                    (oldest is null || pair.Value.LastUsed < oldest.LastUsed))
+                    oldest = pair.Value;
+            }
+            if (oldest is null)
+                break;
+            oldest.Dispose();
             _profiles.Remove(oldest.Key);
         }
     }
@@ -892,12 +900,14 @@ internal sealed class Direct2DSceneTileCache : IDisposable
 
     private sealed class TileProfile(TileProfileKey key, double zoom) : IDisposable
     {
+        private readonly CacheEvictionQueue<TileCoordinate> _evictionCandidates = new();
+        private readonly HashSet<TileCoordinate> _protectedTiles = [];
         public TileProfileKey Key { get; } = key;
         public double Zoom { get; } = zoom;
         public Dictionary<TileCoordinate, SceneTile> Tiles { get; } = [];
         public HashSet<TileCoordinate> FailedTiles { get; } = [];
         public long LastUsed { get; set; }
-        public long EstimatedBytes => Tiles.Values.Sum(static tile => tile.EstimatedBytes);
+        public long EstimatedBytes => (long)Tiles.Count * TileBitmapPixelSize * TileBitmapPixelSize * 4;
 
         public void Dispose()
         {
@@ -912,16 +922,22 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             if (Tiles.Count <= maximumCount)
                 return;
 
-            var protectedSet = protectedTiles as IReadOnlySet<TileCoordinate> ??
-                               protectedTiles.ToHashSet();
-            foreach (var pair in Tiles
-                         .Where(pair => !protectedSet.Contains(pair.Key))
-                         .OrderBy(pair => pair.Value.LastUsed)
-                         .Take(Tiles.Count - maximumCount)
-                         .ToArray())
+            try
             {
-                pair.Value.Dispose();
-                Tiles.Remove(pair.Key);
+                _protectedTiles.UnionWith(protectedTiles);
+                foreach (var pair in Tiles)
+                {
+                    if (!_protectedTiles.Contains(pair.Key))
+                        _evictionCandidates.Add(pair.Key, pair.Value.LastUsed);
+                }
+
+                while (Tiles.Count > maximumCount && _evictionCandidates.TryTake(out var coordinate))
+                    RemoveTile(coordinate);
+            }
+            finally
+            {
+                _evictionCandidates.Clear();
+                _protectedTiles.Clear();
             }
         }
 

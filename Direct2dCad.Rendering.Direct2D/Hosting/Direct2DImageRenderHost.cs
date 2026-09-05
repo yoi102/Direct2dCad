@@ -30,6 +30,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
     private readonly List<CadScreenRect> _snapshotExposedRects = new(4);
     private readonly List<EntityId> _dirtyCostCandidateIds = new(256);
+    private readonly Dictionary<CadScreenRect, double> _dirtyCostEstimates = [];
     private readonly CadViewport _interactionPreviewViewport = new();
     private ID3D11ImageSource? _imageSource;
     private CadDocument? _document;
@@ -655,6 +656,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             requestedInvalidation = CadRenderInvalidation.Full;
 
         var dirtyPlanningStarted = Stopwatch.GetTimestamp();
+        _dirtyCostEstimates.Clear();
         var effectiveInvalidation = _dirtyRegionPlanner.Normalize(
             requestedInvalidation,
             _target.Width,
@@ -1041,6 +1043,15 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
     private double EstimateDirtyRegionCost(CadScreenRect rect)
     {
+        if (_dirtyCostEstimates.TryGetValue(rect, out var cost))
+            return cost;
+        cost = EstimateDirtyRegionCostCore(rect);
+        _dirtyCostEstimates.Add(rect, cost);
+        return cost;
+    }
+
+    private double EstimateDirtyRegionCostCore(CadScreenRect rect)
+    {
         if (rect.IsEmpty)
             return 0;
 
@@ -1048,6 +1059,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         {
             var padding = 64.0 / Math.Max(_viewport.Zoom, double.Epsilon);
             var worldBounds = ScreenRectToWorldBounds(rect, _viewport).Inflate(padding);
+            if (_renderOptions.EntityBoundsCount is { } countQuery)
+                return countQuery(_renderOptions.ActiveOwnerBlockId, worldBounds) + DirtyRegionPassPenalty;
             if (_renderOptions.EntityBoundsQueryInto is { } bufferedQuery)
             {
                 _dirtyCostCandidateIds.Clear();
@@ -1102,7 +1115,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             HiddenEntityIds = _renderOptions.HiddenEntityIds,
             DirtyWorldBounds = dirtyWorldBounds,
             EntityBoundsQuery = _renderOptions.EntityBoundsQuery,
-            EntityBoundsQueryInto = _renderOptions.EntityBoundsQueryInto
+            EntityBoundsQueryInto = _renderOptions.EntityBoundsQueryInto,
+            EntityBoundsCount = _renderOptions.EntityBoundsCount
         };
     }
 

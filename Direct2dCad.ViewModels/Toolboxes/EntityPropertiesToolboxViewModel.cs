@@ -19,6 +19,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
     private readonly ISystemFontCatalog _systemFontCatalog;
     private readonly ISnackbarService _snackbarService;
     private BlockId? _selectedBlockDefinitionId;
+    private (Editor.CadEditor Editor, long DocumentVersion, long SelectionVersion,
+        BlockId Owner, BlockId? Definition, CadCanvasToolMode Mode)? _lastSelectionRefresh;
 
     public EntityPropertiesToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
@@ -54,6 +56,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
 
         _selectedBlockDefinitionId = null;
         _documentViewModel = documentViewModel;
+        Entity = null;
+        _lastSelectionRefresh = null;
 
         Refresh();
     }
@@ -63,6 +67,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
         if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
             return;
 
+        if (message.ClearBlockDefinitionSelection)
+            _selectedBlockDefinitionId = null;
         Refresh();
     }
 
@@ -86,8 +92,13 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
         if (_documentViewModel is null)
         {
             Entity = null;
+            _lastSelectionRefresh = null;
             return;
         }
+
+        if (_documentViewModel.IsPastePreviewActive ||
+            _documentViewModel.CadCanvasToolMode != CadCanvasToolMode.Select)
+            _lastSelectionRefresh = null;
 
         if (_documentViewModel.IsPastePreviewActive)
         {
@@ -255,14 +266,22 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        var selectedEntityIds = _documentViewModel.CadEditor.Selection.EntityIds.ToArray();
+        var editor = _documentViewModel.CadEditor;
+        var refreshState = (editor, editor.DocumentChangeVersion, editor.Selection.Version,
+            editor.ActiveOwnerBlockId, _selectedBlockDefinitionId, _documentViewModel.CadCanvasToolMode);
+        if (_lastSelectionRefresh == refreshState)
+            return;
+        if (_lastSelectionRefresh is { } previous && !ReferenceEquals(previous.Editor, editor))
+            Entity = null;
+        _lastSelectionRefresh = refreshState;
+
+        var selectedEntityIds = _documentViewModel.CadEditor.Selection.EntityIds;
         var validSelectedEntityIds = selectedEntityIds
             .Where(entityId =>
                 _documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var selectedEntity) &&
                 selectedEntity is { IsErased: false } &&
                 selectedEntity.OwnerBlockId.Equals(_documentViewModel.CadEditor.ActiveOwnerBlockId))
             .ToArray();
-        selectedEntityIds = validSelectedEntityIds;
         if (validSelectedEntityIds.Length > 1)
         {
             if (Entity is MultiEntityPropertyViewModel multiEntityViewModel &&
@@ -278,8 +297,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out var entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out var entity) &&
             entity is CadArc arc &&
             !arc.IsErased)
         {
@@ -296,8 +315,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadLine line &&
             !line.IsErased)
         {
@@ -314,8 +333,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadCircle circle &&
             !circle.IsErased)
         {
@@ -332,8 +351,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadEllipse ellipse &&
             !ellipse.IsErased)
         {
@@ -350,8 +369,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadRectangle rectangle &&
             !rectangle.IsErased)
         {
@@ -368,8 +387,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadPolyline polyline &&
             !polyline.IsErased)
         {
@@ -386,8 +405,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadSpline spline &&
             !spline.IsErased)
         {
@@ -404,8 +423,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadText text &&
             !text.IsErased)
         {
@@ -422,8 +441,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadImage image &&
             !image.IsErased)
         {
@@ -440,8 +459,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadOleObject oleObject &&
             !oleObject.IsErased)
         {
@@ -458,8 +477,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is CadBlockReference blockReference &&
             !blockReference.IsErased)
         {
@@ -476,8 +495,8 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (selectedEntityIds.Length == 1 &&
-            _documentViewModel.CadEditor.Document.TryGetEntity(selectedEntityIds[0], out entity) &&
+        if (validSelectedEntityIds.Length == 1 &&
+            _documentViewModel.CadEditor.Document.TryGetEntity(validSelectedEntityIds[0], out entity) &&
             entity is { IsErased: false })
         {
             if (Entity is CommonEntityPropertyViewModel commonEntityViewModel &&

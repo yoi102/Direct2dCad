@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+using Direct2dCad.ViewModels.Collections;
 using AvalonDock.Core;
 using AvalonDock.Mvvm.CommunityToolkit;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,6 +20,8 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
     private readonly IDisposable _interactionStateChangedSubscription;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
+    private Editor.CadEditor? _lastRefreshedEditor;
+    private long _lastRefreshVersion = -1;
 
     public LayersToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
@@ -37,7 +39,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
         _snackbarService = snackbarService;
         CanClose = false;
     }
-    public ObservableCollection<LayerItemViewModel> Layers { get; } = [];
+    public ObservableRangeCollection<LayerItemViewModel> Layers { get; } = [];
 
     public bool HasDocument => _documentViewModel is not null;
 
@@ -183,6 +185,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
     [RelayCommand]
     private void Refresh()
     {
+        _lastRefreshVersion = -1;
         RefreshLayers(SelectedLayer?.LayerId);
     }
 
@@ -284,22 +287,38 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     private void RefreshLayers(LayerId? selectedLayerId = null)
     {
-        Layers.Clear();
+        var editor = _documentViewModel?.CadEditor;
+        if (ReferenceEquals(editor, _lastRefreshedEditor) &&
+            (editor?.DocumentChangeVersion ?? 0) == _lastRefreshVersion &&
+            (selectedLayerId is null || SelectedLayer?.LayerId == selectedLayerId))
+            return;
 
-        if (_documentViewModel is not null)
+        var sameEditor = ReferenceEquals(editor, _lastRefreshedEditor);
+        selectedLayerId ??= sameEditor ? SelectedLayer?.LayerId : null;
+        var existing = sameEditor ? Layers.ToDictionary(item => item.LayerId) : [];
+        var items = new List<LayerItemViewModel>();
+
+        if (editor is not null)
         {
-            var document = _documentViewModel.CadEditor.Document;
+            var document = editor.Document;
             foreach (var layer in document.Layers.Values
                          .OrderByDescending(x => document.DocumentSettings.LayerDrawingPriority.GetPriority(x.Id))
                          .ThenByDescending(x => x.Id.Value))
             {
-                Layers.Add(new LayerItemViewModel(
-                    this,
-                    layer,
-                    document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id),
-                    document.GetEntityCountOnLayer(layer.Id)));
+                var priority = document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id);
+                var count = document.GetEntityCountOnLayer(layer.Id);
+                if (existing.TryGetValue(layer.Id, out var item))
+                    item.RefreshFromLayer(layer, priority, count);
+                else
+                    item = new LayerItemViewModel(this, layer, priority, count);
+                items.Add(item);
             }
         }
+
+        if (!Layers.SequenceEqual(items))
+            Layers.ReplaceRange(items);
+        _lastRefreshedEditor = editor;
+        _lastRefreshVersion = editor?.DocumentChangeVersion ?? 0;
 
         OnPropertyChanged(nameof(HasLayers));
         SelectedLayer = selectedLayerId is { } layerId

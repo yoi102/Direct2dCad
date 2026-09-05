@@ -8,6 +8,75 @@ namespace Direct2dCad.Tests;
 public sealed class CadHandleSceneBuilderTests
 {
     [Fact]
+    public void VersionedSelectionReuseRefreshesOrderVisibilitySelectionAndDocument()
+    {
+        var document = CadDocument.Create("Versioned selection");
+        var first = document.AddLine(CadPointD.Origin, new CadPointD(10, 10));
+        var second = document.AddLine(CadPointD.Origin, new CadPointD(20, 20));
+        EntityId[] ids = [second.Id, first.Id];
+        var buffer = new CadHandleSceneBuildBuffer();
+        var scene = new CadHandleScene();
+        var builder = new CadHandleSceneBuilder();
+        var options = CadHandleSceneBuildOptions.Default with { IncludeGripHandles = false };
+        var enumerationCount = 0;
+        IEnumerable<EntityId> CountedSelection()
+        {
+            enumerationCount++;
+            foreach (var id in ids)
+                yield return id;
+        }
+        EntityId[] Build(CadDocument source, IEnumerable<EntityId> selected, long selection, long version)
+        {
+            var items = builder.BuildSelectionHandles(source, selected, buffer, scene, options,
+                new CadHandleSelectionCacheKey(selection, version));
+            scene.Replace(items);
+            return scene.SelectionReferences.Select(item => item.EntityId).ToArray();
+        }
+        Assert.Equal([first.Id, second.Id], Build(document, CountedSelection(), 1, 1));
+        var reference = scene.SelectionReferences[0];
+        Assert.Equal([first.Id, second.Id], Build(document, CountedSelection(), 1, 1));
+        Assert.Equal(1, enumerationCount);
+        Assert.Same(reference, scene.SelectionReferences[0]);
+        first.SetZIndex(10);
+        Assert.Equal([second.Id, first.Id], Build(document, ids, 1, 2));
+        second.SetVisible(false);
+        Assert.Equal([first.Id], Build(document, ids, 1, 3));
+        Assert.Empty(Build(document, [], 2, 3));
+        var other = CadDocument.Create("Other");
+        var otherLine = other.AddLine(new CadPointD(100, 100), new CadPointD(200, 200));
+        Assert.Equal([otherLine.Id], Build(other, [otherLine.Id], 2, 3));
+        Assert.Equal(otherLine.Bounds, scene.SelectionReferences[0].EntityBounds);
+        buffer.Clear();
+        Assert.Equal([first.Id], Build(document, ids, 1, 3));
+    }
+
+    [Fact]
+    public void UnversionedBufferNeverReusesStaleOrder()
+    {
+        var document = CadDocument.Create("Unversioned");
+        var first = document.AddLine(CadPointD.Origin, new CadPointD(10, 10));
+        var second = document.AddLine(CadPointD.Origin, new CadPointD(20, 20));
+        var buffer = new CadHandleSceneBuildBuffer();
+        var builder = new CadHandleSceneBuilder();
+        builder.BuildSelectionHandles(document, [first.Id, second.Id], buffer);
+        first.SetZIndex(10);
+        var items = builder.BuildSelectionHandles(document, [first.Id, second.Id], buffer);
+        Assert.Equal([second.Id, first.Id], items.OfType<CadSelectionEntityReference>().Select(item => item.EntityId));
+    }
+
+    [Fact]
+    public void LargeReversedSelectionPreservesInsertionOrderWithoutIndividualGrips()
+    {
+        var document = CadDocument.Create("Order");
+        var ids = Enumerable.Range(0, 4000).Select(i =>
+            document.AddLine(new CadPointD(i, 0), new CadPointD(i, 1)).Id).ToArray();
+        var builder = new CadHandleSceneBuilder();
+        var items = builder.BuildSelectionHandles(document, ids.Reverse());
+        Assert.Equal(ids, items.OfType<CadSelectionEntityReference>().Select(item => item.EntityId));
+        Assert.Single(items.OfType<CadGripHandle>());
+    }
+
+    [Fact]
     public void BuildSelectionHandles_CreatesEntitySpecificGripSets()
     {
         var document = CadDocument.Create("Test");

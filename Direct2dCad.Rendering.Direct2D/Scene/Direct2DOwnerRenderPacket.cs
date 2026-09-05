@@ -10,6 +10,7 @@ internal sealed class Direct2DOwnerRenderPacket
     private readonly Direct2DEntityRenderPacket[] _entries;
     private readonly CadEntity[] _entities;
     private readonly Dictionary<EntityId, int> _indices;
+    private readonly EntityBoundsTree _boundsTree;
 
     public Direct2DOwnerRenderPacket(
         CadDocument document,
@@ -23,7 +24,6 @@ internal sealed class Direct2DOwnerRenderPacket
         _entities = new CadEntity[orderedEntities.Count];
         _indices = new Dictionary<EntityId, int>(orderedEntities.Count);
 
-        var bounds = CadRectD.Empty;
         for (var index = 0; index < orderedEntities.Count; index++)
         {
             var entity = orderedEntities[index];
@@ -31,16 +31,14 @@ internal sealed class Direct2DOwnerRenderPacket
             _entries[index] = entry;
             _entities[index] = entity;
             _indices[entity.Id] = index;
-            if (entry.IsRenderable)
-                bounds = bounds.Union(entry.Bounds);
         }
 
-        Bounds = bounds;
+        _boundsTree = new EntityBoundsTree(_entries);
     }
 
     public BlockId OwnerBlockId { get; }
     public long Version { get; private set; }
-    public CadRectD Bounds { get; private set; }
+    public CadRectD Bounds => _boundsTree.Bounds;
     public IReadOnlyList<Direct2DEntityRenderPacket> Entries => _entries;
     public IReadOnlyList<CadEntity> Entities => _entities;
 
@@ -64,21 +62,10 @@ internal sealed class Direct2DOwnerRenderPacket
         }
 
         _entries[index] = CreateEntry(document, entity, index);
+        _boundsTree.Update(index, _entries[index]);
         _entities[index] = entity;
         Version = version;
         return true;
-    }
-
-    public void RecalculateBounds()
-    {
-        var bounds = CadRectD.Empty;
-        foreach (var entry in _entries)
-        {
-            if (entry.IsRenderable)
-                bounds = bounds.Union(entry.Bounds);
-        }
-
-        Bounds = bounds;
     }
 
     private static Direct2DEntityRenderPacket CreateEntry(

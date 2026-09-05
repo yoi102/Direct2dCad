@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -12,6 +13,8 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
     private CadDocument? _pendingDocument;
     private long _pendingVersion;
     private PreparedDocumentPlan? _publishedPlan;
+    private CadDocument? _reusableDocument;
+    private IReadOnlyDictionary<BlockId, PreparedOwnerPlan> _reusableOwners = FrozenDictionary<BlockId, PreparedOwnerPlan>.Empty;
 
     public bool NeedsSchedule(CadDocument document, long version)
     {
@@ -49,8 +52,11 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
         _publishedPlan = null;
         _pendingCancellation = new CancellationTokenSource();
         var cancellationToken = _pendingCancellation.Token;
+        var reusableOwners = ReferenceEquals(_reusableDocument, document)
+            ? _reusableOwners
+            : null;
         _pendingTask = Task.Run(
-            () => Build(version, owners, cancellationToken),
+            () => Build(version, owners, reusableOwners, cancellationToken),
             cancellationToken);
     }
 
@@ -66,18 +72,29 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
         {
             var plan = _pendingTask.GetAwaiter().GetResult();
             if (plan.Version == version)
+            {
                 _publishedPlan = plan;
+                _reusableDocument = document;
+                _reusableOwners = plan.Owners;
+            }
         }
         ClearPendingTask(cancel: false);
         return _publishedPlan;
     }
 
-    public void Invalidate()
+    public void Invalidate(bool preserveReusableOwners = false)
     {
+        if (preserveReusableOwners && _pendingDocument is { } document)
+            TryGet(document, _pendingVersion);
         ClearPendingTask(cancel: true);
         _pendingDocument = null;
         _pendingVersion = 0;
         _publishedPlan = null;
+        if (!preserveReusableOwners)
+        {
+            _reusableDocument = null;
+            _reusableOwners = FrozenDictionary<BlockId, PreparedOwnerPlan>.Empty;
+        }
     }
 
     public void Dispose() => Invalidate();
@@ -85,12 +102,24 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
     private static PreparedDocumentPlan Build(
         long version,
         IReadOnlyList<OwnerPreparationSnapshot> owners,
+        IReadOnlyDictionary<BlockId, PreparedOwnerPlan>? reusableOwners,
         CancellationToken cancellationToken)
     {
         var plans = new Dictionary<BlockId, PreparedOwnerPlan>(owners.Count);
         foreach (var owner in owners)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (reusableOwners is not null &&
+                reusableOwners.TryGetValue(owner.OwnerBlockId, out var previous) &&
+                ReferenceEquals(previous.SourceSnapshot, owner))
+            {
+                // Local arrays are immutable. Dependency metrics belong to this new plan.
+                plans[owner.OwnerBlockId] = new PreparedOwnerPlan(
+                    previous.OrderedEntities, previous.Bounds, previous.LocalEstimatedRenderWork,
+                    previous.AdaptiveChunkBreakEntityIds, previous.OwnedEntityIds,
+                    previous.NestedDefinitionBlockIds) { SourceSnapshot = owner };
+                continue;
+            }
             var ordered = owner.Entities
                 .OrderBy(static entity => entity.LayerPriority)
                 .ThenBy(static entity => entity.ZIndex)
@@ -117,21 +146,24 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
                 ordered
                     .Where(static entity => entity.DefinitionBlockId is not null)
                     .Select(static entity => entity.DefinitionBlockId!.Value)
-                    .ToArray());
+                    .ToArray()) { SourceSnapshot = owner };
         }
 
-        foreach (var ownerId in plans.Keys.ToArray())
+        var workCache = new Dictionary<BlockId, int>(plans.Count);
+        var visiting = new HashSet<BlockId>();
+        foreach (var ownerId in plans.Keys)
         {
             cancellationToken.ThrowIfCancellationRequested();
             plans[ownerId].EstimatedRenderWork = ResolveRenderWork(
                 plans,
                 ownerId,
-                [],
-                cancellationToken);
+                visiting,
+                workCache,
+                cancellationToken,
+                out _);
             plans[ownerId].DependencyEntityIds = ResolveDependencies(
                 plans,
                 ownerId,
-                [],
                 cancellationToken);
         }
 
@@ -177,16 +209,28 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
         IReadOnlyDictionary<BlockId, PreparedOwnerPlan> plans,
         BlockId ownerId,
         HashSet<BlockId> visiting,
-        CancellationToken cancellationToken)
+        Dictionary<BlockId, int> cache,
+        CancellationToken cancellationToken,
+        out bool containsCycle)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!plans.TryGetValue(ownerId, out var owner) || !visiting.Add(ownerId))
+        containsCycle = false;
+        if (cache.TryGetValue(ownerId, out var cached))
+            return cached;
+        if (!plans.TryGetValue(ownerId, out var owner))
             return 1;
+        if (!visiting.Add(ownerId))
+        {
+            containsCycle = true;
+            return 1;
+        }
 
         long total = owner.LocalEstimatedRenderWork;
         foreach (var nestedOwnerId in owner.NestedDefinitionBlockIds)
         {
-            total += ResolveRenderWork(plans, nestedOwnerId, visiting, cancellationToken);
+            total += ResolveRenderWork(plans, nestedOwnerId, visiting, cache,
+                cancellationToken, out var nestedCycle);
+            containsCycle |= nestedCycle;
             if (total >= Direct2DEntityOrderCache.MaximumEstimatedRenderWork)
             {
                 total = Direct2DEntityOrderCache.MaximumEstimatedRenderWork;
@@ -195,29 +239,35 @@ internal sealed class Direct2DBackgroundPreparationService : IDisposable
         }
 
         visiting.Remove(ownerId);
+        // Cyclic costs depend on the current recursion path and cannot be memoized.
+        if (!containsCycle)
+            cache[ownerId] = (int)total;
         return (int)total;
     }
 
     private static IReadOnlySet<EntityId> ResolveDependencies(
         IReadOnlyDictionary<BlockId, PreparedOwnerPlan> plans,
         BlockId ownerId,
-        HashSet<BlockId> visiting,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (!plans.TryGetValue(ownerId, out var owner) || !visiting.Add(ownerId))
-            return new HashSet<EntityId>();
-
-        var dependencies = new HashSet<EntityId>(owner.OwnedEntityIds);
-        foreach (var nestedOwnerId in owner.NestedDefinitionBlockIds)
+        var dependencies = new HashSet<EntityId>();
+        var visited = new HashSet<BlockId> { ownerId };
+        var pending = new Stack<BlockId>();
+        pending.Push(ownerId);
+        // Dependencies are a set: repeated block instances only need one visit.
+        while (pending.TryPop(out var currentId))
         {
-            dependencies.UnionWith(ResolveDependencies(
-                plans,
-                nestedOwnerId,
-                visiting,
-                cancellationToken));
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!plans.TryGetValue(currentId, out var owner))
+                continue;
+
+            dependencies.UnionWith(owner.OwnedEntityIds);
+            foreach (var nestedOwnerId in owner.NestedDefinitionBlockIds)
+            {
+                if (visited.Add(nestedOwnerId))
+                    pending.Push(nestedOwnerId);
+            }
         }
-        visiting.Remove(ownerId);
         return dependencies;
     }
 
@@ -243,6 +293,7 @@ internal sealed class PreparedOwnerPlan(
     IReadOnlyList<EntityId> ownedEntityIds,
     IReadOnlyList<BlockId> nestedDefinitionBlockIds)
 {
+    public OwnerPreparationSnapshot? SourceSnapshot { get; init; }
     public IReadOnlyList<CadEntity> OrderedEntities { get; } = orderedEntities;
     public CadRectD Bounds { get; } = bounds;
     public int LocalEstimatedRenderWork { get; } = localEstimatedRenderWork;

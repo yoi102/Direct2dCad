@@ -27,6 +27,42 @@ public sealed class Direct2DRenderHostIntegrationTests
 {
     [Fact]
     [Trait("Category", "WindowsIntegration")]
+    public void DirtyRegionPlanningUsesCountQueryOncePerBoundsAndResetsEachFrame()
+    {
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new RecordingImageSource(320, 240));
+        host.SetSize(320, 240);
+        var document = CadDocument.Create("Count queries");
+        document.AddLine(CadPointD.Origin, new CadPointD(10, 10));
+        var viewport = new CadViewport();
+        viewport.SetSize(320, 240);
+        viewport.SetView(1, new CadPointD(160, 120));
+        host.SetScene(document, viewport);
+        var queries = new Dictionary<CadRectD, int>();
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false,
+            DrawOrigin = false,
+            EntityBoundsCount = (_, bounds) =>
+            {
+                queries[bounds] = queries.GetValueOrDefault(bounds) + 1;
+                return 1;
+            }
+        });
+        host.Render(CadRenderInvalidation.Full);
+        var dirty = CadRenderInvalidation.FromScreenRectsPreservingCoverage(
+            [new(10, 10, 20, 20), new(35, 10, 20, 20), new(60, 10, 20, 20)]);
+        for (var frame = 0; frame < 2; frame++)
+        {
+            queries.Clear();
+            host.Render(dirty);
+            Assert.NotEmpty(queries);
+            Assert.All(queries.Values, count => Assert.Equal(1, count));
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
     public async Task PrintWorker_RunsOffCallerOnStaThread()
     {
         var callerThreadId = Environment.CurrentManagedThreadId;

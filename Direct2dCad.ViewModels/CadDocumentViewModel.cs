@@ -52,6 +52,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly Func<CadDrawingTextRequest> _createDrawingTextRequest;
     private readonly Func<BlockId, CadRectD, IReadOnlyList<EntityId>> _entityBoundsQuery;
     private readonly Action<BlockId, CadRectD, List<EntityId>> _entityBoundsQueryInto;
+    private readonly Func<BlockId, CadRectD, int> _entityBoundsCount;
     private readonly IDisposable _oleObjectUpdatedSubscription;
     private readonly Guid _oleEditSessionId = Guid.NewGuid();
     private readonly HashSet<EntityId> _openOleEditEntityIds = [];
@@ -80,9 +81,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private LayerId _pasteTargetLayerId = LayerId.Default;
     private CadPointD? _currentMousePoint;
     private CadCommandLinePoint? _lastCommandLineInputPoint;
-    private CadPointD? _layoutPanLastScreen;
-    private CadLayoutViewportSnapshot? _layoutPanInitialSnapshot;
-    private bool _layoutPanHasMoved;
+    private readonly CadLayoutViewportPanController _layoutPan = new();
     private bool _viewportInteractionRequiresHandleSceneUpdate;
     private CadRenderInvalidation _deferredDocumentInvalidation = CadRenderInvalidation.Empty;
     private CadRenderInvalidation _pendingRenderInvalidation = CadRenderInvalidation.Empty;
@@ -275,7 +274,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadDrawingDefaultsViewModel DrawingDefaults { get; } = new();
 
-    public bool IsPanning => _pan.IsPanning || _layoutPanLastScreen is not null;
+    public bool IsPanning => _pan.IsPanning || _layoutPan.IsPanning;
     public CadUserSettings UserSettings { get; private set; } = CadUserSettings.CreateDefault();
 
     public CadDocumentViewModel(
@@ -309,6 +308,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _createDrawingTextRequest = CreateDrawingTextRequest;
         _entityBoundsQuery = QueryEntityBounds;
         _entityBoundsQueryInto = QueryEntityBounds;
+        _entityBoundsCount = (owner, bounds) => CadEditor.SpatialIndex.CountIntersecting(owner, bounds);
         _oleObjectUpdatedSubscription = (oleObjectUpdatedSubscriber ?? throw new ArgumentNullException(nameof(oleObjectUpdatedSubscriber)))
             .Subscribe(OnOleObjectUpdated);
         Direct2DImageRenderHost.SetOleDrawCallback(DrawOleObjectForRender);
@@ -321,6 +321,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     internal void ReplaceEditor(CadEditor editor)
     {
+        ArgumentNullException.ThrowIfNull(editor);
+        _layoutPan.Cancel();
+        _pan.End();
+        OnPropertyChanged(nameof(IsPanning));
         var wasAttached = _renderResources.IsAttached;
         if (wasAttached)
             DetachRenderResources();
@@ -1627,13 +1631,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private bool BeginPan(CadPointD screen)
     {
-        if (TryGetActiveLayoutViewport(out _, out var viewport))
+        if (TryGetActiveLayoutViewport(out var layout, out var viewport))
         {
-            if (viewport.IsLocked)
+            if (!_layoutPan.Begin(CadEditor, layout.Id, viewport, screen,
+                    _layoutViewportCreation.IsAdjustingView ? _layoutViewportCreation.BatchId : null))
                 return false;
-            _layoutPanLastScreen = screen;
-            _layoutPanInitialSnapshot = CadLayoutViewportSnapshot.From(viewport);
-            _layoutPanHasMoved = false;
         }
         else
         {
@@ -1649,31 +1651,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         var hadViewportPreview = Direct2DImageRenderHost.IsViewportInteractionActive;
         var hasMoved = _pan.End();
-        if (_layoutPanInitialSnapshot is { } initial &&
-            TryGetActiveLayoutViewport(out var layout, out var viewport))
-        {
-            hasMoved |= _layoutPanHasMoved;
-            if (_layoutPanHasMoved)
-            {
-                var target = CadLayoutViewportSnapshot.From(viewport);
-                initial.ApplyTo(viewport);
-                if (_layoutViewportCreation.IsAdjustingView)
-                {
-                    CadEditor.SetLayoutViewport(
-                        layout.Id,
-                        viewport.Id,
-                        target,
-                        _layoutViewportCreation.BatchId);
-                }
-                else
-                {
-                    CadEditor.SetLayoutViewport(layout.Id, viewport.Id, target);
-                }
-            }
-        }
-        _layoutPanLastScreen = null;
-        _layoutPanInitialSnapshot = null;
-        _layoutPanHasMoved = false;
+        hasMoved |= _layoutPan.End();
         Direct2DImageRenderHost.EndViewportInteraction();
         _viewportInteractionRequiresHandleSceneUpdate = false;
         OnPropertyChanged(nameof(IsPanning));
@@ -1709,32 +1687,16 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private bool MovePan(CadPointD screen)
     {
-        if (_layoutPanLastScreen is not { } previousScreen ||
-            !TryGetActiveLayoutViewport(out _, out var viewport))
-        {
+        if (!_layoutPan.IsPanning)
             return _pan.Move(CadEditor, screen);
+
+        var moved = _layoutPan.Move(screen);
+        if (!_layoutPan.IsPanning)
+        {
+            OnPropertyChanged(nameof(IsPanning));
+            return true; // Cancellation restored the initial view; repaint that rollback.
         }
-
-        _layoutPanLastScreen = screen;
-        var previousPaper = CadEditor.Viewport.ScreenToWorld(previousScreen);
-        var currentPaper = CadEditor.Viewport.ScreenToWorld(screen);
-        var dx = (previousPaper.X - currentPaper.X) / viewport.Scale;
-        var dy = (previousPaper.Y - currentPaper.Y) / viewport.Scale;
-        var cos = Math.Cos(viewport.RotationRadians);
-        var sin = Math.Sin(viewport.RotationRadians);
-        var modelDelta = new CadVectorD(
-            dx * cos + dy * sin,
-            -dx * sin + dy * cos);
-        if (modelDelta.LengthSquared <= double.Epsilon)
-            return false;
-
-        viewport.SetView(
-            viewport.Bounds,
-            viewport.ModelCenter + modelDelta,
-            viewport.Scale,
-            viewport.RotationRadians);
-        _layoutPanHasMoved = true;
-        return true;
+        return moved;
     }
 
     private void HandleDrawingClick(CadPointD screen)
@@ -1808,6 +1770,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void ClearInteractionState(bool clearClipboard, bool render = true)
     {
+        if (IsPanning)
+            EndPan();
         _drawingState.Clear();
         _selectionDrag.Clear();
         _selectionCycle.Clear();
@@ -1851,6 +1815,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 UserSettings.Rendering.ParallelRenderingWorkerCount,
             EntityBoundsQuery = _entityBoundsQuery,
             EntityBoundsQueryInto = _entityBoundsQueryInto,
+            EntityBoundsCount = _entityBoundsCount,
             HiddenEntityIds = _gripDrag.HiddenEntityIds
         };
     }
@@ -2957,6 +2922,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return;
 
         _disposed = true;
+        _layoutPan.Cancel();
+        _pan.End();
         _renderScheduler = null;
         _hasPendingRender = false;
         _renderScheduled = false;

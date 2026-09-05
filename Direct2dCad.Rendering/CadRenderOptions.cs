@@ -39,4 +39,5 @@ public sealed class CadRenderOptions
     public CadRectD? DirtyWorldBounds { get; init; }
     public Func<BlockId, CadRectD, IReadOnlyList<EntityId>>? EntityBoundsQuery { get; init; }
     public Action<BlockId, CadRectD, List<EntityId>>? EntityBoundsQueryInto { get; init; }
+    public Func<BlockId, CadRectD, int>? EntityBoundsCount { get; init; }
 }

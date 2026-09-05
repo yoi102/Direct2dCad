@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using AvalonDock.Core;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -6,7 +5,9 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Editor;
 using Direct2dCad.Lang.Strings;
+using Direct2dCad.ViewModels.Collections;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
@@ -18,6 +19,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     private readonly IDisposable _interactionStateChangedSubscription;
     private CadDocumentViewModel? _documentViewModel;
     private bool _isRefreshing;
+    private (CadEditor? Editor, long Version, BlockId? Owner)? _lastRefreshState;
 
     public EntitySearchToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
@@ -47,11 +49,11 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     [ObservableProperty]
     public partial EntitySearchResultItemViewModel? SelectedResult { get; set; }
 
-    public ObservableCollection<EntitySearchLayerFilterOption> LayerFilters { get; } = [];
+    public ObservableRangeCollection<EntitySearchLayerFilterOption> LayerFilters { get; } = [];
 
-    public ObservableCollection<EntitySearchTypeFilterOption> TypeFilters { get; } = [];
+    public ObservableRangeCollection<EntitySearchTypeFilterOption> TypeFilters { get; } = [];
 
-    public ObservableCollection<EntitySearchResultItemViewModel> Results { get; } = [];
+    public ObservableRangeCollection<EntitySearchResultItemViewModel> Results { get; } = [];
 
     public bool HasDocument => _documentViewModel is not null;
 
@@ -79,7 +81,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     {
         if (ReferenceEquals(_documentViewModel, documentViewModel))
         {
-            Refresh();
+            RefreshIfChanged();
             return;
         }
 
@@ -144,6 +146,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     [RelayCommand]
     private void Refresh()
     {
+        var refreshState = GetRefreshState();
         var scopedEntities = GetScopedEntities().ToArray();
         _isRefreshing = true;
         try
@@ -157,6 +160,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
         }
 
         RefreshResults(scopedEntities);
+        _lastRefreshState = refreshState;
     }
 
     private void OnInteractionStateChanged(CadDocumentInteractionStateChangedMessage message)
@@ -164,18 +168,31 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
         if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
             return;
 
-        Refresh();
+        RefreshIfChanged();
+    }
+
+    private void RefreshIfChanged()
+    {
+        if (!_isRefreshing && _lastRefreshState != GetRefreshState())
+            Refresh();
+    }
+
+    private (CadEditor? Editor, long Version, BlockId? Owner) GetRefreshState()
+    {
+        var editor = _documentViewModel?.CadEditor;
+        return (editor, editor?.DocumentChangeVersion ?? 0,
+            SearchScope == CadEntitySearchScope.CurrentSpace ? editor?.ActiveOwnerBlockId : null);
     }
 
     private void RefreshLayerFilters(IReadOnlyCollection<CadEntity> scopedEntities)
     {
         var selectedLayerId = SelectedLayerFilter?.LayerId;
-        LayerFilters.Clear();
+        var filters = new List<EntitySearchLayerFilterOption>();
         var allLayers = new EntitySearchLayerFilterOption(
             null,
             GetResourceText("EntitySearchAllLayers", "All layers"),
             scopedEntities.Count);
-        LayerFilters.Add(allLayers);
+        filters.Add(allLayers);
 
         if (_documentViewModel is not null)
         {
@@ -187,13 +204,14 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
                          .OrderBy(x => document.DocumentSettings.LayerDrawingPriority.GetPriority(x.Id))
                          .ThenBy(x => x.Id.Value))
             {
-                LayerFilters.Add(new EntitySearchLayerFilterOption(
+                filters.Add(new EntitySearchLayerFilterOption(
                     layer.Id,
                     layer.Name,
                     entityCountsByLayer.GetValueOrDefault(layer.Id)));
             }
         }
 
+        LayerFilters.ReplaceRange(filters);
         SelectedLayerFilter = selectedLayerId is { } layerId
             ? LayerFilters.FirstOrDefault(x => x.LayerId.Equals(layerId)) ?? allLayers
             : allLayers;
@@ -202,20 +220,21 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     private void RefreshTypeFilters(IReadOnlyCollection<CadEntity> scopedEntities)
     {
         var selectedTypeKey = SelectedTypeFilter?.TypeKey;
-        TypeFilters.Clear();
+        var filters = new List<EntitySearchTypeFilterOption>();
         var allTypes = new EntitySearchTypeFilterOption(
             null,
             GetResourceText("EntitySearchAllTypes", "All types"));
-        TypeFilters.Add(allTypes);
+        filters.Add(allTypes);
 
         foreach (var type in scopedEntities
                      .Select(GetEntityTypeName)
                      .Distinct(StringComparer.Ordinal)
                      .OrderBy(x => x, StringComparer.Ordinal))
         {
-            TypeFilters.Add(new EntitySearchTypeFilterOption(type, type));
+            filters.Add(new EntitySearchTypeFilterOption(type, type));
         }
 
+        TypeFilters.ReplaceRange(filters);
         SelectedTypeFilter = selectedTypeKey is { } typeKey
             ? TypeFilters.FirstOrDefault(x => string.Equals(x.TypeKey, typeKey, StringComparison.Ordinal)) ?? allTypes
             : allTypes;
@@ -227,7 +246,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
     private void RefreshResults(IEnumerable<CadEntity> scopedEntities)
     {
         var selectedEntityId = SelectedResult?.EntityId;
-        Results.Clear();
+        var results = new List<EntitySearchResultItemViewModel>();
 
         if (_documentViewModel is not null)
         {
@@ -244,20 +263,22 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
                          .ThenBy(x => x.ZIndex)
                          .ThenBy(x => x.Id.Value))
             {
-                Results.Add(CreateResultItem(document, entity));
+                results.Add(CreateResultItem(document, entity));
             }
         }
 
+        var wasRefreshing = _isRefreshing;
         _isRefreshing = true;
         try
         {
+            Results.ReplaceRange(results);
             SelectedResult = selectedEntityId is { } entityId
                 ? Results.FirstOrDefault(x => x.EntityId.Equals(entityId))
                 : null;
         }
         finally
         {
-            _isRefreshing = false;
+            _isRefreshing = wasRefreshing;
         }
 
         OnPropertyChanged(nameof(HasResults));

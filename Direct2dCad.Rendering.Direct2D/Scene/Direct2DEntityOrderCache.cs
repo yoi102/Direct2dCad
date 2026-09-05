@@ -13,8 +13,9 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
     private readonly Dictionary<BlockId, Direct2DOwnerRenderPacket> _packetsByOwner = [];
     private readonly Dictionary<BlockId, IReadOnlyList<CadEntity>> _oleEntitiesByOwner = [];
     private readonly Dictionary<BlockId, int> _estimatedRenderWorkByOwner = [];
-    private readonly HashSet<Direct2DOwnerRenderPacket> _updatedPackets = [];
     private readonly Direct2DBackgroundPreparationService _backgroundPreparation = new();
+    private readonly Dictionary<BlockId, OwnerPreparationSnapshot> _preparationSnapshots = [];
+    private readonly HashSet<BlockId> _invalidPreparationOwners = [];
     private CadDocument? _document;
     private long _preparationVersion;
 
@@ -161,6 +162,12 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         var owners = new List<OwnerPreparationSnapshot>(document.Blocks.Count);
         foreach (var block in document.Blocks.Values)
         {
+            if (_preparationSnapshots.TryGetValue(block.Id, out var cachedSnapshot) &&
+                !_invalidPreparationOwners.Contains(block.Id))
+            {
+                owners.Add(cachedSnapshot);
+                continue;
+            }
             var entities = new List<EntityPreparationSnapshot>(block.EntityIds.Count);
             for (var insertionIndex = 0; insertionIndex < block.EntityIds.Count; insertionIndex++)
             {
@@ -181,9 +188,12 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
                         : null));
             }
 
-            owners.Add(new OwnerPreparationSnapshot(block.Id, entities));
+            var snapshot = new OwnerPreparationSnapshot(block.Id, entities);
+            _preparationSnapshots[block.Id] = snapshot;
+            owners.Add(snapshot);
         }
 
+        _invalidPreparationOwners.Clear();
         _backgroundPreparation.Schedule(document, _preparationVersion, owners);
     }
 
@@ -229,18 +239,18 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
             packetChanges |
             CadEntityChangeKind.Fill;
         var metricsChanged = false;
-        _updatedPackets.Clear();
         foreach (var change in changes.EntityChanges)
         {
             metricsChanged |= (change.Kind & metricChanges) != 0;
+            if ((change.Kind & metricChanges) != 0 &&
+                document.TryGetEntity(change.EntityId, out var changedEntity) && changedEntity is not null)
+                _invalidPreparationOwners.Add(changedEntity.OwnerBlockId);
             if ((change.Kind & packetChanges) == 0)
                 continue;
 
-            foreach (var packet in _packetsByOwner.Values)
+            if (document.TryGetEntity(change.EntityId, out var entity) && entity is not null &&
+                _packetsByOwner.TryGetValue(entity.OwnerBlockId, out var packet))
             {
-                if (!packet.TryGetIndex(change.EntityId, out _))
-                    continue;
-
                 if (!packet.TryUpdate(
                         document,
                         change.EntityId,
@@ -250,20 +260,14 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
                     return;
                 }
 
-                _updatedPackets.Add(packet);
-                break;
             }
         }
-
-        foreach (var packet in _updatedPackets)
-            packet.RecalculateBounds();
-        _updatedPackets.Clear();
 
         if (!metricsChanged)
             return;
 
         _estimatedRenderWorkByOwner.Clear();
-        InvalidatePreparedPlan();
+        InvalidatePreparedPlan(preserveSnapshots: true);
     }
 
     public CadRectD GetOwnerBounds(CadDocument document, BlockId ownerBlockId)
@@ -398,7 +402,7 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         InvalidatePreparedPlan();
     }
 
-    private bool TryGetPreparedOwner(
+    internal bool TryGetPreparedOwner(
         CadDocument document,
         BlockId ownerBlockId,
         out PreparedOwnerPlan prepared)
@@ -410,10 +414,15 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         return false;
     }
 
-    private void InvalidatePreparedPlan()
+    private void InvalidatePreparedPlan(bool preserveSnapshots = false)
     {
         _preparationVersion++;
-        _backgroundPreparation.Invalidate();
+        if (!preserveSnapshots)
+        {
+            _preparationSnapshots.Clear();
+            _invalidPreparationOwners.Clear();
+        }
+        _backgroundPreparation.Invalidate(preserveReusableOwners: preserveSnapshots);
     }
 
     public void Dispose() => _backgroundPreparation.Dispose();

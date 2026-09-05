@@ -188,6 +188,10 @@ dotnet test .\Direct2dCad.slnx -m:1
 
 `Direct2dCad.Benchmarks` は BenchmarkDotNet を使います。Windows x64、安定した GPU ドライバー、`Release` 構成で実行してください。
 
+`CacheEvictionBenchmarks` は 128 / 1,024 件の候補について、ソート方式と再利用可能な優先度付きキューの実行時間とマネージド割り当てを比較します。GPU リソースは作成しません。
+
+`OwnerBoundsUpdateBenchmarks` は 20,000 / 100,000 エンティティの境界全件走査と境界ツリーの差分更新を比較します。`DirtyRegionBatchBenchmarks` は 512 / 20,000 個の dirty rectangle の保守的な集約を測定します。`SelectionOverlayBenchmarks` ではシーン再利用とバージョン付き選択順序の再利用も比較します。空間インデックスの件数計算は変更前後の bounds で補正します。大規模インデックスの再構築は値のスナップショットを使ってバックグラウンドで実行しますが、初回構築とスナップショット取得は呼び出しスレッドで行います。インデックス自体は並行読み書きには対応していません。
+
 ```powershell
 dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --list flat
 dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --smoke --filter "*SpatialIndexBenchmarks*"

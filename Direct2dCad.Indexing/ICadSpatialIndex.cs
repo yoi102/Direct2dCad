@@ -22,6 +22,8 @@ public interface ICadSpatialIndex
 
     void Query(BlockId ownerBlockId, CadRectD area, List<EntityId> results);
 
+    int CountIntersecting(BlockId ownerBlockId, CadRectD area) => Query(ownerBlockId, area).Count;
+
     void Clear();
 
     void Rebuild(CadDocument document);

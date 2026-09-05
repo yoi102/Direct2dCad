@@ -217,6 +217,58 @@ public sealed class CadSpatialIndexTests
         Assert.Equal(entries.Count, index.Count);
     }
 
+    [Theory]
+    [InlineData(8)]
+    [InlineData(17)]
+    [InlineData(257)]
+    public void FullyContainedQuery_UsesCurrentEntriesAndAppendsToBuffer(int count)
+    {
+        var index = new CadSpatialIndex();
+        var area = CadRectD.FromXYWH(0, 0, count + 1, 2);
+        for (var i = 1; i <= count; i++)
+            index.Add(new EntityId(i), CadRectD.FromXYWH(i, 0, 1, 1));
+        Assert.Equal(count, index.Query(BlockId.ModelSpace, area).Count);
+
+        index.Update(new EntityId(1), CadRectD.FromXYWH(-100, -100, 1, 1));
+        index.Remove(new EntityId(2));
+        index.Update(new EntityId(3), CadRectD.FromXYWH(0, 0, 0, 0));
+        index.Add(new EntityId(count + 1), CadRectD.FromXYWH(0, 1, 1, 1));
+        var sentinel = new EntityId(-1);
+        var buffer = new List<EntityId> { sentinel };
+
+        index.Query(BlockId.ModelSpace, area, buffer);
+
+        Assert.Equal(sentinel, buffer[0]);
+        var expected = Enumerable.Range(3, count - 1).Select(i => new EntityId(i));
+        Assert.Equal(expected.OrderBy(id => id.Value), buffer.Skip(1).OrderBy(id => id.Value));
+        Assert.Equal(buffer.Count, buffer.Distinct().Count());
+        Assert.Equal([new EntityId(1)], index.Query(CadRectD.FromXYWH(-101, -101, 3, 3)));
+    }
+
+    [Fact]
+    public void QueryContainingCluster_MatchesBoundaryIntersections()
+    {
+        var index = new CadSpatialIndex();
+        var entries = new Dictionary<EntityId, CadRectD>();
+        for (var i = 1; i <= 257; i++)
+        {
+            var bounds = CadRectD.FromXYWH(i <= 128 ? i : 10000 + i, i % 10, 1, 1);
+            entries.Add(new EntityId(i), bounds);
+            index.Add(new EntityId(i), bounds);
+        }
+
+        foreach (var area in new[]
+        {
+            CadRectD.FromXYWH(0, 0, 129, 11),
+            CadRectD.FromXYWH(1, 0, 63, 4),
+            CadRectD.FromXYWH(64, 0, 0, 10)
+        })
+        {
+            var expected = entries.Where(pair => pair.Value.Intersects(area)).Select(pair => pair.Key);
+            Assert.Equal(expected.OrderBy(id => id.Value), index.Query(area).OrderBy(id => id.Value));
+        }
+    }
+
     private static CadRectD CreateRandomBounds(Random random)
     {
         var x = random.NextDouble() * 500;

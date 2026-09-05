@@ -202,6 +202,10 @@ dotnet test .\Direct2dCad.slnx -m:1
 
 `Direct2dCad.Benchmarks` uses BenchmarkDotNet. Run it in `Release` configuration on Windows x64 with a stable GPU driver:
 
+`CacheEvictionBenchmarks` compares sorting-based eviction with a reusable priority queue for 128 / 1,024 candidates, measuring time and managed allocations without creating GPU resources.
+
+`OwnerBoundsUpdateBenchmarks` compares a full bounds scan with incremental bounds-tree updates in 20,000 / 100,000-entity owners. `DirtyRegionBatchBenchmarks` measures conservative reduction of 512 / 20,000 dirty rectangles. `SelectionOverlayBenchmarks` also compares scene reuse with versioned selection-order reuse. Spatial count benchmarks include pending edits: counts correct the immutable tree using old/new bounds. Subsequent large-index rebuilds run on value snapshots in the background; initial builds and snapshot capture remain on the calling thread. The index is not a concurrent read/write collection.
+
 ```powershell
 dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --list flat
 dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --smoke --filter "*SpatialIndexBenchmarks*"

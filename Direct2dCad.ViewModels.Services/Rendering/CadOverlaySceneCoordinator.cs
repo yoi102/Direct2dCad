@@ -27,6 +27,7 @@ internal sealed class CadOverlaySceneCoordinator
     public void ClearHandleScene()
     {
         HandleScene.Clear();
+        _handleSceneBuildBuffer.Clear();
         _handleSceneUpdateTracker.Reset();
     }
 
@@ -49,6 +50,7 @@ internal sealed class CadOverlaySceneCoordinator
             CadEntityChangeKind.Geometry |
             CadEntityChangeKind.Visibility |
             CadEntityChangeKind.Layer |
+            CadEntityChangeKind.DrawOrder |
             CadEntityChangeKind.Deleted |
             CadEntityChangeKind.Rotation;
         foreach (var change in changes.EntityChanges)
@@ -152,7 +154,8 @@ internal sealed class CadOverlaySceneCoordinator
             selection.EntityIds,
             _handleSceneBuildBuffer,
             HandleScene,
-            effectiveOptions);
+            effectiveOptions,
+            new CadHandleSelectionCacheKey(selection.Version, editor.DocumentChangeVersion));
         HandleScene.Replace(items);
         _handleSceneUpdateTracker.MarkCurrent(
             editor.Document,

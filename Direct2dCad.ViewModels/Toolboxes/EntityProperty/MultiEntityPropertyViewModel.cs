@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Resources;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Db;
@@ -13,6 +12,8 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
 {
     private readonly CadDocumentViewModel _documentViewModel;
     private readonly EntityId[] _entityIds;
+    private readonly HashSet<EntityId> _entityIdSet;
+    private readonly List<CadEntity> _entities = [];
     private bool _isRefreshing;
 
     public MultiEntityPropertyViewModel(
@@ -24,6 +25,8 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             ?? throw new ArgumentNullException(nameof(entityIds));
         if (_entityIds.Length < 2)
             throw new ArgumentException("Multi-entity properties require at least two entities.", nameof(entityIds));
+
+        _entityIdSet = _entityIds.ToHashSet();
 
         RefreshFromEntities();
     }
@@ -156,7 +159,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         SupportsFill && FillStyleCatalog.SupportsFillColor(SelectedFillStyleOption);
 
     public bool Matches(IEnumerable<EntityId> entityIds) =>
-        _entityIds.SequenceEqual(entityIds.Distinct().OrderBy(id => id.Value));
+        _entityIdSet.SetEquals(entityIds);
 
     public void RefreshFromEntities()
     {
@@ -169,7 +172,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         {
             IsEditable = entities.All(entity =>
                 CadEntityAccessPolicy.IsEditable(_documentViewModel.CadEditor.Document, entity));
-            IsSameType = entities.Select(entity => entity.GetType()).Distinct().Count() == 1;
+            IsSameType = entities.All(entity => entity.GetType() == entities[0].GetType());
             EntityTypeName = IsSameType
                 ? GetEntityTypeDisplayName(entities[0].GetType())
                 : GetLocalizedText("MultipleEntityTypes", "Multiple entity types");
@@ -187,9 +190,8 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
             if (SupportsStrokeAppearance)
             {
                 RefreshColorSourceProperties(entities);
-                var colors = entities.Select(ResolveStrokeColor).ToArray();
-                StrokeColor = colors[0];
-                HasMixedStrokeColor = colors.Skip(1).Any(color => color != colors[0]);
+                StrokeColor = ResolveStrokeColor(entities[0]);
+                HasMixedStrokeColor = entities.Skip(1).Any(entity => ResolveStrokeColor(entity) != StrokeColor);
                 UseByLayerLineWeight = GetCommonValue(entities, entity => entity.UseLayerLineWeight);
                 LineWeight = GetCommonValue(entities, entity => ResolveLineWeight(entity).Value);
             }
@@ -346,25 +348,28 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
 
     private IReadOnlyList<CadEntity> ResolveEntities()
     {
-        return _entityIds
-            .Select(entityId => _documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ? entity : null)
-            .Where(entity => entity is { IsErased: false })
-            .Cast<CadEntity>()
-            .ToArray();
+        _entities.Clear();
+        foreach (var id in _entityIds)
+        {
+            if (_documentViewModel.CadEditor.Document.TryGetEntity(id, out var entity) &&
+                entity is { IsErased: false })
+                _entities.Add(entity);
+        }
+        return _entities;
     }
 
     private void RefreshLayerOptions(IReadOnlyList<CadEntity> entities)
     {
         var document = _documentViewModel.CadEditor.Document;
+        var commonLayerId = GetCommonValue(entities, entity => entity.LayerId);
         LayerOptions = document.Layers.Values
-            .Where(layer => entities.All(entity => entity.LayerId.Equals(layer.Id)) ||
+            .Where(layer => commonLayerId == layer.Id ||
                             CadEntityAccessPolicy.CanAddToLayer(document, layer.Id))
             .OrderBy(layer => document.DocumentSettings.LayerDrawingPriority.GetPriority(layer.Id))
             .ThenBy(layer => layer.Id.Value)
             .Select(layer => new EntityLayerOption(layer.Id, layer.Name, layer.Color))
             .ToArray();
 
-        var commonLayerId = GetCommonValue(entities, entity => entity.LayerId);
         HasMixedLayer = commonLayerId is null;
         SelectedLayerOption = commonLayerId is { } layerId
             ? LayerOptions.FirstOrDefault(option => option.LayerId.Equals(layerId))
@@ -385,19 +390,16 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
 
         var document = _documentViewModel.CadEditor.Document;
         FillStyleOptions = FillStyleCatalog.BuildFillStyleOptions(document);
-        var options = entities
-            .Select(entity => FillStyleCatalog.FindFillStyleOption(document, FillStyleOptions, GetFillStyleId(entity)))
-            .ToArray();
-        SelectedFillStyleOption = options.Skip(1).All(option => Equals(option, options[0]))
-            ? options[0]
+        var firstOption = FillStyleCatalog.FindFillStyleOption(document, FillStyleOptions, GetFillStyleId(entities[0]));
+        SelectedFillStyleOption = entities.Skip(1).All(entity => Equals(firstOption,
+            FillStyleCatalog.FindFillStyleOption(document, FillStyleOptions, GetFillStyleId(entity))))
+            ? firstOption
             : null;
         HasMixedFillStyle = SelectedFillStyleOption is null;
 
-        var colors = entities
-            .Select(entity => FillStyleCatalog.ResolveFillColor(document, GetFillStyleId(entity), FillStyleCatalog.DefaultFillColor))
-            .ToArray();
-        FillColor = colors[0];
-        HasMixedFillColor = colors.Skip(1).Any(color => color != colors[0]);
+        FillColor = FillStyleCatalog.ResolveFillColor(document, GetFillStyleId(entities[0]), FillStyleCatalog.DefaultFillColor);
+        HasMixedFillColor = entities.Skip(1).Any(entity =>
+            FillStyleCatalog.ResolveFillColor(document, GetFillStyleId(entity), FillStyleCatalog.DefaultFillColor) != FillColor);
     }
 
     private void RefreshColorSourceProperties(IReadOnlyList<CadEntity> entities)
