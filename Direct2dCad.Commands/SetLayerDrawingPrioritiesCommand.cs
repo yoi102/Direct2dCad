@@ -35,7 +35,7 @@ public sealed class SetLayerDrawingPrioritiesCommand : ICadCommand
             drawingPriority,
             _priorities,
             _requestedDefaultPriority ?? drawingPriority.DefaultPriority);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.LayerOrder);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -49,7 +49,7 @@ public sealed class SetLayerDrawingPrioritiesCommand : ICadCommand
             document.DocumentSettings.LayerDrawingPriority,
             _previousPriorities,
             _previousDefaultPriority.Value);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.LayerOrder);
     }
 
     private static void Apply(

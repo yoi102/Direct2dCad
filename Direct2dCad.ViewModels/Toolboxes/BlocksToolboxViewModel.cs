@@ -20,7 +20,9 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
     private readonly ISnackbarService _snackbarService;
     private readonly IPublisher<CadBlockDefinitionSelectionChangedMessage> _selectionChangedPublisher;
     private CadDocumentViewModel? _documentViewModel;
+    private int _attachmentVersion;
     private bool _isRefreshing;
+    private long _catalogVersion = -1;
 
     public BlocksToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
@@ -56,6 +58,12 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     public void Attach(CadDocumentViewModel? documentViewModel)
     {
+        if (!ReferenceEquals(_documentViewModel, documentViewModel))
+        {
+            _attachmentVersion++;
+            Blocks.Clear();
+            _catalogVersion = -1;
+        }
         if (_documentViewModel is not null &&
             !ReferenceEquals(_documentViewModel, documentViewModel))
         {
@@ -82,7 +90,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     internal void RenameBlock(BlockItemViewModel item, string name)
     {
-        if (_documentViewModel is null || _isRefreshing || string.IsNullOrWhiteSpace(name))
+        if (_documentViewModel is null || _isRefreshing || !Blocks.Contains(item) || string.IsNullOrWhiteSpace(name))
             return;
         var current = _documentViewModel.CadEditor.Document.GetBlock(item.BlockId);
         if (string.Equals(current.Name, name.Trim(), StringComparison.Ordinal))
@@ -148,15 +156,17 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         if (_documentViewModel is null || SelectedBlock is null)
             return;
         var selectedId = SelectedBlock.BlockId;
+        var documentViewModel = _documentViewModel;
+        var attachmentVersion = _attachmentVersion;
         var confirmed = await _dialogService.ShowOrReplaceMessageDialogWithCancelAsync(
             string.Format(Localize("DeleteBlockConfirmFormat", "Delete block '{0}'?"), SelectedBlock.Name),
             DeleteLabel,
             ViewServiceIdentifiers.RootDialogHost);
-        if (!confirmed)
+        if (!confirmed || attachmentVersion != _attachmentVersion)
             return;
         try
         {
-            _documentViewModel.CadEditor.DeleteBlock(selectedId);
+            documentViewModel.CadEditor.DeleteBlock(selectedId);
         }
         catch (Exception ex)
         {
@@ -182,15 +192,22 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
             return;
 
-        RefreshBlocks(message.ClearBlockDefinitionSelection
-            ? null
-            : SelectedBlock?.BlockId);
+        if (message.ClearBlockDefinitionSelection)
+            SelectedBlock = null;
+        if (IsOpen && _catalogVersion != _documentViewModel!.CadEditor.BlockCatalogVersion)
+            RefreshBlocks(SelectedBlock?.BlockId);
+        OnPropertyChanged(nameof(IsEditingBlock));
+        NotifyCommandStates();
     }
 
     private void OnToolboxPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(IsOpen) && !IsOpen)
+        if (e.PropertyName != nameof(IsOpen))
+            return;
+        if (!IsOpen)
             SelectedBlock = null;
+        else
+            RefreshBlocks(SelectedBlock?.BlockId);
     }
 
     private void RefreshBlocks(BlockId? selectedBlockId = null)
@@ -198,20 +215,36 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
         _isRefreshing = true;
         try
         {
-            Blocks.Clear();
             if (_documentViewModel is not null)
             {
                 var document = _documentViewModel.CadEditor.Document;
-                foreach (var block in document.Blocks.Values
-                             .Where(block => !block.IsSystem)
-                             .OrderBy(block => block.Name, StringComparer.CurrentCultureIgnoreCase))
+                var definitions = document.Blocks.Values
+                    .Where(block => !block.IsSystem)
+                    .OrderBy(block => block.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
+                var existing = Blocks.ToDictionary(item => item.BlockId);
+                var retained = definitions.Select(block => block.Id).ToHashSet();
+                for (var index = Blocks.Count - 1; index >= 0; index--)
+                    if (!retained.Contains(Blocks[index].BlockId))
+                        Blocks.RemoveAt(index);
+                for (var index = 0; index < definitions.Length; index++)
                 {
-                    Blocks.Add(new BlockItemViewModel(
-                        this,
-                        block,
-                        document.GetBlockReferenceCount(block.Id)));
+                    var block = definitions[index];
+                    if (existing.TryGetValue(block.Id, out var item))
+                    {
+                        item.Refresh(block, document.GetBlockReferenceCount(block.Id));
+                        if (!ReferenceEquals(Blocks[index], item))
+                            Blocks.Move(Blocks.IndexOf(item), index);
+                    }
+                    else
+                    {
+                        Blocks.Insert(index, new BlockItemViewModel(this, block,
+                            document.GetBlockReferenceCount(block.Id)));
+                    }
                 }
+                _catalogVersion = _documentViewModel.CadEditor.BlockCatalogVersion;
             }
+            else
+                Blocks.Clear();
 
             SelectedBlock = selectedBlockId is { } id
                 ? Blocks.FirstOrDefault(block => block.BlockId.Equals(id))
@@ -239,6 +272,7 @@ public partial class BlocksToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     public void Dispose()
     {
+        Attach(null);
         PropertyChanged -= OnToolboxPropertyChanged;
         _interactionSubscription.Dispose();
     }
@@ -256,20 +290,32 @@ public sealed partial class BlockItemViewModel : ObservableObject
     {
         _owner = owner;
         BlockId = block.Id;
+        Refresh(block, referenceCount);
+    }
+
+    internal void Refresh(CadBlockDefinition block, int referenceCount)
+    {
         _refreshing = true;
-        Name = block.Name;
-        _refreshing = false;
-        EntityCount = block.EntityIds.Count;
-        ReferenceCount = referenceCount;
-        IsReadOnly = block.IsReadOnly;
-        IsSystem = block.IsSystem;
+        try
+        {
+            Name = block.Name;
+            EntityCount = block.EntityIds.Count;
+            ReferenceCount = referenceCount;
+            IsReadOnly = block.IsReadOnly;
+            IsSystem = block.IsSystem;
+        }
+        finally { _refreshing = false; }
     }
 
     public BlockId BlockId { get; }
-    public int EntityCount { get; }
-    public int ReferenceCount { get; }
-    public bool IsReadOnly { get; }
-    public bool IsSystem { get; }
+    [ObservableProperty]
+    public partial int EntityCount { get; private set; }
+    [ObservableProperty]
+    public partial int ReferenceCount { get; private set; }
+    [ObservableProperty]
+    public partial bool IsReadOnly { get; private set; }
+    [ObservableProperty]
+    public partial bool IsSystem { get; private set; }
     public string IdText => BlockId.Value.ToString();
 
     [ObservableProperty]

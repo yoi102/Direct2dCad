@@ -21,13 +21,13 @@ public sealed class DeleteStyleCommand(StyleId styleId) : ICadCommand
         if (!document.RemoveStyleCore(styleId))
             throw new InvalidOperationException($"Style does not exist: {styleId}");
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
         if (_snapshot is not null && !document.Styles.ContainsKey(styleId))
             document.AddStyleCore(_snapshot);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 }

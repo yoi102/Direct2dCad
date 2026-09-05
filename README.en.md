@@ -191,14 +191,36 @@ SetOrigin
 - Dirty regions include old and new entity bounds, line weight, fills/hatches, handles, transient previews, grid, and overlays.
 - Small or visually negligible entities may be skipped or simplified according to user-controlled LOD settings.
 
+Ordinary edits prune only affected selection entries. Selection-dependent buttons cache availability by selection and access versions. Appearance-only changes propagate through nested block references without rebuilding their bounds or spatial-index entries. Layout damage is mapped and clipped to visible model viewports; structural changes, view settings, and screen/paper line-weight mode transitions retain a full-redraw fallback.
+
+Agent/Terminal queries accumulate statistics while enumerating and retain at most `offset + limit` sorting candidates for a page. Counts and ordering remain complete and stable. Deep pages may still use substantial memory, and statistics still scan the requested scope. `SelectionAvailabilityBenchmarks` compares full selection scans with cached availability for 512 and 20,000 entities.
+
+Table changes distinguish metadata, layer access/order and styles from document structure. Renaming or locking layers no longer rebuilds spatial geometry; ordering changes still redraw the scene. Native geometry preparation captures detached values and streams results through a bounded queue. Only stale results for edited entities are discarded; unrelated work continues.
+
+History snapshots use constant-time state tokens instead of retaining all commands. `CommandHistorySettings.MaximumUndoCommands` is an optional soft command-count limit (`0` means unlimited); eviction removes complete oldest batches and always preserves the newest batch. Undo/Redo modes remain runtime settings. This is not a byte budget. Spline length is cached until geometry changes. Save snapshots share immutable image/OLE storage while capturing other mutable state on the owner thread; edits made during asynchronous writing remain marked as unsaved.
+
+`CadDocumentSaveSession` serializes saves per document and owns cancellation, file paths, and saved-state baselines. WPF captures entities in batches of 128 with a 4 ms cooperative UI time target. Changes detected after yielding discard the snapshot and allow at most two retries. Serialization reads only detached DTOs; cancellation or capture failure does not replace the original file. The synchronous storage API still captures in one pass.
+
+Geometry consumption has item and 2 ms time budgets, including stale-result disposal. Spline/polyline LOD geometry is built from copied values on a worker during preparation; normal and selection drawing only read resources and use full geometry until ready. Budgets do not preempt an individual operation. First-frame benchmarks wait for preparation and verify Present; statistics are not pixel-correctness assertions.
+
+`CadOleSessionController` owns OLE sessions, MessagePipe notifications and undoable updates. `Direct2DLayoutRenderer` owns paper/viewport rendering and clipping. Both remain in existing projects. `CommandHistoryBenchmarks` and `SplineLengthBenchmarks` cover the corresponding allocation and repeated-query paths.
+
 ## Build and test
 
 ```powershell
 dotnet build .\Direct2dCad.slnx
-dotnet test .\Direct2dCad.slnx -m:1
+.\scripts\testing\Run-Regression.ps1 -CollectCoverage
 ```
 
+Add `-IncludeWindowsIntegration -IncludeUiAutomation` for native rendering and UI regression tests. See the [testing guide (Chinese)](scripts/testing/README.md) for coverage reports and clipboard safety requirements.
+
 ## Performance benchmarks
+
+Atomic command batches keep spatial queries and block bounds current, then coalesce GPU updates, document notifications, and activity logs. Individual history entries remain available for configurable undo/redo. The block panel reuses rows and defers closed-panel refreshes.
+
+Parallel rendering prefers complete tile/command-list caches. Otherwise, visible entities are queried through the spatial index and assigned in ordered, cost-weighted ranges. Workers retain resources for assigned entities, apply incremental changes, and replace only render targets on resize. Device loss still rebuilds the pool. See the [optimization and validation notes](scripts/testing/PERFORMANCE-2026-09-05.md).
+
+Block bounds and large selections support incremental updates. Initial geometry snapshots are captured in bounded batches. See the [incremental optimization notes](scripts/testing/PERFORMANCE-INCREMENTAL-2026-09-05.md) for scope and benchmark limits.
 
 `Direct2dCad.Benchmarks` uses BenchmarkDotNet. Run it in `Release` configuration on Windows x64 with a stable GPU driver:
 

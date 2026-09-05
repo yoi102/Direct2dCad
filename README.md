@@ -117,6 +117,7 @@ flowchart TD
     VM --> IO
     VM --> Direct2D
     VMServices --> Editor
+    VMServices --> IO
     VMServices --> Rendering
     VMServices --> Direct2D
     VMServices --> Handles
@@ -475,11 +476,22 @@ SetOrigin
 - 实体创建、修改、删除后，命令结果应携带 `CadDocumentChangeSet`。
 - Editor 根据 change set 更新选择、索引、bounds 和渲染资源。
 - Direct2D 后端根据 change set 创建、更新或释放 geometry / brush / hatch / text layout 等资源。
+- 原子命令批次立即更新空间索引和块边界，批次结束后合并 GPU 资源更新、文档通知与命令日志；单条历史仍保留，撤回粒度由当前设置决定。
 - 绘制顺序同时考虑 layer drawing priority、实体 `ZIndex` 和实体加入顺序。
 - 实体颜色、line weight 可以设置为跟随 layer；这种情况下实体自身属性仍可保存，但绘制时使用 layer 的最终外观。
 - fill / hatch 的颜色应使用统一 fill color；hatch pattern 不应额外绘制不需要的背景色。
 - Transient 绘制应尽量复用普通实体绘制规则，只把辅助线、测量文字、snap marker 作为额外 overlay。
 - 局部刷新 dirty rect 需要考虑 geometry、line weight、fill / hatch、handle、transient preview 和旧位置/新位置的合并区域。
+
+普通实体编辑只检查本次变化涉及的选中项；删除、创建块等按钮按选区和访问状态版本缓存可用性。嵌套块的纯外观变化会传播重绘通知，但不重算引用边界或更新空间索引。Layout 将模型变化映射到各个可见视口并裁剪脏区域，结构、视图设置及屏幕/纸空间线宽模式切换仍保留完整刷新的兜底。
+
+Agent / Terminal 查询采用流式统计；分页只保留最多 `offset + limit` 个排序候选，并维持完整计数和稳定排序。深分页仍可能占用较多内存，统计仍需遍历查询范围。
+
+并行绘制优先使用完整可用的 tile / command list 缓存；缓存不足时才查询可见实体并按估算绘制成本分配连续任务，保持绘制顺序。两种设备模式都只为 worker 实际负责过的实体准备资源，实体修改时增量更新，窗口尺寸变化只更换渲染目标；设备失效时仍完整重建。块面板复用列表项，并按块目录版本刷新，关闭期间延迟列表更新。
+
+本轮验证与基准范围见 [性能优化记录](scripts/testing/PERFORMANCE-2026-09-05.md)。
+
+块引用边界和大选择集支持增量更新，首次几何快照采用有界分批准备；实现边界与短基准见 [增量优化记录](scripts/testing/PERFORMANCE-INCREMENTAL-2026-09-05.md)。
 
 ## 项目引用表
 
@@ -509,7 +521,7 @@ SetOrigin
 | `Direct2dCad.ViewModels` | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
 | `Direct2dCad.wpf.Controls` | 无 |
 | `Direct2dCad.wpf` | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
-| `Direct2dCad.Benchmarks` | `Direct2dCad.Db`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |
+| `Direct2dCad.Benchmarks` | `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |
 
 ## NuGet 依赖
 
@@ -521,7 +533,7 @@ SetOrigin
 | `Direct2dCad.Ole.Windows` | `Vanara.PInvoke.Ole` |
 | `Direct2dCad.Lang` | `Antelcat.I18N.SourceGenerators` |
 | `Direct2dCad.Rendering.Direct2D` | `Vortice.Direct2D1`, `Vortice.Direct3D11`, `Vortice.Direct3D9` |
-| `Direct2dCad.ViewModels.Services` | `CommunityToolkit.Mvvm` |
+| `Direct2dCad.ViewModels.Services` | `CommunityToolkit.Mvvm`, `MessagePipe` |
 | `Direct2dCad.ViewModels` | `CommunityToolkit.Mvvm`, `Dirkster.AvalonDock.Core`, `Dirkster.AvalonDock.Mvvm`, `Dirkster.AvalonDock.Mvvm.CommunityToolkit`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection.Abstractions` |
 | `Direct2dCad.wpf` | `Antelcat.I18N.WPF`, `CommunityToolkit.Mvvm`, `Dirkster.AvalonDock`, `Dirkster.AvalonDock.DependencyInjection`, `Dirkster.AvalonDock.Themes.Arc`, `gong-wpf-dragdrop`, `MahApps.Metro`, `MaterialDesignThemes.MahApps`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection` |
 
@@ -534,8 +546,10 @@ dotnet build .\Direct2dCad.slnx
 自动化测试：
 
 ```powershell
-dotnet test .\Direct2dCad.slnx -m:1
+.\scripts\testing\Run-Regression.ps1 -CollectCoverage
 ```
+
+加入原生绘制及 UI 回归时使用 `-IncludeWindowsIntegration -IncludeUiAutomation`。测试范围、剪贴板注意事项及覆盖率报告见 [测试说明](scripts/testing/README.md)。
 
 ## 性能基准
 
@@ -546,6 +560,9 @@ dotnet test .\Direct2dCad.slnx -m:1
 | 基准类 | 覆盖内容 |
 |---|---|
 | `SpatialIndexBenchmarks` | 20,000 / 100,000 实体的 BVH 构建、分配式查询、复用缓冲区查询、1% 实体更新后查询 |
+| `SelectionAvailabilityBenchmarks` | 512 / 20,000 个选中实体的按钮可用性全量检查与版本缓存读取 |
+| `CommandHistoryBenchmarks` | 1,000 / 20,000 条历史的全栈快照复制与常数时间状态标记 |
+| `SplineLengthBenchmarks` | 32 / 512 个拟合点的重复折线测长与缓存读取 |
 | `CacheEvictionBenchmarks` | 128 / 1,024 个缓存候选项的排序淘汰与复用优先队列对照，检查耗时和托管分配；不创建 GPU 资源 |
 | `SelectionOverlayBenchmarks` | 1 / 512 / 20,000 个选中实体的 handle/outline 构建，对比新集合、复用缓冲区、场景复用和版本化排序复用 |
 | `OwnerBoundsUpdateBenchmarks` | 20,000 / 100,000 实体空间中，单个实体修改后的全量边界扫描与增量边界树更新 |
@@ -562,6 +579,16 @@ dotnet test .\Direct2dCad.slnx -m:1
 后台准备快照使用不可变分页，仅复制发生变化的页；只修改几何时复用原有绘制顺序。chunk / tile 在一次变更批次内去重失效，实体排序缓存按受影响的所属空间失效，文档结构变化仍保守地全量失效。实体换层时保留可复用的 geometry 和文字布局，并更新外观资源。编辑器创建实体会先确定目标空间再发布变更，Redo 也保持原目标空间。这些优化不改变绘制精度或 LOD 设置；快照复制基准不代表完整帧耗时。
 
 搜索面板在连续变更版本下按实体更新结果，批量更新合并集合通知；多选属性跳过无关实体变更，并按属性类别刷新。后台准备复用成员数组和未变化的块依赖，chunk 计划按所属空间及引用关系失效。仅淘汰缩放缓存时可异步取消录制，修改共享资源前仍等待后台退出。保存先获取一致的 DTO 快照，再逐 section 序列化、写入临时文件并补写目录表，避免同时保留全部压缩载荷；文件格式和原子替换机制不变。
+
+本轮还细分了表级变更：图层改名、锁定和样式变化不再统一当作文档结构变化；图层顺序变化仍重绘场景，但不重建实体几何和空间索引。原生 geometry 的后台准备读取独立值快照，通过有界队列逐项交付；实体修改只废弃该实体的旧结果，其余任务继续。队列上限限制的是待接收结果，不是已使用资源的寿命。
+
+撤销状态比较使用常数时间标记，不再复制或持有全部历史。`CommandHistorySettings.MaximumUndoCommands` 是可选的命令条数软上限，默认 `0` 不限制；只淘汰最旧的完整批次，最新批次即使超限也保留，Undo/Redo 模式仍在操作时读取。它不是精确字节预算。Spline 长度按几何变化失效；保存快照复用不可变的图片/OLE 数据，仍在文档所属线程采集其他可变状态，后台逐 section 写入。保存期间发生的新修改不会误标记为已保存。
+
+`CadDocumentSaveSession` 统一处理每个文档的保存排队、取消、文件路径和修改状态基线。WPF 保存按 128 个实体分段采集快照，以约 4 ms 为让出 UI 的目标；每次恢复后校验编辑版本，变化时丢弃快照并最多重试两次。序列化仍只读取独立 DTO，取消或快照失败不会替换原文件。同步存储 API 保留一次性采集行为。
+
+后台 geometry 消费同时受数量和约 2 ms 的时间预算约束，过期结果的释放也计入预算。Spline/Polyline 的 LOD geometry 在准备阶段基于值快照后台生成，普通绘制和选中绘制只读取资源；未就绪时使用完整 geometry。时间预算不抢占单个实体操作。首帧基准等待准备完成并验证 Present，统计值校验不替代像素对比测试。
+
+`CadOleSessionController` 负责 OLE 会话、MessagePipe 更新订阅、命令化更新和释放；`Direct2DLayoutRenderer` 负责纸张、Layout 视口裁剪和绘制参数。两者位于现有项目，不增加新的程序集。
 
 先列出所有基准：
 

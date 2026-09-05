@@ -18,6 +18,7 @@ public partial class CommandLineToolboxView : UserControl
     private bool _isFollowingOutput = true;
     private bool _isProgrammaticScroll;
     private ScrollViewer? _outputScrollViewer;
+    private int _scrollGeneration;
 
     public CommandLineToolboxView()
     {
@@ -33,33 +34,59 @@ public partial class CommandLineToolboxView : UserControl
         CommandInput.PreviewKeyDown += OnCommandInputKeyDown;
         SuggestionList.PreviewMouseLeftButtonUp += OnSuggestionMouseLeftButtonUp;
         OutputList.KeyDown += OnOutputListKeyDown;
+        OutputList.PreviewMouseWheel += (_, e) =>
+        {
+            if (e.Delta <= 0) return;
+            CancelPendingScroll();
+            _isFollowingOutput = false;
+        };
         NewOutputButton.Click += (_, _) => FollowLatestOutput();
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        CancelPendingScroll();
+        SubscribeToEntries(IsLoaded ? e.NewValue as CommandLineToolboxViewModel : null);
+        _isFollowingOutput = true;
+        if (IsLoaded) ScheduleScrollToEnd();
+    }
+
+    private void SubscribeToEntries(CommandLineToolboxViewModel? viewModel)
+    {
         if (_entries is not null)
             _entries.CollectionChanged -= OnEntriesChanged;
 
-        _entries = (e.NewValue as CommandLineToolboxViewModel)?.Entries;
+        _entries = viewModel?.Entries;
         if (_entries is not null)
             _entries.CollectionChanged += OnEntriesChanged;
 
-        ScheduleScrollToEnd();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        SubscribeToEntries(DataContext as CommandLineToolboxViewModel);
         CommandInput.Focus();
         AttachOutputScrollViewer();
         FlushPendingOutput();
         _outputFlushTimer.Start();
-        ScheduleScrollToEnd();
+        if (_isFollowingOutput) ScheduleScrollToEnd();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         _outputFlushTimer.Stop();
+        CancelPendingScroll();
+        SubscribeToEntries(null);
+        if (_outputScrollViewer is not null)
+            _outputScrollViewer.ScrollChanged -= OnOutputScrollChanged;
+        _outputScrollViewer = null;
+    }
+
+    private void CancelPendingScroll()
+    {
+        _scrollGeneration++;
+        _scrollToEndPending = false;
+        _isProgrammaticScroll = false;
     }
 
     private void OnOutputFlushTimerTick(object? sender, EventArgs e)
@@ -86,6 +113,12 @@ public partial class CommandLineToolboxView : UserControl
 
     private void OnEntriesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (OutputList.Items.Count == 0)
+        {
+            CancelPendingScroll();
+            _isFollowingOutput = true;
+            NewOutputButton.Visibility = Visibility.Collapsed;
+        }
         if (_isFollowingOutput)
             ScheduleScrollToEnd();
         else
@@ -94,12 +127,14 @@ public partial class CommandLineToolboxView : UserControl
 
     private void ScheduleScrollToEnd()
     {
-        if (_scrollToEndPending)
+        if (_scrollToEndPending || !IsLoaded || !_isFollowingOutput)
             return;
 
         _scrollToEndPending = true;
+        var generation = _scrollGeneration;
         Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
         {
+            if (!IsLoaded || generation != _scrollGeneration || !_isFollowingOutput) return;
             AttachOutputScrollViewer();
             _isProgrammaticScroll = true;
             if (OutputList.Items.Count > 0)
@@ -107,6 +142,7 @@ public partial class CommandLineToolboxView : UserControl
 
             Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, () =>
             {
+                if (!IsLoaded || generation != _scrollGeneration || !_isFollowingOutput) return;
                 AttachOutputScrollViewer();
                 _outputScrollViewer?.ScrollToEnd();
                 _isProgrammaticScroll = false;

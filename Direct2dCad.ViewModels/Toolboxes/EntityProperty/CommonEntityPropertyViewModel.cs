@@ -66,7 +66,7 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
             RefreshLayerOptions(_documentViewModel, entity);
             Title = GetEntityTypeDisplayName(entity.GetType());
             SupportsStrokeAppearance = SupportsGraphicStyle(entity);
-            SupportsStrokeStyle = entity is CadEllipseArc;
+            SupportsStrokeStyle = entity is CadEllipseArc or CadCompositePath;
             ZIndex = entity.ZIndex;
             IsVisible = entity.IsVisible;
             UseByLayerColor = entity.UseLayerColor;
@@ -115,7 +115,7 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
 
     partial void OnStrokeColorChanged(CadColor value)
     {
-        if (_isRefreshing || !ColorControlsEnabled)
+        if (_isRefreshing || !ColorControlsEnabled || !TryGetEntity(out _))
             return;
 
         _documentViewModel.CadEditor.SetEntityColor(EntityId, value);
@@ -124,7 +124,7 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
     partial void OnUseByLayerLineWeightChanged(bool value)
     {
         OnPropertyChanged(nameof(LineWeightControlsEnabled));
-        if (_isRefreshing || !SupportsStrokeAppearance)
+        if (_isRefreshing || !SupportsStrokeAppearance || !TryGetEntity(out _))
             return;
 
         _documentViewModel.CadEditor.SetEntityLineWeight(
@@ -134,8 +134,14 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
 
     partial void OnLineWeightChanged(double value)
     {
-        if (_isRefreshing || !LineWeightControlsEnabled || value <= 0 || double.IsNaN(value) || double.IsInfinity(value))
+        if (_isRefreshing || !LineWeightControlsEnabled || !TryGetEntity(out _))
             return;
+
+        if (!double.IsFinite(value) || value <= 0)
+        {
+            RefreshFromEntity();
+            return;
+        }
 
         _documentViewModel.CadEditor.SetEntityLineWeight(EntityId, new CadLineWeight(value));
     }
@@ -154,13 +160,14 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
     }
 
     private static bool SupportsGraphicStyle(CadEntity entity) =>
-        entity is CadEllipseArc or CadShapeText or CadBlockReference;
+        entity is CadEllipseArc or CadShapeText or CadBlockReference or CadCompositePath;
 
     private static StyleId? GetGraphicStyleId(CadEntity entity) => entity switch
     {
         CadEllipseArc ellipseArc => ellipseArc.GraphicStyleId,
         CadShapeText shapeText => shapeText.GraphicStyleId,
         CadBlockReference blockReference => blockReference.GraphicStyleId,
+        CadCompositePath path => path.GraphicStyleId,
         _ => null
     };
 

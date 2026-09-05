@@ -173,6 +173,7 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
             reference.UseLayerColor != value)
         {
             _documentViewModel.CadEditor.SetEntityUseLayerColor(EntityId, value);
+            RefreshFromEntity();
         }
     }
 
@@ -180,13 +181,18 @@ public partial class BlockReferencePropertyViewModel : EntityPropertyViewModel,
     {
         if (_isRefreshing ||
             UseByLayerLineWeight ||
-            value <= 0 ||
             !TryGetReference(out var reference) ||
             Math.Abs(ResolveEntityLineWeight(
                 _documentViewModel.CadEditor.Document,
                 reference,
                 reference.GraphicStyleId).Value - value) <= Epsilon)
         {
+            return;
+        }
+
+        if (!double.IsFinite(value) || value <= 0)
+        {
+            RefreshFromEntity();
             return;
         }
 

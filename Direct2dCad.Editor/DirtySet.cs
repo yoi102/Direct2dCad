@@ -9,8 +9,10 @@ public sealed class DirtySet
     private bool _layoutsChanged;
     private bool _layoutStructureChanged;
     private bool _viewSettingsChanged;
+    private CadDocumentTableChangeKind _tableChanges;
 
     public bool HasChanges =>
+        _tableChanges != CadDocumentTableChangeKind.None ||
         _entityChanges.Count > 0 ||
         _documentStructureChanged ||
         _layoutsChanged ||
@@ -27,6 +29,7 @@ public sealed class DirtySet
         _layoutsChanged |= result.AffectsLayouts;
         _layoutStructureChanged |= result.AffectsLayoutStructure;
         _viewSettingsChanged |= result.AffectsViewSettings;
+        _tableChanges |= result.TableChanges;
 
         foreach (var change in result.EntityChanges)
         {
@@ -41,25 +44,15 @@ public sealed class DirtySet
         _entityChanges[entityId] = existing | kind;
     }
 
-    public CadDocumentChangeSet Snapshot()
+    public CadDocumentChangeSet Snapshot() => new(
+        _entityChanges.Select(x => new CadEntityChange(x.Key, x.Value)))
     {
-        var result = new CadDocumentChangeSet(
-            _entityChanges.Select(x => new CadEntityChange(x.Key, x.Value)));
-
-        if (_documentStructureChanged)
-            result = result.WithDocumentStructureChanged();
-
-        if (_layoutsChanged)
-            result = result.WithLayoutsChanged();
-
-        if (_layoutStructureChanged)
-            result = result.WithLayoutStructureChanged();
-
-        if (_viewSettingsChanged)
-            result = result.WithViewSettingsChanged();
-
-        return result;
-    }
+        AffectsDocumentStructure = _documentStructureChanged,
+        AffectsLayouts = _layoutsChanged || _layoutStructureChanged,
+        AffectsLayoutStructure = _layoutStructureChanged,
+        AffectsViewSettings = _viewSettingsChanged,
+        TableChanges = _tableChanges
+    };
 
     public CadDocumentChangeSet Drain()
     {
@@ -75,5 +68,6 @@ public sealed class DirtySet
         _layoutsChanged = false;
         _layoutStructureChanged = false;
         _viewSettingsChanged = false;
+        _tableChanges = CadDocumentTableChangeKind.None;
     }
 }

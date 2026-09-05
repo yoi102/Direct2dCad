@@ -131,8 +131,6 @@ internal sealed class Direct2DEntityRenderer(
                 return;
         }
 
-        if (options.IsLevelOfDetailEnabled)
-            resourceCache.EnsureLevelOfDetailGeometries(entity, resources);
         var geometry = Direct2DEntityLevelOfDetail.ResolveGeometry(
             entity,
             resources,

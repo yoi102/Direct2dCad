@@ -85,7 +85,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
         if (!changes.DocumentChanged)
             return;
 
-        if (changes.AffectsDocumentStructure)
+        if (changes.AffectsDocumentStructure || changes.AffectsLayerOrder)
         {
             InvalidateAllRequestMetadata();
             return;

@@ -145,6 +145,10 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
             }
         }
 
+        if (entity is CadCompositePath path &&
+            TryCreateUniformBoundsGripScale(path.Bounds, drag, out _, out _, out var transform))
+            return [drag.Handle with { Position = transform.TransformPoint(drag.Handle.Position) }];
+
         return [drag.Handle with { Position = drag.DraggedGripPosition }];
     }
 

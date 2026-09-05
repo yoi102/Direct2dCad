@@ -5,39 +5,50 @@ namespace Direct2dCad.Editor.History;
 public sealed class CommandHistory<TCommand>
     where TCommand : class
 {
-    private readonly Stack<CommandHistoryEntry<TCommand>> _undoStack = [];
-    private readonly Stack<CommandHistoryEntry<TCommand>> _redoStack = [];
+    private readonly HistoryDeque<CommandHistoryEntry<TCommand>> _undoStack = new();
+    private HistoryDeque<CommandHistoryEntry<TCommand>> _redoStack = new();
 
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
     public int UndoCount => _undoStack.Count;
     public int RedoCount => _redoStack.Count;
 
-    public object CreateUndoSnapshot()
-    {
-        return _undoStack.ToArray();
-    }
+    private object _baseState = new();
 
-    public bool UndoStackEquals(object? snapshot)
-    {
-        if (snapshot is not CommandHistoryEntry<TCommand>[] entries ||
-            entries.Length != _undoStack.Count)
-        {
-            return false;
-        }
+    // Tokens identify a document state without retaining command payloads.
+    public object CreateUndoSnapshot() =>
+        _undoStack.TryPeek(out var entry) ? entry.State : _baseState;
 
-        var index = 0;
-        foreach (var current in _undoStack)
+    public bool UndoStackEquals(object? snapshot) =>
+        ReferenceEquals(snapshot, CreateUndoSnapshot());
+
+    internal HistoryDeque<CommandHistoryEntry<TCommand>> CreateRedoSnapshot() => _redoStack;
+
+    internal void RestoreRedoSnapshot(HistoryDeque<CommandHistoryEntry<TCommand>> entries) => _redoStack = entries;
+
+    public void TrimUndo(int maximumCommandCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(maximumCommandCount);
+        if (maximumCommandCount == 0)
+            return;
+
+        while (_undoStack.Count > maximumCommandCount)
         {
-            var saved = entries[index++];
-            if (!ReferenceEquals(current.Command, saved.Command) ||
-                current.BatchId != saved.BatchId)
+            _undoStack.TryPeek(out var newest);
+            var oldest = _undoStack.Oldest;
+            // A running AI batch must remain available for rollback.
+            if (_undoStack.Count == 1 ||
+                (oldest.BatchId is not null && oldest.BatchId == newest.BatchId))
+                break;
+
+            var batchId = oldest.BatchId;
+            do
             {
-                return false;
+                _baseState = _undoStack.RemoveOldest().State;
             }
+            while (batchId is not null && _undoStack.Count > 0 &&
+                   _undoStack.Oldest.BatchId == batchId);
         }
-
-        return true;
     }
 
     public void PushExecuted(TCommand command, Guid? batchId = null)
@@ -45,7 +56,9 @@ public sealed class CommandHistory<TCommand>
         ArgumentNullException.ThrowIfNull(command);
 
         _undoStack.Push(new CommandHistoryEntry<TCommand>(command, batchId));
-        _redoStack.Clear();
+        // Preserve a captured branch until an atomic caller commits or rolls back.
+        if (_redoStack.Count > 0)
+            _redoStack = new();
     }
 
     public IReadOnlyList<CommandHistoryEntry<TCommand>> PopUndo(CadCommandBatchUndoMode mode)
@@ -148,7 +161,7 @@ public sealed class CommandHistory<TCommand>
     }
 
     private static IReadOnlyList<CommandHistoryEntry<TCommand>> Pop(
-        Stack<CommandHistoryEntry<TCommand>> stack,
+        HistoryDeque<CommandHistoryEntry<TCommand>> stack,
         CadCommandBatchUndoMode mode)
     {
         if (!stack.TryPop(out var first))
@@ -166,7 +179,7 @@ public sealed class CommandHistory<TCommand>
     }
 
     private static IReadOnlyList<CommandHistoryEntry<TCommand>> Peek(
-        Stack<CommandHistoryEntry<TCommand>> stack,
+        HistoryDeque<CommandHistoryEntry<TCommand>> stack,
         CadCommandBatchUndoMode mode)
     {
         var entries = new List<CommandHistoryEntry<TCommand>>();
@@ -192,16 +205,18 @@ public sealed class CommandHistory<TCommand>
     }
 
     private static void PopExpected(
-        Stack<CommandHistoryEntry<TCommand>> stack,
+        HistoryDeque<CommandHistoryEntry<TCommand>> stack,
         IReadOnlyList<CommandHistoryEntry<TCommand>> entries)
     {
-        var snapshot = stack.ToArray();
-        if (entries.Count > snapshot.Length)
+        if (entries.Count > stack.Count)
             throw new InvalidOperationException("Command history changed while an operation was being committed.");
 
+        using var enumerator = stack.GetEnumerator();
         for (var index = 0; index < entries.Count; index++)
         {
-            var actual = snapshot[index];
+            if (!enumerator.MoveNext())
+                throw new InvalidOperationException("Command history changed while an operation was being committed.");
+            var actual = enumerator.Current;
             var expected = entries[index];
             if (!ReferenceEquals(actual.Command, expected.Command) ||
                 actual.BatchId != expected.BatchId)
@@ -226,4 +241,7 @@ public sealed class CommandHistory<TCommand>
 public readonly record struct CommandHistoryEntry<TCommand>(
     TCommand Command,
     Guid? BatchId)
-    where TCommand : class;
+    where TCommand : class
+{
+    internal object State { get; init; } = new object();
+}

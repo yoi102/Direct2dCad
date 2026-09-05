@@ -12,6 +12,40 @@ namespace Direct2dCad.Tests;
 public sealed class CadDocumentInvalidationTrackerTests
 {
     [Fact]
+    public void LayerMetadataNeedsNoSceneRedrawButLayerOrderingDoes()
+    {
+        var document = CadDocument.Create("Layer invalidation");
+        document.AddCircle(new(20, 20), 5);
+        var tracker = new CadDocumentInvalidationTracker();
+        var calculator = CreateCalculator(document, CreateViewport());
+        tracker.Reset(document, calculator);
+        var metadata = CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.LayerMetadata);
+        var order = CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.LayerOrder);
+        Assert.True(tracker.CreateInvalidation(document, metadata, calculator).IsEmpty);
+        Assert.True(tracker.CreateInvalidation(document, order, calculator).IsFull);
+    }
+
+    [Fact]
+    public void ScreenConstantStrokeAfterLargeZoom_DoesNotInflateToTheWholeViewport()
+    {
+        var document = CadDocument.Create("Screen stroke");
+        var line = document.AddLine(CadPointD.Origin, new(0.1, 0));
+        var viewport = CreateViewport();
+        viewport.SetView(0.001, new(500, 500));
+        var width = 80.0;
+        var calculator = new CadRenderInvalidationCalculator(document, viewport, 1000, 1000,
+            _ => new CadTransientStyle(CadColor.Green, width));
+        var tracker = new CadDocumentInvalidationTracker();
+        tracker.Reset(document, calculator);
+        viewport.SetView(100, new(500, 500));
+        width = 1;
+        var dirty = tracker.CreateInvalidation(document,
+            CadDocumentChangeSet.ForEntity(line.Id, CadEntityChangeKind.Appearance), calculator);
+        Assert.InRange(dirty.DirtyScreenRect.Height, 80, 120);
+        Assert.False(dirty.IsFull);
+    }
+
+    [Fact]
     public void FullRenderStillUpdatesSnapshotsForTheFollowingMoveAndDelete()
     {
         var document = CadDocument.Create("Full render snapshots");

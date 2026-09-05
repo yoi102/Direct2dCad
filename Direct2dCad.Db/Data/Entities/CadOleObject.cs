@@ -6,6 +6,7 @@ public sealed class CadOleObject : CadEntity
 {
     private CadRectD _bounds;
     private byte[] _oleBytes;
+    private IReadOnlyList<byte>? _oleBytesView;
 
     public override CadRectD Bounds => _bounds;
 
@@ -15,8 +16,9 @@ public sealed class CadOleObject : CadEntity
 
     public double Opacity { get; private set; }
 
-    public IReadOnlyList<byte> OleBytes => _oleBytes;
+    public IReadOnlyList<byte> OleBytes => _oleBytesView ??= Array.AsReadOnly(_oleBytes);
 
+    // SetOleData replaces owned storage, so existing read-only snapshots remain valid.
     public ReadOnlyMemory<byte> OleMemory => _oleBytes;
 
     internal CadOleObject(
@@ -24,7 +26,7 @@ public sealed class CadOleObject : CadEntity
         LayerId layerId,
         BlockId ownerBlockId,
         CadRectD bounds,
-        byte[] oleBytes,
+        ReadOnlySpan<byte> oleBytes,
         string contentType = "application/x-ole-storage",
         string sourceName = "",
         string name = "",
@@ -48,7 +50,9 @@ public sealed class CadOleObject : CadEntity
         string contentType = "application/x-ole-storage",
         string sourceName = "")
     {
+        ArgumentNullException.ThrowIfNull(oleBytes);
         _oleBytes = GuardBytes(oleBytes, 1, nameof(oleBytes));
+        _oleBytesView = null;
         ContentType = NormalizeContentType(contentType);
         SourceName = sourceName ?? string.Empty;
     }
@@ -84,13 +88,12 @@ public sealed class CadOleObject : CadEntity
             : bounds;
     }
 
-    private static byte[] GuardBytes(byte[] bytes, int minimumLength, string paramName)
+    private static byte[] GuardBytes(ReadOnlySpan<byte> bytes, int minimumLength, string paramName)
     {
-        ArgumentNullException.ThrowIfNull(bytes);
         if (bytes.Length < minimumLength)
             throw new ArgumentException("Data is shorter than expected.", paramName);
 
-        return (byte[])bytes.Clone();
+        return bytes.ToArray();
     }
 
     private static string NormalizeContentType(string? contentType)

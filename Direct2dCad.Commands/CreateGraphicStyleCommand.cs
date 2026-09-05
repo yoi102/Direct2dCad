@@ -41,7 +41,7 @@ public sealed class CreateGraphicStyleCommand : ICadCommand
             document.AddStyleCore(_createdStyle);
         }
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -53,6 +53,6 @@ public sealed class CreateGraphicStyleCommand : ICadCommand
             document.RemoveStyleCore(_createdStyle.Id);
         }
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 }

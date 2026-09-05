@@ -90,7 +90,7 @@ public sealed class SetGraphicStylePropertiesCommand : ICadCommand
 
         return CadDocumentChangeSet
             .ForEntities(ids, CadEntityChangeKind.Appearance)
-            .WithDocumentStructureChanged();
+            .WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     private static StyleId? GetGraphicStyleId(CadEntity entity) => entity switch

@@ -10,6 +10,31 @@ namespace Direct2dCad.ViewModels.Services.Geometry;
 
 internal static class CadGripDragGeometryFactory
 {
+    public static bool TryCreateUniformBoundsGripScale(CadRectD bounds, GripDragState drag,
+        out CadPointD pivot, out double factor, out CadMatrixD transform)
+    {
+        pivot = default;
+        factor = 1;
+        transform = CadMatrixD.Identity;
+        if (drag.Handle.Type != CadHandleType.BoundsCorner || bounds.IsEmpty)
+            return false;
+
+        pivot = new CadPointD(
+            Math.Abs(drag.Handle.Position.X - bounds.MinX) <= Math.Abs(drag.Handle.Position.X - bounds.MaxX) ? bounds.MaxX : bounds.MinX,
+            Math.Abs(drag.Handle.Position.Y - bounds.MinY) <= Math.Abs(drag.Handle.Position.Y - bounds.MaxY) ? bounds.MaxY : bounds.MinY);
+        var source = drag.Handle.Position - pivot;
+        var target = drag.DraggedGripPosition - pivot;
+        if (source.LengthSquared <= double.Epsilon)
+            return false;
+        // Project onto the diagonal so circular arc segments remain circular.
+        factor = (source.X * target.X + source.Y * target.Y) / source.LengthSquared;
+        if (!IsFinitePositive(factor))
+            return false;
+        transform = CadMatrixD.CreateTranslation(-pivot.X, -pivot.Y) *
+                    CadMatrixD.CreateScale(factor, factor) * CadMatrixD.CreateTranslation(pivot.X, pivot.Y);
+        return true;
+    }
+
     public static bool TryCreateBlockReferenceGripTransform(
         CadBlockDefinition definition,
         CadBlockReference reference,

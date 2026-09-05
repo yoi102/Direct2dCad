@@ -32,13 +32,13 @@ public sealed class CreateLineTypeCommand : ICadCommand
             document.AddLineTypeCore(_created);
         }
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
         if (_created is not null && document.GetLineTypeReferenceCount(_created.Id) == 0)
             document.RemoveLineType(_created.Id);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 }

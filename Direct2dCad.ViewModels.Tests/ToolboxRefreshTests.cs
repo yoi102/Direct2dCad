@@ -9,6 +9,28 @@ namespace Direct2dCad.ViewModels.Tests;
 public sealed class ToolboxRefreshTests
 {
     [Fact]
+    public void DrawingModeEscapeAndDocumentDetachChooseTheCorrectPropertyPanel()
+    {
+        using var context = new CadToolboxTestContext();
+        AddSelectedLines(context, 1);
+        context.Properties.Attach(context.Document);
+        Assert.IsType<LinePropertyViewModel>(context.Properties.Entity);
+        context.Document.CadCanvasToolMode = Enums.CadCanvasToolMode.Line;
+        context.Publish();
+        Assert.IsType<TransientLinePropertyViewModel>(context.Properties.Entity);
+        context.Document.CadCanvasToolMode = Enums.CadCanvasToolMode.CircleCenterRadius;
+        context.Publish();
+        Assert.IsType<TransientCirclePropertyViewModel>(context.Properties.Entity);
+        context.Document.Escape();
+        context.Document.ClearSelection();
+        context.Publish();
+        Assert.Null(context.Properties.Entity);
+        context.Properties.Attach(null);
+        context.Publish();
+        Assert.Null(context.Properties.Entity);
+    }
+
+    [Fact]
     public void SearchBatchMovePublishesOneCollectionNotification()
     {
         using var context = new CadToolboxTestContext();

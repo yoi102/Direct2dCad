@@ -100,7 +100,7 @@ internal sealed class Direct2DBlockDefinitionCommandListCache(
         ThrowIfDisposed();
         if (!changes.DocumentChanged)
             return;
-        if (changes.AffectsDocumentStructure)
+        if (changes.AffectsDocumentStructure || changes.AffectsLayerOrder)
         {
             Clear();
             return;

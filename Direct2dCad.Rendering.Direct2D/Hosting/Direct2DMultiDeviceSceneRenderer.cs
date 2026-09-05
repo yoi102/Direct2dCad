@@ -3,7 +3,6 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Rendering.Direct2D.Scene;
 using Vortice;
-using Vortice.DCommon;
 using Vortice.Direct2D1;
 using Vortice.Direct3D;
 using Vortice.Direct3D11;
@@ -11,13 +10,12 @@ using Vortice.DirectWrite;
 using Vortice.DXGI;
 using Vortice.Mathematics;
 using D2DFactoryType = Vortice.Direct2D1.FactoryType;
-using DxgiFormat = Vortice.DXGI.Format;
 
 namespace Direct2dCad.Rendering.Direct2D.Hosting;
 
 /// <summary>
 /// Draws ordered entity chunks on independent D3D/D2D devices and composites their shared
-/// textures on the main device. Each slot owns a complete device-bound scene resource cache.
+/// textures on the main device. Each slot retains resources for the entities it has drawn.
 /// </summary>
 internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
 {
@@ -49,6 +47,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         metrics = default;
 
         if (!Direct2DParallelRenderPlanner.TryCreatePlan(
+                document,
                 options,
                 CadParallelRenderingMode.MultipleDevices,
                 entities,
@@ -124,10 +123,15 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         if (_slots is not null &&
             ReferenceEquals(_document, document) &&
             _mainDevicePointer == mainD3DDevice.NativePointer &&
-            _width == width &&
-            _height == height &&
             _deviceCount == deviceCount)
         {
+            if (_width != width || _height != height)
+            {
+                foreach (var slot in _slots)
+                    slot.Resize(mainD3DDevice, mainD2DContext, width, height);
+                _width = width;
+                _height = height;
+            }
             return true;
         }
 
@@ -144,7 +148,6 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                     mainD3DDevice,
                     mainD2DContext,
                     dwriteFactory,
-                    document,
                     width,
                     height);
             }
@@ -267,6 +270,24 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         }
     }
 
+    public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
+    {
+        try
+        {
+            if (_slots is not null && ReferenceEquals(_document, document))
+                foreach (var slot in _slots)
+                    slot.ApplyChanges(document, changes);
+        }
+        catch (Exception exception)
+        {
+            Debug.WriteLine(exception);
+            Reset();
+        }
+    }
+
+    internal int PreparedEntityResourceCount => _slots?.Sum(slot => slot.PreparedEntityResourceCount) ?? 0;
+    internal object? PoolIdentity => _slots;
+
     public void Reset()
     {
         if (_slots is not null)
@@ -317,11 +338,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
         private readonly ID2D1Device _d2dDevice;
         private readonly ID2D1DeviceContext _d2dContext;
         private readonly Direct2DSceneRender _renderer;
-        private readonly ID3D11Texture2D _workerTexture;
-        private readonly IDXGIKeyedMutex _workerMutex;
-        private readonly ID2D1Bitmap1 _workerTarget;
-        private readonly ID3D11Texture2D _mainTexture;
-        private readonly IDXGIKeyedMutex _mainMutex;
+        private Direct2DWorkerRenderTarget _target;
 
         private WorkerSlot(
             ID3D11Device d3dDevice,
@@ -331,12 +348,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
             ID2D1Device d2dDevice,
             ID2D1DeviceContext d2dContext,
             Direct2DSceneRender renderer,
-            ID3D11Texture2D workerTexture,
-            IDXGIKeyedMutex workerMutex,
-            ID2D1Bitmap1 workerTarget,
-            ID3D11Texture2D mainTexture,
-            IDXGIKeyedMutex mainMutex,
-            ID2D1Bitmap1 mainReadableBitmap)
+            Direct2DWorkerRenderTarget target)
         {
             _d3dDevice = d3dDevice;
             _d3dContext = d3dContext;
@@ -345,22 +357,35 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
             _d2dDevice = d2dDevice;
             _d2dContext = d2dContext;
             _renderer = renderer;
-            _workerTexture = workerTexture;
-            _workerMutex = workerMutex;
-            _workerTarget = workerTarget;
-            _mainTexture = mainTexture;
-            _mainMutex = mainMutex;
-            MainReadableBitmap = mainReadableBitmap;
+            _target = target;
         }
 
-        public ID2D1Bitmap1 MainReadableBitmap { get; }
+        public ID2D1Bitmap1 MainReadableBitmap => _target.MainReadableBitmap;
+        public int PreparedEntityResourceCount => _renderer.PreparedEntityResourceCount;
+
+        public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
+        {
+            lock (_useGate) _renderer.ApplyParallelChanges(document, changes);
+        }
+
+        public void Resize(ID3D11Device mainDevice, ID2D1DeviceContext mainContext, int width, int height)
+        {
+            lock (_useGate)
+            {
+                _d2dContext.Target = null;
+                var next = Direct2DWorkerRenderTarget.Create(_d3dDevice, _d2dContext,
+                    mainDevice, mainContext, width, height, crossDevice: true);
+                var previous = _target;
+                _target = next;
+                previous.Dispose();
+            }
+        }
 
         public static WorkerSlot Create(
             IDXGIAdapter adapter,
             ID3D11Device mainD3DDevice,
             ID2D1DeviceContext mainD2DContext,
             IDWriteFactory dwriteFactory,
-            CadDocument document,
             int width,
             int height)
         {
@@ -371,12 +396,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
             ID2D1Device? d2dDevice = null;
             ID2D1DeviceContext? d2dContext = null;
             Direct2DSceneRender? renderer = null;
-            ID3D11Texture2D? workerTexture = null;
-            IDXGIKeyedMutex? workerMutex = null;
-            ID2D1Bitmap1? workerTarget = null;
-            ID3D11Texture2D? mainTexture = null;
-            IDXGIKeyedMutex? mainMutex = null;
-            ID2D1Bitmap1? mainReadableBitmap = null;
+            Direct2DWorkerRenderTarget? target = null;
             try
             {
                 D3D11.D3D11CreateDevice(
@@ -395,26 +415,14 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                 d3dDevice = createdDevice;
                 d3dContext = createdContext;
 
-                workerTexture = d3dDevice.CreateTexture2D(
-                    CreateSharedTextureDescription(width, height));
-                workerMutex = workerTexture.QueryInterface<IDXGIKeyedMutex>();
-                nint sharedHandle;
-                using (var resource = workerTexture.QueryInterface<IDXGIResource>())
-                    sharedHandle = resource.SharedHandle;
-
                 dxgiDevice = d3dDevice.QueryInterface<IDXGIDevice>();
                 d2dFactory = D2D1.D2D1CreateFactory<ID2D1Factory1>(
                     D2DFactoryType.SingleThreaded);
                 d2dDevice = d2dFactory.CreateDevice(dxgiDevice);
                 d2dContext = d2dDevice.CreateDeviceContext(
                     DeviceContextOptions.EnableMultithreadedOptimizations);
-                workerTarget = CreateWorkerTarget(d2dContext, workerTexture);
-                d2dContext.Target = workerTarget;
-
-                mainTexture =
-                    mainD3DDevice.OpenSharedResource<ID3D11Texture2D>(sharedHandle);
-                mainMutex = mainTexture.QueryInterface<IDXGIKeyedMutex>();
-                mainReadableBitmap = CreateMainBitmap(mainD2DContext, mainTexture);
+                target = Direct2DWorkerRenderTarget.Create(d3dDevice, d2dContext,
+                    mainD3DDevice, mainD2DContext, width, height, crossDevice: true);
 
                 renderer = new Direct2DSceneRender();
                 renderer.ResetDeviceResources(
@@ -422,7 +430,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                     dwriteFactory,
                     d2dDevice,
                     d2dContext,
-                    document,
+                    document: null,
                     prepareBackgroundResources: false);
 
                 return new WorkerSlot(
@@ -433,23 +441,13 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                     d2dDevice,
                     d2dContext,
                     renderer,
-                    workerTexture,
-                    workerMutex,
-                    workerTarget,
-                    mainTexture,
-                    mainMutex,
-                    mainReadableBitmap);
+                    target);
             }
             catch
             {
                 try { renderer?.Dispose(); } catch { }
                 try { if (d2dContext is not null) d2dContext.Target = null; } catch { }
-                try { mainReadableBitmap?.Dispose(); } catch { }
-                try { mainMutex?.Dispose(); } catch { }
-                try { mainTexture?.Dispose(); } catch { }
-                try { workerTarget?.Dispose(); } catch { }
-                try { workerMutex?.Dispose(); } catch { }
-                try { workerTexture?.Dispose(); } catch { }
+                try { target?.Dispose(); } catch { }
                 try { d2dContext?.Dispose(); } catch { }
                 try { d2dDevice?.Dispose(); } catch { }
                 try { d2dFactory?.Dispose(); } catch { }
@@ -475,10 +473,12 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                 var readyForMain = false;
                 try
                 {
-                    _workerMutex.AcquireSync(0, int.MaxValue);
+                    _target.AcquireForDraw();
                     mutexAcquired = true;
+                    _d2dContext.Target = _target.Target;
                     _renderer.BeginFrame();
                     frameBegun = true;
+                    _renderer.PrepareParallelEntityResources(document, entities);
                     _d2dContext.BeginDraw();
                     drawBegun = true;
                     _d2dContext.Transform = System.Numerics.Matrix3x2.Identity;
@@ -505,21 +505,21 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                     {
                         try { _renderer.CompleteFrame(); } catch { }
                     }
+                    try { _d2dContext.Target = null; } catch { }
                     if (mutexAcquired)
-                        _workerMutex.ReleaseSync(readyForMain ? 1u : 0u);
+                        _target.FinishDraw(readyForMain);
                 }
             }
         }
 
         public void AcquireForMainRead() =>
-            _mainMutex.AcquireSync(1, int.MaxValue);
+            _target.AcquireForRead();
 
-        public void ReleaseToWorker() => _mainMutex.ReleaseSync(0);
+        public void ReleaseToWorker() => _target.ReleaseRead();
 
         public void ReleaseUnreadFrame()
         {
-            _mainMutex.AcquireSync(1, 0);
-            _mainMutex.ReleaseSync(0);
+            _target.ReleaseUnreadFrame();
         }
 
         public void Dispose()
@@ -528,12 +528,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
             {
                 try { _renderer.Dispose(); } catch { }
                 try { _d2dContext.Target = null; } catch { }
-                MainReadableBitmap.Dispose();
-                _mainMutex.Dispose();
-                _mainTexture.Dispose();
-                _workerTarget.Dispose();
-                _workerMutex.Dispose();
-                _workerTexture.Dispose();
+                _target.Dispose();
                 _d2dContext.Dispose();
                 _d2dDevice.Dispose();
                 _d2dFactory.Dispose();
@@ -544,57 +539,6 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
             }
         }
 
-        private static Texture2DDescription CreateSharedTextureDescription(
-            int width,
-            int height) => new()
-            {
-                Width = (uint)Math.Max(1, width),
-                Height = (uint)Math.Max(1, height),
-                MipLevels = 1,
-                ArraySize = 1,
-                Format = DxgiFormat.B8G8R8A8_UNorm,
-                SampleDescription = new SampleDescription(1, 0),
-                Usage = ResourceUsage.Default,
-                BindFlags = BindFlags.RenderTarget | BindFlags.ShaderResource,
-                CPUAccessFlags = CpuAccessFlags.None,
-                MiscFlags = ResourceOptionFlags.SharedKeyedMutex
-            };
-
-        private static ID2D1Bitmap1 CreateWorkerTarget(
-            ID2D1DeviceContext context,
-            ID3D11Texture2D texture)
-        {
-            using var surface = texture.QueryInterface<IDXGISurface>();
-            return context.CreateBitmapFromDxgiSurface(
-                surface,
-                new BitmapProperties1
-                {
-                    PixelFormat = new PixelFormat(
-                        DxgiFormat.B8G8R8A8_UNorm,
-                        Vortice.DCommon.AlphaMode.Premultiplied),
-                    DpiX = 96,
-                    DpiY = 96,
-                    BitmapOptions = BitmapOptions.Target
-                });
-        }
-
-        private static ID2D1Bitmap1 CreateMainBitmap(
-            ID2D1DeviceContext context,
-            ID3D11Texture2D texture)
-        {
-            using var surface = texture.QueryInterface<IDXGISurface>();
-            return context.CreateBitmapFromDxgiSurface(
-                surface,
-                new BitmapProperties1
-                {
-                    PixelFormat = new PixelFormat(
-                        DxgiFormat.B8G8R8A8_UNorm,
-                        Vortice.DCommon.AlphaMode.Premultiplied),
-                    DpiX = 96,
-                    DpiY = 96,
-                    BitmapOptions = BitmapOptions.None
-                });
-        }
     }
 }
 

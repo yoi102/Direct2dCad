@@ -1,5 +1,6 @@
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db;
+using Direct2dCad.IO;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Interactions;
 using Direct2dCad.ViewModels.Services.Platform;
@@ -17,12 +18,13 @@ internal sealed class CadToolboxTestContext : IDisposable
     public EntitySearchToolboxViewModel Search { get; }
     public EntityPropertiesToolboxViewModel Properties { get; }
     public LayersToolboxViewModel Layers { get; }
+    public CadTestPlatform Platform { get; } = new();
 
     public CadToolboxTestContext()
     {
         var services = new ServiceCollection();
         services.AddMessagePipe();
-        var platform = new CadTestPlatform();
+        var platform = Platform;
         services.AddSingleton<IImageImportService>(platform);
         services.AddSingleton<IClipboardTextService>(platform);
         services.AddSingleton<IOleHostService>(platform);
@@ -43,6 +45,20 @@ internal sealed class CadToolboxTestContext : IDisposable
     public void Publish() => _provider
         .GetRequiredService<IPublisher<CadDocumentInteractionStateChangedMessage>>()
         .Publish(new CadDocumentInteractionStateChangedMessage(Document));
+
+    public T GetService<T>() where T : notnull => _provider.GetRequiredService<T>();
+
+    public EditorTabViewModel CreateEditorTab(RecordingDialogService dialog, IFileDialogService files, ICadDocumentWriter writer) =>
+        new(Document, new RecordingSettingsStore(), new RecordingWorkspaceStore(), null!, files, dialog,
+            _provider.GetRequiredService<ISnackbarService>(), null!,
+            _provider.GetRequiredService<ISubscriber<CadDocumentViewSettingsChangedMessage>>(),
+            _provider.GetRequiredService<ISubscriber<CadSelectionFilterChangedMessage>>(),
+            _provider.GetRequiredService<ISubscriber<CadDocumentInteractionStateChangedMessage>>(),
+            _provider.GetRequiredService<IPublisher<EditorTabDocumentSummaryChangedMessage>>(), writer);
+
+    public BlocksToolboxViewModel CreateBlocks(RecordingDialogService dialog) => new(Platform, Platform, dialog, Platform,
+        _provider.GetRequiredService<ISubscriber<CadDocumentInteractionStateChangedMessage>>(),
+        _provider.GetRequiredService<IPublisher<CadBlockDefinitionSelectionChangedMessage>>());
 
     public void Dispose()
     {

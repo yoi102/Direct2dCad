@@ -16,13 +16,13 @@ public sealed class DeleteHatchPatternCommand(HatchPatternId patternId) : ICadCo
             throw new InvalidOperationException($"Hatch pattern is still referenced: {_snapshot.Name}");
         if (!document.RemoveHatchPatternCore(patternId))
             throw new InvalidOperationException($"Hatch pattern does not exist: {patternId}");
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
         if (_snapshot is not null && !document.HatchPatterns.ContainsKey(patternId))
             document.AddHatchPatternCore(_snapshot);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 }

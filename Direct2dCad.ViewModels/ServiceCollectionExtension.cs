@@ -1,4 +1,6 @@
 using Direct2dCad.Agent;
+using Direct2dCad.IO;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Direct2dCad.ViewModels.Services.Interactions;
 using Direct2dCad.ViewModels.Tools;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +12,7 @@ public static class ServiceCollectionExtension
     public static IServiceCollection AddViewModels(this IServiceCollection services)
     {
         services.AddTransient<MainViewModel>();
+        services.TryAddSingleton<ICadDocumentWriter, CadDocumentStorage>();
         services.AddTransient<EditorTabViewModel>();
         services.AddTransient<CadDocumentViewModel>();
         services.AddSingleton<ICadClipboardStore, CadClipboardStore>();

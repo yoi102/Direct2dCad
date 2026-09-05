@@ -1,4 +1,6 @@
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Rendering.Direct2D.Scene;
 using System.Collections;
 
 namespace Direct2dCad.Rendering.Direct2D.Hosting;
@@ -10,6 +12,7 @@ internal static class Direct2DParallelRenderPlanner
     internal const int DefaultEntityThreshold = 1000;
 
     public static bool TryCreatePlan(
+        CadDocument document,
         CadRenderOptions options,
         CadParallelRenderingMode expectedMode,
         IReadOnlyList<CadEntity> entities,
@@ -38,25 +41,43 @@ internal static class Direct2DParallelRenderPlanner
         var activeWorkerCount = Math.Min(requestedWorkerCount, entities.Count);
         plan = new Direct2DParallelRenderPlan(
             activeWorkerCount,
-            CreateBatches(entities, activeWorkerCount));
+            CreateBatches(document, entities, activeWorkerCount));
         return true;
     }
 
     private static Direct2DParallelRenderBatch[] CreateBatches(
+        CadDocument document,
         IReadOnlyList<CadEntity> entities,
         int workerCount)
     {
-        var baseChunkSize = entities.Count / workerCount;
-        var remainder = entities.Count % workerCount;
+        long remainingCost = 0;
+        foreach (var entity in entities)
+            remainingCost += Direct2DEntityOrderCache.EstimateEntityRenderWork(document, entity);
         var result = new Direct2DParallelRenderBatch[workerCount];
+        var start = 0;
         for (var index = 0; index < workerCount; index++)
         {
-            var start = index * baseChunkSize + Math.Min(index, remainder);
-            var count = baseChunkSize + (index < remainder ? 1 : 0);
+            var workersLeft = workerCount - index;
+            var targetCost = (double)remainingCost / workersLeft;
+            var maximumCount = entities.Count - start - (workersLeft - 1);
+            var count = 0;
+            long cost = 0;
+            while (count < maximumCount)
+            {
+                var next = Direct2DEntityOrderCache.EstimateEntityRenderWork(document, entities[start + count]);
+                if (workersLeft > 1 && count > 0 &&
+                    Math.Abs(cost - targetCost) <= Math.Abs(cost + next - targetCost))
+                    break;
+                cost += next;
+                count++;
+            }
+            // Keep contiguous ranges: regrouping by type would break alpha/draw order.
             result[index] = new Direct2DParallelRenderBatch(
                 entities,
                 start,
                 count);
+            start += count;
+            remainingCost -= cost;
         }
 
         return result;

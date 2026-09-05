@@ -136,7 +136,7 @@ public sealed class CreateFillStyleCommand : ICadCommand
             document.AddStyleCore(_createdStyle);
         }
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -149,7 +149,7 @@ public sealed class CreateFillStyleCommand : ICadCommand
             !document.Entities.Values.Any(entity => HasFillStyle(entity, _createdStyle.Id)))
             document.RemoveStyleCore(_createdStyle.Id);
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     private static double RequirePositiveFinite(double value, string name) =>

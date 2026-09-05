@@ -11,6 +11,7 @@ namespace Direct2dCad.Rendering.Direct2D.Transient;
 internal sealed class Direct2DTransientSceneRenderer(
     Direct2DTransientRenderer primitives,
     Direct2DTransientImageCache imageCache,
+    Direct2DTransientPathCache pathCache,
     Direct2DTransientGroupCommandListCache groupCommandListCache) : IDisposable
 {
     public bool PrepareCache(
@@ -21,7 +22,10 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadRenderOptions options,
         Action<CadTransientEntityReference> drawEntityReference,
         Action<CadTransientBlockReference> drawBlockReference,
-        bool buildStep) => groupCommandListCache.Prepare(
+        bool buildStep)
+    {
+        pathCache.Prepare(scene);
+        return groupCommandListCache.Prepare(
             context,
             document,
             viewport,
@@ -30,6 +34,7 @@ internal sealed class Direct2DTransientSceneRenderer(
             drawEntityReference,
             drawBlockReference,
             buildStep);
+    }
 
     public void ApplyChanges(CadDocumentChangeSet changes) =>
         groupCommandListCache.ApplyChanges(changes);
@@ -154,6 +159,9 @@ internal sealed class Direct2DTransientSceneRenderer(
                         spline.Style,
                         options.IsLevelOfDetailEnabled);
                     break;
+                case CadTransientCompositePath path when pathCache.Get(path) is { } geometry:
+                    primitives.DrawCompositePath(context, viewport, path, geometry, options.IsLevelOfDetailEnabled);
+                    break;
                 case CadTransientRectangle rectangle when !rectangle.Bounds.IsEmpty:
                     primitives.DrawRectangle(
                         context,
@@ -274,12 +282,14 @@ internal sealed class Direct2DTransientSceneRenderer(
 
     public void Clear()
     {
+        pathCache.Clear();
         imageCache.Clear();
         groupCommandListCache.Clear();
     }
 
     public void Dispose()
     {
+        pathCache.Dispose();
         imageCache.Dispose();
         groupCommandListCache.Dispose();
     }

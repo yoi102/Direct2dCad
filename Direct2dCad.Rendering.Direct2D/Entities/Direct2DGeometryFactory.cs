@@ -1,5 +1,6 @@
 using System.Numerics;
 using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Vortice;
 using Vortice.Direct2D1;
@@ -11,6 +12,28 @@ internal sealed class Direct2DGeometryFactory
 {
     private const double TwoPi = Math.PI * 2.0;
     private const double FullCircleTolerance = 1e-9;
+
+    public ID2D1PathGeometry CreateStrokeText(ID2D1Factory factory, IReadOnlyList<CadStrokeTextSegment> segments)
+    {
+        var geometry = factory.CreatePathGeometry();
+        try
+        {
+            using var sink = geometry.Open();
+            foreach (var segment in segments)
+            {
+                sink.BeginFigure(ToVector2(segment.Start), FigureBegin.Hollow);
+                sink.AddLine(ToVector2(segment.End));
+                sink.EndFigure(FigureEnd.Open);
+            }
+            sink.Close();
+            return geometry;
+        }
+        catch
+        {
+            geometry.Dispose();
+            throw;
+        }
+    }
 
     public RoundedRectangle CreateRoundedRectangle(CadRectD bounds, double radiusX, double radiusY)
     {
@@ -71,14 +94,17 @@ internal sealed class Direct2DGeometryFactory
 
     public ID2D1PathGeometry CreateCompositePath(
         ID2D1Factory factory,
-        CadCompositePath path)
+        CadCompositePath path) => CreateCompositePath(factory, path.StartPoint, path.Segments, path.Closed);
+
+    public ID2D1PathGeometry CreateCompositePath(
+        ID2D1Factory factory, CadPointD startPoint, IReadOnlyList<CadCompositePathSegment> segments, bool closed)
     {
         var geometry = factory.CreatePathGeometry();
         using var sink = geometry.Open();
-        var current = path.StartPoint;
-        sink.BeginFigure(ToVector2(current), path.Closed ? FigureBegin.Filled : FigureBegin.Hollow);
+        var current = startPoint;
+        sink.BeginFigure(ToVector2(current), closed ? FigureBegin.Filled : FigureBegin.Hollow);
 
-        foreach (var segment in path.Segments)
+        foreach (var segment in segments)
         {
             switch (segment)
             {
@@ -119,7 +145,7 @@ internal sealed class Direct2DGeometryFactory
             }
         }
 
-        sink.EndFigure(path.Closed ? FigureEnd.Closed : FigureEnd.Open);
+        sink.EndFigure(closed ? FigureEnd.Closed : FigureEnd.Open);
         sink.Close();
         return geometry;
     }

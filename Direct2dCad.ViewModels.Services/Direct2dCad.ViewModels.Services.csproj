@@ -9,9 +9,11 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="MessagePipe" Version="1.8.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.IO\Direct2dCad.IO.csproj" />
     <ProjectReference Include="..\Direct2dCad.AI.Contracts\Direct2dCad.AI.Contracts.csproj" />
     <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
     <ProjectReference Include="..\Direct2dCad.Commands\Direct2dCad.Commands.csproj" />

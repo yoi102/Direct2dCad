@@ -148,6 +148,12 @@ internal readonly struct CadClipboardInteractionService(
                     style));
                 break;
 
+            case CadCompositePathClipboardSnapshot path:
+                items.Add(new CadTransientGroup(
+                    [new CadTransientCompositePath(path.StartPoint, path.Segments, path.Closed, path.Bounds, style)],
+                    CadMatrixD.CreateTranslation(delta.X, delta.Y), style, path.Bounds));
+                break;
+
             case CadTextClipboardSnapshot text:
                 items.Add(new CadTransientText(
                     text.Text,

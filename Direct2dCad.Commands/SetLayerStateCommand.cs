@@ -58,14 +58,14 @@ public sealed class SetLayerStateCommand : ICadCommand
         if (previous.IsVisible == current.IsVisible &&
             previous.IsFrozen == current.IsFrozen)
         {
-            return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+            return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.LayerAccess);
         }
 
         return CadDocumentChangeSet
             .ForEntities(
                 document.GetEntityIdsOnLayer(_layerId),
-                CadEntityChangeKind.Appearance)
-            .WithDocumentStructureChanged();
+                CadEntityChangeKind.Visibility | CadEntityChangeKind.Layer)
+            .WithTableChanges(CadDocumentTableChangeKind.LayerAccess);
     }
 
     private static void Apply(CadLayer layer, LayerState state)

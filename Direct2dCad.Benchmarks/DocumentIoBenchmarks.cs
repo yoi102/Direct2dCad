@@ -1,7 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Direct2dCad.Indexing;
 using Direct2dCad.IO;
-using Direct2dCad.Rendering;
 
 namespace Direct2dCad.Benchmarks;
 
@@ -130,10 +129,7 @@ public class DocumentIoBenchmarks
         var document = _storage.Load(_sourcePath);
         var data = BenchmarkDocumentFactory.FromDocument(document);
         using var session = new BenchmarkRenderSession(data);
-        session.RenderHost.Render(
-            CadRenderInvalidation.Full,
-            baseSceneChanged: true);
-        return session.CaptureFrameChecksum();
+        return session.RenderPreparedFirstFrame();
     }
 
     private static string CreateTemporaryPath(string purpose)

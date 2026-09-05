@@ -1,4 +1,3 @@
-using System.Globalization;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -29,24 +28,32 @@ internal static partial class CadEntityQuery
     {
         ArgumentNullException.ThrowIfNull(document);
         ValidateOptions(options);
-        var currentSpaceEntities = ActiveEntities(document)
-            .Where(entity => entity.OwnerBlockId.Equals(activeOwnerBlockId))
-            .ToArray();
-        var documentEntities = ActiveEntities(document).ToArray();
-        var scopeEntities = ResolveScope(options.Scope, currentSpaceEntities, documentEntities);
-        var matchingEntities = ApplyFilters(
-            document,
-            scopeEntities,
-            selectedEntityIds,
-            options).ToArray();
-
+        var all = new QueryCounts(includeGroups: true);
+        var current = new QueryCounts(includeGroups: true);
+        var matching = new QueryCounts(includeGroups: true);
+        IEnumerable<CadEntity> ObserveScope()
+        {
+            foreach (var entity in document.Entities.Values)
+            {
+                if (entity.IsErased)
+                    continue;
+                all.Add(entity);
+                var inCurrent = entity.OwnerBlockId == activeOwnerBlockId;
+                if (inCurrent)
+                    current.Add(entity);
+                if (options.Scope == DocumentScope || inCurrent)
+                    yield return entity;
+            }
+        }
+        foreach (var entity in ApplyFilters(document, ObserveScope(), selectedEntityIds, options))
+            matching.Add(entity);
         return new
         {
             requested_scope = options.Scope,
             filters_applied = FilterDto(options),
-            current_space = Summary(document, currentSpaceEntities),
-            document = Summary(document, documentEntities),
-            matching = Summary(document, matchingEntities)
+            current_space = current.Summary(document),
+            document = all.Summary(document),
+            matching = matching.Summary(document)
         };
     }
 
@@ -58,94 +65,37 @@ internal static partial class CadEntityQuery
     {
         ArgumentNullException.ThrowIfNull(document);
         ValidateOptions(options);
-        var scopeEntities = ResolveScope(
-                options.Scope,
-                ActiveEntities(document)
-                    .Where(entity => entity.OwnerBlockId.Equals(activeOwnerBlockId)),
-                ActiveEntities(document))
-            .ToArray();
-        var matchingEntities = ApplyFilters(
-                document,
-                scopeEntities,
-                selectedEntityIds,
-                options)
-            .ToArray();
-        var orderedEntities = OrderEntities(document, matchingEntities, options);
-        var page = orderedEntities
-            .Skip(options.Offset)
-            .Take(options.Limit)
-            .Select(entity => EntityDto(document, entity))
-            .ToArray();
-
+        var scope = new QueryCounts();
+        var matching = new QueryCounts();
+        IEnumerable<CadEntity> ObserveScope()
+        {
+            var entities = options.Scope == CurrentSpaceScope
+                ? document.GetEntitiesInBlock(activeOwnerBlockId)
+                : document.Entities.Values;
+            foreach (var entity in entities)
+            {
+                if (entity.IsErased)
+                    continue;
+                scope.Add(entity);
+                yield return entity;
+            }
+        }
+        var candidates = ApplyFilters(document, ObserveScope(), selectedEntityIds, options);
+        var page = SelectPage(document, candidates, matching, options);
         return new
         {
             scope = options.Scope,
             filters_applied = FilterDto(options),
-            scope_entity_count = scopeEntities.Length,
-            scope_type_counts = TypeCounts(scopeEntities),
-            total_matches = matchingEntities.Length,
-            matching_type_counts = TypeCounts(matchingEntities),
+            scope_entity_count = scope.Count,
+            scope_type_counts = scope.TypeCounts(),
+            total_matches = matching.Count,
+            matching_type_counts = matching.TypeCounts(),
             returned_count = page.Length,
             offset = options.Offset,
             limit = options.Limit,
-            has_more = options.Offset + page.Length < matchingEntities.Length,
+            has_more = (long)options.Offset + page.Length < matching.Count,
             sort = new { by = options.SortBy, descending = options.SortDescending },
             entities = page
         };
     }
-
-    private static IEnumerable<CadEntity> ActiveEntities(CadDocument document) =>
-        document.Entities.Values.Where(entity => !entity.IsErased);
-
-    private static IEnumerable<CadEntity> ResolveScope(
-        string scope,
-        IEnumerable<CadEntity> currentSpaceEntities,
-        IEnumerable<CadEntity> documentEntities) => scope switch
-    {
-        CurrentSpaceScope => currentSpaceEntities,
-        DocumentScope => documentEntities,
-        _ => throw new ArgumentException($"Unsupported entity query scope: {scope}")
-    };
-
-    private static object Summary(CadDocument document, IReadOnlyCollection<CadEntity> entities) => new
-    {
-        entity_count = entities.Count,
-        type_counts = TypeCounts(entities),
-        layer_counts = entities
-            .GroupBy(entity => entity.LayerId)
-            .Select(group => new
-            {
-                layer_id = group.Key.Value,
-                layer = LayerName(document, group.Key),
-                count = group.Count()
-            })
-            .OrderByDescending(item => item.count)
-            .ThenBy(item => item.layer, StringComparer.OrdinalIgnoreCase)
-            .ToArray(),
-        owner_space_counts = entities
-            .GroupBy(entity => entity.OwnerBlockId)
-            .Select(group =>
-            {
-                var block = document.TryGetBlock(group.Key, out var value) ? value : null;
-                return new
-                {
-                    owner_block_id = group.Key.Value,
-                    owner = block?.Name ?? group.Key.Value.ToString(CultureInfo.InvariantCulture),
-                    kind = block?.Kind.ToString() ?? "Unknown",
-                    count = group.Count()
-                };
-            })
-            .OrderByDescending(item => item.count)
-            .ThenBy(item => item.owner, StringComparer.OrdinalIgnoreCase)
-            .ToArray()
-    };
-
-    private static object[] TypeCounts(IEnumerable<CadEntity> entities) =>
-        entities
-            .GroupBy(EntityType, StringComparer.OrdinalIgnoreCase)
-            .Select(group => new { type = group.Key, count = group.Count() })
-            .OrderByDescending(item => item.count)
-            .ThenBy(item => item.type, StringComparer.OrdinalIgnoreCase)
-            .Cast<object>()
-            .ToArray();
 }

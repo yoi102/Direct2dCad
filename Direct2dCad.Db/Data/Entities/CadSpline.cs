@@ -8,6 +8,7 @@ public sealed class CadSpline : Curve
     private readonly List<CadPointD> _fitPoints = [];
     private IReadOnlyList<CadBezierSegmentD> _bezierSegments = [];
     private CadRectD _bounds = CadRectD.Empty;
+    private double? _length;
 
     public IReadOnlyList<CadPointD> FitPoints => _fitPoints;
     public bool Closed { get; private set; }
@@ -21,6 +22,8 @@ public sealed class CadSpline : Curve
     {
         get
         {
+            if (_length is { } cached)
+                return cached;
             using var points = EnumerateFlattenedPoints(DefaultFlattenStepsPerSegment).GetEnumerator();
             if (!points.MoveNext())
                 return 0;
@@ -33,6 +36,7 @@ public sealed class CadSpline : Curve
                 previous = points.Current;
             }
 
+            _length = length;
             return length;
         }
     }
@@ -137,6 +141,7 @@ public sealed class CadSpline : Curve
 
     private void RebuildDerivedGeometry()
     {
+        _length = null;
         _bezierSegments = CreateBezierSegments(_fitPoints, Closed);
 
         var bounds = CadRectD.Empty;

@@ -53,8 +53,7 @@ public static class CadCommandLinePointParser
         point = new CadCommandLinePoint(
             origin.X + CadUnitConversion.ToMillimeters(x, unit),
             origin.Y + CadUnitConversion.ToMillimeters(y, unit));
-        error = null;
-        return true;
+        return ValidatePoint(ref point, out error);
     }
 
     private static bool TryParsePolar(
@@ -81,8 +80,20 @@ public static class CadCommandLinePointParser
         point = new CadCommandLinePoint(
             origin.X + distanceMillimeters * Math.Cos(angleRadians),
             origin.Y + distanceMillimeters * Math.Sin(angleRadians));
-        error = null;
-        return true;
+        return ValidatePoint(ref point, out error);
+    }
+
+    private static bool ValidatePoint(ref CadCommandLinePoint point, out string? error)
+    {
+        if (double.IsFinite(point.X) && double.IsFinite(point.Y))
+        {
+            error = null;
+            return true;
+        }
+
+        point = default;
+        error = "Point is outside the supported coordinate range.";
+        return false;
     }
 
     private static bool TryParseNumber(string value, out double result) =>

@@ -90,6 +90,7 @@
         </ListBox>
 
         <Button x:Name="NewOutputButton"
+                AutomationProperties.AutomationId="FollowCommandLineOutputButton"
                 Grid.Row="0"
                 Width="28"
                 Height="28"

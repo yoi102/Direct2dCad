@@ -14,13 +14,13 @@ public sealed class DeleteLineTypeCommand(LineTypeId lineTypeId) : ICadCommand
         if (document.GetLineTypeReferenceCount(lineTypeId) > 0)
             throw new InvalidOperationException($"Line type is still referenced: {_snapshot.Name}");
         document.RemoveLineType(lineTypeId);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
         if (_snapshot is not null && !document.LineTypes.ContainsKey(_snapshot.Id))
             document.AddLineTypeCore(_snapshot);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 }

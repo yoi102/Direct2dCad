@@ -99,6 +99,14 @@ internal sealed class Direct2DTransientRenderer(
         context.DrawGeometry(geometry, brush, styleResources.ResolveStrokeWidth(style, viewport), strokeStyle);
     }
 
+    public void DrawCompositePath(ID2D1DeviceContext context, CadViewport viewport,
+        CadTransientCompositePath path, ID2D1PathGeometry geometry, bool isLevelOfDetailEnabled)
+    {
+        if (path.Closed && HasFill(path.Style))
+            DrawFill(context, geometry, path.Bounds, path.Style, viewport, isLevelOfDetailEnabled);
+        DrawGeometry(context, viewport, geometry, path.Style);
+    }
+
     public void DrawArc(
         ID2D1DeviceContext context,
         CadViewport viewport,

@@ -150,6 +150,25 @@ public sealed class CadEditorTests
     }
 
     [Fact]
+    public void RetentionLimitKeepsTheNewestBatchAndRuntimeUndoMode()
+    {
+        var editor = new CadEditor(CadDocument.Create("Retention"));
+        editor.AddLine(CadPointD.Origin, new(1, 1));
+        editor.DocumentHistorySettings.MaximumUndoCommands = 1;
+        editor.ExecuteRange(Enumerable.Range(0, 10).Select(i =>
+            new AddLineCommand(new(i, 0), new(i, 10))));
+        editor.DocumentHistorySettings.UndoMode = CadCommandBatchUndoMode.StepByStep;
+        editor.Undo();
+        Assert.Equal(10, editor.Document.Entities.Values.Count(e => !e.IsErased));
+        editor.DocumentHistorySettings.UndoMode = CadCommandBatchUndoMode.Batch;
+        editor.Undo();
+        Assert.Single(editor.Document.Entities.Values, e => !e.IsErased);
+        Assert.False(editor.DocumentCommands.CanUndo);
+        editor.Redo();
+        Assert.Equal(11, editor.Document.Entities.Values.Count(e => !e.IsErased));
+    }
+
+    [Fact]
     public void MoveCommand_UpdatesSpatialIndexAndUndoRestoresOldLocation()
     {
         var document = CadDocument.Create("Test");

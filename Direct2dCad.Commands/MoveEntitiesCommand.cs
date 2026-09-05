@@ -46,9 +46,6 @@ public sealed class MoveEntitiesCommand : ICadCommand
 
     private CadDocumentChangeSet ChangeSet(CadDocument document)
     {
-        var dependentReferences = document.RefreshBlockReferenceBounds();
-        return CadDocumentChangeSet.ForEntities(
-            _entityIds.Concat(dependentReferences).Distinct(),
-            CadEntityChangeKind.Geometry);
+        return CadCommandGeometryChanges.Resolve(document, _entityIds, CadEntityChangeKind.Geometry);
     }
 }

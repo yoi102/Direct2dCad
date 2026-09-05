@@ -390,6 +390,9 @@ public sealed class AiAssistantToolboxViewModelTests
         Assert.True(viewModel.SendCommand.CanExecute(null));
     }
 
+    internal static AiAssistantToolboxViewModel CreateDisconnectedViewModel() =>
+        CreateViewModel(new(), new(), new());
+
     private static AiAssistantToolboxViewModel CreateViewModel(
         FakeFileDialogService fileDialog,
         FakeImageImportService imageImport,

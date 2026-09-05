@@ -12,6 +12,8 @@ internal sealed class CadOverlaySceneCoordinator
     private readonly CadHandleSceneBuilder _handleSceneBuilder = new();
     private readonly CadHandleSceneBuildBuffer _handleSceneBuildBuffer = new();
     private readonly CadHandleSceneUpdateTracker _handleSceneUpdateTracker = new();
+    private readonly HashSet<EntityId> _changedSelectionGeometry = [];
+    private long _selectionOrderVersion;
     private CadRenderInvalidation _lastTransientInvalidation = CadRenderInvalidation.FromScreenRect(default);
     private CadRenderInvalidation _lastHandleInvalidation = CadRenderInvalidation.FromScreenRect(default);
 
@@ -29,6 +31,7 @@ internal sealed class CadOverlaySceneCoordinator
         HandleScene.Clear();
         _handleSceneBuildBuffer.Clear();
         _handleSceneUpdateTracker.Reset();
+        _changedSelectionGeometry.Clear();
     }
 
     public void ApplyDocumentChanges(
@@ -38,10 +41,12 @@ internal sealed class CadOverlaySceneCoordinator
         ArgumentNullException.ThrowIfNull(changes);
         ArgumentNullException.ThrowIfNull(selectedEntityIds);
 
-        if (changes.AffectsDocumentStructure ||
+        if (changes.AffectsDocumentStructure || changes.AffectsLayerOrder || changes.AffectsLayerAccess ||
             changes.AffectsLayouts ||
             changes.AffectsLayoutStructure)
         {
+            _selectionOrderVersion++;
+            _changedSelectionGeometry.Clear();
             _handleSceneUpdateTracker.Invalidate();
             return;
         }
@@ -51,6 +56,8 @@ internal sealed class CadOverlaySceneCoordinator
             CadEntityChangeKind.Visibility |
             CadEntityChangeKind.Layer |
             CadEntityChangeKind.DrawOrder |
+            CadEntityChangeKind.Created |
+            CadEntityChangeKind.Metadata |
             CadEntityChangeKind.Deleted |
             CadEntityChangeKind.Rotation;
         foreach (var change in changes.EntityChanges)
@@ -58,8 +65,16 @@ internal sealed class CadOverlaySceneCoordinator
             if ((change.Kind & handleChanges) != 0 &&
                 selectedEntityIds.Contains(change.EntityId))
             {
-                _handleSceneUpdateTracker.Invalidate();
-                return;
+                const CadEntityChangeKind geometry = CadEntityChangeKind.Geometry | CadEntityChangeKind.Rotation;
+                if ((change.Kind & handleChanges & ~geometry) == 0)
+                {
+                    _changedSelectionGeometry.Add(change.EntityId);
+                }
+                else
+                {
+                    _selectionOrderVersion++;
+                    _handleSceneUpdateTracker.Invalidate();
+                }
             }
         }
     }
@@ -126,12 +141,18 @@ internal sealed class CadOverlaySceneCoordinator
     {
         if (activeHandleItems is { Count: > 0 })
         {
+            _changedSelectionGeometry.Clear();
             HandleScene.Replace(activeHandleItems);
             _handleSceneUpdateTracker.Invalidate();
             return;
         }
 
         var selection = editor.Selection;
+        if (!_handleSceneBuildBuffer.RefreshGeometryEntities(editor.Document, _changedSelectionGeometry))
+        {
+            _selectionOrderVersion++;
+            _handleSceneUpdateTracker.Invalidate();
+        }
         var includeIndividualGrips =
             handleOptions.IncludeGripHandles &&
             selection.Count <= Math.Max(0, handleOptions.MaximumIndividualGripEntityCount);
@@ -146,7 +167,15 @@ internal sealed class CadOverlaySceneCoordinator
                 selection.Version,
                 effectiveOptions))
         {
-            return;
+            if (_changedSelectionGeometry.Count == 0)
+                return;
+            if (!includeIndividualGrips && HandleScene.TryUpdateGeometry(
+                    editor.Document, _changedSelectionGeometry,
+                    effectiveOptions.IncludeLockedEntityGripHandles))
+            {
+                _changedSelectionGeometry.Clear();
+                return;
+            }
         }
 
         var items = _handleSceneBuilder.BuildSelectionHandles(
@@ -155,8 +184,9 @@ internal sealed class CadOverlaySceneCoordinator
             _handleSceneBuildBuffer,
             HandleScene,
             effectiveOptions,
-            new CadHandleSelectionCacheKey(selection.Version, editor.DocumentChangeVersion));
+            new CadHandleSelectionCacheKey(selection.Version, _selectionOrderVersion));
         HandleScene.Replace(items);
+        _changedSelectionGeometry.Clear();
         _handleSceneUpdateTracker.MarkCurrent(
             editor.Document,
             selection.Version,

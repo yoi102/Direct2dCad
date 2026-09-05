@@ -5,6 +5,23 @@ namespace Direct2dCad.Rendering;
 
 public static class CadLayoutViewportMapper
 {
+    public static CadRectD PaperToModelBounds(CadLayoutViewport viewport, CadRectD bounds) =>
+        bounds.IsEmpty ? CadRectD.Empty : TransformBounds(
+            bounds, PaperToModel(viewport, bounds.Center), 1.0 / viewport.Scale, viewport.RotationRadians);
+
+    public static CadRectD ModelToPaperBounds(CadLayoutViewport viewport, CadRectD bounds) =>
+        bounds.IsEmpty ? CadRectD.Empty : TransformBounds(
+            bounds, ModelToPaper(viewport, bounds.Center), viewport.Scale, viewport.RotationRadians);
+
+    private static CadRectD TransformBounds(CadRectD bounds, CadPointD center, double scale, double rotation)
+    {
+        var cos = Math.Abs(Math.Cos(rotation));
+        var sin = Math.Abs(Math.Sin(rotation));
+        return CadRectD.FromCenter(center,
+            (bounds.Width * cos + bounds.Height * sin) * scale,
+            (bounds.Width * sin + bounds.Height * cos) * scale);
+    }
+
     public static CadPointD PaperToModel(CadLayoutViewport viewport, CadPointD paperPoint)
     {
         var dx = (paperPoint.X - viewport.Bounds.Center.X) / viewport.Scale;

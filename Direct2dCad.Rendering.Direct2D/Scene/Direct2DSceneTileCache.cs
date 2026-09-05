@@ -124,6 +124,17 @@ internal sealed class Direct2DSceneTileCache : IDisposable
         return HasPendingTiles(profile, _requiredTiles);
     }
 
+    internal bool CanDrawCompletely(CadViewport viewport, CadRenderOptions options)
+    {
+        ThrowIfDisposed();
+        if (options.ActiveLayoutId is not null || options.HiddenEntityIds.Count > 0 ||
+            !IsStrokeExtentCacheSafe(options, viewport.Zoom))
+            return false;
+        return TryResolveDrawableProfile(TileProfileKey.Create(options, viewport.Zoom),
+            viewport, options.DirtyWorldBounds, options.AllowApproximateTileScaleFallback,
+            out _, out var required, out var available) && available.Count == required.Count;
+    }
+
     public bool TryDraw(
         ID2D1DeviceContext context,
         CadViewport viewport,
@@ -224,7 +235,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
             return;
         }
 
-        if (changes.AffectsDocumentStructure || changes.AffectsViewSettings)
+        if (changes.AffectsDocumentStructure || changes.AffectsLayerOrder || changes.AffectsViewSettings)
         {
             ClearProfiles();
             CaptureEntitySnapshots(document);

@@ -9,13 +9,17 @@ using Direct2dCad.Rendering.Transient;
 
 namespace Direct2dCad.ViewModels.Services.Rendering;
 
-internal readonly struct CadRenderInvalidationCalculator(
+internal readonly partial struct CadRenderInvalidationCalculator(
     CadDocument document,
     CadViewport viewport,
     int targetWidth,
     int targetHeight,
-    Func<CadEntity, CadTransientStyle> createEntityPreviewStyle)
+    Func<CadEntity, CadTransientStyle> createEntityPreviewStyle,
+    LayoutId? layoutId = null,
+    BlockId? ownerBlockId = null)
 {
+    public bool UsesLayoutProjection => layoutId is not null;
+
     private const int MaxPathDirtyBounds = 16;
     private const int LargeHandleSceneAggregationThreshold = 512;
     private const double Direct2DDefaultMiterLimit = 10.0;
@@ -130,7 +134,10 @@ internal readonly struct CadRenderInvalidationCalculator(
         snapshot = new CadEntityInvalidationSnapshot(
             entity.Bounds,
             isRenderable ? ResolveEntityInvalidationPadding(entity, style) : 0,
-            isRenderable);
+            isRenderable,
+            entity.OwnerBlockId,
+            viewport.Zoom,
+            !style.KeepStrokeWidthScreenConstant);
         return true;
     }
 
@@ -144,6 +151,11 @@ internal readonly struct CadRenderInvalidationCalculator(
         {
             return CadRenderInvalidation.Empty;
         }
+
+        if (layoutId is not null)
+            return CreateLayoutEntityInvalidation(snapshot);
+        if (ownerBlockId is { } owner && snapshot.OwnerBlockId != owner)
+            return CadRenderInvalidation.Empty;
 
         var padding = ResolveEntityInvalidationPadding(snapshot);
         return entity switch
@@ -161,6 +173,10 @@ internal readonly struct CadRenderInvalidationCalculator(
     public CadRenderInvalidation CreateEntitySnapshotInvalidation(
         CadEntityInvalidationSnapshot snapshot)
     {
+        if (layoutId is not null)
+            return CreateLayoutEntityInvalidation(snapshot);
+        if (ownerBlockId is { } owner && snapshot.OwnerBlockId != owner)
+            return CadRenderInvalidation.Empty;
         return !snapshot.IsRenderable || snapshot.Bounds.IsEmpty
             ? CadRenderInvalidation.Empty
             : CreateWorldBoundsInvalidation(
@@ -199,6 +215,8 @@ internal readonly struct CadRenderInvalidationCalculator(
                 polyline.Style,
                 strokeExtentMultiplier: Direct2DDefaultMiterLimit * 0.5),
             CadTransientSpline spline => CreateTransientSplineInvalidation(spline),
+            CadTransientCompositePath path => CreateTransientBoundsInvalidation(
+                path.Bounds, path.Style, strokeExtentMultiplier: Direct2DDefaultMiterLimit * 0.5),
             CadTransientRectangle rectangle => CreateTransientBoundsInvalidation(
                 rectangle.Bounds,
                 rectangle.Style),
@@ -270,6 +288,7 @@ internal readonly struct CadRenderInvalidationCalculator(
                 CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2),
             CadTransientPolyline polyline => BoundsFromPoints(polyline.Points),
             CadTransientSpline spline => BoundsFromPoints(spline.FitPoints),
+            CadTransientCompositePath path => path.Bounds,
             CadTransientRectangle rectangle => rectangle.Bounds,
             CadTransientImage image => RotateBounds(image.Bounds, image.RotationRadians),
             CadTransientOleObject oleObject => oleObject.Bounds,
@@ -621,7 +640,11 @@ internal readonly struct CadRenderInvalidationCalculator(
     private double ResolveEntityInvalidationPadding(
         CadEntityInvalidationSnapshot snapshot)
     {
-        return Math.Max(0.0, snapshot.InvalidationPaddingPixels);
+        // World-space strokes grow with zoom; fixed-pixel strokes must not inflate the dirty region.
+        return Math.Max(0.0, snapshot.InvalidationPaddingPixels) *
+            (snapshot.ScalesWithZoom
+                ? Math.Max(1.0, viewport.Zoom / Math.Max(snapshot.CaptureZoom, double.Epsilon))
+                : 1.0);
     }
 
     private double ResolveStyleWorldStrokeWidth(CadTransientStyle style)
@@ -986,4 +1009,7 @@ internal readonly struct CadRenderInvalidationCalculator(
 internal readonly record struct CadEntityInvalidationSnapshot(
     CadRectD Bounds,
     double InvalidationPaddingPixels,
-    bool IsRenderable);
+    bool IsRenderable,
+    BlockId OwnerBlockId,
+    double CaptureZoom,
+    bool ScalesWithZoom);

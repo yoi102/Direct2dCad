@@ -7,6 +7,7 @@ public sealed class CadImage : CadEntity
     private CadRectD _bounds;
     private CadRectD _rotatedBounds;
     private byte[] _pixels;
+    private IReadOnlyList<byte>? _pixelView;
 
     public override CadRectD Bounds => _rotatedBounds;
 
@@ -26,8 +27,9 @@ public sealed class CadImage : CadEntity
 
     public double RotationRadians { get; private set; }
 
-    public IReadOnlyList<byte> Pixels => _pixels;
+    public IReadOnlyList<byte> Pixels => _pixelView ??= Array.AsReadOnly(_pixels);
 
+    // SetImageData replaces owned storage, so existing read-only snapshots remain valid.
     public ReadOnlyMemory<byte> PixelMemory => _pixels;
 
     internal CadImage(
@@ -38,7 +40,7 @@ public sealed class CadImage : CadEntity
         int pixelWidth,
         int pixelHeight,
         int stride,
-        byte[] pixels,
+        ReadOnlySpan<byte> pixels,
         string contentType = "image/bgra32",
         string sourceName = "",
         string name = "",
@@ -72,10 +74,16 @@ public sealed class CadImage : CadEntity
         string contentType = "image/bgra32",
         string sourceName = "")
     {
-        PixelWidth = GuardPixelSize(pixelWidth, nameof(pixelWidth));
-        PixelHeight = GuardPixelSize(pixelHeight, nameof(pixelHeight));
-        Stride = GuardStride(stride, PixelWidth);
-        _pixels = GuardPixels(pixels, Stride, PixelHeight);
+        ArgumentNullException.ThrowIfNull(pixels);
+        var width = GuardPixelSize(pixelWidth, nameof(pixelWidth));
+        var height = GuardPixelSize(pixelHeight, nameof(pixelHeight));
+        var validatedStride = GuardStride(stride, width);
+        var ownedPixels = GuardPixels(pixels, validatedStride, height);
+        PixelWidth = width;
+        PixelHeight = height;
+        Stride = validatedStride;
+        _pixels = ownedPixels;
+        _pixelView = null;
         ContentType = NormalizeContentType(contentType);
         SourceName = sourceName ?? string.Empty;
     }
@@ -182,15 +190,13 @@ public sealed class CadImage : CadEntity
         return stride < minimumStride ? throw new ArgumentOutOfRangeException(nameof(stride)) : stride;
     }
 
-    private static byte[] GuardPixels(byte[] pixels, int stride, int pixelHeight)
+    private static byte[] GuardPixels(ReadOnlySpan<byte> pixels, int stride, int pixelHeight)
     {
-        ArgumentNullException.ThrowIfNull(pixels);
-
         var expectedLength = checked(stride * pixelHeight);
         if (pixels.Length < expectedLength)
             throw new ArgumentException("Pixel data is shorter than stride * height.", nameof(pixels));
 
-        return (byte[])pixels.Clone();
+        return pixels.ToArray();
     }
 
     private static string NormalizeContentType(string? contentType)

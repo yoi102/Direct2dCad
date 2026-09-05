@@ -160,12 +160,9 @@ internal static partial class CadEntityQuery
         return entities;
     }
 
-    private static IEnumerable<CadEntity> OrderEntities(
-        CadDocument document,
-        IEnumerable<CadEntity> entities,
-        CadEntityQueryOptions options)
+    private static Func<CadEntity, object?> CreateSortKeySelector(CadDocument document, CadEntityQueryOptions options)
     {
-        Func<CadEntity, object?> keySelector = options.SortBy switch
+        return options.SortBy switch
         {
             "id" => entity => entity.Id.Value,
             "name" => entity => entity.Name,
@@ -179,9 +176,6 @@ internal static partial class CadEntityQuery
             _ => throw new ArgumentException($"Unsupported entity sort field: {options.SortBy}")
         };
 
-        return options.SortDescending
-            ? entities.OrderByDescending(keySelector, CadQueryValueComparer.Instance).ThenBy(entity => entity.Id.Value)
-            : entities.OrderBy(keySelector, CadQueryValueComparer.Instance).ThenBy(entity => entity.Id.Value);
     }
 
     private static bool TypeMatches(CadEntity entity, string requested) =>

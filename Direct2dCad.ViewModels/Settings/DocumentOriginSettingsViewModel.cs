@@ -41,7 +41,9 @@ public partial class DocumentOriginSettingsViewModel : DocumentSettingsSectionVi
 
     internal override bool TryApplyTo(CadViewSettings settings)
     {
-        if (!IsFinite(OriginX) || !IsFinite(OriginY) ||
+        var x = CadUnitConversion.ToMillimeters(OriginX, _unit);
+        var y = CadUnitConversion.ToMillimeters(OriginY, _unit);
+        if (!IsFinite(x) || !IsFinite(y) ||
             !IsPositiveFinite(OriginSize) || !IsPositiveFinite(OriginStrokeWidth))
         {
             return false;
@@ -52,9 +54,7 @@ public partial class DocumentOriginSettingsViewModel : DocumentSettingsSectionVi
         origin.MarkerType = (CadOriginMarkerType)OriginMarkerType;
         origin.LinePattern = (CadOriginLinePattern)OriginLinePattern;
         origin.Color = OriginColor;
-        origin.Position = new CadPointD(
-            CadUnitConversion.ToMillimeters(OriginX, _unit),
-            CadUnitConversion.ToMillimeters(OriginY, _unit));
+        origin.Position = new CadPointD(x, y);
         origin.Size = OriginSize;
         origin.StrokeWidth = OriginStrokeWidth;
         return true;

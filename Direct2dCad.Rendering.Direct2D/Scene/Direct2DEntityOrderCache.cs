@@ -247,7 +247,7 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
             CadEntityChangeKind.Deleted |
             CadEntityChangeKind.DrawOrder |
             CadEntityChangeKind.Layer;
-        if (changes.AffectsDocumentStructure)
+        if (changes.AffectsDocumentStructure || changes.AffectsLayerOrder)
         {
             Invalidate();
             return;
@@ -364,7 +364,7 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         return estimate;
     }
 
-    private static int EstimateEntityRenderWork(CadDocument document, CadEntity entity)
+    internal static int EstimateEntityRenderWork(CadDocument document, CadEntity entity)
     {
         var work = entity switch
         {

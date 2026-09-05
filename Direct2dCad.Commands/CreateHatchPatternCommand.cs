@@ -47,7 +47,7 @@ public sealed class CreateHatchPatternCommand : ICadCommand
             document.AddHatchPatternCore(_createdPattern);
         }
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -58,6 +58,6 @@ public sealed class CreateHatchPatternCommand : ICadCommand
                 style.PatternId == _createdPattern.Id))
             document.RemoveHatchPatternCore(_createdPattern.Id);
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 }

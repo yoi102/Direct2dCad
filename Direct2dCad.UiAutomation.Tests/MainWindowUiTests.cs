@@ -33,6 +33,31 @@ public sealed class MainWindowUiTests : IDisposable
 
     [Fact]
     [Trait("Category", "UiAutomation")]
+    public void TerminalFollowsBatchesButPreservesHistoryScrollUntilFollowIsClicked()
+    {
+        CreateNewDocument();
+        var input = GetOrOpenCommandLineInput();
+        var output = fixture.WaitForElement("CommandLineOutput");
+        ExecuteCommand(input, "HELP");
+        var scroll = output.Patterns.Scroll.Pattern;
+        fixture.WaitUntil(() => scroll.VerticallyScrollable.Value && scroll.VerticalScrollPercent.Value >= 99,
+            "Batched HELP output did not scroll to the bottom.");
+        scroll.SetScrollPercent(-1, 0);
+        fixture.WaitUntil(() => scroll.VerticalScrollPercent.Value < 10, "The terminal did not scroll to its history.");
+        ExecuteCommand(input, "STATUS");
+        fixture.WaitUntil(() => output.Properties.HelpText.ValueOrDefault?.Contains("Entities:") == true,
+            "STATUS did not finish.");
+        var follow = fixture.WaitForElement("FollowCommandLineOutputButton").AsButton();
+        fixture.WaitUntil(() => !follow.IsOffscreen, "New output did not expose the follow button.");
+        Assert.True(scroll.VerticalScrollPercent.Value < 50, "New output moved the history reader to the bottom.");
+        follow.Invoke();
+        fixture.WaitUntil(() => scroll.VerticalScrollPercent.Value >= 99, "Follow did not return to the latest output.");
+        ClearCommandOutput(input, output);
+        Assert.Equal(0, CountOutputEntries(output));
+    }
+
+    [Fact]
+    [Trait("Category", "UiAutomation")]
     public void UserSettingsDialog_AppliesAndPersistsIsolatedSettings()
     {
         fixture.WaitForElement("FileRibbonTab").AsTabItem().Select();
@@ -107,7 +132,7 @@ public sealed class MainWindowUiTests : IDisposable
         Mouse.Click(second);
 
         fixture.EnsureApplicationIsRunning();
-        Keyboard.Press(VirtualKeyShort.ESC);
+        Keyboard.Type(VirtualKeyShort.ESC);
         fixture.WaitUntil(
             () => string.Equals(toolMode.Name, "Select", StringComparison.Ordinal),
             "Escape did not return the canvas to Select mode.");
@@ -157,7 +182,7 @@ public sealed class MainWindowUiTests : IDisposable
         Thread.Sleep(100);
         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A);
         Thread.Sleep(100);
-        Keyboard.Press(VirtualKeyShort.DELETE);
+        Keyboard.Type(VirtualKeyShort.DELETE);
         ExecuteCommandAndWaitForOutput(commandInput, commandOutput, "STATUS", "Entities: 0");
         ExecuteCommandAndWaitForOutput(commandInput, commandOutput, "UNDO", "Undo completed.");
         ExecuteCommandAndWaitForOutput(commandInput, commandOutput, "STATUS", "Entities: 2");
@@ -368,11 +393,14 @@ public sealed class MainWindowUiTests : IDisposable
             "presets");
     }
 
-    private static void ExecuteCommand(TextBox commandInput, string command)
+    private void ExecuteCommand(TextBox commandInput, string command)
     {
+        fixture.MainWindow.Focus();
         commandInput.Focus();
+        fixture.WaitUntil(() => commandInput.Properties.HasKeyboardFocus.ValueOrDefault,
+            "The command input did not receive keyboard focus.");
         commandInput.Text = command;
-        Keyboard.Press(VirtualKeyShort.RETURN);
+        Keyboard.Type(VirtualKeyShort.RETURN);
 
         var autocompleteWait = Stopwatch.StartNew();
         while (autocompleteWait.Elapsed < TimeSpan.FromMilliseconds(500) &&
@@ -382,7 +410,9 @@ public sealed class MainWindowUiTests : IDisposable
         }
 
         if (!string.IsNullOrWhiteSpace(commandInput.Text))
-            Keyboard.Press(VirtualKeyShort.RETURN);
+            Keyboard.Type(VirtualKeyShort.RETURN);
+        fixture.WaitUntil(() => string.IsNullOrWhiteSpace(commandInput.Text),
+            $"The terminal did not consume command '{command}'.");
     }
 
     private TextBox GetOrOpenCommandLineInput()
@@ -484,10 +514,16 @@ public sealed class MainWindowUiTests : IDisposable
     {
         ClearCommandOutput(commandInput, commandOutput);
         ExecuteCommand(commandInput, command);
-        fixture.WaitUntil(
-            () => CountOutputMatches(commandOutput, expectedText) > 0,
-            $"Command output did not contain '{expectedText}'. " +
-            $"Visible output: {ReadCommandOutput(commandOutput)}");
+        try
+        {
+            fixture.WaitUntil(
+                () => CountOutputMatches(commandOutput, expectedText) > 0,
+                $"Command output did not contain '{expectedText}'.");
+        }
+        catch (TimeoutException exception)
+        {
+            throw new TimeoutException($"{exception.Message} Actual output: {ReadCommandOutput(commandOutput)}", exception);
+        }
     }
 
     private static string ReadCommandOutput(AutomationElement commandOutput) =>

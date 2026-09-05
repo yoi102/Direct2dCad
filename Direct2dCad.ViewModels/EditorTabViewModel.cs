@@ -16,6 +16,7 @@ using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Interactions;
 using Direct2dCad.ViewModels.Layouts;
 using Direct2dCad.ViewModels.Services.Events;
+using Direct2dCad.ViewModels.Services.Documents;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Services.Platform.Printing;
@@ -37,7 +38,9 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private readonly IWorkspaceSettingsStore _workspaceSettingsStore;
 
     private readonly CadUserSettings _userSettings;
-    private readonly CadDocumentStorage _storage = new();
+    private readonly CadDocumentSaveSession _saveSession;
+    private readonly CadSelectionAvailabilityCache _selectionAvailability = new();
+    private long _notifiedSelectionAvailabilityVersion = -1;
     private readonly IFileDialogService _fileDialogService;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
@@ -48,9 +51,6 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private bool _isRestoringWorkspaceSettings;
     private bool _disposed;
     private CadEditor? _trackedEditor;
-    private object? _savedDocumentHistorySnapshot;
-    private int _directChangeVersion;
-    private int _savedDirectChangeVersion;
     private readonly IDisposable _viewSettingsChangedSubscription;
     private readonly IDisposable _selectionFilterChangedSubscription;
     private readonly IDisposable _interactionStateChangedSubscription;
@@ -67,7 +67,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ISubscriber<CadDocumentViewSettingsChangedMessage> viewSettingsChangedSubscriber,
         ISubscriber<CadSelectionFilterChangedMessage> selectionFilterChangedSubscriber,
         ISubscriber<CadDocumentInteractionStateChangedMessage> interactionStateChangedSubscriber,
-        IPublisher<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedPublisher
+        IPublisher<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedPublisher,
+        ICadDocumentWriter documentWriter
         )
     {
         _userSettingsStore = userSettingsStore;
@@ -80,6 +81,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         _printService = printService;
         _documentSummaryChangedPublisher = documentSummaryChangedPublisher;
         CadDocumentViewModel = cadDocumentViewModel;
+        _saveSession = new(CadDocumentViewModel.CadEditor, documentWriter);
         LayoutWorkspace = new LayoutWorkspaceViewModel(CadDocumentViewModel);
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
         CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
@@ -94,12 +96,13 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         ContentId = Id = cadDocumentViewModel.CadEditor.Document.Id.ToString();
         Title = cadDocumentViewModel.CadEditor.Document.Name;
         ToolTip = $"id: {cadDocumentViewModel.CadEditor.Document.Id}";
-        ResetModificationBaseline(isModified: string.IsNullOrWhiteSpace(CurrentFilePath));
+        RefreshModifiedState();
 
     }
 
     public async Task<bool> ConfirmCloseAsync()
     {
+        await _saveSession.WaitForIdleAsync();
         if (!IsModified)
             return true;
 
@@ -107,16 +110,16 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     }
 
-    internal Task<bool> SaveForCloseAsync()
+    internal async Task<bool> SaveForCloseAsync()
     {
-        return TrySaveFileAsync();
+        return await TrySaveFileAsync() && !IsModified;
     }
 
     internal async Task<bool> SaveForWorkspaceToolAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!string.IsNullOrWhiteSpace(CurrentFilePath))
-            return await SaveToAsync(CurrentFilePath, cancellationToken);
+            return await SaveToAsync(cancellationToken: cancellationToken);
 
         var fileName = string.IsNullOrWhiteSpace(CadDocumentViewModel.CadEditor.Document.Name)
             ? "Untitled.d2cad"
@@ -131,12 +134,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     internal async Task<bool> SaveToFileForWorkspaceToolAsync(string filePath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!await SaveToAsync(filePath, cancellationToken))
-            return false;
-
-        CurrentFilePath = filePath;
-        SaveWorkspaceSettings();
-        return true;
+        return await SaveToAsync(filePath, cancellationToken);
     }
 
     private async Task<bool> ConfirmCloseCoreAsync()
@@ -144,7 +142,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         var result = await _dialogService.ShowUnsavedDocumentDialogAsync(DocumentName);
         return result switch
         {
-            UnsavedDocumentDialogResult.Save => await TrySaveFileAsync(),
+            UnsavedDocumentDialogResult.Save => await SaveForCloseAsync(),
             UnsavedDocumentDialogResult.Discard => true,
             _ => false
         };
@@ -433,7 +431,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (string.IsNullOrWhiteSpace(CurrentFilePath))
             return await TrySaveAsFileAsync();
 
-        return await SaveToAsync(CurrentFilePath);
+        return await SaveToAsync();
     }
 
     [RelayCommand]
@@ -451,14 +449,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (selectedFileName is null)
             return false;
 
-        if (await SaveToAsync(selectedFileName))
-        {
-            CurrentFilePath = selectedFileName;
-            SaveWorkspaceSettings();
-            return true;
-        }
-
-        return false;
+        return await SaveToAsync(selectedFileName);
     }
 
     private bool CanPrint() => CadDocumentViewModel.ActiveLayoutId is not null;
@@ -558,16 +549,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private bool CanCreateBlockFromSelection()
     {
-        var editor = CadDocumentViewModel.CadEditor;
-        var selectedIds = editor.Selection.EntityIds;
-        return selectedIds.Count > 0 &&
-               selectedIds.All(id =>
-                   editor.Document.TryGetEntity(id, out var entity) &&
-                   entity is not null &&
-                   entity.OwnerBlockId.Equals(editor.ActiveOwnerBlockId) &&
-                   CadEntityAccessPolicy.IsEditable(editor.Document, entity)) &&
-               editor.Document.Layers.Values.Any(layer =>
-                   CadEntityAccessPolicy.CanAddToLayer(editor.Document, layer.Id));
+        return _selectionAvailability.Get(CadDocumentViewModel.CadEditor).CanCreateBlock;
     }
 
     private EntityId[] GetBlockCreationSelection()
@@ -595,22 +577,29 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
     }
 
-    private Task<bool> SaveToAsync(string filePath) => SaveToAsync(filePath, CancellationToken.None);
-
-    private async Task<bool> SaveToAsync(string filePath, CancellationToken cancellationToken)
+    private async Task<bool> SaveToAsync(string? filePath = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            using (_dialogService.ShowProgressBarDialog())
-                await _storage.SaveAsync(CadDocumentViewModel.CadEditor.Document, filePath, cancellationToken);
+            void OnCommitted()
+            {
+                CurrentFilePath = _saveSession.FilePath;
+                SaveWorkspaceSettings();
+                RefreshModifiedState();
+                _snackbarService.Enqueue("File saved successfully.");
+            }
 
-            ResetModificationBaseline(isModified: false);
-            _snackbarService.Enqueue("File saved successfully.");
-            return true;
+            return filePath is null
+                ? await _saveSession.SaveCurrentAsync(OnCommitted, () => _dialogService.ShowProgressBarDialog(), cancellationToken)
+                : await _saveSession.SaveAsync(filePath, OnCommitted, () => _dialogService.ShowProgressBarDialog(), cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
         }
         catch (Exception ex)
         {
@@ -683,10 +672,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private bool CanDeleteSelection()
     {
-        return CadDocumentViewModel.CadEditor.Selection.EntityIds.Any(entityId =>
-            CadDocumentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) &&
-            entity is not null &&
-            CadEntityAccessPolicy.IsEditable(CadDocumentViewModel.CadEditor.Document, entity));
+        return _selectionAvailability.Get(CadDocumentViewModel.CadEditor).CanDelete;
     }
 
     private bool CanCopySelection()
@@ -964,17 +950,16 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private void ApplyOriginPositionFromToolbar()
     {
-        if (!IsFinite(ViewModelCadOriginX) || !IsFinite(ViewModelCadOriginY))
+        var unit = CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit;
+        var x = CadUnitConversion.ToMillimeters(ViewModelCadOriginX, unit);
+        var y = CadUnitConversion.ToMillimeters(ViewModelCadOriginY, unit);
+        if (!IsFinite(x) || !IsFinite(y))
+        {
+            ApplyDocumentViewSettingsToToolbar();
             return;
+        }
 
-        CadDocumentViewModel.CadEditor.SetOriginPosition(
-            new CadPointD(
-                CadUnitConversion.ToMillimeters(
-                    ViewModelCadOriginX,
-                    CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit),
-                CadUnitConversion.ToMillimeters(
-                    ViewModelCadOriginY,
-                    CadDocumentViewModel.CadEditor.Document.DocumentSettings.Unit)));
+        CadDocumentViewModel.CadEditor.SetOriginPosition(new CadPointD(x, y));
     }
 
     public void ApplyUserSettings(CadUserSettings settings)
@@ -1058,6 +1043,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             return;
 
         _disposed = true;
+        _saveSession.Dispose();
         SaveWorkspaceSettings();
         SaveUserSettings();
         DetachDocumentChangeTracking();
@@ -1092,11 +1078,16 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (!ReferenceEquals(message.DocumentViewModel, CadDocumentViewModel))
             return;
 
-        CreateBlockFromSelectionCommand.NotifyCanExecuteChanged();
-        DeleteSelectedEntitiesCommand.NotifyCanExecuteChanged();
-        CopySelectedEntitiesCommand.NotifyCanExecuteChanged();
-        CutSelectedEntitiesCommand.NotifyCanExecuteChanged();
-        ClearSelectionCommand.NotifyCanExecuteChanged();
+        _selectionAvailability.Get(CadDocumentViewModel.CadEditor);
+        if (_notifiedSelectionAvailabilityVersion != _selectionAvailability.Version)
+        {
+            _notifiedSelectionAvailabilityVersion = _selectionAvailability.Version;
+            CreateBlockFromSelectionCommand.NotifyCanExecuteChanged();
+            DeleteSelectedEntitiesCommand.NotifyCanExecuteChanged();
+            CopySelectedEntitiesCommand.NotifyCanExecuteChanged();
+            CutSelectedEntitiesCommand.NotifyCanExecuteChanged();
+            ClearSelectionCommand.NotifyCanExecuteChanged();
+        }
         UndoCommand.NotifyCanExecuteChanged();
         RedoCommand.NotifyCanExecuteChanged();
     }
@@ -1127,6 +1118,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
         if (e.PropertyName == nameof(CadDocumentViewModel.CadEditor))
         {
+            _saveSession.Reset(CadDocumentViewModel.CadEditor, "");
+            CurrentFilePath = "";
             AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
             ApplyDocumentViewSettingsToToolbar();
             CreateBlockFromSelectionCommand.NotifyCanExecuteChanged();
@@ -1172,24 +1165,13 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private void MarkDirectDocumentChanged()
     {
-        _directChangeVersion++;
+        _saveSession.MarkDirectChange();
         RefreshModifiedState();
-    }
-
-    private void ResetModificationBaseline(bool isModified)
-    {
-        _savedDocumentHistorySnapshot = CadDocumentViewModel.CadEditor.CreateDocumentHistorySnapshot();
-        _savedDirectChangeVersion = _directChangeVersion;
-        IsModified = isModified;
-        PublishDocumentSummaryChanged();
     }
 
     private void RefreshModifiedState()
     {
-        IsModified =
-            string.IsNullOrWhiteSpace(CurrentFilePath) ||
-            !CadDocumentViewModel.CadEditor.DocumentHistoryEquals(_savedDocumentHistorySnapshot) ||
-            _directChangeVersion != _savedDirectChangeVersion;
+        IsModified = _saveSession.IsModified;
         PublishDocumentSummaryChanged();
     }
 
@@ -1201,9 +1183,10 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         CadDocumentViewModel.FitToWindow();
         LayoutWorkspace.RefreshDocumentStructure();
         CurrentFilePath = fileName;
+        _saveSession.Reset(CadDocumentViewModel.CadEditor, fileName);
         RestoreWorkspaceSettings();
         Title = CadDocumentViewModel.CadEditor.Document.Name;
-        ResetModificationBaseline(isModified: false);
+        RefreshModifiedState();
         OnPropertyChanged(nameof(DocumentName));
         PublishDocumentSummaryChanged();
     }

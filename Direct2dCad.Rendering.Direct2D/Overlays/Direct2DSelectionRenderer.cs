@@ -531,8 +531,6 @@ internal sealed class Direct2DSelectionRenderer(
         if (resources?.Geometry is null)
             return false;
 
-        if (options.IsLevelOfDetailEnabled)
-            resourceCache.EnsureLevelOfDetailGeometries(entity, resources);
         var geometry = Direct2DEntityLevelOfDetail.ResolveGeometry(
             entity,
             resources,

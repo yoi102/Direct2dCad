@@ -6,7 +6,7 @@ using MessagePack;
 
 namespace Direct2dCad.IO;
 
-public sealed class CadDocumentStorage
+public sealed partial class CadDocumentStorage : ICadDocumentWriter
 {
     private const int MaxSectionCount = 4096;
     private static readonly MessagePackSerializerOptions Lz4Options =
@@ -33,7 +33,8 @@ public sealed class CadDocumentStorage
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Capture a detached, consistent snapshot on the editor thread.
+        // Capture mutable state on the editor thread. Image/OLE storage is immutable
+        // after capture and can be shared until its section is written.
         var payloads = CreateSectionPayloads(document);
         await Task.Run(() => WriteSectionsAsync(payloads, filePath, asyncIo: true, cancellationToken),
             cancellationToken).ConfigureAwait(false);

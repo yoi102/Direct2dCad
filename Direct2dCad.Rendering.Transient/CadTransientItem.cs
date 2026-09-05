@@ -146,3 +146,11 @@ public sealed record CadTransientBlockReference(
     CadTransientStyle Style,
     EntityId? SourceEntityId = null)
     : CadTransientItem(Style);
+
+public sealed record CadTransientCompositePath(
+    CadPointD StartPoint,
+    IReadOnlyList<CadCompositePathSegment> Segments,
+    bool Closed,
+    CadRectD Bounds,
+    CadTransientStyle Style)
+    : CadTransientItem(Style);

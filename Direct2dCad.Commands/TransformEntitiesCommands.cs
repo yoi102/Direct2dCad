@@ -38,9 +38,7 @@ public sealed class RotateEntitiesCommand : ICadCommand
 
     private CadDocumentChangeSet ChangeSet(CadDocument document)
     {
-        var dependentReferences = document.RefreshBlockReferenceBounds();
-        return CadDocumentChangeSet.ForEntities(
-            _entityIds.Concat(dependentReferences).Distinct(),
+        return CadCommandGeometryChanges.Resolve(document, _entityIds,
             CadEntityChangeKind.Geometry | CadEntityChangeKind.Rotation);
     }
 
@@ -102,10 +100,7 @@ public sealed class ScaleEntitiesCommand : ICadCommand
 
     private CadDocumentChangeSet ChangeSet(CadDocument document)
     {
-        var dependentReferences = document.RefreshBlockReferenceBounds();
-        return CadDocumentChangeSet.ForEntities(
-            _entityIds.Concat(dependentReferences).Distinct(),
-            CadEntityChangeKind.Geometry);
+        return CadCommandGeometryChanges.Resolve(document, _entityIds, CadEntityChangeKind.Geometry);
     }
 }
 
@@ -156,9 +151,7 @@ public sealed class MirrorEntitiesCommand : ICadCommand
 
     private CadDocumentChangeSet ChangeSet(CadDocument document)
     {
-        var dependentReferences = document.RefreshBlockReferenceBounds();
-        return CadDocumentChangeSet.ForEntities(
-            _entityIds.Concat(dependentReferences).Distinct(),
+        return CadCommandGeometryChanges.Resolve(document, _entityIds,
             CadEntityChangeKind.Geometry | CadEntityChangeKind.Rotation);
     }
 }

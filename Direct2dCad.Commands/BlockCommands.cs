@@ -222,7 +222,7 @@ public sealed class RenameBlockCommand(BlockId blockId, string name) : ICadComma
     {
         _oldName ??= document.GetBlock(blockId).Name;
         document.RenameBlockDefinition(blockId, name);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.BlockMetadata);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -230,7 +230,7 @@ public sealed class RenameBlockCommand(BlockId blockId, string name) : ICadComma
         if (_oldName is null)
             return CadDocumentChangeSet.Empty;
         document.RenameBlockDefinition(blockId, _oldName);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.BlockMetadata);
     }
 }
 

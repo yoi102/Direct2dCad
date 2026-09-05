@@ -287,7 +287,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
         if (_lastSelectionRefresh is { } prior && ReferenceEquals(prior.Editor, editor) &&
             prior.SelectionVersion == editor.Selection.Version && prior.Owner == editor.ActiveOwnerBlockId &&
             unchecked(prior.DocumentVersion + 1) == editor.DocumentChangeVersion &&
-            !editor.LastDocumentChanges.AffectsDocumentStructure && !editor.LastDocumentChanges.AffectsViewSettings &&
+            editor.LastDocumentChanges.TableChanges == CadDocumentTableChangeKind.None && !editor.LastDocumentChanges.AffectsDocumentStructure && !editor.LastDocumentChanges.AffectsViewSettings &&
             !editor.LastDocumentChanges.AffectsLayouts && !editor.LastDocumentChanges.AffectsLayoutStructure)
         {
             propertyChanges = CadEntityChangeKind.None;
@@ -568,7 +568,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
     private bool RequiresSelectionRefresh(Editor.CadEditor editor)
     {
         var changes = editor.LastDocumentChanges;
-        if (changes.AffectsDocumentStructure || changes.AffectsViewSettings || changes.AffectsLayouts ||
+        if (changes.TableChanges != CadDocumentTableChangeKind.None || changes.AffectsDocumentStructure || changes.AffectsViewSettings || changes.AffectsLayouts ||
             changes.AffectsLayoutStructure || Entity is BlockReferencePropertyViewModel)
             return true;
         foreach (var change in changes.EntityChanges)

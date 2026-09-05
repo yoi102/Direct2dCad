@@ -282,12 +282,7 @@ internal static class CadGeometryTools
 
     private static CadEntity GetEntity(CadDocumentToolExecutor executor, EntityId id)
     {
-        var editor = executor.DocumentViewModel.CadEditor;
-        if (!editor.Document.TryGetEntity(id, out var entity) || entity is null || entity.IsErased)
-            throw new ArgumentException($"Entity not found: {id.Value}");
-        if (entity.OwnerBlockId != editor.ActiveOwnerBlockId)
-            throw new InvalidOperationException($"Entity {id.Value} is not in the current editing space.");
-        return entity;
+        return executor.GetEntityForTool(id);
     }
 
     private static string EntityType(CadEntity entity) => entity switch

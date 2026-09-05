@@ -134,8 +134,7 @@ public sealed class SetCompositePathGeometryCommand : ICadCommand
         _previousSegments = path.Segments.ToArray();
         _previousClosed = path.Closed;
         path.ReplaceGeometry(_startPoint, _segments, _closed);
-        document.RefreshBlockReferenceBounds();
-        return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
+        return CadCommandGeometryChanges.Resolve(document, [_entityId], CadEntityChangeKind.Geometry);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -144,8 +143,7 @@ public sealed class SetCompositePathGeometryCommand : ICadCommand
             return CadDocumentChangeSet.Empty;
         var path = GetPath(document);
         path.ReplaceGeometry(_previousStartPoint, _previousSegments, _previousClosed);
-        document.RefreshBlockReferenceBounds();
-        return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
+        return CadCommandGeometryChanges.Resolve(document, [_entityId], CadEntityChangeKind.Geometry);
     }
 
     private CadCompositePath GetPath(CadDocument document) =>

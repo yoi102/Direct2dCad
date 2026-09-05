@@ -68,7 +68,7 @@ public sealed class CreateTextStyleCommand : ICadCommand
             document.AddStyleCore(_createdStyle);
         }
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -82,7 +82,7 @@ public sealed class CreateTextStyleCommand : ICadCommand
                 entity is CadText text && text.TextStyleId == _createdStyle.Id))
             document.RemoveStyleCore(_createdStyle.Id);
 
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     private static double RequirePositiveFinite(double value, string name) =>

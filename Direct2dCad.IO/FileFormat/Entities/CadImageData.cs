@@ -12,7 +12,7 @@ public sealed class CadImageData
     [Key(3)] public int PixelWidth { get; set; }
     [Key(4)] public int PixelHeight { get; set; }
     [Key(5)] public int Stride { get; set; }
-    [Key(6)] public byte[] Pixels { get; set; } = [];
+    [Key(6)] public ReadOnlyMemory<byte> Pixels { get; set; }
     [Key(7)] public string ContentType { get; set; } = "image/bgra32";
     [Key(8)] public string SourceName { get; set; } = string.Empty;
     [Key(9)] public double Opacity { get; set; } = 1.0;

@@ -22,6 +22,7 @@ internal sealed class CadDocumentInvalidationTracker
 
     private readonly Dictionary<EntityId, CadEntityInvalidationSnapshot> _snapshots = [];
     private CadDocument? _document;
+    private bool _usesLayoutProjection;
 
     public void Reset(
         CadDocument document,
@@ -30,6 +31,7 @@ internal sealed class CadDocumentInvalidationTracker
         ArgumentNullException.ThrowIfNull(document);
 
         _document = document;
+        _usesLayoutProjection = calculator.UsesLayoutProjection;
         _snapshots.Clear();
         foreach (var entity in document.Entities.Values)
         {
@@ -46,7 +48,7 @@ internal sealed class CadDocumentInvalidationTracker
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(changes);
 
-        if (!ReferenceEquals(_document, document))
+        if (!ReferenceEquals(_document, document) || _usesLayoutProjection != calculator.UsesLayoutProjection)
         {
             Reset(document, calculator);
             return changes.DocumentChanged
@@ -62,6 +64,7 @@ internal sealed class CadDocumentInvalidationTracker
 
         List<CadScreenRect>? dirtyRects = null;
         var requiresFullRender =
+            changes.AffectsLayerOrder ||
             changes.AffectsLayouts ||
             changes.AffectsLayoutStructure ||
             changes.AffectsViewSettings;

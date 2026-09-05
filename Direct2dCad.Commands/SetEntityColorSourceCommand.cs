@@ -84,7 +84,7 @@ public sealed class SetEntityColorSourceCommand : ICadCommand
         var result = CadDocumentChangeSet.ForEntities(entityIds, CadEntityChangeKind.Appearance);
         return _createdGraphicStyleIds.Count == 0
             ? result
-            : result.WithDocumentStructureChanged();
+            : result.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     private static StyleId CreateEntityGraphicStyleFromLayer(CadDocument document, CadEntity entity)

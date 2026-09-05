@@ -83,7 +83,8 @@ public sealed class PropertyAndLayoutCommandTests
         Assert.Equal("Arial", style.FontFamily);
         Assert.Equal(1.0, style.TextHeight);
         Assert.False(style.IsBold);
-        Assert.True(execute.AffectsDocumentStructure);
+        Assert.False(execute.AffectsDocumentStructure);
+        Assert.Equal(CadDocumentTableChangeKind.Styles, execute.TableChanges);
     }
 
     [Fact]
@@ -283,7 +284,10 @@ public sealed class PropertyAndLayoutCommandTests
         Assert.True(layer.IsLocked);
         Assert.True(layer.IsFrozen);
         Assert.Contains(executeResult.EntityChanges, change => change.EntityId == line.Id);
-        Assert.True(executeResult.AffectsDocumentStructure);
+        Assert.False(executeResult.AffectsDocumentStructure);
+        Assert.True(executeResult.AffectsLayerAccess);
+        Assert.All(executeResult.EntityChanges, change =>
+            Assert.Equal(CadEntityChangeKind.Visibility | CadEntityChangeKind.Layer, change.Kind));
 
         command.Undo(document);
         Assert.True(layer.IsVisible);

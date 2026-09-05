@@ -207,7 +207,10 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         TrackPendingTextMeasurements(document, changes);
         _baseSceneDirty |= changes.DocumentChanged;
         if (changes.DocumentChanged)
-            ResetParallelRenderers();
+        {
+            _sharedDeviceRenderer.ApplyChanges(document, changes);
+            _multiDeviceRenderer.ApplyChanges(document, changes);
+        }
         _renderer.ApplyChanges(document, changes);
     }
 
@@ -296,8 +299,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             return;
 
         var sizeChanged = width != _target.Width || height != _target.Height;
-        if (sizeChanged)
-            ResetParallelRenderers();
         _imageSource?.SetSize(width, height);
 
         if (_imageSource is not null)
@@ -1138,6 +1139,11 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
             return false;
         }
 
+        // Replaying prepared tiles/command lists is cheaper than submitting the
+        // entire scene again on workers, even when parallel rendering is enabled.
+        if (_renderer.HasCompleteBaseCache(document, viewport, _renderOptions))
+            return false;
+
         var visibleEntities = _renderer.GetVisibleEntitiesForParallelRendering(
             document,
             viewport,
@@ -1322,6 +1328,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _multiDeviceRenderer.Reset();
         _sharedDeviceRenderer.Reset();
     }
+
+    internal object? ParallelPoolIdentity => _renderOptions.ParallelRenderingMode ==
+        CadParallelRenderingMode.SharedDeviceContexts
+        ? _sharedDeviceRenderer.PoolIdentity : _multiDeviceRenderer.PoolIdentity;
+
+    internal int ParallelPreparedResourceCount => _sharedDeviceRenderer.PreparedEntityResourceCount +
+        _multiDeviceRenderer.PreparedEntityResourceCount;
 
     public void Dispose()
     {

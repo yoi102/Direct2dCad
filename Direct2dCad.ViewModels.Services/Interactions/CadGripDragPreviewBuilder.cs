@@ -63,6 +63,12 @@ internal readonly struct CadGripDragPreviewBuilder(
                 AddSplineGripPreview(items, spline, drag, style);
                 break;
 
+            case CadCompositePath path:
+                if (TryCreateUniformBoundsGripScale(path.Bounds, drag, out _, out _, out var transform))
+                    items.Add(new CadTransientGroup(
+                        [new CadTransientEntityReference(path.Id, CadVectorD.Zero, style)], transform, style, path.Bounds));
+                break;
+
             case CadText text:
                 AddTextGripPreview(items, text, drag, style, auxiliaryStyle);
                 break;

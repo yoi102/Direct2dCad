@@ -53,7 +53,7 @@ public sealed class SetLayerAppearanceCommand : ICadCommand
     {
         return CadDocumentChangeSet
             .ForEntities(document.GetEntityIdsOnLayer(_layerId), CadEntityChangeKind.Appearance)
-            .WithDocumentStructureChanged();
+            .WithTableChanges(CadDocumentTableChangeKind.LayerAppearance);
     }
 
     private static void Apply(CadLayer layer, LayerAppearance appearance)

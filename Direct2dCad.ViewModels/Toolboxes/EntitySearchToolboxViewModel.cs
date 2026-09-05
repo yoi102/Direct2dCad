@@ -193,7 +193,7 @@ public partial class EntitySearchToolboxViewModel : CadToolboxViewModelBase, IDi
         const CadEntityChangeKind membershipOrOrder = CadEntityChangeKind.Created |
             CadEntityChangeKind.Deleted | CadEntityChangeKind.Layer |
             CadEntityChangeKind.DrawOrder | CadEntityChangeKind.Visibility;
-        if (changes.AffectsDocumentStructure || changes.AffectsLayouts || changes.AffectsLayoutStructure ||
+        if (changes.AffectsDocumentStructure || changes.TableChanges != CadDocumentTableChangeKind.None || changes.AffectsLayouts || changes.AffectsLayoutStructure ||
             changes.EntityChanges.Any(change => (change.Kind & membershipOrOrder) != 0))
             return false;
 

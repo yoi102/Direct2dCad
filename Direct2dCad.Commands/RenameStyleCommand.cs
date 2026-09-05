@@ -12,7 +12,7 @@ public sealed class RenameStyleCommand(StyleId styleId, string name) : ICadComma
     {
         _oldName ??= document.GetStyle<Direct2dCad.Db.Data.Styles.CadStyle>(styleId).Name;
         document.RenameStyle(styleId, name);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
@@ -20,6 +20,6 @@ public sealed class RenameStyleCommand(StyleId styleId, string name) : ICadComma
         if (_oldName is null)
             return CadDocumentChangeSet.Empty;
         document.RenameStyle(styleId, _oldName);
-        return CadDocumentChangeSet.Empty.WithDocumentStructureChanged();
+        return CadDocumentChangeSet.Empty.WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 }

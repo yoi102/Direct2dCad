@@ -28,6 +28,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     private readonly Direct2DGeometryFactory _geometryFactory = new();
     private readonly Direct2DHatchTileCache _hatchTiles;
     private Direct2DGeometryPreparationService? _backgroundGeometryPreparation;
+    private Direct2DLevelOfDetailPreparation? _lodPreparation;
     private float _maximumStrokeWidth;
     private bool _maximumStrokeWidthDirty;
     private bool _disposed;
@@ -137,29 +138,32 @@ internal sealed class Direct2DResourceCache : IDisposable
         _backgroundGeometryPreparation?.Schedule(document);
     }
 
-    internal bool CancelBackgroundGeometryPreparation()
-    {
-        ThrowIfDisposed();
-        if (_backgroundGeometryPreparation is not { } preparation)
-            return false;
-
-        preparation.Dispose();
-        _backgroundGeometryPreparation = null;
-        return true;
-    }
-
     internal bool ApplyBackgroundGeometryPreparation(
         CadDocument document,
-        int maximumEntityCount)
+        int maximumEntityCount,
+        CadViewport? viewport = null,
+        CadRenderOptions? options = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
         if (_backgroundGeometryPreparation is not { } preparation)
             return false;
 
-        var applied = 0;
-        while (applied < Math.Max(1, maximumEntityCount) &&
-               preparation.TryTakeNext(out var prepared) &&
+        if (preparation.NeedsPriority && viewport is not null && options is not null)
+        {
+            if (options.EntityBoundsQueryInto is { } queryInto)
+            {
+                var ids = new List<EntityId>();
+                queryInto(options.ActiveOwnerBlockId, viewport.VisibleWorldBounds, ids);
+                preparation.Prioritize(ids);
+            }
+            else if (options.EntityBoundsQuery is { } query)
+                preparation.Prioritize(query(options.ActiveOwnerBlockId, viewport.VisibleWorldBounds));
+        }
+        preparation.CaptureStep(new ResourcePreparationBudget(Math.Max(2, maximumEntityCount * 2), TimeSpan.FromMilliseconds(2)));
+
+        var budget = new ResourcePreparationBudget(Math.Max(1, maximumEntityCount), TimeSpan.FromMilliseconds(2));
+        while (preparation.TryTakeNext(out var prepared, budget) &&
                prepared is not null)
         {
             try
@@ -171,7 +175,6 @@ internal sealed class Direct2DResourceCache : IDisposable
                 prepared.Dispose();
             }
 
-            applied++;
         }
 
         if (preparation.IsPending)
@@ -256,6 +259,12 @@ internal sealed class Direct2DResourceCache : IDisposable
         ArgumentNullException.ThrowIfNull(changes);
         ThrowIfDisposed();
 
+        _backgroundGeometryPreparation?.Invalidate(changes.EntityChanges
+            .Where(change => (change.Kind & (CadEntityChangeKind.Created | CadEntityChangeKind.Deleted |
+                CadEntityChangeKind.Geometry | CadEntityChangeKind.Visibility | CadEntityChangeKind.Fill |
+                CadEntityChangeKind.EmbeddedData | CadEntityChangeKind.Layer)) != 0)
+            .Select(change => change.EntityId));
+
         foreach (var change in changes.EntityChanges)
         {
             const CadEntityChangeKind resourceIndependentChanges =
@@ -311,7 +320,19 @@ internal sealed class Direct2DResourceCache : IDisposable
                 UpdateGeometryResources(document, entity, bucket);
 
             if ((resourceChanges & CadEntityChangeKind.Fill) != 0)
+            {
                 UpdateFillResources(document, entity, bucket);
+                if (entity is CadSpline)
+                {
+                    bucket.GeometryRealizations?.Clear();
+                    bucket.MediumDetailGeometry?.Dispose();
+                    bucket.LowDetailGeometry?.Dispose();
+                    bucket.MediumDetailGeometry = bucket.LowDetailGeometry = null;
+                    bucket.AreLevelOfDetailGeometriesInitialized = false;
+                    bucket.LodRevision++;
+                    QueueLevelOfDetail(entity);
+                }
+            }
 
             if ((resourceChanges & CadEntityChangeKind.Appearance) != 0)
                 UpdateAppearanceResources(document, entity, bucket);
@@ -338,6 +359,9 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
+
+        if (preparedGeometry is null)
+            _backgroundGeometryPreparation?.Invalidate(entityId);
 
         if (!CanCreateDeviceResources())
         {
@@ -386,10 +410,12 @@ internal sealed class Direct2DResourceCache : IDisposable
         _entityResources[entityId] = newBucket;
         AddStrokeWidthContribution(newBucket);
         oldBucket?.Dispose();
+        QueueLevelOfDetail(entity);
     }
 
     public void RemoveEntity(EntityId entityId)
     {
+        _backgroundGeometryPreparation?.Invalidate(entityId);
         if (_entityResources.Remove(entityId, out var bucket))
         {
             RemoveStrokeWidthContribution(bucket);
@@ -686,35 +712,35 @@ internal sealed class Direct2DResourceCache : IDisposable
         bucket.MediumDetailGeometry = null;
         bucket.LowDetailGeometry = null;
         bucket.AreLevelOfDetailGeometriesInitialized = false;
+        bucket.LodRevision++;
+        QueueLevelOfDetail(entity);
     }
 
-    internal void EnsureLevelOfDetailGeometries(
-        CadEntity entity,
-        EntityResourceBucket bucket)
+    internal bool PrepareLevelOfDetailGeometries(CadDocument document, bool enabled, bool buildStep, out bool changed)
     {
         ThrowIfDisposed();
-        if (bucket.AreLevelOfDetailGeometriesInitialized ||
-            entity is not (CadPolyline or CadSpline) ||
-            Factory is null)
+        changed = false;
+        if (!enabled || Factory is null)
         {
-            return;
+            _lodPreparation?.Dispose();
+            _lodPreparation = null;
+            return false;
         }
+        if (_lodPreparation is null)
+        {
+            _lodPreparation = new();
+            foreach (var id in _entityResources.Keys)
+                if (document.TryGetEntity(id, out var entity) && entity is not null)
+                    QueueLevelOfDetail(entity);
+        }
+        return _lodPreparation.Prepare(document, Factory, _entityResources,
+            new ResourcePreparationBudget(buildStep ? 64 : 4, TimeSpan.FromMilliseconds(2)), out changed);
+    }
 
-        ID2D1Geometry? medium = null;
-        ID2D1Geometry? low = null;
-        try
-        {
-            (medium, low) = CreateGeometryLods(entity);
-            bucket.MediumDetailGeometry = medium;
-            bucket.LowDetailGeometry = low;
-            bucket.AreLevelOfDetailGeometriesInitialized = true;
-        }
-        catch
-        {
-            medium?.Dispose();
-            low?.Dispose();
-            throw;
-        }
+    private void QueueLevelOfDetail(CadEntity entity)
+    {
+        if (entity is CadPolyline or CadSpline)
+            _lodPreparation?.Request(entity.Id);
     }
 
     private void UpdateTextResources(
@@ -775,83 +801,6 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadShapeText shapeText => CreateShapeTextGeometry(shapeText.CreateStrokeSegments()),
             _ => (null, 0)
         };
-    }
-
-    internal Direct2DPreparedGeometry CreatePreparedGeometry(
-        CadEntity entity,
-        bool includePrimitiveFillGeometry)
-    {
-        var (geometry, complexity) = CreateGeometry(
-            entity,
-            includePrimitiveFillGeometry);
-        return new Direct2DPreparedGeometry(entity.Id, geometry, complexity);
-    }
-
-    private (ID2D1Geometry? Medium, ID2D1Geometry? Low) CreateGeometryLods(CadEntity entity)
-    {
-        IReadOnlyList<CadPointD> points;
-        bool closed;
-        int sourceComplexity;
-        switch (entity)
-        {
-            case CadPolyline polyline when polyline.Points.Count > 16:
-                points = polyline.Points;
-                closed = polyline.Closed;
-                sourceComplexity = polyline.Points.Count;
-                break;
-            case CadSpline { Closed: true, FillStyleId: not null }:
-                // RDP preserves distance but not winding topology. A simplified closed
-                // fill can therefore grow thin spikes around self-intersections.
-                return (null, null);
-            case CadSpline spline when spline.FitPoints.Count > 16:
-                points = spline.EnumerateFlattenedPoints(6).ToArray();
-                closed = spline.Closed;
-                sourceComplexity = points.Count;
-                break;
-            default:
-                return (null, null);
-        }
-
-        var maximumExtent = Math.Max(entity.Bounds.Width, entity.Bounds.Height);
-        if (!double.IsFinite(maximumExtent) || maximumExtent <= double.Epsilon)
-            return (null, null);
-
-        ID2D1Geometry? medium = null;
-        ID2D1Geometry? low = null;
-        try
-        {
-            var mediumPoints = CadPointLodSimplifier.Simplify(
-                points,
-                closed,
-                maximumExtent / 1024.0);
-            if (IsWorthCaching(mediumPoints.Count, sourceComplexity, closed))
-                medium = CreatePolylineGeometry(mediumPoints, closed);
-
-            var lowPoints = CadPointLodSimplifier.Simplify(
-                points,
-                closed,
-                maximumExtent / 256.0);
-            var comparisonCount = mediumPoints.Count < sourceComplexity
-                ? mediumPoints.Count
-                : sourceComplexity;
-            if (IsWorthCaching(lowPoints.Count, comparisonCount, closed))
-                low = CreatePolylineGeometry(lowPoints, closed);
-
-            return (medium, low);
-        }
-        catch
-        {
-            medium?.Dispose();
-            low?.Dispose();
-            throw;
-        }
-    }
-
-    private static bool IsWorthCaching(int simplifiedCount, int sourceCount, bool closed)
-    {
-        var minimumCount = closed ? 3 : 2;
-        return simplifiedCount >= minimumCount &&
-               simplifiedCount <= sourceCount * 3 / 4;
     }
 
     private ID2D1BitmapBrush? CreateBitmapBrush(CadRectD bounds, int pixelWidth, int pixelHeight, ID2D1Bitmap bitmap)
@@ -915,21 +864,8 @@ internal sealed class Direct2DResourceCache : IDisposable
     }
 
     private (ID2D1Geometry Geometry, int Complexity) CreateShapeTextGeometry(
-        IReadOnlyList<CadStrokeTextSegment> segments)
-    {
-        var geometry = Factory!.CreatePathGeometry();
-        using var sink = geometry.Open();
-
-        foreach (var segment in segments)
-        {
-            sink.BeginFigure(ToVector2(segment.Start), FigureBegin.Hollow);
-            sink.AddLine(ToVector2(segment.End));
-            sink.EndFigure(FigureEnd.Open);
-        }
-
-        sink.Close();
-        return (geometry, segments.Count);
-    }
+        IReadOnlyList<CadStrokeTextSegment> segments) =>
+        (_geometryFactory.CreateStrokeText(Factory!, segments), segments.Count);
 
     private ID2D1PathGeometry CreateArcPathGeometry(CadArc arc)
     {
@@ -1165,6 +1101,8 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     private void ClearEntityResources()
     {
+        _lodPreparation?.Dispose();
+        _lodPreparation = null;
         foreach (var bucket in _entityResources.Values)
             bucket.Dispose();
 
@@ -1239,6 +1177,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         public ID2D1Geometry? MediumDetailGeometry { get; set; }
         public ID2D1Geometry? LowDetailGeometry { get; set; }
         public bool AreLevelOfDetailGeometriesInitialized { get; set; }
+        public int LodRevision { get; set; }
         public int GeometryComplexity { get; set; }
         public Direct2DGeometryRealizationCache.EntityCache? GeometryRealizations { get; set; }
         internal KeyedResourceLease<ID2D1SolidColorBrush, CadColor>? StrokeBrushLease { get; set; }

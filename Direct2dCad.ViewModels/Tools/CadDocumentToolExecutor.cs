@@ -15,7 +15,6 @@ namespace Direct2dCad.ViewModels.Tools;
 internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewModel, Guid batchId)
 {
     private const int MaximumListedEntities = 200;
-    private int _executedCommandCount;
 
     public static IReadOnlyList<AiToolDefinition> ToolDefinitions { get; } =
     [
@@ -190,34 +189,27 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
     internal void ExecuteCommand(ICadCommand command)
     {
         documentViewModel.CadEditor.ExecuteInBatch(command, batchId);
-        _executedCommandCount++;
     }
 
     internal T ExecuteAtomically<T>(Func<T> operation)
     {
-        ArgumentNullException.ThrowIfNull(operation);
-        var commandCount = _executedCommandCount;
-        try
-        {
-            return operation();
-        }
-        catch
-        {
-            var executedSinceStart = _executedCommandCount - commandCount;
-            if (executedSinceStart > 0)
-            {
-                documentViewModel.CadEditor.RollbackDocumentBatch(batchId, executedSinceStart);
-                _executedCommandCount -= executedSinceStart;
-            }
-
-            throw;
-        }
+        return documentViewModel.CadEditor.DocumentCommands.ExecuteAtomicBatch(batchId, operation);
     }
 
     internal EntityId[] ResolveEntityIdsForTool(JsonElement arguments, bool allowSelectionFallback) =>
         ResolveEntityIds(arguments, allowSelectionFallback);
 
     internal LayerId ResolveLayerForTool(string name) => ResolveLayer(name);
+
+    internal CadEntity GetEntityForTool(EntityId id)
+    {
+        var editor = documentViewModel.CadEditor;
+        if (!editor.Document.TryGetEntity(id, out var entity) || entity is null || entity.IsErased)
+            throw new ArgumentException($"Entity not found: {id.Value}");
+        if (entity.OwnerBlockId != editor.ActiveOwnerBlockId)
+            throw new InvalidOperationException($"Entity {id.Value} is not in the current editing space.");
+        return entity;
+    }
 
     internal void ValidateCreationTool(string toolName, JsonElement arguments)
     {
@@ -970,7 +962,6 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             documentViewModel.CadEditor.ExecuteInBatch(
                 new SetViewSettingsCommand(target),
                 batchId);
-            _executedCommandCount++;
         }
         if (requestedUnit is not null ||
             requestedLengthPrecision is not null ||
@@ -983,7 +974,6 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
                     requestedLengthPrecision ?? settings.LengthPrecision,
                     requestedAnglePrecision ?? settings.AnglePrecision),
                 batchId);
-            _executedCommandCount++;
         }
         documentViewModel.RequestRender();
 
@@ -1048,7 +1038,6 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         var target = CloneViewSettings(document.ViewSettings);
         target.Grid.ReplaceSpacingPresets(presets, grid.MajorSpacingPresetId, grid.MinorSpacingPresetId);
         documentViewModel.CadEditor.ExecuteInBatch(new SetViewSettingsCommand(target), batchId);
-        _executedCommandCount++;
         documentViewModel.RequestRender();
         return Success(new
         {
@@ -1600,14 +1589,8 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
 
     private EntityId[] ValidateEntityIds(EntityId[] ids)
     {
-        var document = documentViewModel.CadEditor.Document;
         foreach (var id in ids)
-        {
-            if (!document.TryGetEntity(id, out var entity) || entity is null || entity.IsErased)
-                throw new ArgumentException($"Entity not found: {id.Value}");
-            if (!entity.OwnerBlockId.Equals(documentViewModel.CadEditor.ActiveOwnerBlockId))
-                throw new InvalidOperationException($"Entity {id.Value} is not in the current editing space.");
-        }
+            _ = GetEntityForTool(id);
         return ids;
     }
 

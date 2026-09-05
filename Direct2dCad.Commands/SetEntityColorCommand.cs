@@ -82,7 +82,7 @@ public sealed class SetEntityColorCommand : ICadCommand
 
     private CadDocumentChangeSet CreateChangeSet(IEnumerable<EntityId> entityIds) =>
         CadDocumentChangeSet.ForEntities(entityIds, CadEntityChangeKind.Appearance)
-            .WithDocumentStructureChanged();
+            .WithTableChanges(CadDocumentTableChangeKind.Styles);
 
     private static StyleId? GetGraphicStyleId(CadEntity entity)
     {

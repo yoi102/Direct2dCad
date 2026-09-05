@@ -1,3 +1,4 @@
+using Direct2dCad.Commands;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Editor;
 using Direct2dCad.Rendering.Handles;
@@ -53,6 +54,11 @@ internal sealed class CadGripDragCommitter(
 
             case CadSpline spline:
                 CommitSplineGripDrag(spline, drag);
+                break;
+
+            case CadCompositePath path:
+                if (TryCreateUniformBoundsGripScale(path.Bounds, drag, out var pivot, out var factor, out _))
+                    editor.Execute(new ScaleEntitiesCommand([path.Id], pivot, factor));
                 break;
 
             case CadText text:

@@ -16,6 +16,10 @@ using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Services.Platform.Printing;
+using Direct2dCad.ViewModels.Services.Rendering;
+using Direct2dCad.ViewModels.Services.Styling;
+using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.Editor;
 using Direct2dCad.wpf.Services.Printing;
 using Direct2dCad.wpf.Services.Printing.Vector;
 using SharpGen.Runtime;
@@ -25,6 +29,171 @@ namespace Direct2dCad.Windows.IntegrationTests;
 
 public sealed class Direct2DRenderHostIntegrationTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "WindowsIntegration")]
+    public void CompositePastePreviewRendersAndMovingItLeavesNoTrails(bool filled)
+    {
+        const int width = 320, height = 240;
+        var geometryDocument = CadDocument.Create("Source");
+        var path = geometryDocument.AddCompositePath(new(-20, -20),
+            [new CadCompositeLineSegment(new(20, -20)), new CadCompositeArcSegment(new(20, 0), Math.PI / 2),
+             new CadCompositeSplineSegment([new(20, 20), new(-20, 20)])], closed: true);
+        var document = CadDocument.Create("Target");
+        var viewport = new CadViewport();
+        viewport.SetSize(width, height);
+        viewport.SetView(2, new(width / 2, height / 2));
+        var style = new CadTransientStyle(CadColor.Red, 1, FillColor: filled ? CadColor.Blue : null);
+        var item = new CadTransientCompositePath(path.StartPoint, path.Segments, path.Closed, path.Bounds, style);
+        var scene = new CadTransientScene();
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new RecordingImageSource(width, height));
+        host.SetSize(width, height);
+        host.SetScene(document, viewport, prepareResourcesInBackground: false);
+        host.SetTransientScene(scene);
+        host.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false });
+        host.Render(CadRenderInvalidation.Full);
+        var empty = host.CaptureBackBufferPixels();
+        scene.Replace([item]);
+        host.Render(CadRenderInvalidation.Full);
+        Assert.NotEqual(empty, host.CaptureBackBufferPixels());
+        var calculator = new CadRenderInvalidationCalculator(document, viewport, width, height, _ => style);
+        var previous = calculator.CreateTransientSceneInvalidation(scene);
+        foreach (var offset in new[] { -40, 40, 0 })
+        {
+            scene.Replace([new CadTransientGroup([item], CadMatrixD.CreateTranslation(offset, 0), style, path.Bounds)]);
+            var current = calculator.CreateTransientSceneInvalidation(scene);
+            Assert.False(current.IsEmpty);
+            host.Render(previous.UnionPreservingCoverage(current), baseSceneChanged: false);
+            var partial = host.CaptureBackBufferPixels();
+            host.Render(CadRenderInvalidation.Full, baseSceneChanged: false);
+            Assert.Equal(host.CaptureBackBufferPixels(), partial);
+            previous = current;
+        }
+        scene.Clear();
+        host.Render(previous, baseSceneChanged: false);
+        Assert.Equal(empty, host.CaptureBackBufferPixels());
+    }
+
+    [Theory]
+    [InlineData(0.0, 0.5)]
+    [InlineData(0.7, 2.0)]
+    [Trait("Category", "WindowsIntegration")]
+    public void LayoutModelEdits_PartialFramesMatchFullRedraw(double rotation, double scale)
+    {
+        const int width = 640;
+        const int height = 480;
+        var document = CadDocument.Create("Layout partial rendering");
+        var layout = document.GetLayout(LayoutId.Default);
+        foreach (var view in layout.Viewports.ToArray())
+            document.RemoveLayoutViewport(layout.Id, view.Id);
+        document.AddLayoutViewport(layout.Id, CadRectD.FromXYWH(15, 20, 110, 130), CadPointD.Origin, scale, rotation);
+        document.AddLayoutViewport(layout.Id, CadRectD.FromXYWH(165, 20, 110, 130), CadPointD.Origin, scale, -rotation);
+        var line = document.AddLine(new(-15, -10), new(15, -10));
+        line.SetLineWeight(new CadLineWeight(6));
+        var circle = document.AddCircle(new(0, 25), 12);
+        var paper = document.AddLine(new(20, 180), new(270, 180));
+        document.MoveEntityToBlock(paper.Id, layout.PaperSpaceBlockId);
+        var editor = new CadEditor(document);
+        var viewport = editor.Viewport;
+        viewport.SetSize(width, height);
+        viewport.SetView(2, new(20, height - 20));
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new RecordingImageSource(width, height));
+        host.SetSize(width, height);
+        host.SetScene(document, viewport, prepareResourcesInBackground: false);
+        editor.RegisterGeometryResourceManager(host, rebuildExistingResources: false);
+        host.SetRenderOptions(new CadRenderOptions
+        {
+            ActiveLayoutId = layout.Id,
+            ActiveOwnerBlockId = layout.PaperSpaceBlockId,
+            DrawGrid = false, DrawOrigin = false, DrawGripHandles = false,
+            IsLevelOfDetailEnabled = false,
+            EntityBoundsQueryInto = editor.SpatialIndex.Query
+        });
+        var style = new CadPreviewStyleService(document, new CadUserSettings(), keepEntityStrokeWidthScreenConstant: false);
+        CadRenderInvalidationCalculator Calculator() =>
+            new(document, viewport, width, height, style.CreateEntityPreviewStyle, layout.Id);
+        var tracker = new CadDocumentInvalidationTracker();
+        tracker.Reset(document, Calculator());
+        host.Render(CadRenderInvalidation.Full);
+        Assert.NotEmpty(host.CapturePresentedPixels());
+
+        void Verify(CadDocumentChangeSet change)
+        {
+            var previous = host.CaptureBackBufferPixels();
+            var dirty = tracker.CreateInvalidation(document, change, Calculator());
+            Assert.False(dirty.IsFull);
+            Assert.False(dirty.IsEmpty);
+            host.Render(dirty, baseSceneChanged: true);
+            var partial = host.CaptureBackBufferPixels();
+            Assert.NotEqual(previous, partial);
+            var presented = host.CapturePresentedPixels();
+            host.Render(CadRenderInvalidation.Full, baseSceneChanged: false);
+            Assert.Equal(host.CaptureBackBufferPixels(), partial);
+            Assert.Equal(host.CapturePresentedPixels(), presented);
+        }
+
+        Verify(editor.SetLineGeometry(line.Id, new(-10, 10), new(20, 10)));
+        Verify(editor.SetEntityLineWeight(line.Id, new CadLineWeight(0.25)));
+        Verify(editor.DeleteEntity(circle.Id));
+        Verify(editor.Undo());
+        Verify(editor.SetLineGeometry(paper.Id, new(30, 170), new(250, 170)));
+    }
+
+    [Fact]
+    [Trait("Category", "WindowsIntegration")]
+    public void NestedBlockStrokeEditAndUndo_UpdatePixelsWithoutGeometryChanges()
+    {
+        var document = CadDocument.Create("Block appearance");
+        var inner = document.CreateBlockDefinition("Inner", CadPointD.Origin);
+        var outer = document.CreateBlockDefinition("Outer", CadPointD.Origin);
+        var child = document.AddLine(new(-20, 0), new(20, 0));
+        child.SetLineWeight(new CadLineWeight(2));
+        document.MoveEntityToBlock(child.Id, inner);
+        var nested = document.AddBlockReference(inner, CadPointD.Origin);
+        document.MoveEntityToBlock(nested.Id, outer);
+        var reference = document.AddBlockReference(outer, CadPointD.Origin, scaleX: 2, scaleY: 2);
+        var editor = new CadEditor(document);
+        var viewport = editor.Viewport;
+        viewport.SetSize(640, 480);
+        viewport.SetView(2, new(320, 240));
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new RecordingImageSource(640, 480));
+        host.SetSize(640, 480);
+        host.SetScene(document, viewport, prepareResourcesInBackground: false);
+        host.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false });
+        editor.RegisterGeometryResourceManager(host, rebuildExistingResources: false);
+        var style = new CadPreviewStyleService(document, new CadUserSettings());
+        CadRenderInvalidationCalculator Calculator() => new(document, viewport, 640, 480,
+            style.CreateEntityPreviewStyle, ownerBlockId: BlockId.ModelSpace);
+        var tracker = new CadDocumentInvalidationTracker();
+        tracker.Reset(document, Calculator());
+        host.Render(CadRenderInvalidation.Full);
+        var original = host.CaptureBackBufferPixels();
+
+        void RenderChange()
+        {
+            var changes = editor.LastDocumentChanges;
+            Assert.Equal(CadEntityChangeKind.Appearance,
+                Assert.Single(changes.EntityChanges, change => change.EntityId == reference.Id).Kind);
+            var dirty = tracker.CreateInvalidation(document, changes, Calculator());
+            Assert.False(dirty.IsFull);
+            host.Render(dirty);
+            var partial = host.CaptureBackBufferPixels();
+            host.Render(CadRenderInvalidation.Full, baseSceneChanged: false);
+            Assert.Equal(host.CaptureBackBufferPixels(), partial);
+        }
+
+        editor.SetEntityLineWeight(child.Id, new CadLineWeight(0.25));
+        RenderChange();
+        Assert.NotEqual(original, host.CaptureBackBufferPixels());
+        editor.Undo();
+        RenderChange();
+        Assert.Equal(original, host.CaptureBackBufferPixels());
+    }
+
     [Fact]
     [Trait("Category", "WindowsIntegration")]
     public void DirtyRegionPlanningUsesCountQueryOncePerBoundsAndResetsEachFrame()
@@ -600,6 +769,34 @@ public sealed class Direct2DRenderHostIntegrationTests
         Assert.Equal(96, host.RenderStatistics.VisibleEntityCount);
     }
 
+    [Fact]
+    public void ReattachedSurfacePreparedFirstFrameMatchesCompleteSynchronousScene()
+    {
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new RecordingImageSource(640, 480));
+        host.SetSize(640, 480);
+        var document = CadDocument.Create("Reattached scene");
+        for (var index = 0; index < 160; index++)
+            document.AddPolyline([new(index - 80, -30), new(index - 80, 30)]);
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(3, new CadPointD(320, 240));
+        host.SetScene(document, viewport);
+        host.RebuildAll(document);
+        PrepareAllRenderCaches(host);
+        host.Render();
+        var expected = host.CapturePresentedPixels();
+
+        var source = new RecordingImageSource(640, 480);
+        host.AttachImageSource(source);
+        host.SetSize(640, 480);
+        PrepareAllRenderCaches(host);
+        host.Render();
+        Assert.Equal(1, source.PresentCount);
+        Assert.Equal(160, host.RenderStatistics.VisibleEntityCount);
+        Assert.Equal(expected, host.CapturePresentedPixels());
+    }
+
     [Theory]
     [InlineData(CadParallelRenderingMode.MultipleDevices)]
     [InlineData(CadParallelRenderingMode.SharedDeviceContexts)]
@@ -751,6 +948,9 @@ public sealed class Direct2DRenderHostIntegrationTests
         host.SetRenderOptions(CreateParallelRenderOptions(mode));
 
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
+        var pool = host.ParallelPoolIdentity;
+        Assert.NotNull(pool);
+        Assert.Equal(32, host.ParallelPreparedResourceCount);
 
         host.SetSize(480, 360);
         viewport.SetSize(480, 360);
@@ -760,7 +960,80 @@ public sealed class Direct2DRenderHostIntegrationTests
         Assert.Equal(360, host.TargetHeight);
         Assert.Equal(mode, host.RenderStatistics.ParallelMode);
         Assert.Equal(32, host.RenderStatistics.ParallelEntityCount);
+        Assert.Same(pool, host.ParallelPoolIdentity);
+        Assert.Equal(32, host.ParallelPreparedResourceCount);
         Assert.Equal(2, imageSource.PresentCount);
+    }
+
+    [Theory]
+    [InlineData(CadParallelRenderingMode.MultipleDevices)]
+    [InlineData(CadParallelRenderingMode.SharedDeviceContexts)]
+    public void CompleteSceneCacheTakesPriorityOverParallelSubmission(CadParallelRenderingMode mode)
+    {
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new RecordingImageSource(640, 480));
+        host.SetSize(640, 480);
+        var document = CadDocument.Create("Retained before parallel");
+        for (var index = 0; index < 2048; index++)
+            document.AddLine(new(index % 64 * 4, index / 64 * 4),
+                new(index % 64 * 4 + 2, index / 64 * 4 + 2));
+        var viewport = new CadViewport();
+        viewport.SetSize(640, 480);
+        viewport.SetView(1, new(10, 400));
+        host.SetScene(document, viewport, prepareResourcesInBackground: false);
+        host.SetRenderOptions(CreateParallelRenderOptions(mode));
+        Assert.True(SpinWait.SpinUntil(() => !host.PrepareRenderCacheStep(), TimeSpan.FromSeconds(20)));
+        host.Render(CadRenderInvalidation.Full);
+        Assert.Equal(0, host.RenderStatistics.ParallelFrameCount);
+        Assert.True(host.RenderStatistics.TileReplayCount + host.RenderStatistics.CommandListReplayCount > 0);
+        Assert.Equal(0, host.ParallelPreparedResourceCount);
+        var cached = host.CaptureBackBufferPixels();
+        host.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false });
+        host.Render(CadRenderInvalidation.Full);
+        Assert.Equal(cached, host.CaptureBackBufferPixels());
+    }
+
+    [Theory]
+    [InlineData(CadParallelRenderingMode.MultipleDevices)]
+    [InlineData(CadParallelRenderingMode.SharedDeviceContexts)]
+    public void ParallelWorkersPrepareOnlyVisibleEntitiesAndKeepPoolAfterEdit(CadParallelRenderingMode mode)
+    {
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new RecordingImageSource(320, 240));
+        host.SetSize(320, 240);
+        var document = CadDocument.Create("Parallel subset");
+        for (var index = 0; index < 1000; index++)
+            document.AddLine(new(10000 + index * 10, 0), new(10000 + index * 10, 10));
+        var visible = Enumerable.Range(0, 32).Select(index =>
+            document.AddLine(new(index, 0), new(index, 10))).ToArray();
+        var viewport = new CadViewport();
+        viewport.SetSize(320, 240);
+        viewport.SetView(3, new(100, 120));
+        host.SetScene(document, viewport, prepareResourcesInBackground: false);
+        host.SetRenderOptions(CreateParallelRenderOptions(mode));
+        host.Render(CadRenderInvalidation.Full);
+        var before = host.CaptureBackBufferPixels();
+        var pool = host.ParallelPoolIdentity;
+        Assert.NotNull(pool);
+        Assert.Equal(32, host.ParallelPreparedResourceCount);
+        var move = new Direct2dCad.Commands.MoveEntitiesCommand(visible.Select(line => line.Id), new(0, 20));
+        host.ApplyChanges(document, move.Execute(document));
+        host.Render(CadRenderInvalidation.Full);
+        Assert.Same(pool, host.ParallelPoolIdentity);
+        Assert.NotEqual(before, host.CaptureBackBufferPixels());
+        Assert.Equal(32, host.ParallelPreparedResourceCount);
+        host.ApplyChanges(document, move.Undo(document));
+        host.Render(CadRenderInvalidation.Full);
+        Assert.Same(pool, host.ParallelPoolIdentity);
+        Assert.Equal(before, host.CaptureBackBufferPixels());
+        var delete = new Direct2dCad.Commands.DeleteEntitiesCommand([visible[0].Id]);
+        host.ApplyChanges(document, delete.Execute(document));
+        Assert.Equal(31, host.ParallelPreparedResourceCount);
+        host.Render(CadRenderInvalidation.Full);
+        Assert.Same(pool, host.ParallelPoolIdentity);
+        host.ApplyChanges(document, delete.Undo(document));
+        host.Render(CadRenderInvalidation.Full);
+        Assert.Equal(before, host.CaptureBackBufferPixels());
     }
 
     [Theory]
@@ -936,6 +1209,8 @@ public sealed class Direct2DRenderHostIntegrationTests
             IsLevelOfDetailEnabled = true
         });
         host.RebuildAll(document);
+
+        PrepareAllRenderCaches(host);
 
         host.Render(CadRenderInvalidation.Full, baseSceneChanged: true);
 

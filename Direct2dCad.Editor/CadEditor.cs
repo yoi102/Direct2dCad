@@ -32,6 +32,8 @@ public sealed class CadEditor
     public long DocumentChangeVersion { get; private set; }
     public CadDocumentChangeSet LastDocumentChanges { get; private set; } = CadDocumentChangeSet.Empty;
     public long LayerChangeVersion { get; private set; }
+    public long EntityAccessVersion { get; private set; }
+    public long BlockCatalogVersion { get; private set; }
 
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
     public event EventHandler<CadEditorCommandResult>? EditorStateChanged;
@@ -71,12 +73,24 @@ public sealed class CadEditor
         {
             DocumentChangeVersion = unchecked(DocumentChangeVersion + 1);
             LastDocumentChanges = result;
+            if (result.AffectsDocumentStructure ||
+                (result.TableChanges & CadDocumentTableChangeKind.BlockMetadata) != 0 ||
+                result.EntityChanges.Any(change =>
+                    (change.Kind & (CadEntityChangeKind.Created | CadEntityChangeKind.Deleted)) != 0 &&
+                    (!Document.TryGetEntity(change.EntityId, out var entity) || entity is null ||
+                     entity is CadBlockReference ||
+                     Document.TryGetBlock(entity.OwnerBlockId, out var block) && block is { IsSystem: false })))
+                BlockCatalogVersion = unchecked(BlockCatalogVersion + 1);
             const CadEntityChangeKind layerMembershipChanges =
                 CadEntityChangeKind.Created | CadEntityChangeKind.Deleted |
                 CadEntityChangeKind.Layer | CadEntityChangeKind.Visibility;
-            if (result.AffectsDocumentStructure ||
+            if (result.AffectsDocumentStructure || result.AffectsLayerProperties ||
                 result.EntityChanges.Any(change => (change.Kind & layerMembershipChanges) != 0))
                 LayerChangeVersion = unchecked(LayerChangeVersion + 1);
+            if (result.AffectsDocumentStructure || result.AffectsLayoutStructure || result.AffectsLayerAccess ||
+                result.EntityChanges.Any(change => (change.Kind &
+                    (layerMembershipChanges | CadEntityChangeKind.Metadata)) != 0))
+                EntityAccessVersion = unchecked(EntityAccessVersion + 1);
             DocumentChanged?.Invoke(this, result);
         };
         EditorCommands.Changed += (_, result) => EditorStateChanged?.Invoke(this, result);

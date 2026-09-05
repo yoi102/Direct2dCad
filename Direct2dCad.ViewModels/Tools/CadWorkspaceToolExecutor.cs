@@ -68,6 +68,7 @@ internal sealed class CadWorkspaceToolExecutor
 
     public async Task<string> ExecuteAsync(AiToolCall toolCall, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             using var arguments = JsonDocument.Parse(string.IsNullOrWhiteSpace(toolCall.ArgumentsJson)
@@ -224,7 +225,8 @@ internal sealed class CadWorkspaceToolExecutor
         if (!CreationToolNames.Contains(toolCall.Name))
             return AddDocumentId(executor.Execute(toolCall), document.DocumentId);
 
-        var (createdEntityId, changedFields) = ExecuteCreationTool(executor, toolCall.Name, arguments);
+        var (createdEntityId, changedFields) = executor.ExecuteAtomically(
+            () => ExecuteCreationTool(executor, toolCall.Name, arguments));
         return Success(new
         {
             document_id = document.DocumentId,
@@ -424,8 +426,7 @@ internal sealed class CadWorkspaceToolExecutor
         JsonElement arguments)
     {
         var entityId = RequiredEntityId(arguments);
-        var document = executor.DocumentViewModel.CadEditor.Document;
-        var entity = document.GetEntity(entityId);
+        var entity = executor.GetEntityForTool(entityId);
         var oleObject = entity as CadOleObject
             ?? throw new NotSupportedException("set_ole_object_data only supports OleObject entities.");
         var oleBytes = DecodeBase64(RequiredString(arguments, "ole_base64"), "ole_base64");
@@ -1318,8 +1319,9 @@ internal sealed class CadWorkspaceToolExecutor
         var document = executor.DocumentViewModel.CadEditor.Document;
         var block = ResolveBlock(document, RequiredString(arguments, "block"));
         var name = RequiredString(arguments, "new_name");
+        var oldName = block.Name;
         executor.ExecuteCommand(new RenameBlockCommand(block.Id, name));
-        return new { block_id = block.Id.Value, old_name = block.Name, new_name = document.GetBlock(block.Id).Name };
+        return new { block_id = block.Id.Value, old_name = oldName, new_name = document.GetBlock(block.Id).Name };
     }
 
     private object DeleteBlock(CadDocumentToolExecutor executor, JsonElement arguments)

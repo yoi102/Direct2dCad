@@ -117,7 +117,8 @@ public sealed record CadCompositePathClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
     CadPointD StartPoint,
     IReadOnlyList<CadCompositePathSegment> Segments,
-    bool Closed) : CadEntityClipboardSnapshot(State);
+    bool Closed,
+    CadRectD Bounds) : CadEntityClipboardSnapshot(State);
 
 public sealed record CadTextClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
@@ -408,7 +409,8 @@ public static class CadClipboardSnapshotFactory
                 state,
                 path.StartPoint,
                 path.Segments.ToArray(),
-                path.Closed),
+                path.Closed,
+                path.Bounds),
             CadText text => new CadTextClipboardSnapshot(
                 state,
                 text.Text,

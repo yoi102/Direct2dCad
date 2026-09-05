@@ -1137,6 +1137,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         double opacity = 1.0,
         double rotationRadians = 0.0)
     {
+        ArgumentNullException.ThrowIfNull(pixels);
         var entity = new CadImage(
             _ids.NewEntityId(),
             layerId ?? LayerId.Default,
@@ -1165,6 +1166,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         string name = "",
         double opacity = 1.0)
     {
+        ArgumentNullException.ThrowIfNull(oleBytes);
         var entity = new CadOleObject(
             _ids.NewEntityId(),
             layerId ?? LayerId.Default,

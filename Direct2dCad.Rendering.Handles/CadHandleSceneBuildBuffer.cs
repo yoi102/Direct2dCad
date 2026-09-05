@@ -13,6 +13,7 @@ public sealed class CadHandleSceneBuildBuffer
     internal List<CadEntity> SelectedEntities { get; } = [];
     private readonly Dictionary<EntityId, int> _insertionIndices = [];
     private readonly Dictionary<BlockId, int> _ownerCounts = [];
+    private readonly Dictionary<EntityId, int> _selectedIndices = [];
     private CadDocument? _document;
     private CadHandleSelectionCacheKey? _cacheKey;
     private readonly Comparison<CadEntity> _comparison;
@@ -23,6 +24,25 @@ public sealed class CadHandleSceneBuildBuffer
         key.HasValue && ReferenceEquals(document, _document) && _cacheKey == key;
 
     internal void InvalidateOrder() => _cacheKey = null;
+
+    public bool RefreshGeometryEntities(CadDocument document, IEnumerable<EntityId> changedIds)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(changedIds);
+        var unchangedInstances = true;
+        foreach (var id in changedIds)
+        {
+            if (!_selectedIndices.TryGetValue(id, out var index) ||
+                !document.TryGetEntity(id, out var entity) || entity is null)
+                continue;
+            if (!ReferenceEquals(SelectedEntities[index], entity))
+            {
+                SelectedEntities[index] = entity;
+                unchangedInstances = false;
+            }
+        }
+        return unchangedInstances;
+    }
 
     internal void Sort(CadDocument document, CadHandleSelectionCacheKey? key)
     {
@@ -50,6 +70,9 @@ public sealed class CadHandleSceneBuildBuffer
             }
         }
         SelectedEntities.Sort(_comparison);
+        _selectedIndices.Clear();
+        for (var i = 0; i < SelectedEntities.Count; i++)
+            _selectedIndices[SelectedEntities[i].Id] = i;
         _cacheKey = key;
     }
 
@@ -59,6 +82,7 @@ public sealed class CadHandleSceneBuildBuffer
         SelectedEntities.Clear();
         _insertionIndices.Clear();
         _ownerCounts.Clear();
+        _selectedIndices.Clear();
         _document = null;
         _cacheKey = null;
     }
@@ -78,7 +102,7 @@ public sealed class CadHandleSceneBuildBuffer
 }
 
 /// <summary>
-/// Opt-in ordering reuse. Change DocumentVersion for every document mutation,
-/// including visibility, layer/order changes and entity replacement.
+/// Opt-in ordering reuse. Change OrderVersion for membership, visibility,
+/// layer/order changes and entity replacement, not in-place geometry edits.
 /// </summary>
-public readonly record struct CadHandleSelectionCacheKey(long SelectionVersion, long DocumentVersion);
+public readonly record struct CadHandleSelectionCacheKey(long SelectionVersion, long OrderVersion);

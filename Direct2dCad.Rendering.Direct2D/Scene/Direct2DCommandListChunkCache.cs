@@ -157,7 +157,6 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                 {
                     if (!_backgroundWorker.CanSchedule)
                         return true;
-                    PrepareBackgroundResources(chunk, options);
                     var backgroundOptions = CreateBuildOptions(
                         options,
                         viewport.Zoom,
@@ -204,6 +203,22 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         }
 
         return profile.HasPendingBuilds;
+    }
+
+    internal bool CanReplayCompletely(CadDocument document, CadViewport viewport, CadRenderOptions options)
+    {
+        ThrowIfDisposed();
+        EnsureDocument(document);
+        if (options.ActiveLayoutId is not null || options.HiddenEntityIds.Count > 0 ||
+            !_profiles.TryGetValue(RenderProfileKey.Create(options, viewport.Zoom), out var profile) ||
+            options.IsLevelOfDetailEnabled && profile.EntityCount >= 1024 && profile.HasPendingBuilds)
+            return false;
+        var bounds = Direct2DEntityVisibility.ResolveRenderWorldBounds(viewport, options);
+        var padding = Direct2DEntityVisibility.ResolveBroadPhasePadding(_resourceCache, viewport, options);
+        foreach (var chunk in profile.Chunks)
+            if (IntersectsRenderBounds(chunk.Bounds, bounds, padding) && chunk.CommandList is null)
+                return false;
+        return true;
     }
 
     public bool TryDraw(
@@ -306,7 +321,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         LastInvalidatedChunkCount = 0;
         ThrowIfDisposed();
         EnsureDocument(document);
-        if (changes.AffectsDocumentStructure || changes.AffectsViewSettings)
+        if (changes.AffectsDocumentStructure || changes.AffectsLayerOrder || changes.AffectsViewSettings)
         {
             ClearChunkCaches();
             return;
@@ -610,23 +625,6 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             // Multiple-context recording is an optimization. The foreground recorder remains
             // the correctness path when a driver rejects the additional device context.
             return false;
-        }
-    }
-
-    private void PrepareBackgroundResources(RenderChunk chunk, CadRenderOptions options)
-    {
-        if (!options.IsLevelOfDetailEnabled)
-            return;
-
-        // LOD geometry creation mutates the entity bucket, so finish it on the foreground
-        // thread before the worker starts reading the bucket.
-        foreach (var entity in chunk.Entities)
-        {
-            if (_resourceCache.TryGetEntityResources(entity.Id, out var resources) &&
-                resources is not null)
-            {
-                _resourceCache.EnsureLevelOfDetailGeometries(entity, resources);
-            }
         }
     }
 

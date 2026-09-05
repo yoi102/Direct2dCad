@@ -29,6 +29,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     private CadDocumentViewModel? _documentViewModel;
     private int _droppedPendingEntryCount;
     private int _historyIndex;
+    private bool _disposed;
 
     public CommandLineToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
@@ -103,6 +104,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     [RelayCommand(AllowConcurrentExecutions = false)]
     private async Task ExecuteCommandAsync()
     {
+        if (_disposed) return;
         var commandLine = CommandText.Trim();
         if (commandLine.Length == 0)
         {
@@ -121,6 +123,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
             var toolResult = await _toolCommandLineService.TryExecuteAsync(
                 commandLine,
                 _disposeCancellation.Token);
+            if (_disposed) return;
             if (toolResult is not null)
             {
                 AddMessage(
@@ -255,6 +258,13 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     public void Dispose()
     {
+        lock (_pendingEntriesGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _pendingEntries.Clear();
+            _droppedPendingEntryCount = 0;
+        }
         _disposeCancellation.Cancel();
         _disposeCancellation.Dispose();
         _commandActivitySubscription.Dispose();
@@ -269,6 +279,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         var batch = new List<CadCommandLineEntryViewModel>(maximumBatchSize);
         lock (_pendingEntriesGate)
         {
+            if (_disposed) return 0;
             if (_droppedPendingEntryCount > 0)
             {
                 batch.Add(new CadCommandLineEntryViewModel(
@@ -288,7 +299,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private void OnCommandActivity(CadCommandActivityMessage message)
     {
-        if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
+        if (_disposed || _documentViewModel is null || !ReferenceEquals(message.DocumentViewModel, _documentViewModel))
             return;
 
         var activity = message.Activity;
@@ -340,6 +351,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     {
         lock (_pendingEntriesGate)
         {
+            if (_disposed) return;
             if (_pendingEntries.Count >= MaximumPendingEntryCount)
             {
                 _pendingEntries.Dequeue();
@@ -365,6 +377,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private void AddMessage(CadCommandLineEntryKind kind, string message)
     {
+        if (_disposed) return;
         LatestOutputText = message;
         OnPropertyChanged(nameof(LatestOutputText));
         foreach (var line in message.Replace("\r\n", "\n").Split('\n'))

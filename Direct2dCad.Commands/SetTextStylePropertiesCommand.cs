@@ -129,7 +129,7 @@ public sealed class SetTextStylePropertiesCommand : ICadCommand
 
         return CadDocumentChangeSet
             .ForEntities(references, CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance)
-            .WithDocumentStructureChanged();
+            .WithTableChanges(CadDocumentTableChangeKind.Styles);
     }
 
     private readonly record struct TextStyleState(

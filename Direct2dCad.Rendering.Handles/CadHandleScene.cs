@@ -3,7 +3,7 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Rendering.Handles;
 
-public sealed class CadHandleScene
+public sealed partial class CadHandleScene
 {
     private readonly List<CadHandleItem> _items = [];
     private readonly List<CadHandleItem> _nonSelectionItems = [];
@@ -25,6 +25,7 @@ public sealed class CadHandleScene
     public void Replace(IEnumerable<CadHandleItem> items)
     {
         ArgumentNullException.ThrowIfNull(items);
+        _geometryIndex = null;
 
         (_selectionReferenceItems, _previousSelectionReferenceItems) =
             (_previousSelectionReferenceItems, _selectionReferenceItems);
@@ -106,6 +107,7 @@ public sealed class CadHandleScene
 
     public void Clear()
     {
+        _geometryIndex = null;
         if (_selectionReferenceItems.Count > 0)
             SelectionVersion = unchecked(SelectionVersion + 1);
         _items.Clear();

@@ -30,6 +30,21 @@ public sealed class CadSelectionSet
         return true;
     }
 
+    public bool RemoveWhere(Predicate<EntityId> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        var count = _entityIds.Count;
+        try
+        {
+            return _entityIds.RemoveWhere(predicate) > 0;
+        }
+        finally
+        {
+            if (_entityIds.Count != count)
+                IncrementVersion();
+        }
+    }
+
     public void Replace(IEnumerable<EntityId> entityIds)
     {
         ArgumentNullException.ThrowIfNull(entityIds);

@@ -17,6 +17,7 @@ namespace Direct2dCad.ViewModels.Toolboxes;
 public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposable
 {
     private CadDocumentViewModel? _documentViewModel;
+    private int _attachmentVersion;
     private readonly IDisposable _interactionStateChangedSubscription;
     private readonly IDialogService _dialogService;
     private readonly ISnackbarService _snackbarService;
@@ -56,6 +57,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
             return;
         }
 
+        _attachmentVersion++;
         _documentViewModel = documentViewModel;
 
         OnPropertyChanged(nameof(HasDocument));
@@ -88,7 +90,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     internal void RenameLayer(LayerItemViewModel layer, string name)
     {
-        if (_documentViewModel is null)
+        if (_documentViewModel is null || !Layers.Contains(layer))
             return;
 
         if (string.IsNullOrWhiteSpace(name))
@@ -117,7 +119,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     internal void SetLayerState(LayerItemViewModel layer)
     {
-        if (_documentViewModel is null)
+        if (_documentViewModel is null || !Layers.Contains(layer))
             return;
 
         ExecuteAndRefresh(
@@ -131,7 +133,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     internal void SetLayerAppearance(LayerItemViewModel layer)
     {
-        if (_documentViewModel is null)
+        if (_documentViewModel is null || !Layers.Contains(layer))
             return;
 
         var lineWeight = ResolveLayerLineWeight(layer.LineWeight);
@@ -153,12 +155,12 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     internal void SetLayerPriority(LayerItemViewModel layer)
     {
+        if (_documentViewModel is null || !Layers.Contains(layer))
+            return;
+
         // Reorder the existing items immediately so the toolbox stays in sync
         // while the document command is being applied and refreshed.
         ReorderLayerItems();
-
-        if (_documentViewModel is null)
-            return;
 
         var document = _documentViewModel.CadEditor.Document;
         var priorities = document.Layers.Values.ToDictionary(
@@ -215,8 +217,11 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
     [RelayCommand(CanExecute = nameof(CanDeleteSelectedLayer))]
     private async Task DeleteSelectedLayer()
     {
-        if (_documentViewModel is null || SelectedLayer is not { } layer || Layers.Count < 1)
+        if (_documentViewModel is null || SelectedLayer is not { } layer || !Layers.Contains(layer) || Layers.Count <= 1)
             return;
+
+        var documentViewModel = _documentViewModel;
+        var attachmentVersion = _attachmentVersion;
 
         var message = string.Format(
            Strings.LayerDeleteConfirmMessageFormat,
@@ -228,12 +233,12 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
             Strings.LayerDeleteConfirmTitle,
             ViewServiceIdentifiers.RootDialogHost);
 
-        if (!deleteConfirmed)
+        if (!deleteConfirmed || attachmentVersion != _attachmentVersion)
             return;
 
         var fallbackSelection = Layers.FirstOrDefault(x => !ReferenceEquals(x, layer))?.LayerId;
         ExecuteAndRefresh(
-            () => _documentViewModel.CadEditor.DeleteLayer(layer.LayerId),
+            () => documentViewModel.CadEditor.DeleteLayer(layer.LayerId),
             fallbackSelection);
     }
 
@@ -282,6 +287,7 @@ public partial class LayersToolboxViewModel : CadToolboxViewModelBase, IDisposab
 
     public void Dispose()
     {
+        Attach(null);
         _interactionStateChangedSubscription.Dispose();
     }
 
