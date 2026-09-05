@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Commands;
@@ -15,6 +16,7 @@ public sealed class AddCircleCommand : ICadCommand
     private readonly CadLineWeight? _lineWeight;
     private readonly int _zIndex;
     private readonly bool _isVisible;
+    private readonly CadStrokeStyle _strokeStyle;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Circle";
@@ -29,7 +31,8 @@ public sealed class AddCircleCommand : ICadCommand
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         _center = center;
         _radius = radius;
@@ -40,6 +43,7 @@ public sealed class AddCircleCommand : ICadCommand
         _lineWeight = lineWeight;
         _zIndex = zIndex;
         _isVisible = isVisible;
+        _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -63,6 +67,7 @@ public sealed class AddCircleCommand : ICadCommand
         circle.SetLineWeight(_lineWeight);
         circle.SetZIndex(_zIndex);
         circle.SetVisible(_isVisible);
+        circle.SetStrokeStyle(_strokeStyle);
 
         _createdEntityId = circle.Id;
         return CadDocumentChangeSet.ForEntity(

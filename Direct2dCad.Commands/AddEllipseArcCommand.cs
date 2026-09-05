@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Commands;
@@ -17,6 +18,7 @@ public sealed class AddEllipseArcCommand : ICadCommand
     private readonly CadLineWeight? _lineWeight;
     private readonly int _zIndex;
     private readonly bool _isVisible;
+    private readonly CadStrokeStyle _strokeStyle;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Ellipse Arc";
@@ -33,7 +35,8 @@ public sealed class AddEllipseArcCommand : ICadCommand
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         _center = center;
         _radiusX = radiusX;
@@ -46,6 +49,7 @@ public sealed class AddEllipseArcCommand : ICadCommand
         _lineWeight = lineWeight;
         _zIndex = zIndex;
         _isVisible = isVisible;
+        _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -79,6 +83,7 @@ public sealed class AddEllipseArcCommand : ICadCommand
         ellipseArc.SetLineWeight(_lineWeight);
         ellipseArc.SetZIndex(_zIndex);
         ellipseArc.SetVisible(_isVisible);
+        ellipseArc.SetStrokeStyle(_strokeStyle);
 
         _createdEntityId = ellipseArc.Id;
         return CadDocumentChangeSet.ForEntity(

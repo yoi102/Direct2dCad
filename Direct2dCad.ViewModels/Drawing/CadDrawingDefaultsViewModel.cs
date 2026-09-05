@@ -88,6 +88,70 @@ public sealed class CadDrawingDefaultsViewModel : ObservableObject, ICadDrawingD
         set => SetDrawingSetting(ref _entityName, value ?? string.Empty);
     }
 
+    private CadStrokeStyle _lineStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle LineStrokeStyle
+    {
+        get => _lineStrokeStyle;
+        set => SetDrawingSetting(ref _lineStrokeStyle, value);
+    }
+
+    private CadStrokeStyle _polylineStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle PolylineStrokeStyle
+    {
+        get => _polylineStrokeStyle;
+        set => SetDrawingSetting(ref _polylineStrokeStyle, value);
+    }
+
+    private CadStrokeStyle _polygonStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle PolygonStrokeStyle
+    {
+        get => _polygonStrokeStyle;
+        set => SetDrawingSetting(ref _polygonStrokeStyle, value);
+    }
+
+    private CadStrokeStyle _splineStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle SplineStrokeStyle
+    {
+        get => _splineStrokeStyle;
+        set => SetDrawingSetting(ref _splineStrokeStyle, value);
+    }
+
+    private CadStrokeStyle _circleStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle CircleStrokeStyle
+    {
+        get => _circleStrokeStyle;
+        set => SetDrawingSetting(ref _circleStrokeStyle, value);
+    }
+
+    private CadStrokeStyle _ellipseStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle EllipseStrokeStyle
+    {
+        get => _ellipseStrokeStyle;
+        set => SetDrawingSetting(ref _ellipseStrokeStyle, value);
+    }
+
+    private CadStrokeStyle _rectangleStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle RectangleStrokeStyle
+    {
+        get => _rectangleStrokeStyle;
+        set => SetDrawingSetting(ref _rectangleStrokeStyle, value);
+    }
+
+    private CadStrokeStyle _arcStrokeStyle = CadStrokeStyle.Default;
+
+    public CadStrokeStyle ArcStrokeStyle
+    {
+        get => _arcStrokeStyle;
+        set => SetDrawingSetting(ref _arcStrokeStyle, value);
+    }
+
     public event EventHandler? DefaultsChanged;
 
     public CadColor LineStrokeColor

@@ -54,8 +54,18 @@
                           Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
                           IsChecked="{Binding ViewModel.UseByLayerColor, ElementName=Root, Mode=TwoWay}"
-                          Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"
                           Margin="0,4,0,0">
+                    <CheckBox.Style>
+                        <Style TargetType="CheckBox" BasedOn="{StaticResource MaterialDesignCheckBox}">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root}"
+                                             Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </CheckBox.Style>
                 </CheckBox>
             </StackPanel>
             <TextBlock Grid.Row="1" Grid.Column="0"

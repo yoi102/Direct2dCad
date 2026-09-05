@@ -43,6 +43,25 @@ public sealed class DrawingWorkflowContractTests
             text.RotationDegrees = 30;
         }
         var history = editor.CreateDocumentHistorySnapshot();
+        var expectedStroke = CadStrokeStyle.Default;
+        if (mode != CadCanvasToolMode.Text)
+        {
+            panel.SelectedDashStyleOption = panel.StrokeDashStyleOptions.Single(option => option.Value == CadStrokeDashStyle.DashDot);
+            panel.SelectedDashCapOption = panel.StrokeCapOptions.Single(option => option.Value == CadStrokeCap.Round);
+            expectedStroke = expectedStroke with { DashStyle = CadStrokeDashStyle.DashDot, DashCap = CadStrokeCap.Round };
+            if (panel.SupportsStartEndCaps)
+            {
+                panel.SelectedStartCapOption = panel.StrokeCapOptions.Single(option => option.Value == CadStrokeCap.Square);
+                panel.SelectedEndCapOption = panel.StrokeCapOptions.Single(option => option.Value == CadStrokeCap.Round);
+                expectedStroke = expectedStroke with { StartCap = CadStrokeCap.Square, EndCap = CadStrokeCap.Round };
+            }
+            if (panel.SupportsLineJoin)
+            {
+                panel.SelectedLineJoinOption = panel.StrokeLineJoinOptions.Single(option => option.Value == CadStrokeLineJoin.Bevel);
+                expectedStroke = expectedStroke with { LineJoin = CadStrokeLineJoin.Bevel };
+            }
+            Assert.True(editor.DocumentHistoryEquals(history));
+        }
         foreach (var point in Points(mode))
         {
             var screen = editor.Viewport.WorldToScreen(point);
@@ -54,6 +73,7 @@ public sealed class DrawingWorkflowContractTests
             Assert.True(vm.CompleteCurrentDrawing().Handled);
         var entity = Assert.Single(editor.Document.Entities.Values, entity => !existing.Contains(entity.Id) && !entity.IsErased);
         Assert.Equal(ExpectedType(mode), entity.GetType());
+        Assert.Equal(expectedStroke, entity.StrokeStyle);
         Assert.Equal("Contract entity", entity.Name);
         Assert.Equal(layer, entity.LayerId);
         Assert.Equal(14, entity.ZIndex);
@@ -68,6 +88,7 @@ public sealed class DrawingWorkflowContractTests
         editor.Redo();
         Assert.False(entity.IsErased);
         Assert.Same(entity, editor.Document.GetEntity(entity.Id));
+        Assert.Equal(expectedStroke, entity.StrokeStyle);
     }
 
     [Theory]

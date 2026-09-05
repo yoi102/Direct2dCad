@@ -9,6 +9,7 @@ Direct2dCad is an experimental desktop CAD editor built with WPF, Direct2D, and 
 Main capabilities:
 
 - Create and edit common CAD entities, layers, styles, fills, hatch patterns, text, images, OLE objects, blocks, layouts, and model-space viewports.
+- Set dash styles, dash caps, and applicable end caps and joins while drawing. Settings update previews and new entities, remain available per tool type in the current document session, and are undone/redone with entity creation. The By layer color checkbox allows switching to a custom color.
 - Select entities by click or window, cycle through overlapping entities, use selection filters, and edit multiple entities together.
 - Move, scale, rotate, and edit entities through grip/handle interaction.
 - Use single or grouped undo/redo for document commands and editor operations.

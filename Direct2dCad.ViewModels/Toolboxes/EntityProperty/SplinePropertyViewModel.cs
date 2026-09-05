@@ -481,6 +481,16 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel,
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.SplineStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.SplineStrokeStyle = value;
+    }
+
+    protected override bool DrawingSupportsStartEndCaps => !_documentViewModel.DrawingDefaults.SplineClosed;
+
+    protected override bool DrawingSupportsLineJoin => true;
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
 
     [ObservableProperty]
@@ -544,6 +554,7 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel,
             return;
 
         _documentViewModel.DrawingDefaults.SplineClosed = value;
+        RefreshDrawingStrokeStyle();
         OnPropertyChanged(nameof(FillControlsEnabled));
         OnPropertyChanged(nameof(FillColorControlsEnabled));
     }

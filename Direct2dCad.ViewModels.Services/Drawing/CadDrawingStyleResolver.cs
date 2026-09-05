@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Transient;
@@ -15,7 +16,7 @@ internal readonly struct CadDrawingStyleResolver(
 {
     public CadTransientStyle CreateLineTransientStyle()
     {
-        return CreatePreviewStyle(ResolveLineStrokeColor(), ResolveLineLineWeight());
+        return CreatePreviewStyle(ResolveLineStrokeColor(), ResolveLineLineWeight(), strokeStyle: defaults.LineStrokeStyle);
     }
 
     public CadTransientStyle CreateLineGuideStyle()
@@ -38,7 +39,8 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(
             ResolvePolylineStrokeColor(),
             ResolvePolylineLineWeight(),
-            includeFill ? ResolvePolylineFillStyleId() : null);
+            includeFill ? ResolvePolylineFillStyleId() : null,
+            defaults.PolylineStrokeStyle);
     }
 
     public StyleId? ResolvePolylineGraphicStyleId()
@@ -66,7 +68,8 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(
             ResolvePolygonStrokeColor(),
             ResolvePolygonLineWeight(),
-            includeFill ? ResolvePolygonFillStyleId() : null);
+            includeFill ? ResolvePolygonFillStyleId() : null,
+            defaults.PolygonStrokeStyle);
     }
 
     public CadTransientStyle CreatePolylineGuideStyle()
@@ -100,7 +103,8 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(
             ResolveSplineStrokeColor(),
             ResolveSplineLineWeight(),
-            includeFill ? ResolveSplineFillStyleId() : null);
+            includeFill ? ResolveSplineFillStyleId() : null,
+            defaults.SplineStrokeStyle);
     }
 
     public CadTransientStyle CreateSplineGuideStyle()
@@ -130,7 +134,7 @@ internal readonly struct CadDrawingStyleResolver(
 
     public CadTransientStyle CreateArcTransientStyle()
     {
-        return CreatePreviewStyle(ResolveArcStrokeColor(), ResolveArcLineWeight());
+        return CreatePreviewStyle(ResolveArcStrokeColor(), ResolveArcLineWeight(), strokeStyle: defaults.ArcStrokeStyle);
     }
 
     public StyleId? ResolveArcGraphicStyleId()
@@ -148,7 +152,8 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(
             ResolveCircleStrokeColor(),
             ResolveCircleLineWeight(),
-            ResolveCircleFillStyleId());
+            ResolveCircleFillStyleId(),
+            defaults.CircleStrokeStyle);
     }
 
     public StyleId? ResolveCircleGraphicStyleId()
@@ -171,7 +176,8 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(
             ResolveEllipseStrokeColor(),
             ResolveEllipseLineWeight(),
-            ResolveEllipseFillStyleId());
+            ResolveEllipseFillStyleId(),
+            defaults.EllipseStrokeStyle);
     }
 
     public StyleId? ResolveEllipseGraphicStyleId()
@@ -194,7 +200,8 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(
             ResolveRectangleStrokeColor(),
             ResolveRectangleLineWeight(),
-            ResolveRectangleFillStyleId());
+            ResolveRectangleFillStyleId(),
+            defaults.RectangleStrokeStyle);
     }
 
     public StyleId? ResolveRectangleGraphicStyleId()
@@ -272,13 +279,14 @@ internal readonly struct CadDrawingStyleResolver(
     private CadTransientStyle CreatePreviewStyle(
         CadColor strokeColor,
         CadLineWeight lineWeight,
-        StyleId? fillStyleId = null)
+        StyleId? fillStyleId = null,
+        CadStrokeStyle? strokeStyle = null)
     {
         return previewStyleService.CreateEntityPreviewStyle(
             strokeColor,
             lineWeight,
             layer.LineWeight,
-            fillStyleId);
+            fillStyleId) with { StrokeStyle = strokeStyle };
     }
 
     private CadColor ResolveStrokeColor(CadColor strokeColor, bool useLayerColor)

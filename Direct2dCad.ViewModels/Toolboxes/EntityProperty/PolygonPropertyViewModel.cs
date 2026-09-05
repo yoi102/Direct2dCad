@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 
@@ -19,6 +20,14 @@ public partial class TransientPolygonPropertyViewModel : EntityPropertyViewModel
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.PolygonStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.PolygonStrokeStyle = value;
+    }
+
+    protected override bool DrawingSupportsLineJoin => true;
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
 
     [ObservableProperty]

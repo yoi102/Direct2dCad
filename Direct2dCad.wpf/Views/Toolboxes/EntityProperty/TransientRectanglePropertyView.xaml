@@ -8,5 +8,6 @@
                 <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CornerY}}" VerticalAlignment="Center" /><mah:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding CornerRadiusY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" StringFormat="F3" Interval="1" />
             </Grid>
         </Expander>
+        <ep:StrokeStylePropertySection ViewModel="{Binding}" />
     </StackPanel></ScrollViewer>
 </UserControl>

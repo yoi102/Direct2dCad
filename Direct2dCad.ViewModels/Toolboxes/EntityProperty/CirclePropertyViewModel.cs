@@ -311,6 +311,12 @@ public partial class TransientCirclePropertyViewModel : EntityPropertyViewModel,
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.CircleStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.CircleStrokeStyle = value;
+    }
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
 
     [ObservableProperty]

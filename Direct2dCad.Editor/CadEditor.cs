@@ -309,7 +309,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddLineCommand(
             start,
@@ -319,7 +320,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -333,7 +335,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddCircleCommand(
             center,
@@ -344,7 +347,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -359,7 +363,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddEllipseCommand(
             center,
@@ -371,7 +376,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -387,7 +393,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddEllipseArcCommand(
             center,
@@ -400,7 +407,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -415,7 +423,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddArcCommand(
             center,
@@ -427,7 +436,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -442,7 +452,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddRectangleCommand(
             bounds,
@@ -454,7 +465,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -525,7 +537,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddPolygonCommand(
             points,
@@ -535,7 +548,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -549,7 +563,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddPolylineCommand(
             points,
@@ -560,7 +575,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -574,7 +590,8 @@ public sealed class CadEditor
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         var command = new AddSplineCommand(
             fitPoints,
@@ -585,7 +602,8 @@ public sealed class CadEditor
             name,
             lineWeight,
             zIndex,
-            isVisible);
+            isVisible,
+            strokeStyle);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }

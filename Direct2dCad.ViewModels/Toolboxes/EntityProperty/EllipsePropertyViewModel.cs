@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
@@ -305,6 +306,14 @@ public partial class TransientEllipsePropertyViewModel : EntityPropertyViewModel
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.EllipseStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.EllipseStrokeStyle = value;
+    }
+
+    protected override bool DrawingSupportsStartEndCaps => _documentViewModel.CadCanvasToolMode == CadCanvasToolMode.EllipseArc;
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
 
     [ObservableProperty]

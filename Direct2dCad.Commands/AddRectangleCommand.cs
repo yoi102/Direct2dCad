@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Commands;
@@ -16,6 +17,7 @@ public sealed class AddRectangleCommand : ICadCommand
     private readonly CadLineWeight? _lineWeight;
     private readonly int _zIndex;
     private readonly bool _isVisible;
+    private readonly CadStrokeStyle _strokeStyle;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Rectangle";
@@ -31,7 +33,8 @@ public sealed class AddRectangleCommand : ICadCommand
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         _bounds = bounds;
         _cornerRadiusX = cornerRadiusX;
@@ -43,6 +46,7 @@ public sealed class AddRectangleCommand : ICadCommand
         _lineWeight = lineWeight;
         _zIndex = zIndex;
         _isVisible = isVisible;
+        _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -73,6 +77,7 @@ public sealed class AddRectangleCommand : ICadCommand
         rectangle.SetLineWeight(_lineWeight);
         rectangle.SetZIndex(_zIndex);
         rectangle.SetVisible(_isVisible);
+        rectangle.SetStrokeStyle(_strokeStyle);
 
         _createdEntityId = rectangle.Id;
         return CadDocumentChangeSet.ForEntity(

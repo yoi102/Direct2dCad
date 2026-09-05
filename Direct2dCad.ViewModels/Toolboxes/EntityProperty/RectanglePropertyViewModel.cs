@@ -425,6 +425,14 @@ public partial class TransientRectanglePropertyViewModel : EntityPropertyViewMod
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.RectangleStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.RectangleStrokeStyle = value;
+    }
+
+    protected override bool DrawingSupportsLineJoin => true;
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
 
     [ObservableProperty]

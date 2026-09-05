@@ -286,6 +286,14 @@ public partial class TransientArcPropertyViewModel : EntityPropertyViewModel,
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
 
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.ArcStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.ArcStrokeStyle = value;
+    }
+
+    protected override bool DrawingSupportsStartEndCaps => true;
+
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
 

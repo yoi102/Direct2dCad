@@ -25,7 +25,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolveLineLineWeight(),
             zIndex: defaults.LineZIndex,
-            isVisible: defaults.LineIsVisible);
+            isVisible: defaults.LineIsVisible,
+            strokeStyle: defaults.LineStrokeStyle);
         entityCreated();
     }
 
@@ -44,7 +45,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolveRectangleLineWeight(),
             zIndex: defaults.RectangleZIndex,
-            isVisible: defaults.RectangleIsVisible);
+            isVisible: defaults.RectangleIsVisible,
+            strokeStyle: defaults.RectangleStrokeStyle);
         entityCreated();
     }
 
@@ -62,7 +64,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolveCircleLineWeight(),
             zIndex: defaults.CircleZIndex,
-            isVisible: defaults.CircleIsVisible);
+            isVisible: defaults.CircleIsVisible,
+            strokeStyle: defaults.CircleStrokeStyle);
         entityCreated();
     }
 
@@ -81,7 +84,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolveArcLineWeight(),
             zIndex: defaults.ArcZIndex,
-            isVisible: defaults.ArcIsVisible);
+            isVisible: defaults.ArcIsVisible,
+            strokeStyle: defaults.ArcStrokeStyle);
         entityCreated();
     }
 
@@ -100,7 +104,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolveEllipseLineWeight(),
             zIndex: defaults.EllipseZIndex,
-            isVisible: defaults.EllipseIsVisible);
+            isVisible: defaults.EllipseIsVisible,
+            strokeStyle: defaults.EllipseStrokeStyle);
         entityCreated();
     }
 
@@ -123,7 +128,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolveEllipseLineWeight(),
             zIndex: defaults.EllipseZIndex,
-            isVisible: defaults.EllipseIsVisible);
+            isVisible: defaults.EllipseIsVisible,
+            strokeStyle: defaults.EllipseStrokeStyle);
         entityCreated();
     }
 
@@ -142,7 +148,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolvePolylineLineWeight(),
             zIndex: defaults.PolylineZIndex,
-            isVisible: defaults.PolylineIsVisible);
+            isVisible: defaults.PolylineIsVisible,
+            strokeStyle: defaults.PolylineStrokeStyle);
         entityCreated();
     }
 
@@ -161,7 +168,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolveSplineLineWeight(),
             zIndex: defaults.SplineZIndex,
-            isVisible: defaults.SplineIsVisible);
+            isVisible: defaults.SplineIsVisible,
+            strokeStyle: defaults.SplineStrokeStyle);
         entityCreated();
     }
 
@@ -178,7 +186,8 @@ internal sealed class CadDrawingEntityCreator(
             name: defaults.EntityName,
             lineWeight: styleResolver.ResolvePolygonLineWeight(),
             zIndex: defaults.PolygonZIndex,
-            isVisible: defaults.PolygonIsVisible);
+            isVisible: defaults.PolygonIsVisible,
+            strokeStyle: defaults.PolygonStrokeStyle);
         entityCreated();
     }
 

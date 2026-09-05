@@ -518,6 +518,16 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.PolylineStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.PolylineStrokeStyle = value;
+    }
+
+    protected override bool DrawingSupportsStartEndCaps => !_documentViewModel.DrawingDefaults.PolylineClosed;
+
+    protected override bool DrawingSupportsLineJoin => true;
     public IReadOnlyList<FillStyleOption> FillStyleOptions { get; private set; } = [];
 
     [ObservableProperty]
@@ -583,6 +593,7 @@ public partial class TransientPolylinePropertyViewModel : EntityPropertyViewMode
             return;
 
         _documentViewModel.DrawingDefaults.PolylineClosed = value;
+        RefreshDrawingStrokeStyle();
     }
 
     partial void OnSelectedFillStyleOptionChanged(FillStyleOption? value)

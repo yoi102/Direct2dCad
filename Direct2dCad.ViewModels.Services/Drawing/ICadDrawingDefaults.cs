@@ -1,10 +1,19 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 
 namespace Direct2dCad.ViewModels.Services.Drawing;
 
 public interface ICadDrawingDefaults
 {
+    CadStrokeStyle LineStrokeStyle { get; }
+    CadStrokeStyle PolylineStrokeStyle { get; }
+    CadStrokeStyle PolygonStrokeStyle { get; }
+    CadStrokeStyle SplineStrokeStyle { get; }
+    CadStrokeStyle CircleStrokeStyle { get; }
+    CadStrokeStyle EllipseStrokeStyle { get; }
+    CadStrokeStyle RectangleStrokeStyle { get; }
+    CadStrokeStyle ArcStrokeStyle { get; }
     string EntityName { get; }
     CadColor LineStrokeColor { get; }
     bool LineUseLayerColor { get; }

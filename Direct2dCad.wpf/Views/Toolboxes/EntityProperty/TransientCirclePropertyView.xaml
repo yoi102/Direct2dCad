@@ -2,5 +2,6 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="12">
         <TextBlock Text="{I18N {x:Static r:LangKeys.CircleDrawing}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
         <ep:DrawingLayerPropertySection ViewModel="{Binding}" /><ep:EntitySettingsPropertySection ViewModel="{Binding}" /><ep:FillPropertySection ViewModel="{Binding}" /><ep:StrokeAppearancePropertySection ViewModel="{Binding}" />
+        <ep:StrokeStylePropertySection ViewModel="{Binding}" />
     </StackPanel></ScrollViewer>
 </UserControl>

@@ -3,5 +3,6 @@
         <TextBlock Text="{I18N {x:Static r:LangKeys.PolylineDrawing}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
         <ep:DrawingLayerPropertySection ViewModel="{Binding}" /><ep:EntitySettingsPropertySection ViewModel="{Binding}" /><ep:FillPropertySection ViewModel="{Binding}" /><ep:StrokeAppearancePropertySection ViewModel="{Binding}" />
         <Expander Header="{I18N {x:Static r:LangKeys.Geometry}}" IsExpanded="True" Margin="0,0,0,8"><CheckBox Content="{I18N {x:Static r:LangKeys.Closed}}" IsChecked="{Binding IsClosed}" Margin="8,6,8,8" /></Expander>
+        <ep:StrokeStylePropertySection ViewModel="{Binding}" />
     </StackPanel></ScrollViewer>
 </UserControl>

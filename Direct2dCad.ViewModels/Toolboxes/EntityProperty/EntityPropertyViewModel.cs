@@ -33,6 +33,23 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     private bool _supportsLineJoin;
 
     public bool IsEditable { get; private set; } = true;
+
+    protected virtual CadStrokeStyle DrawingStrokeStyle
+    {
+        get => CadStrokeStyle.Default;
+        set { }
+    }
+
+    protected virtual bool DrawingSupportsStartEndCaps => false;
+    protected virtual bool DrawingSupportsLineJoin => false;
+
+    protected void RefreshDrawingStrokeStyle()
+    {
+        SupportsStartEndCaps = DrawingSupportsStartEndCaps;
+        SupportsLineJoin = DrawingSupportsLineJoin;
+        RefreshStrokeStyle(DrawingStrokeStyle);
+    }
+
     protected double ToDisplayLength(double millimeters) =>
         CadUnitConversion.FromMillimeters(millimeters, DocumentUnit);
 
@@ -200,6 +217,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
         _isPasteLayerSelection = false;
         ClearColorSourceSelection();
         RefreshEntityName(documentViewModel.DrawingDefaults.EntityName);
+        RefreshDrawingStrokeStyle();
         OnPropertyChanged(nameof(MinimumPositiveLength));
 
         RefreshLayerOptionsCore(documentViewModel, documentViewModel.DrawingLayerId);
@@ -474,15 +492,8 @@ public abstract class EntityPropertyViewModel : ObservableObject,
 
     private void CommitStrokeStyleChange()
     {
-        if (_isRefreshingStrokeStyle ||
-            _layerDocumentViewModel is not { } documentViewModel ||
-            _layerEntityId is not { } entityId ||
-            !documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ||
-            entity is null ||
-            entity.IsErased)
-        {
+        if (_isRefreshingStrokeStyle)
             return;
-        }
 
         var strokeStyle = new CadStrokeStyle(
             SelectedStartCapOption?.Value ?? CadStrokeStyle.Default.StartCap,
@@ -490,6 +501,21 @@ public abstract class EntityPropertyViewModel : ObservableObject,
             SelectedDashCapOption?.Value ?? CadStrokeStyle.Default.DashCap,
             SelectedDashStyleOption?.Value ?? CadStrokeStyle.Default.DashStyle,
             SelectedLineJoinOption?.Value ?? CadStrokeStyle.Default.LineJoin);
+
+        if (_isDrawingLayerSelection)
+        {
+            DrawingStrokeStyle = strokeStyle;
+            return;
+        }
+
+        if (_layerDocumentViewModel is not { } documentViewModel ||
+            _layerEntityId is not { } entityId ||
+            !documentViewModel.CadEditor.Document.TryGetEntity(entityId, out var entity) ||
+            entity is null ||
+            entity.IsErased)
+        {
+            return;
+        }
 
         if (entity.StrokeStyle == strokeStyle)
             return;

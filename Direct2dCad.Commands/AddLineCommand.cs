@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Commands;
@@ -14,6 +15,7 @@ public sealed class AddLineCommand : ICadCommand
     private readonly CadLineWeight? _lineWeight;
     private readonly int _zIndex;
     private readonly bool _isVisible;
+    private readonly CadStrokeStyle _strokeStyle;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Line";
@@ -27,7 +29,8 @@ public sealed class AddLineCommand : ICadCommand
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         _start = start;
         _end = end;
@@ -37,6 +40,7 @@ public sealed class AddLineCommand : ICadCommand
         _lineWeight = lineWeight;
         _zIndex = zIndex;
         _isVisible = isVisible;
+        _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -60,6 +64,7 @@ public sealed class AddLineCommand : ICadCommand
         line.SetLineWeight(_lineWeight);
         line.SetZIndex(_zIndex);
         line.SetVisible(_isVisible);
+        line.SetStrokeStyle(_strokeStyle);
 
         _createdEntityId = line.Id;
         return CadDocumentChangeSet.ForEntity(

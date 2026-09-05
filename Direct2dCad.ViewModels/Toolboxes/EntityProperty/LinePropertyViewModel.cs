@@ -324,6 +324,14 @@ public partial class TransientLinePropertyViewModel : EntityPropertyViewModel,
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
 
+    protected override CadStrokeStyle DrawingStrokeStyle
+    {
+        get => _documentViewModel.DrawingDefaults.LineStrokeStyle;
+        set => _documentViewModel.DrawingDefaults.LineStrokeStyle = value;
+    }
+
+    protected override bool DrawingSupportsStartEndCaps => true;
+
     [ObservableProperty]
     public partial CadColor StrokeColor { get; set; }
 

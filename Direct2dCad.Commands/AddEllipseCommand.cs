@@ -1,5 +1,6 @@
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Commands;
@@ -16,6 +17,7 @@ public sealed class AddEllipseCommand : ICadCommand
     private readonly CadLineWeight? _lineWeight;
     private readonly int _zIndex;
     private readonly bool _isVisible;
+    private readonly CadStrokeStyle _strokeStyle;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Ellipse";
@@ -31,7 +33,8 @@ public sealed class AddEllipseCommand : ICadCommand
         string name = "",
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
-        bool isVisible = true)
+        bool isVisible = true,
+        CadStrokeStyle? strokeStyle = null)
     {
         _center = center;
         _radiusX = radiusX;
@@ -43,6 +46,7 @@ public sealed class AddEllipseCommand : ICadCommand
         _lineWeight = lineWeight;
         _zIndex = zIndex;
         _isVisible = isVisible;
+        _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -66,6 +70,7 @@ public sealed class AddEllipseCommand : ICadCommand
         ellipse.SetLineWeight(_lineWeight);
         ellipse.SetZIndex(_zIndex);
         ellipse.SetVisible(_isVisible);
+        ellipse.SetStrokeStyle(_strokeStyle);
 
         _createdEntityId = ellipse.Id;
         return CadDocumentChangeSet.ForEntity(
