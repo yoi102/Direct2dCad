@@ -146,6 +146,8 @@ _TeamCity*
 coverage*.json
 coverage*.xml
 coverage*.info
+# Keep deterministic input fixtures for the coverage-summary regression.
+!scripts/testing/fixtures/coverage/**/coverage.cobertura.xml
 
 # Visual Studio code coverage results
 *.coverage
