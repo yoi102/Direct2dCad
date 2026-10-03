@@ -1,218 +1,80 @@
 # Direct2dCad
 
-[中文](README.md) | 日本語 | [English](README.en.md)
+[中文](README.md) | [日本語](README.ja.md) | [English](README.en.md)
 
-## 概要
+Direct2dCad は、WPF、Direct2D、DirectWrite を使用した Windows 向けの 2D CAD エディターです。作図、数値入力、図形編集、寸法記入、図面管理を一つのデスクトップ環境にまとめ、コマンドラインと AI による操作も提供します。
 
-Direct2dCad は、WPF、Direct2D、DirectWrite で作成しているデスクトップ CAD エディターの実験プロジェクトです。保守しやすい CAD 編集アーキテクチャ、大規模図面向けの Direct2D リソース管理、高速な描画を検証しています。
+## 主な機能
 
-主な機能:
+- **2D 作図**：直線、ポリライン、多角形、矩形、円、円弧、楕円、楕円弧、スプラインに加え、文字、画像、OLE オブジェクト。
+- **精密な入力**：座標、長さ、半径、直径、角度、楕円の半軸をキャンバス上で直接入力。オブジェクトスナップ、グリッドスナップ、直交拘束、極トラッキングに対応。
+- **図形編集**：クリック選択、窓選択、交差選択、選択フィルター、グリップ編集、移動、回転、鏡像、拡大縮小。対応する曲線ではオフセット、トリム、延長、フィレット、面取り、結合、分割、配列を利用でき、閉じた輪郭ではブール和・積・差を実行できます。
+- **外観と寸法**：色、線幅、破線、端部、接合部、塗りつぶし、パターン。水平・垂直・平行・半径・直径・角度寸法と引出線に対応し、フォントや矢印も変更できます。
+- **図面の整理**：複数ドキュメント、レイヤー、ブロック、入れ子のブロック参照、ブロック編集、レイアウト、モデルビューポート。元に戻す・やり直す操作と図面間のコピーに対応。
+- **ファイルと出力**：独自形式の `.d2cad`、一般的な 2D エンティティの DXF 入出力、自動復元、印刷プレビュー、尺度を指定した印刷。
+- **コマンドラインと AI**：Terminal のヘルプ、補完、コマンド履歴。LM Studio または Codex に接続し、図面の検索、図形の作成、元に戻せる編集を実行できます。
 
-- 線、円、円弧、楕円、矩形、ポリライン、ポリゴン、スプライン、文字、画像、OLE、ブロック、レイアウト、モデル空間ビューポートなどの作成と編集。
-- 描画中に破線スタイル、破線端の形状、対応する図形の始点・終点と結合部の形状を設定できます。設定はプレビューと新規図形に即時反映され、現在のドキュメントの操作中はツール種類ごとに保持されます。図形作成と一緒に undo / redo でき、色は「レイヤーに従う」の切り替えで個別に指定できます。
-- クリック選択、窓選択、重なったエンティティの選択サイクル、選択フィルター、複数エンティティ編集。
-- grip / handle による移動、拡大縮小、回転、編集。
-- 単一コマンドと一括コマンドに対応した undo / redo。
-- ブロック参照と依存するブロック定義を含む、ドキュメント間のコピーと貼り付け。
-- Direct2D リソースキャッシュ、変更追跡、dirty rectangle、Transient プレビュー、選択オーバーレイ、handle、LOD、ビューポートスナップショット。
-- WPF の CAD キャンバス、pan、zoom、fit、グリッド、スナップ、原点マーカー、レイヤー、プロパティ、検索、Terminal、カスタマイズ可能なラジアルメニュー。
-- LM Studio または Codex に接続し、図面を検索して undo 可能な CAD 編集を実行する Agent 機能。
-- `.d2cad` の保存と読み込み、中国語・日本語・英語の UI リソース。
+UI は中国語、日本語、英語に対応し、ライト・ダークテーマ、ドッキング可能なツールボックス、設定可能なラジアルメニューを備えています。
 
-## ドキュメント
+## ダウンロードとインストール
 
-- [CAD の実装状況、課題、優先順位、検証結果](docs/CAD-READINESS.md)（中国語、2026-10-02 に確認）。
-- [開発計画と操作性の受け入れ基準](docs/ROADMAP.md)（中国語、2026-10-03 に作成）。
-- [M1–M3 の実装状況](docs/M1-M3-STATUS.md)、[作図と編集の操作](docs/DRAWING-AND-EDITING.md)、[本機での検証](docs/validation/2026-10-03/README.md)（中国語、2026-10-03 更新）。
-- [アーキテクチャ、プロジェクト責務、現在の依存関係](docs/ARCHITECTURE.md)（中国語）。
-- [Terminal の簡略コマンド、AI ツール、実行記録](docs/COMMANDS-AND-AI.md)（中国語、2026-10-03 更新）。
-- [描画の実装範囲とベンチマーク手順](docs/PERFORMANCE.md)（中国語）。
-- [回帰テスト、カバレッジ、手動確認](scripts/testing/README.md)（中国語）。
+[GitHub Releases](https://github.com/yoi102/Direct2dCad/releases) から Windows x64 版をダウンロードしてください。
 
-M1–M6 の宣言範囲を実装しました。正確な入力、スナップ、基本編集、保存保護・復旧に加え、7 種の寸法・直接関連付け、工学テンプレート、実寸/用紙に合わせる/任意倍率の印刷プレビュー、限定 DXF 交換、可視領域を優先する初期表示、履歴の容量制限とローカル配布を提供します。[M4–M6 状態](docs/M4-M6-STATUS.md)、[操作ガイド](docs/ANNOTATION-AND-EXCHANGE.md)、[最新検証](docs/validation/2026-10-03/m4-m6/README.md)、[配布手順](docs/DELIVERY.md)を参照してください。実印刷、クリーン環境、署名、クラウド CI は別途確認が必要です。DWG と完全な DXF 互換は後続範囲です。
+- **MSI インストーラー**：アプリをインストールし、デスクトップとスタートメニューにショートカットを作成します。
+- **ポータブル ZIP**：展開して `Direct2dCad.exe` を実行します。
 
-数値入力と候補切り替えはキャンバスに表示します。「図面の復元」ツールボックスには復元可能な図面を直接一覧表示し、ステータスバーのアイコンまたは `Ctrl+Shift+D` で再表示できます。ようこそ画面では作図・修正・寸法タブを非表示にし、図面に戻ると再表示します。`HELP` で簡略コマンド、`TOOLS` / `TOOLHELP` で共通 JSON ツールを確認できます。ブール演算と寸法編集を追加し、AI の照会・失敗・キャンセルも Terminal に記録します。下部には座標・単位、グリッド間隔とスナップアイコンを配置し、詳細アイコンから表示とスナップを設定できます。SDK は 10.0.401 に固定しています。クラウド CI、実機プリンター、混在 DPI の受け入れは別途必要です。
+どちらも必要な .NET Runtime を含むため、ランタイムを別途インストールする必要はありません。
+
+## はじめに
+
+1. 図面を新規作成するか、`.d2cad` または DXF ファイルを開きます。
+2. 作図タブでツールを選び、マウスで点を指定するか、キャンバス上の小さな入力欄に数値を入力します。
+3. 図形を選択し、プロパティパネルでレイヤーや外観を変更します。修正タブで図形を編集し、寸法タブで寸法を追加できます。
+4. `.d2cad` として保存するほか、DXF に書き出したり、レイアウトと印刷プレビューから図面を印刷したりできます。
+
+基本操作：
+
+- `Tab` / `Shift+Tab` で数値欄を切り替え、`Enter` で現在の入力を確定します。複数点の作図は最後の点を確定した後、もう一度 `Enter` を押して終了します。
+- `Esc` で現在の操作をキャンセルし、選択モードに戻ります。
+- ホイールでズーム、右ボタンまたは中ボタンでパンします。グリップ編集はプレビューを確認し、次の左クリックで確定します。
+- Terminal に `HELP` を入力するとコマンドを、`TOOLS` / `TOOLHELP` を入力すると AI ツールを確認できます。
+
+## AI 接続
+
+AI ツールボックスの歯車ボタンから接続を設定します。
+
+- **LM Studio**：Local Server を起動し、ツール呼び出しに対応したモデルを読み込みます。既定のアドレスは `http://localhost:1234/v1` です。
+- **Codex**：ローカルの Codex CLI のログイン状態を使い、`codex app-server` に接続します。
+
+AI はエンティティ、レイヤー、ブロックを検索し、図形の作成・変更や図面を開く・保存する・切り替える操作を実行できます。編集は図面の履歴に入り、元に戻したり、手動で調整したりできます。
+
+## ソースから実行
+
+Windows x64 と .NET 10 SDK が必要です。リポジトリの `global.json` は SDK 10.0.401 を指定し、同じ機能バンド内のパッチ更新を許可しています。
+
+リポジトリのルートで実行します。
+
+```powershell
+dotnet build .\Direct2dCad.slnx -c Release
+dotnet run -c Release --project .\Direct2dCad.wpf\Direct2dCad.wpf.csproj
+```
+
+ランタイムを含む発行用フォルダーを作成するには、次のコマンドを実行します。
+
+```powershell
+dotnet publish .\Direct2dCad.wpf\Direct2dCad.wpf.csproj -c Release -r win-x64 --self-contained true
+```
 
 ## デモとデザイン
 
-- [基本操作 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b), [基本操作 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [基本操作 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)、[基本操作 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
 - [ブロック](https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310)
 - [レイアウト](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
 - [OLE オブジェクト](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
 - [Terminal](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
-- [LM Studio 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7), [LM Studio 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
+- [LM Studio AI 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7)、[AI 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
 - [Figma デザイン](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
-## ソリューション構成
+## ライセンス
 
-| 分野 | プロジェクト |
-|---|---|
-| CAD モデル | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking` |
-| コマンドと編集 | `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
-| AI と Agent | `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex` |
-| 検索と保存 | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
-| 描画 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
-| 共通クライアントと言語 | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
-| ViewModel | `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services`, `Direct2dCad.ViewModels` |
-| WPF | `Direct2dCad.wpf.Controls`, `Direct2dCad.wpf` |
-
-`Direct2dCad.ViewModels.Services` には、プラットフォーム抽象と UI に依存しない協調サービスを置いています。WPF 側の実装は `Direct2dCad.wpf/Services` にあり、離れた ViewModel 間の通信には MessagePipe を使います。
-
-## アーキテクチャ
-
-```mermaid
-flowchart TD
-    UI["WPF UI"] --> VM["ViewModels"]
-    VM --> Editor["Editor"]
-    VM --> Commands["Commands"]
-    VM --> Rendering["描画抽象"]
-    VM --> Direct2D["Direct2D バックエンド"]
-    Editor --> Commands
-    Editor --> Query["HitTesting / Indexing"]
-    Editor --> ChangeTracking["ChangeTracking"]
-    Commands --> ChangeTracking
-    Commands --> Db["CAD データモデル"]
-    Query --> Db
-    ChangeTracking --> Db
-    Rendering --> Db
-    Direct2D --> Rendering
-    Direct2D --> Transient["Transient シーン"]
-    Direct2D --> Handles["Handle シーン"]
-    IO["保存"] --> Db
-    Agent["Agent"] --> AI["AI 契約"]
-    Codex["Codex アダプター"] --> Agent
-    LmStudio["LM Studio アダプター"] --> AI
-    VM --> Agent
-```
-
-依存方向は次の方針で分けています。
-
-- `Direct2dCad.Db` が図面データの source of truth であり、WPF、Editor、Direct2D に依存しません。
-- `Direct2dCad.ChangeTracking` はコマンドと描画のどちらにも依存しない変更通知モデルです。
-- `Direct2dCad.Rendering` は描画契約、`Direct2dCad.Rendering.Direct2D` はその Direct2D 実装です。
-- `Transient` と `Handles` はシーンデータを扱い、ドキュメントコマンドは実行しません。
-- `Commands` はドキュメントを変更して change set を返し、Editor、Indexing、Renderer がそれに反応します。
-- Agent も UI と同じコマンド経路を使用するため、AI による変更も undo / redo とリソース更新の対象になります。
-
-## 主要プロジェクト
-
-### CAD モデル、変更追跡、コマンド
-
-`Direct2dCad.Db` は `CadDocument`、レイヤー、ブロック、レイアウト、エンティティ、スタイル、塗りつぶし、ハッチ、表示設定、グリッド、原点、幾何型、強い型の ID を定義します。TrueType 文字と ShapeText、画像、OLE、ブロック参照も含みます。
-
-`Direct2dCad.ChangeTracking` は `CadDocumentChangeSet` と、geometry、appearance、fill、visibility、layer、draw order などの変更分類を定義します。Commands、Editor、Indexing、Rendering の中立的な接続層です。
-
-`Direct2dCad.Commands` は CRUD、プロパティ変更、レイヤー、原点、ブロック、コピー貼り付け、一括コマンドを実装します。単一 undo / redo と一括 undo / redo の扱いはコマンド管理設定で切り替えます。
-
-`Direct2dCad.Editor` はコマンド実行、選択、命中判定、空間インデックス、viewport、描画無効化を調整し、ドキュメント変更後の geometry、brush、text、hatch、画像、OLE リソースも更新します。
-
-### 検索、インデックス、描画
-
-`Direct2dCad.HitTesting` はクリック選択、窓選択、選択サイクル、線幅、文字 bounds、ブロック変換、レイヤーの表示・ロック規則を扱います。
-
-`Direct2dCad.Indexing` はエンティティ bounds と空間候補を管理し、命中判定、窓選択、dirty region、viewport のカリングに使われます。
-
-`Direct2dCad.Rendering` は renderer、viewport、render options、複数 dirty rectangle、無効化、geometry resource manager、WPF image source bridge の契約を定義します。
-
-`Direct2dCad.Rendering.Direct2D` は Direct2D / DirectWrite の geometry、brush、text layout、hatch などを管理し、背景、グリッド、原点、エンティティ、Transient、選択、handle を描画します。通常の描画中に毎回リソースを作らず、変更追跡に応じて作成、更新、解放します。デバイスロスト時はデバイスリソースを再構築して全体を再描画します。
-
-`Direct2dCad.Rendering.Transient` は作図プレビュー、選択窓、コピー貼り付けプレビュー、snap marker、補助線、測定文字を保持します。通常のエンティティと同じ stroke、fill、hatch、line weight、layer style、LOD を使い、補助表示だけを追加します。
-
-`Direct2dCad.Rendering.Handles` は選択枠、grip / handle の位置、種類、サイズ、命中判定用データを管理します。実際の変更は Editor / Commands が行います。
-
-### WPF、設定、AI
-
-`Direct2dCad.Client.Common` は選択色、窓選択色、grip 色、アンチエイリアス、LOD、viewport preview、ラジアルメニュー、AI などのユーザー設定を管理します。図面に保存される設定とは分離しています。
-
-`CadDocument` と `CadViewSettings` は背景色、グリッド、スナップ、原点、レイヤー、描画優先度など図面固有の設定を保持し、`.d2cad` に保存します。
-
-`Direct2dCad.ViewModels` と `Direct2dCad.ViewModels.Services` は、文書、エディタータブ、プロパティ、レイヤー、検索、選択フィルター、Terminal、AI、設定、描画、geometry、interaction、snapping、styling、text の ViewModel とサービスを提供します。
-
-`Direct2dCad.wpf` は `CadCanvas`、AvalonDock toolbox、属性・レイヤー・検索・Terminal・AI・設定画面、WPF サービス、Direct3D image hosting を提供します。
-
-`Direct2dCad.AI.Contracts` は共通の assistant、tool call、tool result、設定、client 契約を定義します。`Direct2dCad.AI.LmStudio` は OpenAI 互換の LM Studio クライアント、`Direct2dCad.Agent` は会話履歴、コンテキスト上限、ツール実行、キャンセル、複数ターンを管理します。`Direct2dCad.Agent.Codex` は stdio JSON-RPC でローカル Codex app-server に接続し、同じ CAD toolset を提供します。
-
-AI は document ID、active document、エンティティ、レイヤー、ブロック、表示状態を検索でき、文書の作成、変更、削除、保存、開く、切り替え、名前変更、終了、スタイル付きエンティティ作成を実行できます。各ドキュメントの変更は独立した undo / redo batch になります。
-
-## キャンバス操作
-
-- Select モードでは grip / handle の命中判定を優先します。
-- クリック選択、窓選択、Shift 複数選択、選択サイクル、`Ctrl+A` / `Alt+A` に対応します。
-- grip のドラッグで移動、拡大縮小、回転、複数エンティティ編集を行います。
-- マウスを離しても grip 操作はプレビュー状態を保ち、次の左クリックで確定します。
-- 右ボタンまたは中ボタンで pan します。独立した Pan モードはありません。
-- `Esc` は常に Select に戻り、作図、選択窓、grip、貼り付けプレビューを解除します。
-- `Enter` は polyline、polygon、spline などの多点作図を確定します。
-- マウスホイールで zoom し、カーソル位置を保ったまま model / layout viewport を更新します。
-
-主な作図モード:
-
-```text
-Select, Line, Rectangle, CircleCenterRadius, CircleCenterDiameter,
-CircleTwoPoint, CircleThreePoint,
-ArcThreePoint, ArcStartCenterEnd, ArcStartCenterAngle, ArcStartCenterLength,
-ArcStartEndAngle, ArcStartEndDirection, ArcStartEndRadius,
-ArcCenterStartEnd, ArcCenterStartAngle, ArcCenterStartLength, ArcContinue,
-EllipseCenter, EllipseAxisEnd, EllipseArc, Polyline, Polygon, Spline, Text,
-SetOrigin
-```
-
-## 描画とリソース更新の方針
-
-- エンティティ、レイヤー、表示設定の作成・変更・削除は `CadDocumentChangeSet` を生成します。
-- Editor は change set に応じて選択、bounds、インデックス、リソース、dirty region を更新します。
-- geometry、brush、text layout、hatch、画像、OLE は再利用し、所有者と使用状況に応じて解放します。
-- 描画順は layer drawing priority、エンティティ `ZIndex`、追加順で決まります。
-- layer に従う色や line weight は描画時に解決しますが、エンティティ自身の値は編集・保存できます。
-- fill と hatch は同じ fill color を使い、不要な背景色は描画しません。
-- dirty region は旧位置・新位置、線幅、fill / hatch、handle、Transient、グリッド、overlay を考慮します。
-- 画面上で見えないほど小さいエンティティは、ユーザー設定の LOD に応じて省略または簡略化できます。
-
-通常の編集では変更対象の選択項目だけを検証し、選択に依存するボタンの有効状態は選択とアクセス状態のバージョンでキャッシュします。入れ子のブロックの外観変更は、参照の境界や空間インデックスを再構築せずに描画へ伝播します。Layout の変更領域は各モデルビューポートへ変換してクリップし、構造・表示設定・画面/紙空間の線幅モード変更時は全体再描画を維持します。
-
-Agent / Terminal は列挙中に統計を集計し、ページのソート候補を最大 `offset + limit` 件に制限します。件数と安定した順序は維持しますが、深いページではメモリ使用量が増え、統計には対象範囲の走査が必要です。`SelectionAvailabilityBenchmarks` は 512 / 20,000 件の選択について、全件検証とキャッシュ参照を比較します。
-
-テーブル変更をメタデータ、レイヤーのアクセス・順序、スタイルに分類し、文書構造の変更と区別します。レイヤー名やロック変更では空間形状を再構築せず、順序変更ではシーンを再描画します。ネイティブ geometry は独立した値のスナップショットからバックグラウンドで準備し、有界キューで順次受け取ります。変更されたエンティティの古い結果だけを破棄し、無関係な準備処理は継続します。
-
-履歴の比較には全コマンドを保持しない定数時間の状態トークンを使います。`CommandHistorySettings.MaximumUndoCommands` は任意のコマンド件数上限で、`0` は無制限です。最古の完全なバッチ単位で破棄し、最新バッチは超過しても保持します。Undo/Redo のモードは実行時に参照し、厳密なバイト予算ではありません。Spline の長さは形状変更までキャッシュします。保存時は画像/OLE の不変データを共有し、その他の可変状態は所有スレッドで取得します。非同期保存中の追加編集は未保存として残ります。
-
-`CadDocumentSaveSession` は文書ごとの保存を直列化し、キャンセル、ファイルパス、保存済み状態を管理します。WPF では 128 エンティティずつ取得し、約 4 ms を目安に UI へ制御を戻します。再開時に編集バージョンを確認し、変更があれば破棄して最大 2 回再試行します。シリアライズは独立 DTO のみを参照し、キャンセルや取得失敗では元のファイルを置換しません。同期 API は一括取得のままです。
-
-geometry の受け取りには件数と約 2 ms の時間予算があり、古い結果の破棄も含みます。Spline/Polyline の LOD geometry はコピーした値からバックグラウンドで準備し、通常描画と選択描画はリソースを参照するだけです。準備前は完全な geometry を使います。単一操作の途中では中断しません。初回フレームのベンチマークは準備完了と Present を確認しますが、統計値はピクセル比較テストの代わりではありません。
-
-`CadOleSessionController` は OLE セッション、MessagePipe 通知、Undo 可能な更新を管理します。`Direct2DLayoutRenderer` は用紙・ビューポート描画とクリップを担当し、新しいプロジェクトは追加しません。`CommandHistoryBenchmarks` と `SplineLengthBenchmarks` で関連する割り当てと繰り返し参照を測定できます。
-
-## ビルドとテスト
-
-```powershell
-dotnet build .\Direct2dCad.slnx
-.\scripts\testing\Run-Regression.ps1 -CollectCoverage
-```
-
-ネイティブ描画と UI の回帰テストには `-IncludeWindowsIntegration -IncludeUiAutomation` を追加します。カバレッジとクリップボードの注意点は [テスト手順（中国語）](scripts/testing/README.md) を参照してください。
-
-## パフォーマンスベンチマーク
-
-原子的なコマンドバッチは空間インデックスとブロック境界を即時更新し、GPU 更新・文書通知・操作ログをバッチ終了時にまとめます。個別の履歴は保持され、undo/redo の単位は設定に従います。ブロックパネルは行を再利用し、閉じている間の一覧更新を遅延します。
-
-並列描画よりも完成済みの tile / command list キャッシュを優先します。キャッシュが不足する場合は空間インデックスから可視エンティティを取得し、描画順序を維持した連続範囲を推定コストで分割します。ワーカーは担当したエンティティのリソースを保持・差分更新し、リサイズ時には描画ターゲットのみ交換します。デバイス喪失時はプール全体を再構築します。[最適化と検証の記録](scripts/testing/PERFORMANCE-2026-09-05.md)も参照してください。
-
-ブロック境界と大量選択の差分更新、および初期ジオメトリスナップショットの分割準備に対応しています。適用範囲と測定条件は[差分最適化の記録](scripts/testing/PERFORMANCE-INCREMENTAL-2026-09-05.md)を参照してください。
-
-`Direct2dCad.Benchmarks` は BenchmarkDotNet を使います。Windows x64、安定した GPU ドライバー、`Release` 構成で実行してください。
-
-`CacheEvictionBenchmarks` は 128 / 1,024 件の候補について、ソート方式と再利用可能な優先度付きキューの実行時間とマネージド割り当てを比較します。GPU リソースは作成しません。
-
-`PreparationSnapshotBenchmarks` は 20,000 / 100,000 エンティティのスナップショット全体コピーと変更ページのみのコピーを比較します。形状のみの変更では描画順序を再利用し、chunk / tile の無効化は変更バッチ内で重複を除きます。エディターの作成コマンドは配置先を設定してから変更を通知し、redo でも元の配置先を維持します。
-
-検索結果は変更された行を更新し、コレクション通知をまとめます。複数選択のプロパティは無関係な編集を無視し、属性グループごとに更新します。バックグラウンド準備ではメンバー配列と未変更のブロック依存関係を再利用し、chunk 計画は変更先と参照元の空間を無効化します。ズームキャッシュの破棄では待機せず録画を取り消せますが、共有リソースの変更前にはワーカーの終了を待ちます。保存は整合性のある DTO を取得し、一時ファイルへ section ごとに圧縮・書き込みを行ってからディレクトリを補完し、保存先を原子的に置き換えます。ファイル形式は変更しません。
-
-`OwnerBoundsUpdateBenchmarks` は 20,000 / 100,000 エンティティの境界全件走査と境界ツリーの差分更新を比較します。`DirtyRegionBatchBenchmarks` は 512 / 20,000 個の dirty rectangle の保守的な集約を測定します。`SelectionOverlayBenchmarks` ではシーン再利用とバージョン付き選択順序の再利用も比較します。空間インデックスの件数計算は変更前後の bounds で補正します。大規模インデックスの再構築は値のスナップショットを使ってバックグラウンドで実行しますが、初回構築とスナップショット取得は呼び出しスレッドで行います。インデックス自体は並行読み書きには対応していません。
-
-```powershell
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --list flat
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --smoke --filter "*SpatialIndexBenchmarks*"
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --filter "*Direct2DRenderingBenchmarks*"
-```
-
-ベンチマークは空間インデックス、選択 overlay、dirty region、Direct2D 描画とリソース更新、複雑なシーン、文書 IO、layout / model viewport を対象にします。IO ベンチマークで実ファイルを使う場合は `--document "C:\Drawings\large.d2cad"` を指定します。OLE は外部 COM サーバーに依存するため、再現性のある標準ベンチマークには含めていません。
+本プロジェクトは [MIT License](LICENSE.txt) を採用しています。

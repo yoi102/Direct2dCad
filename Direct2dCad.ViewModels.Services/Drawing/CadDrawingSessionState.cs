@@ -18,6 +18,28 @@ internal sealed class CadDrawingSessionState
 
     public List<CadPointD> PendingEllipsePoints { get; } = [];
 
+    public CadDrawingSessionState Clone()
+    {
+        var copy = new CadDrawingSessionState();
+        copy.CopyFrom(this);
+        return copy;
+    }
+
+    public void CopyFrom(CadDrawingSessionState source)
+    {
+        PendingWorldPoint = source.PendingWorldPoint;
+        PendingArcStartPoint = source.PendingArcStartPoint;
+        PendingCircleSecondPoint = source.PendingCircleSecondPoint;
+        PendingPolylinePoints.Clear();
+        PendingPolylinePoints.AddRange(source.PendingPolylinePoints);
+        PendingPolygonPoints.Clear();
+        PendingPolygonPoints.AddRange(source.PendingPolygonPoints);
+        PendingSplinePoints.Clear();
+        PendingSplinePoints.AddRange(source.PendingSplinePoints);
+        PendingEllipsePoints.Clear();
+        PendingEllipsePoints.AddRange(source.PendingEllipsePoints);
+    }
+
     public void Clear()
     {
         PendingWorldPoint = null;

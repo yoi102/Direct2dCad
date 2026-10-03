@@ -1,37 +1,69 @@
 # Direct2dCad
 
-[中文](README.md) | [日本語](README.ja.md) | English
+[中文](README.md) | [日本語](README.ja.md) | [English](README.en.md)
 
-## Overview
+Direct2dCad is a 2D CAD editor for Windows, built with WPF, Direct2D, and DirectWrite. It brings drawing, precise numeric input, editing, dimensions, and drawing management into one desktop workspace, with a command line and AI assistance.
 
-Direct2dCad is an experimental desktop CAD editor built with WPF, Direct2D, and DirectWrite. It explores a maintainable CAD editing architecture, Direct2D resource management, and responsive rendering for large drawings.
+## Features
 
-Main capabilities:
+- **2D drawing**: Lines, polylines, polygons, rectangles, circles, arcs, ellipses, ellipse arcs, and splines, plus text, images, and OLE objects.
+- **Precise input**: Enter coordinates, lengths, radii, diameters, angles, and ellipse semiaxes directly on the canvas. Use object snaps, grid snaps, orthogonal constraints, and polar tracking.
+- **Editing**: Click, window, and crossing selection, selection filters, and grips; move, rotate, mirror, and scale. Compatible curves support offset, trim, extend, fillet, chamfer, join, break, and arrays. Closed contours support Boolean union, intersection, and difference.
+- **Appearance and dimensions**: Colors, line weights, dashes, caps, joins, fills, and patterns; horizontal, vertical, aligned, radius, diameter, and angular dimensions, plus leaders with configurable fonts and arrows.
+- **Drawing organization**: Multiple documents, layers, blocks, nested block references, block editing, layouts, and model-space viewports, with undo/redo and copying between drawings.
+- **Files and output**: Native `.d2cad` files, DXF import/export for common 2D entities, automatic recovery, print preview, and printing to scale.
+- **Command line and AI**: Terminal provides help, completion, and command history. Connect LM Studio or Codex to query drawings, create geometry, and perform undoable edits.
 
-- Create and edit common CAD entities, layers, styles, fills, hatch patterns, text, images, OLE objects, blocks, layouts, and model-space viewports.
-- Set dash styles, dash caps, and applicable end caps and joins while drawing. Settings update previews and new entities, remain available per tool type in the current document session, and are undone/redone with entity creation. The By layer color checkbox allows switching to a custom color.
-- Select entities by click or window, cycle through overlapping entities, use selection filters, and edit multiple entities together.
-- Move, scale, rotate, and edit entities through grip/handle interaction.
-- Use single or grouped undo/redo for document commands and editor operations.
-- Copy and paste entities across documents, including block references and their dependent block definitions.
-- Render with Direct2D resource caching, change tracking, dirty rectangles, transient previews, selection overlays, handles, LOD, and viewport snapshots.
-- Use a WPF CAD canvas with pan, zoom, fit, grid and snap settings, origin markers, layers, properties, search, terminal, and configurable radial menus.
-- Connect LM Studio or Codex to query drawings and execute undoable CAD operations through an Agent toolset.
-- Save and load `.d2cad` documents, with Chinese, Japanese, and English UI resources.
+The interface supports Chinese, Japanese, and English, with light and dark themes, dockable toolboxes, and configurable radial menus.
 
-## Documentation
+## Download and install
 
-- [CAD capabilities, gaps, priorities and verification](docs/CAD-READINESS.md) (Chinese; reviewed 2026-10-02).
-- [Development roadmap and interaction acceptance](docs/ROADMAP.md) (Chinese; planned 2026-10-03).
-- [M1–M3 implementation status](docs/M1-M3-STATUS.md), [drawing and editing guide](docs/DRAWING-AND-EDITING.md), and [local validation](docs/validation/2026-10-03/README.md) (Chinese; updated 2026-10-03).
-- [Architecture, component responsibilities and current dependencies](docs/ARCHITECTURE.md) (Chinese).
-- [Terminal shortcuts, AI tools and execution logs](docs/COMMANDS-AND-AI.md) (Chinese; updated 2026-10-03).
-- [Rendering boundaries and benchmark instructions](docs/PERFORMANCE.md) (Chinese).
-- [Regression, coverage and manual acceptance](scripts/testing/README.md) (Chinese).
+Download the Windows x64 version from [GitHub Releases](https://github.com/yoi102/Direct2dCad/releases):
 
-M1–M6 implement exact input, object snaps, basic curve editing, file protection/recovery, seven annotation tools with direct associations, engineering templates, actual/fit/custom print preview, bounded DXF exchange, visible-priority preparation, history byte budgets and local packages. See [M4–M6 status](docs/M4-M6-STATUS.md), [annotation and exchange guide](docs/ANNOTATION-AND-EXCHANGE.md), [current evidence](docs/validation/2026-10-03/m4-m6/README.md) and [local delivery](docs/DELIVERY.md). Physical printing, clean-machine acceptance, signing and cloud CI remain separate gates; DWG and full DXF compatibility are outside this release. Historical reports retain their dated baselines.
+- **MSI installer**: Installs the application and creates desktop and Start menu shortcuts.
+- **Portable ZIP**: Extract the archive and run `Direct2dCad.exe`.
 
-Precise numeric input and candidate switching appear on the canvas. The dockable **Drawing recovery** toolbox directly lists recoverable drawings; use the status-bar icon or `Ctrl+Shift+D` to reopen it. Draw, Modify and Dimensions tabs are hidden on Welcome and restored for a drawing. `HELP` lists terminal commands and shortcuts; `TOOLS` / `TOOLHELP` expose the shared JSON tools, including Boolean operations and dimension editing. AI queries, failures and cancellation also appear in Terminal. The status bar retains coordinates/units, grid spacing and snap icons with text tooltips. Its **View and snap details** icon opens advanced view/snap settings. `global.json` pins SDK 10.0.401 with patch roll-forward; cloud CI and printer/mixed-DPI acceptance remain separate.
+Both packages include the required .NET Runtime; no separate runtime installation is needed.
+
+## Quick start
+
+1. Create a drawing or open a `.d2cad` or DXF file.
+2. Choose a tool on the Draw tab. Place points with the mouse or enter parameters in the compact fields on the canvas.
+3. Select geometry to adjust its layer and appearance in the Properties panel, edit it from the Modify tab, or add dimensions from the Dimensions tab.
+4. Save as `.d2cad`, export DXF, or use layouts and print preview to print the drawing.
+
+Common controls:
+
+- `Tab` / `Shift+Tab` cycles through numeric fields. `Enter` accepts the current input; for multipoint drawing, press `Enter` again after accepting the final point to finish.
+- `Esc` cancels the current operation and returns to selection.
+- Use the mouse wheel to zoom and the right or middle button to pan. Grip edits show a preview and commit with another left click.
+- Enter `HELP` in Terminal for commands, or `TOOLS` / `TOOLHELP` for AI tools.
+
+## AI connections
+
+Open connection settings with the gear button in the AI toolbox:
+
+- **LM Studio**: Start Local Server and load a model that supports tool calling. The default endpoint is `http://localhost:1234/v1`.
+- **Codex**: Connect to `codex app-server` using the local Codex CLI login.
+
+AI can query entities, layers, and blocks, create or modify geometry, and open, save, and switch drawings. Edits enter the drawing's undo history and remain available for manual adjustment.
+
+## Run from source
+
+Requires Windows x64 and the .NET 10 SDK. The repository's `global.json` specifies SDK 10.0.401 and permits patch updates within the same feature band.
+
+Run from the repository root:
+
+```powershell
+dotnet build .\Direct2dCad.slnx -c Release
+dotnet run -c Release --project .\Direct2dCad.wpf\Direct2dCad.wpf.csproj
+```
+
+Create a publish directory that includes the runtime:
+
+```powershell
+dotnet publish .\Direct2dCad.wpf\Direct2dCad.wpf.csproj -c Release -r win-x64 --self-contained true
+```
 
 ## Demos and design
 
@@ -40,193 +72,9 @@ Precise numeric input and candidate switching appear on the canvas. The dockable
 - [Layouts](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
 - [OLE objects](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
 - [Terminal](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
-- [LM Studio 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7), [LM Studio 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
+- [LM Studio AI 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7), [AI 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
 - [Figma design](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
-## Solution structure
+## License
 
-| Area | Projects |
-|---|---|
-| CAD model | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking` |
-| Commands and editing | `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
-| AI and Agent | `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex` |
-| Query and storage | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
-| Rendering | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
-| Client common and language | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
-| ViewModels | `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services`, `Direct2dCad.ViewModels` |
-| WPF | `Direct2dCad.wpf.Controls`, `Direct2dCad.wpf` |
-
-`Direct2dCad.ViewModels.Services` contains platform abstractions and UI-independent collaborators. WPF implementations live under `Direct2dCad.wpf/Services`. MessagePipe is used for communication between distant ViewModels.
-
-## Architecture
-
-```mermaid
-flowchart TD
-    UI["WPF UI"] --> VM["ViewModels"]
-    VM --> Editor["Editor"]
-    VM --> Commands["Commands"]
-    VM --> Rendering["Rendering abstractions"]
-    VM --> Direct2D["Direct2D backend"]
-    Editor --> Commands
-    Editor --> Query["HitTesting / Indexing"]
-    Editor --> ChangeTracking["ChangeTracking"]
-    Commands --> ChangeTracking
-    Commands --> Db["CAD data model"]
-    Query --> Db
-    ChangeTracking --> Db
-    Rendering --> Db
-    Direct2D --> Rendering
-    Direct2D --> Transient["Transient scene"]
-    Direct2D --> Handles["Handle scene"]
-    IO["Persistence"] --> Db
-    Agent["Agent"] --> AI["AI contracts"]
-    Codex["Codex adapter"] --> Agent
-    LmStudio["LM Studio adapter"] --> AI
-    VM --> Agent
-```
-
-The dependency direction is intentional:
-
-- `Direct2dCad.Db` is the source of truth and does not depend on WPF, the editor, or Direct2D.
-- `Direct2dCad.ChangeTracking` describes document changes without depending on commands or rendering.
-- `Direct2dCad.Rendering` defines renderer contracts; `Direct2dCad.Rendering.Direct2D` is the Direct2D implementation.
-- `Direct2dCad.Rendering.Transient` and `Direct2dCad.Rendering.Handles` describe scene data, not document commands.
-- `Direct2dCad.Commands` changes documents and returns change sets; the editor, index, and renderer react to those change sets.
-- Agent tools use the same command and editor paths as the UI, so AI edits participate in undo/redo and resource invalidation.
-
-## Core components
-
-### CAD model and change tracking
-
-`Direct2dCad.Db` defines `CadDocument`, layers, blocks, layouts, entities, styles, fills, hatches, view settings, grid/origin settings, geometry types, and strongly typed IDs. Supported entities include line, circle, arc, ellipse, ellipse arc, rectangle, polyline, polygon, spline, TrueType text, shape text, image, OLE, block reference, and viewport-related objects.
-
-`Direct2dCad.ChangeTracking` defines `CadDocumentChangeSet` and change categories such as geometry, appearance, fill, visibility, layer, and draw order. It is the neutral contract between commands, editor, indexing, and rendering.
-
-### Commands and editor
-
-`Direct2dCad.Commands` implements CRUD, property editing, layer operations, origin operations, block operations, copy/paste, and grouped commands. Single-command and batch undo/redo behavior is configurable at the command manager level.
-
-`Direct2dCad.Editor` coordinates command execution, selection, hit testing, spatial indexes, viewport operations, and rendering invalidation. It also updates geometry, brush, text, hatch, and image/OLE resources after document changes.
-
-`Direct2dCad.CommandLine` provides a UI-independent command protocol with aliases, command history, completion, coordinate input, undo/redo, fit, selection, copy/paste, and entity drawing modes. It is shared by the WPF Terminal and Agent tools.
-
-### Query and indexing
-
-`Direct2dCad.HitTesting` handles click selection, window selection, selection cycling, line weight, text bounds, block transforms, and layer visibility/locking rules.
-
-`Direct2dCad.Indexing` maintains bounds and spatial candidates for hit testing, window selection, dirty-region planning, and viewport culling. Entity changes update the index through change tracking.
-
-### Rendering
-
-`Direct2dCad.Rendering` defines renderer contracts, viewport data, render options, dirty rectangles, invalidation, geometry resource management, and the WPF image-source bridge.
-
-`Direct2dCad.Rendering.Direct2D` manages Direct2D/DirectWrite resources and draws the background, grid, origin, document entities, transient previews, selection overlays, and handles. Resources are created or updated in response to entity changes and reused during ordinary drawing. Device-loss recovery recreates device resources and schedules a full redraw.
-
-`Direct2dCad.Rendering.Transient` contains temporary drawing data: drawing previews, selection windows, copy/paste previews, snap markers, construction lines, and measurement text. It follows the same stroke, fill, hatch, line-weight, layer-style, and LOD rules as normal entities, with auxiliary graphics added separately.
-
-`Direct2dCad.Rendering.Handles` contains selected-entity outlines, grips, handles, their positions, types, sizes, and hit-test data. Commands perform the actual document changes.
-
-### WPF and user settings
-
-`Direct2dCad.Client.Common` stores user preferences such as selection colors, crossing-window colors, grip colors, anti-aliasing, LOD, viewport preview, radial-menu profiles, and AI preferences. These settings are separate from document data.
-
-`CadDocument` and `CadViewSettings` store drawing-specific settings such as background color, grid spacing/style, snap behavior, origin marker, layers, and drawing priority. These settings are saved in `.d2cad` files.
-
-`Direct2dCad.ViewModels.Abstractions` contains lightweight canvas input contracts and binding enums. `Direct2dCad.ViewModels.Services` contains drawing, geometry, interaction, rendering, snapping, styling, text, and platform service boundaries. `Direct2dCad.ViewModels` provides document, editor-tab, properties, layers, search, selection-filter, terminal, AI, and settings ViewModels.
-
-`Direct2dCad.wpf.Controls` contains reusable controls. `Direct2dCad.wpf` provides the application shell, `CadCanvas`, AvalonDock toolboxes, property panels, settings dialogs, WPF services, and Direct3D image hosting.
-
-### AI and Agent
-
-`Direct2dCad.AI.Contracts` defines provider-independent assistant, tool-call, tool-result, settings, and client contracts.
-
-`Direct2dCad.AI.LmStudio` implements the OpenAI-compatible LM Studio client. Start LM Studio Local Server and load a tool-calling model; the default endpoint is `http://localhost:1234/v1`.
-
-`Direct2dCad.Agent` manages conversation history, context budgets, tool execution, context compression, cancellation, and multi-turn orchestration.
-
-`Direct2dCad.Agent.Codex` connects to the local Codex app-server through stdio JSON-RPC and exposes the same CAD toolset. It uses the local Codex CLI authentication and model configuration.
-
-AI tools can query document IDs, active documents, entities, layers, blocks, and view state; create, modify, delete, save, open, activate, and close documents; and create entities with appearance and style settings. Every target document uses its own undo/redo batch.
-
-## Canvas interaction
-
-- Select mode prioritizes grip/handle hit testing.
-- Click selection, crossing/window selection, Shift multi-selection, selection cycling, and `Ctrl+A`/`Alt+A` all operate on the active space.
-- Grip dragging supports moving, scaling, rotating, and multi-entity editing.
-- Releasing the mouse keeps a grip operation in preview; a subsequent left click commits it.
-- Right or middle mouse is used for pan; there is no separate Pan tool mode.
-- `Esc` returns to Select mode and clears drawing, selection-window, grip, and paste-preview state.
-- `Enter` finishes multi-point drawing such as polyline, polygon, and spline.
-- Mouse-wheel zoom keeps the cursor position and updates model/layout viewport state.
-
-Current drawing modes include:
-
-```text
-Select, Line, Rectangle, CircleCenterRadius, CircleCenterDiameter,
-CircleTwoPoint, CircleThreePoint,
-ArcThreePoint, ArcStartCenterEnd, ArcStartCenterAngle, ArcStartCenterLength,
-ArcStartEndAngle, ArcStartEndDirection, ArcStartEndRadius,
-ArcCenterStartEnd, ArcCenterStartAngle, ArcCenterStartLength, ArcContinue,
-EllipseCenter, EllipseAxisEnd, EllipseArc, Polyline, Polygon, Spline, Text,
-SetOrigin
-```
-
-## Rendering and resource rules
-
-- Entity create, update, delete, layer changes, and view changes produce a `CadDocumentChangeSet`.
-- The editor updates selection, bounds, indexes, resources, and dirty regions from that change set.
-- Geometry, brushes, text layouts, hatch resources, images, and OLE resources are reused and released according to ownership and usage.
-- Draw order uses layer drawing priority, entity `ZIndex`, and insertion order.
-- Layer-following color and line weight are resolved at draw time while the entity's own values remain editable and persisted.
-- Fill and hatch use one fill color; hatch patterns do not add an unwanted background color.
-- Dirty regions include old and new entity bounds, line weight, fills/hatches, handles, transient previews, grid, and overlays.
-- Small or visually negligible entities may be skipped or simplified according to user-controlled LOD settings.
-
-Ordinary edits prune only affected selection entries. Selection-dependent buttons cache availability by selection and access versions. Appearance-only changes propagate through nested block references without rebuilding their bounds or spatial-index entries. Layout damage is mapped and clipped to visible model viewports; structural changes, view settings, and screen/paper line-weight mode transitions retain a full-redraw fallback.
-
-Agent/Terminal queries accumulate statistics while enumerating and retain at most `offset + limit` sorting candidates for a page. Counts and ordering remain complete and stable. Deep pages may still use substantial memory, and statistics still scan the requested scope. `SelectionAvailabilityBenchmarks` compares full selection scans with cached availability for 512 and 20,000 entities.
-
-Table changes distinguish metadata, layer access/order and styles from document structure. Renaming or locking layers no longer rebuilds spatial geometry; ordering changes still redraw the scene. Native geometry preparation captures detached values and streams results through a bounded queue. Only stale results for edited entities are discarded; unrelated work continues.
-
-History snapshots use constant-time state tokens instead of retaining all commands. `CommandHistorySettings.MaximumUndoCommands` is an optional soft command-count limit (`0` means unlimited); eviction removes complete oldest batches and always preserves the newest batch. Undo/Redo modes remain runtime settings. This is not a byte budget. Spline length is cached until geometry changes. Save snapshots share immutable image/OLE storage while capturing other mutable state on the owner thread; edits made during asynchronous writing remain marked as unsaved.
-
-`CadDocumentSaveSession` serializes saves per document and owns cancellation, file paths, and saved-state baselines. WPF captures entities in batches of 128 with a 4 ms cooperative UI time target. Changes detected after yielding discard the snapshot and allow at most two retries. Serialization reads only detached DTOs; cancellation or capture failure does not replace the original file. The synchronous storage API still captures in one pass.
-
-Geometry consumption has item and 2 ms time budgets, including stale-result disposal. Spline/polyline LOD geometry is built from copied values on a worker during preparation; normal and selection drawing only read resources and use full geometry until ready. Budgets do not preempt an individual operation. First-frame benchmarks wait for preparation and verify Present; statistics are not pixel-correctness assertions.
-
-`CadOleSessionController` owns OLE sessions, MessagePipe notifications and undoable updates. `Direct2DLayoutRenderer` owns paper/viewport rendering and clipping. Both remain in existing projects. `CommandHistoryBenchmarks` and `SplineLengthBenchmarks` cover the corresponding allocation and repeated-query paths.
-
-## Build and test
-
-```powershell
-dotnet build .\Direct2dCad.slnx
-.\scripts\testing\Run-Regression.ps1 -CollectCoverage
-```
-
-Add `-IncludeWindowsIntegration -IncludeUiAutomation` for native rendering and UI regression tests. See the [testing guide (Chinese)](scripts/testing/README.md) for coverage reports and clipboard safety requirements.
-
-## Performance benchmarks
-
-Atomic command batches keep spatial queries and block bounds current, then coalesce GPU updates, document notifications, and activity logs. Individual history entries remain available for configurable undo/redo. The block panel reuses rows and defers closed-panel refreshes.
-
-Parallel rendering prefers complete tile/command-list caches. Otherwise, visible entities are queried through the spatial index and assigned in ordered, cost-weighted ranges. Workers retain resources for assigned entities, apply incremental changes, and replace only render targets on resize. Device loss still rebuilds the pool. See the [optimization and validation notes](scripts/testing/PERFORMANCE-2026-09-05.md).
-
-Block bounds and large selections support incremental updates. Initial geometry snapshots are captured in bounded batches. See the [incremental optimization notes](scripts/testing/PERFORMANCE-INCREMENTAL-2026-09-05.md) for scope and benchmark limits.
-
-`Direct2dCad.Benchmarks` uses BenchmarkDotNet. Run it in `Release` configuration on Windows x64 with a stable GPU driver:
-
-`CacheEvictionBenchmarks` compares sorting-based eviction with a reusable priority queue for 128 / 1,024 candidates, measuring time and managed allocations without creating GPU resources.
-
-`PreparationSnapshotBenchmarks` compares full snapshot copying with copy-on-write pages for 20,000 / 100,000 entities. Geometry-only updates reuse the existing draw-order permutation; chunk and tile invalidation is deduplicated within each change batch. Editor creation commands publish entities only after assigning their destination owner, which is preserved across redo.
-
-Search results update changed rows and batch collection notifications; multi-selection properties skip unrelated edits and refresh by property group. Background preparation reuses membership arrays and unchanged block dependencies. Chunk plans invalidate affected owners and referencing owners. Zoom-cache eviction can cancel recording without waiting, but shared-resource updates still wait for the worker. Saving captures consistent DTOs, writes compressed sections one at a time to a temporary file, then fills in the directory and atomically replaces the destination without changing the file format.
-
-`OwnerBoundsUpdateBenchmarks` compares a full bounds scan with incremental bounds-tree updates in 20,000 / 100,000-entity owners. `DirtyRegionBatchBenchmarks` measures conservative reduction of 512 / 20,000 dirty rectangles. `SelectionOverlayBenchmarks` also compares scene reuse with versioned selection-order reuse. Spatial count benchmarks include pending edits: counts correct the immutable tree using old/new bounds. Subsequent large-index rebuilds run on value snapshots in the background; initial builds and snapshot capture remain on the calling thread. The index is not a concurrent read/write collection.
-
-```powershell
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --list flat
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --smoke --filter "*SpatialIndexBenchmarks*"
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --filter "*Direct2DRenderingBenchmarks*"
-```
-
-The benchmark suite covers spatial indexing, selection overlays, dirty regions, Direct2D rendering and resource updates, complex scenes, document IO, and layout/model viewport rendering. Use `--document "C:\Drawings\large.d2cad"` for a real document in the IO benchmarks. OLE performance depends on the external COM server and is intentionally kept out of the default reproducible run.
+This project is licensed under the [MIT License](LICENSE.txt).

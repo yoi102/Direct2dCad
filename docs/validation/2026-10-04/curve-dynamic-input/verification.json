@@ -1,0 +1,176 @@
+{
+  "date": "2026-10-04",
+  "scope": "Editable circle, arc and ellipse construction parameters with compact prefixed fields at their geometry",
+  "environment": {
+    "os": "Windows x64",
+    "dotnetSdk": "10.0.401",
+    "settings": "isolated temporary fixture directory",
+    "workingTree": "local uncommitted workspace",
+    "branch": "master",
+    "baseCommit": "ce7178d03c6fb83acde61333b4579bd1f2ea6946"
+  },
+  "releaseBuild": {
+    "outcome": "Passed",
+    "warnings": 0,
+    "errors": 0,
+    "command": "dotnet build Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj -c Release --no-restore -v quiet",
+    "applicationBuiltThroughProjectReference": true
+  },
+  "viewModels": {
+    "total": 85,
+    "passed": 85,
+    "failed": 0,
+    "skipped": 0,
+    "trx": "TestResults/curve-dynamic-input/model-verified/yoiri_YOIRI_2026-10-04_00_09_09_net10.0.trx",
+    "trxSha256": "b1cf6d2af80ea8319ce32f1643a9f5eda90c07a2d9f02c513cd4fc1549ba90a9",
+    "start": "2026-10-04T00:09:07.6208306+09:00",
+    "finish": "2026-10-04T00:09:17.1238489+09:00",
+    "command": "dotnet test Direct2dCad.ViewModels.Tests/Direct2dCad.ViewModels.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~DynamicInputTests|FullyQualifiedName~CurveDynamicInputTests|FullyQualifiedName~DrawingWorkflowContractTests' --logger trx --results-directory TestResults/curve-dynamic-input/model-verified -v quiet",
+    "geometryUnchangedAfterRun": true,
+    "subsequentChanges": "Accessible field labels, WPF template and focus handling, UI tests, documentation"
+  },
+  "ui": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "singleFinalRun": true,
+    "trx": "TestResults/curve-dynamic-input/ui-final-accepted/yoiri_YOIRI_2026-10-04_00_27_13_net10.0.trx",
+    "trxSha256": "b8442e274f16ea0126d5a8901f7a66e3f78d8b4c1c36e94148676290822e649d",
+    "start": "2026-10-04T00:27:07.2270105+09:00",
+    "finish": "2026-10-04T00:28:12.3742274+09:00",
+    "screenshotEnvironment": {
+      "DIRECT2DCAD_UI_SCREENSHOT_DIRECTORY": "TestResults/curve-dynamic-input/screenshots-final-accepted"
+    },
+    "command": "dotnet test Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj -c Release --no-build --no-restore --filter 'FullyQualifiedName~ThreePointCircleRadiusOverlayCanBeClickedAndConfirmedFromTheCanvas|FullyQualifiedName~EllipseArcAxesAndSweepHavePrefixesAndSupportTabAndMouseEditingAtTheirGeometry|FullyQualifiedName~ArcRadiusAndSweepAreEditableWithoutCoordinateOnlyFields|FullyQualifiedName~CanvasDynamicInputSupportsTabTypingPreviewEdgesAndExactCircleUndo|FullyQualifiedName~RectangleDynamicNumbersStayByTheirCorrespondingEdgesWithoutAPromptPanel|FullyQualifiedName~SplineDynamicLengthAndAngleRemainCompactByThePointer' --logger trx --results-directory TestResults/curve-dynamic-input/ui-final-accepted -v quiet",
+    "results": [
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CanvasDynamicInputSupportsTabTypingPreviewEdgesAndExactCircleUndo",
+        "outcome": "Passed",
+        "duration": "00:00:18.7421938"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.RectangleDynamicNumbersStayByTheirCorrespondingEdgesWithoutAPromptPanel",
+        "outcome": "Passed",
+        "duration": "00:00:08.2001907"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.SplineDynamicLengthAndAngleRemainCompactByThePointer",
+        "outcome": "Passed",
+        "duration": "00:00:10.6609830"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.EllipseArcAxesAndSweepHavePrefixesAndSupportTabAndMouseEditingAtTheirGeometry",
+        "outcome": "Passed",
+        "duration": "00:00:12.0739242"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ThreePointCircleRadiusOverlayCanBeClickedAndConfirmedFromTheCanvas",
+        "outcome": "Passed",
+        "duration": "00:00:09.1282637"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ArcRadiusAndSweepAreEditableWithoutCoordinateOnlyFields",
+        "outcome": "Passed",
+        "duration": "00:00:05.8613414"
+      }
+    ]
+  },
+  "bindingDiagnostics": {
+    "scope": "Three new curve UI tests",
+    "errors": 0,
+    "logs": [
+      {
+        "path": "TestResults/curve-dynamic-input/screenshots-final-accepted/arc.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/curve-dynamic-input/screenshots-final-accepted/circle-three-point.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/curve-dynamic-input/screenshots-final-accepted/ellipse-arc.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "circle-three-point-radius-input.png",
+      "source": "TestResults/curve-dynamic-input/screenshots-final-accepted/circle-three-point-radius-input.png",
+      "sha256": "802250d93790275cc062f115a7a8e13a76d33ab6b10321ad64f413a779a439b4",
+      "visuallyInspected": true
+    },
+    {
+      "file": "dynamic-input-diameter.png",
+      "source": "TestResults/curve-dynamic-input/screenshots-final-accepted/dynamic-input-diameter.png",
+      "sha256": "ef707433a20c6ec1ef495099f24d87e18e1f62fdee15447fd568210e4efd781e",
+      "visuallyInspected": true
+    },
+    {
+      "file": "arc-sweep-input.png",
+      "source": "TestResults/curve-dynamic-input/screenshots-final-accepted/arc-sweep-input.png",
+      "sha256": "f4b9ed4e7deec301551202405f1cff4dc6d189d7c52f8b7848f7b54d9067455f",
+      "visuallyInspected": true
+    },
+    {
+      "file": "ellipse-arc-parameter-inputs.png",
+      "source": "TestResults/curve-dynamic-input/screenshots-final-accepted/ellipse-arc-parameter-inputs.png",
+      "sha256": "fde93a8fcb075152b6955abe15c38a6cad57473fb4c34b1aeac5008ad031b7df",
+      "visuallyInspected": true
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.CurveDynamicInput.cs",
+      "sha256": "34730a0854f7bf57e7842fca63a1754883965f11d717d9de083d8ace5a0b3408"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.DynamicInput.cs",
+      "sha256": "8bfb911a94decbd78ae794d06942f17ea8ec94ea42f55436e76857f94aba7e7c"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.cs",
+      "sha256": "4ac9e69583347f364d3bd194324a2c32593898041e8e850504e4d4b0dad1797d"
+    },
+    {
+      "path": "Direct2dCad.ViewModels.Services/Drawing/CadDrawingSessionState.cs",
+      "sha256": "934b476e9600b64f5ddb235f41d47719ce792299240a916abd91c88466debb6e"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadDocumentView.xaml",
+      "sha256": "7b4a3d9a3cb02ab80817dba55caa97cb7fedd60e18bf9d272bac727346d6f707"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadDocumentView.xaml.cs",
+      "sha256": "06cbcaefd9b16ecd32ffe97822cff5a4264e1e605ff98ff8dd96d13fa3b9c693"
+    },
+    {
+      "path": "Direct2dCad.ViewModels.Tests/CurveDynamicInputTests.cs",
+      "sha256": "a531381749f7c85afd798ac1c30bef59a64175902a8490239db49e7795231e8b"
+    },
+    {
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.CurveDynamicInput.cs",
+      "sha256": "208bc3b4b2acfb40ebbe6edcb46eaee4a42ebb936c78c6c5d083a66ead91e35c"
+    },
+    {
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.cs",
+      "sha256": "82f302edf43719501884d8d2eff2f1b258b31e2d634ebb9469b24dcbd91f1a80"
+    }
+  ],
+  "retainedFailureEvidence": [
+    "TestResults/curve-dynamic-input/ui-accepted",
+    "TestResults/curve-dynamic-input/arc-diagnostic",
+    "TestResults/curve-dynamic-input/arc-events"
+  ],
+  "notRun": [
+    "Full product regression",
+    "Mixed-monitor DPI acceptance",
+    "IME acceptance",
+    "Input latency measurements",
+    "New GitHub release or signing"
+  ]
+}

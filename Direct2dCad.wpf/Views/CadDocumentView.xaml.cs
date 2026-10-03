@@ -53,6 +53,8 @@ public partial class CadDocumentView : IDisposable
         Unloaded += (_, _) => DetachDynamicInput();
         DataContextChanged += (_, _) => { if (IsLoaded) AttachDynamicInput(); };
         dynamicInputSurface.IsKeyboardFocusWithinChanged += (_, _) => UpdateDynamicInputVisibility();
+        dynamicInputItems.MouseEnter += (_, _) => UpdateDynamicInputVisibility();
+        dynamicInputItems.MouseLeave += (_, _) => UpdateDynamicInputVisibility();
         dynamicInputItems.ItemContainerGenerator.StatusChanged += (_, _) => ScheduleDynamicInputPosition();
     }
 
@@ -67,7 +69,11 @@ public partial class CadDocumentView : IDisposable
     }
     private void DetachDynamicInput()
     {
-        if (_dynamicInputDocument is not null) _dynamicInputDocument.PropertyChanged -= DynamicInputDocument_OnPropertyChanged;
+        if (_dynamicInputDocument is not null)
+        {
+            _dynamicInputDocument.PropertyChanged -= DynamicInputDocument_OnPropertyChanged;
+            _dynamicInputDocument.SetDynamicInputInteraction(false);
+        }
         _dynamicInputDocument = null;
         _cursorBadgeDescriptor.RemoveValueChanged(cadCanvas, DynamicInputCanvas_OnPresentationChanged);
         _cursorBadgePositionDescriptor.RemoveValueChanged(cadCanvas, DynamicInputCanvas_OnPresentationChanged);
@@ -77,7 +83,7 @@ public partial class CadDocumentView : IDisposable
     {
         if (e.PropertyName is nameof(CadDocumentViewModel.HasDynamicInput) or nameof(CadDocumentViewModel.IsPanning))
             UpdateDynamicInputVisibility();
-        if (e.PropertyName is nameof(CadDocumentViewModel.DynamicInputScreenGeometry) or nameof(CadDocumentViewModel.DynamicInputError))
+        if (e.PropertyName is nameof(CadDocumentViewModel.DynamicInputScreenGeometry) or nameof(CadDocumentViewModel.DynamicInputScreenMeasurements) or nameof(CadDocumentViewModel.DynamicInputError))
             ScheduleDynamicInputPosition();
     }
     private void DynamicInputCanvas_OnPresentationChanged(object? sender, EventArgs e)
@@ -85,12 +91,13 @@ public partial class CadDocumentView : IDisposable
     private void UpdateDynamicInputVisibility()
     {
         var visible = _dynamicInputDocument is { HasDynamicInput: true, IsPanning: false } && !cadCanvas.IsRadialMenuActive &&
-            (cadCanvas.IsMouseOver || dynamicInputSurface.IsKeyboardFocusWithin);
+            (cadCanvas.IsMouseOver || dynamicInputItems.IsMouseOver || dynamicInputSurface.IsKeyboardFocusWithin);
         dynamicInputSurface.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        _dynamicInputDocument?.SetDynamicInputInteraction(visible && (dynamicInputItems.IsMouseOver || dynamicInputSurface.IsKeyboardFocusWithin));
     }
     private void DynamicInput_OnPreviewMouseMove(object sender, MouseEventArgs e)
     {
-        _dynamicInputPointer = e.GetPosition(cadCanvas);
+        if (!dynamicInputItems.IsMouseOver) _dynamicInputPointer = e.GetPosition(cadCanvas);
         ScheduleDynamicInputPosition();
         UpdateDynamicInputVisibility();
     }
@@ -121,18 +128,20 @@ public partial class CadDocumentView : IDisposable
                     FlowDirection.LeftToRight, new Typeface(box.FontFamily, box.FontStyle, box.FontWeight, box.FontStretch),
                     box.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(box).PixelsPerDip);
                 var width = Math.Clamp(Math.Ceiling(text.WidthIncludingTrailingWhitespace) +
-                    (field.Key is "X" or "Y" or "Angle" ? 24 : 12), 48, 112);
+                    (field.IsAngle ? 38 : 28), 56, 128);
                 box.Width = width; widths[field.Key] = width;
             }
             var geometry = document.DynamicInputScreenGeometry;
+            var measurements = document.DynamicInputScreenMeasurements;
+            var measuredKeys = measurements.Select(m => m.Key).ToHashSet();
             var endpoint = new Point(geometry.Point.X, geometry.Point.Y);
             var guide = new StreamGeometry();
             using (var context = guide.Open())
             {
                 var positions = new Dictionary<string, Point>();
-                // Coordinates and spline segment values stay by the pointer, like command-line dynamic input.
+                // Point coordinates stay by the cursor; geometric parameters use their construction lines.
                 var cursorFields = boxes.Where(box => box.DataContext is CadDynamicInputField field &&
-                    (field.Key is "X" or "Y" or "Angle" || document.CadCanvasToolMode == CadCanvasToolMode.Spline)).ToArray();
+                    !measuredKeys.Contains(field.Key) && field.Key is not ("Width" or "Height")).ToArray();
                 var inlineBadge = cursorFields.Length > 0 && cadCanvas.IsCursorBadgeVisible;
                 var groupWidth = cursorFields.Sum(box => widths[((CadDynamicInputField)box.DataContext).Key]) +
                     Math.Max(0, cursorFields.Length - 1) * 6 + (inlineBadge ? 34 : 0);
@@ -159,9 +168,6 @@ public partial class CadDocumentView : IDisposable
                 {
                     var start = new Point(anchor.X, anchor.Y);
                     var direction = endpoint - start;
-                    var unit = direction.Length > 1e-6 ? direction / direction.Length : new Vector(1, 0);
-                    var normal = new Vector(-unit.Y, unit.X);
-                    if (normal.Y > 0) normal = -normal;
                     if (positions.ContainsKey("Width") && positions.ContainsKey("Height"))
                     {
                         var xCorner = new Point(geometry.XCorner.X, geometry.XCorner.Y);
@@ -180,23 +186,21 @@ public partial class CadDocumentView : IDisposable
                         positions["Width"] = Dimension(widthStart, widthEnd, Outward(widthStart, widthEnd), 28) - new Vector(widths["Width"] / 2, 12);
                         positions["Height"] = Dimension(heightStart, heightEnd, Outward(heightStart, heightEnd), 54) - new Vector(widths["Height"] / 2, 12);
                     }
-                    else if (positions.ContainsKey("Radius") || positions.ContainsKey("Diameter"))
-                    {
-                        var diameter = positions.ContainsKey("Diameter");
-                        var from = diameter ? start - direction * .5 : start;
-                        var to = diameter ? start + direction * .5 : endpoint;
-                        var key = diameter ? "Diameter" : "Radius";
-                        positions[key] = Dimension(from, to, normal, 24) - new Vector(widths[key] / 2, 12);
-                    }
-                    else if (positions.ContainsKey("Length"))
-                    {
-                        if (document.CadCanvasToolMode == CadCanvasToolMode.Spline)
-                            Line(start, endpoint);
-                        else
-                            positions["Length"] = Dimension(start, endpoint, normal, 26) - new Vector(widths["Length"] / 2, 12);
-                    }
+                    else if (positions.ContainsKey("Length") && document.CadCanvasToolMode == CadCanvasToolMode.Spline)
+                        Line(start, endpoint);
                 }
-                Rect? occupied = null;
+                foreach (var measurement in measurements)
+                {
+                    if (!widths.TryGetValue(measurement.Key, out var width)) continue;
+                    var start = new Point(measurement.Start.X, measurement.Start.Y);
+                    var end = new Point(measurement.End.X, measurement.End.Y);
+                    var direction = end - start;
+                    var unit = direction.Length > 1e-6 ? direction / direction.Length : new Vector(1, 0);
+                    var normal = new Vector(-unit.Y, unit.X);
+                    if (normal.Y > 0) normal = -normal;
+                    positions[measurement.Key] = Dimension(start, end, normal, 26 + measurement.StackIndex * 24) - new Vector(width / 2, 12);
+                }
+                var occupied = new List<Rect>();
                 foreach (var box in boxes)
                 {
                     if (box.DataContext is not CadDynamicInputField field ||
@@ -206,13 +210,14 @@ public partial class CadDocumentView : IDisposable
                     var x = Math.Clamp(desired.X, 4, Math.Max(4, cadCanvas.ActualWidth - width - 4));
                     var y = Math.Clamp(desired.Y, 4, Math.Max(4, cadCanvas.ActualHeight - 28));
                     var bounds = new Rect(x, y, width, 24);
-                    if (occupied is { } other && bounds.IntersectsWith(other))
+                    for (var attempt = 0; attempt < boxes.Length * 2 && occupied.Any(other => bounds.IntersectsWith(other)); attempt++)
                     {
+                        var other = occupied.First(other => bounds.IntersectsWith(other));
                         y = other.Bottom + 6 <= cadCanvas.ActualHeight - 28 ? other.Bottom + 6 : Math.Max(4, other.Top - 30);
                         bounds = new(x, y, width, 24);
                     }
                     Canvas.SetLeft(container, x); Canvas.SetTop(container, y);
-                    occupied = bounds;
+                    occupied.Add(bounds);
                 }
             }
             guide.Freeze(); dynamicInputGuides.Data = guide;
@@ -238,6 +243,13 @@ public partial class CadDocumentView : IDisposable
     }
     private void DynamicInputField_OnGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     { if (sender is TextBox box) box.SelectAll(); }
+    private void DynamicInputField_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not TextBox box || box.IsKeyboardFocusWithin && box.DataContext is CadDynamicInputField { IsLocked: true }) return;
+        e.Handled = true;
+        box.Focus();
+        box.SelectAll();
+    }
     private void DynamicInput_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (_dynamicInputDocument is not { HasDynamicInput: true } document || dynamicInputSurface.Visibility != Visibility.Visible) return;
@@ -273,8 +285,16 @@ public partial class CadDocumentView : IDisposable
     }
     private void DynamicInput_OnPreviewTextInput(object sender, TextCompositionEventArgs e)
     {
-        if (_dynamicInputDocument is not { HasDynamicInput: true } || dynamicInputSurface.Visibility != Visibility.Visible ||
-            dynamicInputSurface.IsKeyboardFocusWithin || Keyboard.Modifiers != ModifierKeys.None ||
+        if (_dynamicInputDocument is not { HasDynamicInput: true } || dynamicInputSurface.Visibility != Visibility.Visible) return;
+        if (dynamicInputSurface.IsKeyboardFocusWithin)
+        {
+            // A queued preview refresh can replace Text after focus and clear its selection.
+            // The first keystroke must still replace a live measurement, rather than append to it.
+            if (Keyboard.FocusedElement is TextBox { DataContext: CadDynamicInputField { IsLocked: false } } liveBox)
+                liveBox.SelectAll();
+            return;
+        }
+        if (Keyboard.Modifiers != ModifierKeys.None ||
             !e.Text.All(c => char.IsDigit(c) || c is '.' or ',' or '-' or '+')) return;
         var box = DynamicInputBoxes().FirstOrDefault();
         if (box is null) return;

@@ -58,9 +58,9 @@
                 </Label>
             </Border>
         </Canvas>
-        <Grid x:Name="dynamicInputOverlay" IsHitTestVisible="False" ClipToBounds="True">
+        <Grid x:Name="dynamicInputOverlay" ClipToBounds="True">
             <Grid x:Name="dynamicInputSurface" Visibility="Collapsed" SizeChanged="DynamicInput_OnSizeChanged">
-                    <Canvas>
+                    <Canvas IsHitTestVisible="False">
                         <Path x:Name="dynamicInputGuides" Stroke="#8A8A8A"
                               StrokeThickness="1" StrokeDashArray="2,3" Opacity="0.8" />
                     </Canvas>
@@ -72,46 +72,50 @@
                                     <TextBox AutomationProperties.AutomationId="{Binding AutomationId}"
                                              AutomationProperties.Name="{Binding Label}"
                                              AutomationProperties.HelpText="{Binding DataContext.DynamicInputHint, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}"
-                                             Width="48" FontSize="12" TextAlignment="Center" VerticalContentAlignment="Center"
+                                             Width="56" FontSize="12" TextAlignment="Right" VerticalContentAlignment="Center"
+                                             ToolTip="{Binding Label}"
                                              Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                              Background="{DynamicResource MaterialDesign.Brush.Background}"
                                              Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                             PreviewMouseLeftButtonDown="DynamicInputField_OnPreviewMouseLeftButtonDown"
                                              GotKeyboardFocus="DynamicInputField_OnGotKeyboardFocus">
                                         <TextBox.Style>
                                             <Style TargetType="TextBox">
-                                                <Setter Property="Padding" Value="4,1" />
                                                 <Setter Property="BorderThickness" Value="1" />
                                                 <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Foreground.Secondary}" />
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Key}" Value="X"><Setter Property="Padding" Value="16,1,4,1" /></DataTrigger>
-                                                    <DataTrigger Binding="{Binding Key}" Value="Y"><Setter Property="Padding" Value="16,1,4,1" /></DataTrigger>
-                                                    <DataTrigger Binding="{Binding Key}" Value="Angle"><Setter Property="Padding" Value="4,1,16,1" /></DataTrigger>
                                                     <DataTrigger Binding="{Binding IsLocked}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" /></DataTrigger>
                                                     <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" /></Trigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBox.Style>
+                                        <TextBox.Template>
+                                            <ControlTemplate TargetType="TextBox">
+                                                <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Text="{Binding Prefix}" IsHitTestVisible="False" FontSize="10" Margin="4,0"
+                                                                   VerticalAlignment="Center" Opacity="0.7" />
+                                                        <ScrollViewer x:Name="PART_ContentHost" Grid.Column="1" Margin="2,1,4,1" VerticalAlignment="Center"
+                                                                      Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" />
+                                                        <TextBlock Text="°" Grid.Column="2" IsHitTestVisible="False" FontSize="10" Margin="0,0,4,0"
+                                                                   VerticalAlignment="Center" Opacity="0.7"
+                                                                   Visibility="{Binding IsAngle, Converter={StaticResource Bool}}" />
+                                                    </Grid>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </TextBox.Template>
                                     </TextBox>
-                                    <TextBlock FontSize="10" Margin="4,0" VerticalAlignment="Center" Opacity="0.7">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Setter Property="HorizontalAlignment" Value="Left" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Key}" Value="X"><Setter Property="Text" Value="X" /><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                                    <DataTrigger Binding="{Binding Key}" Value="Y"><Setter Property="Text" Value="Y" /><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                                    <DataTrigger Binding="{Binding Key}" Value="Angle"><Setter Property="Text" Value="°" /><Setter Property="HorizontalAlignment" Value="Right" /><Setter Property="Visibility" Value="Visible" /></DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <TextBlock x:Name="dynamicInputError" Text="{Binding DynamicInputError}" AutomationProperties.AutomationId="DynamicInputError"
                                HorizontalAlignment="Left" VerticalAlignment="Top" MaxWidth="180"
-                               FontSize="11" TextWrapping="Wrap" Foreground="#F07178">
+                               FontSize="11" TextWrapping="Wrap" Foreground="#F07178" IsHitTestVisible="False">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers>

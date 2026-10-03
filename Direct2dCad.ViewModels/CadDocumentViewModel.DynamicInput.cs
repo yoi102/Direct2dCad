@@ -5,6 +5,7 @@ using Direct2dCad.Db.Cad.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang;
 using Direct2dCad.ViewModels.Enums;
+using Direct2dCad.ViewModels.Services.Drawing;
 
 namespace Direct2dCad.ViewModels;
 
@@ -16,6 +17,14 @@ public sealed class CadDynamicInputField : ObservableObject
     private bool _refreshing;
     public string Key { get; }
     public string Label { get; }
+    public string Prefix => Key switch
+    {
+        "Radius" => "R:", "Diameter" or "Direction" => "D:",
+        "Angle" or "StartAngle" => "A:", "Length" => "L:",
+        "Width" => "W:", "Height" => "H:",
+        "AxisX" => "X:", "AxisY" => "Y:", _ => Key + ":"
+    };
+    public bool IsAngle => Key is "Angle" or "StartAngle" or "Direction";
     public string AutomationId => "DynamicInput" + Key;
     public bool IsLocked { get => _isLocked; private set => SetProperty(ref _isLocked, value); }
     public string Text
@@ -30,15 +39,20 @@ public sealed class CadDynamicInputField : ObservableObject
         }
     }
     internal CadDynamicInputField(string key, Action changed)
-    { Key = key; Label = CadUiText.Get(key) + (key == "Angle" ? " (°)" : ""); _changed = changed; }
-    internal void Refresh(double value, bool reset = false)
+    {
+        Key = key;
+        Label = Prefix + " " + CadUiText.Get(key switch { "AxisX" => "RadiusX", "AxisY" => "RadiusY", "Direction" => "Angle", _ => key }) + (IsAngle ? " (°)" : "");
+        _changed = changed;
+    }
+    internal void Refresh(double value, int precision, bool reset = false)
     {
         if (IsLocked && !reset) return;
         _refreshing = true;
         try
         {
             if (reset) IsLocked = false;
-            Text = value.ToString("G9", CultureInfo.CurrentCulture);
+            var digits = Math.Clamp(precision, 0, 12);
+            Text = value.ToString(digits == 0 ? "0" : "0." + new string('#', digits), CultureInfo.CurrentCulture);
         }
         finally { _refreshing = false; }
     }
@@ -46,11 +60,13 @@ public sealed class CadDynamicInputField : ObservableObject
 
 public partial class CadDocumentViewModel
 {
-    private enum DynamicInputKind { None, Coordinates, Polar, Radius, Diameter, Rectangle }
+    private enum DynamicInputKind { None, Coordinates, Polar, Radius, Diameter, Rectangle, Curve }
     private (CadCanvasToolMode Mode, DynamicInputKind Kind, CadPointD? Anchor, int Phase, CadUnit Unit, string Culture)? _dynamicInputStep;
     private DynamicInputKind _dynamicInputKind;
     private CadPointD _dynamicInputPointer;
     private CadPointD? _dynamicInputPreview;
+    private CadDrawingSessionState? _dynamicInputResolvedState;
+    private bool _isDynamicInputInteracting;
     public ObservableCollection<CadDynamicInputField> DynamicInputFields { get; } = [];
     [ObservableProperty] public partial string DynamicInputError { get; private set; } = "";
     public bool HasDynamicInput => CanEditDocument && HasActiveDrawingTool &&
@@ -75,6 +91,7 @@ public partial class CadDocumentViewModel
     private DynamicInputKind GetDynamicInputKind()
     {
         if (!HasDynamicInput) return DynamicInputKind.None;
+        if (GetCurveDynamicInputKeys().Length > 0) return DynamicInputKind.Curve;
         if (IsDimensionTool)
         {
             if (_dimensionAnchors.Count == 0 && CadCanvasToolMode is CadCanvasToolMode.DimRadius or CadCanvasToolMode.DimDiameter)
@@ -87,6 +104,7 @@ public partial class CadDocumentViewModel
         {
             CadCanvasToolMode.CircleCenterRadius => DynamicInputKind.Radius,
             CadCanvasToolMode.CircleCenterDiameter => DynamicInputKind.Diameter,
+            CadCanvasToolMode.CircleTwoPoint => DynamicInputKind.Diameter,
             CadCanvasToolMode.Rectangle => DynamicInputKind.Rectangle,
             CadCanvasToolMode.Line or CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline => DynamicInputKind.Polar,
             _ => DynamicInputKind.Coordinates
@@ -97,12 +115,15 @@ public partial class CadDocumentViewModel
     {
         var kind = GetDynamicInputKind();
         var step = (CadCanvasToolMode, kind, DynamicInputAnchor,
-            _dimensionAnchors.Count + _drawingState.PendingEllipsePoints.Count, DocumentUnit, CultureInfo.CurrentUICulture.Name);
+            _dimensionAnchors.Count + _drawingState.PendingEllipsePoints.Count +
+            (_drawingState.PendingArcStartPoint is null ? 0 : 1) + (_drawingState.PendingCircleSecondPoint is null ? 0 : 1),
+            DocumentUnit, CultureInfo.CurrentUICulture.Name);
         if (_dynamicInputStep != step)
         {
             _dynamicInputStep = step;
             _dynamicInputKind = kind;
             _dynamicInputPreview = null;
+            _dynamicInputResolvedState = null;
             DynamicInputError = "";
             DynamicInputFields.Clear();
             string[] keys = kind switch
@@ -112,6 +133,7 @@ public partial class CadDocumentViewModel
                 DynamicInputKind.Radius => ["Radius"],
                 DynamicInputKind.Diameter => ["Diameter"],
                 DynamicInputKind.Rectangle => ["Width", "Height"],
+                DynamicInputKind.Curve => GetCurveDynamicInputKeys(),
                 _ => []
             };
             foreach (var key in keys) DynamicInputFields.Add(new(key, OnDynamicInputChanged));
@@ -121,6 +143,7 @@ public partial class CadDocumentViewModel
         OnPropertyChanged(nameof(DynamicInputHint));
         OnPropertyChanged(nameof(DynamicInputUnit));
         OnPropertyChanged(nameof(DynamicInputScreenGeometry));
+        OnPropertyChanged(nameof(DynamicInputScreenMeasurements));
     }
 
     private double[] DynamicInputValues()
@@ -133,20 +156,30 @@ public partial class CadDocumentViewModel
             DynamicInputKind.Polar => [Display(delta.Length), (Math.Atan2(delta.Y, delta.X) * 180 / Math.PI + 360) % 360],
             DynamicInputKind.Radius or DynamicInputKind.Diameter => [Display(delta.Length)],
             DynamicInputKind.Rectangle => [Display(Math.Abs(delta.X)), Display(Math.Abs(delta.Y))],
+            DynamicInputKind.Curve => GetCurveDynamicInputValues(_drawingState, _dynamicInputPointer),
             _ => []
         };
     }
     private void RefreshDynamicInputValues(bool reset = false)
     {
-        var values = DynamicInputValues();
-        for (var i = 0; i < DynamicInputFields.Count; i++) DynamicInputFields[i].Refresh(values[i], reset);
+        // Rendering can run while Escape or an entity command is clearing a drawing step.
+        if (_dynamicInputKind != GetDynamicInputKind()) { RefreshDynamicInput(); return; }
+        var values = _dynamicInputKind == DynamicInputKind.Curve && !reset && HasLockedDynamicInput && _dynamicInputPreview is { } point
+            ? GetCurveDynamicInputValues(_dynamicInputResolvedState ?? _drawingState, point) : DynamicInputValues();
+        for (var i = 0; i < DynamicInputFields.Count; i++)
+            DynamicInputFields[i].Refresh(values[i], DynamicInputFields[i].IsAngle ? DocumentAnglePrecision : DocumentLengthPrecision, reset);
     }
     private void UpdateDynamicInputPointer(CadPointD point)
     {
         var moved = _dynamicInputPointer != point;
         _dynamicInputPointer = point;
+        if (HasLockedDynamicInput && TryGetDynamicInputPoint(out var resolved)) _dynamicInputPreview = resolved;
         RefreshDynamicInputValues();
-        if (moved) OnPropertyChanged(nameof(DynamicInputScreenGeometry));
+        if (moved)
+        {
+            OnPropertyChanged(nameof(DynamicInputScreenGeometry));
+            OnPropertyChanged(nameof(DynamicInputScreenMeasurements));
+        }
     }
     private void OnDynamicInputChanged()
     {
@@ -154,16 +187,18 @@ public partial class CadDocumentViewModel
         {
             _dynamicInputPreview = point;
             DynamicInputError = "";
+            RefreshDynamicInputValues();
         }
-        else DynamicInputError = CadUiText.Get("InvalidStepInput");
+        else DynamicInputError = CadUiText.Get("InvalidDynamicInput");
         OnPropertyChanged(nameof(DynamicInputScreenGeometry));
+        OnPropertyChanged(nameof(DynamicInputScreenMeasurements));
         RequestOverlayRender();
     }
     private bool TryGetDynamicInputPoint(out CadPointD point)
     {
         point = _dynamicInputPointer;
-        if (_dynamicInputKind == DynamicInputKind.None) return false;
-        if (!HasLockedDynamicInput) return true;
+        if (_dynamicInputKind == DynamicInputKind.None || _dynamicInputKind != GetDynamicInputKind()) return false;
+        if (!HasLockedDynamicInput) { _dynamicInputResolvedState = null; return true; }
         var values = DynamicInputValues();
         for (var i = 0; i < values.Length; i++)
         {
@@ -196,6 +231,10 @@ public partial class CadDocumentViewModel
                 if (values[0] <= 0 || values[1] <= 0) return false;
                 point = anchor + new CadVectorD((delta.X < 0 ? -1 : 1) * World(values[0]), (delta.Y < 0 ? -1 : 1) * World(values[1]));
                 break;
+            case DynamicInputKind.Curve:
+                if (!TryResolveCurveDynamicInput(values, out point, out var resolvedState)) return false;
+                _dynamicInputResolvedState = resolvedState;
+                break;
         }
         return double.IsFinite(point.X) && double.IsFinite(point.Y);
     }
@@ -208,16 +247,28 @@ public partial class CadDocumentViewModel
     public void ClearDynamicInputLocks()
     {
         _dynamicInputPreview = null;
+        _dynamicInputResolvedState = null;
         DynamicInputError = "";
         RefreshDynamicInputValues(reset: true);
         OnPropertyChanged(nameof(DynamicInputScreenGeometry));
+        OnPropertyChanged(nameof(DynamicInputScreenMeasurements));
     }
     public bool SubmitDynamicInput()
     {
         if (!HasDynamicInput || !TryGetDynamicInputPoint(out var point))
-        { DynamicInputError = CadUiText.Get("InvalidStepInput"); return false; }
+        { DynamicInputError = CadUiText.Get("InvalidDynamicInput"); return false; }
+        var originalState = _dynamicInputResolvedState is not null ? _drawingState.Clone() : null;
+        if (_dynamicInputResolvedState is not null) _drawingState.CopyFrom(_dynamicInputResolvedState);
         var accepted = HandleDrawingWorldPoint(point);
+        if (!accepted && originalState is not null) { _drawingState.CopyFrom(originalState); RefreshDynamicInput(); }
         DynamicInputError = accepted ? "" : StepInputError;
         return accepted;
+    }
+
+    public void SetDynamicInputInteraction(bool active)
+    {
+        if (_isDynamicInputInteracting == active) return;
+        _isDynamicInputInteracting = active;
+        RequestOverlayRender();
     }
 }

@@ -19,7 +19,7 @@ public sealed partial class MainWindowUiTests : IDisposable
     private static CadApplicationFixture CreateFixture()
     {
         SetThreadDpiAwarenessContext(new IntPtr(-4));
-        return new CadApplicationFixture();
+        return new CadApplicationFixture(captureBindings: true);
     }
 
     [DllImport("user32.dll")]
@@ -238,9 +238,11 @@ public sealed partial class MainWindowUiTests : IDisposable
         Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_A); Keyboard.Type("12.5");
         fixture.WaitUntil(() => radius.Text == "12.5" && radius.BoundingRectangle.Width == shortWidth,
             "The field did not shrink after returning to a short number.");
-        // Clicking where the floating field was drawn must reach the canvas and accept its fixed value.
+        // Numeric overlays now accept mouse focus; a canvas click still confirms the fixed value.
         var radiusBounds = radius.BoundingRectangle;
         Mouse.Click(new Point(radiusBounds.Left + radiusBounds.Width / 2, radiusBounds.Top + radiusBounds.Height / 2));
+        fixture.WaitUntil(() => radius.Properties.HasKeyboardFocus.Value, "Clicking the radius field did not allow manual editing.");
+        Mouse.Click(new Point(bounds.Right - 30, bounds.Bottom - 30));
         fixture.WaitForElement("DynamicInputX");
         ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 2");
         ExecuteCommandAndWaitForOutput(input, output, "TOOL list_entities {\"type\":\"Circle\"}", "radius");

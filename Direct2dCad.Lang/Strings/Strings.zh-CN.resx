@@ -1627,6 +1627,7 @@
   <data name="DimensionDetails" xml:space="preserve"><value>比例与尺寸线</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>标注线宽（mm）</value></data>
   <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切换 · Enter 确认 · Esc 取消</value></data>
+  <data name="InvalidDynamicInput" xml:space="preserve"><value>请输入符合当前图形的有效数值。</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>布尔运算</value></data>
   <data name="BooleanUnion" xml:space="preserve"><value>并集</value></data>
   <data name="BooleanIntersection" xml:space="preserve"><value>交集</value></data>

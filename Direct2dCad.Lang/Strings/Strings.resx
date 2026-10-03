@@ -1862,6 +1862,7 @@
   <data name="DimensionDetails" xml:space="preserve"><value>Scale and extension lines</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>Dimension line weight (mm)</value></data>
   <data name="DynamicInputHint" xml:space="preserve"><value>Tab: next · Enter: confirm · Esc: cancel</value></data>
+  <data name="InvalidDynamicInput" xml:space="preserve"><value>Enter a valid value for this geometry.</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>Boolean operations</value></data>
   <data name="BooleanUnion" xml:space="preserve"><value>Union</value></data>
   <data name="BooleanIntersection" xml:space="preserve"><value>Intersection</value></data>

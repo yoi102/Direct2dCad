@@ -1627,6 +1627,7 @@
   <data name="DimensionDetails" xml:space="preserve"><value>尺度と寸法線</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>寸法線幅（mm）</value></data>
   <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切替 · Enter 確定 · Esc 中止</value></data>
+  <data name="InvalidDynamicInput" xml:space="preserve"><value>図形に有効な数値を入力してください。</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>ブール演算</value></data>
   <data name="BooleanUnion" xml:space="preserve"><value>和集合</value></data>
   <data name="BooleanIntersection" xml:space="preserve"><value>積集合</value></data>

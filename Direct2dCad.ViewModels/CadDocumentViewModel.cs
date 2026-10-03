@@ -1887,7 +1887,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _transientItemBuffer.Clear();
         var items = _transientItemBuffer;
 
-        if (_currentMousePoint is { } || HasDynamicInput && HasLockedDynamicInput)
+        if (_currentMousePoint is { } || HasDynamicInput && (HasLockedDynamicInput || _isDynamicInputInteracting))
         {
             var mousePoint = _currentMousePoint ?? WorldToScreen(_dynamicInputPointer);
             var rawMouseWorld = _currentMousePoint is not null ? ScreenToWorld(mousePoint) : _dynamicInputPointer;
@@ -2408,7 +2408,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         return new CadDrawingPreviewDispatcher(
             CadCanvasToolMode,
-            _drawingState,
+            _dynamicInputResolvedState ?? _drawingState,
             DrawingDefaults,
             CreateDrawingStyleResolver(),
             CreatePreviewStyleService(),
@@ -2424,7 +2424,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private CadTransientMeasurementBuilder CreateMeasurementBuilder()
     {
         return new CadTransientMeasurementBuilder(CadEditor.Document, InteractionViewport,
-            showLabels: !HasDynamicInput || DynamicInputFields.All(f => f.Key is "X" or "Y"));
+            showLabels: !HasDynamicInput);
     }
 
     private CadMultiPointDrawingPreviewBuilder CreateMultiPointDrawingPreviewBuilder()
