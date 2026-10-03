@@ -5,8 +5,9 @@ namespace Direct2dCad.Editor.History;
 public sealed class CommandHistory<TCommand>
     where TCommand : class
 {
-    private readonly HistoryDeque<CommandHistoryEntry<TCommand>> _undoStack = new();
-    private HistoryDeque<CommandHistoryEntry<TCommand>> _redoStack = new();
+    private readonly HistoryDeque<CommandHistoryEntry<TCommand>> _undoStack = new(e=>e.EstimatedBytes);
+    private HistoryDeque<CommandHistoryEntry<TCommand>> _redoStack = new(e=>e.EstimatedBytes);
+    public long EstimatedRetainedBytes=>_undoStack.EstimatedBytes+_redoStack.EstimatedBytes;
 
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
@@ -26,13 +27,13 @@ public sealed class CommandHistory<TCommand>
 
     internal void RestoreRedoSnapshot(HistoryDeque<CommandHistoryEntry<TCommand>> entries) => _redoStack = entries;
 
-    public void TrimUndo(int maximumCommandCount)
+    public void TrimUndo(int maximumCommandCount,long maximumBytes=0)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maximumCommandCount);
-        if (maximumCommandCount == 0)
+        if (maximumCommandCount == 0 && maximumBytes == 0)
             return;
 
-        while (_undoStack.Count > maximumCommandCount)
+        while (_undoStack.Count>0 && ((maximumCommandCount>0 && _undoStack.Count>maximumCommandCount) || (maximumBytes>0 && EstimatedRetainedBytes>maximumBytes)))
         {
             _undoStack.TryPeek(out var newest);
             var oldest = _undoStack.Oldest;
@@ -51,14 +52,14 @@ public sealed class CommandHistory<TCommand>
         }
     }
 
-    public void PushExecuted(TCommand command, Guid? batchId = null)
+    public void PushExecuted(TCommand command, Guid? batchId = null,long estimatedBytes=256)
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        _undoStack.Push(new CommandHistoryEntry<TCommand>(command, batchId));
+        _undoStack.Push(new CommandHistoryEntry<TCommand>(command, batchId){EstimatedBytes=Math.Max(0,estimatedBytes)});
         // Preserve a captured branch until an atomic caller commits or rolls back.
         if (_redoStack.Count > 0)
-            _redoStack = new();
+            _redoStack = new(e=>e.EstimatedBytes);
     }
 
     public IReadOnlyList<CommandHistoryEntry<TCommand>> PopUndo(CadCommandBatchUndoMode mode)
@@ -244,4 +245,5 @@ public readonly record struct CommandHistoryEntry<TCommand>(
     where TCommand : class
 {
     internal object State { get; init; } = new object();
+    public long EstimatedBytes {get;init;}=256;
 }

@@ -20,7 +20,8 @@ public enum CadCanvasInputModifiers
 public enum CadCanvasCursorKind
 {
     Cross,
-    Hand
+    Hand,
+    Arrow
 }
 
 public readonly record struct CadCanvasInteractionResult(

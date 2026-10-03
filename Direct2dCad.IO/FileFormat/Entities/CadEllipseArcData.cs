@@ -13,4 +13,5 @@ public sealed class CadEllipseArcData
     [Key(4)] public double StartAngleRadians { get; set; }
     [Key(5)] public double SweepAngleRadians { get; set; }
     [Key(6)] public long? GraphicStyleId { get; set; }
+    [Key(7)] public double RotationRadians { get; set; }
 }

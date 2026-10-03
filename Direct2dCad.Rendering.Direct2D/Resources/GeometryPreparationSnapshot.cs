@@ -45,7 +45,7 @@ internal readonly record struct GeometryPreparationSnapshot(
                 var elliptical = new Ellipse(Point(ellipse.Center), (float)ellipse.RadiusX, (float)ellipse.RadiusY);
                 return new(id, factory => (factory.CreateEllipseGeometry(elliptical), 0));
             case CadRectangle rectangle when primitiveFill:
-                var rounded = GeometryFactory.CreateRoundedRectangle(rectangle.Bounds, rectangle.CornerRadiusX, rectangle.CornerRadiusY);
+                var rounded = GeometryFactory.CreateRoundedRectangle(rectangle.FrameBounds, rectangle.CornerRadiusX, rectangle.CornerRadiusY);
                 return new(id, factory => (rounded.RadiusX > 0 && rounded.RadiusY > 0
                     ? factory.CreateRoundedRectangleGeometry(rounded)
                     : factory.CreateRectangleGeometry(rounded.Rect), 0));
@@ -66,12 +66,18 @@ internal readonly record struct GeometryPreparationSnapshot(
                 var splineClosed = spline.Closed;
                 return new(id, factory => (GeometryFactory.CreateSpline(factory, fitPoints, splineClosed),
                     splineClosed ? fitPoints.Length : fitPoints.Length - 1));
+            case CadRegion region:
+                var contours = region.Contours.ToArray(); // immutable owned contours
+                return new(id, factory => (GeometryFactory.CreateRegion(factory, contours), contours.Sum(c => c.Edges.Count)));
             case CadCompositePath path:
                 var segments = path.Segments.Select(segment => segment is CadCompositeSplineSegment splineSegment
                     ? new CadCompositeSplineSegment(splineSegment.FitPoints) : segment).ToArray();
                 var start = path.StartPoint;
                 var pathClosed = path.Closed;
                 return new(id, factory => (GeometryFactory.CreateCompositePath(factory, start, segments, pathClosed), segments.Length));
+            case CadDimension dimension:
+                var strokes = dimension.Strokes.ToArray();
+                return new(id, factory => (GeometryFactory.CreateStrokeText(factory, strokes), strokes.Length));
             case CadShapeText text:
                 var textData = (text.Text, text.Position, text.Height, text.WidthFactor, text.CharacterSpacingFactor,
                     text.ObliqueAngleRadians, text.RotationRadians, text.ShapeFontId);

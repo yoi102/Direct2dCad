@@ -1,0 +1,180 @@
+{
+  "date": "2026-10-03",
+  "scope": "Compact canvas dynamic input, inline translucent mode icon, dimension guides and annotation/window regression",
+  "environment": {
+    "os": "Windows x64",
+    "dotnetSdk": "10.0.401",
+    "settings": "isolated temporary fixture directory",
+    "workingTree": "local uncommitted workspace"
+  },
+  "releaseBuild": {
+    "outcome": "Passed",
+    "warnings": 0,
+    "errors": 0,
+    "command": "dotnet build Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj -c Release --no-restore -v quiet",
+    "applicationBuiltThroughProjectReference": true
+  },
+  "viewModels": {
+    "total": 119,
+    "passed": 119,
+    "failed": 0,
+    "skipped": 0,
+    "trx": "TestResults/dynamic-input/viewmodels-final-geometry/yoiri_YOIRI_2026-10-03_16_55_22_net10.0.trx",
+    "command": "dotnet test Direct2dCad.ViewModels.Tests/Direct2dCad.ViewModels.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~DynamicInputTests|FullyQualifiedName~DrawingWorkflowContractTests|FullyQualifiedName~DimensionWorkflowTests|FullyQualifiedName~CadUnitDisplayInputTests|FullyQualifiedName~CurveEditWorkflowTests' --logger trx --results-directory TestResults/dynamic-input/viewmodels-final-geometry -v quiet",
+    "modelUnchangedAfterThisRun": true
+  },
+  "ui": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "singleFinalRun": true,
+    "trx": "TestResults/dynamic-input/ui-inline-final/yoiri_YOIRI_2026-10-03_17_16_44_net10.0.trx",
+    "command": "dotnet test Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj -c Release --no-build --no-restore --filter 'FullyQualifiedName~RectangleDynamicNumbersStayByTheirCorrespondingEdgesWithoutAPromptPanel|FullyQualifiedName~AnnotationRibbonPreviewPlacementPropertiesAndTemplateAreUsable|FullyQualifiedName~CanvasCursorFollowsSelectionDrawingPanAndCancel|FullyQualifiedName~SplineDynamicLengthAndAngleRemainCompactByThePointer|FullyQualifiedName~ApplicationLaunchesWithAccessibleMainSurface|FullyQualifiedName~NewDocument_LineDrawingAndEscapeCompleteEndToEnd|FullyQualifiedName~DrawingAssistantCanBeReopenedWithoutLosingPendingInput|FullyQualifiedName~DrawingStepInputAndEditRibbonRemainAccessibleInANarrowWindow|FullyQualifiedName~AnnotationAssistantIsHiddenAndConfirmedPointsRemainVisibleUntilCancelled|FullyQualifiedName~CanvasDynamicInputSupportsTabTypingPreviewEdgesAndExactCircleUndo' --logger trx --results-directory TestResults/dynamic-input/ui-inline-final -v quiet",
+    "results": [
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.RectangleDynamicNumbersStayByTheirCorrespondingEdgesWithoutAPromptPanel",
+        "outcome": "Passed",
+        "duration": "00:00:07.1561152"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.AnnotationRibbonPreviewPlacementPropertiesAndTemplateAreUsable",
+        "outcome": "Passed",
+        "duration": "00:00:21.9435623"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CanvasCursorFollowsSelectionDrawingPanAndCancel",
+        "outcome": "Passed",
+        "duration": "00:00:14.7721244"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.SplineDynamicLengthAndAngleRemainCompactByThePointer",
+        "outcome": "Passed",
+        "duration": "00:00:07.0519773"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ApplicationLaunchesWithAccessibleMainSurface",
+        "outcome": "Passed",
+        "duration": "00:00:07.4896713"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.NewDocument_LineDrawingAndEscapeCompleteEndToEnd",
+        "outcome": "Passed",
+        "duration": "00:00:11.5935233"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.DrawingAssistantCanBeReopenedWithoutLosingPendingInput",
+        "outcome": "Passed",
+        "duration": "00:00:06.1918074"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.DrawingStepInputAndEditRibbonRemainAccessibleInANarrowWindow",
+        "outcome": "Passed",
+        "duration": "00:00:18.9090464"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.AnnotationAssistantIsHiddenAndConfirmedPointsRemainVisibleUntilCancelled",
+        "outcome": "Passed",
+        "duration": "00:00:16.5692160"
+      },
+      {
+        "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CanvasDynamicInputSupportsTabTypingPreviewEdgesAndExactCircleUndo",
+        "outcome": "Passed",
+        "duration": "00:00:16.4363653"
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "dynamic-input-spline.png",
+      "sha256": "FAB410B172D6943D8CF488D1B238F7E9BF1A564A3B929BBACA4A40ABC8B9BD16",
+      "source": "TestResults/dynamic-input/screenshots/dynamic-input-spline.png"
+    },
+    {
+      "file": "dynamic-input-diameter.png",
+      "sha256": "9C6E8055F148700D6E0EE9AFA53C7CB05E0D968AD9F332C0442F0B338DDF3EB7",
+      "source": "TestResults/dynamic-input/screenshots/dynamic-input-diameter.png"
+    },
+    {
+      "file": "dynamic-input-diameter-preview.png",
+      "sha256": "F6F3585F255A1DF7CF881B3DB30FBE6A795D4482F31223EAAF40C8C10046EB42",
+      "source": "TestResults/dynamic-input/screenshots/dynamic-input-diameter-preview.png"
+    },
+    {
+      "file": "dynamic-input-rectangle.png",
+      "sha256": "9BE1F321D4DB8A17EAC29BA265E792CBFB6B1D198EB395CC46A851EDE100DDD6",
+      "source": "TestResults/dynamic-input/screenshots/dynamic-input-rectangle.png"
+    },
+    {
+      "file": "drawing-assistant-900x700.png",
+      "sha256": "6DCBB152A5811A13B882B25267815DCDA156F3F6F64E2E1A184D8B53E550A544",
+      "source": "TestResults/dynamic-input/screenshots/drawing-assistant-900x700.png"
+    },
+    {
+      "file": "welcome-after-drawing.png",
+      "sha256": "3CCD7B482B405B4F2D95F0BBEC465C44611145E04FCAB91E26AD214D72265E1A",
+      "source": "TestResults/dynamic-input/screenshots/welcome-after-drawing.png"
+    },
+    {
+      "file": "welcome-toolboxes.png",
+      "sha256": "8309D43BE055C9A0ECAA87A6B1CA146281AD489B80A0CA9AA2F92A7E1D256293",
+      "source": "TestResults/dynamic-input/screenshots/welcome-toolboxes.png"
+    },
+    {
+      "file": "annotation-first-point-LeaderToolButton.png",
+      "sha256": "D3B80CA49CFE72BCF82E7869982179B536982752E8CCF6C47507B2B39C0ADE31",
+      "source": "TestResults/dynamic-input/screenshots/annotation-first-point-LeaderToolButton.png"
+    },
+    {
+      "file": "annotation-first-point-DimAlignedToolButton.png",
+      "sha256": "8F3497BB0054BA58AADFC978AB3CB8F1995E916825146D6A249AB4305D1C8AB4",
+      "source": "TestResults/dynamic-input/screenshots/annotation-first-point-DimAlignedToolButton.png"
+    },
+    {
+      "file": "annotation-first-point-DimAngularToolButton.png",
+      "sha256": "0A8D9F5FF47C62A44246B95348C49488B9F7D4F2B315E09AE32F2A1040F8013E",
+      "source": "TestResults/dynamic-input/screenshots/annotation-first-point-DimAngularToolButton.png"
+    }
+  ],
+  "visualInspection": {
+    "completed": true,
+    "inspected": [
+      "dynamic-input-spline.png",
+      "dynamic-input-rectangle.png",
+      "dynamic-input-diameter.png"
+    ],
+    "observations": [
+      "Mode icon precedes numeric fields on the same horizontal line with a translucent background",
+      "Short fields remain narrow; rectangle width/height and circle diameter stay beside their dimension guides",
+      "Dotted guides are rendered; no large prompt panel or persistent shortcut hint"
+    ]
+  },
+  "retainedFailures": [
+    {
+      "directory": "TestResults/dynamic-input/ui-compact-final",
+      "result": "8 passed, 2 failed",
+      "cause": "Product KeyNotFoundException: Height while rectangle item containers were being generated",
+      "fix": "Coalesce positioning at DispatcherPriority.Render and require both width and height fields"
+    },
+    {
+      "directory": "TestResults/dynamic-input/ui-inline-first",
+      "result": "3 passed, 1 failed",
+      "cause": "Gray guide pixel threshold excluded antialiased pixels",
+      "diagnosticDirectory": "TestResults/dynamic-input/ui-rectangle-guide-diagnostic",
+      "fix": "Preserve guide assertion; accept observed gray pixels near 55 while excluding grid near 33",
+      "isolatedPassDirectory": "TestResults/dynamic-input/ui-rectangle-guide-final"
+    }
+  ],
+  "packageRebuilt": false,
+  "clipboardTestsRun": false,
+  "notRun": [
+    "Full product regression for this final UI revision",
+    "Complete manual drafting",
+    "Mixed multi-monitor DPI and IME acceptance",
+    "Physical input latency",
+    "Rebuilt distribution package, signing or public release"
+  ],
+  "limitations": [
+    "Advanced arc and ellipse steps still use X/Y; not the full AutoCAD dynamic parameter set"
+  ]
+}

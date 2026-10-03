@@ -25,7 +25,7 @@ public sealed class SetRectangleGeometryCommand : ICadCommand
     {
         CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var rectangle = GetRectangle(document);
-        _previousBounds = rectangle.Bounds;
+        _previousBounds = rectangle.FrameBounds;
         _previousCornerRadiusX = rectangle.CornerRadiusX;
         _previousCornerRadiusY = rectangle.CornerRadiusY;
         rectangle.SetBounds(_bounds);

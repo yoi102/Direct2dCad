@@ -20,6 +20,34 @@ internal sealed class ToolboxIconProvider : IToolboxIconProvider
     public object Problems => CreateProblemsIcon();
     public object Assistant => CreateAssistantIcon();
     public object Messages => CreateMessagesIcon();
+    public object Drawing => CreateDrawingIcon();
+    public object Recovery => CreateRecoveryIcon();
+
+    private static Viewbox CreateRecoveryIcon()
+    {
+        var path = new Path
+        {
+            Data = Geometry.Parse("M6,14 L2,14 L2,1 L9,1 L13,5 L13,7 M9,1 L9,5 L13,5 M8,10 A3,3 0 1 1 7.5,13 M8,7 L8,10 L11,10"),
+            StrokeThickness = 1,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent
+        };
+        path.SetBinding(Shape.StrokeProperty, ForegroundBinding());
+        return new Viewbox { Width = 16, Height = 16, Child = path };
+    }
+
+    private static Viewbox CreateDrawingIcon()
+    {
+        var path = new Path
+        {
+            Data = Geometry.Parse("M2,14 L14,14 L14,2 Z M6,11 L11,11 L11,6 Z M5,14 L5,12 M8,14 L8,12 M11,14 L11,12"),
+            StrokeThickness = 1,
+            StrokeLineJoin = PenLineJoin.Round,
+            Fill = Brushes.Transparent
+        };
+        path.SetBinding(Shape.StrokeProperty, ForegroundBinding());
+        return new Viewbox { Width = 16, Height = 16, Child = path };
+    }
 
     private static Binding ForegroundBinding() => new()
     {

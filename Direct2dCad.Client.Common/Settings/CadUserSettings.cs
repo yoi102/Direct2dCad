@@ -41,6 +41,8 @@ public sealed class CadUserSettings
         General = new CadGeneralUserSettings
         {
             IsDarkTheme = source.General.IsDarkTheme,
+            IsAutoRecoveryEnabled = source.General.IsAutoRecoveryEnabled,
+            HistoryBudgetMegabytes = source.General.HistoryBudgetMegabytes,
             CultureLcid = source.General.CultureLcid,
             PrimaryColor = source.General.PrimaryColor,
             SecondaryColor = source.General.SecondaryColor
@@ -96,6 +98,8 @@ public sealed class CadUserSettings
 
 public sealed class CadGeneralUserSettings
 {
+    public int HistoryBudgetMegabytes {get;set;}=256;
+    public bool IsAutoRecoveryEnabled { get; set; } = true;
     public bool IsDarkTheme { get; set; } = true;
     public int CultureLcid { get; set; } = 1033;
     public CadColor PrimaryColor { get; set; } = CadColor.FromRgb(103, 58, 183);
@@ -103,6 +107,7 @@ public sealed class CadGeneralUserSettings
 
     internal void Normalize()
     {
+        HistoryBudgetMegabytes=Math.Clamp(HistoryBudgetMegabytes,16,4096);
         if (CultureLcid is not (1033 or 1041 or 2052))
             CultureLcid = 1033;
 

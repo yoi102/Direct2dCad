@@ -30,3 +30,6 @@ public sealed record CadInteractionActivityMessage(
     string Name);
 
 public sealed record EditorTabDocumentSummaryChangedMessage(IEditorTabDocumentSummaryMessageSource EditorTabViewModel);
+
+public sealed record CadToolActivityMessage(
+    string CallId, string ToolName, string? DocumentName, string Outcome, string Summary);

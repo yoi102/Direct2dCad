@@ -14,6 +14,9 @@ public sealed record CadSnapshotCaptureOptions(
     Func<CancellationToken, ValueTask> YieldAsync)
 {
     public TimeSpan MaximumSliceDuration { get; init; } = TimeSpan.FromMilliseconds(4);
+    public CadFileRevision? ExpectedDestination { get; init; }
+    public bool AllowCompatibilityCopy { get; init; }
+    public bool UpdateOrigin { get; init; } = true;
 }
 
 public sealed class CadSnapshotChangedException() : InvalidOperationException(

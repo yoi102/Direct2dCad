@@ -250,15 +250,8 @@ public sealed class CadCompositePath : Curve
             }
         }
 
-        var flattened = EnumerateFlattenedPoints().ToArray();
-        var length = 0.0;
-        for (var index = 1; index < flattened.Length; index++)
-        {
-            length += flattened[index - 1].DistanceTo(flattened[index]);
-        }
-
         _bounds = bounds;
-        _length = length;
+        _length = CadCurveMeasurements.Measure(this).Length;
     }
 
     private static bool ContainsArcAngle(double start, double sweep, double target)

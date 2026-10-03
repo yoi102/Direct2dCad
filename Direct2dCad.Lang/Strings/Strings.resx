@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -1675,4 +1675,209 @@
   <data name="PrintFailed" xml:space="preserve">
     <value>Print failed</value>
   </data>
+  <data name="SaveCompatibleCopy" xml:space="preserve"><value>Save compatible copy</value></data>
+  <data name="CompatibilityReadOnly" xml:space="preserve"><value>This drawing contains unsupported content and is read-only.</value></data>
+  <data name="CompatibilityCopyWarning" xml:space="preserve"><value>The compatible copy contains only supported content. The original stays unchanged.</value></data>
+  <data name="SaveConflict" xml:space="preserve"><value>Destination changed or already exists</value></data>
+  <data name="RecoveryDrawings" xml:space="preserve"><value>Recovery drawings</value></data>
+  <data name="OpenRecoveryCopy" xml:space="preserve"><value>Open recovery copy</value></data>
+  <data name="Later" xml:space="preserve"><value>Later</value></data>
+  <data name="AutoRecoveryEnabled" xml:space="preserve"><value>Keep recovery copies automatically</value></data>
+  <data name="OpeningDrawing" xml:space="preserve"><value>Opening drawing…</value></data>
+  <data name="SavingDrawing" xml:space="preserve"><value>Saving drawing…</value></data>
+  <data name="Cancelling" xml:space="preserve"><value>Cancelling…</value></data>
+  <data name="RecoveryFailed" xml:space="preserve"><value>Recovery copy could not be saved</value></data>
+  <data name="RecoveredSuffix" xml:space="preserve"><value>Recovered</value></data>
+  <data name="GridSnap" xml:space="preserve"><value>Grid snap</value></data>
+  <data name="ObjectSnap" xml:space="preserve"><value>Object snap</value></data>
+  <data name="Ortho" xml:space="preserve"><value>Ortho</value></data>
+  <data name="Polar" xml:space="preserve"><value>Polar</value></data>
+  <data name="PolarAngle" xml:space="preserve"><value>Polar increment (°)</value></data>
+  <data name="SnapEndpoint" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="SnapMidpoint" xml:space="preserve"><value>Midpoint</value></data>
+  <data name="SnapCenter" xml:space="preserve"><value>Center</value></data>
+  <data name="SnapIntersection" xml:space="preserve"><value>Intersection</value></data>
+  <data name="SnapPerpendicular" xml:space="preserve"><value>Perpendicular</value></data>
+  <data name="SnapTangent" xml:space="preserve"><value>Tangent</value></data>
+  <data name="SwitchCandidate" xml:space="preserve"><value>Cycle snap candidate</value></data>
+  <data name="NewDrawingSettings" xml:space="preserve"><value>New entity settings</value></data>
+  <data name="SelectedEntitySettings" xml:space="preserve"><value>Selected entity</value></data>
+  <data name="MultipleEntitySettings" xml:space="preserve"><value>Multiple entities · edit only entered fields</value></data>
+  <data name="SelectPrompt" xml:space="preserve"><value>Select an object or drag a selection window</value></data>
+  <data name="SpecifyFirstPoint" xml:space="preserve"><value>Specify the first point or enter X,Y</value></data>
+  <data name="SpecifyNextPoint" xml:space="preserve"><value>Specify the next point or enter X,Y; Esc to exit</value></data>
+  <data name="SpecifyRadiusPoint" xml:space="preserve"><value>Specify radius/diameter point or enter X,Y</value></data>
+  <data name="SpecifyNextOrFinish" xml:space="preserve"><value>Specify next point; Enter to finish, Esc to exit</value></data>
+  <data name="InvalidStepInput" xml:space="preserve"><value>Enter coordinates such as 1.25,2.75, @10,0 or @20&lt;45</value></data>
+  <data name="ViewDetails" xml:space="preserve"><value>View and snap details</value></data>
+  <data name="AdvancedStroke" xml:space="preserve"><value>Caps and joins</value></data>
+  <data name="FinishOperation" xml:space="preserve"><value>Finish</value></data>
+  <data name="Offset" xml:space="preserve"><value>Offset</value></data>
+  <data name="Trim" xml:space="preserve"><value>Trim</value></data>
+  <data name="Extend" xml:space="preserve"><value>Extend</value></data>
+  <data name="Fillet" xml:space="preserve"><value>Fillet</value></data>
+  <data name="Chamfer" xml:space="preserve"><value>Chamfer</value></data>
+  <data name="Join" xml:space="preserve"><value>Join</value></data>
+  <data name="Break" xml:space="preserve"><value>Break</value></data>
+  <data name="RectArray" xml:space="preserve"><value>Rectangular array</value></data>
+  <data name="PolarArray" xml:space="preserve"><value>Polar array</value></data>
+  <data name="EditTools" xml:space="preserve"><value>Modify</value></data>
+  <data name="EditChooseSource" xml:space="preserve"><value>Select a source object</value></data>
+  <data name="EditChooseSide" xml:space="preserve"><value>Set distance, hover on a side; click to apply, Enter to exit</value></data>
+  <data name="EditChooseBoundaries" xml:space="preserve"><value>Select boundaries; Enter to start editing</value></data>
+  <data name="EditChooseSegment" xml:space="preserve"><value>Hover over a target segment; click to apply, Enter to exit</value></data>
+  <data name="EditChooseTwoLines" xml:space="preserve"><value>Select two lines near the sides to keep</value></data>
+  <data name="EditConfirmCorner" xml:space="preserve"><value>Set size; review preview, Enter or click to apply</value></data>
+  <data name="EditChooseChain" xml:space="preserve"><value>Select connected curves; Enter to join</value></data>
+  <data name="EditFirstBreak" xml:space="preserve"><value>Specify the first break point</value></data>
+  <data name="EditSecondBreak" xml:space="preserve"><value>Choose second point to remove interval; Enter to split at first point</value></data>
+  <data name="EditChooseArray" xml:space="preserve"><value>Select objects; Enter to set up the array</value></data>
+  <data name="EditArrayCenter" xml:space="preserve"><value>Specify array center</value></data>
+  <data name="EditConfirmArray" xml:space="preserve"><value>Set count and spacing; review preview, Enter or click to apply</value></data>
+  <data name="EditCannotApply" xml:space="preserve"><value>Cannot apply with these objects or values; adjust and retry (details in tooltip)</value></data>
+  <data name="DistanceParameter" xml:space="preserve"><value>Distance / radius</value></data>
+  <data name="SecondDistanceParameter" xml:space="preserve"><value>Second distance</value></data>
+  <data name="ArrayRows" xml:space="preserve"><value>Rows</value></data>
+  <data name="ArrayColumns" xml:space="preserve"><value>Columns</value></data>
+  <data name="ArrayCount" xml:space="preserve"><value>Count</value></data>
+  <data name="ArraySpacingX" xml:space="preserve"><value>X spacing</value></data>
+  <data name="ArraySpacingY" xml:space="preserve"><value>Y spacing</value></data>
+  <data name="ArraySweep" xml:space="preserve"><value>Total angle (°)</value></data>
+  <data name="RotateCopies" xml:space="preserve"><value>Rotate copies</value></data>
+  <data name="TrimCornerLines" xml:space="preserve"><value>Trim source lines</value></data>
+  <data name="OperationParameters" xml:space="preserve"><value>Operation parameters</value></data>
+  <data name="QueryingDrawing" xml:space="preserve"><value>Querying drawing…</value></data>
+  <data name="CompatibleCopyOverwrite" xml:space="preserve"><value>The selected file will be overwritten.</value></data>
+  <data name="HelpAvailableCommands" xml:space="preserve"><value>Available commands:</value></data>
+  <data name="HelpCoordinateExamples" xml:space="preserve"><value>Coordinates: LINE → 1.25,2.75 → @10,0 or @10&lt;45. ARC SCE → start → center → end direction. OFFSET → distance → source → side → DONE. Explicit coordinates bypass snapping.</value></data>
+  <data name="HelpHELP" xml:space="preserve"><value>List commands or show command help.</value></data>
+  <data name="HelpCLEAR" xml:space="preserve"><value>Clear terminal output.</value></data>
+  <data name="HelpSTATUS" xml:space="preserve"><value>Show document and interaction status.</value></data>
+  <data name="HelpRENDERSTATS" xml:space="preserve"><value>Show renderer workload and cache statistics.</value></data>
+  <data name="HelpUNDO" xml:space="preserve"><value>Undo the last document command.</value></data>
+  <data name="HelpREDO" xml:space="preserve"><value>Redo the last undone document command.</value></data>
+  <data name="HelpFIT" xml:space="preserve"><value>Fit visible content to the viewport.</value></data>
+  <data name="HelpZOOM" xml:space="preserve"><value>Zoom to drawing extents.</value></data>
+  <data name="HelpSELECT" xml:space="preserve"><value>Enter selection mode.</value></data>
+  <data name="HelpSELECTALL" xml:space="preserve"><value>Select all selectable entities.</value></data>
+  <data name="HelpERASE" xml:space="preserve"><value>Delete selected entities.</value></data>
+  <data name="HelpCOPY" xml:space="preserve"><value>Copy selected entities and block dependencies.</value></data>
+  <data name="HelpPASTE" xml:space="preserve"><value>Move the paste preview and click to place.</value></data>
+  <data name="HelpLINE" xml:space="preserve"><value>Specify start and end; decimals and relative coordinates are supported.</value></data>
+  <data name="HelpCIRCLE" xml:space="preserve"><value>Choose RADIUS, DIAMETER, 2P or 3P; follow the point prompt.</value></data>
+  <data name="HelpARC" xml:space="preserve"><value>SCE: start → center → end direction. 3P: start → through → end.</value></data>
+  <data name="HelpELLIPSE" xml:space="preserve"><value>CENTER: center → first axis end → second axis; ARC adds start/end directions.</value></data>
+  <data name="HelpRECTANGLE" xml:space="preserve"><value>Specify opposite corners.</value></data>
+  <data name="HelpPOLYLINE" xml:space="preserve"><value>Specify vertices; DONE completes the path.</value></data>
+  <data name="HelpPOLYGON" xml:space="preserve"><value>Specify vertices; DONE closes the polygon.</value></data>
+  <data name="HelpSPLINE" xml:space="preserve"><value>Specify fit points; DONE completes.</value></data>
+  <data name="HelpTEXT" xml:space="preserve"><value>Click to place text using the properties panel.</value></data>
+  <data name="HelpORIGIN" xml:space="preserve"><value>Specify the drawing origin.</value></data>
+  <data name="HelpMVIEW" xml:space="preserve"><value>Specify a paper-space viewport rectangle.</value></data>
+  <data name="HelpDONE" xml:space="preserve"><value>Complete the current step or continuous tool.</value></data>
+  <data name="HelpCANCEL" xml:space="preserve"><value>Discard the preview; committed edits remain in history.</value></data>
+  <data name="HelpOFFSET" xml:space="preserve"><value>Distance → source → side preview → click. DONE finishes; each click is undoable.</value></data>
+  <data name="HelpTRIM" xml:space="preserve"><value>Select cutting boundaries → DONE → pick the segment to remove.</value></data>
+  <data name="HelpEXTEND" xml:space="preserve"><value>Select boundaries → DONE → pick near the endpoint to extend.</value></data>
+  <data name="HelpFILLET" xml:space="preserve"><value>Pick two lines/arcs on the retained sides; set radius; preview → click. Full circles require trimming off.</value></data>
+  <data name="HelpCHAMFER" xml:space="preserve"><value>Pick two lines/arcs; set both distances in properties; preview → click.</value></data>
+  <data name="HelpJOIN" xml:space="preserve"><value>Select one connected line/arc chain → DONE; branches are rejected.</value></data>
+  <data name="HelpBREAK" xml:space="preserve"><value>Source → first break point → second point, or DONE to split once.</value></data>
+  <data name="HelpRECTARRAY" xml:space="preserve"><value>Select sources → DONE → set rows, columns and spacing → preview → click.</value></data>
+  <data name="HelpPOLARARRAY" xml:space="preserve"><value>Select sources → DONE → center → set count and sweep → preview → click.</value></data>
+  <data name="PromptCenter" xml:space="preserve"><value>Specify center</value></data>
+  <data name="PromptAxisStart" xml:space="preserve"><value>Specify first axis start</value></data>
+  <data name="PromptAxisEnd" xml:space="preserve"><value>Specify first axis end</value></data>
+  <data name="PromptSecondAxis" xml:space="preserve"><value>Specify second axis</value></data>
+  <data name="PromptArcStart" xml:space="preserve"><value>Specify arc start</value></data>
+  <data name="PromptArcThrough" xml:space="preserve"><value>Specify a point on the arc</value></data>
+  <data name="PromptArcEnd" xml:space="preserve"><value>Specify end direction</value></data>
+  <data name="PromptArcAngle" xml:space="preserve"><value>Specify angle with a direction point</value></data>
+  <data name="PromptArcLength" xml:space="preserve"><value>Specify chord length with a point</value></data>
+  <data name="PromptArcRadius" xml:space="preserve"><value>Specify radius with a point</value></data>
+  <data name="MeasurementLength" xml:space="preserve"><value>Length</value></data>
+  <data name="MeasurementError" xml:space="preserve"><value>Approximate length; estimated error</value></data>
+  <data name="CalculationBudgetReached" xml:space="preserve"><value>Calculation limit reached</value></data>
+  <data name="FileConflictDescription" xml:space="preserve"><value>The file on disk differs from this drawing&apos;s save baseline. Choose Save As to keep both versions, or explicitly overwrite the external changes.</value></data>
+  <data name="OverwriteExternalChanges" xml:space="preserve"><value>Overwrite external changes</value></data>
+  <data name="CompatibleCopyDifferentPath" xml:space="preserve"><value>Choose a different path for the compatible copy so the original content is preserved.</value></data>
+  <data name="InvalidDrawingGeometry" xml:space="preserve"><value>This point cannot form a valid shape. Adjust it and try again; previous points are kept.</value></data>
+  <data name="DrawingCannotComplete" xml:space="preserve"><value>More points are needed to finish this drawing.</value></data>
+  <data name="DrawingRecovery" xml:space="preserve"><value>Drawing recovery</value></data>
+  <data name="DrawingInput" xml:space="preserve"><value>Precise input</value></data>
+  <data name="DrawingInputHint" xml:space="preserve"><value>X,Y · @dX,dY · @distance&lt;angle</value></data>
+  <data name="DrawingAssistantEmpty" xml:space="preserve"><value>Create or open a drawing to use these controls.</value></data>
+  <data name="SnapSettings" xml:space="preserve"><value>Snapping and constraints</value></data>
+  <data name="Dimension" xml:space="preserve"><value>Dimensions</value></data>
+  <data name="DimensionSettings" xml:space="preserve"><value>Dimension settings</value></data>
+  <data name="DimLinearX" xml:space="preserve"><value>Horizontal</value></data>
+  <data name="DimLinearY" xml:space="preserve"><value>Vertical</value></data>
+  <data name="DimAligned" xml:space="preserve"><value>Aligned</value></data>
+  <data name="DimRadius" xml:space="preserve"><value>Radius</value></data>
+  <data name="DimDiameter" xml:space="preserve"><value>Diameter</value></data>
+  <data name="DimAngular" xml:space="preserve"><value>Angle</value></data>
+  <data name="Leader" xml:space="preserve"><value>Leader</value></data>
+  <data name="DimensionPlace" xml:space="preserve"><value>Move to preview; click to place</value></data>
+  <data name="DimensionFirst" xml:space="preserve"><value>Choose a line or the first reference point</value></data>
+  <data name="DimensionNext" xml:space="preserve"><value>Choose the next reference point</value></data>
+  <data name="DimensionChooseCircle" xml:space="preserve"><value>Choose a circle or circular arc</value></data>
+  <data name="DimensionStyle" xml:space="preserve"><value>Style</value></data>
+  <data name="DimensionPrecision" xml:space="preserve"><value>Decimal places</value></data>
+  <data name="DimensionTextOverride" xml:space="preserve"><value>Override text (* marks a manual value)</value></data>
+  <data name="DimensionTextHeight" xml:space="preserve"><value>Paper text height (mm)</value></data>
+  <data name="DimensionArrowSize" xml:space="preserve"><value>Paper arrow size (mm)</value></data>
+  <data name="AnnotationScale" xml:space="preserve"><value>Annotation scale (100 for 1:100)</value></data>
+  <data name="ExtensionGap" xml:space="preserve"><value>Extension gap (mm)</value></data>
+  <data name="ExtensionBeyond" xml:space="preserve"><value>Extension beyond (mm)</value></data>
+  <data name="AssociationDetached" xml:space="preserve"><value>Unassociated reference points</value></data>
+  <data name="AssociationValid" xml:space="preserve"><value>Associated to source geometry</value></data>
+  <data name="AssociationBroken" xml:space="preserve"><value>Association lost; reassociate or detach</value></data>
+  <data name="Reassociate" xml:space="preserve"><value>Reassociate</value></data>
+  <data name="DetachAssociation" xml:space="preserve"><value>Detach</value></data>
+<data name="EngineeringTemplate" xml:space="preserve"><value>Engineering template</value></data>
+<data name="PrintCurrentView" xml:space="preserve"><value>Current view</value></data>
+<data name="PrintInsideBounds" xml:space="preserve"><value>Content fits the printable area. Viewport scale and paper scaling are independent.</value></data>
+<data name="PrintActualSize" xml:space="preserve"><value>Actual size · 100%</value></data>
+<data name="PrintRange" xml:space="preserve"><value>Model output range</value></data>
+<data name="PaperScaling" xml:space="preserve"><value>Paper scaling</value></data>
+<data name="PrintClipped" xml:space="preserve"><value>Content outside the red printable boundary will be clipped. Scale is unchanged.</value></data>
+<data name="PrintExtents" xml:space="preserve"><value>Drawing extents</value></data>
+<data name="PrintCustom" xml:space="preserve"><value>Custom scale</value></data>
+<data name="PrintFit" xml:space="preserve"><value>Fit printable area</value></data>
+<data name="ImportDxf" xml:space="preserve"><value>Open DXF</value></data>
+<data name="DxfSourceUnit" xml:space="preserve"><value>DXF source unit</value></data>
+<data name="DxfImported" xml:space="preserve"><value>Imported {0} objects; {1} unsupported or substituted items</value></data>
+<data name="ExportSeparatePath" xml:space="preserve"><value>An export copy must use a different path from the source drawing.</value></data>
+<data name="DxfUnitDescription" xml:space="preserve"><value>The file has no reliable unit. Choose the source unit. Import creates a new unsaved drawing.</value></data>
+<data name="ExportDxf" xml:space="preserve"><value>Export DXF</value></data>
+<data name="DxfLossDescription" xml:space="preserve"><value>The following content will be omitted or converted. The source drawing is preserved. Continue exporting?</value></data>
+<data name="SaveCompressedCopy" xml:space="preserve"><value>Save compressed copy</value></data>
+<data name="HistoryBudget" xml:space="preserve"><value>Undo history budget (MiB)</value></data>
+  <data name="DimensionArrowStyle" xml:space="preserve"><value>Arrow style</value></data>
+  <data name="DimensionArrowOpen" xml:space="preserve"><value>Open</value></data>
+  <data name="DimensionArrowClosed" xml:space="preserve"><value>Closed</value></data>
+  <data name="DimensionArrowSlash" xml:space="preserve"><value>Slash</value></data>
+  <data name="BlankDrawing" xml:space="preserve"><value>Blank drawing</value></data>
+  <data name="DimensionTextAndArrows" xml:space="preserve"><value>Text and arrows</value></data>
+  <data name="DimensionDetails" xml:space="preserve"><value>Scale and extension lines</value></data>
+  <data name="DimensionLineWeight" xml:space="preserve"><value>Dimension line weight (mm)</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab: next · Enter: confirm · Esc: cancel</value></data>
+  <data name="BooleanOperations" xml:space="preserve"><value>Boolean operations</value></data>
+  <data name="BooleanUnion" xml:space="preserve"><value>Union</value></data>
+  <data name="BooleanIntersection" xml:space="preserve"><value>Intersection</value></data>
+  <data name="BooleanDifference" xml:space="preserve"><value>Difference</value></data>
+  <data name="BooleanChooseSubject" xml:space="preserve"><value>Click the edge of the subject to keep</value></data>
+  <data name="BooleanConfirm" xml:space="preserve"><value>Enter to confirm · Esc to cancel</value></data>
+  <data name="BooleanEmpty" xml:space="preserve"><value>Result is empty; original entities retained</value></data>
+  <data name="Region" xml:space="preserve"><value>Region</value></data>
+  <data name="RegionContours" xml:space="preserve"><value>Contours</value></data>
+  <data name="BooleanCalculating" xml:space="preserve"><value>Calculating…</value></data>
+  <data name="MeasurementArea" xml:space="preserve"><value>Area</value></data>
+  <data name="NoRecoveryDrawings" xml:space="preserve"><value>No recovery drawings.</value></data>
+  <data name="ClearAllRecovery" xml:space="preserve"><value>Clear all</value></data>
+  <data name="ClearRecoveryEntry" xml:space="preserve"><value>Clear recovery copy</value></data>
+  <data name="RecoveryCleanupFailed" xml:space="preserve"><value>Recovery copies could not be cleared</value></data>
+  <data name="OpenContainingFolder" xml:space="preserve"><value>Open containing folder</value></data>
+  <data name="OpenSourceFolder" xml:space="preserve"><value>Open original drawing folder</value></data>
+  <data name="ActivateDocument" xml:space="preserve"><value>Activate drawing</value></data>
 </root>

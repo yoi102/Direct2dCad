@@ -9,6 +9,7 @@ namespace Direct2dCad.IO;
 public sealed partial class CadDocumentStorage : ICadDocumentWriter
 {
     private const int MaxSectionCount = 4096;
+    public CadDocumentLoadLimits LoadLimits { get; init; } = new();
     private static readonly MessagePackSerializerOptions Lz4Options =
         MessagePackSerializerOptions.Standard
             .WithCompression(MessagePackCompression.Lz4BlockArray);
@@ -19,6 +20,7 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
     public void Save(CadDocument document, string filePath)
     {
         ArgumentNullException.ThrowIfNull(document);
+        if (document.IsReadOnly) throw new InvalidOperationException(document.CompatibilityNotice);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         WriteSectionsAsync(CreateSectionPayloads(document), filePath, asyncIo: false, CancellationToken.None)
             .GetAwaiter().GetResult();
@@ -30,6 +32,7 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(document);
+        if (document.IsReadOnly) throw new InvalidOperationException(document.CompatibilityNotice);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -44,7 +47,9 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
         Queue<ISectionPayload> payloads,
         string filePath,
         bool asyncIo,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CadFileRevision? expectedDestination = null,
+        Action<CadFileRevision>? onCommitted = null)
     {
         var tableOffset = CadContainerFormat.FileHeaderLength;
         var tableLength = checked(payloads.Count * CadContainerFormat.SectionEntryLength);
@@ -88,7 +93,10 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            var writtenRevision = onCommitted is null ? null : CadFileRevision.Capture(temporaryPath) with { FullPath = destinationPath };
+            expectedDestination?.Verify();
             CommitTemporaryFile(temporaryPath, destinationPath);
+            if (writtenRevision is not null) onCommitted?.Invoke(writtenRevision);
         }
         finally
         {
@@ -110,6 +118,7 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
             FileOptions.SequentialScan);
         using var reader = new BinaryReader(stream);
         var entries = ReadSectionTable(reader);
+        LoadLimits.ValidateTable(entries, stream.Length);
         var payloads = new Dictionary<CadSectionKind, SerializedSectionPayload>(entries.Count);
         foreach (var entry in entries.OrderBy(static entry => entry.PayloadOffset))
         {
@@ -122,7 +131,9 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
                 throw new InvalidDataException($"Duplicate section: {entry.Kind}");
         }
 
-        return LoadFromPayloads(payloads);
+        var document = LoadFromPayloads(payloads, LoadLimits);
+        CadDocumentOrigin.Set(document, CadFileRevision.Capture(filePath));
+        return document;
     }
 
     public async Task<CadDocument> LoadAsync(
@@ -153,6 +164,7 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
         var tableBytes = new byte[header.SectionTableLength];
         await stream.ReadExactlyAsync(tableBytes, cancellationToken).ConfigureAwait(false);
         var entries = ReadSectionEntries(header, tableBytes, stream.Length);
+        LoadLimits.ValidateTable(entries, stream.Length);
 
         var payloads = new Dictionary<CadSectionKind, SerializedSectionPayload>(entries.Count);
         foreach (var entry in entries.OrderBy(x => x.PayloadOffset))
@@ -166,7 +178,13 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
                 throw new InvalidDataException($"Duplicate section: {entry.Kind}");
         }
 
-        return await Task.Run(() => LoadFromPayloads(payloads), cancellationToken).ConfigureAwait(false);
+        return await Task.Run(() =>
+        {
+            var document = LoadFromPayloads(payloads, LoadLimits, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            CadDocumentOrigin.Set(document, CadFileRevision.Capture(filePath));
+            return document;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public CadFileHeader ReadHeader(string filePath)
@@ -193,6 +211,7 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
         using var stream = File.OpenRead(filePath);
         using var reader = new BinaryReader(stream);
         var entries = ReadSectionTable(reader);
+        LoadLimits.ValidateTable(entries, stream.Length);
         var entry = entries.FirstOrDefault(x => x.Kind == kind);
 
         if (entry.Kind != kind)
@@ -203,11 +222,13 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
         var payload = reader.ReadBytes(entry.PayloadLength);
         if (payload.Length != entry.PayloadLength)
             throw new EndOfStreamException($"Unexpected end of section: {entry.Kind}");
+        var options = LoadLimits.Secure(GetMessagePackOptions(entry.Compression));
+        new CadDocumentLoadLimits.DecodeBudget(LoadLimits, CancellationToken.None).Validate(payload, options);
         return CadSectionMigrationRegistry.ReadCurrent<TSection>(
             entry.Kind,
             entry.Version,
             payload,
-            GetMessagePackOptions(entry.Compression));
+            options);
     }
 
     public CadSettingsSection ReadSettings(string filePath)
@@ -236,8 +257,15 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
     }
 
     private static CadDocument LoadFromPayloads(
-        IReadOnlyDictionary<CadSectionKind, SerializedSectionPayload> payloads)
+        IReadOnlyDictionary<CadSectionKind, SerializedSectionPayload> payloads,
+        CadDocumentLoadLimits limits, CancellationToken cancellationToken = default)
     {
+        var budget = new CadDocumentLoadLimits.DecodeBudget(limits, cancellationToken);
+        foreach (var payload in payloads.Values.Where(p => Enum.IsDefined(p.Entry.Kind)))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            budget.Validate(payload.Payload, GetMessagePackOptions(payload.Entry.Compression));
+        }
         var documentInfo = ReadRequiredSection<CadDocumentSection>(payloads, CadSectionKind.Document);
         var settings = ReadRequiredSection<CadSettingsSection>(payloads, CadSectionKind.Settings);
         var layers = ReadRequiredSection<CadLayerSection>(payloads, CadSectionKind.Layers);
@@ -258,7 +286,16 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
         var oleObjects = ReadOptionalSection(payloads, CadSectionKind.OleObjects, new CadOleObjectsSection());
         var blockReferences = ReadOptionalSection(payloads, CadSectionKind.BlockReferences, new CadBlockReferencesSection());
 
-        return CadDocumentMapper.FromSections(
+        var regions = ReadOptionalSection(payloads, CadSectionKind.Regions, new CadRegionsSection());
+        var dimensions = ReadOptionalSection(payloads, CadSectionKind.Dimensions, new CadDimensionsSection());
+        var entityCount = (long)regions.Regions.Count + dimensions.Dimensions.Count + lines.Lines.Count + circles.Circles.Count + ellipses.Ellipses.Count +
+            arcs.Arcs.Count + rectangles.Rectangles.Count + polylines.Polylines.Count + splines.Splines.Count +
+            (ellipses.EllipseArcs?.Count ?? 0) + compositePaths.CompositePaths.Count + texts.Texts.Count + shapeTexts.ShapeTexts.Count + images.Images.Count +
+            oleObjects.OleObjects.Count + blockReferences.BlockReferences.Count;
+        if (entityCount > limits.MaximumEntities) throw new InvalidDataException("The drawing exceeds its entity budget.");
+        cancellationToken.ThrowIfCancellationRequested();
+        CadDocumentReferenceValidation.ValidateExternalContent(blockReferences,images,limits,cancellationToken);
+        var document = CadDocumentMapper.FromSections(
             documentInfo,
             settings,
             layers,
@@ -277,7 +314,14 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
             shapeTexts,
             images,
             oleObjects,
-            blockReferences);
+            blockReferences, cancellationToken);
+        CadRegionStorage.Restore(document, regions, cancellationToken);
+        CadDocumentReferenceValidation.ValidateKnownReferences(document, cancellationToken);
+        document.RefreshBlockReferenceBounds(cancellationToken);
+        CadDimensionStorage.Restore(document, dimensions, cancellationToken);
+        if (payloads.Keys.Any(kind => !Enum.IsDefined(kind)))
+            document.SetCompatibilityReadOnly("This drawing contains sections not supported by this version. Open read-only or save a compatible copy.");
+        return document;
     }
 
     private static TSection ReadRequiredSection<TSection>(
@@ -306,7 +350,7 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
             section.Entry.Kind,
             section.Entry.Version,
             section.Payload,
-            GetMessagePackOptions(section.Entry.Compression));
+            new CadDocumentLoadLimits().Secure(GetMessagePackOptions(section.Entry.Compression)));
     }
 
     private static IReadOnlyList<CadSectionEntry> ReadSectionEntries(
@@ -384,7 +428,7 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
     {
         var entities = CadDocumentMapper.IndexEntities(document);
 
-        return new Queue<ISectionPayload>(
+        var payloads = new Queue<ISectionPayload>(
         [
             Capture(CadSectionKind.Document, CadDocumentMapper.ToDocumentSection(document)),
             Capture(CadSectionKind.Settings, CadDocumentMapper.ToSettingsSection(document)),
@@ -404,8 +448,12 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
             Capture(CadSectionKind.ShapeTexts, CadDocumentMapper.ToShapeTextsSection(entities)),
             Capture(CadSectionKind.Images, CadDocumentMapper.ToImagesSection(entities)),
             Capture(CadSectionKind.OleObjects, CadDocumentMapper.ToOleObjectsSection(entities)),
-            Capture(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document, entities))
+            Capture(CadSectionKind.BlockReferences, CadDocumentMapper.ToBlockReferencesSection(document, entities)),
+            Capture(CadSectionKind.Dimensions, CadDimensionStorage.Capture(entities[typeof(Direct2dCad.Db.Data.Entities.CadDimension)]))
         ]);
+        var regions = CadRegionStorage.Capture(entities[typeof(Direct2dCad.Db.Data.Entities.CadRegion)]);
+        if (regions.Regions.Count > 0) payloads.Enqueue(Capture(CadSectionKind.Regions, regions));
+        return payloads;
     }
 
     private static ISectionPayload Capture<TPayload>(CadSectionKind kind, TPayload payload) =>

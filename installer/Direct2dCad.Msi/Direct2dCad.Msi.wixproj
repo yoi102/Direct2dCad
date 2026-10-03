@@ -1,0 +1,15 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <Version Condition="'$(Version)' == ''">1.0.2</Version>
+    <PackageName>Direct2dCad</PackageName>
+    <OutputName>Direct2dCad</OutputName>
+    <DefineConstants>$(DefineConstants);PublishDirectory=$(PublishDirectory);ReleaseVersion=0.0.0.2;Version=$(Version)</DefineConstants>
+    <OutputPath Condition="'$(ReleaseArtifactsDirectory)' != ''">$(ReleaseArtifactsDirectory)\</OutputPath>
+    <SuppressIces>ICE30;ICE38;ICE43;ICE57</SuppressIces>
+  </PropertyGroup>
+  <ItemGroup>
+    <BindPath Include="$(PublishDirectory)" BindName="AppPayload" />
+  </ItemGroup>
+</Project>

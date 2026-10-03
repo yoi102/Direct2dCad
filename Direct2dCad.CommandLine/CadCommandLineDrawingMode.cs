@@ -29,5 +29,7 @@ public enum CadCommandLineDrawingMode
     Text,
     SetOrigin,
     InsertBlock,
-    LayoutViewport
+    LayoutViewport, Offset, Trim, Extend, Fillet, Chamfer, Join, Break, RectArray, PolarArray,
+    DimLinearX, DimLinearY, DimAligned, DimRadius, DimDiameter, DimAngular, Leader,
+    BooleanUnion, BooleanIntersection, BooleanDifference
 }

@@ -3,6 +3,7 @@ using AvalonDock.Mvvm;
 using Direct2dCad.CommandLine;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.ViewModels.Services.Events;
+using Direct2dCad.ViewModels.Services.Documents;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Toolboxes;
@@ -24,14 +25,19 @@ internal sealed class MainWindowTestContext : IDisposable
     private readonly List<(CadToolboxTestContext Context, EditorTabViewModel Tab)> _tabs = [];
     private readonly IToolbox[] _toolboxes;
     private readonly ToolExecutionWorkspace _workspace = new();
+    private readonly CadRecoveryStore _recoveryStore;
+    private readonly bool _ownsRecoveryStore;
 
-    public MainWindowTestContext()
+    public MainWindowTestContext(CadRecoveryStore? recoveryStore = null, IFileLocationService? fileLocationService = null)
     {
+        _ownsRecoveryStore = recoveryStore is null;
+        _recoveryStore = recoveryStore ?? new CadRecoveryStore(Path.Combine(Path.GetTempPath(), "CadMainRecovery-" + Guid.NewGuid()), trackSession: true);
         var p = Context.Platform;
         _toolboxes =
         [
             new DocumentExplorerToolboxViewModel(p, p, Context.GetService<ISubscriber<EditorTabDocumentSummaryChangedMessage>>()),
             Context.Layers, Context.Properties, Context.Search, Context.CreateBlocks(Dialogs),
+            new DrawingRecoveryToolboxViewModel(p, p),
             new SelectionFilterToolboxViewModel(p, p, Context.GetService<ISubscriber<CadSelectionFilterChangedMessage>>()),
             new CommandLineToolboxViewModel(p, p, new CadCommandLineService(), new CadToolCommandLineService(_workspace),
                 Context.GetService<IAsyncSubscriber<CadCommandActivityMessage>>(),
@@ -41,7 +47,7 @@ internal sealed class MainWindowTestContext : IDisposable
         ];
         Layout = new DockLayoutService(_toolboxes);
         ViewModel = new MainViewModel(Layout, new SideToggleManager(Layout), Appearance, Appearance,
-            Files, p, Dialogs, Settings, p, ActiveEditor);
+            Files, p, Dialogs, Settings, p, ActiveEditor, _recoveryStore, fileLocationService);
     }
 
     public (EditorTabViewModel Tab, RecordingDocumentWriter Writer) AddDocument(string name, bool saved = false)
@@ -70,6 +76,11 @@ internal sealed class MainWindowTestContext : IDisposable
             toolbox.Dispose();
         Context.Dispose();
         _workspace.Dispose();
+        if (_ownsRecoveryStore)
+        {
+            _recoveryStore.Dispose();
+            if (Directory.Exists(_recoveryStore.DirectoryPath)) Directory.Delete(_recoveryStore.DirectoryPath, true);
+        }
     }
 }
 

@@ -1,0 +1,63 @@
+{
+  "recordedUtc": "2026-10-03T01:28:03.5433259+00:00",
+  "version": "0.6.0-preview.1",
+  "artifact": {
+    "path": "TestResults/m6-release.zip",
+    "bytes": 82976050,
+    "sha256": "EEAC89655C6C88840B249D9D92B50C0BE6FADCD1DE2D96571F4C1A1FB7AE5C83",
+    "signed": false,
+    "runtime": "win-x64 self-contained"
+  },
+  "provenance": {
+    "manifestPath": "TestResults/m6-release/manifest.json",
+    "manifestSha256": "0A2872F52F8DDD00458D1399A4A9E2E4C53AECEDB5080A4880D742DC518E3406",
+    "sourceCommit": "041e291287e93429d49f498b5ca571f9a8f12427",
+    "trackedDiffSha256": "A072F367BA858D48B0EB8ECF587FEE26D7872F8DEFA8115C4F0083D35AD1275A",
+    "sourceFileCount": 1075,
+    "appFileCount": 508,
+    "dependencyLibraryCount": 66,
+    "sdk": "10.0.401",
+    "scope": "Manifest is a build-time workspace snapshot. Subsequent evidence and documentation changes are not included in its source hashes."
+  },
+  "packageUi": {
+    "report": "TestResults/m6-release-ui/yoiri_YOIRI_2026-10-03_10_26_59_net10.0.trx",
+    "passed": 2,
+    "failed": 0,
+    "total": 2,
+    "addedToRegressionTotal": false,
+    "isolatedSettings": true
+  },
+  "lifecycle": {
+    "report": "TestResults/m6-release-lifecycle/lifecycle.json",
+    "archivedReport": "package-lifecycle.json",
+    "isolated": true,
+    "steps": [
+      {
+        "version": "0.6.0-preview.1",
+        "passed": true,
+        "appDirectory": "C:\\Users\\yoiri\\source\\repos\\Direct2dCad\\TestResults\\m6-release-lifecycle\\installed\\versions\\0.6.0-preview.1-61079f8957a24e758a739207a8e9309f\\app",
+        "step": "install"
+      },
+      {
+        "version": "0.6.0-preview.2",
+        "passed": true,
+        "step": "upgrade"
+      },
+      {
+        "version": "0.6.0-preview.1",
+        "passed": true,
+        "step": "rollback"
+      },
+      {
+        "step": "tamper rejection",
+        "passed": true
+      },
+      {
+        "step": "uninstall preserves external settings and recovery",
+        "passed": true
+      }
+    ],
+    "upgradeTestVersion": "0.6.0-preview.2"
+  },
+  "limitations": "Same host only. No real Programs installation, shortcuts, file associations, signing, hosted CI, public publishing, actual PDF or printer job, or clean-machine acceptance."
+}

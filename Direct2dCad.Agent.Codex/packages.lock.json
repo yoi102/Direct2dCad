@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "direct2dcad.agent": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.Contracts": "[1.0.0, )"
+        }
+      },
+      "direct2dcad.ai.contracts": {
+        "type": "Project"
+      }
+    }
+  }
+}

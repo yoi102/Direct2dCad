@@ -1,0 +1,339 @@
+{
+  "source": "C:\\Users\\yoiri\\Downloads\\ArduinoUnoRev3PCB.dxf",
+  "canvas": {
+    "Left": 371,
+    "Top": 250,
+    "Width": 924,
+    "Height": 383
+  },
+  "anchor": {
+    "IsEmpty": false,
+    "X": 1013,
+    "Y": 377
+  },
+  "fitted_zoom": 5.597192982456141,
+  "samples": [
+    {
+      "direction": 1,
+      "step": 1,
+      "displayed_render_estimate": "1188 FPS  \u00B7  0.8 ms"
+    },
+    {
+      "direction": 1,
+      "step": 2,
+      "displayed_render_estimate": "751 FPS  \u00B7  1.3 ms"
+    },
+    {
+      "direction": 1,
+      "step": 3,
+      "displayed_render_estimate": "500 FPS  \u00B7  2.0 ms"
+    },
+    {
+      "direction": 1,
+      "step": 4,
+      "displayed_render_estimate": "500 FPS  \u00B7  2.0 ms"
+    },
+    {
+      "direction": 1,
+      "step": 5,
+      "displayed_render_estimate": "383 FPS  \u00B7  2.6 ms"
+    },
+    {
+      "direction": 1,
+      "step": 6,
+      "displayed_render_estimate": "294 FPS  \u00B7  3.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 7,
+      "displayed_render_estimate": "294 FPS  \u00B7  3.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 8,
+      "displayed_render_estimate": "266 FPS  \u00B7  3.8 ms"
+    },
+    {
+      "direction": 1,
+      "step": 9,
+      "displayed_render_estimate": "238 FPS  \u00B7  4.2 ms"
+    },
+    {
+      "direction": 1,
+      "step": 10,
+      "displayed_render_estimate": "238 FPS  \u00B7  4.2 ms"
+    },
+    {
+      "direction": 1,
+      "step": 11,
+      "displayed_render_estimate": "213 FPS  \u00B7  4.7 ms"
+    },
+    {
+      "direction": 1,
+      "step": 12,
+      "displayed_render_estimate": "199 FPS  \u00B7  5.0 ms"
+    },
+    {
+      "direction": 1,
+      "step": 13,
+      "displayed_render_estimate": "184 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 14,
+      "displayed_render_estimate": "184 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 15,
+      "displayed_render_estimate": "183 FPS  \u00B7  5.5 ms"
+    },
+    {
+      "direction": 1,
+      "step": 16,
+      "displayed_render_estimate": "182 FPS  \u00B7  5.5 ms"
+    },
+    {
+      "direction": 1,
+      "step": 17,
+      "displayed_render_estimate": "179 FPS  \u00B7  5.6 ms"
+    },
+    {
+      "direction": 1,
+      "step": 18,
+      "displayed_render_estimate": "174 FPS  \u00B7  5.7 ms"
+    },
+    {
+      "direction": 1,
+      "step": 19,
+      "displayed_render_estimate": "174 FPS  \u00B7  5.7 ms"
+    },
+    {
+      "direction": 1,
+      "step": 20,
+      "displayed_render_estimate": "177 FPS  \u00B7  5.7 ms"
+    },
+    {
+      "direction": 1,
+      "step": 21,
+      "displayed_render_estimate": "179 FPS  \u00B7  5.6 ms"
+    },
+    {
+      "direction": 1,
+      "step": 22,
+      "displayed_render_estimate": "179 FPS  \u00B7  5.6 ms"
+    },
+    {
+      "direction": 1,
+      "step": 23,
+      "displayed_render_estimate": "182 FPS  \u00B7  5.5 ms"
+    },
+    {
+      "direction": 1,
+      "step": 24,
+      "displayed_render_estimate": "185 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 25,
+      "displayed_render_estimate": "186 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 26,
+      "displayed_render_estimate": "186 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 27,
+      "displayed_render_estimate": "182 FPS  \u00B7  5.5 ms"
+    },
+    {
+      "direction": 1,
+      "step": 28,
+      "displayed_render_estimate": "184 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 29,
+      "displayed_render_estimate": "184 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 30,
+      "displayed_render_estimate": "186 FPS  \u00B7  5.4 ms"
+    },
+    {
+      "direction": 1,
+      "step": 31,
+      "displayed_render_estimate": "189 FPS  \u00B7  5.3 ms"
+    },
+    {
+      "direction": 1,
+      "step": 32,
+      "displayed_render_estimate": "192 FPS  \u00B7  5.2 ms"
+    },
+    {
+      "direction": -1,
+      "step": 1,
+      "displayed_render_estimate": "201 FPS  \u00B7  5.0 ms"
+    },
+    {
+      "direction": -1,
+      "step": 2,
+      "displayed_render_estimate": "205 FPS  \u00B7  4.9 ms"
+    },
+    {
+      "direction": -1,
+      "step": 3,
+      "displayed_render_estimate": "208 FPS  \u00B7  4.8 ms"
+    },
+    {
+      "direction": -1,
+      "step": 4,
+      "displayed_render_estimate": "208 FPS  \u00B7  4.8 ms"
+    },
+    {
+      "direction": -1,
+      "step": 5,
+      "displayed_render_estimate": "206 FPS  \u00B7  4.8 ms"
+    },
+    {
+      "direction": -1,
+      "step": 6,
+      "displayed_render_estimate": "209 FPS  \u00B7  4.8 ms"
+    },
+    {
+      "direction": -1,
+      "step": 7,
+      "displayed_render_estimate": "212 FPS  \u00B7  4.7 ms"
+    },
+    {
+      "direction": -1,
+      "step": 8,
+      "displayed_render_estimate": "214 FPS  \u00B7  4.7 ms"
+    },
+    {
+      "direction": -1,
+      "step": 9,
+      "displayed_render_estimate": "214 FPS  \u00B7  4.7 ms"
+    },
+    {
+      "direction": -1,
+      "step": 10,
+      "displayed_render_estimate": "215 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 11,
+      "displayed_render_estimate": "217 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 12,
+      "displayed_render_estimate": "220 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 13,
+      "displayed_render_estimate": "220 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 14,
+      "displayed_render_estimate": "217 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 15,
+      "displayed_render_estimate": "218 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 16,
+      "displayed_render_estimate": "219 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 17,
+      "displayed_render_estimate": "219 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 18,
+      "displayed_render_estimate": "220 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 19,
+      "displayed_render_estimate": "220 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 20,
+      "displayed_render_estimate": "220 FPS  \u00B7  4.5 ms"
+    },
+    {
+      "direction": -1,
+      "step": 21,
+      "displayed_render_estimate": "217 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 22,
+      "displayed_render_estimate": "218 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 23,
+      "displayed_render_estimate": "217 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 24,
+      "displayed_render_estimate": "217 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 25,
+      "displayed_render_estimate": "217 FPS  \u00B7  4.6 ms"
+    },
+    {
+      "direction": -1,
+      "step": 26,
+      "displayed_render_estimate": "215 FPS  \u00B7  4.7 ms"
+    },
+    {
+      "direction": -1,
+      "step": 27,
+      "displayed_render_estimate": "208 FPS  \u00B7  4.8 ms"
+    },
+    {
+      "direction": -1,
+      "step": 28,
+      "displayed_render_estimate": "197 FPS  \u00B7  5.1 ms"
+    },
+    {
+      "direction": -1,
+      "step": 29,
+      "displayed_render_estimate": "191 FPS  \u00B7  5.2 ms"
+    },
+    {
+      "direction": -1,
+      "step": 30,
+      "displayed_render_estimate": "189 FPS  \u00B7  5.3 ms"
+    },
+    {
+      "direction": -1,
+      "step": 31,
+      "displayed_render_estimate": "189 FPS  \u00B7  5.3 ms"
+    },
+    {
+      "direction": -1,
+      "step": 32,
+      "displayed_render_estimate": "187 FPS  \u00B7  5.4 ms"
+    }
+  ],
+  "final_statistics": "Latest result: Frame: 173.0 FPS | avg 5.78 ms | last 0.26 ms | partial (1 dirty)\r\nScene: passes 1 | visible 0 | submissions 0 | fallback 0\r\nTiming: cache 0.03 ms | background 0.00 ms | entities 0.00 ms | transient 0.00 ms | selection 0.00 ms\r\nTiming I/O: OLE prepare 0.00 ms | surface draw 0.20 ms\r\nParallel rendering: frames 0 | mode inactive | workers 0 | entities 0 | render 0.00 ms | worker GPU cache 0 B\r\nBlocks: refs 0 | expanded 0 | definition CL replay/build 0/0\r\nRetained: scene CL replay/build 0/0 | selection 0/0 | tiles 0/0\r\nGeometry realization: fill 0 | stroke 0 | hit/miss 0/0 | build/fallback 0/0 | build 0.00 ms\r\nHatch/OLE: lines 0 | simplified families 0 | OLE tile builds 0\r\nGPU cache: 14.7 MiB current | 14.7 MiB peak | 512.0 MiB budget | evictions 0\r\n  scene tiles 12.1 MiB | scene CL 1005.6 KiB | selection CL 0 B | block CL 0 B\r\n  realizations 1.6 MiB | hatch tiles 0 B | images 0 B | OLE tiles 0 B; visible rows: ",
+  "limitation": "Real WPF mouse wheel and D3DImage presentation exercised. Displayed FPS is a rolling render-cost estimate, not monitor refresh FPS or an input-latency measurement."
+}

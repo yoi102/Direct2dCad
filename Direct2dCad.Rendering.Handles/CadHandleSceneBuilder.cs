@@ -250,6 +250,9 @@ public sealed class CadHandleSceneBuilder
     {
         switch (entity)
         {
+            case CadDimension dimension:
+                AddGrip(items, entity.Id, dimension.Definition.Placement, CadHandleType.Vertex, gripStyle);
+                break;
             case CadLine line:
                 AddGrip(items, entity.Id, line.Start, CadHandleType.Vertex, gripStyle);
                 AddGrip(items, entity.Id, line.End, CadHandleType.Vertex, gripStyle);
@@ -266,10 +269,7 @@ public sealed class CadHandleSceneBuilder
 
             case CadEllipse ellipse:
                 AddGrip(items, entity.Id, ellipse.Center, CadHandleType.Center, gripStyle);
-                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X + ellipse.RadiusX, ellipse.Center.Y), CadHandleType.Radius, gripStyle);
-                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X, ellipse.Center.Y + ellipse.RadiusY), CadHandleType.Radius, gripStyle);
-                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X - ellipse.RadiusX, ellipse.Center.Y), CadHandleType.Radius, gripStyle);
-                AddGrip(items, entity.Id, new CadPointD(ellipse.Center.X, ellipse.Center.Y - ellipse.RadiusY), CadHandleType.Radius, gripStyle);
+                foreach(var angle in new[]{0.0,Math.PI/2,Math.PI,Math.PI*1.5}) AddGrip(items,entity.Id,ellipse.GetPointAtAngle(angle),CadHandleType.Radius,gripStyle);
                 break;
 
             case CadEllipseArc ellipseArc:
@@ -283,8 +283,11 @@ public sealed class CadHandleSceneBuilder
                 AddGrip(items, entity.Id, arc.GetPointAtAngle(arc.StartAngleRadians + arc.SweepAngleRadians * 0.5), CadHandleType.Radius, gripStyle);
                 break;
 
-            case CadRectangle:
-                AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
+            case CadRectangle rectangle:
+                var b=rectangle.FrameBounds;
+                foreach(var point in new CadPointD[]{new(b.MinX,b.MinY),new(b.MaxX,b.MinY),new(b.MaxX,b.MaxY),new(b.MinX,b.MaxY)})
+                    AddGrip(items,entity.Id,rectangle.GeometryTransform.TransformPoint(point),CadHandleType.BoundsCorner,gripStyle);
+                AddGrip(items,entity.Id,b.Center,CadHandleType.Center,gripStyle);
                 break;
 
             case CadPolyline polyline:
@@ -296,6 +299,7 @@ public sealed class CadHandleSceneBuilder
                 break;
 
             case CadCompositePath:
+            case CadRegion:
                 AddBoundsGripHandles(items, entity.Id, entity.Bounds, gripStyle);
                 break;
 

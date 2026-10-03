@@ -1,0 +1,182 @@
+{
+  "recorded_at": "2026-10-03T03:32:57.7948666+09:00",
+  "base_commit": "041e291287e93429d49f498b5ca571f9a8f12427",
+  "workspace": "uncommitted changes",
+  "sdk": "10.0.401",
+  "command": "./scripts/testing/Run-Regression.ps1 -IncludeWindowsIntegration -IncludeUiAutomation -ResultsDirectory TestResults/m1-m3-delivery",
+  "followup_commands": [
+    "dotnet test Direct2dCad.ViewModels.Tests -c Release --logger trx --results-directory TestResults/m1-m3-vm-final -v quiet",
+    "dotnet test Direct2dCad.UiAutomation.Tests -c Release --filter FullyQualifiedName!~CadImageAndOleClipboardContentEnterMovablePasteAndCanBePlaced --logger trx --results-directory TestResults/m1-m3-ui-final -v quiet",
+    "dotnet build Direct2dCad.slnx -c Release --nologo -v quiet"
+  ],
+  "result_selection": "Final passing result for each project; affected ViewModels and UI projects were rerun after repairs, without double counting earlier attempts",
+  "initial_full_run": {
+    "failed_project": "Direct2dCad.UiAutomation.Tests",
+    "failed_tests": 1,
+    "reason": "The immediate UI input assertion ran before the asynchronous button action completed",
+    "ui_trx_path": "TestResults/m1-m3-delivery/Direct2dCad.UiAutomation.Tests/yoiri_YOIRI_2026-10-03_03_22_29_net10.0.trx",
+    "ui_trx_sha256": "106C0001D777EAC8006A21DDC3B8D1EA76ABE9FA2EA7CE7AE90F6B5BAEEB5CDF"
+  },
+  "repair_notes": [
+    "UI submission assertions wait for the input to clear",
+    "Viewport-flow retry exposed the layout settings overlay intercepting the second canvas click; beginning viewport creation now collapses that overlay and the UI test completes the adjustment step before switching spaces"
+  ],
+  "build": {
+    "configuration": "Release",
+    "warnings": 0,
+    "errors": 0
+  },
+  "managed_total": 1275,
+  "windows_total": 130,
+  "ui_total": 9,
+  "final_total": 1414,
+  "excluded": "Clipboard-changing image/OLE UI tests excluded by the regression script",
+  "resource_key_count_per_language": 574,
+  "markdown_files_checked": 11,
+  "screenshot": {
+    "path": "docs/validation/2026-10-03/drawing-assistant-900x700.png",
+    "sha256": "543CFD378305E30A13846C0DA166F97FF37A6D6740975C10623D99A84E23A91B"
+  },
+  "projects": [
+    {
+      "project": "Direct2dCad.Agent.Codex.Tests",
+      "total": 19,
+      "passed": 19,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Agent.Codex.Tests/yoiri_YOIRI_2026-10-03_03_22_07_net10.0.trx",
+      "trx_sha256": "4A6A5D2C779B44624D3D6B22FE90872BBDEF1E994277E0D0E3B74FCDDC11CA6E"
+    },
+    {
+      "project": "Direct2dCad.Agent.Tests",
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Agent.Tests/yoiri_YOIRI_2026-10-03_03_22_09_net10.0.trx",
+      "trx_sha256": "A464CCA182E79A60E4CAEFFF92D7940180C7B5B891A5E1920DA9B3D2B2508C1F"
+    },
+    {
+      "project": "Direct2dCad.AI.Tests",
+      "total": 21,
+      "passed": 21,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.AI.Tests/yoiri_YOIRI_2026-10-03_03_22_10_net10.0.trx",
+      "trx_sha256": "699E391380F70E447B57C6D2445DF6741024FDAE2A1E39FB915C28FED4B1CD33"
+    },
+    {
+      "project": "Direct2dCad.Commands.Tests",
+      "total": 74,
+      "passed": 74,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Commands.Tests/yoiri_YOIRI_2026-10-03_03_22_12_net10.0.trx",
+      "trx_sha256": "228FDCE641A275D0D8D71AB2D3F8CA5E92EAC8329FDB8215AE288C21AE43EC8D"
+    },
+    {
+      "project": "Direct2dCad.Db.Tests",
+      "total": 74,
+      "passed": 74,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Db.Tests/yoiri_YOIRI_2026-10-03_03_22_14_net10.0.trx",
+      "trx_sha256": "7682A35FA2D83CADD635DE712B4A955822175B5ABDF3EE237786BE2DBABE6D54"
+    },
+    {
+      "project": "Direct2dCad.Editor.Tests",
+      "total": 65,
+      "passed": 65,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Editor.Tests/yoiri_YOIRI_2026-10-03_03_22_16_net10.0.trx",
+      "trx_sha256": "7E3CF06AA6048CCE67412583227C1A33E51B45A5D7BC0883BF842871CCB44329"
+    },
+    {
+      "project": "Direct2dCad.HitTesting.Tests",
+      "total": 18,
+      "passed": 18,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.HitTesting.Tests/yoiri_YOIRI_2026-10-03_03_22_18_net10.0.trx",
+      "trx_sha256": "647C70C0C25ACD659B89F34F93B7CB00D3A9E76D7AA21E9CF25B4F76DFED5E97"
+    },
+    {
+      "project": "Direct2dCad.Indexing.Tests",
+      "total": 18,
+      "passed": 18,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Indexing.Tests/yoiri_YOIRI_2026-10-03_03_22_19_net10.0.trx",
+      "trx_sha256": "EECA6CFF8C7DB4AF3ECFC20AA6A633F5DA34CD3C605757D739FF655EE9EDB701"
+    },
+    {
+      "project": "Direct2dCad.IO.Tests",
+      "total": 41,
+      "passed": 41,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.IO.Tests/yoiri_YOIRI_2026-10-03_03_22_21_net10.0.trx",
+      "trx_sha256": "F1D24657BDC22E20AF2FBF04841B76DAB14F6D8490C2448238D25B4E9009F97E"
+    },
+    {
+      "project": "Direct2dCad.Tests",
+      "total": 96,
+      "passed": 96,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Tests/yoiri_YOIRI_2026-10-03_03_22_23_net10.0.trx",
+      "trx_sha256": "D4E3B7BA59D4DD61CA8D7D8FFD946A588478D52333E7A099144DF55BA24402FF"
+    },
+    {
+      "project": "Direct2dCad.UiAutomation.Tests",
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-ui-final/yoiri_YOIRI_2026-10-03_03_30_05_net10.0.trx",
+      "trx_sha256": "EC548F1DE558DFAD71FF9C0538ED43F85B94133B10038CFE878195F872845754"
+    },
+    {
+      "project": "Direct2dCad.ViewModels.Services.Tests",
+      "total": 88,
+      "passed": 88,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.ViewModels.Services.Tests/yoiri_YOIRI_2026-10-03_03_23_29_net10.0.trx",
+      "trx_sha256": "BF9ECD7724B0992113899F63D6F4A1F7FE7FE111D62559398CE4B839939739A8"
+    },
+    {
+      "project": "Direct2dCad.ViewModels.Tests",
+      "total": 754,
+      "passed": 754,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-vm-final/yoiri_YOIRI_2026-10-03_03_31_20_net10.0.trx",
+      "trx_sha256": "CF696E509D493361C782AE653006913F8F90D0199C94FADB30ADBC2DD9CE6FE8"
+    },
+    {
+      "project": "Direct2dCad.Windows.IntegrationTests",
+      "total": 130,
+      "passed": 130,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed",
+      "trx_path": "TestResults/m1-m3-delivery/Direct2dCad.Windows.IntegrationTests/yoiri_YOIRI_2026-10-03_03_24_10_net10.0.trx",
+      "trx_sha256": "51852161897B7F0087151C6EAC96B1FD6D5BDDEFE64A057199A6E5CF5E423177"
+    }
+  ]
+}

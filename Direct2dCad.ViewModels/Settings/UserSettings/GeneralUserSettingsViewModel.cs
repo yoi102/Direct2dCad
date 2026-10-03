@@ -24,6 +24,8 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
     private void Load(CadGeneralUserSettings settings)
     {
         IsDarkTheme = settings.IsDarkTheme;
+        IsAutoRecoveryEnabled = settings.IsAutoRecoveryEnabled;
+        HistoryBudgetMegabytes = settings.HistoryBudgetMegabytes;
         PrimaryColor = settings.PrimaryColor;
         SecondaryColor = settings.SecondaryColor;
         SelectedCulture = CultureOptions.FirstOrDefault(x => x.Lcid == settings.CultureLcid) ?? CultureOptions[0];
@@ -32,6 +34,8 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
     public IReadOnlyList<UserCultureOption> CultureOptions { get; }
 
     [ObservableProperty] public partial bool IsDarkTheme { get; set; }
+    [ObservableProperty] public partial bool IsAutoRecoveryEnabled { get; set; }
+    [ObservableProperty] public partial int HistoryBudgetMegabytes {get;set;}
 
     [ObservableProperty] public partial CadColor PrimaryColor { get; set; }
 
@@ -45,6 +49,9 @@ public partial class GeneralUserSettingsViewModel : UserSettingsSectionViewModel
             return false;
 
         settings.General.IsDarkTheme = IsDarkTheme;
+        settings.General.IsAutoRecoveryEnabled = IsAutoRecoveryEnabled;
+        if(HistoryBudgetMegabytes is <16 or >4096)return false;
+        settings.General.HistoryBudgetMegabytes=HistoryBudgetMegabytes;
         settings.General.CultureLcid = SelectedCulture.Lcid;
         settings.General.PrimaryColor = PrimaryColor;
         settings.General.SecondaryColor = SecondaryColor;

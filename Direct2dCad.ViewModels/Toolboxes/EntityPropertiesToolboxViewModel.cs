@@ -47,6 +47,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
     public partial ObservableObject? Entity { get; set; }
 
     private CadDocumentViewModel? _documentViewModel;
+    public CadDocumentViewModel? DocumentViewModel => _documentViewModel;
     public void Attach(CadDocumentViewModel? documentViewModel)
     {
         if (ReferenceEquals(_documentViewModel, documentViewModel))
@@ -57,6 +58,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
 
         _selectedBlockDefinitionId = null;
         _documentViewModel = documentViewModel;
+        OnPropertyChanged(nameof(DocumentViewModel));
         Entity = null;
         _lastSelectionRefresh = null;
 

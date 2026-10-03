@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Antelcat.I18N.SourceGenerators": {
+        "type": "Transitive",
+        "resolved": "2.0.0-preview-2",
+        "contentHash": "xZo+iwketCNIjnDkPM1v1erAPBSMLMYn7ztr1VBjWLFGNdVTd3fYJ7rpuF5i5d0eYHr1ZOrIOay+qfkJrCKYPQ=="
+      },
+      "StronglyTypedId": {
+        "type": "Transitive",
+        "resolved": "1.0.0-beta08",
+        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
+      },
+      "direct2dcad.changetracking": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[1.0.0, )"
+        }
+      },
+      "direct2dcad.client.common": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[1.0.0, )",
+          "Direct2dCad.Rendering": "[1.0.0, )"
+        }
+      },
+      "direct2dcad.db": {
+        "type": "Project",
+        "dependencies": {
+          "StronglyTypedId": "[1.0.0-beta08, )"
+        }
+      },
+      "direct2dcad.lang": {
+        "type": "Project",
+        "dependencies": {
+          "Antelcat.I18N.SourceGenerators": "[2.0.0-preview-2, )"
+        }
+      },
+      "direct2dcad.rendering": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.ChangeTracking": "[1.0.0, )",
+          "Direct2dCad.Db": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

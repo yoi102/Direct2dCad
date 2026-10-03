@@ -14,6 +14,12 @@ public static class Program
         Environment.ExitCode = 1;
         return;
 #else
+        if (args.Length == 3 && args[0] == "--dxf-zoom")
+        { DxfZoomRunner.Run(args[1], args[2]); return; }
+        if(args.Length==2 && args[0]=="--m1-m3-baseline")
+        { MilestoneBaselineRunner.Run(args[1]);return; }
+        if(args.Length==2 && args[0]=="--m4-m6-evidence")
+        { MilestoneDeliveryRunner.Run(args[1]);return; }
         var effectiveArgs = new List<string>(args.Length);
         var smoke = false;
         for (var index = 0; index < args.Length; index++)

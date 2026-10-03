@@ -104,6 +104,7 @@ public sealed class SetGraphicStylePropertiesCommand : ICadCommand
         CadPolyline value => value.GraphicStyleId,
         CadSpline value => value.GraphicStyleId,
         CadCompositePath value => value.GraphicStyleId,
+        CadRegion value => value.GraphicStyleId,
         CadText value => value.GraphicStyleId,
         CadShapeText value => value.GraphicStyleId,
         CadBlockReference value => value.GraphicStyleId,

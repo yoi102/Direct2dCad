@@ -367,6 +367,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
     }
 
+    internal bool HasVisiblePreparationPending=>_resourceCache.HasVisiblePreparationPending;
     public bool PrepareRenderCaches(
         CadDocument document,
         CadViewport viewport,

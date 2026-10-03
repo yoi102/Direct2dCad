@@ -5,10 +5,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views.Toolboxes"
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:vm_ep="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
              xmlns:v_ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty"
+             xmlns:views="clr-namespace:Direct2dCad.wpf.Views"
              AutomationProperties.AutomationId="EntityPropertiesToolbox"
              d:DataContext="{d:DesignInstance Type=toolboxes:EntityPropertiesToolboxViewModel}"
              mc:Ignorable="d"
@@ -16,7 +19,8 @@
              d:DesignWidth="800">
     <Grid>
 
-        <Grid.Resources>           
+        <Grid.Resources>
+            <BooleanToVisibilityConverter x:Key="Bool" />
             <DataTemplate DataType="{x:Type vm_ep:ArcPropertyViewModel}">
                 <v_ep:ArcPropertyView />
             </DataTemplate>
@@ -93,8 +97,47 @@
                 <v_ep:MultiEntityPropertyView />
             </DataTemplate>
         </Grid.Resources>
-        <ContentControl Content="{Binding Entity}"
-                        HorizontalContentAlignment="Stretch"
-                        VerticalContentAlignment="Stretch" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <ScrollViewer AutomationProperties.AutomationId="EntityPropertiesScrollViewer"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                      Visibility="{Binding DocumentViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}, FallbackValue=Collapsed}"
+                      PreviewMouseWheel="PropertiesScrollViewer_OnPreviewMouseWheel"
+                      CanContentScroll="False">
+            <ScrollViewer.Resources>
+                <Style TargetType="ScrollBar" BasedOn="{StaticResource MaterialDesignScrollBar}" />
+            </ScrollViewer.Resources>
+            <StackPanel>
+                <TextBlock Text="{Binding DocumentViewModel.PropertyContext}" Margin="12,6" TextWrapping="Wrap" FontWeight="SemiBold" />
+                <views:CadEditParametersView DataContext="{Binding DocumentViewModel}" />
+                <views:CadAnnotationParametersView DataContext="{Binding DocumentViewModel}" />
+                <ContentControl Content="{Binding Entity}" IsEnabled="{Binding DocumentViewModel.CanEditDocument}"
+                                HorizontalContentAlignment="Stretch" />
+            </StackPanel>
+        </ScrollViewer>
+        <TextBlock AutomationProperties.AutomationId="EntityPropertiesEmptyHint" Margin="12,8"
+                   Text="{I18N {x:Static r:LangKeys.DrawingAssistantEmpty}}" TextWrapping="Wrap" Opacity="0.7"
+                   VerticalAlignment="Top"
+                   Visibility="{Binding DocumentViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}, FallbackValue=Visible}" />
+        <Grid Grid.Row="1" DataContext="{Binding DocumentViewModel}" Margin="12,6,12,8"
+              HorizontalAlignment="Right" IsEnabled="{Binding CanEditDimensionParameters, FallbackValue=False}"
+              Visibility="{Binding HasSelectedDimension, Converter={StaticResource Bool}, FallbackValue=Collapsed}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button AutomationProperties.AutomationId="ReassociateDimensionButton"
+                    Content="{md:PackIcon Kind=LinkVariant, Size=20}" Command="{Binding ReassociateDimensionCommand}"
+                    ToolTip="{I18N {x:Static r:LangKeys.Reassociate}}"
+                    AutomationProperties.Name="{I18N {x:Static r:LangKeys.Reassociate}}"
+                    Style="{StaticResource MaterialDesignFlatButton}" Width="32" Height="32" Padding="0" />
+            <Button Grid.Column="1" AutomationProperties.AutomationId="DetachDimensionButton"
+                    Content="{md:PackIcon Kind=LinkVariantOff, Size=20}" Command="{Binding DetachDimensionCommand}"
+                    ToolTip="{I18N {x:Static r:LangKeys.DetachAssociation}}"
+                    AutomationProperties.Name="{I18N {x:Static r:LangKeys.DetachAssociation}}"
+                    Style="{StaticResource MaterialDesignFlatButton}" Width="32" Height="32" Padding="0" />
+        </Grid>
     </Grid>
 </UserControl>

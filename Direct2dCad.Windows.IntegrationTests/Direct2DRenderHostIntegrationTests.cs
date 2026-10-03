@@ -30,6 +30,172 @@ namespace Direct2dCad.Windows.IntegrationTests;
 public sealed class Direct2DRenderHostIntegrationTests
 {
     [Theory]
+    [InlineData(CadBooleanOperation.Union, false)]
+    [InlineData(CadBooleanOperation.Intersection, false)]
+    [InlineData(CadBooleanOperation.Difference, false)]
+    [InlineData(CadBooleanOperation.Difference, true)]
+    [Trait("Category", "WindowsIntegration")]
+    public void BooleanRegionsMatchIndexedPixelsAcrossZoomHistoryAndHoles(CadBooleanOperation operation, bool nested)
+    {
+        const int width = 480, height = 360;
+        var document = CadDocument.Create("boolean"); var fill = document.CreateSolidFillStyle("green", CadColor.Green);
+        var a = document.AddCircle(default, 30, fillStyleId: fill);
+        var b = document.AddCircle(operation == CadBooleanOperation.Intersection ? new(20, 0) : default, 10);
+        if (nested)
+        {
+            var block = document.CreateBlockDefinition("region", default);
+            document.MoveEntityToBlock(a.Id, block); document.MoveEntityToBlock(b.Id, block);
+            document.AddBlockReference(block, default);
+        }
+        var editor = new CadEditor(document); var viewport = editor.Viewport;
+        viewport.SetSize(width, height); viewport.SetView(2, new(width / 2, height / 2));
+        using var indexed = new Direct2DImageRenderHost(); using var full = new Direct2DImageRenderHost();
+        foreach (var host in new[] { indexed, full })
+        {
+            host.AttachImageSource(new RecordingImageSource(width, height)); host.SetSize(width, height);
+            host.SetScene(document, viewport, prepareResourcesInBackground: false);
+            editor.RegisterGeometryResourceManager(host, rebuildExistingResources: false);
+        }
+        indexed.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false,
+            EntityBoundsQuery = editor.SpatialIndex.Query, EntityBoundsQueryInto = editor.SpatialIndex.Query, EntityBoundsCount = editor.SpatialIndex.CountIntersecting });
+        full.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false });
+        var command = new Direct2dCad.Commands.BooleanRegionsCommand([a.Id, b.Id], operation, a.Id);
+        void Verify(bool resultVisible)
+        {
+            foreach (var scale in new[] { .5, 1, 2, 4, 2, .5 })
+            {
+                viewport.SetView(scale, new(width / 2, height / 2)); indexed.Render(CadRenderInvalidation.Full); full.Render(CadRenderInvalidation.Full);
+                var pixels = indexed.CaptureBackBufferPixels(); Assert.Equal(full.CaptureBackBufferPixels(), pixels);
+                Assert.True(ContainsNonBlackPixel(pixels));
+                if (resultVisible && operation == CadBooleanOperation.Difference)
+                {
+                    var center = (height / 2 * width + width / 2) * 4;
+                    Assert.Equal(new byte[] { 0, 0, 0 }, pixels.Skip(center).Take(3));
+                    var material = (height / 2 * width + width / 2 + (int)(20 * scale)) * 4;
+                    Assert.True(pixels[material + 1] > 80);
+                }
+            }
+        }
+        editor.Execute(command); Verify(true); editor.Undo(); Verify(false); editor.Redo(); Verify(true);
+        var scene = new CadTransientScene(); scene.Replace([new CadTransientEntityReference(command.ResultEntityId!.Value, new(8, 5), CadTransientStyle.Construction)]);
+        indexed.SetTransientScene(scene); full.SetTransientScene(scene);
+        indexed.Render(CadRenderInvalidation.Full); full.Render(CadRenderInvalidation.Full);
+        Assert.Equal(full.CaptureBackBufferPixels(), indexed.CaptureBackBufferPixels());
+    }
+    [Theory][InlineData("ellipse",1)][InlineData("ellipseArc",1.5)][InlineData("rectangle",2)]
+    [Trait("Category","WindowsIntegration")]
+    public void OrientedGeometryAgreesAcrossPixelsHitTestingAndVectorPrinting(string kind,double scale)
+    {
+        const int width=480,height=360;var document=CadDocument.Create("oriented");
+        CadEntity entity=kind switch {"ellipse"=>document.AddEllipse(default,60,15),"ellipseArc"=>document.AddEllipseArc(default,60,15,.1,Math.PI*1.7),_=>document.AddRectangle(CadRectD.FromCenter(default,120,30))};
+        var editor=new CadEditor(document);var viewport=editor.Viewport;viewport.SetSize(width,height);viewport.SetView(scale,new(width/2,height/2));
+        using var host=new Direct2DImageRenderHost();host.AttachImageSource(new RecordingImageSource(width,height));host.SetSize(width,height);host.SetScene(document,viewport,prepareResourcesInBackground:false);editor.RegisterGeometryResourceManager(host,rebuildExistingResources:false);
+        host.SetRenderOptions(new CadRenderOptions {DrawGrid=false,DrawOrigin=false,DrawGripHandles=false,IsLevelOfDetailEnabled=false});host.Render(CadRenderInvalidation.Full);var original=host.CaptureBackBufferPixels();
+        editor.DocumentCommands.Execute(new Direct2dCad.Commands.SetEntityOrientationCommand(entity.Id,.6));host.Render(CadRenderInvalidation.Full);var rotated=host.CaptureBackBufferPixels();Assert.NotEqual(original,rotated);
+        var point=entity switch {CadEllipse e=>e.GetPointAtAngle(.1),CadEllipseArc e=>e.StartPoint,CadRectangle r=>r.GeometryTransform.TransformPoint(new(r.FrameBounds.MaxX,r.FrameBounds.MinY)),_=>default};
+        Assert.True(Direct2dCad.HitTesting.CadEntityHitTester.HitTestEdge(document,entity,point,.01,out _));
+        var geometry=CadVectorPrintGeometryFactory.Create(entity)!;Assert.True(geometry.StrokeContains(new Pen(Brushes.Black,.1),CadVectorPrintGeometryFactory.ToPoint(point)));
+        var shifted=CadVectorPrintGeometryFactory.Transform(geometry,CadMatrixD.CreateTranslation(20,30));Assert.True(shifted.StrokeContains(new Pen(Brushes.Black,.1),CadVectorPrintGeometryFactory.ToPoint(point+new CadVectorD(20,30))));
+        editor.Undo();host.Render(CadRenderInvalidation.Full);Assert.Equal(original,host.CaptureBackBufferPixels());editor.Redo();host.Render(CadRenderInvalidation.Full);Assert.Equal(rotated,host.CaptureBackBufferPixels());
+    }
+
+    [Fact][Trait("Category","WindowsIntegration")]
+    public void CurveEditingUpdatesNativeResourcesAndUndoRestoresPixels()
+    {
+        const int width=320,height=240;var document=CadDocument.Create("native edit");var source=document.AddLine(new(-30,0),new(30,0));var editor=new CadEditor(document);var viewport=editor.Viewport;viewport.SetSize(width,height);viewport.SetView(2,new(width/2,height/2));
+        using var host=new Direct2DImageRenderHost();host.AttachImageSource(new RecordingImageSource(width,height));host.SetSize(width,height);host.SetScene(document,viewport,prepareResourcesInBackground:false);editor.RegisterGeometryResourceManager(host,rebuildExistingResources:false);host.SetRenderOptions(new(){DrawGrid=false,DrawOrigin=false,DrawGripHandles=false});host.Render(CadRenderInvalidation.Full);var original=host.CaptureBackBufferPixels();
+        var command=new Direct2dCad.Commands.EditCurvesCommand("offset",Direct2dCad.Commands.CadCurveEditing.Offset(source,5,new(0,10)));editor.DocumentCommands.Execute(command);host.Render(CadRenderInvalidation.Full);Assert.NotEqual(original,host.CaptureBackBufferPixels());editor.Undo();host.Render(CadRenderInvalidation.Full);Assert.Equal(original,host.CaptureBackBufferPixels());
+        editor.Redo();host.Render(CadRenderInvalidation.Full);var final=host.CaptureBackBufferPixels();Assert.NotEqual(original,final);Assert.NotNull(CadVectorPrintGeometryFactory.Create(document.GetEntity(Assert.Single(command.ResultEntityIds))));
+    }
+
+    [Theory]
+    [InlineData("break")]
+    [InlineData("break-gap")]
+    [InlineData("trim-middle")]
+    [InlineData("trim-end")]
+    [InlineData("extend")]
+    [InlineData("offset")]
+    [InlineData("join")]
+    [InlineData("fillet")]
+    [InlineData("chamfer")]
+    [InlineData("nested-break")]
+    [Trait("Category", "WindowsIntegration")]
+    public void IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(string operation)
+    {
+        const int width = 480, height = 360;
+        var document = CadDocument.Create(operation);
+        var line = document.AddLine(new(-30, 0), new(30, 0));
+        if (operation == "nested-break")
+        {
+            var inner = document.CreateBlockDefinition("inner", default);
+            var outer = document.CreateBlockDefinition("outer", default);
+            document.MoveEntityToBlock(line.Id, inner);
+            var nested = document.AddBlockReference(inner, default);
+            document.MoveEntityToBlock(nested.Id, outer);
+            document.AddBlockReference(outer, default);
+        }
+        var plan = operation switch
+        {
+            "break" => Direct2dCad.Commands.CadCurveEditing.Break(line, default),
+            "break-gap" or "nested-break" => Direct2dCad.Commands.CadCurveEditing.Break(line, new(-10, 0), new(10, 0)),
+            "trim-middle" => Direct2dCad.Commands.CadCurveEditing.Trim(line,
+                [document.AddLine(new(-10, -15), new(-10, 15)), document.AddLine(new(10, -15), new(10, 15))], default),
+            "trim-end" => Direct2dCad.Commands.CadCurveEditing.Trim(line,
+                [document.AddLine(new(10, -15), new(10, 15))], new(20, 0)),
+            "extend" => Direct2dCad.Commands.CadCurveEditing.Extend(line,
+                [document.AddLine(new(40, -15), new(40, 15))], new(29, 0)),
+            "offset" => Direct2dCad.Commands.CadCurveEditing.Offset(line, 8, new(0, 15)),
+            "join" => Direct2dCad.Commands.CadCurveEditing.Join([line, document.AddLine(new(30, 0), new(40, 10))]),
+            _ => Direct2dCad.Commands.CadCurveEditing.Corner(line, document.AddLine(new(-30, 0), new(-30, 30)),
+                new(25, 0), new(-30, 25), 5, 7, operation == "fillet")
+        };
+        var editor = new CadEditor(document);
+        var viewport = editor.Viewport;
+        viewport.SetSize(width, height);
+        viewport.SetView(2, new(width / 2, height / 2));
+        using var indexed = new Direct2DImageRenderHost();
+        using var fullScene = new Direct2DImageRenderHost();
+        foreach (var host in new[] { indexed, fullScene })
+        {
+            host.AttachImageSource(new RecordingImageSource(width, height));
+            host.SetSize(width, height);
+            host.SetScene(document, viewport, prepareResourcesInBackground: false);
+            editor.RegisterGeometryResourceManager(host, rebuildExistingResources: false);
+        }
+        indexed.SetRenderOptions(new CadRenderOptions
+        {
+            DrawGrid = false, DrawOrigin = false, DrawGripHandles = false,
+            EntityBoundsQuery = editor.SpatialIndex.Query,
+            EntityBoundsQueryInto = editor.SpatialIndex.Query,
+            EntityBoundsCount = editor.SpatialIndex.CountIntersecting
+        });
+        fullScene.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false });
+        indexed.Render(CadRenderInvalidation.Full);
+        var original = indexed.CaptureBackBufferPixels();
+        var command = new Direct2dCad.Commands.EditCurvesCommand(operation, plan);
+
+        void VerifyZooms()
+        {
+            foreach (var scale in new[] { .5, 1, 2, 4, 2, .5 })
+            {
+                viewport.SetView(scale, new(width / 2 + 7, height / 2 - 9));
+                indexed.Render(CadRenderInvalidation.Full);
+                fullScene.Render(CadRenderInvalidation.Full);
+                var expected = fullScene.CaptureBackBufferPixels();
+                Assert.True(ContainsNonBlackPixel(expected));
+                Assert.Equal(expected, indexed.CaptureBackBufferPixels());
+            }
+        }
+
+        editor.Execute(command); VerifyZooms();
+        editor.Undo(); VerifyZooms();
+        viewport.SetView(2, new(width / 2, height / 2));
+        indexed.Render(CadRenderInvalidation.Full);
+        Assert.Equal(original, indexed.CaptureBackBufferPixels());
+        editor.Redo(); VerifyZooms();
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     [Trait("Category", "WindowsIntegration")]

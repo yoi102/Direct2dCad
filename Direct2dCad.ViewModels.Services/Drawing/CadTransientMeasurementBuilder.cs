@@ -9,7 +9,8 @@ namespace Direct2dCad.ViewModels.Services.Drawing;
 
 internal readonly struct CadTransientMeasurementBuilder(
     CadDocument document,
-    CadViewport viewport)
+    CadViewport viewport,
+    bool showLabels = true)
 {
     public void AddLength(
         List<CadTransientItem> items,
@@ -69,6 +70,7 @@ internal readonly struct CadTransientMeasurementBuilder(
         int stackIndex = 0,
         int normalSign = 1)
     {
+        if (!showLabels) return;
         var zoom = Math.Max(viewport.Zoom, double.Epsilon);
         var textHeight = 13.0 / zoom;
         var padding = 8.0 / zoom;

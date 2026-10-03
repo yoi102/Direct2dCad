@@ -151,6 +151,17 @@ internal static partial class CadEntityQuery
 
         switch (entity)
         {
+            case CadRegion region:
+                result["area"] = region.Area;
+                result["contour_count"] = region.Contours.Count;
+                result["boundary_edge_count"] = region.Contours.Sum(c => c.Edges.Count);
+                break;
+            case CadDimension dimension:
+                result["dimension_kind"]=dimension.Definition.Kind.ToString();
+                result["measurement"]=dimension.Measurement;
+                result["text"]=dimension.DisplayText;
+                result["association"]=dimension.AssociationState.ToString();
+                break;
             case CadLine line:
                 result["start"] = PointDto(line.Start);
                 result["end"] = PointDto(line.End);
@@ -167,17 +178,21 @@ internal static partial class CadEntityQuery
                 break;
             case CadEllipse ellipse:
                 result["center"] = PointDto(ellipse.Center);
+                result["rotation_degrees"] = CadArc.RadiansToDegrees(ellipse.RotationRadians);
                 result["radius_x"] = ellipse.RadiusX;
                 result["radius_y"] = ellipse.RadiusY;
                 break;
             case CadEllipseArc ellipseArc:
                 result["center"] = PointDto(ellipseArc.Center);
+                result["rotation_degrees"] = CadArc.RadiansToDegrees(ellipseArc.RotationRadians);
                 result["radius_x"] = ellipseArc.RadiusX;
                 result["radius_y"] = ellipseArc.RadiusY;
                 result["start_angle_degrees"] = ellipseArc.StartAngleDegrees;
                 result["sweep_angle_degrees"] = ellipseArc.SweepAngleDegrees;
                 break;
             case CadRectangle rectangle:
+                result["rotation_degrees"] = CadArc.RadiansToDegrees(rectangle.RotationRadians);
+                result["frame_bounds"] = RectDto(rectangle.FrameBounds);
                 result["corner_radius_x"] = rectangle.CornerRadiusX;
                 result["corner_radius_y"] = rectangle.CornerRadiusY;
                 break;
@@ -265,6 +280,8 @@ internal static partial class CadEntityQuery
         CadPolyline => "Polyline",
         CadSpline => "Spline",
         CadCompositePath => "CompositePath",
+        CadRegion => "Region",
+        CadDimension => "Dimension",
         CadText => "Text",
         CadShapeText => "ShapeText",
         CadImage => "Image",
@@ -284,6 +301,7 @@ internal static partial class CadEntityQuery
         CadPolyline value => value.GraphicStyleId,
         CadSpline value => value.GraphicStyleId,
         CadCompositePath value => value.GraphicStyleId,
+        CadRegion value => value.GraphicStyleId,
         CadText value => value.GraphicStyleId,
         CadShapeText value => value.GraphicStyleId,
         CadBlockReference value => value.GraphicStyleId,
@@ -298,11 +316,12 @@ internal static partial class CadEntityQuery
         CadPolyline value => value.FillStyleId,
         CadSpline value => value.FillStyleId,
         CadCompositePath value => value.FillStyleId,
+        CadRegion value => value.FillStyleId,
         _ => null
     };
 
     private static bool SupportsFill(CadEntity entity) => entity is
-        CadCircle or CadEllipse or CadRectangle or CadPolyline or CadSpline or CadCompositePath;
+        CadCircle or CadEllipse or CadRectangle or CadPolyline or CadSpline or CadCompositePath or CadRegion;
 
     private static CadColor ResolveStrokeColor(CadDocument document, CadEntity entity)
     {

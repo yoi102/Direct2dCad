@@ -9,6 +9,8 @@ using Direct2dCad.ViewModels.Agents;
 using Direct2dCad.ViewModels.Tools;
 using Direct2dCad.ViewModels.Services.Platform;
 using AvalonDock.Core;
+using Direct2dCad.ViewModels.Services.Events;
+using MessagePipe;
 
 namespace Direct2dCad.ViewModels.Toolboxes;
 
@@ -23,6 +25,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private readonly IImageImportService _imageImportService;
     private readonly IAiFileImportService _fileImportService;
     private readonly IFileDialogService _fileDialogService;
+    private readonly IAsyncPublisher<CadToolActivityMessage>? _toolActivityPublisher;
     private readonly AgentConversation _conversation = new();
     private CancellationTokenSource? _requestCancellation;
     private CadDocumentViewModel? _documentViewModel;
@@ -38,7 +41,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         ICadToolWorkspace workspace,
         IImageImportService imageImportService,
         IAiFileImportService fileImportService,
-        IFileDialogService fileDialogService)
+        IFileDialogService fileDialogService,
+        IAsyncPublisher<CadToolActivityMessage>? toolActivityPublisher = null)
         : base(toolboxLayoutSettingsStore, "toolbox.ai-assistant", DockZone.RightBottom, isOpenByDefault: false)
     {
         _chatClient = chatClient;
@@ -50,6 +54,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         _imageImportService = imageImportService;
         _fileImportService = fileImportService;
         _fileDialogService = fileDialogService;
+        _toolActivityPublisher = toolActivityPublisher;
         Title = Resource("AiAssistant", "AI Assistant");
         Icon = toolboxIconProvider.Assistant;
         Shortcut = "Ctrl+Shift+A";
@@ -243,7 +248,7 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         Attachments.Clear();
         SendCommand.NotifyCanExecuteChanged();
         Messages.Add(new AiChatItemViewModel(AiChatItemKind.User, requestPrompt, attachments));
-        var toolset = new CadAgentToolset(_workspace, _imageImportService);
+        var toolset = new CadAgentToolset(_workspace, _imageImportService, _toolActivityPublisher);
 
         BeginRequest();
         var cancellationToken = _requestCancellation!.Token;

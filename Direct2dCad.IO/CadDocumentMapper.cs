@@ -36,6 +36,13 @@ internal static class CadDocumentMapper
         return new CadSettingsSection
         {
             Unit = document.DocumentSettings.Unit,
+            GridSnapEnabled = document.ViewSettings.Snap.GridEnabled,
+            ObjectSnapEnabled = document.ViewSettings.Snap.ObjectsEnabled,
+            OrthoEnabled = document.ViewSettings.Snap.OrthoEnabled,
+            PolarEnabled = document.ViewSettings.Snap.PolarEnabled,
+            PolarIncrementDegrees = document.ViewSettings.Snap.PolarIncrementDegrees,
+            SnapScreenTolerance = document.ViewSettings.Snap.ScreenTolerance,
+            ObjectSnapModes = document.ViewSettings.Snap.Modes,
             LengthPrecision = document.DocumentSettings.LengthPrecision,
             AnglePrecision = document.DocumentSettings.AnglePrecision,
             BackgroundColor = ToData(document.ViewSettings.BackgroundColor),
@@ -216,6 +223,7 @@ internal static class CadDocumentMapper
                 .Cast<CadEllipse>()
                 .Select(x => new CadEllipseData
                 {
+                    RotationRadians = x.RotationRadians,
                     Entity = ToEntityData(x),
                     Center = ToData(x.Center),
                     RadiusX = x.RadiusX,
@@ -228,6 +236,7 @@ internal static class CadDocumentMapper
                 .Cast<CadEllipseArc>()
                 .Select(x => new CadEllipseArcData
                 {
+                    RotationRadians = x.RotationRadians,
                     Entity = ToEntityData(x),
                     Center = ToData(x.Center),
                     RadiusX = x.RadiusX,
@@ -267,9 +276,10 @@ internal static class CadDocumentMapper
                 .Cast<CadRectangle>()
                 .Select(x => new CadRectangleData
                 {
+                    RotationRadians = x.RotationRadians,
                     Entity = ToEntityData(x),
-                    Min = ToData(new CadPointD(x.Bounds.MinX, x.Bounds.MinY)),
-                    Max = ToData(new CadPointD(x.Bounds.MaxX, x.Bounds.MaxY)),
+                    Min = ToData(new CadPointD(x.FrameBounds.MinX, x.FrameBounds.MinY)),
+                    Max = ToData(new CadPointD(x.FrameBounds.MaxX, x.FrameBounds.MaxY)),
                     GraphicStyleId = x.GraphicStyleId?.Value,
                     FillStyleId = x.FillStyleId?.Value,
                     CornerRadiusX = x.CornerRadiusX,
@@ -473,7 +483,7 @@ internal static class CadDocumentMapper
         CadShapeTextsSection shapeTexts,
         CadImagesSection images,
         CadOleObjectsSection oleObjects,
-        CadBlockReferencesSection blockReferences)
+        CadBlockReferencesSection blockReferences, CancellationToken cancellationToken = default)
     {
         var document = new CadDocument(
             new DocumentId(documentInfo.Id),
@@ -504,22 +514,24 @@ internal static class CadDocumentMapper
             layouts.Layouts.Count + 1,
             blockReferences.BlockReferences.Count);
 
-        ApplySettings(document, settings);
-        ApplyStyles(document, styles);
-        ApplyLayers(document, layers);
-        ApplyLayouts(document, layouts);
-        ApplyBlocks(document, blocks);
-        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, compositePaths, texts, shapeTexts, images, oleObjects);
-        ApplyBlockReferences(document, blockReferences);
-        document.RefreshBlockReferenceBounds();
+        ApplySettings(document, settings,cancellationToken);
+        ApplyStyles(document, styles,cancellationToken);
+        ApplyLayers(document, layers,cancellationToken);
+        ApplyLayouts(document, layouts,cancellationToken);
+        ApplyBlocks(document, blocks,cancellationToken);
+        ApplyEntities(document, lines, circles, ellipses, arcs, rectangles, polylines, splines, compositePaths, texts, shapeTexts, images, oleObjects, cancellationToken);
+        ApplyBlockReferences(document, blockReferences, cancellationToken);
+        CadDocumentReferenceValidation.ValidateKnownReferences(document,cancellationToken);
+        document.RefreshBlockReferenceBounds(cancellationToken);
 
         return document;
     }
 
-    private static void ApplyBlocks(CadDocument document, CadBlocksSection section)
+    private static void ApplyBlocks(CadDocument document, CadBlocksSection section,CancellationToken cancellationToken=default)
     {
         foreach (var block in section.Blocks)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var blockId = new BlockId(block.Id);
             if (document.Blocks.ContainsKey(blockId))
                 continue;
@@ -532,10 +544,11 @@ internal static class CadDocumentMapper
         }
     }
 
-    private static void ApplyBlockReferences(CadDocument document, CadBlockReferencesSection section)
+    private static void ApplyBlockReferences(CadDocument document, CadBlockReferencesSection section, CancellationToken cancellationToken = default)
     {
         foreach (var data in section.BlockReferences)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var reference = new CadBlockReference(
                 new EntityId(data.Entity.Id),
                 new LayerId(data.Entity.LayerId),
@@ -552,8 +565,16 @@ internal static class CadDocumentMapper
         }
     }
 
-    private static void ApplySettings(CadDocument document, CadSettingsSection settings)
+    private static void ApplySettings(CadDocument document, CadSettingsSection settings,CancellationToken cancellationToken=default)
     {
+        document.ViewSettings.Snap = new CadSnapSettings
+        {
+            GridEnabled = settings.GridSnapEnabled, ObjectsEnabled = settings.ObjectSnapEnabled,
+            OrthoEnabled = settings.OrthoEnabled, PolarEnabled = settings.PolarEnabled,
+            PolarIncrementDegrees = settings.PolarIncrementDegrees, ScreenTolerance = settings.SnapScreenTolerance,
+            Modes = settings.ObjectSnapModes
+        };
+        document.ViewSettings.Snap.Validate();
         document.DocumentSettings.SetUnit(settings.Unit);
         document.DocumentSettings.SetLengthPrecision(settings.LengthPrecision);
         document.DocumentSettings.SetAnglePrecision(settings.AnglePrecision);
@@ -665,10 +686,11 @@ internal static class CadDocumentMapper
             : 1.0;
     }
 
-    private static void ApplyLayers(CadDocument document, CadLayerSection section)
+    private static void ApplyLayers(CadDocument document, CadLayerSection section,CancellationToken cancellationToken=default)
     {
         foreach (var layerData in section.Layers)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var layerId = new LayerId(layerData.Id);
             var layer = layerId.Equals(LayerId.Default)
                 ? document.GetLayer(LayerId.Default)
@@ -697,10 +719,11 @@ internal static class CadDocumentMapper
         }
     }
 
-    private static void ApplyStyles(CadDocument document, CadStylesSection section)
+    private static void ApplyStyles(CadDocument document, CadStylesSection section,CancellationToken cancellationToken=default)
     {
         foreach (var lineTypeData in section.LineTypes ?? [])
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var lineType = FromData(lineTypeData);
             if (!document.LineTypes.ContainsKey(lineType.Id))
                 document.AddLineTypeCore(lineType);
@@ -710,6 +733,7 @@ internal static class CadDocumentMapper
         // a non-continuous ID. Keep those files loadable with a named placeholder.
         foreach (var graphicData in section.Styles.Where(style => style.Graphic is not null).Select(style => style.Graphic!))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var id = new LineTypeId(graphicData.LineTypeId);
             if (!document.LineTypes.ContainsKey(id))
                 document.AddLineTypeCore(new CadLineTypeDefinition(id, $"LineType {id.Value}"));
@@ -717,6 +741,7 @@ internal static class CadDocumentMapper
 
         foreach (var patternData in section.HatchPatterns ?? [])
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var pattern = FromData(patternData);
             if (!document.HatchPatterns.ContainsKey(pattern.Id))
                 document.AddHatchPatternCore(pattern);
@@ -724,6 +749,7 @@ internal static class CadDocumentMapper
 
         foreach (var styleData in section.Styles)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var style = FromData(styleData);
             if (style.Id.Equals(StyleId.DefaultGraphic) &&
                 document.TryGetStyle(StyleId.DefaultGraphic, out var existing) &&
@@ -755,10 +781,11 @@ internal static class CadDocumentMapper
         CadTextsSection texts,
         CadShapeTextsSection shapeTexts,
         CadImagesSection images,
-        CadOleObjectsSection oleObjects)
+        CadOleObjectsSection oleObjects, CancellationToken cancellationToken = default)
     {
         foreach (var lineData in lines.Lines)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var line = new CadLine(
                 new EntityId(lineData.Entity.Id),
                 new LayerId(lineData.Entity.LayerId),
@@ -773,6 +800,7 @@ internal static class CadDocumentMapper
 
         foreach (var circleData in circles.Circles)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var circle = new CadCircle(
                 new EntityId(circleData.Entity.Id),
                 new LayerId(circleData.Entity.LayerId),
@@ -788,6 +816,7 @@ internal static class CadDocumentMapper
 
         foreach (var ellipseData in ellipses.Ellipses)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var ellipse = new CadEllipse(
                 new EntityId(ellipseData.Entity.Id),
                 new LayerId(ellipseData.Entity.LayerId),
@@ -797,6 +826,7 @@ internal static class CadDocumentMapper
                 ellipseData.RadiusY,
                 ellipseData.Entity.Name);
             ellipse.SetGraphicStyleInternal(ToStyleId(ellipseData.GraphicStyleId));
+            ellipse.SetRotation(ellipseData.RotationRadians);
             ellipse.SetFillStyleInternal(ToStyleId(ellipseData.FillStyleId));
             ApplyEntityState(document, ellipse, ellipseData.Entity);
             document.AddEntityCore(ellipse);
@@ -804,6 +834,7 @@ internal static class CadDocumentMapper
 
         foreach (var ellipseArcData in ellipses.EllipseArcs ?? [])
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var ellipseArc = new CadEllipseArc(
                 new EntityId(ellipseArcData.Entity.Id),
                 new LayerId(ellipseArcData.Entity.LayerId),
@@ -815,12 +846,14 @@ internal static class CadDocumentMapper
                 ellipseArcData.SweepAngleRadians,
                 ellipseArcData.Entity.Name);
             ellipseArc.SetGraphicStyleInternal(ToStyleId(ellipseArcData.GraphicStyleId));
+            ellipseArc.SetRotation(ellipseArcData.RotationRadians);
             ApplyEntityState(document, ellipseArc, ellipseArcData.Entity);
             document.AddEntityCore(ellipseArc);
         }
 
         foreach (var arcData in arcs.Arcs)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var arc = new CadArc(
                 new EntityId(arcData.Entity.Id),
                 new LayerId(arcData.Entity.LayerId),
@@ -837,6 +870,7 @@ internal static class CadDocumentMapper
 
         foreach (var rectangleData in rectangles.Rectangles)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var rectangle = new CadRectangle(
                 new EntityId(rectangleData.Entity.Id),
                 new LayerId(rectangleData.Entity.LayerId),
@@ -850,6 +884,7 @@ internal static class CadDocumentMapper
                 rectangleData.CornerRadiusY,
                 rectangleData.Entity.Name);
             rectangle.SetGraphicStyleInternal(ToStyleId(rectangleData.GraphicStyleId));
+            rectangle.SetRotation(rectangleData.RotationRadians);
             rectangle.SetFillStyleInternal(ToStyleId(rectangleData.FillStyleId));
             ApplyEntityState(document, rectangle, rectangleData.Entity);
             document.AddEntityCore(rectangle);
@@ -857,6 +892,7 @@ internal static class CadDocumentMapper
 
         foreach (var polylineData in polylines.Polylines)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var polyline = new CadPolyline(
                 new EntityId(polylineData.Entity.Id),
                 new LayerId(polylineData.Entity.LayerId),
@@ -872,6 +908,7 @@ internal static class CadDocumentMapper
 
         foreach (var splineData in splines.Splines)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var spline = new CadSpline(
                 new EntityId(splineData.Entity.Id),
                 new LayerId(splineData.Entity.LayerId),
@@ -887,6 +924,7 @@ internal static class CadDocumentMapper
 
         foreach (var pathData in compositePaths.CompositePaths)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var path = new CadCompositePath(
                 new EntityId(pathData.Entity.Id),
                 new LayerId(pathData.Entity.LayerId),
@@ -903,6 +941,7 @@ internal static class CadDocumentMapper
 
         foreach (var textData in texts.Texts)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var text = new CadText(
                 new EntityId(textData.Entity.Id),
                 new LayerId(textData.Entity.LayerId),
@@ -931,6 +970,7 @@ internal static class CadDocumentMapper
 
         foreach (var textData in shapeTexts.ShapeTexts)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var text = new CadShapeText(
                 new EntityId(textData.Entity.Id),
                 new LayerId(textData.Entity.LayerId),
@@ -953,6 +993,7 @@ internal static class CadDocumentMapper
 
         foreach (var imageData in images.Images)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var image = new CadImage(
                 new EntityId(imageData.Entity.Id),
                 new LayerId(imageData.Entity.LayerId),
@@ -977,6 +1018,7 @@ internal static class CadDocumentMapper
 
         foreach (var oleObjectData in oleObjects.OleObjects)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var oleObject = new CadOleObject(
                 new EntityId(oleObjectData.Entity.Id),
                 new LayerId(oleObjectData.Entity.LayerId),
@@ -996,7 +1038,7 @@ internal static class CadDocumentMapper
         }
     }
 
-    private static void ApplyLayouts(CadDocument document, CadLayoutsSection section)
+    private static void ApplyLayouts(CadDocument document, CadLayoutsSection section,CancellationToken cancellationToken=default)
     {
         if (section.Layouts.Count == 0)
             return;
@@ -1004,6 +1046,7 @@ internal static class CadDocumentMapper
         document.ResetLayoutsForStorage();
         foreach (var data in section.Layouts)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var layoutId = new LayoutId(data.Id);
             var paperSpaceBlockId = new BlockId(data.PaperSpaceBlockId);
             document.EnsurePaperSpaceBlockForStorage(
@@ -1025,6 +1068,7 @@ internal static class CadDocumentMapper
             layout.SetPaperColor(UnpackColor(data.PaperColorArgb));
             foreach (var viewportData in data.Viewports)
             {
+            cancellationToken.ThrowIfCancellationRequested();
                 var viewport = new CadLayoutViewport(
                     new LayoutViewportId(viewportData.Id),
                     CadRectD.FromLTRB(
@@ -1214,7 +1258,7 @@ internal static class CadDocumentMapper
             data.DashPattern);
     }
 
-    private static CadEntityData ToEntityData(CadEntity entity)
+    internal static CadEntityData ToEntityData(CadEntity entity)
     {
         return new CadEntityData
         {
@@ -1238,7 +1282,7 @@ internal static class CadDocumentMapper
         };
     }
 
-    private static void ApplyEntityState(CadDocument document, CadEntity entity, CadEntityData data)
+    internal static void ApplyEntityState(CadDocument document, CadEntity entity, CadEntityData data)
     {
         entity.SetLocked(data.IsLocked);
         entity.SetVisible(data.IsVisible);
@@ -1312,6 +1356,7 @@ internal static class CadDocumentMapper
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
             CadCompositePath path => path.GraphicStyleId,
+            CadRegion path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,

@@ -11,6 +11,10 @@ internal sealed class RecordingDialogService : IDialogService
     public GridSpacingPresetDialogResult? GridResult { get; set; }
     public int CloseRequests { get; private set; }
     public bool ConfirmationResult { get; set; }
+    public CadFileConflictChoice? FileConflictChoice { get; set; }
+    public int FileConflictRequests { get; private set; }
+    public async Task<CadFileConflictChoice> ShowFileConflictDialogAsync(string path,string dialogIdentifier=ViewServiceIdentifiers.RootDialogHost)
+    {FileConflictRequests++;return FileConflictChoice ?? (await ShowOrReplaceMessageDialogWithCancelAsync(path,dialogIdentifier:dialogIdentifier) ? CadFileConflictChoice.Overwrite : CadFileConflictChoice.Cancel);}
     public Task<bool>? PendingConfirmation { get; set; }
     public int OpenProgressCount { get; private set; }
     public List<string> Errors { get; } = [];

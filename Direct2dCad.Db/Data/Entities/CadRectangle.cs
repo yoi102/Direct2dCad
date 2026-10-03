@@ -7,6 +7,11 @@ public sealed class CadRectangle : Curve
     private CadRectD _bounds;
     private double _cornerRadiusX;
     private double _cornerRadiusY;
+    public double RotationRadians { get; private set; }
+    public CadRectD FrameBounds => _bounds;
+    public CadMatrixD GeometryTransform => CadMatrixD.CreateRotation(RotationRadians,_bounds.Center);
+    public CadPointD ToLocal(CadPointD point) => CadMatrixD.CreateRotation(-RotationRadians,_bounds.Center).TransformPoint(point);
+    public void SetRotation(double angle) => RotationRadians=double.IsFinite(angle) ? angle : throw new ArgumentOutOfRangeException(nameof(angle));
 
     public override bool IsClosed => true;
 
@@ -15,15 +20,13 @@ public sealed class CadRectangle : Curve
         get
         {
             if (!HasRoundedCorners)
-                return 2 * (Bounds.Width + Bounds.Height);
+                return 2 * (FrameBounds.Width + FrameBounds.Height);
 
-            var straightLength = 2 * (Bounds.Width - 2 * CornerRadiusX) +
-                                 2 * (Bounds.Height - 2 * CornerRadiusY);
-            return straightLength + EstimateEllipsePerimeter(CornerRadiusX, CornerRadiusY);
+            return CadCurveMeasurements.Measure(this).Length;
         }
     }
 
-    public override CadRectD Bounds => _bounds;
+    public override CadRectD Bounds => RotationRadians==0 ? _bounds : _bounds.Transform(GeometryTransform);
 
     public double CornerRadiusX => _cornerRadiusX;
 

@@ -13,4 +13,5 @@ public sealed class CadRectangleData
     [Key(4)] public long? FillStyleId { get; set; }
     [Key(5)] public double CornerRadiusX { get; set; }
     [Key(6)] public double CornerRadiusY { get; set; }
+    [Key(7)] public double RotationRadians { get; set; }
 }

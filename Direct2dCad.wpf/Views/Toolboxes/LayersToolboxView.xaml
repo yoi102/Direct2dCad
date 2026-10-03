@@ -15,7 +15,12 @@
              d:DataContext="{d:DesignInstance Type=toolboxes:LayersToolboxViewModel}"
              d:DesignHeight="450"
              d:DesignWidth="320">
-    <Grid Background="Transparent">
+    <Grid>
+        <TextBlock AutomationProperties.AutomationId="LayersEmptyHint" Margin="12,8" VerticalAlignment="Top"
+                   Text="{I18N {x:Static r:LangKeys.DrawingAssistantEmpty}}" TextWrapping="Wrap" Opacity="0.7"
+                   Visibility="{Binding HasDocument, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}}" />
+    <Grid Background="Transparent"
+          Visibility="{Binding HasDocument, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}, FallbackValue=Collapsed}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -231,5 +236,6 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
+    </Grid>
     </Grid>
 </UserControl>

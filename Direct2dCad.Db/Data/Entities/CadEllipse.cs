@@ -7,6 +7,11 @@ public sealed class CadEllipse : Curve
     public CadPointD Center { get; private set; }
     public double RadiusX { get; private set; }
     public double RadiusY { get; private set; }
+    public double RotationRadians { get; private set; }
+    public CadMatrixD GeometryTransform => CadMatrixD.CreateRotation(RotationRadians, Center);
+    public CadPointD ToLocal(CadPointD point) => CadMatrixD.CreateRotation(-RotationRadians, Center).TransformPoint(point);
+    public CadPointD GetPointAtAngle(double angle) => GeometryTransform.TransformPoint(new(Center.X+RadiusX*Math.Cos(angle),Center.Y+RadiusY*Math.Sin(angle)));
+    public void SetRotation(double angle) => RotationRadians = double.IsFinite(angle) ? angle : throw new ArgumentOutOfRangeException(nameof(angle));
 
     public override bool IsClosed => true;
 
@@ -18,18 +23,20 @@ public sealed class CadEllipse : Curve
     {
         get
         {
-            var a = Math.Max(RadiusX, RadiusY);
-            var b = Math.Min(RadiusX, RadiusY);
-            var h = Math.Pow(a - b, 2) / Math.Pow(a + b, 2);
-            return Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.Sqrt(4 - 3 * h)));
+            return CadCurveMeasurements.Measure(this).Length;
         }
     }
 
-    public override CadRectD Bounds => CadRectD.FromLTRB(
-        Center.X - RadiusX,
-        Center.Y - RadiusY,
-        Center.X + RadiusX,
-        Center.Y + RadiusY);
+    public override CadRectD Bounds
+    {
+        get
+        {
+            var c=Math.Cos(RotationRadians);var s=Math.Sin(RotationRadians);
+            var x=Math.Sqrt(RadiusX*RadiusX*c*c+RadiusY*RadiusY*s*s);
+            var y=Math.Sqrt(RadiusX*RadiusX*s*s+RadiusY*RadiusY*c*c);
+            return CadRectD.FromLTRB(Center.X-x,Center.Y-y,Center.X+x,Center.Y+y);
+        }
+    }
 
     internal CadEllipse(
         EntityId id,

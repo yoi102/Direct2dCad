@@ -1,0 +1,291 @@
+{
+  "date": "2026-10-03",
+  "baselineCommit": "041e291287e93429d49f498b5ca571f9a8f12427",
+  "uncommittedWorkspaceChanges": true,
+  "sdk": "10.0.401",
+  "build": {
+    "command": "dotnet build Direct2dCad.wpf/Direct2dCad.wpf.csproj -c Release --verbosity quiet",
+    "passed": true,
+    "warnings": 0,
+    "errors": 0
+  },
+  "diffCheck": {
+    "command": "git diff --check",
+    "exitCode": 0
+  },
+  "managedFinal": {
+    "total": 1290,
+    "passed": 1290,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "Seven relevant managed projects; latest result for each. Db and ViewModels rerun after final cancellation and layer-priority changes.",
+    "projects": [
+      {
+        "trx": "TestResults/boolean/managed-final/Direct2dCad.Commands.Tests.trx",
+        "sha256": "2127220B72A90AA5CE1F6539F8EB0056F1A5BAC491854B8EDA711EFBFF3F398B",
+        "total": 86,
+        "passed": 86,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:26:46.8514207+09:00",
+        "project": "Direct2dCad.Commands.Tests"
+      },
+      {
+        "trx": "TestResults/boolean/managed-final/Direct2dCad.Db.Tests.trx",
+        "sha256": "DA371655D601F1123399F8F1DF30A0B977EEE22642F160C1773BDFE2E9837F53",
+        "total": 105,
+        "passed": 105,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:33:30.5107112+09:00",
+        "project": "Direct2dCad.Db.Tests"
+      },
+      {
+        "trx": "TestResults/boolean/managed-final/Direct2dCad.HitTesting.Tests.trx",
+        "sha256": "A55C296B25197FCE13F52130206FC31E49D3CB5154119273C77A6DB29301F249",
+        "total": 18,
+        "passed": 18,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:26:54.0544861+09:00",
+        "project": "Direct2dCad.HitTesting.Tests"
+      },
+      {
+        "trx": "TestResults/boolean/managed-final/Direct2dCad.IO.Tests.trx",
+        "sha256": "F8C6E9B968B29FCAFE05937758644592B931BE90F25620D4C896B65A6F172BD1",
+        "total": 49,
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:26:58.2918451+09:00",
+        "project": "Direct2dCad.IO.Tests"
+      },
+      {
+        "trx": "TestResults/boolean/managed-final/Direct2dCad.Tests.trx",
+        "sha256": "9B70EF5AE00AE7CD55A7F90465893EAEFE96894DC92EC8D299FD44F13B80EF8B",
+        "total": 117,
+        "passed": 117,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:27:58.7081074+09:00",
+        "project": "Direct2dCad.Tests"
+      },
+      {
+        "trx": "TestResults/boolean/managed-final/Direct2dCad.ViewModels.Services.Tests.trx",
+        "sha256": "0E49061D028259D20F1AC556F6454FF8241300103CD306252FDCBB2D3C4EE804",
+        "total": 91,
+        "passed": 91,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:27:10.1052591+09:00",
+        "project": "Direct2dCad.ViewModels.Services.Tests"
+      },
+      {
+        "trx": "TestResults/boolean/managed-final/Direct2dCad.ViewModels.Tests.trx",
+        "sha256": "B306B82178B39A9C5FEF946EE06FF5F7A1EE722C9B60004A925A498D1290F040",
+        "total": 824,
+        "passed": 824,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:34:22.1887477+09:00",
+        "project": "Direct2dCad.ViewModels.Tests"
+      }
+    ]
+  },
+  "specialized": [
+    {
+      "trx": "TestResults/boolean/native/native.trx",
+      "sha256": "D679677B5494C0D6BB6070580E129FD52AC0157E4B1B13DA5D82CB677C7386BC",
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "finishedAt": "2026-10-03T18:35:45.5620032+09:00",
+      "cases": [
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.BooleanRegionsMatchIndexedPixelsAcrossZoomHistoryAndHoles(operation: Difference, nested: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.RegionPrintIntegrationTests.VectorPrintingKeepsCircularHoleAndDisconnectedIsland",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.BooleanRegionsMatchIndexedPixelsAcrossZoomHistoryAndHoles(operation: Intersection, nested: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.BooleanRegionsMatchIndexedPixelsAcrossZoomHistoryAndHoles(operation: Difference, nested: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.BooleanRegionsMatchIndexedPixelsAcrossZoomHistoryAndHoles(operation: Union, nested: False)",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    {
+      "trx": "TestResults/boolean/ui/ui.trx",
+      "sha256": "4DCBA8255093BB59E1B37BA14D93FCAA400DE2BCB21042EC2CA23E937EF94BE7",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "finishedAt": "2026-10-03T18:36:08.1903172+09:00",
+      "cases": [
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.BooleanRibbonAndContextMenuPreviewCommitCancelAndHistory",
+          "outcome": "Passed"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "screenshots/boolean-context-menu.png",
+      "sha256": "205A8ECD9EF41DDA5EDA1051FBD4B3D6F775065FD1D107119908F69EBF05318D",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/boolean-context-result.png",
+      "sha256": "79840766426CDA16ABF706B1BE58DA6C8A55493876A03CF5E0019E859E98E01A",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/boolean-difference-preview.png",
+      "sha256": "C9D5812E0F76882462DB9C02D367CEAC3799B74CA1BB78121F8C73D7A9AF8537",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/boolean-modify-ribbon.png",
+      "sha256": "F4E94730E77F044D2BD83B12CC9FD912B55655825E9371BEC00273429832613E",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/boolean-region-properties.png",
+      "sha256": "C87A034B6E3F3F68B631CF30B870D697871131FEB38464EA243EC91069C52C4A",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    }
+  ],
+  "sourceHashes": [
+    {
+      "file": "Direct2dCad.Db/Data/Entities/CadRegion.cs",
+      "sha256": "90DA838FAD7A2D0C1A551CD44A88853FF917D63DDD3BE7DD5BDE6891B9802E7C"
+    },
+    {
+      "file": "Direct2dCad.Db/Geometry/CadRegionGeometry.cs",
+      "sha256": "D1BE03F0897C534EAC2E4BC09DA57CCAFC2FE2C90198DA8029DF809608D00CA7"
+    },
+    {
+      "file": "Direct2dCad.Db/Geometry/CadRegionBoolean.cs",
+      "sha256": "5F810FCD5BB071382088021D8D582B6D7A0F1158C20631C4C87E53B27E8C475B"
+    },
+    {
+      "file": "Direct2dCad.Commands/BooleanRegionsCommand.cs",
+      "sha256": "F1614C783DF6D878362072013D184BD91DD50EB05C104AE955082BA46721BF54"
+    },
+    {
+      "file": "Direct2dCad.Commands/CadCommandGeometryChanges.cs",
+      "sha256": "1EFCDE62F125A675040D912C56ED053BE94D16D443D5E7CB19372B304E14E355"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/CadDocumentViewModel.Boolean.cs",
+      "sha256": "54879499F5590916EDC2D27D7246928AEF1B78A08F006343DFFD4046ED9B9A64"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/EditorTabViewModel.Boolean.cs",
+      "sha256": "0BF379A37217767C7DB92E30A40DB69C6B8462CBEDDBEFA22BB8B27DC6A6A368"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/Toolboxes/EntityProperty/CommonEntityPropertyViewModel.Region.cs",
+      "sha256": "7FEAE41E924D5F30BF7BA6AB4F6FAC8E3318257A54C85B78260DCC61A2B4426E"
+    },
+    {
+      "file": "Direct2dCad.IO/CadRegionStorage.cs",
+      "sha256": "0DE6203E5046967475803E9D837E6320D7377E27F1CAA9F9D70CEACA19EC4128"
+    },
+    {
+      "file": "Direct2dCad.IO/FileFormat/Sections/CadRegionsSection.cs",
+      "sha256": "CFC05EC305BD1486732E8F16EB93A70204388694C625E2E16183DED78EFAFD55"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/MainRibbonView.xaml",
+      "sha256": "BBAEC1371F80E9E81779F96270974F4C2F67880BC023A49408C06DF0B59084DD"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/EditorTabView.xaml",
+      "sha256": "6ECC9070DCCB178F0EF13675422E9BDDB89D99889260F8853B0CEA25CF1CA46C"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/CadToolIconResources.xaml",
+      "sha256": "249866E4C4F99278C42647C3C47F12C3F989102E0F8010C9299A88071D7E280A"
+    },
+    {
+      "file": "Direct2dCad.Db.Tests/RegionBooleanTests.cs",
+      "sha256": "55429E8CDA443E64F603BE3C4799C24737A41BEB71D6AB71224B8ADBAC7F592C"
+    },
+    {
+      "file": "Direct2dCad.Commands.Tests/BooleanRegionCommandTests.cs",
+      "sha256": "66D2AE1C1CA0FED4E9019990C6E5070E670FED3ADBA9CCBA928ADE36529BE033"
+    },
+    {
+      "file": "Direct2dCad.Tests/BooleanRegionIndexTests.cs",
+      "sha256": "A88FE0B7DAB76784CA23E9E36E662CC13AFBB5CA69E622AF917D0E9AA9B29F87"
+    },
+    {
+      "file": "Direct2dCad.IO.Tests/RegionRoundTripTests.cs",
+      "sha256": "FFB96A811EE0D44209E270D4AE63E94AA7F0122AAA6C1D03BCE7A6BF828E9989"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Tests/BooleanRegionWorkflowTests.cs",
+      "sha256": "AF1E0EE2BFA0110084BB95D2CFC50BB00A9DF4B6BCB273547CB7EE37132284D9"
+    },
+    {
+      "file": "Direct2dCad.Windows.IntegrationTests/Direct2DRenderHostIntegrationTests.cs",
+      "sha256": "D803321A8EDAD5CCA77746824F8FFC9F9F5468278019FA828D9D8C7A305995AF"
+    },
+    {
+      "file": "Direct2dCad.Windows.IntegrationTests/RegionPrintIntegrationTests.cs",
+      "sha256": "A390848F148582AC802B31007539832F846742D476C9CA00DA90F4CEE7186068"
+    },
+    {
+      "file": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.Boolean.cs",
+      "sha256": "63E1CEB84F384EB2BE858D123BF4239647377B48D43F66780242819E6FEF55F4"
+    }
+  ],
+  "numericOracle": "Independent circle membership predicates; no tessellation used to determine Boolean topology",
+  "nativeOracle": "Real indexed host pixels compared with independent full-scene host across zoom and execute/undo/redo; hole material pixels and nested block references checked",
+  "printGeometry": "WPF even-odd vector geometry and FillContains predicates; WPF cubic area relative error <= 0.001",
+  "supportedInput": [
+    "Circle",
+    "Full-circle arc",
+    "Unrounded rectangle",
+    "Closed line polyline",
+    "Closed line/circular-arc composite path",
+    "Region"
+  ],
+  "budgets": {
+    "inputEdges": 2048,
+    "arrangementEdges": 32768,
+    "resultEdges": 32768
+  },
+  "emptyResultPolicy": "Retain operands and report error; no history entry",
+  "unsupportedInput": [
+    "Rounded rectangle",
+    "Ellipse",
+    "Spline",
+    "Open curves"
+  ],
+  "dxfRegionExport": "Unsupported; entity counted in export loss summary; explicit loss authorization required before omission",
+  "packageRebuilt": false,
+  "clipboardDesktopTestsRun": false,
+  "notRun": [
+    "Full solution regression",
+    "Complete manual drafting acceptance",
+    "Mixed multi-monitor DPI",
+    "Long-term large Boolean stress",
+    "PDF or physical printer output",
+    "Rebuilt distribution package",
+    "Signing, cloud CI, push or publication"
+  ]
+}

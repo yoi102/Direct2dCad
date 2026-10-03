@@ -24,18 +24,21 @@ internal sealed class BenchmarkRenderSession : IDisposable
         LayoutId? activeLayoutId = null,
         LayoutViewportId? activeLayoutViewportId = null,
         CadParallelRenderingMode? parallelRenderingMode = null,
-        int parallelWorkerCount = 2)
+        int parallelWorkerCount = 2,
+        bool progressivePreparation = false,
+        int surfaceWidth = SurfaceWidth,
+        int surfaceHeight = SurfaceHeight)
     {
         Data = data ?? throw new ArgumentNullException(nameof(data));
         Viewport = BenchmarkDocumentFactory.CreateFittedViewport(
             data,
-            SurfaceWidth,
-            SurfaceHeight);
+            surfaceWidth,
+            surfaceHeight);
         SpatialIndex = new CadSpatialIndex();
-        ImageSource = new BenchmarkImageSource(SurfaceWidth, SurfaceHeight);
+        ImageSource = new BenchmarkImageSource(surfaceWidth, surfaceHeight);
         RenderHost = new Direct2DImageRenderHost();
         RenderHost.AttachImageSource(ImageSource);
-        RenderHost.SetSize(SurfaceWidth, SurfaceHeight);
+        RenderHost.SetSize(surfaceWidth, surfaceHeight);
         RenderHost.SetScene(data.Document, Viewport);
 
         RenderHost.UpdateTextMeasurements(data.Document);
@@ -57,7 +60,7 @@ internal sealed class BenchmarkRenderSession : IDisposable
             EntityBoundsQueryInto = (ownerBlockId, bounds, results) =>
                 SpatialIndex.Query(ownerBlockId, bounds, results)
         });
-        RenderHost.RebuildAll(data.Document);
+        if(!progressivePreparation)RenderHost.RebuildAll(data.Document);
     }
 
     public void WarmUp(int frameCount = 2)
@@ -72,9 +75,11 @@ internal sealed class BenchmarkRenderSession : IDisposable
 
     public long ReattachSurfaceAndRenderFirstFrame()
     {
-        ImageSource = new BenchmarkImageSource(SurfaceWidth, SurfaceHeight);
+        var width = ImageSource.SurfaceWidth;
+        var height = ImageSource.SurfaceHeight;
+        ImageSource = new BenchmarkImageSource(width, height);
         RenderHost.AttachImageSource(ImageSource);
-        RenderHost.SetSize(SurfaceWidth, SurfaceHeight);
+        RenderHost.SetSize(width, height);
         return RenderPreparedFirstFrame();
     }
 

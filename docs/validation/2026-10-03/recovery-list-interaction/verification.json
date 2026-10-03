@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-03",
+  "configuration": "Release",
+  "build": {
+    "log": "TestResults/recovery-list-interaction/build.log",
+    "warnings": 0,
+    "errors": 0,
+    "sha256": "E9C20FE167638BA3D0DB29413EBA7CBEBE78AA0E6D5B615940B0632155FDC460"
+  },
+  "test_runs": [
+    {
+      "file": "recovery-workflow.trx",
+      "outcome": "Completed",
+      "total": 11,
+      "passed": 11,
+      "failed": 0,
+      "sha256": "F50198B749CCE986B3CEC9C554258CE3B1A63832AFC937D77EA68E819BA2A91C"
+    },
+    {
+      "file": "list-ui-final.trx",
+      "outcome": "Completed",
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "sha256": "7E996B6DEA88FE699682B23324513FBD92790CC4E8C897C19DB612DFDB426A6C"
+    }
+  ],
+  "binding_logs": [
+    {
+      "file": "document-menus-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "list-states-dark-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "list-states-light-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-actions-dark-zh-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-actions-light-en-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-context-menu-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-dark-zh-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-empty-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-light-en-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "ribbon-mode-focus-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    }
+  ],
+  "source_files": [
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/ToolboxListStyles.xaml",
+      "sha256": "3FB686FD598F011960E2B5307203E2F71CA6CFDAC350DDBEE394828DEC733CC0"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/DrawingRecoveryToolboxView.xaml",
+      "sha256": "37D9433E97AF9BBB8F3FD073461315C4AA6740C75931A38B4D74A964ECCA67BE"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/DrawingRecoveryToolboxView.xaml.cs",
+      "sha256": "7748E772D0708C3D58C2C56D7D3E67547EFBA8FDFA7DAC67CE34D5D94AE85320"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/DocumentExplorerToolboxView.xaml",
+      "sha256": "73607A95A8CE149C2FF8C58663C8B2D29529B4427F1AFB6D650D40D2611B204A"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/Toolboxes/DrawingRecoveryToolboxViewModel.cs",
+      "sha256": "0E79096879C350FF236B9556FFE5D44571C2EEA878D6965D91B9B7337134C8F6"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/MainViewModel.cs",
+      "sha256": "38B71CC1E9B5A7CA6E9A83E2C9777C8C405590AA740DE67A725F7017E1F7CB92"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/MainViewModel.Recovery.cs",
+      "sha256": "256D8AF84F6EA07A88DC7CB55BA3E1A8E8A243FD271DC50DAE3E252F0C9176AE"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/EditorTabViewModel.Recovery.cs",
+      "sha256": "7580C36E26838AA9668E9C5DA43D2365D9721F2D504C5745FA4B0678814DB297"
+    },
+    {
+      "file": "Direct2dCad.UiAutomation.Tests/RecoveryToolboxUiTests.cs",
+      "sha256": "285EB319393ACB753829EAB5F4B6B80D672B21867FCA6EEB80869F0CADE76E1E"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Tests/RecoveryCloseWorkflowTests.cs",
+      "sha256": "C288A2214E6E03006C02D6E2A2A778ED9CDE4FDB135D2CEBC7AC8CD0D5F0F01E"
+    },
+    {
+      "file": "Direct2dCad.Lang/Strings/Strings.resx",
+      "sha256": "B3B0DF7B05150A8F27ADBECE1CCECA17C8F45180A5C5244BEE23081F79AC0925"
+    },
+    {
+      "file": "Direct2dCad.Lang/Strings/Strings.zh-CN.resx",
+      "sha256": "1A452DA9E994D2D5DE9FFEF43FDED92836EECCBCF2E2EB6C546C7CAC94A3C281"
+    },
+    {
+      "file": "Direct2dCad.Lang/Strings/Strings.ja-JP.resx",
+      "sha256": "71C9E6E3612E1CA3E70164C7FD29993B25F31E55AF1928885E10B92991635E3C"
+    }
+  ]
+}

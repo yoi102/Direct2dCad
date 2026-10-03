@@ -9,6 +9,11 @@ internal static class CadEntityTransform
     {
         switch (entity)
         {
+            case CadDimension dimension:
+                var d = dimension.Definition;
+                dimension.SetDefinition(d with { Placement = d.Placement + delta,
+                    Anchors = d.Anchors.Select(a => a.Reference is null ? a with { Point = a.Point + delta } : a).ToArray() });
+                break;
             case CadLine line:
                 line.SetGeometry(line.Start + delta, line.End + delta);
                 break;
@@ -22,7 +27,7 @@ internal static class CadEntityTransform
                 ellipseArc.SetCenter(ellipseArc.Center + delta);
                 break;
             case CadRectangle rectangle:
-                rectangle.SetBounds(rectangle.Bounds.Translate(delta));
+                rectangle.SetBounds(rectangle.FrameBounds.Translate(delta));
                 break;
             case CadArc arc:
                 arc.SetCenter(arc.Center + delta);
@@ -32,6 +37,9 @@ internal static class CadEntityTransform
                 break;
             case CadSpline spline:
                 spline.ReplaceFitPoints(spline.FitPoints.Select(x => x + delta));
+                break;
+            case CadRegion region:
+                region.ReplaceGeometry(region.Contours.Select(c => c.Transform(point => point + delta)));
                 break;
             case CadCompositePath path:
                 TransformCompositePath(path, point => point + delta);
@@ -60,9 +68,7 @@ internal static class CadEntityTransform
     {
         if (!double.IsFinite(angleRadians))
             throw new ArgumentOutOfRangeException(nameof(angleRadians));
-        if (entity is CadEllipse or CadRectangle && !TryGetQuarterTurns(angleRadians, out _))
-            throw new NotSupportedException($"{entity.GetType().Name} only supports rotation in 90 degree increments.");
-        if (entity is CadEllipseArc or CadOleObject)
+        if (entity is CadOleObject)
             throw new NotSupportedException($"Entity type is not rotatable by this command: {entity.GetType().Name}");
     }
 
@@ -71,6 +77,9 @@ internal static class CadEntityTransform
         ValidateRotation(entity, angleRadians);
         switch (entity)
         {
+            case CadDimension dimension:
+                dimension.Transform(p => RotatePoint(p, pivot, angleRadians), linearRotation: dimension.Definition.LinearRotationRadians + angleRadians);
+                break;
             case CadLine line:
                 line.SetGeometry(RotatePoint(line.Start, pivot, angleRadians), RotatePoint(line.End, pivot, angleRadians));
                 break;
@@ -79,6 +88,10 @@ internal static class CadEntityTransform
                 break;
             case CadEllipse ellipse:
                 RotateEllipse(ellipse, pivot, angleRadians);
+                break;
+            case CadEllipseArc ellipseArc:
+                ellipseArc.SetCenter(RotatePoint(ellipseArc.Center,pivot,angleRadians));
+                ellipseArc.SetRotation(ellipseArc.RotationRadians+angleRadians);
                 break;
             case CadRectangle rectangle:
                 RotateRectangle(rectangle, pivot, angleRadians);
@@ -95,6 +108,9 @@ internal static class CadEntityTransform
                 break;
             case CadSpline spline:
                 spline.ReplaceFitPoints(spline.FitPoints.Select(point => RotatePoint(point, pivot, angleRadians)));
+                break;
+            case CadRegion region:
+                region.ReplaceGeometry(region.Contours.Select(c => c.Transform(point => RotatePoint(point, pivot, angleRadians))));
                 break;
             case CadCompositePath path:
                 TransformCompositePath(path, point => RotatePoint(point, pivot, angleRadians));
@@ -124,8 +140,8 @@ internal static class CadEntityTransform
     {
         if (!double.IsFinite(factor) || factor <= 0)
             throw new ArgumentOutOfRangeException(nameof(factor), "Scale factor must be greater than zero.");
-        if (entity is CadEllipseArc)
-            throw new NotSupportedException($"Entity type is not scalable by this command: {entity.GetType().Name}");
+        if (entity is CadDimension d && d.Definition.AnnotationScale * factor > 1e6)
+            throw new ArgumentOutOfRangeException(nameof(factor), "Annotation scale is too large.");
     }
 
     internal static void UniformScale(CadEntity entity, CadPointD pivot, double factor)
@@ -133,6 +149,9 @@ internal static class CadEntityTransform
         ValidateUniformScale(entity, factor);
         switch (entity)
         {
+            case CadDimension dimension:
+                dimension.Transform(p => ScalePoint(p, pivot, factor), factor);
+                break;
             case CadLine line:
                 line.SetGeometry(ScalePoint(line.Start, pivot, factor), ScalePoint(line.End, pivot, factor));
                 break;
@@ -142,10 +161,13 @@ internal static class CadEntityTransform
             case CadEllipse ellipse:
                 ellipse.SetGeometry(ScalePoint(ellipse.Center, pivot, factor), ellipse.RadiusX * factor, ellipse.RadiusY * factor);
                 break;
+            case CadEllipseArc ellipseArc:
+                ellipseArc.SetGeometry(ScalePoint(ellipseArc.Center,pivot,factor),ellipseArc.RadiusX*factor,ellipseArc.RadiusY*factor,ellipseArc.StartAngleRadians,ellipseArc.SweepAngleRadians);
+                break;
             case CadRectangle rectangle:
                 var radiusX = rectangle.CornerRadiusX * factor;
                 var radiusY = rectangle.CornerRadiusY * factor;
-                rectangle.SetBounds(TransformRect(rectangle.Bounds, point => ScalePoint(point, pivot, factor)));
+                rectangle.SetBounds(TransformRect(rectangle.FrameBounds, point => ScalePoint(point, pivot, factor)));
                 rectangle.SetCornerRadius(radiusX, radiusY);
                 break;
             case CadArc arc:
@@ -156,6 +178,9 @@ internal static class CadEntityTransform
                 break;
             case CadSpline spline:
                 spline.ReplaceFitPoints(spline.FitPoints.Select(point => ScalePoint(point, pivot, factor)));
+                break;
+            case CadRegion region:
+                region.ReplaceGeometry(region.Contours.Select(c => c.Transform(point => ScalePoint(point, pivot, factor))));
                 break;
             case CadCompositePath path:
                 TransformCompositePath(path, point => ScalePoint(point, pivot, factor));
@@ -187,12 +212,8 @@ internal static class CadEntityTransform
     {
         if (!double.IsFinite(axisAngleRadians))
             throw new ArgumentOutOfRangeException(nameof(axisAngleRadians));
-        if (entity is CadEllipse or CadRectangle && !TryGetEighthTurns(axisAngleRadians, out _))
-            throw new NotSupportedException($"{entity.GetType().Name} only supports mirror axes in 45 degree increments.");
         if (entity is CadOleObject && !TryGetQuarterTurns(axisAngleRadians, out _))
             throw new NotSupportedException("CadOleObject only supports horizontal or vertical mirror axes.");
-        if (entity is CadEllipseArc)
-            throw new NotSupportedException($"Entity type is not mirrorable by this command: {entity.GetType().Name}");
     }
 
     internal static void Mirror(CadEntity entity, CadPointD axisPoint, double axisAngleRadians)
@@ -201,6 +222,9 @@ internal static class CadEntityTransform
         CadPointD Transform(CadPointD point) => MirrorPoint(point, axisPoint, axisAngleRadians);
         switch (entity)
         {
+            case CadDimension dimension:
+                dimension.Transform(Transform, linearRotation: 2 * axisAngleRadians - dimension.Definition.LinearRotationRadians);
+                break;
             case CadLine line:
                 line.SetGeometry(Transform(line.Start), Transform(line.End));
                 break;
@@ -208,18 +232,26 @@ internal static class CadEntityTransform
                 circle.SetCenter(Transform(circle.Center));
                 break;
             case CadEllipse ellipse:
-                var swapRadii = TryGetEighthTurns(axisAngleRadians, out var ellipseTurns) && Math.Abs(ellipseTurns) % 2 == 1;
+                var discreteEllipse = ellipse.RotationRadians==0 && TryGetEighthTurns(axisAngleRadians,out _);
+                var swapRadii = discreteEllipse && TryGetEighthTurns(axisAngleRadians, out var ellipseTurns) && Math.Abs(ellipseTurns) % 2 == 1;
                 ellipse.SetGeometry(
                     Transform(ellipse.Center),
                     swapRadii ? ellipse.RadiusY : ellipse.RadiusX,
                     swapRadii ? ellipse.RadiusX : ellipse.RadiusY);
+                if(!discreteEllipse) ellipse.SetRotation(2*axisAngleRadians-ellipse.RotationRadians);
+                break;
+            case CadEllipseArc ellipseArc:
+                ellipseArc.SetGeometry(Transform(ellipseArc.Center),ellipseArc.RadiusX,ellipseArc.RadiusY,-ellipseArc.StartAngleRadians,-ellipseArc.SweepAngleRadians);
+                ellipseArc.SetRotation(2*axisAngleRadians-ellipseArc.RotationRadians);
                 break;
             case CadRectangle rectangle:
                 var rectangleRadiusX = rectangle.CornerRadiusX;
                 var rectangleRadiusY = rectangle.CornerRadiusY;
-                rectangle.SetBounds(TransformRect(rectangle.Bounds, Transform));
+                var discreteRectangle=rectangle.RotationRadians==0 && TryGetEighthTurns(axisAngleRadians,out _);
+                if(discreteRectangle) rectangle.SetBounds(TransformRect(rectangle.FrameBounds, Transform));
+                else { rectangle.SetBounds(rectangle.FrameBounds.Translate(Transform(rectangle.FrameBounds.Center)-rectangle.FrameBounds.Center)); rectangle.SetRotation(2*axisAngleRadians-rectangle.RotationRadians); }
                 _ = TryGetEighthTurns(axisAngleRadians, out var rectangleTurns);
-                var swapRectangleRadii = Math.Abs(rectangleTurns) % 2 == 1;
+                var swapRectangleRadii = discreteRectangle && Math.Abs(rectangleTurns) % 2 == 1;
                 rectangle.SetCornerRadius(
                     swapRectangleRadii ? rectangleRadiusY : rectangleRadiusX,
                     swapRectangleRadii ? rectangleRadiusX : rectangleRadiusY);
@@ -236,6 +268,9 @@ internal static class CadEntityTransform
                 break;
             case CadSpline spline:
                 spline.ReplaceFitPoints(spline.FitPoints.Select(Transform));
+                break;
+            case CadRegion region:
+                region.ReplaceGeometry(region.Contours.Select(c => c.Transform(Transform, mirrored: true)));
                 break;
             case CadCompositePath path:
                 TransformCompositePath(path, Transform, reverseArcDirection: true);
@@ -319,21 +354,23 @@ internal static class CadEntityTransform
 
     private static void RotateEllipse(CadEllipse ellipse, CadPointD pivot, double angleRadians)
     {
-        _ = TryGetQuarterTurns(angleRadians, out var turns);
-        var swapRadii = Math.Abs(turns) % 2 == 1;
+        var discrete=TryGetQuarterTurns(angleRadians, out var turns);
+        var swapRadii = discrete && Math.Abs(turns) % 2 == 1;
         ellipse.SetGeometry(
             RotatePoint(ellipse.Center, pivot, angleRadians),
             swapRadii ? ellipse.RadiusY : ellipse.RadiusX,
             swapRadii ? ellipse.RadiusX : ellipse.RadiusY);
+        if(!discrete) ellipse.SetRotation(ellipse.RotationRadians+angleRadians);
     }
 
     private static void RotateRectangle(CadRectangle rectangle, CadPointD pivot, double angleRadians)
     {
         var radiusX = rectangle.CornerRadiusX;
         var radiusY = rectangle.CornerRadiusY;
-        rectangle.SetBounds(TransformRect(rectangle.Bounds, point => RotatePoint(point, pivot, angleRadians)));
-        _ = TryGetQuarterTurns(angleRadians, out var turns);
-        var swapRadii = Math.Abs(turns) % 2 == 1;
+        var discrete=TryGetQuarterTurns(angleRadians, out var turns);
+        if(discrete) rectangle.SetBounds(TransformRect(rectangle.FrameBounds, point => RotatePoint(point, pivot, angleRadians)));
+        else { rectangle.SetBounds(rectangle.FrameBounds.Translate(RotatePoint(rectangle.FrameBounds.Center,pivot,angleRadians)-rectangle.FrameBounds.Center)); rectangle.SetRotation(rectangle.RotationRadians+angleRadians); }
+        var swapRadii = discrete && Math.Abs(turns) % 2 == 1;
         rectangle.SetCornerRadius(swapRadii ? radiusY : radiusX, swapRadii ? radiusX : radiusY);
     }
 

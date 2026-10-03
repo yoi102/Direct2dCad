@@ -12,17 +12,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="Strings\Strings.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Strings.resx</DependentUpon>
-    </Compile>
+    <Compile Remove="Strings\Strings.Designer.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Update="Strings\Strings.resx">
-      <Generator>PublicResXFileCodeGenerator</Generator>
-      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+      <StronglyTypedLanguage>C#</StronglyTypedLanguage>
+      <StronglyTypedNamespace>Direct2dCad.Lang.Strings</StronglyTypedNamespace>
+      <StronglyTypedClassName>Strings</StronglyTypedClassName>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Strings.Designer.cs</StronglyTypedFileName>
+      <PublicClass>true</PublicClass>
     </EmbeddedResource>
   </ItemGroup>
 

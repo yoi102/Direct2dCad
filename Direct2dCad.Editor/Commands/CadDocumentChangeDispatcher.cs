@@ -14,6 +14,8 @@ public sealed class CadDocumentChangeDispatcher
     private readonly List<ICadGeometryResourceManager> _resourceManagers = [];
     private readonly DirtySet _pendingUpdates = new();
     private bool _updatesDeferred;
+    private readonly Dictionary<EntityId, HashSet<EntityId>> _dimensionDependents = [];
+    private readonly Dictionary<EntityId, EntityId[]> _dimensionSources = [];
 
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
 
@@ -25,6 +27,7 @@ public sealed class CadDocumentChangeDispatcher
         _document = document ?? throw new ArgumentNullException(nameof(document));
         _dirtySet = dirtySet ?? throw new ArgumentNullException(nameof(dirtySet));
         _spatialIndex = spatialIndex;
+        foreach (var dimension in document.Entities.Values.OfType<CadDimension>()) TrackDimension(dimension);
     }
 
     public CadDocumentChangeSet DrainDirtyChanges() => _dirtySet.Drain();
@@ -76,6 +79,21 @@ public sealed class CadDocumentChangeDispatcher
         if (!result.DocumentChanged)
             return;
 
+        var affected = new HashSet<EntityId>();
+        foreach (var change in result.EntityChanges)
+        {
+            if (_document.TryGetEntity(change.EntityId, out var entity) && entity is CadDimension dimension)
+            {
+                TrackDimension(dimension);
+                affected.Add(dimension.Id);
+            }
+            if (_dimensionDependents.TryGetValue(change.EntityId, out var dependents)) affected.UnionWith(dependents);
+        }
+        var annotationChanges = affected.Select(id => _document.TryGetEntity(id, out var e) ? e as CadDimension : null)
+            .Where(d => d is not null && !d.IsErased && d.RefreshAssociation(_document))
+            .Select(d => CadDocumentChangeSet.ForEntity(d!.Id, CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance)).ToArray();
+        if (annotationChanges.Length > 0)
+            result = CadDocumentChangeSet.Combine(new[] { result }.Concat(annotationChanges));
         result = ExpandBlockReferenceChanges(result);
         UpdateSpatialIndex(result);
         if (_updatesDeferred)
@@ -92,6 +110,26 @@ public sealed class CadDocumentChangeDispatcher
             throw new InvalidOperationException("Document updates are already deferred.");
         _updatesDeferred = true;
         return new UpdateScope(this);
+    }
+
+    private void TrackDimension(CadDimension dimension)
+    {
+        if (_dimensionSources.Remove(dimension.Id, out var old))
+            foreach (var id in old)
+                if (_dimensionDependents.TryGetValue(id, out var set))
+                {
+                    set.Remove(dimension.Id);
+                    if (set.Count == 0) _dimensionDependents.Remove(id);
+                }
+        if (dimension.IsErased) return;
+        var sources = dimension.Definition.Anchors.Where(a => a.Reference is not null)
+            .Select(a => new EntityId(a.Reference!.EntityId)).Distinct().ToArray();
+        _dimensionSources[dimension.Id] = sources;
+        foreach (var id in sources)
+        {
+            if (!_dimensionDependents.TryGetValue(id, out var set)) _dimensionDependents[id] = set = [];
+            set.Add(dimension.Id);
+        }
     }
 
     private void FlushUpdates()

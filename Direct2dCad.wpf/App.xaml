@@ -31,6 +31,7 @@
                 <ResourceDictionary Source="/AvalonDock.Themes.Arc;component/DarkTheme.xaml" />
 
                 <ResourceDictionary Source="pack://application:,,,/Direct2dCad.wpf.Controls;component/Generic.xaml" />
+                <ResourceDictionary Source="Views/Toolboxes/ToolboxListStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <!-- MahApps 3.0 RC ColorCanvas omits its themed foreground setter. -->

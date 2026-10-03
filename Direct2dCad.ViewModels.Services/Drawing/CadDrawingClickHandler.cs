@@ -26,33 +26,30 @@ internal sealed class CadDrawingClickHandler(
 {
     public bool HandleClick(CadPointD world)
     {
+        if (!double.IsFinite(world.X) || !double.IsFinite(world.Y))
+            return false;
+
         switch (toolMode)
         {
             case CadCanvasToolMode.Line:
-                HandleLineClick(world);
-                return true;
+                return HandleLineClick(world);
 
             case CadCanvasToolMode.CircleCenterRadius:
-                HandleCircleCenterRadiusClick(world);
-                return true;
+                return HandleCircleCenterRadiusClick(world);
 
             case CadCanvasToolMode.CircleCenterDiameter:
-                HandleCircleCenterDiameterClick(world);
-                return true;
+                return HandleCircleCenterDiameterClick(world);
 
             case CadCanvasToolMode.CircleTwoPoint:
-                HandleCircleTwoPointClick(world);
-                return true;
+                return HandleCircleTwoPointClick(world);
 
             case CadCanvasToolMode.CircleThreePoint:
-                HandleCircleThreePointClick(world);
-                return true;
+                return HandleCircleThreePointClick(world);
 
             case CadCanvasToolMode.EllipseCenter:
             case CadCanvasToolMode.EllipseAxisEnd:
             case CadCanvasToolMode.EllipseArc:
-                HandleEllipseDrawingClick(world);
-                return true;
+                return HandleEllipseDrawingClick(world);
 
             case CadCanvasToolMode.ArcThreePoint:
             case CadCanvasToolMode.ArcStartCenterEnd:
@@ -65,12 +62,10 @@ internal sealed class CadDrawingClickHandler(
             case CadCanvasToolMode.ArcCenterStartAngle:
             case CadCanvasToolMode.ArcCenterStartLength:
             case CadCanvasToolMode.ArcContinue:
-                HandleArcDrawingClick(world);
-                return true;
+                return HandleArcDrawingClick(world);
 
             case CadCanvasToolMode.Rectangle:
-                HandleRectangleClick(world);
-                return true;
+                return HandleRectangleClick(world);
 
             case CadCanvasToolMode.Polyline:
                 AddPolylineVertexOrComplete(world);
@@ -114,24 +109,27 @@ internal sealed class CadDrawingClickHandler(
         };
     }
 
-    private void HandleLineClick(CadPointD world)
+    private bool HandleLineClick(CadPointD world)
     {
         if (state.PendingWorldPoint is null)
         {
             state.PendingWorldPoint = world;
-            return;
+            return true;
         }
 
+        if (!IsValidCircleGeometry(state.PendingWorldPoint.Value.DistanceTo(world)))
+            return false;
         creator.AddLine(state.PendingWorldPoint.Value, world);
         state.PendingWorldPoint = null;
+        return true;
     }
 
-    private void HandleRectangleClick(CadPointD world)
+    private bool HandleRectangleClick(CadPointD world)
     {
         if (state.PendingWorldPoint is null)
         {
             state.PendingWorldPoint = world;
-            return;
+            return true;
         }
 
         var bounds = CadRectD.FromLTRB(
@@ -139,128 +137,154 @@ internal sealed class CadDrawingClickHandler(
             state.PendingWorldPoint.Value.Y,
             world.X,
             world.Y);
+        if (!CadDrawingEntityCreator.IsValidRectangleBounds(bounds))
+            return false;
         creator.AddRectangleIfValid(bounds);
         state.PendingWorldPoint = null;
+        return true;
     }
 
-    private void HandleCircleCenterRadiusClick(CadPointD world)
+    private bool HandleCircleCenterRadiusClick(CadPointD world)
     {
         if (state.PendingWorldPoint is null)
         {
             state.PendingWorldPoint = world;
-            return;
+            return true;
         }
 
         var center = state.PendingWorldPoint.Value;
-        creator.AddCircleIfValid(center, center.DistanceTo(world));
+        var radius = center.DistanceTo(world);
+        if (!IsValidCircleGeometry(radius))
+            return false;
+        creator.AddCircleIfValid(center, radius);
         state.PendingWorldPoint = null;
+        return true;
     }
 
-    private void HandleCircleCenterDiameterClick(CadPointD world)
+    private bool HandleCircleCenterDiameterClick(CadPointD world)
     {
         if (state.PendingWorldPoint is null)
         {
             state.PendingWorldPoint = world;
-            return;
+            return true;
         }
 
         var center = state.PendingWorldPoint.Value;
-        creator.AddCircleIfValid(center, center.DistanceTo(world) * 0.5);
+        var radius = center.DistanceTo(world) * 0.5;
+        if (!IsValidCircleGeometry(radius))
+            return false;
+        creator.AddCircleIfValid(center, radius);
         state.PendingWorldPoint = null;
+        return true;
     }
 
-    private void HandleCircleTwoPointClick(CadPointD world)
+    private bool HandleCircleTwoPointClick(CadPointD world)
     {
         if (state.PendingWorldPoint is null)
         {
             state.PendingWorldPoint = world;
-            return;
+            return true;
         }
 
-        if (TryCreateCircleFromDiameterPoints(
+        if (!TryCreateCircleFromDiameterPoints(
             state.PendingWorldPoint.Value,
             world,
             out var center,
             out var radius))
-        {
-            creator.AddCircleIfValid(center, radius);
-        }
+            return false;
 
+        creator.AddCircleIfValid(center, radius);
         state.PendingWorldPoint = null;
+        return true;
     }
 
-    private void HandleCircleThreePointClick(CadPointD world)
+    private bool HandleCircleThreePointClick(CadPointD world)
     {
         if (state.PendingWorldPoint is null)
         {
             state.PendingWorldPoint = world;
-            return;
+            return true;
         }
 
         if (state.PendingCircleSecondPoint is null)
         {
-            if (state.PendingWorldPoint.Value.DistanceTo(world) > double.Epsilon)
-                state.PendingCircleSecondPoint = world;
-            return;
+            if (!IsValidCircleGeometry(state.PendingWorldPoint.Value.DistanceTo(world)))
+                return false;
+            state.PendingCircleSecondPoint = world;
+            return true;
         }
 
-        if (TryCreateCircleFromThreePoints(
+        if (!TryCreateCircleFromThreePoints(
             state.PendingWorldPoint.Value,
             state.PendingCircleSecondPoint.Value,
             world,
             out var center,
             out var radius))
-        {
-            creator.AddCircleIfValid(center, radius);
-        }
+            return false;
 
+        creator.AddCircleIfValid(center, radius);
         state.PendingWorldPoint = null;
         state.PendingCircleSecondPoint = null;
+        return true;
     }
 
-    private void HandleArcDrawingClick(CadPointD world)
+    private bool HandleArcDrawingClick(CadPointD world)
     {
         if (toolMode == CadCanvasToolMode.ArcContinue)
         {
             var arcBase = continueArcBaseResolver();
-            if (arcBase.HasValue &&
-                TryCreateArcFromStartEndTangent(arcBase.Start, world, arcBase.Tangent, out var continueGeometry))
-            {
-                creator.AddArcIfValid(continueGeometry);
-            }
-
-            return;
+            if (!arcBase.HasValue ||
+                !TryCreateArcFromStartEndTangent(arcBase.Start, world, arcBase.Tangent, out var continueGeometry))
+                return false;
+            creator.AddArcIfValid(continueGeometry);
+            return true;
         }
 
         if (state.PendingWorldPoint is null)
         {
             state.PendingWorldPoint = world;
-            return;
+            return true;
         }
 
         if (state.PendingArcStartPoint is null)
         {
-            if (state.PendingWorldPoint.Value.DistanceTo(world) > double.Epsilon)
-                state.PendingArcStartPoint = world;
-            return;
+            if (!IsValidCircleGeometry(state.PendingWorldPoint.Value.DistanceTo(world)))
+                return false;
+            state.PendingArcStartPoint = world;
+            return true;
         }
 
-        if (TryCreateArcFromMode(
+        if (!TryCreateArcFromMode(
             toolMode,
             state.PendingWorldPoint.Value,
             state.PendingArcStartPoint.Value,
             world,
             out var geometry))
-        {
-            creator.AddArcIfValid(geometry);
-        }
+            return false;
 
+        creator.AddArcIfValid(geometry);
         state.PendingWorldPoint = null;
         state.PendingArcStartPoint = null;
+        return true;
     }
 
-    private void HandleEllipseDrawingClick(CadPointD world)
+    private bool HandleEllipseDrawingClick(CadPointD world)
     {
+        var points = state.PendingEllipsePoints;
+        if (points.Count == 1 && !IsValidCircleGeometry(points[0].DistanceTo(world)))
+            return false;
+        if (points.Count == 2)
+        {
+            var valid = toolMode == CadCanvasToolMode.EllipseCenter
+                ? TryCreateEllipseFromCenter(points[0], points[1], world, out _)
+                : TryCreateEllipseFromAxisEnd(points[0], points[1], world, out _);
+            if (!valid)
+                return false;
+        }
+        if (points.Count >= 3 &&
+            world.DistanceTo(Midpoint(points[0], points[1])) <= double.Epsilon)
+            return false;
+
         state.PendingEllipsePoints.Add(world);
 
         switch (toolMode)
@@ -308,10 +332,17 @@ internal sealed class CadDrawingClickHandler(
                 {
                     creator.AddEllipseArcIfValid(arcGeometry);
                 }
+                else
+                {
+                    // Only reject the last point; keep the ellipse and its start angle.
+                    points.RemoveAt(points.Count - 1);
+                    return false;
+                }
 
                 state.PendingEllipsePoints.Clear();
                 break;
         }
+        return true;
     }
 
     private void AddPolylineVertexOrComplete(CadPointD world)

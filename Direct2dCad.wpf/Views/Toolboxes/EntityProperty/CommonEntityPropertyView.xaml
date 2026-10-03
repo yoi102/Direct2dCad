@@ -14,6 +14,7 @@
     </UserControl.Resources>
 
     <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                  AutomationProperties.AutomationId="CommonEntityPropertiesScrollViewer"
                   VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="12" IsEnabled="{Binding IsEditable, Mode=OneWay}">
             <TextBlock Margin="0,0,0,10"
@@ -22,6 +23,10 @@
                        Text="{Binding Title, Mode=OneWay}" />
             <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
             <ep:EntitySettingsPropertySection ViewModel="{Binding}" />
+            <TextBlock Margin="0,0,0,8" TextWrapping="Wrap" Text="{Binding RegionSummary}"
+                       Visibility="{Binding IsRegion, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <ep:FillPropertySection ViewModel="{Binding}"
+                Visibility="{Binding IsRegion, Converter={StaticResource BooleanToVisibilityConverter}}" />
             <ep:StrokeAppearancePropertySection
                 ViewModel="{Binding}"
                 Visibility="{Binding SupportsStrokeAppearance, Converter={StaticResource BooleanToVisibilityConverter}}" />

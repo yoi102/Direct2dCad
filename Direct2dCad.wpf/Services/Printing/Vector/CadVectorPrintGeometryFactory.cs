@@ -19,18 +19,20 @@ internal static class CadVectorPrintGeometryFactory
             arc.Radius,
             arc.StartAngleRadians,
             arc.SweepAngleRadians),
-        CadEllipse ellipse =>
-            new EllipseGeometry(ToPoint(ellipse.Center), ellipse.RadiusX, ellipse.RadiusY),
-        CadEllipseArc ellipseArc => CreateArc(
+        CadEllipse ellipse => Transform(
+            new EllipseGeometry(ToPoint(ellipse.Center), ellipse.RadiusX, ellipse.RadiusY),ellipse.GeometryTransform),
+        CadEllipseArc ellipseArc => Transform(CreateArc(
             ellipseArc.Center,
             ellipseArc.RadiusX,
             ellipseArc.RadiusY,
             ellipseArc.StartAngleRadians,
-            ellipseArc.SweepAngleRadians),
+            ellipseArc.SweepAngleRadians),ellipseArc.GeometryTransform),
         CadRectangle rectangle => CreateRectangle(rectangle),
         CadPolyline polyline => CreatePolyline(polyline.Points, polyline.Closed),
         CadSpline spline => CreateSpline(spline.GetBezierSegments(), spline.Closed),
+        CadRegion region => CreateRegion(region),
         CadCompositePath path => CreateCompositePath(path),
+        CadDimension dimension => CreateDimension(dimension),
         CadShapeText shapeText => CreateShapeText(shapeText),
         _ => null
     };
@@ -38,7 +40,7 @@ internal static class CadVectorPrintGeometryFactory
     public static Geometry Transform(Geometry geometry, CadMatrixD transform)
     {
         var clone = geometry.CloneCurrentValue();
-        clone.Transform = new MatrixTransform(ToMatrix(transform));
+        clone.Transform = new MatrixTransform(clone.Transform.Value * ToMatrix(transform));
         return clone;
     }
 
@@ -52,13 +54,13 @@ internal static class CadVectorPrintGeometryFactory
 
     private static Geometry CreateRectangle(CadRectangle rectangle)
     {
-        var bounds = ToRect(rectangle.Bounds);
-        return rectangle.HasRoundedCorners
+        var bounds = ToRect(rectangle.FrameBounds);
+        return Transform(rectangle.HasRoundedCorners
             ? new RectangleGeometry(
                 bounds,
-                Math.Min(rectangle.CornerRadiusX, rectangle.Bounds.Width * 0.5),
-                Math.Min(rectangle.CornerRadiusY, rectangle.Bounds.Height * 0.5))
-            : new RectangleGeometry(bounds);
+                Math.Min(rectangle.CornerRadiusX, rectangle.FrameBounds.Width * 0.5),
+                Math.Min(rectangle.CornerRadiusY, rectangle.FrameBounds.Height * 0.5))
+            : new RectangleGeometry(bounds),rectangle.GeometryTransform);
     }
 
     private static Geometry CreatePolyline(IReadOnlyList<CadPointD> points, bool closed)
@@ -89,6 +91,20 @@ internal static class CadVectorPrintGeometryFactory
                 ToPoint(segment.End),
                 true,
                 false);
+        }
+        return geometry;
+    }
+
+    private static Geometry CreateRegion(CadRegion region)
+    {
+        var geometry = new StreamGeometry { FillRule = FillRule.EvenOdd };
+        using var context = geometry.Open();
+        foreach (var contour in region.Contours)
+        {
+            context.BeginFigure(ToPoint(contour.Edges[0].Start), true, true);
+            foreach (var p in contour.Edges)
+                if (p.IsLine) context.LineTo(ToPoint(p.End), true, false);
+                else AppendArc(context, p.Center, p.Radius, p.Radius, p.StartAngle, p.Sweep);
         }
         return geometry;
     }
@@ -136,6 +152,14 @@ internal static class CadVectorPrintGeometryFactory
             }
         }
         return geometry;
+    }
+
+    private static Geometry CreateDimension(CadDimension dimension)
+    {
+        var group = new GeometryGroup();
+        foreach (var segment in dimension.Strokes)
+            group.Children.Add(new LineGeometry(ToPoint(segment.Start), ToPoint(segment.End)));
+        return group;
     }
 
     private static Geometry CreateShapeText(CadShapeText text)

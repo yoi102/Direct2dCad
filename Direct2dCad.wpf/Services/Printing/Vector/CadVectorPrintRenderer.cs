@@ -31,7 +31,7 @@ internal static class CadVectorPrintRenderer
         var visual = new DrawingVisual();
         RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.HighQuality);
         using var context = visual.RenderOpen();
-        var paperBounds = layout.PaperBounds;
+        var paperBounds = request.IsModelSpace ? request.PaperBounds : layout.PaperBounds;
         var paperScale = Math.Min(
             outputBounds.Width / paperBounds.Width,
             outputBounds.Height / paperBounds.Height);
@@ -51,6 +51,13 @@ internal static class CadVectorPrintRenderer
                 CadVectorPrintStyleResolver.CreateBrush(layout.PaperColor),
                 null,
                 CadVectorPrintGeometryFactory.ToRect(paperBounds));
+
+            if(request.IsModelSpace)
+            {
+                RenderBlock(context,request,BlockId.ModelSpace,CadMatrixD.Identity,paperScale,embeddedRasterDpi,
+                    CadColor.White,null,[]);
+                return visual;
+            }
 
             foreach (var layoutViewport in layout.Viewports)
             {

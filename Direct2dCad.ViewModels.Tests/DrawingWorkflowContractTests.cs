@@ -11,7 +11,7 @@ public sealed class DrawingWorkflowContractTests
 {
     public static IEnumerable<object[]> Modes => Enum.GetValues<CadCanvasToolMode>()
         .Where(mode => mode is not (CadCanvasToolMode.Select or CadCanvasToolMode.InsertBlock or
-            CadCanvasToolMode.LayoutViewport or CadCanvasToolMode.SetOrigin))
+            CadCanvasToolMode.LayoutViewport or CadCanvasToolMode.SetOrigin) && mode < CadCanvasToolMode.DimLinearX && !CadDocumentViewModel.IsEditMode(mode))
         .Select(mode => new object[] { mode });
 
     [Theory]
@@ -123,6 +123,7 @@ public sealed class DrawingWorkflowContractTests
         var vm = context.Document;
         vm.SetViewportSize(800, 600);
         vm.SetToolMode(CadCanvasToolMode.SetOrigin);
+        Assert.Equal(CadCanvasCursorKind.Arrow, vm.CanvasCursor);
         var screen = vm.CadEditor.Viewport.WorldToScreen(new(30, 40));
         vm.PointerDown(screen, CadCanvasPointerButton.Left, false);
         Assert.Equal(new CadPointD(30, 40), vm.CadEditor.Document.ViewSettings.Origin.Position);
@@ -131,11 +132,15 @@ public sealed class DrawingWorkflowContractTests
         vm.SetToolMode(CadCanvasToolMode.Line);
         vm.PointerDown(new(100, 100), CadCanvasPointerButton.Right, false);
         Assert.True(vm.IsPanning);
+        Assert.Equal(CadCanvasCursorKind.Hand, vm.CanvasCursor);
         vm.PointerMove(new(200, 200));
         vm.PointerUp(new(200, 200), CadCanvasPointerButton.Right);
         Assert.False(vm.IsPanning);
         Assert.Empty(vm.CadEditor.Document.Entities);
         Assert.Equal(CadCanvasToolMode.Line, vm.CadCanvasToolMode);
+        Assert.Equal(CadCanvasCursorKind.Arrow, vm.CanvasCursor);
+        Assert.Equal(CadCanvasCursorKind.Arrow, vm.Escape().Cursor);
+        Assert.Equal(CadCanvasCursorKind.Arrow, vm.CanvasCursor);
     }
 
     private static CadPointD[] Points(CadCanvasToolMode mode) => mode switch

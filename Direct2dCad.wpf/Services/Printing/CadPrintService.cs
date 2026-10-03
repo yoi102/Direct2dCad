@@ -1,4 +1,5 @@
 using System.Printing;
+using System.IO;
 using System.Windows;
 using System.Windows.Documents.Serialization;
 using System.Windows.Media;
@@ -24,7 +25,8 @@ public sealed class CadPrintService : ICadPrintService
         CadPrintRequest request,
         Action? onPrintStarted = null,
         Action<bool>? onBusyChanged = null,
-        Action? onPrintCompleted = null)
+        Action? onPrintCompleted = null,
+        Action<CadPrintCompletion>? onPrintFinished = null)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -39,7 +41,8 @@ public sealed class CadPrintService : ICadPrintService
             preparation.Preview,
             request.DocumentName,
             preparation.Printers,
-            initialOrientation)
+            initialOrientation,
+            request)
         {
             Owner = System.Windows.Application.Current?.MainWindow
         };
@@ -56,6 +59,7 @@ public sealed class CadPrintService : ICadPrintService
         _ = NotifyWhenPrintCompletesAsync(
             submission,
             onPrintCompleted,
+            onPrintFinished,
             System.Windows.Application.Current?.Dispatcher);
 
         return true;
@@ -151,34 +155,9 @@ public sealed class CadPrintService : ICadPrintService
             {
                 using var printServer = new LocalPrintServer();
                 using var printQueue = printServer.GetPrintQueue(selection.QueueName);
-                var baseTicket = printQueue.DefaultPrintTicket ??
-                                 printQueue.UserPrintTicket ??
-                                 new PrintTicket();
-                var requestedTicket = baseTicket.Clone();
-                requestedTicket.PageMediaSize = selection.MediaSize;
-                requestedTicket.PageOrientation = selection.Orientation;
-                requestedTicket.CopyCount = selection.Copies;
-                requestedTicket.PageResolution = new PageResolution(
-                    selection.RenderDpi,
-                    selection.RenderDpi);
-
-                var printTicket = printQueue
-                    .MergeAndValidatePrintTicket(baseTicket, requestedTicket)
-                    .ValidatedPrintTicket;
-                var page = ResolvePageMetrics(
-                    printQueue,
-                    printTicket,
-                    renderBounds);
-                var layout = request.Document.GetLayout(request.ActiveLayoutId);
-                var visual = CadVectorPrintRenderer.CreateVisual(
-                    request,
-                    layout,
-                    new Rect(
-                        page.OutputX,
-                        page.OutputY,
-                        page.OutputWidth,
-                        page.OutputHeight),
-                    selection.RenderDpi);
+                using var ticketStream=new MemoryStream(selection.ValidatedTicket ?? throw new InvalidOperationException("Print preview must be validated first."));
+                var printTicket=new PrintTicket(ticketStream);
+                var visual=CreatePageVisual(ResolveSelectedRequest(request,selection),selection,false);
                 printQueue.CurrentJobSettings.Description = request.DocumentName;
                 printQueue.CurrentJobSettings.CurrentPrintTicket = printTicket;
 
@@ -224,17 +203,20 @@ public sealed class CadPrintService : ICadPrintService
     private static async Task NotifyWhenPrintCompletesAsync(
         CadPrintSubmission submission,
         Action? onPrintCompleted,
+        Action<CadPrintCompletion>? onPrintFinished,
         Dispatcher? dispatcher)
     {
         try
         {
-            await submission.WritingCompletion.ConfigureAwait(false);
-            if (onPrintCompleted is null ||
-                dispatcher is null ||
-                dispatcher.HasShutdownStarted)
+            var result = await CadPrintCompletion.ObserveAsync(submission.WritingCompletion).ConfigureAwait(false);
+            if (dispatcher is null || dispatcher.HasShutdownStarted)
                 return;
-
-            await dispatcher.InvokeAsync(onPrintCompleted);
+            await dispatcher.InvokeAsync(() =>
+            {
+                if (result.Status == CadPrintCompletionStatus.Completed)
+                    onPrintCompleted?.Invoke();
+                onPrintFinished?.Invoke(result);
+            });
         }
         catch (Exception)
         {
@@ -346,6 +328,53 @@ public sealed class CadPrintService : ICadPrintService
         var image = new DrawingImage(drawing);
         image.Freeze();
         return image;
+    }
+
+    internal static CadPrintRequest ResolveSelectedRequest(CadPrintRequest request,CadPrintPreviewSelection selection) =>
+        request.IsModelSpace && selection.UseCurrentView && request.CurrentViewBounds is { } bounds
+            ? request with {PaperBounds=bounds} : request;
+
+    internal static Task<CadValidatedPrintPreview> ValidatePreviewAsync(CadPrintRequest request,CadPrintPreviewSelection selection) => RunOnStaThreadAsync(()=>
+    {
+        using var server=new LocalPrintServer();using var queue=server.GetPrintQueue(selection.QueueName);
+        var baseline=queue.DefaultPrintTicket??queue.UserPrintTicket??new PrintTicket();var requested=baseline.Clone();
+        requested.PageMediaSize=selection.MediaSize;requested.PageOrientation=selection.Orientation;requested.CopyCount=selection.Copies;
+        requested.PageResolution=new PageResolution(selection.RenderDpi,selection.RenderDpi);
+        var ticket=queue.MergeAndValidatePrintTicket(baseline,requested).ValidatedPrintTicket;
+        var caps=queue.GetPrintCapabilities(ticket);var area=caps.PageImageableArea;
+        var width=PositiveOrFallback(ticket.PageMediaSize?.Width??double.NaN,DefaultPageWidth);
+        var height=PositiveOrFallback(ticket.PageMediaSize?.Height??double.NaN,DefaultPageHeight);
+        if(ticket.PageOrientation==PageOrientation.Landscape && height>width || ticket.PageOrientation==PageOrientation.Portrait && width>height)(width,height)=(height,width);
+        var printable=CadRectD.FromXYWH(PositiveOrZero(area?.OriginWidth??0),PositiveOrZero(area?.OriginHeight??0),
+            PositiveOrFallback(area?.ExtentWidth??double.NaN,width),PositiveOrFallback(area?.ExtentHeight??double.NaN,height));
+        var placement=CadPrintPlacement.Calculate(ResolveSelectedRequest(request,selection).PaperBounds,printable,selection.Scaling,selection.Percent);
+        using var bytes=new MemoryStream();ticket.GetXmlStream().CopyTo(bytes);
+        var validated=selection with {ValidatedTicket=bytes.ToArray(),Placement=placement,PageWidth=width,PageHeight=height};
+        var visual=CreatePageVisual(ResolveSelectedRequest(request,validated),validated,true);
+        var drawing=VisualTreeHelper.GetDrawing(visual)!.CloneCurrentValue();drawing.Freeze();var image=new DrawingImage(drawing);image.Freeze();
+        return new CadValidatedPrintPreview(validated,image);
+    });
+
+    private static DrawingVisual CreatePageVisual(CadPrintRequest request,CadPrintPreviewSelection selection,bool preview)
+    {
+        var placement=selection.Placement??throw new InvalidOperationException("Missing print placement.");
+        var source=CadVectorPrintRenderer.CreateVisual(request,request.Document.GetLayout(request.ActiveLayoutId),
+            new Rect(placement.Output.MinX,placement.Output.MinY,placement.Output.Width,placement.Output.Height),selection.RenderDpi);
+        var visual=new DrawingVisual();using var context=visual.RenderOpen();
+        context.DrawRectangle(Brushes.White,null,new Rect(0,0,selection.PageWidth,selection.PageHeight));
+        var clip=new Rect(placement.Printable.MinX,placement.Printable.MinY,placement.Printable.Width,placement.Printable.Height);
+        if(preview)
+        {
+            context.DrawDrawing(VisualTreeHelper.GetDrawing(source));
+            var page=new Rect(0,0,selection.PageWidth,selection.PageHeight);
+            var previewBounds=Rect.Union(page,new Rect(placement.Output.MinX,placement.Output.MinY,placement.Output.Width,placement.Output.Height));
+            var outside=Geometry.Combine(new RectangleGeometry(previewBounds),new RectangleGeometry(clip),GeometryCombineMode.Exclude,null);
+            context.DrawGeometry(new SolidColorBrush(Color.FromArgb(45,205,92,92)),null,outside);
+            context.DrawRectangle(null,new Pen(Brushes.SlateGray,.6),page);
+            context.DrawRectangle(null,new Pen(Brushes.IndianRed,.8){DashStyle=DashStyles.Dash},clip);
+        }
+        else {context.PushClip(new RectangleGeometry(clip));context.DrawDrawing(VisualTreeHelper.GetDrawing(source));context.Pop();}
+        return visual;
     }
 
     private static CadRectD ResolveRenderBounds(CadPrintRequest request)

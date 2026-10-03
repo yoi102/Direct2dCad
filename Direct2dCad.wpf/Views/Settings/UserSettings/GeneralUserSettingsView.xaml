@@ -21,6 +21,8 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <TextBlock Grid.Row="0"
                    Margin="0,0,16,12"
@@ -68,5 +70,12 @@
                          HorizontalAlignment="Stretch"
                          AddToRecentColorsTrigger="SelectedColorChanged"
                          SelectedColor="{Binding SecondaryColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+        <CheckBox Grid.Row="4" Grid.ColumnSpan="2" Margin="0,12,0,0"
+                  Content="{I18N {x:Static r:LangKeys.AutoRecoveryEnabled}}"
+                  IsChecked="{Binding IsAutoRecoveryEnabled}" />
+        <StackPanel Grid.Row="5" Grid.ColumnSpan="2" Margin="0,12,0,0">
+            <TextBlock Text="{I18N {x:Static r:LangKeys.HistoryBudget}}"/>
+            <mah:NumericUpDown Value="{Binding HistoryBudgetMegabytes}" Minimum="16" Maximum="4096" Interval="16" StringFormat="F0"/>
+        </StackPanel>
     </Grid>
 </UserControl>

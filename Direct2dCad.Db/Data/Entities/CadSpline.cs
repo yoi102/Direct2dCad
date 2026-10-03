@@ -24,20 +24,8 @@ public sealed class CadSpline : Curve
         {
             if (_length is { } cached)
                 return cached;
-            using var points = EnumerateFlattenedPoints(DefaultFlattenStepsPerSegment).GetEnumerator();
-            if (!points.MoveNext())
-                return 0;
-
-            var length = 0.0;
-            var previous = points.Current;
-            while (points.MoveNext())
-            {
-                length += previous.DistanceTo(points.Current);
-                previous = points.Current;
-            }
-
-            _length = length;
-            return length;
+            _length = CadCurveMeasurements.Measure(this).Length;
+            return _length.Value;
         }
     }
 

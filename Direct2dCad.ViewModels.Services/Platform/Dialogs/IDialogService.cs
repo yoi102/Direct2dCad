@@ -6,11 +6,16 @@ namespace Direct2dCad.ViewModels.Services.Platform;
 
 public interface IDialogService
 {
+    Task<CadUnit?> ChooseDxfSourceUnitAsync()=>Task.FromResult<CadUnit?>(null);
     void Close(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
 
     Task ShowOrReplaceMessageDialogAsync(string message, string header = "", string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
 
     Task<bool> ShowOrReplaceMessageDialogWithCancelAsync(string message, string header = "", string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
+
+    async Task<CadFileConflictChoice> ShowFileConflictDialogAsync(string path,string dialogIdentifier=ViewServiceIdentifiers.RootDialogHost) =>
+        await ShowOrReplaceMessageDialogWithCancelAsync(Direct2dCad.Lang.CadUiText.Get("FileConflictDescription")+Environment.NewLine+path,
+            Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.SaveConflict),dialogIdentifier) ? CadFileConflictChoice.Overwrite : CadFileConflictChoice.Cancel;
 
     IDisposable ShowProgressBarDialog(string dialogIdentifier = ViewServiceIdentifiers.RootDialogHost);
 
@@ -33,6 +38,8 @@ public interface IDialogService
     void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel viewModel);
     void ShowUserSettingsDialog(IUserSettingsDialogViewModel viewModel);
 }
+
+public enum CadFileConflictChoice { Overwrite,SaveAs,Cancel }
 
 public enum UnsavedDocumentDialogResult
 {

@@ -14,13 +14,14 @@ public sealed class SplineLengthTests
         var document = CadDocument.Create("Length");
         var spline = document.AddSpline([new(0, 0), new(10, 20), new(30, 0)], closed);
         var first = spline.Length;
-        Assert.Equal(ReferenceLength(spline), first, 10);
+        Assert.InRange(Math.Abs(ReferenceLength(spline)-first),0,1e-5);
+        Assert.InRange(CadCurveMeasurements.Measure(spline).LengthErrorEstimate,0,CadCurveMeasurements.DefaultError);
         Assert.Equal(first, spline.Length);
 
         spline.ReplaceFitPoints([new(0, 0), new(20, 40), new(60, 0)]);
-        Assert.Equal(first * 2, spline.Length, 10);
+        Assert.InRange(Math.Abs(first*2-spline.Length),0,2e-6);
         spline.SetClosed(!closed);
-        Assert.Equal(ReferenceLength(spline), spline.Length, 10);
+        Assert.InRange(Math.Abs(ReferenceLength(spline)-spline.Length),0,1e-5);
         spline.ReplaceFitPoints([new(0, 0), new(3, 4)]);
         Assert.False(spline.Closed);
         Assert.Equal(5, spline.Length, 10);
@@ -28,7 +29,7 @@ public sealed class SplineLengthTests
 
     private static double ReferenceLength(CadSpline spline)
     {
-        var points = spline.EnumerateFlattenedPoints(20).ToArray();
+        var points = spline.EnumerateFlattenedPoints(8192).ToArray();
         return points.Zip(points.Skip(1), (a, b) => a.DistanceTo(b)).Sum();
     }
 }

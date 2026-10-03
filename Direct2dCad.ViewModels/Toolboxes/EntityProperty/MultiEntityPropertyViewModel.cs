@@ -583,6 +583,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         CadPolyline value => value.GraphicStyleId,
         CadSpline value => value.GraphicStyleId,
         CadCompositePath value => value.GraphicStyleId,
+        CadRegion value => value.GraphicStyleId,
         CadText value => value.GraphicStyleId,
         CadShapeText value => value.GraphicStyleId,
         CadBlockReference value => value.GraphicStyleId,
@@ -604,6 +605,7 @@ public partial class MultiEntityPropertyViewModel : ObservableObject, IStrokeSty
         CadPolyline polyline => polyline.FillStyleId,
         CadSpline spline => spline.FillStyleId,
         CadCompositePath path => path.FillStyleId,
+        CadRegion path => path.FillStyleId,
         _ => null
     };
 

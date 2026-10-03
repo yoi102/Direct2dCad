@@ -46,30 +46,65 @@
             <Menu VerticalAlignment="Center"
                   md:MenuAssist.TopLevelMenuItemHeight="25">
                 <MenuItem Foreground="White"
+                          AutomationProperties.AutomationId="WindowFileMenu"
                           Header="{I18N {x:Static r:LangKeys.File}}">
+                    <MenuItem.Resources>
+                        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                        </Style>
+                    </MenuItem.Resources>
                     <MenuItem Command="{Binding NewCommand}"
                               Icon="{md:PackIcon Kind=FilePlus}"
-                              Foreground="White"
+                              AutomationProperties.AutomationId="FileMenuNewDocumentItem"
                               Header="{I18N {x:Static r:LangKeys.New}}" />
+                    <MenuItem Header="{I18N {x:Static r:LangKeys.EngineeringTemplate}}"
+                              AutomationProperties.AutomationId="FileMenuTemplatesItem"
+                              Icon="{md:PackIcon Kind=FileOutline}">
+                        <MenuItem Header="A4 · mm · 1:1" Icon="{md:PackIcon Kind=FileOutline}"
+                                  Command="{Binding NewTemplateCommand}" CommandParameter="A4"
+                                  AutomationProperties.AutomationId="FileMenuA4TemplateItem" />
+                        <MenuItem Header="A3 · mm · 1:100" Icon="{md:PackIcon Kind=FileOutline}"
+                                  Command="{Binding NewTemplateCommand}" CommandParameter="A3-100"
+                                  AutomationProperties.AutomationId="FileMenuA3TemplateItem" />
+                        <MenuItem Header="Letter · in · 1:1" Icon="{md:PackIcon Kind=FileOutline}"
+                                  Command="{Binding NewTemplateCommand}" CommandParameter="Letter"
+                                  AutomationProperties.AutomationId="FileMenuLetterTemplateItem" />
+                    </MenuItem>
+                    <Separator />
                     <MenuItem Command="{Binding OpenFileCommand}"
                               Icon="{md:PackIcon Kind=FolderOpen}"
-                              Foreground="White"
+                              AutomationProperties.AutomationId="FileMenuOpenDocumentItem"
                               Header="{I18N {x:Static r:LangKeys.OpenFile}}" />
+                    <MenuItem Command="{Binding ImportDxfCommand}"
+                              Icon="{md:PackIcon Kind=FileImportOutline}"
+                              AutomationProperties.AutomationId="FileMenuOpenDxfItem"
+                              Header="{I18N {x:Static r:LangKeys.ImportDxf}}" />
+                    <Separator Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}"
                               Icon="{md:PackIcon Kind=ContentSave}"
-                              Foreground="White"
+                              AutomationProperties.AutomationId="FileMenuSaveDocumentItem"
                               Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.Save}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}"
                               Icon="{md:PackIcon Kind=ContentSaveAdd}"
-                              Foreground="White"
+                              AutomationProperties.AutomationId="FileMenuSaveAsItem"
                               Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.SaveAs}}" />
-                    <Separator />
+                    <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveCompressedCopyCommand}"
+                              Icon="{md:PackIcon Kind=FolderZipOutline}"
+                              AutomationProperties.AutomationId="FileMenuSaveCompressedCopyItem"
+                              Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                              Header="{I18N {x:Static r:LangKeys.SaveCompressedCopy}}" />
+                    <MenuItem Command="{Binding CurrentEditorTabViewModel.ExportDxfCommand}"
+                              Icon="{md:PackIcon Kind=FileExportOutline}"
+                              AutomationProperties.AutomationId="FileMenuExportDxfItem"
+                              Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
+                              Header="{I18N {x:Static r:LangKeys.ExportDxf}}" />
+                    <Separator Visibility="{Binding IsPrintAvailable, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.PrintCommand}"
                               Icon="{md:PackIcon Kind=Printer}"
                               InputGestureText="Ctrl+P"
-                              Foreground="White"
+                              AutomationProperties.AutomationId="FileMenuPrintItem"
                               Visibility="{Binding IsPrintAvailable, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.Print}}" />
                 </MenuItem>
@@ -135,6 +170,9 @@
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm_tb:EntityPropertiesToolboxViewModel}">
                             <v_tb:EntityPropertiesToolboxView />
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm_tb:DrawingRecoveryToolboxViewModel}">
+                            <v_tb:DrawingRecoveryToolboxView />
                         </DataTemplate>
                         <!-- DataTemplate: how to render each toolbox VM's content -->
                         <DataTemplate DataType="{x:Type vm_tb:DocumentExplorerToolboxViewModel}">

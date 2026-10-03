@@ -20,5 +20,7 @@ public enum CadSectionKind : ushort
     Images = 109,
     OleObjects = 110,
     BlockReferences = 111,
-    CompositePaths = 112
+    CompositePaths = 112,
+    Dimensions = 113,
+    Regions = 114
 }

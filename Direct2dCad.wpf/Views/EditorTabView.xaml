@@ -47,6 +47,20 @@
                             Value="Center" />
                 </Style>
             </ContextMenu.Resources>
+            <MenuItem Header="{I18N {x:Static r:LangKeys.BooleanOperations}}"
+                      AutomationProperties.AutomationId="BooleanOperationsMenu"
+                      IsEnabled="{Binding CanBooleanSelection}">
+                <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadBooleanUnionIconTemplate}" /></MenuItem.Icon>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.BooleanUnion}}" Command="{Binding BooleanUnionCommand}" AutomationProperties.AutomationId="BooleanUnionMenuItem">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadBooleanUnionIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.BooleanIntersection}}" Command="{Binding BooleanIntersectionCommand}" AutomationProperties.AutomationId="BooleanIntersectionMenuItem">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadBooleanIntersectionIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.BooleanDifference}}" Command="{Binding BooleanDifferenceCommand}" AutomationProperties.AutomationId="BooleanDifferenceMenuItem">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadBooleanDifferenceIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.Undo}}"
                       InputGestureText="Ctrl+Z"
                       Command="{Binding UndoCommand}">
@@ -374,6 +388,15 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Padding="12,6" Background="{DynamicResource MaterialDesign.Brush.Background}"
+                Visibility="{Binding IsCompatibilityReadOnly, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Margin="12,0,0,0"
+                        Content="{I18N {x:Static r:LangKeys.SaveCompatibleCopy}}" Command="{Binding SaveCompatibleCopyCommand}" />
+                <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Text="{I18N {x:Static r:LangKeys.CompatibilityReadOnly}}" />
+            </DockPanel>
+        </Border>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
@@ -878,4 +901,5 @@
             </DockPanel>
         </Border>
     </Grid>
+    </DockPanel>
 </UserControl>

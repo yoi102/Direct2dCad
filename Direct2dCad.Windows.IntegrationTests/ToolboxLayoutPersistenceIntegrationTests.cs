@@ -60,6 +60,36 @@ public sealed class ToolboxLayoutPersistenceIntegrationTests
     }
 
     [Fact]
+    public void Restore_OldLayoutKeepsNewToolboxAndSavedPaneSize()
+    {
+        RunSta(() =>
+        {
+            var directory = Path.Combine(Path.GetTempPath(), $"Direct2dCad-toolbox-upgrade-{Guid.NewGuid():N}");
+            try
+            {
+                var store = new InMemoryToolboxLayoutSettingsStore();
+                var service = new ToolboxLayoutPersistenceService(store, Path.Combine(directory, "layout.json"));
+                var existing = new TestToolbox(store, "toolbox.existing", DockZone.LeftTop, true);
+                var source = new ToggleDockingManager { Layout = CreateSingleToolboxLayout(existing, 347) };
+                service.Save(source, [existing]);
+                var added = new TestToolbox(store, "toolbox.drawing-assistant", DockZone.RightTop, true);
+                var startup = CreateLayout(existing, added, 280);
+                var target = new ToggleDockingManager { Layout = startup };
+
+                Assert.True(service.Restore(target, [existing, added]));
+                var restored = target.Layout.Descendents().OfType<LayoutAnchorable>().ToArray();
+                Assert.Contains(restored, item => item.ContentId == added.Id && ReferenceEquals(item.Content, added));
+                var saved = Assert.Single(restored, item => item.ContentId == existing.Id);
+                Assert.Equal(347, ((LayoutAnchorablePane)saved.Parent).DockWidth.Value);
+            }
+            finally
+            {
+                if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+            }
+        });
+    }
+
+    [Fact]
     public void Restore_InvalidLayout_KeepsCurrentLayout()
     {
         RunSta(() =>

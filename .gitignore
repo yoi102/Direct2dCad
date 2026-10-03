@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Release MSI sources are generated from the self-contained application output.
+/installer/Direct2dCad.Msi/.build/

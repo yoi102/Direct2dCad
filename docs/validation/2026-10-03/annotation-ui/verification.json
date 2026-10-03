@@ -1,0 +1,137 @@
+{
+  "date": "2026-10-03",
+  "scope": "Annotation live properties, welcome context, canvas cursor, window file menu",
+  "viewModels": {
+    "total": 69,
+    "passed": 69,
+    "failed": 0,
+    "evidenceStage": "Historical result before live annotation editing"
+  },
+  "uiUniqueLatest": [
+    {
+      "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CanvasCursorFollowsSelectionDrawingPanAndCancel",
+      "outcome": "Passed",
+      "trx": "TestResults/dynamic-input/ui-inline-final/yoiri_YOIRI_2026-10-03_17_16_44_net10.0.trx"
+    },
+    {
+      "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.DrawingStepInputAndEditRibbonRemainAccessibleInANarrowWindow",
+      "outcome": "Passed",
+      "trx": "TestResults/dynamic-input/ui-inline-final/yoiri_YOIRI_2026-10-03_17_16_44_net10.0.trx"
+    },
+    {
+      "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.WindowFileMenuSupportsTemplatesExchangeAndCompressedCopy",
+      "outcome": "Passed",
+      "trx": "TestResults\\annotation-properties\\pointer-ui\\yoiri_YOIRI_2026-10-03_14_54_19_net10.0.trx"
+    },
+    {
+      "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ApplicationLaunchesWithAccessibleMainSurface",
+      "outcome": "Passed",
+      "trx": "TestResults/dynamic-input/ui-inline-final/yoiri_YOIRI_2026-10-03_17_16_44_net10.0.trx"
+    },
+    {
+      "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.AnnotationRibbonPreviewPlacementPropertiesAndTemplateAreUsable",
+      "outcome": "Passed",
+      "trx": "TestResults/dynamic-input/ui-inline-final/yoiri_YOIRI_2026-10-03_17_16_44_net10.0.trx"
+    },
+    {
+      "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.AnnotationAssistantIsHiddenAndConfirmedPointsRemainVisibleUntilCancelled",
+      "outcome": "Passed",
+      "trx": "TestResults/dynamic-input/ui-inline-final/yoiri_YOIRI_2026-10-03_17_16_44_net10.0.trx"
+    }
+  ],
+  "packageRebuilt": false,
+  "interactiveLayoutSettings": "isolated temporary fixture directory",
+  "cursorFollowUp": {
+    "behavior": "Arrow with cursor tool icon; hand during pan or grip drag",
+    "activeToolIconResourceCount": 43,
+    "pasteIcon": true,
+    "viewModels": {
+      "total": 49,
+      "passed": 49,
+      "failed": 0,
+      "trx": "TestResults\\annotation-properties\\cursor-arrow-viewmodels\\yoiri_YOIRI_2026-10-03_15_12_33_net10.0.trx"
+    },
+    "ui": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "trx": "TestResults\\annotation-properties\\marker-without-grid-snap-ui\\yoiri_YOIRI_2026-10-03_15_18_30_net10.0.trx"
+    }
+  },
+  "markerFollowUp": {
+    "behavior": "Position marker stays visible with grid snap disabled; accepting a point still follows snapping settings",
+    "services": {
+      "total": 16,
+      "passed": 16,
+      "failed": 0,
+      "trx": "TestResults\\annotation-properties\\marker-without-grid-snap-services\\yoiri_YOIRI_2026-10-03_15_17_34_net10.0.trx"
+    },
+    "ui": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "trx": "TestResults\\annotation-properties\\marker-without-grid-snap-ui\\yoiri_YOIRI_2026-10-03_15_18_30_net10.0.trx"
+    }
+  },
+  "liveAnnotationFollowUp": {
+    "behavior": "Immediate updates without Apply or losing input focus; focused input and preset undo grouping",
+    "viewModels": {
+      "total": 45,
+      "passed": 45,
+      "failed": 0,
+      "trx": "TestResults\\annotation-properties\\live-viewmodels-final\\yoiri_YOIRI_2026-10-03_15_33_05_net10.0.trx"
+    },
+    "ui": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0,
+      "trx": "TestResults\\annotation-properties\\live-ui\\yoiri_YOIRI_2026-10-03_15_33_24_net10.0.trx"
+    },
+    "releaseBuild": "Passed; zero warnings and errors",
+    "screenshots": "TestResults/annotation-properties/live-screenshots"
+  },
+  "pointMarkerFollowUp": {
+    "behavior": "Hide annotation assistant step controls; persistent screen-sized confirmed-point markers; status-bar step tooltip",
+    "viewModels": {
+      "total": 45,
+      "passed": 45,
+      "failed": 0,
+      "trx": "TestResults\\annotation-properties\\point-markers-viewmodels\\yoiri_YOIRI_2026-10-03_15_46_29_net10.0.trx"
+    },
+    "uiUniqueLatest": {
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "primaryTrx": "TestResults\\annotation-properties\\point-markers-ui\\yoiri_YOIRI_2026-10-03_15_48_10_net10.0.trx",
+      "narrowWindowTrx": "TestResults\\annotation-properties\\point-markers-narrow-final\\yoiri_YOIRI_2026-10-03_15_52_52_net10.0.trx"
+    },
+    "firstUiRun": "3 passed, 1 failed at grid-snap click; narrow retries hit grid-snap click or notification wait; passed after moving test pointer away from notification area and refocusing",
+    "retainedFailureDirectories": [
+      "TestResults/annotation-properties/point-markers-ui",
+      "TestResults/annotation-properties/point-markers-narrow-ui",
+      "TestResults/annotation-properties/point-markers-narrow-diagnostic"
+    ],
+    "releaseBuild": "Passed; zero warnings and errors",
+    "screenshots": "TestResults/annotation-properties/point-markers-screenshots"
+  },
+  "dynamicInputFollowUp": {
+    "scope": "Compact canvas dynamic input with translucent inline mode icon",
+    "verification": "../dynamic-input/verification.json",
+    "viewModels": {
+      "total": 119,
+      "passed": 119,
+      "failed": 0,
+      "trx": "TestResults/dynamic-input/viewmodels-final-geometry/yoiri_YOIRI_2026-10-03_16_55_22_net10.0.trx"
+    },
+    "ui": {
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "trx": "TestResults/dynamic-input/ui-inline-final/yoiri_YOIRI_2026-10-03_17_16_44_net10.0.trx",
+      "singleFinalRun": true
+    },
+    "annotationUiCasesRerun": 5,
+    "windowFileMenuUsesPreviousEvidence": true,
+    "packageRebuilt": false
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-03",
+  "version": "0.0.0.2",
+  "rid": "win-x64",
+  "sdk": "10.0.401",
+  "selfContained": true,
+  "includedFrameworks": [
+    "Microsoft.NETCore.App",
+    "Microsoft.WindowsDesktop.App"
+  ],
+  "applicationVersion": "0.0.0.2",
+  "installer": {
+    "productName": "Direct2dCad",
+    "internalVersion": "1.0.2",
+    "displayVersion": "0.0.0.2",
+    "productIcon": "Direct2dCadIcon",
+    "startMenuShortcut": "[INSTALLFOLDER]Direct2dCad.exe",
+    "desktopShortcut": "[INSTALLFOLDER]Direct2dCad.exe",
+    "runtimeFiles": [
+      "hostfxr.dll",
+      "coreclr.dll"
+    ],
+    "upgradeCode": "15045137-B490-4015-B5E5-C33A4E2341F2",
+    "unsigned": true,
+    "buildWarnings": 0,
+    "buildErrors": 0
+  },
+  "files": [
+    {
+      "name": "Direct2dCad.msi",
+      "bytes": 67631051,
+      "sha256": "2C49BF1E1C20D4439934A991D709E1D2F136930C40EB043B3259E88E94F75CF2"
+    },
+    {
+      "name": "Direct2dCad.zip",
+      "bytes": 82033497,
+      "sha256": "34716958CEA60F4C43793069322DBC95B2F3B8018337521F086D2523BCB97B4B"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 166,
+      "sha256": "54AD671EDC2EE1737DA9C35C31FDEC41180A64AEC0FAE5498F2013C2581560ED"
+    }
+  ],
+  "artifactsDirectory": "TestResults/github-release-0.0.0.2/dist",
+  "signing": "unsigned"
+}

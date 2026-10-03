@@ -21,6 +21,33 @@ public abstract class EntityPropertyViewModel : ObservableObject,
     private bool _isPasteLayerSelection;
     private CadDocumentViewModel? _layerDocumentViewModel;
     private EntityId? _layerEntityId;
+    public bool SupportsGeometryOrientation => OrientationEntity is CadEllipse or CadEllipseArc or CadRectangle;
+    private CadEntity? OrientationEntity => _layerEntityId is { } id && _layerDocumentViewModel?.CadEditor.Document.TryGetEntity(id,out var entity)==true ? entity : null;
+    public bool HasCurveMeasurement => OrientationEntity is Curve;
+    public string CurveMeasurementDisplay { get; private set; }="";
+    public string CurveMeasurementDetail { get; private set; }="";
+    private void RefreshMeasurement()
+    {
+        if(OrientationEntity is Curve curve)
+        {
+            var result=CadCurveMeasurements.Measure(curve);
+            CurveMeasurementDisplay=$"{Direct2dCad.Lang.CadUiText.Get("MeasurementLength")}: {(result.Approximate ? "≈ " : "")}{ToDisplayLength(result.Length):G10} {CadUnitConversion.GetSymbol(DocumentUnit)}";
+            CurveMeasurementDetail=result.Approximate ? $"{Direct2dCad.Lang.CadUiText.Get("MeasurementError")}: {ToDisplayLength(result.LengthErrorEstimate):G4} {CadUnitConversion.GetSymbol(DocumentUnit)}" : "";
+            if(result.ReachedBudget) CurveMeasurementDetail+=" · "+Direct2dCad.Lang.CadUiText.Get("CalculationBudgetReached");
+        }
+        else {CurveMeasurementDisplay="";CurveMeasurementDetail="";}
+        OnPropertyChanged(nameof(HasCurveMeasurement));OnPropertyChanged(nameof(CurveMeasurementDisplay));OnPropertyChanged(nameof(CurveMeasurementDetail));
+    }
+    public double GeometryRotationDegrees
+    {
+        get=>SupportsGeometryOrientation ? Direct2dCad.Commands.SetEntityOrientationCommand.Rotation(OrientationEntity!)*180/Math.PI : 0;
+        set
+        {
+            if(!double.IsFinite(value) || !SupportsGeometryOrientation || !IsEditable || Math.Abs(value-GeometryRotationDegrees)<1e-9) return;
+            _layerDocumentViewModel!.CadEditor.DocumentCommands.Execute(new Direct2dCad.Commands.SetEntityOrientationCommand(_layerEntityId!.Value,value*Math.PI/180));
+            OnPropertyChanged();
+        }
+    }
     private EntityLayerOption? _selectedLayerOption;
     private StrokeCapOption? _selectedStartCapOption;
     private StrokeCapOption? _selectedEndCapOption;
@@ -194,6 +221,9 @@ public abstract class EntityPropertyViewModel : ObservableObject,
 
         _layerDocumentViewModel = documentViewModel;
         _layerEntityId = entity.Id;
+        RefreshMeasurement();
+        OnPropertyChanged(nameof(SupportsGeometryOrientation));
+        OnPropertyChanged(nameof(GeometryRotationDegrees));
         _isDrawingLayerSelection = false;
         _isPasteLayerSelection = false;
         IsEditable = CadEntityAccessPolicy.IsEditable(documentViewModel.CadEditor.Document, entity);
@@ -213,6 +243,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
 
         _layerDocumentViewModel = documentViewModel;
         _layerEntityId = null;
+        RefreshMeasurement();
         _isDrawingLayerSelection = true;
         _isPasteLayerSelection = false;
         ClearColorSourceSelection();
@@ -487,7 +518,7 @@ public abstract class EntityPropertyViewModel : ObservableObject,
             CadCompositePath path => !path.Closed,
             _ => false
         };
-        SupportsLineJoin = entity is CadRectangle or CadPolyline or CadSpline or CadCompositePath;
+        SupportsLineJoin = entity is CadRectangle or CadPolyline or CadSpline or CadCompositePath or CadRegion;
     }
 
     private void CommitStrokeStyleChange()

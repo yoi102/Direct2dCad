@@ -1,0 +1,176 @@
+{
+  "date": "2026-10-03",
+  "configuration": "Release",
+  "build": {
+    "log": "TestResults/recovery-lifecycle/build.log",
+    "sha256": "237F8649A8F499F1D67250C06EC5538586EF3E73A4BD08171636624FADF3D3F4",
+    "errors": 0,
+    "warnings": 0
+  },
+  "whitespace_check_exit": 0,
+  "test_runs": [
+    {
+      "file": "recovery-services-final.trx",
+      "outcome": "Completed",
+      "counters": {
+        "total": 9,
+        "passed": 9,
+        "failed": 0,
+        "not_executed": 0
+      },
+      "sha256": "0F4528DDBAEFEB0A3800A00C2B5A43FF2FDD83256EFF52EE74F46EF2032684F9"
+    },
+    {
+      "file": "document-recovery-viewmodels.trx",
+      "outcome": "Completed",
+      "counters": {
+        "total": 63,
+        "passed": 63,
+        "failed": 0,
+        "not_executed": 0
+      },
+      "sha256": "B8E357A39AF9AD6D4BEB66FFD1FC6F71E1E86803A0B9B111EA7EA2C264E47953"
+    },
+    {
+      "file": "document-recovery-ui.trx",
+      "outcome": "Failed",
+      "counters": {
+        "total": 8,
+        "passed": 7,
+        "failed": 1,
+        "not_executed": 0
+      },
+      "sha256": "5AD4D323C0455565824938651245C5FF4EE7C44A1D6F07F25EE734495477F641"
+    },
+    {
+      "file": "document-menus-final.trx",
+      "outcome": "Completed",
+      "counters": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "not_executed": 0
+      },
+      "sha256": "3E74DA90B6DFC319CF7F992FEED62FA634C37A31EC91BF9AD5083073CF62BE75"
+    },
+    {
+      "file": "recovery-crash-final.trx",
+      "outcome": "Completed",
+      "counters": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "not_executed": 0
+      },
+      "sha256": "F1685CD98A3ECB06259A92B7BEAF95963AC55F3E7F28173A70D7BDF9D00CCF87"
+    }
+  ],
+  "binding_logs": [
+    {
+      "file": "document-menus-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-actions-dark-zh-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-actions-light-en-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-after-clean-restart-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-after-discard-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-before-crash-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-context-menu-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-dark-zh-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-empty-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "recovery-light-en-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "file": "ribbon-mode-focus-bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    }
+  ],
+  "final_sources": [
+    {
+      "file": "Direct2dCad.ViewModels.Services/Documents/CadRecoveryStore.cs",
+      "sha256": "B826260E706142FE28504EEA559272ECCFA981A62825D8B2C2B294FC6073B2E1"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/EditorTabViewModel.Recovery.cs",
+      "sha256": "6846E465073559E56084C9C06D94C14190DFDB77A82E11623FBA10699B85062C"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/EditorTabViewModel.cs",
+      "sha256": "A9BA45DFB7B62C2354BDB25A45D43B7AD6D0C4DA972E1B8253222E15ECF4AE2A"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/MainViewModel.Recovery.cs",
+      "sha256": "3983759AE9A7646BE965E6532F49F5575788A5CF70956A0D5772A833C93D3444"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/MainViewModel.DocumentActions.cs",
+      "sha256": "F38405D72225450C486AA9C7F3E77BE35CEA7C9E10DC7652BAB6E8BB49E9203E"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/MainViewModel.cs",
+      "sha256": "44B8A708FBB6C9EFCA1AE45834B7C4C9C2D16FC2DEFBA6A7365B6D7A7B8F5E64"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/Toolboxes/DocumentExplorerToolboxViewModel.cs",
+      "sha256": "27DCAF71537CA671A4DC5D7C73BE52A64C2D53E014D2F9578E5077468C51DC64"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/DrawingAssistantToolboxView.xaml",
+      "sha256": "B6C0466B83019773C6315073C23498978BE11320DD17349F0FB2B7BF18EE38F3"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/DocumentExplorerToolboxView.xaml",
+      "sha256": "73E1BD5AA4478AE2387B97CA10D258B96C585CB3E6B6EBBDFF342CFC02120778"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/MainRibbonView.xaml",
+      "sha256": "E862F6E784C7CDA9FFD9ACAACAF52A4E563DE7481328C4AE5348C670AD7D3EBB"
+    },
+    {
+      "file": "Direct2dCad.wpf/Services/Importing/FileLocationService.cs",
+      "sha256": "162D792DF7C62FE93F55A727D7E4DF9698DEC5754613A2C9B247364A5C6FB206"
+    }
+  ],
+  "notes": [
+    "document-recovery-ui.trx has seven passing UI cases and the document theme-binding failure subsequently repaired and rechecked in document-menus-final.trx.",
+    "The earlier complete ViewModel run predates document context-menu additions; it is not merged into these targeted final counts.",
+    "All recovery clearing and process termination tests use isolated temporary directories and test processes."
+  ]
+}

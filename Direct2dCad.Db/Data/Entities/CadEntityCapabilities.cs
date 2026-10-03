@@ -24,6 +24,8 @@ public static class CadEntityCapabilities
         ArgumentNullException.ThrowIfNull(entity);
 
         var capabilities = CadEntityCapability.None;
+        if (entity is CadRegion) capabilities |= CadEntityCapability.GraphicStyle | CadEntityCapability.StrokeStyle | CadEntityCapability.LineJoin | CadEntityCapability.Fill | CadEntityCapability.GripHandles;
+        if (entity is CadDimension) capabilities |= CadEntityCapability.GripHandles;
         if (entity is CadLine or CadCircle or CadEllipse or CadEllipseArc or CadRectangle or CadArc or
             CadPolyline or CadSpline or CadCompositePath or CadText or CadShapeText or CadImage or CadOleObject or CadBlockReference)
         {
@@ -64,7 +66,7 @@ public static class CadEntityCapabilities
         if (entity is CadImage or CadOleObject)
             capabilities |= CadEntityCapability.Opacity | CadEntityCapability.EmbeddedContent;
 
-        if (entity is CadText or CadShapeText or CadImage or CadBlockReference)
+        if (entity is CadText or CadShapeText or CadImage or CadBlockReference or CadEllipse or CadEllipseArc or CadRectangle)
             capabilities |= CadEntityCapability.Rotation;
 
         if (entity is CadImage or CadBlockReference)

@@ -370,6 +370,7 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         {
             CadPolyline polyline => Math.Max(1, polyline.Points.Count / 8),
             CadSpline spline => Math.Max(1, spline.FitPoints.Count / 2),
+            CadRegion region => Math.Max(1, region.Contours.Sum(c => c.Edges.Count) / 2),
             CadCompositePath path => Math.Max(1, path.Segments.Count / 2),
             CadShapeText shapeText => Math.Max(1, shapeText.Text.Length / 4),
             CadText => 2,
@@ -420,6 +421,7 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
             CadPolyline { Closed: true } polyline => polyline.FillStyleId,
             CadSpline { Closed: true } spline => spline.FillStyleId,
             CadCompositePath { Closed: true } path => path.FillStyleId,
+            CadRegion path => path.FillStyleId,
             _ => null
         };
 

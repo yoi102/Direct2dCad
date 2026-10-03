@@ -4,6 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang">
+    <UserControl.Resources><BooleanToVisibilityConverter x:Key="Bool"/></UserControl.Resources>
     <Expander Header="{I18N {x:Static r:LangKeys.EntitySettings}}"
               IsExpanded="True"
               Margin="0,0,0,8">
@@ -13,6 +14,8 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -27,6 +30,13 @@
             <CheckBox Grid.Row="1" Grid.ColumnSpan="2"
                       Content="{I18N {x:Static r:LangKeys.Visible}}"
                       IsChecked="{Binding ViewModel.IsVisible, ElementName=Root, Mode=TwoWay}" />
+            <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Visibility="{Binding ViewModel.SupportsGeometryOrientation, ElementName=Root, Converter={StaticResource Bool}}" Margin="0,6">
+                <TextBlock Text="{I18N {x:Static r:LangKeys.RotationDegrees}}" Width="96" VerticalAlignment="Center"/>
+                <TextBox Width="100" Text="{Binding ViewModel.GeometryRotationDegrees, ElementName=Root, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"/>
+            </StackPanel>
+            <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Margin="0,6" Text="{Binding ViewModel.CurveMeasurementDisplay, ElementName=Root}"
+                ToolTip="{Binding ViewModel.CurveMeasurementDetail, ElementName=Root}" TextWrapping="Wrap"
+                Visibility="{Binding ViewModel.HasCurveMeasurement, ElementName=Root, Converter={StaticResource Bool}}"/>
         </Grid>
     </Expander>
 </UserControl>

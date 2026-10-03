@@ -1,0 +1,62 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Direct2dCad"
+           Manufacturer="Direct2dCad"
+           Version="$(var.Version)"
+           UpgradeCode="15045137-B490-4015-B5E5-C33A4E2341F2"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+    <SummaryInformation Description="Direct2dCad $(var.ReleaseVersion) for Windows x64" Manufacturer="Direct2dCad" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Direct2dCad is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="Direct2dCadIcon" SourceFile="$(var.PublishDirectory)\Direct2dCad.ico" />
+    <Property Id="ARPPRODUCTICON" Value="Direct2dCadIcon" />
+    <Property Id="ARPVERSION" Value="$(var.ReleaseVersion)" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Direct2dCad" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Direct2dCad" />
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+
+    <Feature Id="Application" Title="Direct2dCad" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcut" Guid="A89E6FB5-2523-4B34-8B01-AB56D115D245">
+        <Shortcut Id="StartMenuShortcutLink"
+                  Name="Direct2dCad"
+                  Description="Windows CAD drawing application"
+                  Target="[INSTALLFOLDER]Direct2dCad.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="Direct2dCadIcon" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKLM" Key="Software\Direct2dCad" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="E36438EE-6604-4F7C-BD8A-0AB443A7E71E">
+        <Shortcut Id="DesktopShortcutLink"
+                  Name="Direct2dCad"
+                  Description="Windows CAD drawing application"
+                  Target="[INSTALLFOLDER]Direct2dCad.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="Direct2dCadIcon" />
+        <RegistryValue Root="HKLM" Key="Software\Direct2dCad" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="ApplicationFiles">
+      <Files Include="!(bindpath.AppPayload)\**" Directory="INSTALLFOLDER" />
+    </ComponentGroup>
+  </Fragment>
+</Wix>

@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-03",
+  "configuration": "Release",
+  "build": {
+    "solution": "Direct2dCad.slnx",
+    "warnings": 0,
+    "errors": 0
+  },
+  "checks": [
+    {
+      "result_file": "TestResults/recovery-ui/recovery-vm.trx",
+      "passed": 10,
+      "failed": 0,
+      "sha256": "6e9f3ed89452e9152c68f3aae6cfb462e62ead5ca1d81097ed985c00beb626c6"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/recovery-bindings-native-complete.trx",
+      "passed": 6,
+      "failed": 0,
+      "sha256": "323d0bf27f371fa766fdaaee59066ecf3715d57d3849a814f0d328a81833aa2d"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/recovery-toolbox-verified.trx",
+      "passed": 3,
+      "failed": 0,
+      "sha256": "f858eda44dd68a088110d38079f3779b4505710419af7f070acc38758608049c"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/AnnotationRibbonPreviewPlacementPropertiesAndTemplateAreUsable.trx",
+      "passed": 1,
+      "failed": 0,
+      "sha256": "981b99fd7e489ceefc72832ede8ce70cfa00ee8598188593bd6a9f60e33721aa"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/DrawingStepInputAndEditRibbonRemainAccessibleInANarrowWindow.trx",
+      "passed": 1,
+      "failed": 0,
+      "sha256": "e94f42090c9299b2a430788957e7bc26b1cf7145e438ebe9a53dc2c56b66247b"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/UserSettingsDialog_AppliesAndPersistsIsolatedSettings.trx",
+      "passed": 1,
+      "failed": 0,
+      "sha256": "3d84e4153cd1abad29ef9c49fcdb6c57a263779d9f6922b151d9dde5e1c2c23c"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/MultiSelectionPropertiesAndLockedFrozenLayersStayInSync.trx",
+      "passed": 1,
+      "failed": 0,
+      "sha256": "ec24ce513ea78c5329635d71d8e70d7e672bb6119816aa39323c7a392e89cf9c"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/ApplicationLaunchesWithAccessibleMainSurface.trx",
+      "passed": 1,
+      "failed": 0,
+      "sha256": "cde1b36a4f06bf3ee6ddfd5e7b39da022932175cbb19d79ecc3092cbb25614b4"
+    },
+    {
+      "result_file": "TestResults/recovery-ui/DrawingAssistantCanBeReopenedWithoutLosingPendingInput.trx",
+      "passed": 1,
+      "failed": 0,
+      "sha256": "76d299dec482f76ffed5026b51d6f089c1e391bc4d51b44c3e3579e57b4539f0"
+    }
+  ],
+  "total_passed": 25,
+  "binding_traces": [
+    {
+      "file": "TestResults/recovery-ui/AnnotationRibbonPreviewPlacementPropertiesAndTemplateAreUsable-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/DrawingStepInputAndEditRibbonRemainAccessibleInANarrowWindow-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/UserSettingsDialog_AppliesAndPersistsIsolatedSettings-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/MultiSelectionPropertiesAndLockedFrozenLayersStayInSync-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/ApplicationLaunchesWithAccessibleMainSurface-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/DrawingAssistantCanBeReopenedWithoutLosingPendingInput-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/screenshots/recovery-dark-zh-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/screenshots/recovery-empty-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "TestResults/recovery-ui/screenshots/recovery-light-en-bindings.log",
+      "warning_error_lines": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "scope": [
+    "welcome/document switch",
+    "16 recovery rows and long names",
+    "900x700 and 1300x900 windows",
+    "Chinese dark and English light themes",
+    "hover source path and keyboard recovery",
+    "drawing and edit ribbon with dynamic input",
+    "annotation properties and undo/redo",
+    "grid and snap settings",
+    "selected properties and locked/frozen layers",
+    "settings and live theme switch"
+  ],
+  "limits": [
+    "No exhaustive audit of every dialog or floating-window interaction.",
+    "No publication or packaging performed."
+  ],
+  "source_hashes": {
+    "Direct2dCad.wpf/Views/Toolboxes/DrawingAssistantToolboxView.xaml": "512424255e65a6070cf8cdd26c7997d5ae6757511787e9755c3c24257d451ee5",
+    "Direct2dCad.wpf/Views/MainRibbonView.xaml": "9e21b03f62c6eba860a978485127950caf9c237e4360fb91aa3a5ed0bf07c7c3",
+    "Direct2dCad.wpf/Views/MainStatusBarView.xaml": "9401ecfa0e69f05b8d6309eca873cf0e67cffa561588d733b0efb889632e94bd",
+    "Direct2dCad.wpf/Services/Application/CadDockTheme.cs": "824c7408eb30b2f38240aeed1460464799c9fbe36e524bbda4111567114306ec",
+    "Direct2dCad.wpf/Services/Application/WpfBindingDiagnostics.cs": "5bdd628c4220d887e46e07d7cc248d9f0f25c5af68f577aa47034f75df182261"
+  }
+}

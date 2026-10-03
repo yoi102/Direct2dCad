@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -9,20 +10,30 @@ namespace Direct2dCad.UiAutomation.Tests;
 public sealed class CadApplicationFixture : IDisposable
 {
     private readonly string _settingsDirectory;
+    private readonly ProcessStartInfo _startInfo;
 
-    public Application Application { get; }
+    public Application Application { get; private set; }
     public UIA3Automation Automation { get; }
-    public Window MainWindow { get; }
+    public Window MainWindow { get; private set; }
     public string SettingsDirectory => _settingsDirectory;
+    public string BindingTracePath => Path.Combine(_settingsDirectory, "bindings.log");
 
-    public CadApplicationFixture()
+    public string ReadBindingTrace()
     {
-        var executablePath = FindApplicationExecutable();
+        using var stream = new FileStream(BindingTracePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
+
+    public CadApplicationFixture(Action<string>? prepareSettings = null, bool captureBindings = false)
+    {
+        var executablePath = Environment.GetEnvironmentVariable("DIRECT2DCAD_UI_EXECUTABLE") is {Length:>0} requested ? Path.GetFullPath(requested) : FindApplicationExecutable();
         _settingsDirectory = Path.Combine(
             Path.GetTempPath(),
             "Direct2dCad.UiAutomation",
             Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_settingsDirectory);
+        prepareSettings?.Invoke(_settingsDirectory);
 
         var startInfo = new ProcessStartInfo(executablePath)
         {
@@ -30,6 +41,10 @@ public sealed class CadApplicationFixture : IDisposable
             UseShellExecute = false
         };
         startInfo.Environment["DIRECT2DCAD_SETTINGS_DIRECTORY"] = _settingsDirectory;
+        startInfo.Environment["DIRECT2DCAD_RECOVERY_DIRECTORY"] = Path.Combine(_settingsDirectory, "Recovery");
+        if (captureBindings)
+            startInfo.Environment["DIRECT2DCAD_BINDING_TRACE_PATH"] = BindingTracePath;
+        _startInfo = startInfo;
 
         Application = Application.Launch(startInfo);
         Automation = new UIA3Automation();
@@ -41,7 +56,17 @@ public sealed class CadApplicationFixture : IDisposable
         MainWindow.Focus();
     }
 
-    public AutomationElement WaitForElement(string automationId, TimeSpan? timeout = null)
+    public void RestartAfterExit()
+    {
+        if (!Application.HasExited) throw new InvalidOperationException("The previous test process is still running.");
+        Application.Dispose();
+        Application = Application.Launch(_startInfo);
+        MainWindow = Application.GetMainWindow(Automation, TimeSpan.FromSeconds(30)) ??
+            throw new InvalidOperationException("Direct2dCad did not create its main window after restarting.");
+        MainWindow.Focus();
+    }
+
+    public AutomationElement WaitForElement(string automationId, TimeSpan? timeout = null, bool includePopups = false)
     {
         var effectiveTimeout = timeout ?? TimeSpan.FromSeconds(15);
         var stopwatch = Stopwatch.StartNew();
@@ -50,6 +75,9 @@ public sealed class CadApplicationFixture : IDisposable
             EnsureApplicationIsRunning();
             var element = MainWindow.FindFirstDescendant(
                 condition => condition.ByAutomationId(automationId));
+            if (element is null && includePopups)
+                element = Automation.GetDesktop().FindFirstDescendant(
+                    condition => condition.ByAutomationId(automationId).And(condition.ByProcessId(Application.ProcessId)));
             if (element is not null)
                 return element;
 
@@ -97,16 +125,25 @@ public sealed class CadApplicationFixture : IDisposable
         ArgumentNullException.ThrowIfNull(condition);
         var effectiveTimeout = timeout ?? TimeSpan.FromSeconds(10);
         var stopwatch = Stopwatch.StartNew();
+        COMException? lastAutomationError = null;
         while (stopwatch.Elapsed < effectiveTimeout)
         {
             EnsureApplicationIsRunning();
-            if (condition())
-                return;
+            try
+            {
+                if (condition()) return;
+            }
+            catch (COMException exception)
+            {
+                // WPF popups and virtualized rows can disappear during a UIA snapshot.
+                // Retry within the original deadline; a persistent failure still fails the test.
+                lastAutomationError = exception;
+            }
 
             Thread.Sleep(50);
         }
 
-        throw new TimeoutException(failureMessage);
+        throw new TimeoutException(failureMessage, lastAutomationError);
     }
 
     public void EnsureApplicationIsRunning()

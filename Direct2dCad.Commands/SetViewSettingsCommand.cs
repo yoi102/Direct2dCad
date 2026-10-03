@@ -33,7 +33,8 @@ public readonly record struct CadViewSettingsSnapshot(
     CadOriginLinePattern OriginLinePattern,
     CadColor OriginColor,
     double OriginSize,
-    double OriginStrokeWidth)
+    double OriginStrokeWidth,
+    CadSnapSettings? Snap = null)
 {
     public static CadViewSettingsSnapshot From(CadViewSettings settings)
     {
@@ -48,13 +49,14 @@ public readonly record struct CadViewSettingsSnapshot(
             grid.MinorLineColor, grid.MajorLineColor, grid.MinorLineWidth, grid.MajorLineWidth,
             grid.SnapMarkerColor, grid.SnapMarkerLength, grid.SnapMarkerStrokeWidth, grid.SnapMarkerType,
             origin.Position, origin.DisplayType, origin.MarkerType, origin.LinePattern,
-            origin.Color, origin.Size, origin.StrokeWidth);
+            origin.Color, origin.Size, origin.StrokeWidth, settings.Snap);
     }
 
     public void ApplyTo(CadViewSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
         settings.BackgroundColor = BackgroundColor;
+        if (Snap is not null) settings.Snap = Snap;
 
         var grid = settings.Grid;
         grid.Type = GridType;
@@ -126,6 +128,7 @@ public sealed class SetViewSettingsCommand : ICadCommand
 
     private static void Validate(CadViewSettingsSnapshot value)
     {
+        value.Snap?.Validate();
         if (!IsGridDensityValid(value.GridSpacingX, value.GridMinorSpacingX) ||
             !IsGridDensityValid(value.GridSpacingY, value.GridMinorSpacingY) ||
             !AreGridSpacingPresetsValid(value.GridSpacingPresets) ||

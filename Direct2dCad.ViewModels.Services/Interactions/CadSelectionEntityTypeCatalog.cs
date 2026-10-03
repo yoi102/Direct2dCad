@@ -12,6 +12,7 @@ public static class CadSelectionEntityTypeCatalog
 {
     public static IReadOnlyList<CadSelectionEntityTypeDescriptor> All { get; } =
     [
+        new("dimension", typeof(CadDimension), "Dimension", "Dimension"),
         new("line", typeof(CadLine), "Line", "Line"),
         new("circle", typeof(CadCircle), "Circle", "Circle"),
         new("arc", typeof(CadArc), "Arc", "Arc"),
@@ -20,6 +21,8 @@ public static class CadSelectionEntityTypeCatalog
         new("rectangle", typeof(CadRectangle), "Rectangle", "Rectangle"),
         new("polyline", typeof(CadPolyline), "Polyline", "Polyline"),
         new("spline", typeof(CadSpline), "Spline", "Spline"),
+        new("region", typeof(CadRegion), "Region", "Region"),
+        new("compositePath", typeof(CadCompositePath), "CompositePath", "Composite Path"),
         new("text", typeof(CadText), "Text", "Text"),
         new("shapeText", typeof(CadShapeText), "ShapeText", "Shape Text"),
         new("image", typeof(CadImage), "Image", "Image"),

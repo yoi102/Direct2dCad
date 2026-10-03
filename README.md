@@ -1,639 +1,105 @@
-
-
 # Direct2dCad
 
 [中文](README.md) | [日本語](README.ja.md) | [English](README.en.md)
 
-## 项目简介
+Direct2dCad 是基于 WPF、Direct2D 和 DirectWrite 的 Windows 二维 CAD 编辑器。项目已有绘图、编辑、图层/块、布局视口、打印和原生文件保存链路，仍处于完善工程制图能力与交付可靠性的阶段。
 
-Direct2dCad 是一个基于 WPF、Direct2D 和 DirectWrite 的桌面 CAD 编辑器项目，用于实现并验证可维护的 CAD 编辑架构与高性能渲染方案。
+## 文档导航
 
-主要功能：
+| 要了解的内容 | 文档 |
+| --- | --- |
+| 能做什么、还欠缺什么、先做什么 | [CAD 能力与不足](docs/CAD-READINESS.md) |
+| 分阶段任务、简洁交互及验收标准 | [开发规划与交互验收](docs/ROADMAP.md) |
+| M1–M3 当前实现、边界和验证 | [实施状态](docs/M1-M3-STATUS.md)、[绘图与编辑操作](docs/DRAWING-AND-EDITING.md) |
+| M4–M6 标注、交换、容量与分发 | [实施状态](docs/M4-M6-STATUS.md)、[操作说明](docs/ANNOTATION-AND-EXCHANGE.md)、[本机分发](docs/DELIVERY.md) |
+| 分层、项目职责、实际引用与 NuGet 依赖 | [架构与项目职责](docs/ARCHITECTURE.md) |
+| Terminal 简写、AI 工具、执行记录与剩余边界 | [命令行与 AI](docs/COMMANDS-AND-AI.md) |
+| 增量渲染、后台准备、资源边界及基准运行 | [性能、渲染与基准](docs/PERFORMANCE.md) |
+| 回归脚本、覆盖范围、TRX、覆盖率及人工验收 | [测试说明](scripts/testing/README.md) |
+| 2026-09-05 的覆盖率采样与修复记录 | [覆盖扩展记录](scripts/testing/COVERAGE.md) |
+| 2026-09-05 的性能优化与短基准 | [性能记录](scripts/testing/PERFORMANCE-2026-09-05.md)、[增量优化记录](scripts/testing/PERFORMANCE-INCREMENTAL-2026-09-05.md) |
 
-- 绘制和编辑常见 CAD 实体，支持图层、样式、填充、文字、OLE对象与图像。
-- 绘制属性面板支持描边虚线样式、虚线端帽及适用图形的起止端帽、连接样式；设置实时应用到预览和新建实体，在当前文档中按工具类型保留，随图形创建一起撤销/重做。颜色可通过“随图层”开关切换为自定义颜色。
-- 提供选择、框选、grip / handle 拖拽、跨文档复制粘贴和多实体编辑；复制 Block Reference 时会递归携带依赖的块定义。
-- 使用命令系统管理文档与视口操作，支持单条或批量 undo / redo。
-- 通过 Direct2D 资源缓存、局部刷新和变更跟踪提高渲染效率。
-- 提供 WPF 工具面板、属性设置、文件读写、CAD Terminal 和多语言界面。
-- 可连接 LM Studio 或 Codex，通过 AI 对话查询图纸并执行可撤销的 CAD 编辑。
+历史报告保留其日期、代码与机器边界；当前状态见 **2026-10-03** 的 [M1–M3](docs/M1-M3-STATUS.md) 和 [M4–M6 实施记录](docs/M4-M6-STATUS.md)，2026-10-02 的能力报告保留审查基线和问题依据。
+
+## 当前功能
+
+| 功能 | 已实现的范围 |
+| --- | --- |
+| 二维图形 | 直线、圆、圆弧、可旋转椭圆/椭圆弧和矩形、多段线、多边形、插值样条；模型另支持混合路径 |
+| 文字与外部内容 | TrueType 文字、笔画文字、图像、OLE 对象 |
+| 外观 | 图层颜色/线宽、显式颜色、描边端帽/虚线/连接、实色/渐变/图案填充；选中实体按能力显示属性 |
+| 绘制属性 | 按工具类型保留当前文档会话的描边默认值，设置应用到预览和新建图形；颜色可取消“随图层” |
+| 编辑 | 点选、框选/跨选、重叠候选切换、选择过滤、多实体属性、grip、移动/旋转/镜像/缩放；具体变换受实体类型限制 |
+| 精确绘图 | 画布动态数字输入、精确坐标、对象/网格捕捉、正交/极轴；状态栏集中视图和捕捉设置，保持一行 |
+| 曲线编辑 | 偏移、修剪、延伸、圆角/倒角、连接、打断、矩形/环形阵列；精确编辑范围为直线/圆弧路径，详见实施边界 |
+| 组织与布局 | 图层、嵌套块引用、块编辑、多文档、Layout 纸空间和模型视口 |
+| 历史与剪贴板 | 文档命令和编辑器操作有各自历史入口，支持单条/批次撤销重做；跨文档复制粘贴携带依赖块与资源 |
+| 文件与输出 | 原生 `.d2cad`、版本迁移、文件预算与覆盖冲突保护、未知 section 只读兼容副本、自动恢复、打印预览与 Windows XPS/矢量打印结果反馈 |
+| Terminal 与 AI | 命令别名/帮助/历史/补全、坐标输入；LM Studio 和 Codex 共用可撤销的 CAD 工具 |
+| 渲染 | Direct2D 缓存、局部刷新、后台准备、LOD、布局投影、设备失效后的重建 |
+
+M1–M6 已补齐精确输入、对象捕捉、基础编辑、文件保护/恢复、七种关联标注、工程模板、比例打印预览、有界 DXF、可见优先首屏和本机分发。DWG、真实打印、多屏 DPI、干净机器和受控签名等专项仍保留，详见 [最新证据](docs/validation/2026-10-03/m4-m6/README.md)。
+
+## 构建与启动
+
+在仓库根目录执行。主客户端面向 **Windows x64**，目标框架为 `.NET 10`，`global.json` 固定 SDK 10.0.401（允许同特性带补丁升级），需要 Windows 桌面环境。部分 UI/DI 依赖仍是预发布包；本次没有运行云端 CI。
+
+```powershell
+dotnet build .\Direct2dCad.slnx -c Release
+dotnet run -c Release --project .\Direct2dCad.wpf\Direct2dCad.wpf.csproj
+```
+
+本机测试结果见[2026-10-03 验证记录](docs/validation/2026-10-03/README.md)。构建通过不表示打印机、外部 OLE Server 或所有 GPU/多屏环境已验收。
+
+```powershell
+# 默认托管回归
+.\scripts\testing\Run-Regression.ps1 -Configuration Release
+
+# 采集覆盖率
+.\scripts\testing\Run-Regression.ps1 -Configuration Release -CollectCoverage
+```
+
+原生绘制和 UI 回归可加 `-IncludeWindowsIntegration -IncludeUiAutomation`。UI 自动化需要可交互桌面；剪贴板用例只在专用测试桌面启用，详见[测试说明](scripts/testing/README.md)。
+
+生成可供手动验收的本机目录：
+
+```powershell
+dotnet publish .\Direct2dCad.wpf\Direct2dCad.wpf.csproj -c Release -r win-x64 --self-contained true
+```
+
+这条命令生成发布文件，不代表安装、升级、签名或正式发版流程已经完成。
+
+已发布 [GitHub Release 0.0.0.2](https://github.com/yoi102/Direct2dCad/releases/tag/0.0.0.2)，含无需预装 .NET Runtime 的 x64 MSI 安装包和便携 ZIP；安装时会创建开始菜单与桌面快捷方式。版本、SHA256 和签名状态见[分发说明](docs/DELIVERY.md)。
+
+## 基本使用
+
+- 新建或打开 `.d2cad` 图纸，从工具栏或 Terminal 进入绘制模式，左键输入几何点。
+- 绘制时通过属性面板选择目标图层、颜色、线宽、填充与适用的描边样式；图形专属参数随工具变化。
+- 画布提供简短数字输入和候选切换；“图纸恢复”工具箱直接显示可恢复图纸，状态栏图标或 `Ctrl+Shift+D` 重新打开。底部保留坐标/单位、网格类型/主次间距，以及带文字提示的捕捉/约束图标开关。底栏右侧的“视图与捕捉”图标展开极轴角度、垂直/切线捕捉、原点/捕捉标记和背景；Esc 或点击面板外关闭，极轴角度支持 Enter 确认。
+- `Enter` 完成多段线、多边形和样条等多点绘制；`Esc` 返回选择模式并清理绘制、选择框、grip 和粘贴预览。
+- 选择模式先命中 grip。grip 移动/缩放采用预览后再次左键提交，松开鼠标只释放捕获。
+- 右键或中键平移，滚轮缩放；支持选择框、跨选、候选切换和过滤。
+- 欢迎页隐藏绘制、修改和标注页签，切回图纸恢复。Terminal 的 `HELP` 查看命令帮助，`TOOLS` / `TOOLHELP` 查看 JSON 工具；支持变换/布尔简写及坐标输入。单位约定、AI 调用和日志范围见[命令行与 AI](docs/COMMANDS-AND-AI.md)。
+- 块、布局和模型视口有独立操作入口；Polygon 在数据库中是闭合的 `CadPolyline`。
+
+24 种实际绘制模式覆盖直线、矩形、4 种圆、11 种圆弧、3 种椭圆/椭圆弧、多段线、多边形、样条和文字。插块、布局视口和原点放置是额外工具模式。
+
+## AI 连接
+
+AI 工具箱的齿轮按钮打开连接配置。LM Studio 默认地址为 `http://localhost:1234/v1`，需启动 Local Server 并加载支持 tool calling 的模型；Codex 使用本机 `codex app-server` 和 CLI 登录状态。
+
+工具通过稳定的 `document_id` 路由工作区文档，可查询和编辑实体、管理图层/样式/块、打开与保存图纸。同一用户请求对各目标文档分别使用撤销批次。可用能力与实体变换边界以工具契约和源码为准；AI 入口不能补足尚未实现的 CAD 几何功能。
 
 ## 演示与设计
 
-- [基本操作演示]
-  
-https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
-
-
-https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed
-
-- [Block 演示]
-  
-https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310
-
-- [Layout 演示]
-
-https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906
-
-- [OLE 对象演示]
-
-https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
-
-- [Terminal 演示]
-
-https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761
-
-- [LM Studio AI演示]
-
-
-https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7
-
-
-
-https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509
-
-
-
-
-
+- [基本操作演示 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)、[基本操作演示 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [Block 演示](https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310)
+- [Layout 演示](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
+- [OLE 演示](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
+- [Terminal 演示](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
+- [LM Studio AI 演示 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7)、[AI 演示 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
 - [Figma 设计稿](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
+## 许可证
 
-
-
-
-## 项目组成
-
-| 分层 | 项目 |
-|---|---|
-| 核心编辑 | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
-| AI 与 Agent | `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex` |
-| 查询与存储 | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
-| 渲染 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
-| 客户端公共能力 | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
-| ViewModel | `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services`, `Direct2dCad.ViewModels` |
-| WPF | `Direct2dCad.wpf.Controls`, `Direct2dCad.wpf` |
-
-`Direct2dCad.ViewModels.Services` 保存平台接口和 UI 无关的交互协作者；WPF 实现位于 `Direct2dCad.wpf/Services`，跨 ViewModel 通信使用 MessagePipe。
-
-## 架构分层
-
-```mermaid
-flowchart TD
-    UI["WPF UI<br/>Direct2dCad.wpf<br/>Direct2dCad.wpf.Controls"]
-    VMAbs["VM Abstractions<br/>Direct2dCad.ViewModels.Abstractions"]
-    VMServices["VM Services<br/>Direct2dCad.ViewModels.Services"]
-    VM["ViewModels<br/>Direct2dCad.ViewModels"]
-    Client["Client Common / Lang<br/>Direct2dCad.Client.Common<br/>Direct2dCad.Lang"]
-    Editor["Editor<br/>Direct2dCad.Editor"]
-    Commands["Commands<br/>Direct2dCad.Commands"]
-    CommandLine["Command Line<br/>Direct2dCad.CommandLine"]
-    AIContracts["AI Contracts<br/>Direct2dCad.AI.Contracts"]
-    LmStudio["LM Studio Adapter<br/>Direct2dCad.AI.LmStudio"]
-    Agent["Agent Orchestration<br/>Direct2dCad.Agent"]
-    Codex["Codex App Server Adapter<br/>Direct2dCad.Agent.Codex"]
-    ChangeTracking["Change Tracking<br/>Direct2dCad.ChangeTracking"]
-    Db["CAD Data Model<br/>Direct2dCad.Db"]
-    Query["HitTesting / Indexing<br/>Direct2dCad.HitTesting<br/>Direct2dCad.Indexing"]
-    Rendering["Rendering Abstractions<br/>Direct2dCad.Rendering"]
-    Transient["Transient Scene<br/>Direct2dCad.Rendering.Transient"]
-    Handles["Handle Scene<br/>Direct2dCad.Rendering.Handles"]
-    Direct2D["Direct2D Backend<br/>Direct2dCad.Rendering.Direct2D"]
-    IO["Persistence<br/>Direct2dCad.IO"]
-
-    UI --> VM
-    UI --> VMAbs
-    UI --> CommandLine
-    UI --> AIContracts
-    UI --> LmStudio
-    UI --> Codex
-    VM --> VMAbs
-    VM --> CommandLine
-    VM --> AIContracts
-    VM --> Agent
-    VM --> Codex
-    VM --> VMServices
-    VM --> Client
-    VM --> Editor
-    VM --> IO
-    VM --> Direct2D
-    VMServices --> Editor
-    VMServices --> IO
-    VMServices --> Rendering
-    VMServices --> Direct2D
-    VMServices --> Handles
-    VMServices --> Transient
-    Editor --> Commands
-    Editor --> ChangeTracking
-    Editor --> Query
-    Editor --> Rendering
-    Commands --> ChangeTracking
-    Commands --> Db
-    ChangeTracking --> Db
-    Query --> Db
-    Rendering --> ChangeTracking
-    Rendering --> Db
-    Transient --> Db
-    Handles --> Db
-    Direct2D --> Rendering
-    Direct2D --> Handles
-    Direct2D --> Transient
-    Direct2D --> ChangeTracking
-    Direct2D --> Db
-    IO --> Db
-    Client --> Db
-    Agent --> AIContracts
-    Codex --> Agent
-    Codex --> AIContracts
-```
-
-## 项目职责
-
-### Direct2dCad.AI.Contracts
-
-AI 对话、工具和设置的共享契约，不引用 WPF、具体模型服务和 CAD 数据模型。
-
-- 定义 assistant、tool call 和 tool result 消息协议。
-- 定义 AI 客户端、设置和设置存储接口，供 Agent 与各模型适配器复用。
-
-### Direct2dCad.AI.LmStudio
-
-LM Studio/OpenAI-compatible 协议实现，只依赖 `Direct2dCad.AI.Contracts`。
-
-- 获取 LM Studio 已加载的模型，并调用 `/v1/chat/completions`。
-- 保存连接地址、模型、temperature 和 CAD 工具开关等用户级设置。
-
-### Direct2dCad.Agent
-
-与 UI、WPF 和 CAD 数据模型无关的 Agent 编排层。
-
-- 管理对话历史、上下文窗口预算和超限重试。
-- 执行模型、工具结果、再次调用模型的多轮循环。
-- 通过 `IAgentToolset` 使用宿主提供的工具，不直接依赖具体 CAD 命令。
-- 通过事件报告 assistant 消息、工具结果和上下文压缩状态。
-
-### Direct2dCad.Agent.Codex
-
-Codex app-server 适配层，复用 Codex CLI 的本机认证和模型配置。
-
-- 通过持久化 stdio JSON-RPC 连接获取模型、管理对话线程并执行 turn。
-- 将 `IAgentToolset` 注册为 Codex dynamic tools，与 LM Studio 和 Terminal 共用同一套 CAD 查询及编辑命令。
-- 将 CAD 工具执行切回 UI 同步上下文，编辑结果继续进入 `ICadCommand`、undo / redo 和渲染更新链路。
-- 支持取消当前 turn；切换提供商、模型或工具配置后会重建 Codex 会话。
-
-CAD 工具目录、查询及执行器位于 `Direct2dCad.ViewModels.Tools` 适配层，并由 AI Agent 和终端共同使用；实体编辑仍通过 `ICadCommand` 进入 undo / redo 和渲染更新链路。
-
-AI Toolbox 的连接配置位于齿轮按钮打开的 MaterialDesign 对话框中。LM Studio 默认连接 `http://localhost:1234/v1`，需先启动 Local Server 并加载支持 tool calling 的模型；Codex 通过本机 `codex app-server` 工作，沿用 Codex CLI 的登录状态，可使用配置默认模型或在对话框中选择模型。AI 可通过稳定的 `document_id` 查询、创建、打开、激活、重命名、保存和关闭工作区图纸，也可在创建实体时设置颜色、线宽、填充与描边样式；同一次用户请求中，每个目标文档分别使用独立的 undo / redo batch。
-
-### Direct2dCad.Db
-
-核心 CAD 数据模型层，是图纸内容的 source of truth。
-
-主要职责：
-
-- 定义 `CadDocument`、Layer、Block、Entity、Style、FillStyle、HatchPattern 等核心模型。
-- 定义 line、circle、arc、ellipse、ellipse arc、rectangle、polyline、spline、text、shape text、block reference 等实体。
-- 定义文档级 `CadViewSettings`、grid、origin、layer drawing priority 等设置。
-- 定义 `CadPointD`、`CadVectorD`、`CadRectD`、`CadMatrixD` 等几何类型。
-- 定义 `EntityId`、`LayerId`、`BlockId`、`StyleId` 等强类型 ID。
-
-原则：这里不依赖 editor、rendering、WPF，也不直接关心 Direct2D 资源。
-
-### Direct2dCad.ChangeTracking
-
-CAD 文档变更描述层。
-
-主要职责：
-
-- 定义 `CadDocumentChangeSet`。
-- 定义实体、文档结构、视图设置等变更范围。
-- 区分 geometry、appearance、fill、visibility、layer、draw order 等变更类型。
-- 作为 Commands、Editor、Indexing、Rendering 之间的中性通知模型。
-- 避免 `Direct2dCad.Rendering` / `Direct2dCad.Rendering.Direct2D` 直接依赖 `Direct2dCad.Commands`。
-
-### Direct2dCad.Commands
-
-CAD 文档命令层。
-
-主要职责：
-
-- 定义 `ICadCommand` 和命令执行结果。
-- 实现实体 CRUD、属性修改、图层修改、原点设置等可 undo / redo 的文档命令。
-- 使用统一的剪贴板快照实现复制、粘贴和重复实体，支持嵌套 Block Reference 及其依赖资源。
-- 支持单条命令和批量命令。
-- 批量命令是否按组 undo / redo，应该由命令管理设置决定，而不是由渲染层决定。
-- 命令执行后返回 `CadDocumentChangeSet`，用于索引、缓存和 Direct2D 资源更新。
-
-### Direct2dCad.CommandLine
-
-与 UI 无关的 CAD 命令行协议与解析层。
-
-主要职责：
-
-- 定义命令目录、语法、别名、执行上下文和执行结果。
-- 通过 `ICadCommandLineHandler` 和 `CadCommandLineRegistry` 注册内置、插件或 AI 命令，无需修改中心 switch。
-- 支持 `HELP`、undo / redo、fit、选择、删除、复制粘贴以及实体绘制模式命令；复制粘贴结果会报告实体、块引用和依赖块定义数量。
-- 支持 Tab 补全、命令历史、空 Enter 重复命令，以及 `X,Y`、`@dX,dY`、`@距离<角度` 坐标输入。
-- 将圆、圆弧、椭圆等命令的子模式转换为稳定的语义枚举。
-- 不依赖 WPF、ViewModels、Editor 或 Db，可供桌面 UI、脚本、插件和后续 AI 功能复用。
-
-WPF Terminal 的日志、输入历史和当前文档适配仍由 ViewModel 层负责；真实的文档和视口操作继续进入 Editor 命令系统。
-
-### Direct2dCad.Editor
-
-编辑应用层，协调文档、命令、选择、命中测试、索引、视口和渲染资源更新。
-
-主要职责：
-
-- 提供 `CadEditor` 作为编辑入口。
-- 管理文档命令执行、undo、redo。
-- 维护选择集。
-- 连接 hit testing 和 spatial index。
-- 发布 `CadDocumentChangeSet`。
-- 根据实体变更通知 `ICadGeometryResourceManager` 更新或释放 geometry / brush / text 等资源。
-- 提供 pan、zoom、fit 等视口命令。
-
-### Direct2dCad.HitTesting
-
-命中测试层。
-
-主要职责：
-
-- 在 CAD 世界坐标下执行点选、框选、反选候选判断。
-- 命中测试需要考虑实体几何、line weight、文本外框或填充规则、block reference 变换等。
-- 返回候选实体和命中信息，供 Editor / ViewModels 决定选择行为。
-
-### Direct2dCad.Indexing
-
-空间索引层。
-
-主要职责：
-
-- 记录实体 bounds。
-- 按区域查询候选实体。
-- 为框选、命中测试、局部刷新提供候选集合。
-- 范围计数复用 BVH 节点计数，并用修改前后的 bounds 修正增量；大索引的后续重建基于值快照在后台执行，期间查询合并最新修改。首次构建和快照采集仍在调用线程完成，索引本身不是并发读写容器。
-- 当实体 geometry / line weight / fill / visibility / layer 等影响 bounds 或可见性的属性改变时，需要通过变更通知更新索引。
-
-### Direct2dCad.Rendering
-
-渲染抽象层，不绑定具体 Direct2D 后端。
-
-主要职责：
-
-- 定义 `ICadRenderer`。
-- 定义 `ICadGeometryResourceManager`。
-- 定义 `CadViewport`、`CadRenderOptions`。
-- 定义 `CadRenderInvalidation`、`CadScreenRect` 和多 dirty rect 局部刷新模型。
-- 定义 `ID3D11ImageSource` 桥接接口，支持 WPF 图像源按 dirty rect 刷新。
-
-### Direct2dCad.Rendering.Transient
-
-临时绘制预览场景模型层。
-
-主要职责：
-
-- 定义绘制模式中的临时图形，例如 circle / arc / ellipse / line / polyline / spline / polygon / rectangle / text 预览。
-- 定义选择框、复制粘贴预览、snap marker、绘制辅助线和测量文字。
-- 使用可递归变换的 transient group 表示跨文档 Block 粘贴预览，并纳入局部刷新、图像和 OLE 缓存管理。
-- Transient 图形的 stroke、fill、hatch、line weight 应尽量与最终实体绘制一致。
-- 不负责命令执行，也不把临时图形持久化到 `CadDocument`。
-
-### Direct2dCad.Rendering.Handles
-
-选中实体可视化 handle / grip 场景模型层。
-
-主要职责：
-
-- 定义选中外框、grip / handle 点、handle 场景。
-- 提供 handle 场景构建和 handle 命中测试所需的数据模型。
-- 描述 handle 的位置、类型、尺寸和显示方式。
-- 不直接修改 `CadDocument`，实际移动或缩放由 Editor / Commands 完成。
-
-### Direct2dCad.Rendering.Direct2D
-
-Direct2D 渲染实现层，应该保留为独立项目。`Direct2dCad.Rendering` 是抽象；`Direct2dCad.Rendering.Direct2D` 是当前后端实现。
-
-主要职责：
-
-- 使用 Direct2D 绘制 `CadDocument`。
-- 使用 DirectWrite 测量和绘制 TrueType 文本。
-- 管理 Direct2D geometry / brush / text layout / hatch brush 等资源缓存。
-- 绘制 background、grid、origin、实体、transient overlay、selection handle overlay。
-- 支持 full render 和多 dirty rect 局部刷新。
-- 处理 D3D11 / D3D9 shared surface 与 WPF `D3DImage` 交互。
-- 在 `EndDraw` 出现可恢复设备失败时重建设备资源并触发全量重绘。
-
-原则：绘制时不应该临时创建所有实体资源；实体创建、修改、删除时应通过 change tracking 驱动资源创建、更新和释放。特殊情况下可以延迟创建，但不能让正常绘制路径变成主要资源构造路径。
-
-### Direct2dCad.IO
-
-文件读写层。
-
-主要职责：
-
-- 保存和读取 `CadDocument`。
-- 定义 `.d2cad` 文件容器和 section。
-- 支持 section 级版本迁移。
-- 支持读取单独 section，例如只读取 settings。
-- 序列化文档级 view settings、layer、style、fill / hatch、origin、entity 等内容。
-
-### Direct2dCad.Client.Common
-
-客户端通用模型与用户设置层。
-
-主要职责：
-
-- 定义 `CadUserSettings`。
-- 定义用户级渲染和交互偏好，例如选中颜色、选择框颜色、grip 颜色、是否开启抗锯齿等。
-- 提供 enum description / localization 相关辅助。
-- 明确区分用户偏好和图纸文档内容。
-
-设置边界：
-
-- `CadDocument` / `CadViewSettings` 保存与图纸相关的内容，例如背景、网格、原点、图层、绘制优先级。这些应该随 `.d2cad` 保存。
-- `CadUserSettings` 保存与当前用户相关的偏好，例如选中颜色、选择框颜色、handle 颜色、抗锯齿开关。这些不应该写入图纸文件。
-
-### Direct2dCad.Lang
-
-多语言资源层。
-
-主要职责：
-
-- 管理 resx 语言资源。
-- 提供 `LangKeys` 和 `Strings` 资源访问。
-- 支持 WPF 中的 `I18N` XAML 绑定。
-- 当前 UI 文本应优先通过 Lang 资源绑定，不应在 XAML 中散落硬编码文本。
-
-### Direct2dCad.ViewModels.Abstractions
-
-WPF / ViewModel 共享的轻量抽象层。
-
-主要职责：
-
-- 定义 `CadCanvasToolMode`。
-- 定义画布输入结果、光标类型、鼠标按钮等输入 DTO。
-- 定义 WPF/XAML 需要直接绑定的 ViewModel enum。
-- 避免 WPF 项目为了绑定 enum 而依赖重型 ViewModel 服务实现。
-
-### Direct2dCad.ViewModels.Services
-
-非 UI 的 ViewModel 业务服务层。它用于把 `CadDocumentViewModel` 中的绘制、交互、几何、渲染协调等职责拆出来。
-
-主要职责：
-
-- Platform：定义 ViewModel 依赖的平台边界，按 Dialogs、Importing、Ole、Notifications、Settings、Toolboxes 分组；其中用户设置使用 Store 语义，工具箱图标使用 Provider 语义，主题和语言明确为 Application 级能力。
-- Events：定义 MessagePipe 消息，例如 document interaction state、view settings、editor tab document summary、theme changed。
-- Drawing：绘制状态、绘制点击处理、绘制实体创建、绘制预览、绘制默认样式。
-- Geometry：绘制预览和 grip drag 相关几何构造。
-- Interactions：pan、selection window、copy / paste、grip drag、viewport 初始化等交互控制器。
-- Rendering：overlay scene 协调、render resource attach/detach、render invalidation 计算。
-- Snapping：鼠标吸附逻辑。
-- Styling：预览样式、layer-following 样式解析。
-- Text：文本测量服务，隔离 DirectWrite 测量能力对 ViewModel 的影响。
-
-### Direct2dCad.ViewModels
-
-WPF ViewModel 层。
-
-主要职责：
-
-- 定义 `MainViewModel`、`EditorTabViewModel`、`CadDocumentViewModel`。
-- 定义文档、图层、属性、搜索、选择过滤和命令行等 Toolbox ViewModel。
-- 绑定绘制模式、选择状态、图层、实体属性、用户设置和文档设置。
-- 协调 transient scene、handle scene 和 `Direct2DImageRenderHost`。
-- 使用 `Direct2dCad.ViewModels.Services` 中定义的服务接口和 MessagePipe 消息。
-
-`CadDocumentViewModel` 的方向：只保留画布输入协调、命令入口和状态聚合。绘制预览、grip drag、snapping、render invalidation、文本测量等细分逻辑应继续放到 `Direct2dCad.ViewModels.Services`。
-
-### Direct2dCad.wpf.Controls
-
-WPF 控件库项目，项目文件为 `Direct2dCad.wpf.Controls/Direct2dCad.wpf.Controls.csproj`。
-
-主要职责：
-
-- 放可复用 WPF 控件。
-- 不依赖业务项目。
-
-### Direct2dCad.wpf
-
-WPF 应用层。
-
-主要职责：
-
-- 提供 WPF 启动入口、`MainWindow`、`CadCanvas`。
-- 提供 Ribbon、StatusBar、文档、图层、属性、搜索、选择过滤和 Terminal 等 View。
-- 实现 `Direct2dCad.ViewModels.Services/Platform` 中定义的平台能力，并在 `Services/Application`、`Dialogs`、`Importing`、`Ole`、`Notifications`、`Toolboxes` 中按职责组织。
-- 承载 `D3D11ImageSource` / `D3DImage`。
-- 通过依赖注入装配 ViewModel 和 WPF 服务。
-
-## 画布交互规则
-
-当前画布交互由 `CadCanvas` 转换 WPF 输入，再交给 `CadDocumentViewModel` 处理。
-
-核心规则：
-
-- 左键在 Select 模式下优先命中 grip / handle；命中后进入移动或缩放预览状态。
-- grip / handle 拖动时，松开鼠标不提交、不退出状态，只释放鼠标捕获并继续显示预览。
-- grip / handle 拖动状态下再次左键点击，才提交移动或缩放命令。
-- 右键或中键用于 pan，不需要单独的 Pan 工具模式。
-- `Esc` 在任何状态下都回到 `Select` 模式，并清理绘制状态、选择框、grip drag、paste preview 等临时交互状态。
-- `Enter` 用于完成当前多点绘制，例如 polyline、polygon、spline 等。
-- 鼠标滚轮执行 zoom，并保留选中 handle overlay 的正确显示。
-
-当前绘制模式包括：
-
-```text
-Select
-Line
-Rectangle
-CircleCenterRadius
-CircleCenterDiameter
-CircleTwoPoint
-CircleThreePoint
-ArcThreePoint
-ArcStartCenterEnd
-ArcStartCenterAngle
-ArcStartCenterLength
-ArcStartEndAngle
-ArcStartEndDirection
-ArcStartEndRadius
-ArcCenterStartEnd
-ArcCenterStartAngle
-ArcCenterStartLength
-ArcContinue
-EllipseCenter
-EllipseAxisEnd
-EllipseArc
-Polyline
-Polygon
-Spline
-Text
-SetOrigin
-```
-
-## 绘制和资源更新原则
-
-- 实体创建、修改、删除后，命令结果应携带 `CadDocumentChangeSet`。
-- Editor 根据 change set 更新选择、索引、bounds 和渲染资源。
-- Direct2D 后端根据 change set 创建、更新或释放 geometry / brush / hatch / text layout 等资源。
-- 原子命令批次立即更新空间索引和块边界，批次结束后合并 GPU 资源更新、文档通知与命令日志；单条历史仍保留，撤回粒度由当前设置决定。
-- 绘制顺序同时考虑 layer drawing priority、实体 `ZIndex` 和实体加入顺序。
-- 实体颜色、line weight 可以设置为跟随 layer；这种情况下实体自身属性仍可保存，但绘制时使用 layer 的最终外观。
-- fill / hatch 的颜色应使用统一 fill color；hatch pattern 不应额外绘制不需要的背景色。
-- Transient 绘制应尽量复用普通实体绘制规则，只把辅助线、测量文字、snap marker 作为额外 overlay。
-- 局部刷新 dirty rect 需要考虑 geometry、line weight、fill / hatch、handle、transient preview 和旧位置/新位置的合并区域。
-
-普通实体编辑只检查本次变化涉及的选中项；删除、创建块等按钮按选区和访问状态版本缓存可用性。嵌套块的纯外观变化会传播重绘通知，但不重算引用边界或更新空间索引。Layout 将模型变化映射到各个可见视口并裁剪脏区域，结构、视图设置及屏幕/纸空间线宽模式切换仍保留完整刷新的兜底。
-
-Agent / Terminal 查询采用流式统计；分页只保留最多 `offset + limit` 个排序候选，并维持完整计数和稳定排序。深分页仍可能占用较多内存，统计仍需遍历查询范围。
-
-并行绘制优先使用完整可用的 tile / command list 缓存；缓存不足时才查询可见实体并按估算绘制成本分配连续任务，保持绘制顺序。两种设备模式都只为 worker 实际负责过的实体准备资源，实体修改时增量更新，窗口尺寸变化只更换渲染目标；设备失效时仍完整重建。块面板复用列表项，并按块目录版本刷新，关闭期间延迟列表更新。
-
-本轮验证与基准范围见 [性能优化记录](scripts/testing/PERFORMANCE-2026-09-05.md)。
-
-块引用边界和大选择集支持增量更新，首次几何快照采用有界分批准备；实现边界与短基准见 [增量优化记录](scripts/testing/PERFORMANCE-INCREMENTAL-2026-09-05.md)。
-
-## 项目引用表
-
-| 项目 | 当前项目引用 |
-|---|---|
-| `Direct2dCad.AI.Contracts` | 无 |
-| `Direct2dCad.AI.LmStudio` | `Direct2dCad.AI.Contracts` |
-| `Direct2dCad.Agent` | `Direct2dCad.AI.Contracts` |
-| `Direct2dCad.Agent.Codex` | `Direct2dCad.Agent`, `Direct2dCad.AI.Contracts` |
-| `Direct2dCad.Db` | 无 |
-| `Direct2dCad.ChangeTracking` | `Direct2dCad.Db` |
-| `Direct2dCad.Commands` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
-| `Direct2dCad.CommandLine` | 无 |
-| `Direct2dCad.Editor` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Db`, `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.Rendering` |
-| `Direct2dCad.HitTesting` | `Direct2dCad.Db` |
-| `Direct2dCad.Indexing` | `Direct2dCad.Db` |
-| `Direct2dCad.IO` | `Direct2dCad.Db` |
-| `Direct2dCad.Ole.Windows` | 无 |
-| `Direct2dCad.Rendering` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
-| `Direct2dCad.Rendering.Transient` | `Direct2dCad.Db` |
-| `Direct2dCad.Rendering.Handles` | `Direct2dCad.Db` |
-| `Direct2dCad.Rendering.Direct2D` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient` |
-| `Direct2dCad.Client.Common` | `Direct2dCad.Db` |
-| `Direct2dCad.Lang` | 无 |
-| `Direct2dCad.ViewModels.Abstractions` | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
-| `Direct2dCad.ViewModels.Services` | `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions` |
-| `Direct2dCad.ViewModels` | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
-| `Direct2dCad.wpf.Controls` | 无 |
-| `Direct2dCad.wpf` | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
-| `Direct2dCad.Benchmarks` | `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |
-
-## NuGet 依赖
-
-| 项目 | NuGet 依赖 |
-|---|---|
-| `Direct2dCad.Db` | `StronglyTypedId` |
-| `Direct2dCad.Editor` | `Microsoft.Extensions.DependencyInjection.Abstractions` |
-| `Direct2dCad.IO` | `MessagePack`, `Riok.Mapperly` |
-| `Direct2dCad.Ole.Windows` | `Vanara.PInvoke.Ole` |
-| `Direct2dCad.Lang` | `Antelcat.I18N.SourceGenerators` |
-| `Direct2dCad.Rendering.Direct2D` | `Vortice.Direct2D1`, `Vortice.Direct3D11`, `Vortice.Direct3D9` |
-| `Direct2dCad.ViewModels.Services` | `CommunityToolkit.Mvvm`, `MessagePipe` |
-| `Direct2dCad.ViewModels` | `CommunityToolkit.Mvvm`, `Dirkster.AvalonDock.Core`, `Dirkster.AvalonDock.Mvvm`, `Dirkster.AvalonDock.Mvvm.CommunityToolkit`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection.Abstractions` |
-| `Direct2dCad.wpf` | `Antelcat.I18N.WPF`, `CommunityToolkit.Mvvm`, `Dirkster.AvalonDock`, `Dirkster.AvalonDock.DependencyInjection`, `Dirkster.AvalonDock.Themes.Arc`, `gong-wpf-dragdrop`, `MahApps.Metro`, `MaterialDesignThemes.MahApps`, `MessagePipe`, `Microsoft.Extensions.DependencyInjection` |
-
-## 构建
-
-```powershell
-dotnet build .\Direct2dCad.slnx
-```
-
-自动化测试：
-
-```powershell
-.\scripts\testing\Run-Regression.ps1 -CollectCoverage
-```
-
-加入原生绘制及 UI 回归时使用 `-IncludeWindowsIntegration -IncludeUiAutomation`。测试范围、剪贴板注意事项及覆盖率报告见 [测试说明](scripts/testing/README.md)。
-
-## 性能基准
-
-`Direct2dCad.Benchmarks` 使用 BenchmarkDotNet，并按性能边界拆成以下几组：
-
-基准必须使用 `Release` 配置运行。在 Visual Studio 中启动前也要把解决方案配置切换为 `Release`；Debug 构建及其未优化的项目依赖会被 BenchmarkDotNet 拒绝，以免生成失真的性能结果。
-
-| 基准类 | 覆盖内容 |
-|---|---|
-| `SpatialIndexBenchmarks` | 20,000 / 100,000 实体的 BVH 构建、分配式查询、复用缓冲区查询、1% 实体更新后查询 |
-| `SelectionAvailabilityBenchmarks` | 512 / 20,000 个选中实体的按钮可用性全量检查与版本缓存读取 |
-| `CommandHistoryBenchmarks` | 1,000 / 20,000 条历史的全栈快照复制与常数时间状态标记 |
-| `SplineLengthBenchmarks` | 32 / 512 个拟合点的重复折线测长与缓存读取 |
-| `CacheEvictionBenchmarks` | 128 / 1,024 个缓存候选项的排序淘汰与复用优先队列对照，检查耗时和托管分配；不创建 GPU 资源 |
-| `SelectionOverlayBenchmarks` | 1 / 512 / 20,000 个选中实体的 handle/outline 构建，对比新集合、复用缓冲区、场景复用和版本化排序复用 |
-| `OwnerBoundsUpdateBenchmarks` | 20,000 / 100,000 实体空间中，单个实体修改后的全量边界扫描与增量边界树更新 |
-| `PreparationSnapshotBenchmarks` | 20,000 / 100,000 实体的后台准备快照，全量复制与修改页复制的耗时和分配对比 |
-| `DirtyRegionBatchBenchmarks` | 512 / 20,000 个脏矩形的批量归并，保守覆盖原区域并限制输出数量 |
-| `Direct2DSelectionOverlayBenchmarks` | 512 / 20,000 个选中实体实际进入 Direct2D selection overlay 的缓存回放和大选择集 fallback |
-| `DirtyRegionBenchmarks` | 8 / 32 / 128 个脏矩形的批量规划和增量 Union |
-| `Direct2DRenderingBenchmarks` | line-only / mixed 文档、LOD 开关、完整帧、单/多脏区域、缓存恢复、GPU 资源冷重建、单帧及连续 16 帧 pan/zoom、缩放快照预览 |
-| `Direct2DResourceUpdateBenchmarks` | 单实体与 100 实体 geometry 变更时的 Direct2D 资源更新 |
-| `ComplexSceneRenderingBenchmarks` | 5,000 个文字、2,000 个 hatch、2,000 个 Block Reference（每个展开 12 个实体）以及 512 个图像的热帧、资源重建和首帧 |
-| `DocumentIoBenchmarks` | 生成文档或指定 `.d2cad` 的同步/异步读写、Section 读取、空间索引构建以及加载到 Direct2D 首帧的完整管线 |
-| `LayoutRenderingBenchmarks` | Layout 纸空间、模型 Viewport、激活/未激活 Viewport 的热帧、资源重建和首帧 |
-
-后台准备快照使用不可变分页，仅复制发生变化的页；只修改几何时复用原有绘制顺序。chunk / tile 在一次变更批次内去重失效，实体排序缓存按受影响的所属空间失效，文档结构变化仍保守地全量失效。实体换层时保留可复用的 geometry 和文字布局，并更新外观资源。编辑器创建实体会先确定目标空间再发布变更，Redo 也保持原目标空间。这些优化不改变绘制精度或 LOD 设置；快照复制基准不代表完整帧耗时。
-
-搜索面板在连续变更版本下按实体更新结果，批量更新合并集合通知；多选属性跳过无关实体变更，并按属性类别刷新。后台准备复用成员数组和未变化的块依赖，chunk 计划按所属空间及引用关系失效。仅淘汰缩放缓存时可异步取消录制，修改共享资源前仍等待后台退出。保存先获取一致的 DTO 快照，再逐 section 序列化、写入临时文件并补写目录表，避免同时保留全部压缩载荷；文件格式和原子替换机制不变。
-
-本轮还细分了表级变更：图层改名、锁定和样式变化不再统一当作文档结构变化；图层顺序变化仍重绘场景，但不重建实体几何和空间索引。原生 geometry 的后台准备读取独立值快照，通过有界队列逐项交付；实体修改只废弃该实体的旧结果，其余任务继续。队列上限限制的是待接收结果，不是已使用资源的寿命。
-
-撤销状态比较使用常数时间标记，不再复制或持有全部历史。`CommandHistorySettings.MaximumUndoCommands` 是可选的命令条数软上限，默认 `0` 不限制；只淘汰最旧的完整批次，最新批次即使超限也保留，Undo/Redo 模式仍在操作时读取。它不是精确字节预算。Spline 长度按几何变化失效；保存快照复用不可变的图片/OLE 数据，仍在文档所属线程采集其他可变状态，后台逐 section 写入。保存期间发生的新修改不会误标记为已保存。
-
-`CadDocumentSaveSession` 统一处理每个文档的保存排队、取消、文件路径和修改状态基线。WPF 保存按 128 个实体分段采集快照，以约 4 ms 为让出 UI 的目标；每次恢复后校验编辑版本，变化时丢弃快照并最多重试两次。序列化仍只读取独立 DTO，取消或快照失败不会替换原文件。同步存储 API 保留一次性采集行为。
-
-后台 geometry 消费同时受数量和约 2 ms 的时间预算约束，过期结果的释放也计入预算。Spline/Polyline 的 LOD geometry 在准备阶段基于值快照后台生成，普通绘制和选中绘制只读取资源；未就绪时使用完整 geometry。时间预算不抢占单个实体操作。首帧基准等待准备完成并验证 Present，统计值校验不替代像素对比测试。
-
-`CadOleSessionController` 负责 OLE 会话、MessagePipe 更新订阅、命令化更新和释放；`Direct2DLayoutRenderer` 负责纸张、Layout 视口裁剪和绘制参数。两者位于现有项目，不增加新的程序集。
-
-先列出所有基准：
-
-```powershell
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --list flat
-```
-
-快速 smoke 只验证基准能够初始化和完成，不应用于性能比较：
-
-```powershell
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --smoke --filter "*SpatialIndexBenchmarks*"
-```
-
-需要较快获得带预热和多次迭代的初步趋势时，可使用 BenchmarkDotNet 的 `ShortRun`；它比 smoke 可靠，但仍不替代完整基准：
-
-```powershell
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --job short --filter "*QueryVisibleArea*"
-```
-
-默认的 IO 基准使用可复现的 20,000 实体 mixed 文档。使用真实图纸时通过 `--document` 指定文件；该参数只作用于 `DocumentIoBenchmarks`：
-
-```powershell
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --document "C:\Drawings\large.d2cad" --filter "*DocumentIoBenchmarks*"
-```
-
-运行单组或完整基准：
-
-```powershell
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj -- --filter "*Direct2DRenderingBenchmarks*"
-dotnet run -c Release --project .\Direct2dCad.Benchmarks\Direct2dCad.Benchmarks.csproj
-```
-
-正式比较前应关闭调试器和其他高负载程序，并在相同机器、电源模式和构建版本下运行。同一工作区内不要并行启动多个基准进程，避免它们竞争 BenchmarkDotNet 的临时构建目录。报告同时输出 Mean、P95 和托管内存分配；CSV、HTML 和 GitHub Markdown 文件生成在 `BenchmarkDotNet.Artifacts/results`。
-
-历史结果可以使用 `scripts/benchmarks/Compare-BenchmarkResults.ps1` 比较。脚本按方法、Category 和参数匹配场景，超过阈值时返回非零退出码，可直接用于 CI：
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\benchmarks\Compare-BenchmarkResults.ps1 `
-  -BaselineCsv .\benchmarks-baseline\SpatialIndex-report.csv `
-  -CurrentCsv .\BenchmarkDotNet.Artifacts\results\Direct2dCad.Benchmarks.SpatialIndexBenchmarks-report.csv `
-  -Metric P95 `
-  -MaxRegressionPercent 10 `
-  -FailOnMissing
-```
-
-首帧和 Direct2D 基准会创建真实 Windows 图形设备，应在具有稳定 GPU 驱动的 Windows x64 环境运行。OLE 的性能依赖外部 COM Server 和对象内容，不纳入默认基准；应针对固定 OLE 样本单独建立可选测试，避免默认基准因机器环境而失去可复现性。
-
+见 [LICENSE.txt](LICENSE.txt)。

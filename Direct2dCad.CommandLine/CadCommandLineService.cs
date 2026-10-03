@@ -21,6 +21,8 @@ public sealed class CadCommandLineService : ICadCommandLineService
 
     public CadCommandLineResult Execute(string commandLine, ICadCommandLineContext? context)
     {
+        if (context is not null && double.TryParse(commandLine, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var scalar))
+            return context.SubmitScalarInput(scalar) ? Success("Value accepted.") : Failure(context.DrawingInputError ?? "This step does not accept that value.");
         if (context is not null && CadCommandLinePointParser.LooksLikePoint(commandLine))
             return ExecutePoint(commandLine, context);
 
@@ -44,6 +46,8 @@ public sealed class CadCommandLineService : ICadCommandLineService
 
     private void RegisterBuiltInHandlers()
     {
+        foreach (var mode in new[]{CadCommandLineDrawingMode.Offset,CadCommandLineDrawingMode.Trim,CadCommandLineDrawingMode.Extend,CadCommandLineDrawingMode.Fillet,CadCommandLineDrawingMode.Chamfer,CadCommandLineDrawingMode.Join,CadCommandLineDrawingMode.Break,CadCommandLineDrawingMode.RectArray,CadCommandLineDrawingMode.PolarArray})
+            RegisterMode(mode.ToString().ToUpperInvariant(), "", mode.ToString().ToUpperInvariant(), "Use the current selection, then follow the step prompt; DONE finishes, Esc cancels the preview.", mode);
         Register("HELP", "?", "HELP [command]", "List commands or show command help.", ExecuteHelp);
         Register("CLEAR", "CLS", "CLEAR", "Clear terminal output.", _ => new(true, string.Empty, ClearOutput: true));
         Register("STATUS", "ST", "STATUS", "Show document and interaction status.", request => Success(
@@ -93,10 +97,17 @@ public sealed class CadCommandLineService : ICadCommandLineService
         RegisterMode("TEXT", "T", "TEXT", "Enter text drawing mode.", CadCommandLineDrawingMode.Text);
         RegisterMode("ORIGIN", "OR", "ORIGIN", "Enter origin placement mode.", CadCommandLineDrawingMode.SetOrigin);
         RegisterMode("MVIEW", "MV", "MVIEW", "Create and adjust a paper-space model viewport.", CadCommandLineDrawingMode.LayoutViewport);
+        RegisterMode("DIMLINEAR", "DIM", "DIMLINEAR", "Create a horizontal dimension.", CadCommandLineDrawingMode.DimLinearX);
+        RegisterMode("DIMVERTICAL", "", "DIMVERTICAL", "Create a vertical dimension.", CadCommandLineDrawingMode.DimLinearY);
+        RegisterMode("DIMALIGNED", "", "DIMALIGNED", "Create an aligned dimension.", CadCommandLineDrawingMode.DimAligned);
+        RegisterMode("DIMRADIUS", "", "DIMRADIUS", "Choose a circle or arc and place a radius dimension.", CadCommandLineDrawingMode.DimRadius);
+        RegisterMode("DIMDIAMETER", "", "DIMDIAMETER", "Choose a circle or arc and place a diameter dimension.", CadCommandLineDrawingMode.DimDiameter);
+        RegisterMode("DIMANGULAR", "", "DIMANGULAR", "Choose a vertex and two ray points, then place the angle.", CadCommandLineDrawingMode.DimAngular);
+        RegisterMode("LEADER", "", "LEADER", "Create a leader with override text.", CadCommandLineDrawingMode.Leader);
         Register("DONE", "D", "DONE", "Complete the current multi-point drawing.", request =>
             request.Context.CompleteCurrentDrawing()
                 ? Success("Current drawing completed.")
-                : Failure("The current drawing cannot be completed yet."));
+                : Failure(request.Context.DrawingInputError ?? "The current drawing cannot be completed yet."));
         Register("CANCEL", "ESC", "CANCEL", "Cancel the current interaction and select.", request =>
         {
             request.Context.Cancel();
@@ -137,8 +148,9 @@ public sealed class CadCommandLineService : ICadCommandLineService
         }
 
         return Success(
-            "Available commands:" + Environment.NewLine +
-            string.Join(Environment.NewLine, Commands.Select(FormatHelp)));
+            Direct2dCad.Lang.CadUiText.Get("HelpAvailableCommands") + Environment.NewLine +
+            string.Join(Environment.NewLine, Commands.Select(FormatHelp)) + Environment.NewLine +
+            Direct2dCad.Lang.CadUiText.Get("HelpCoordinateExamples"));
     }
 
     private static CadCommandLineResult ExecuteUndo(CadCommandLineRequest request)
@@ -275,7 +287,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
 
         return context.SubmitDrawingPoint(point)
             ? Success($"Point accepted: {CadUnitConversion.FromMillimeters(point.X, context.Unit):G10},{CadUnitConversion.FromMillimeters(point.Y, context.Unit):G10}")
-            : Failure("The current tool does not accept point input.");
+            : Failure(context.DrawingInputError ?? "The current tool does not accept point input.");
     }
 
     private static CadCommandLineDrawingMode ParseCircleMode(IReadOnlyList<string> arguments)
@@ -331,7 +343,9 @@ public sealed class CadCommandLineService : ICadCommandLineService
         var aliases = string.IsNullOrWhiteSpace(command.Aliases)
             ? string.Empty
             : $" ({command.Aliases})";
-        return $"  {command.Syntax}{aliases} - {command.Description}";
+        var key="Help"+command.Name;
+        var text=Direct2dCad.Lang.CadUiText.Get(key);
+        return $"  {command.Syntax}{aliases} - {(text==key ? command.Description : text)}";
     }
 
     private static string FormatClipboardSummary(CadCommandLineClipboardSummary summary)

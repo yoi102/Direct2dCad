@@ -2,7 +2,7 @@ namespace Direct2dCad.ViewModels.Tools;
 
 internal static class CadAgentContract
 {
-    internal const string Version = "1.5";
+    internal const string Version = "1.8";
 
     internal static object CreateCapabilities(
         IReadOnlyList<CadToolWorkspaceDocument> documents,
@@ -39,12 +39,16 @@ internal static class CadAgentContract
                 appearance = "color and graphic_style are mutually exclusive. By-layer color and line weight resolve from the entity layer. Shared Text and Graphic styles can be changed with their dedicated undoable tools.",
                 fill = "Fill mode none clears fill; style requires an existing style; solid and hatch accept optional colors; hatch defaults to ANSI31 when pattern is omitted; gradient requires stops with offsets 0 and 1.",
                 creation = "Each add_* tool accepts only the geometry fields for its concrete entity. add_entities uses one compact shared schema, but the executor rejects incompatible geometry, fill, and text-specific fields before creating anything; unsupported stroke fields are filtered after the concrete entity is created.",
-                line_types = "Line types are document resources. Continuous is always available; custom line types expose their dash pattern and are rendered by the Direct2D stroke cache. Use list_styles/list_line_types before assigning an ID.",
+                line_types = "Line types are document resources. Continuous is always available; custom line types expose their dash pattern and are rendered by the Direct2D stroke cache. Use list_styles to inspect line types before assigning an ID.",
                 stroke_caps = "start_cap and end_cap apply only to open curves. Never send them for circles, ellipses, rectangles, polygons, or closed polylines/splines/composite paths. dash_cap and dash_style apply to stroked curves; line_join applies only to rectangle, polygon, polyline, spline, and composite-path entities. add_entities ignores unsupported stroke fields per entity so a mixed batch remains atomic and drawable.",
-                transforms = "move supports all editable entities. rotate rejects EllipseArc and OleObject and requires multiples of 90 degrees for Ellipse and Rectangle. scale rejects EllipseArc and requires a factor greater than zero. mirror rejects EllipseArc, requires multiples of 45 degrees for Ellipse and Rectangle, and horizontal or vertical axes for OleObject. The tool validates every selected entity before changing any of them.",
+                transforms = "move supports all editable entities. rotate supports arbitrary finite angles, including oriented Ellipse, EllipseArc and Rectangle; OleObject rotation is unsupported. scale requires a positive factor. mirror supports arbitrary finite axes except OleObject requires horizontal or vertical axes. The tool validates every selected entity before changing any of them.",
+                curve_editing = "edit_curves shares exact pointer-preview plans: offset/trim/extend/join/break support line and circular-arc paths; fillet/chamfer support two individual lines/arcs, with full circles requiring trim=false. Unsupported splines/ellipses fail explicitly. Split/join return new IDs and never guess reference rebinding. array_entities creates rectangular/polar copies in one undoable command, with a 10000-entity budget.",
+                boolean_regions = "boolean_regions requires at least two explicit closed operand IDs. difference also requires subject_entity_id among the operands. Operands must be editable in the current owner space. Exact line/circular boundaries and Regions are supported; splines, ellipses and rounded rectangles are unsupported. Empty or failed results retain the sources. A successful result replaces operands with one Region ID; query its exact contours to verify.",
+                snapping = "set_view_settings exposes independent grid_snap_enabled, object_snap_enabled, ortho_enabled, polar_enabled, polar_increment_degrees, snap_screen_tolerance and object_snap_modes. Explicit coordinates bypass pointer constraints.",
+                annotations = "add_dimension creates a single undoable linear, aligned, radius, diameter, angular or leader annotation. source_entity_id binds direct line/circle/arc geometry; explicit anchors are detached. set_dimension updates placement, font, arrow, preset, lettering sizes, unit, precision, scale, rotation and text_override while preserving references. null text_override restores measurement text. detach_dimension explicitly detaches a dimension; undo restores association. Broken references retain the last accepted measurement and are never rebound by proximity. Rotation, scale and mirror detach association; undo restores it.",
                 locking = "locked is a common entity property. Locked entities cannot be edited; unlocking remains allowed and is undoable. A lock requested together with other properties is applied last.",
                 deletion = "delete_entities requires confirm=true. delete_layer requires delete_entities=true and confirm=true.",
-                query = "get_entity_statistics is complete and unpaged. list_entities is paged; use total_matches and has_more and never assume one page is the whole drawing. measure_geometry returns exact entity lengths where available, analytic areas for closed primitives, and polygonal area estimates for flattened closed paths. Its intersections, nearest_point, project_point, and non-line chord results are marked approximate when curve sampling is used.",
+                query = "get_entity_statistics is complete and unpaged. list_entities is paged; use total_matches and has_more. Queries use independent snapshots and reject stale or closed-document results. measure_geometry uses analytic line/circular geometry and adaptive complex curves, with approximate/error/budget metadata. Intersection tessellation error is a curve-distance bound, not an intersection-coordinate bound near tangency.",
                 verification = "After a mutation, inspect the tool result and query the document when the operation is complex or batch-sized."
             },
             common_entity_properties = new[]
@@ -64,12 +68,14 @@ internal static class CadAgentContract
             {
                 inspect = new[] { "get_agent_capabilities", "get_document_summary", "get_view_settings", "get_entity_statistics", "list_entities", "list_document_catalog", "measure_geometry" },
                 create = new[] { "add_line", "add_circle", "add_arc", "add_ellipse", "add_rectangle", "add_polygon", "add_polyline", "add_spline", "add_composite_path", "add_shape_text", "add_text", "add_entities", "insert_image_from_file", "add_ole_object" },
-                geometry = new[] { "get_entity_geometry", "set_entity_geometry", "transform_entities", "duplicate_entities", "move_entities", "measure_geometry" },
+                geometry = new[] { "get_entity_geometry", "set_entity_geometry", "transform_entities", "duplicate_entities", "move_entities", "measure_geometry", "edit_curves", "array_entities", "boolean_regions" },
                 appearance = new[] { "set_entity_common_properties", "set_entity_fill", "set_entity_stroke_style", "set_entity_specific_properties", "set_ole_object_data", "set_text_style_properties", "set_graphic_style_properties", "list_styles", "create_graphic_style", "create_line_type", "rename_line_type", "delete_line_type", "create_text_style", "create_fill_style", "create_hatch_pattern", "rename_style", "delete_style", "delete_hatch_pattern", "list_system_fonts" },
                 organization = new[] { "list_layers", "create_layer", "rename_layer", "delete_layer", "set_layer_properties", "reorder_layers", "create_block", "insert_block", "list_blocks", "rename_block", "delete_block", "edit_block", "exit_block_edit" },
                 history = new[] { "undo", "redo", "undo_view", "redo_view" },
                 selection = new[] { "select_entities", "select_by_bounds", "select_by_polygon", "select_by_filter", "clear_selection" },
                 view = new[] { "get_view_settings", "set_view_settings", "manage_grid_presets", "set_viewport", "set_drawing_layer" },
+                annotations = new[] { "add_dimension", "set_dimension", "detach_dimension" },
+                exchange = new[] { "open_dxf", "export_dxf" },
                 workspace = new[] { "list_documents", "create_document", "open_document", "activate_document", "rename_document", "save_document", "close_document" }
             },
             entity_capabilities = EntityCapabilities(),
@@ -121,6 +127,10 @@ internal static class CadAgentContract
 
     private static object[] Examples() =>
     [
+        new { intent = "Subtract closed operands from an explicit subject", tool = "boolean_regions",
+            arguments = new { operation = "difference", entity_ids = new[] { 10, 11 }, subject_entity_id = 10 } },
+        new { intent = "Change dimension lettering and arrows", tool = "set_dimension",
+            arguments = new { entity_id = 12, shape_font = "simplex", arrow = "Closed", text_height = 3.0 } },
         new
         {
             intent = "Create one styled circle",
@@ -165,12 +175,14 @@ internal static class CadAgentContract
 
     private static object[] EntityCapabilities() =>
     [
+        new { type = "Region", supports = new[] { "graphic_style", "stroke_style", "fill", "grip_handles", "transform", "boolean_regions", "get_entity_geometry" }, conditions = new { geometry = "Exact line/circular contours may contain holes or disconnected islands. get_entity_geometry returns every contour and edge; set_entity_geometry does not replace Region contours." } },
+        new { type = "Dimension", supports = new[] { "set_dimension", "detach_dimension", "grip_handles", "transform", "get_entity_geometry" }, conditions = new { geometry = "Placement, lettering and arrows use set_dimension. Anchor references are preserved by property edits; rotation/scale/mirror explicitly detach. Broken references never auto-rebind." } },
         new { type = "Line", supports = new[] { "graphic_style", "stroke_style", "start_end_caps", "grip_handles", "transform" }, conditions = new { start_end_caps = "Always supported for a line.", transform = "Move, rotate, positive uniform scale, and mirror are supported." } },
         new { type = "Circle", supports = new[] { "graphic_style", "stroke_style", "fill", "grip_handles", "transform" }, conditions = new { fill = "The circle is closed and can use none, solid, hatch, or gradient fill.", transform = "Rotation and mirror affect the center; uniform scale affects center and radius." } },
         new { type = "Arc", supports = new[] { "graphic_style", "stroke_style", "start_end_caps", "grip_handles", "transform" }, conditions = new { start_end_caps = "Supported only when the arc is not a full circle.", transform = "Move, rotate, positive uniform scale, and mirror are supported." } },
-        new { type = "Ellipse", supports = new[] { "graphic_style", "stroke_style", "fill", "grip_handles", "transform" }, conditions = new { fill = "The ellipse is closed and can use none, solid, hatch, or gradient fill.", transform = "Rotation is limited to 90-degree multiples; scale and mirror are supported, with mirror axes limited to 45-degree multiples." } },
-        new { type = "EllipseArc", supports = new[] { "graphic_style", "stroke_style", "start_end_caps", "grip_handles", "transform" }, conditions = new { start_end_caps = "Supported because an ellipse arc is open.", transform = "Move is supported; rotate, scale, and mirror are not supported by transform_entities." } },
-        new { type = "Rectangle", supports = new[] { "graphic_style", "stroke_style", "line_join", "fill", "grip_handles", "transform" }, conditions = new { fill = "The rectangle is closed and can use none, solid, hatch, or gradient fill.", transform = "Rotation is limited to 90-degree multiples; scale is positive uniform; mirror axes are limited to 45-degree multiples." } },
+        new { type = "Ellipse", supports = new[] { "graphic_style", "stroke_style", "fill", "grip_handles", "transform" }, conditions = new { fill = "The ellipse is closed and can use none, solid, hatch, or gradient fill.", transform = "Arbitrary rotation and mirror, positive uniform scale, and move preserve exact orientation." } },
+        new { type = "EllipseArc", supports = new[] { "graphic_style", "stroke_style", "start_end_caps", "grip_handles", "transform" }, conditions = new { start_end_caps = "Supported because an ellipse arc is open.", transform = "Move, arbitrary rotation and mirror, and positive uniform scale preserve oriented ellipse arc geometry." } },
+        new { type = "Rectangle", supports = new[] { "graphic_style", "stroke_style", "line_join", "fill", "grip_handles", "transform" }, conditions = new { fill = "The rectangle is closed and can use none, solid, hatch, or gradient fill.", transform = "Move, arbitrary rotation and mirror, and positive uniform scale preserve the rectangle frame." } },
         new { type = "Polyline", supports = new[] { "graphic_style", "stroke_style", "start_end_caps", "line_join", "fill", "grip_handles", "transform" }, conditions = new { start_end_caps = "Only for an open polyline.", fill = "Only for a closed polyline.", transform = "Move, rotate, positive uniform scale, and mirror are supported." } },
         new { type = "Spline", supports = new[] { "graphic_style", "stroke_style", "start_end_caps", "line_join", "fill", "grip_handles", "transform" }, conditions = new { start_end_caps = "Only for an open spline.", fill = "Only for a closed spline.", transform = "Move, rotate, positive uniform scale, and mirror are supported." } },
         new { type = "CompositePath", supports = new[] { "graphic_style", "stroke_style", "start_end_caps", "line_join", "fill", "grip_handles", "transform" }, conditions = new { start_end_caps = "Only for an open composite path.", fill = "Only for a closed composite path.", transform = "Move, rotate, positive uniform scale, and mirror are supported." } },

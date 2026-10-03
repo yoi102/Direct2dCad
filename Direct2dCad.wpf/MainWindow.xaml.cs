@@ -19,6 +19,8 @@ public partial class MainWindow
     private readonly MainViewModel _viewModel;
     private readonly ToolboxLayoutPersistenceService _toolboxLayoutPersistence;
     private readonly DispatcherTimer _toolboxLayoutSaveTimer;
+    private readonly DispatcherTimer _recoveryTimer = new() { Interval = TimeSpan.FromSeconds(60) };
+    private bool _windowClosed;
     private bool _isExitConfirmationRunning;
     private bool _allowWindowClose;
     private bool _isToolboxLayoutPersistenceActive;
@@ -28,6 +30,9 @@ public partial class MainWindow
         ToolboxLayoutPersistenceService toolboxLayoutPersistence)
     {
         InitializeComponent();
+        var dockTheme = new CadDockTheme(applicationThemeService.IsDarkTheme);
+        dockTheme.InstallStableStyles(dockManager);
+        dockManager.Theme = dockTheme;
         _viewModel = viewModel;
         _toolboxLayoutPersistence = toolboxLayoutPersistence;
         DataContext = _viewModel;
@@ -57,14 +62,14 @@ public partial class MainWindow
         {
             if (h.IsDark)
             {
-                if (dockManager.Theme is not ArcDarkTheme)
-                    dockManager.Theme = new ArcDarkTheme();
+                if (dockManager.Theme is not CadDockTheme { IsDark: true })
+                    dockManager.Theme = new CadDockTheme(true);
 
             }
             else
             {
-                if (dockManager.Theme is not ArcLightTheme)
-                    dockManager.Theme = new ArcLightTheme();
+                if (dockManager.Theme is not CadDockTheme { IsDark: false })
+                    dockManager.Theme = new CadDockTheme(false);
             }
         });
         Closing += OnWindowClosing;
@@ -75,13 +80,26 @@ public partial class MainWindow
 
     private void OnWindowLoaded(IApplicationThemeService applicationThemeService)
     {
-        if (!applicationThemeService.IsDarkTheme)
-            dockManager.Theme = new ArcLightTheme();
+        if (dockManager.Theme is not CadDockTheme theme || theme.IsDark != applicationThemeService.IsDarkTheme)
+            dockManager.Theme = new CadDockTheme(applicationThemeService.IsDarkTheme);
 
         _toolboxLayoutPersistence.Restore(
             dockManager,
             _viewModel.LayoutService.Anchorables);
         _isToolboxLayoutPersistenceActive = true;
+        _viewModel.RefreshRecoveryEntries();
+        // Numeric drawing input lives on the canvas; only recovery entries need this dock at startup.
+        _viewModel.DrawingRecovery.IsOpenByDefault = _viewModel.HasRecoveryEntries;
+        _viewModel.DrawingRecovery.IsOpen = _viewModel.HasRecoveryEntries;
+        _recoveryTimer.Tick += OnRecoveryTick;
+        _recoveryTimer.Start();
+    }
+
+    private async void OnRecoveryTick(object? sender, EventArgs e)
+    {
+        _recoveryTimer.Stop();
+        try { await _viewModel.CaptureRecoveryCopiesAsync(); }
+        finally { if (IsLoaded && !_windowClosed) _recoveryTimer.Start(); }
     }
 
     private void OnAnchorableStateChanged(object? sender, EventArgs e)
@@ -101,6 +119,10 @@ public partial class MainWindow
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
+        _windowClosed=true;
+        _recoveryTimer.Stop();
+        _recoveryTimer.Tick -= OnRecoveryTick;
+        _viewModel.OpenOperation.Dispose();
         _isToolboxLayoutPersistenceActive = false;
         _toolboxLayoutSaveTimer.Stop();
         _toolboxLayoutSaveTimer.Tick -= OnToolboxLayoutSaveTimerTick;

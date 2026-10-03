@@ -1,156 +1,273 @@
-﻿<UserControl x:Class="Direct2dCad.wpf.Views.MainStatusBarView"
+<UserControl x:Class="Direct2dCad.wpf.Views.MainStatusBarView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:ex="clr-namespace:Direct2dCad.wpf.Extensions"
-             xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
              xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels.Abstractions"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
-             d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-             mc:Ignorable="d" 
-             d:DesignHeight="35" d:DesignWidth="1200">
-    <Border
-            Background="{DynamicResource MaterialDesign.Brush.Background}">
-
-        <StatusBar Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotHiddenInstance}}">
-            <StatusBarItem>
-
-                <TextBlock AutomationProperties.AutomationId="CurrentToolModeText"
-                           Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CadCanvasToolMode}" />
-            </StatusBarItem>
-
-            <Separator />
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{I18N {x:Static r:LangKeys.Unit}}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,4,0" />
-                    <ComboBox Width="100"
-                              Height="24"
-                              Margin="5,0,0,0"
-                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadUnit}}}"
-                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadUnit}" />
-                </StackPanel>
-            </StatusBarItem>
-
-            <Separator />
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{I18N {x:Static r:LangKeys.X}}"
-                               VerticalAlignment="Center" />
-                    <TextBlock Width="78"
-                               Margin="4,0,10,0"
-                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldXDisplay}" />
-                    <TextBlock Text="{I18N {x:Static r:LangKeys.Y}}"
-                               VerticalAlignment="Center" />
-                    <TextBlock Width="78"
-                               Margin="4,0,0,0"
-                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldYDisplay}" />
-                    <TextBlock Margin="8,0,0,0"
-                               VerticalAlignment="Center"
-                               Text="{Binding CurrentEditorTabViewModel.DocumentUnitSymbol}" />
-                </StackPanel>
-            </StatusBarItem>
-
-            <Separator />
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{I18N {x:Static r:LangKeys.Grid}}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,4,0" />
-                    <ComboBox Margin="5 0 0 0"
-                              Width="82"
-                              Height="24"
-                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadGridType}}}"
-                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadGridType}" />
-                </StackPanel>
-            </StatusBarItem>
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="8,0,4,0"
-                               VerticalAlignment="Center"
-                               Text="{I18N {x:Static r:LangKeys.MajorGridSpacing}}" />
-                    <ComboBox Width="128"
-                              Height="24"
-                              Margin="5,0,0,0"
-                              DisplayMemberPath="DisplayName"
-                              ItemsSource="{Binding CurrentEditorTabViewModel.GridSpacingPresets}"
-                              SelectedItem="{Binding CurrentEditorTabViewModel.SelectedMajorGridSpacingPreset}" />
-                </StackPanel>
-            </StatusBarItem>
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="8,0,4,0"
-                               VerticalAlignment="Center"
-                               Text="{I18N {x:Static r:LangKeys.MinorGridSpacing}}" />
-                    <ComboBox Width="128"
-                              Height="24"
-                              Margin="5,0,0,0"
-                              DisplayMemberPath="DisplayName"
-                              ItemsSource="{Binding CurrentEditorTabViewModel.GridSpacingPresets}"
-                              SelectedItem="{Binding CurrentEditorTabViewModel.SelectedMinorGridSpacingPreset}" />
-                </StackPanel>
-            </StatusBarItem>
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{I18N {x:Static r:LangKeys.OriginMarker}}"
-                               VerticalAlignment="Center"
-                               Margin="8,0,4,0" />
-                    <ComboBox Margin="5 0 0 0"
-                              Width="88"
-                              Height="24"
-                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadOriginDisplayType}}}"
-                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadOriginDisplayType}" />
-                </StackPanel>
-            </StatusBarItem>
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{I18N {x:Static r:LangKeys.SnapMarker}}"
-                               VerticalAlignment="Center"
-                               Margin="8,0,4,0" />
-                    <ComboBox Margin="5 0 0 0"
-                              Width="88"
-                              Height="24"
-                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadSnapMarkerType}}}"
-                              SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadSnapMarkerType}" />
-                </StackPanel>
-            </StatusBarItem>
-
-            <Separator />
-
-            <StatusBarItem>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{I18N {x:Static r:LangKeys.Background}}"
-                               VerticalAlignment="Center"
-                               Margin="0,0,4,0" />
-
-                    <mah:ColorPicker Margin="5 0 0 0"
-                                     Width="160"
-                                     Height="24"
-                                     AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
-                                     ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
-                                     AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
-                                     RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
-                                     StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
-                                     mah:TextBoxHelper.AutoWatermark="True"
-                                     mah:TextBoxHelper.ClearTextButton="False"
-                                     AddToRecentColorsTrigger="SelectedColorChanged"
-                                     SelectedColor="{Binding CurrentEditorTabViewModel.ViewModelCadBackgroundColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
-                </StackPanel>
-            </StatusBarItem>
-        </StatusBar>
+             AutomationProperties.AutomationId="MainStatusBarSurface"
+             Height="32">
+    <UserControl.Resources>
+        <Style x:Key="StatusIconToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="300" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Frame" CornerRadius="3" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" />
+                                <Setter TargetName="Frame" Property="BorderThickness" Value="1,1,1,3" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Frame" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="StatusSettingIcon" TargetType="Path">
+            <Setter Property="Width" Value="16" />
+            <Setter Property="Height" Value="16" />
+            <Setter Property="Stretch" Value="Uniform" />
+            <Setter Property="Stroke" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+            <Setter Property="StrokeThickness" Value="1.3" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+        </Style>
+        <Style x:Key="StatusActionButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="2,3" />
+        </Style>
+        <Style x:Key="StatusDetailsLabel" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,5,12,5" />
+        </Style>
+    </UserControl.Resources>
+    <Border Background="{DynamicResource MaterialDesign.Brush.Background}">
+        <DockPanel Margin="4,0">
+            <Button DockPanel.Dock="Right" AutomationProperties.AutomationId="ShowDrawingAssistantButton"
+                    Command="{Binding ShowDrawingRecoveryCommand}" Style="{StaticResource StatusActionButton}"
+                    AutomationProperties.Name="{I18N {x:Static r:LangKeys.DrawingRecovery}}">
+                <Button.ToolTip><StackPanel><TextBlock Text="{I18N {x:Static r:LangKeys.DrawingRecovery}}" /><TextBlock Text="Ctrl+Shift+D" /></StackPanel></Button.ToolTip>
+                <md:PackIcon Kind="BackupRestore" Width="18" Height="18" />
+            </Button>
+            <md:PopupBox x:Name="ViewSettingsPopup" DockPanel.Dock="Right"
+                         AutomationProperties.AutomationId="ViewSettingsButton"
+                         AutomationProperties.Name="{I18N {x:Static r:LangKeys.ViewDetails}}"
+                         ToolTip="{I18N {x:Static r:LangKeys.ViewDetails}}"
+                         Width="28" Height="26" Margin="2,3" Padding="0"
+                         PlacementMode="TopAndAlignRightEdges" PopupMode="Click" StaysOpen="True"
+                         Loaded="ViewSettingsPopup_OnLoaded"
+                         Opened="ViewSettingsPopup_OnOpened"
+                         PreviewKeyDown="ViewSettingsPopup_OnPreviewKeyDown"
+                         IsEnabled="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CanEditDocument, FallbackValue=False, TargetNullValue=False}"
+                         Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
+                <md:PopupBox.ToggleContent>
+                    <md:PackIcon Kind="Tune" Width="18" Height="18" />
+                </md:PopupBox.ToggleContent>
+                <md:PopupBox.PopupContent>
+                    <Border Width="304" Padding="14,12" Background="{DynamicResource MaterialDesign.Brush.Background}"
+                            DataContext="{Binding CurrentEditorTabViewModel}"
+                            AutomationProperties.AutomationId="StatusViewSettingsPanel"
+                            PreviewKeyDown="ViewSettingsPanel_OnPreviewKeyDown">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,10">
+                                <Button DockPanel.Dock="Right" Width="22" Height="22" Padding="0"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        Command="{x:Static md:PopupBox.ClosePopupCommand}"
+                                        ToolTip="{I18N {x:Static r:LangKeys.Close}}"
+                                        AutomationProperties.AutomationId="CloseViewSettingsButton"
+                                        AutomationProperties.Name="{I18N {x:Static r:LangKeys.Close}}">
+                                    <md:PackIcon Kind="Close" Width="16" Height="16" />
+                                </Button>
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.ViewDetails}}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <Grid DataContext="{Binding CadDocumentViewModel}">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="96" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.PolarAngle}}" Style="{StaticResource StatusDetailsLabel}" />
+                                <TextBox x:Name="PolarAngleInput" Grid.Column="1"
+                                         AutomationProperties.AutomationId="PolarAngleInput"
+                                         AutomationProperties.Name="{I18N {x:Static r:LangKeys.PolarAngle}}"
+                                         Text="{Binding PolarIncrementDegrees, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}" />
+                            </Grid>
+                            <WrapPanel DataContext="{Binding CadDocumentViewModel}" Margin="0,10,0,12">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                    <ToggleButton Style="{StaticResource StatusIconToggle}" IsChecked="{Binding IsPerpendicularSnapEnabled}"
+                                                  AutomationProperties.AutomationId="PerpendicularSnapToggle"
+                                                  AutomationProperties.Name="{I18N {x:Static r:LangKeys.SnapPerpendicular}}"
+                                                  ToolTip="{I18N {x:Static r:LangKeys.SnapPerpendicular}}">
+                                        <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                              StrokeThickness="1.6" Width="18" Height="18" Data="M2,16 L16,2 M7,11 L12,16 M7,11 L10,8 L15,13" />
+                                    </ToggleButton>
+                                    <TextBlock Text="{I18N {x:Static r:LangKeys.SnapPerpendicular}}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <ToggleButton Style="{StaticResource StatusIconToggle}" IsChecked="{Binding IsTangentSnapEnabled}"
+                                                  AutomationProperties.AutomationId="TangentSnapToggle"
+                                                  AutomationProperties.Name="{I18N {x:Static r:LangKeys.SnapTangent}}"
+                                                  ToolTip="{I18N {x:Static r:LangKeys.SnapTangent}}">
+                                        <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                              StrokeThickness="1.6" Width="18" Height="18" Data="M1,4 H18 M16,10 A6,6 0 1 1 4,10 A6,6 0 1 1 16,10" />
+                                    </ToggleButton>
+                                    <TextBlock Text="{I18N {x:Static r:LangKeys.SnapTangent}}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                </StackPanel>
+                            </WrapPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="132" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.OriginMarker}}" Style="{StaticResource StatusDetailsLabel}" />
+                                <ComboBox Grid.Column="1" Margin="0,3" SelectedItem="{Binding ViewModelCadOriginDisplayType}"
+                                          AutomationProperties.AutomationId="OriginMarkerSelector"
+                                          AutomationProperties.Name="{I18N {x:Static r:LangKeys.OriginMarker}}"
+                                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadOriginDisplayType}}}" />
+                                <TextBlock Grid.Row="1" Text="{I18N {x:Static r:LangKeys.SnapMarker}}" Style="{StaticResource StatusDetailsLabel}" />
+                                <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,3" SelectedItem="{Binding ViewModelCadSnapMarkerType}"
+                                          AutomationProperties.AutomationId="SnapMarkerSelector"
+                                          AutomationProperties.Name="{I18N {x:Static r:LangKeys.SnapMarker}}"
+                                          ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadSnapMarkerType}}}" />
+                            </Grid>
+                            <GroupBox Header="{I18N {x:Static r:LangKeys.Background}}" Margin="0,10,0,0"
+                                      AutomationProperties.AutomationId="BackgroundColorPicker"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.Background}}">
+                                <GroupBox.Template>
+                                    <ControlTemplate TargetType="GroupBox">
+                                        <StackPanel>
+                                            <ContentPresenter ContentSource="Header" Margin="0,0,0,6" />
+                                            <ContentPresenter ContentSource="Content" />
+                                        </StackPanel>
+                                    </ControlTemplate>
+                                </GroupBox.Template>
+                                <mah:ColorPicker AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
+                                                 ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
+                                                 AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
+                                                 RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
+                                                 StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
+                                                 AddToRecentColorsTrigger="SelectedColorChanged"
+                                                 SelectedColor="{Binding ViewModelCadBackgroundColor, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}" />
+                            </GroupBox>
+                        </StackPanel>
+                    </Border>
+                </md:PopupBox.PopupContent>
+            </md:PopupBox>
+            <DockPanel DockPanel.Dock="Right" DataContext="{Binding OpenOperation}" Margin="8,0"
+                       Visibility="{Binding IsVisible, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}, FallbackValue=Collapsed}">
+                <Button DockPanel.Dock="Right" Content="{I18N {x:Static r:LangKeys.Cancel}}" Command="{Binding CancelCommand}" Padding="8,0" />
+                <TextBlock Text="{Binding Message}" ToolTip="{Binding Message}" MaxWidth="150" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+            <DockPanel DockPanel.Dock="Right" DataContext="{Binding CurrentEditorTabViewModel.Operation}" Margin="8,0"
+                       Visibility="{Binding IsVisible, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}, FallbackValue=Collapsed}">
+                <Button DockPanel.Dock="Right" Content="{I18N {x:Static r:LangKeys.Cancel}}" Command="{Binding CancelCommand}" Padding="8,0" />
+                <TextBlock Text="{Binding Message}" ToolTip="{Binding Message}" MaxWidth="150" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+            <StatusBar Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotHiddenInstance}}">
+                <StatusBar.Resources>
+                    <Style TargetType="StatusBarItem"><Setter Property="Padding" Value="4,0" /></Style>
+                </StatusBar.Resources>
+                <StatusBarItem>
+                    <TextBlock AutomationProperties.AutomationId="CurrentToolStatusText" Width="50" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentStepPrompt}"
+                               AutomationProperties.HelpText="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentStepPrompt}"
+                               Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentToolNameDisplay}" />
+                </StatusBarItem>
+                <Separator />
+                <StatusBarItem>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{I18N {x:Static r:LangKeys.X}}" VerticalAlignment="Center" />
+                        <TextBlock Width="54" Margin="4,0,8,0" TextTrimming="CharacterEllipsis"
+                                   Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldXDisplay}"
+                                   ToolTip="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldXDisplay}" />
+                        <TextBlock Text="{I18N {x:Static r:LangKeys.Y}}" VerticalAlignment="Center" />
+                        <TextBlock Width="54" Margin="4,0,6,0" TextTrimming="CharacterEllipsis"
+                                   Text="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldYDisplay}"
+                                   ToolTip="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CurrentPointerWorldYDisplay}" />
+                        <TextBlock Text="{Binding CurrentEditorTabViewModel.DocumentUnitSymbol}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </StatusBarItem>
+                <Separator />
+                <StatusBarItem IsEnabled="{Binding CurrentEditorTabViewModel.CadDocumentViewModel.CanEditDocument}">
+                    <ComboBox Width="84" Height="24" SelectedItem="{Binding CurrentEditorTabViewModel.ViewModelCadUnit}"
+                              AutomationProperties.Name="{I18N {x:Static r:LangKeys.Unit}}" ToolTip="{I18N {x:Static r:LangKeys.Unit}}"
+                              ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadUnit}}}" />
+                </StatusBarItem>
+                <Separator />
+                <StatusBarItem DataContext="{Binding CurrentEditorTabViewModel}" IsEnabled="{Binding CadDocumentViewModel.CanEditDocument}">
+                    <StackPanel Orientation="Horizontal" ToolTip="{I18N {x:Static r:LangKeys.Grid}}">
+                        <Path Style="{StaticResource StatusSettingIcon}" Data="M0,0 H16 V16 H0 Z M8,0 V16 M0,8 H16" />
+                        <ComboBox AutomationProperties.AutomationId="GridTypeSelector" Width="68" Height="24"
+                                  AutomationProperties.Name="{I18N {x:Static r:LangKeys.Grid}}"
+                                  ItemsSource="{Binding Source={ex:EnumBindingSource {x:Type vm_en:ViewModelCadGridType}}}"
+                                  SelectedItem="{Binding ViewModelCadGridType}" />
+                    </StackPanel>
+                </StatusBarItem>
+                <StatusBarItem DataContext="{Binding CurrentEditorTabViewModel}" IsEnabled="{Binding CadDocumentViewModel.CanEditDocument}">
+                    <StackPanel Orientation="Horizontal" ToolTip="{I18N {x:Static r:LangKeys.MajorGridSpacing}}">
+                        <Path Style="{StaticResource StatusSettingIcon}" StrokeThickness="2" Data="M0,0 H16 V16 H0 Z M8,0 V16 M0,8 H16" />
+                        <ComboBox AutomationProperties.AutomationId="MajorGridSpacingSelector" Width="88" Height="24"
+                                  AutomationProperties.Name="{I18N {x:Static r:LangKeys.MajorGridSpacing}}"
+                                  DisplayMemberPath="DisplayName" ItemsSource="{Binding GridSpacingPresets}"
+                                  SelectedItem="{Binding SelectedMajorGridSpacingPreset}" />
+                    </StackPanel>
+                </StatusBarItem>
+                <StatusBarItem DataContext="{Binding CurrentEditorTabViewModel}" IsEnabled="{Binding CadDocumentViewModel.CanEditDocument}">
+                    <StackPanel Orientation="Horizontal" ToolTip="{I18N {x:Static r:LangKeys.MinorGridSpacing}}">
+                        <Path Style="{StaticResource StatusSettingIcon}" Data="M0,0 H16 V16 H0 Z M5.3,0 V16 M10.7,0 V16 M0,5.3 H16 M0,10.7 H16" />
+                        <ComboBox AutomationProperties.AutomationId="MinorGridSpacingSelector" Width="88" Height="24"
+                                  AutomationProperties.Name="{I18N {x:Static r:LangKeys.MinorGridSpacing}}"
+                                  DisplayMemberPath="DisplayName" ItemsSource="{Binding GridSpacingPresets}"
+                                  SelectedItem="{Binding SelectedMinorGridSpacingPreset}" />
+                    </StackPanel>
+                </StatusBarItem>
+                <Separator />
+                <StatusBarItem DataContext="{Binding CurrentEditorTabViewModel.CadDocumentViewModel}" IsEnabled="{Binding CanEditDocument}">
+                    <StackPanel Orientation="Horizontal">
+                        <ToggleButton AutomationProperties.AutomationId="GridSnapToggle" Style="{StaticResource StatusIconToggle}"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.GridSnap}}"
+                                      ToolTip="{I18N {x:Static r:LangKeys.GridSnap}}" IsChecked="{Binding IsGridSnapEnabled}">
+                            <md:PackIcon Kind="Magnet" Width="18" Height="18" />
+                        </ToggleButton>
+                        <ToggleButton AutomationProperties.AutomationId="ObjectSnapToggle" Style="{StaticResource StatusIconToggle}"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.ObjectSnap}}"
+                                      ToolTip="{I18N {x:Static r:LangKeys.ObjectSnap}}" IsChecked="{Binding IsObjectSnapEnabled}">
+                            <md:PackIcon Kind="Target" Width="18" Height="18" />
+                        </ToggleButton>
+                        <ToggleButton AutomationProperties.AutomationId="OrthoToggle" Style="{StaticResource StatusIconToggle}"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.Ortho}}"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Ortho}}" IsChecked="{Binding IsOrthoEnabled}">
+                            <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                  StrokeThickness="1.8" Width="18" Height="18" Data="M2,1 V16 H17 M2,11 H7 V16" />
+                        </ToggleButton>
+                        <ToggleButton AutomationProperties.AutomationId="PolarToggle" Style="{StaticResource StatusIconToggle}"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.Polar}}"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Polar}}" IsChecked="{Binding IsPolarEnabled}">
+                            <Path Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"
+                                  StrokeThickness="1.6" Width="18" Height="18" Data="M1,16 H17 M1,16 L14,3 M8,16 A7,7 0 0 0 6,11" />
+                        </ToggleButton>
+                    </StackPanel>
+                </StatusBarItem>
+            </StatusBar>
+        </DockPanel>
     </Border>
-
 </UserControl>

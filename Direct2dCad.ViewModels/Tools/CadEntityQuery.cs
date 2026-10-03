@@ -11,7 +11,7 @@ internal static partial class CadEntityQuery
     internal static readonly string[] EntityTypeNames =
     [
         "Line", "Circle", "Arc", "Ellipse", "EllipseArc", "Rectangle", "Polyline", "Spline",
-        "CompositePath", "Text", "ShapeText", "Image", "OleObject", "BlockReference"
+        "CompositePath", "Text", "ShapeText", "Image", "OleObject", "BlockReference", "Dimension"
     ];
     internal static readonly string[] CapabilityNames =
     [
@@ -24,7 +24,7 @@ internal static partial class CadEntityQuery
         CadDocument document,
         BlockId activeOwnerBlockId,
         IReadOnlySet<EntityId> selectedEntityIds,
-        CadEntityQueryOptions options)
+        CadEntityQueryOptions options, CancellationToken cancellationToken=default)
     {
         ArgumentNullException.ThrowIfNull(document);
         ValidateOptions(options);
@@ -35,6 +35,7 @@ internal static partial class CadEntityQuery
         {
             foreach (var entity in document.Entities.Values)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (entity.IsErased)
                     continue;
                 all.Add(entity);
@@ -61,7 +62,7 @@ internal static partial class CadEntityQuery
         CadDocument document,
         BlockId activeOwnerBlockId,
         IReadOnlySet<EntityId> selectedEntityIds,
-        CadEntityQueryOptions options)
+        CadEntityQueryOptions options, CancellationToken cancellationToken=default)
     {
         ArgumentNullException.ThrowIfNull(document);
         ValidateOptions(options);
@@ -74,6 +75,7 @@ internal static partial class CadEntityQuery
                 : document.Entities.Values;
             foreach (var entity in entities)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (entity.IsErased)
                     continue;
                 scope.Add(entity);

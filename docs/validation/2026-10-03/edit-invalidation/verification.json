@@ -1,0 +1,1075 @@
+{
+  "date": "2026-10-03",
+  "scope": "Curve-edit result lifetime, spatial index, indexed native rendering, pointer picking and undo/redo",
+  "environment": {
+    "os": "Windows x64",
+    "sdk": "10.0.401",
+    "workspace": "local uncommitted",
+    "uiSettings": "isolated temporary fixture directory"
+  },
+  "video": {
+    "file": "PixPin_2026-10-03_17-19-36.mp4",
+    "durationSeconds": 8.4375,
+    "sampledFrames": 9,
+    "sha256": "86DD4924795427F8B39406BFAE483285D250738783AAE58C35707014339908F9",
+    "observation": "Segments disappear and reappear during zoom; recording does not include complete break operation",
+    "cacheBranchTrace": "Not performed; cached/snapshot-preview reappearance is a hypothesis"
+  },
+  "rootCause": "EditCurvesCommand reported both Created and Deleted for every result and source, so the spatial index removed live output entities and modified surviving entities",
+  "fix": [
+    "Report individual created/deleted/geometry state and reverse it on undo",
+    "Dependent live block references get Geometry rather than inheriting child lifetime flags"
+  ],
+  "releaseBuild": {
+    "passed": true,
+    "warnings": 0,
+    "errors": 0,
+    "command": "dotnet build Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj -c Release --no-restore -v quiet",
+    "applicationBuiltThroughProjectReference": true
+  },
+  "results": {
+    "managed": {
+      "total": 34,
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "TestResults/edit-invalidation/managed-final/yoiri_YOIRI_2026-10-03_17_37_14_net10.0.trx",
+      "command": "dotnet test Direct2dCad.Tests/Direct2dCad.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~CurveEditIndexRegressionTests|FullyQualifiedName~CadDocumentChangeDispatcherTests' --logger trx --results-directory TestResults/edit-invalidation/managed-final -v quiet",
+      "cases": [
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"extend\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.OtherEditCommandsKeepTheirIndexConsistentThroughHistory(operation: \"scale\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: EmbeddedData, expectedKind: Geometry)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"break-gap\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: Opacity, expectedKind: Appearance)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"break\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.BreakingABlockChildDoesNotDeleteItsLiveNestedReferences",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: Layer, expectedKind: Appearance)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.OtherEditCommandsKeepTheirIndexConsistentThroughHistory(operation: \"rotate\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.MetadataLockAndLayerOrderDoNotRebuildSpatialGeometry",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"join\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: Rotation, expectedKind: Geometry)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: DrawOrder, expectedKind: Appearance)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: Fill, expectedKind: Appearance | Fill)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.OtherEditCommandsKeepTheirIndexConsistentThroughHistory(operation: \"polar-array\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.NestedAppearanceAndFill_PropagateWithoutUpdatingReferenceGeometry",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.TableChangesSurviveCombinationDispatchAndDirtyDrain(kind: LayerAppearance)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.TableChangesSurviveCombinationDispatchAndDirtyDrain(kind: Styles)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.TableChangesSurviveCombinationDispatchAndDirtyDrain(kind: LayerAccess)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: Visibility, expectedKind: Geometry)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.TableChangesSurviveCombinationDispatchAndDirtyDrain(kind: LayerMetadata)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: Appearance, expectedKind: Appearance)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"chamfer\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"trim-end\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.OtherEditCommandsKeepTheirIndexConsistentThroughHistory(operation: \"mirror\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"trim-middle\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"offset\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.TableChangesSurviveCombinationDispatchAndDirtyDrain(kind: LayerOrder)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.OtherEditCommandsKeepTheirIndexConsistentThroughHistory(operation: \"move\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.OtherEditCommandsKeepTheirIndexConsistentThroughHistory(operation: \"duplicate\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.OtherEditCommandsKeepTheirIndexConsistentThroughHistory(operation: \"rectangular-array\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.VisualBlockChildChange_AlsoInvalidatesItsReferences(changeKind: Geometry, expectedKind: Geometry)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CadDocumentChangeDispatcherTests.TableChangesSurviveCombinationDispatchAndDirtyDrain(kind: BlockMetadata)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Tests.CurveEditIndexRegressionTests.CurveEditsKeepLiveResultsInTheRenderAndHitTestIndexThroughHistory(operation: \"fillet\")",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    "commands": {
+      "total": 82,
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "TestResults/edit-invalidation/commands/yoiri_YOIRI_2026-10-03_17_30_29_net10.0.trx",
+      "command": "dotnet test Direct2dCad.Commands.Tests/Direct2dCad.Commands.Tests.csproj -c Release --no-restore --logger trx --results-directory TestResults/edit-invalidation/commands -v quiet",
+      "cases": [
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.ClosedOffsetsKeepFillAndJoinRejectsDifferentLineWeights",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.FilletIsTangentAndDoesNotMutateDuringPreview",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.OffsetAndHistoryPreserveAppearanceAndSource",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.GeometryCommandCoverageTests.GeometryCommands_RejectWrongEntityTypeWithoutMutation",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.ClipboardCommandTests.PasteEntities_TargetLayerOverridesSnapshotLayer",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.CreateLayerCommandWithoutPriorityPlacesLayerBelowExistingLayersAndRedoKeepsIt",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetEntityLocked_AllowsUndoableLockAndUnlock",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.AddEntityCommandCoverageTests.AddCurveCommands_UndoAndRedoPreserveEntityIdentityAndProperties",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.MultiEntityRotation_ValidatesAllEntitiesBeforeMutatingAny",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DimensionCommandTests.CopyOnlyBindsToGeometryCopiedInSameOperation(withSource: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DimensionCommandTests.CrossDocumentBlockCopyKeepsInternalDimensionAssociationAcrossUndoRedo",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DimensionCommandTests.CopyOnlyBindsToGeometryCopiedInSameOperation(withSource: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.ClipboardCommandTests.PasteBlockReference_AcrossDocumentsImportsDefinitionOnce",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.ClipboardCommandTests.PasteBlockReference_InSameDocumentReusesDefinition",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetViewSettings_UndoRestoresGridPresetsAndOrigin",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.ExtendPreservesUniqueIdentityAndIsReversible",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.EmbeddedEntityCommandTests.OleCommands_ExecuteUndoAndRedoRestoreBoundsAndClonedStorage",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.TrimMiddleSplitsAndUndoRestoresOriginal",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.Mirror_SupportsArbitraryAxisAndIsReversible(degrees: 22.5)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.GeometryCommandCoverageTests.ScalarGeometryCommands_ExecuteAndUndoRestorePreviousGeometry",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.MirrorArc_ThenUndo_RestoresAnglesAndCenter",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DocumentSettingsCommandTests.SetViewSettingsCommand_UndoRestoresGridPresetCollection",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DocumentSettingsCommandTests.SetDocumentSettings_UndoRestoresUnitAndPrecision",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.ClosedTrimIncludesTheParameterSeamAndUndoRestoresTheCircle",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.SetEntityColorSourceCommand_UndoRestoresByLayerState",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.RectangularAndPolarArrayKeepOneUndoUnit",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetTextStyleProperties_UpdatesAllReferencesAndUndoRestoresBoundsMeasurement",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.ClipboardCommandTests.PasteBlockReference_UndoAndRedoRestoreSameEntitiesAndDefinition",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.EmbeddedEntityCommandTests.ImageGeometryCommands_ExecuteUndoAndRedoPreserveBoundsAndRotation",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.RotateRoundedRectangle_QuarterTurn_SwapsCornerRadiiAndUndoRestoresThem",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.SetBlockReferenceTransformCommand_ExecuteUndoAndRedoRestoreTransformAndBounds",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.FilletBetweenLineAndArcUsesExactTangenciesAndUndo",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.ClosedOffsetRejectsInvertedEdgesAndDoesNotDuplicateClosingVertex",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetEntityColor_UndoRemovesGeneratedStyleAndRedoRestoresIt",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.CreateLayout_UndoAndRedoReuseLayoutAndPaperSpaceIds",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.GeometryCommandCoverageTests.PointCollectionGeometryCommands_RejectInvalidPointCounts",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.EntityCommandTests.MoveEntitiesCommand_OnLockedLayerLeavesGeometryUnchanged",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.DirectedEntities_SupportArbitraryRotationAndUndo(degrees: 30)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.HistoryPayloadTests.EmbeddedPixelsHaveAMateriallyLargerEstimateThanALine",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetFillStyle_WithUnsupportedEntityDoesNotPartiallyMutateBatch",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DimensionCommandTests.CommandCapturesDefinitionAtConstructionAndCrossDocumentCopiesRebindTheirOwnSources",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DimensionCommandTests.TransformDetachAndUndoRestoresReferences(op: 1)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.AddEntityCommandCoverageTests.AddRasterCommands_CloneInputDataAndPreserveDisplayProperties",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CompositePathCommandTests.AddAndTransformCompositePath_AreUndoable",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.DeleteBlockDefinitionCommand_RejectsReferencedBlockAndRestoresUnreferencedBlock",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.DegenerateAndUnsupportedOperationsLeaveDocumentUntouched",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetLayoutViewport_UndoRestoresAllViewportProperties",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.EntityCommandTests.MoveEntitiesCommand_MovesAllEntitiesAndUndoRestoresGeometry",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.TrimAndExtendPreviewOnlyTheChangedPortion",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetLineWeight_ByLayerKeepsStoredExplicitValueAndUndoRestoresSource",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DimensionCommandTests.TransformDetachAndUndoRestoresReferences(op: 2)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.AddEntityCommandCoverageTests.PointBasedAddCommands_RejectInvalidPointCounts",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.Mirror_SupportsArbitraryAxisAndIsReversible(degrees: 67.5)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.CreateBlockCommand_UndoAndRedoReuseDefinitionAndReferenceIds",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetOpacity_UpdatesImageAndOleAndUndoRestoresBoth",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.ClipboardCommandTests.PasteMixedEntities_AcrossDocumentsPreservesIsolatedDataStylesAndRedoChanges",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.EllipseArc_MirrorKeepsSweepAndEndpointCorrespondence",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.GeometryCommandCoverageTests.RectangleGeometryCommand_UndoRestoresBoundsAndCornerRadii",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.RotatePolyline_ThenUndo_RestoresEveryPoint",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.AddEntityCommandCoverageTests.AddTextCommands_UndoAndRedoPreserveTextGeometry",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DimensionCommandTests.TransformDetachAndUndoRestoresReferences(op: 0)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.DeleteHatchPatternCommand_ProtectsReferencedPattern",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.CreateFillStyle_UndoRemovesStyleAndRedoReusesItsId",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetLayerAppearance_PreservesDefaultGraphicStyle",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.DocumentSettingsCommandTests.SetDocumentSettings_RejectsInvalidPrecision",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.ScaleCircle_ThenUndo_RestoresCenterAndRadius",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.CreateTextStyle_UndoRemovesStyleAndRedoReusesItsId",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.JoinMixedSegmentsAndBreakAreExact",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.DirectedEntities_SupportArbitraryRotationAndUndo(degrees: 45)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.LineTypeCommands_KeepCustomPatternAcrossUndoRedoAndProtectReferences",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.OleObject_RejectsRotationBeforeMutatingBounds",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.EntityCommandTests.DeleteEntitiesCommand_UndoRestoresEntities",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CompositePathCommandTests.ClipboardSnapshot_PastesCompositePathAcrossDocuments",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.GeometryCommandCoverageTests.PointCollectionGeometryCommands_ExecuteAndUndoRestorePointsAndClosedState",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetLayerState_UndoRestoresVisibilityLockAndFrozenState",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.PropertyAndLayoutCommandTests.SetGraphicStyleProperties_UpdatesSharedReferencesAndUndoRestoresStyle",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.DeleteLayerCommand_UndoRestoresLayerEntitiesAndPriority",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.RenameBlockCommand_UndoAndRedoRestoreDefinitionName",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.TransformEntitiesCommandTests.EllipseArc_ScalesAndUndoRestoresGeometry",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.LayerAndBlockCommandTests.SetLayerDrawingPrioritiesCommandPreservesDefaultPriorityWhenOmitted",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.EntityCommandTests.AddLineCommand_UndoAndRedoReuseEntityId",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Commands.Tests.CurveEditingTests.ChamferBetweenLineAndArcMeasuresDistanceAlongBothCurves",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    "viewModels": {
+      "total": 103,
+      "passed": 103,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "TestResults/edit-invalidation/viewmodels/yoiri_YOIRI_2026-10-03_17_31_03_net10.0.trx",
+      "command": "dotnet test Direct2dCad.ViewModels.Tests/Direct2dCad.ViewModels.Tests.csproj -c Release --no-restore --filter 'FullyQualifiedName~CurveEditWorkflowTests|FullyQualifiedName~DimensionWorkflowTests|FullyQualifiedName~DrawingWorkflowContractTests' --logger trx --results-directory TestResults/edit-invalidation/viewmodels -v quiet",
+      "cases": [
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachAnnotationToolHasPreviewSingleUndoAndEscapeRetainsCommittedResults(mode: DimLinearX)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"ArrowSize\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachAnnotationToolHasPreviewSingleUndoAndEscapeRetainsCommittedResults(mode: DimRadius)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.PointMarkerKeepsItsScreenSizeAndPreselectedReferencesAreAlsoMarked",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.FocusedTypingIsImmediateAndOneUndoSelectionRefreshPreservesRedo",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.ConfirmedPointsStayMarkedThroughPreviewAndClearAfterPlacement(mode: Leader)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.PickingUsesRawPointEvenWhenGridSnappingIsEnabled",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: Line)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachAnnotationToolHasPreviewSingleUndoAndEscapeRetainsCommittedResults(mode: DimAligned)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcStartEndDirection)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Scale\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: Rectangle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcStartEndAngle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcStartEndRadius)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: CircleCenterRadius)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: Spline)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.ExplicitBreakPointsRemainExactDespiteGridAndOrtho",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Unit\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.CancellingFinishingOrSwitchingToolsClearsUncommittedPointMarkers(action: \"Switch\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.LockedOrReadOnlyDimensionCannotBeEdited(access: \"Entity\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcStartCenterLength)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcCenterStartAngle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"TextHeight\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: Line)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: EllipseAxisEnd)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcCenterStartEnd)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"TextHeight\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcStartCenterEnd)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachAnnotationToolHasPreviewSingleUndoAndEscapeRetainsCommittedResults(mode: DimAngular)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: EllipseAxisEnd)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: Polyline)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.BrokenPiecesRemainIndividuallySelectableAfterWheelZoomAndHistory(removeGap: True)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: Polygon)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"Precision\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"ArrowSize\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.CornerNeedsOneConfirmationAfterTwoObjectPicks(mode: Fillet)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.InvalidOffsetRetainsParametersAndDoesNotAddHistory",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.ExplicitRelativePointsRemainExactAndFinishExitsWithoutExtraAnnotation",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Text\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: CircleCenterRadius)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.OffsetPreviewIsPureAndEscapePreservesEachCommittedEdit",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.CancellingFinishingOrSwitchingToolsClearsUncommittedPointMarkers(action: \"Finish\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: CircleThreePoint)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcStartEndRadius)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"LineWeight\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: EllipseArc)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.CancellingFinishingOrSwitchingToolsClearsUncommittedPointMarkers(action: \"Cancel\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"Font\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachAnnotationToolHasPreviewSingleUndoAndEscapeRetainsCommittedResults(mode: DimLinearY)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: CircleCenterDiameter)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: Text)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcStartCenterAngle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: Text)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcThreePoint)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: CircleThreePoint)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: EllipseArc)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.BrokenPiecesRemainIndividuallySelectableAfterWheelZoomAndHistory(removeGap: False)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: Spline)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"LineWeight\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.PlacementGripKeepsAssociationAndReassociationCanBeCancelledOrCommitted",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: Polyline)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Gap\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: Rectangle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Arrow\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: CircleTwoPoint)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.PreselectedLinePreviewCommitEditDeleteAndUndoUseSameReferences",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachAnnotationToolHasPreviewSingleUndoAndEscapeRetainsCommittedResults(mode: Leader)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcStartCenterLength)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcStartCenterAngle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.BeginningAnnotationToolAndEditingDefaultsDoNotModifyPreviouslySelectedDimension",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.LockedOrReadOnlyDimensionCannotBeEdited(access: \"Layer\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcContinue)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.CustomTextArrowAndLineWeightSettingsUpdateImmediatelyAndSupportUndo",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.ArrayPreviewCancelsOrCommitsAsOneHistoryUnit(mode: PolarArray)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcStartEndAngle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.LockedOrReadOnlyDimensionCannotBeEdited(access: \"ReadOnly\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.ArrayPreviewCancelsOrCommitsAsOneHistoryUnit(mode: RectArray)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: EllipseCenter)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcCenterStartAngle)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcCenterStartLength)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcStartCenterEnd)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcContinue)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcCenterStartEnd)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: CircleTwoPoint)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachAnnotationToolHasPreviewSingleUndoAndEscapeRetainsCommittedResults(mode: DimDiameter)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: CircleCenterDiameter)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Precision\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Font\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.ConfirmedPointsStayMarkedThroughPreviewAndClearAfterPlacement(mode: DimAligned)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcThreePoint)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.ConfirmedPointsStayMarkedThroughPreviewAndClearAfterPlacement(mode: DimAngular)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.ConfirmedPointsStayMarkedThroughPreviewAndClearAfterPlacement(mode: DimLinearX)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: ArcCenterStartLength)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.ConfirmedPointsStayMarkedThroughPreviewAndClearAfterPlacement(mode: DimLinearY)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"Scale\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"Beyond\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.CornerNeedsOneConfirmationAfterTwoObjectPicks(mode: Chamfer)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.InvalidParametersKeepGeometryAndHistoryAndRecoverAfterCorrection(parameter: \"Gap\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: EllipseCenter)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EscapeClearsPartialDrawingAndSelectionWithoutAddingHistory(mode: Polygon)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DimensionWorkflowTests.EachParameterUpdatesSelectedDimensionWithoutMovingOrDetachingIt(parameter: \"Beyond\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.EveryDrawingModeUsesTransientSettingsAndCreatesUndoableGeometry(mode: ArcStartEndDirection)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.ViewModels.Tests.DrawingWorkflowContractTests.OriginPlacementIsUndoableAndRightButtonPanDoesNotDraw",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    "native": {
+      "total": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "TestResults/edit-invalidation/native/yoiri_YOIRI_2026-10-03_17_31_15_net10.0.trx",
+      "command": "dotnet test Direct2dCad.Windows.IntegrationTests/Direct2dCad.Windows.IntegrationTests.csproj -c Release --no-restore --filter 'FullyQualifiedName~IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory|FullyQualifiedName~CurveEditingUpdatesNativeResourcesAndUndoRestoresPixels|FullyQualifiedName~LayoutModelEdits_PartialFramesMatchFullRedraw|FullyQualifiedName~NestedBlockStrokeEditAndUndo_UpdatePixelsWithoutGeometryChanges' --logger trx --results-directory TestResults/edit-invalidation/native -v quiet",
+      "cases": [
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"join\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"offset\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"break\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"trim-middle\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"break-gap\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.CurveEditingUpdatesNativeResourcesAndUndoRestoresPixels",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"trim-end\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.LayoutModelEdits_PartialFramesMatchFullRedraw(rotation: 0.69999999999999996, scale: 2)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"extend\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.NestedBlockStrokeEditAndUndo_UpdatePixelsWithoutGeometryChanges",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.LayoutModelEdits_PartialFramesMatchFullRedraw(rotation: 0, scale: 0.5)",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"chamfer\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"nested-break\")",
+          "outcome": "Passed"
+        },
+        {
+          "name": "Direct2dCad.Windows.IntegrationTests.Direct2DRenderHostIntegrationTests.IndexedCurveEditsMatchFullScenePixelsAfterZoomAndHistory(operation: \"fillet\")",
+          "outcome": "Passed"
+        }
+      ]
+    },
+    "ui": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "TestResults/edit-invalidation/ui-final/yoiri_YOIRI_2026-10-03_17_39_10_net10.0.trx",
+      "command": "dotnet test Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj -c Release --no-restore --no-build --filter 'FullyQualifiedName~BrokenLinePiecesRemainVisibleAndSelectableAcrossWheelZoomAndUndoRedo' --logger trx --results-directory TestResults/edit-invalidation/ui-final -v quiet",
+      "cases": [
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.BrokenLinePiecesRemainVisibleAndSelectableAcrossWheelZoomAndUndoRedo",
+          "outcome": "Passed"
+        }
+      ]
+    }
+  },
+  "redRegression": {
+    "directory": "TestResults/edit-invalidation/before-fix",
+    "total": 10,
+    "passed": 0,
+    "failed": 10,
+    "failure": "Living entities missing from actual spatial index queries"
+  },
+  "nativeComparison": {
+    "newCases": 10,
+    "zoomScales": [
+      0.5,
+      1,
+      2,
+      4,
+      2,
+      0.5
+    ],
+    "historyStates": [
+      "execute",
+      "undo",
+      "redo"
+    ],
+    "reference": "Independent full-scene host without index filtering",
+    "productPath": "Real editor spatial index queried by indexed host",
+    "countAsFramesInsteadOfTests": false
+  },
+  "otherEditCommandsChecked": [
+    "move",
+    "rotate",
+    "scale",
+    "mirror",
+    "duplicate",
+    "rectangular-array",
+    "polar-array"
+  ],
+  "screenshots": [
+    {
+      "file": "break-after-wheel-zoom.png",
+      "source": "TestResults/edit-invalidation/screenshots/break-after-wheel-zoom.png",
+      "sha256": "16B3CA7C4401140B8AC1F6200972A11E7F6E06E13D6E71DFB4F86900386DBBFC"
+    },
+    {
+      "file": "break-after-redo.png",
+      "source": "TestResults/edit-invalidation/screenshots/break-after-redo.png",
+      "sha256": "AA4FF19AE675A501F7A871546A03421766582A58F504B7F266F5EA8D7AE5DB59"
+    }
+  ],
+  "visualInspection": "Final screenshot shows two separated line pieces after repeated wheel zoom; terminal reports Entities: 2",
+  "packageRebuilt": false,
+  "clipboardTestsRun": false,
+  "notRun": [
+    "Full product regression after this change",
+    "Complete manual drafting for every tool",
+    "Mixed multi-monitor DPI",
+    "Long-term stress",
+    "Rebuilt distribution package, signing and publication"
+  ]
+}

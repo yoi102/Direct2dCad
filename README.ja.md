@@ -19,38 +19,28 @@ Direct2dCad は、WPF、Direct2D、DirectWrite で作成しているデスクト
 - LM Studio または Codex に接続し、図面を検索して undo 可能な CAD 編集を実行する Agent 機能。
 - `.d2cad` の保存と読み込み、中国語・日本語・英語の UI リソース。
 
+## ドキュメント
+
+- [CAD の実装状況、課題、優先順位、検証結果](docs/CAD-READINESS.md)（中国語、2026-10-02 に確認）。
+- [開発計画と操作性の受け入れ基準](docs/ROADMAP.md)（中国語、2026-10-03 に作成）。
+- [M1–M3 の実装状況](docs/M1-M3-STATUS.md)、[作図と編集の操作](docs/DRAWING-AND-EDITING.md)、[本機での検証](docs/validation/2026-10-03/README.md)（中国語、2026-10-03 更新）。
+- [アーキテクチャ、プロジェクト責務、現在の依存関係](docs/ARCHITECTURE.md)（中国語）。
+- [Terminal の簡略コマンド、AI ツール、実行記録](docs/COMMANDS-AND-AI.md)（中国語、2026-10-03 更新）。
+- [描画の実装範囲とベンチマーク手順](docs/PERFORMANCE.md)（中国語）。
+- [回帰テスト、カバレッジ、手動確認](scripts/testing/README.md)（中国語）。
+
+M1–M6 の宣言範囲を実装しました。正確な入力、スナップ、基本編集、保存保護・復旧に加え、7 種の寸法・直接関連付け、工学テンプレート、実寸/用紙に合わせる/任意倍率の印刷プレビュー、限定 DXF 交換、可視領域を優先する初期表示、履歴の容量制限とローカル配布を提供します。[M4–M6 状態](docs/M4-M6-STATUS.md)、[操作ガイド](docs/ANNOTATION-AND-EXCHANGE.md)、[最新検証](docs/validation/2026-10-03/m4-m6/README.md)、[配布手順](docs/DELIVERY.md)を参照してください。実印刷、クリーン環境、署名、クラウド CI は別途確認が必要です。DWG と完全な DXF 互換は後続範囲です。
+
+数値入力と候補切り替えはキャンバスに表示します。「図面の復元」ツールボックスには復元可能な図面を直接一覧表示し、ステータスバーのアイコンまたは `Ctrl+Shift+D` で再表示できます。ようこそ画面では作図・修正・寸法タブを非表示にし、図面に戻ると再表示します。`HELP` で簡略コマンド、`TOOLS` / `TOOLHELP` で共通 JSON ツールを確認できます。ブール演算と寸法編集を追加し、AI の照会・失敗・キャンセルも Terminal に記録します。下部には座標・単位、グリッド間隔とスナップアイコンを配置し、詳細アイコンから表示とスナップを設定できます。SDK は 10.0.401 に固定しています。クラウド CI、実機プリンター、混在 DPI の受け入れは別途必要です。
+
 ## デモとデザイン
 
-- [基本操作]
-  
-https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
-
-
-https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed
-
-- [Block デモ]
-  
-https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310
-
-- [Layout デモ]
-
-https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906
-
-- [OLE オブジェクト デモ]
-
-https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
-
-- [CAD Terminal デモ]
-
-https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761
-
-- [LM Studio AI デモ]
-
-https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7
-
-
-https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509
-
+- [基本操作 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b), [基本操作 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [ブロック](https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310)
+- [レイアウト](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
+- [OLE オブジェクト](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
+- [Terminal](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
+- [LM Studio 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7), [LM Studio 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
 - [Figma デザイン](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
 ## ソリューション構成

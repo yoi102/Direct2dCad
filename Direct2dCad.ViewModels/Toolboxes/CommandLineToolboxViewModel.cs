@@ -22,6 +22,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     private readonly ICadToolCommandLineService _toolCommandLineService;
     private readonly IDisposable _commandActivitySubscription;
     private readonly IDisposable _interactionActivitySubscription;
+    private readonly IDisposable? _toolActivitySubscription;
     private readonly CancellationTokenSource _disposeCancellation = new();
     private readonly object _pendingEntriesGate = new();
     private readonly Queue<CadCommandLineEntryViewModel> _pendingEntries = [];
@@ -37,7 +38,8 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         ICadCommandLineService commandLineService,
         ICadToolCommandLineService toolCommandLineService,
         IAsyncSubscriber<CadCommandActivityMessage> commandActivitySubscriber,
-        IAsyncSubscriber<CadInteractionActivityMessage> interactionActivitySubscriber)
+        IAsyncSubscriber<CadInteractionActivityMessage> interactionActivitySubscriber,
+        IAsyncSubscriber<CadToolActivityMessage>? toolActivitySubscriber = null)
         : base(toolboxLayoutSettingsStore, "toolbox.command-line", DockZone.BottomRight, isOpenByDefault: true)
     {
         _commandLineService = commandLineService;
@@ -54,6 +56,14 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
                 OnInteractionActivity(message);
                 return ValueTask.CompletedTask;
             });
+        _toolActivitySubscription = toolActivitySubscriber?.Subscribe((message, _) =>
+        {
+            var kind = message.Outcome == "Failed" ? CadCommandLineEntryKind.Error :
+                message.Outcome == "Canceled" ? CadCommandLineEntryKind.Warning : CadCommandLineEntryKind.Activity;
+            var document = message.DocumentName is { } name ? $" [{name}]" : string.Empty;
+            AddEntry(kind, $"[AI]{document} {message.ToolName} {message.Outcome}: {message.Summary}");
+            return ValueTask.CompletedTask;
+        });
 
         Title = Strings.Terminal;
         Icon = toolboxIconProvider.Terminal;
@@ -159,6 +169,11 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
             return;
         }
 
+        if (commandLine.Equals("HELP", StringComparison.OrdinalIgnoreCase) || commandLine == "?")
+        {
+            var additionalHelp = await _toolCommandLineService.TryExecuteAsync("CADHELP", _disposeCancellation.Token);
+            if (additionalHelp is not null) result = result with { Message = result.Message + Environment.NewLine + additionalHelp.Message };
+        }
         if (!string.IsNullOrWhiteSpace(result.Message))
         {
             AddMessage(
@@ -269,6 +284,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         _disposeCancellation.Dispose();
         _commandActivitySubscription.Dispose();
         _interactionActivitySubscription.Dispose();
+        _toolActivitySubscription?.Dispose();
     }
 
     public int FlushPendingEntries(int maximumBatchSize = 100)
@@ -299,11 +315,11 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     private void OnCommandActivity(CadCommandActivityMessage message)
     {
-        if (_disposed || _documentViewModel is null || !ReferenceEquals(message.DocumentViewModel, _documentViewModel))
+        if (_disposed)
             return;
 
         var activity = message.Activity;
-        if (_documentViewModel.IsPanning &&
+        if (message.DocumentViewModel is CadDocumentViewModel { IsPanning: true } &&
             activity.Scope == CadCommandActivityScope.Editor &&
             string.Equals(activity.Name, "Pan View", StringComparison.Ordinal))
         {
@@ -325,15 +341,12 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
         AddEntry(
             activity.CommandCount == 0 ? CadCommandLineEntryKind.Warning : CadCommandLineEntryKind.Activity,
-            $"[{scope}] {operation}: {activity.Name}{count}{outcome}");
+            $"[{scope}] [{message.DocumentName}] {operation}: {activity.Name}{count}{outcome}");
     }
 
     private void OnInteractionActivity(CadInteractionActivityMessage message)
     {
-        if (!ReferenceEquals(message.DocumentViewModel, _documentViewModel))
-            return;
-
-        AddEntry(CadCommandLineEntryKind.Activity, $"[Interaction] {message.Name}");
+        AddEntry(CadCommandLineEntryKind.Activity, $"[Interaction] [{message.DocumentName}] {message.Name}");
     }
 
     private void AddToHistory(string commandLine)

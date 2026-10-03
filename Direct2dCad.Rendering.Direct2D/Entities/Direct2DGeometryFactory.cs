@@ -13,6 +13,33 @@ internal sealed class Direct2DGeometryFactory
     private const double TwoPi = Math.PI * 2.0;
     private const double FullCircleTolerance = 1e-9;
 
+    public ID2D1PathGeometry CreateRegion(ID2D1Factory factory, IReadOnlyList<CadRegionContour> contours)
+    {
+        var geometry = factory.CreatePathGeometry();
+        try
+        {
+            using var sink = geometry.Open();
+            sink.SetFillMode(FillMode.Alternate);
+            foreach (var contour in contours)
+            {
+                sink.BeginFigure(ToVector2(contour.Edges[0].Start), FigureBegin.Filled);
+                foreach (var edge in contour.Edges)
+                {
+                    if (edge.IsLine) sink.AddLine(ToVector2(edge.End));
+                    else
+                    {
+                        var count = Math.Max(1, (int)Math.Ceiling(Math.Abs(edge.Sweep) / Math.PI));
+                        for (var i = 1; i <= count; i++) sink.AddArc(CreateArcSegment(edge.At((double)i / count), edge.Radius, edge.Sweep / count));
+                    }
+                }
+                sink.EndFigure(FigureEnd.Closed);
+            }
+            sink.Close();
+            return geometry;
+        }
+        catch { geometry.Dispose(); throw; }
+    }
+
     public ID2D1PathGeometry CreateStrokeText(ID2D1Factory factory, IReadOnlyList<CadStrokeTextSegment> segments)
     {
         var geometry = factory.CreatePathGeometry();

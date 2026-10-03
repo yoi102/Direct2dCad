@@ -125,9 +125,17 @@ public static class CadEntityHitTester
             case CadSpline spline:
                 return HitSplineEdge(spline, point, edgeTolerance, out result);
 
+            case CadRegion region:
+                var regionDistance = region.Contours.SelectMany(c => c.Edges).Min(p => CadRegionGeometry.Distance(p, point));
+                result = new CadHitTestResult(CadHitTestKind.Edge, [region.Id], point, regionDistance);
+                return regionDistance <= edgeTolerance;
             case CadCompositePath path:
                 return HitCompositePathEdge(path, point, edgeTolerance, out result);
 
+            case CadDimension dimension:
+                var distance = dimension.Strokes.Min(s => DistancePointToSegment(point, s.Start, s.End));
+                result = new CadHitTestResult(CadHitTestKind.Edge, [dimension.Id], point, distance);
+                return distance <= edgeTolerance;
             case CadShapeText shapeText:
                 return HitShapeTextEdge(shapeText, point, edgeTolerance, out result);
 
@@ -181,6 +189,10 @@ public static class CadEntityHitTester
             case CadSpline spline:
                 return HitSplineFill(spline, point, out result);
 
+            case CadRegion region:
+                if (region.FillStyleId is null || !region.Contains(point)) return false;
+                result = new CadHitTestResult(CadHitTestKind.Fill, [region.Id], point, 0);
+                return true;
             case CadCompositePath path:
                 return HitCompositePathFill(path, point, out result);
 
@@ -284,12 +296,11 @@ public static class CadEntityHitTester
         double tolerance,
         out CadHitTestResult result)
     {
-        var dx = point.X - ellipse.Center.X;
-        var dy = point.Y - ellipse.Center.Y;
+        var local = ellipse.ToLocal(point);
+        var dx = local.X - ellipse.Center.X;
+        var dy = local.Y - ellipse.Center.Y;
         var angle = Math.Atan2(dy / ellipse.RadiusY, dx / ellipse.RadiusX);
-        var edgePoint = new CadPointD(
-            ellipse.Center.X + Math.Cos(angle) * ellipse.RadiusX,
-            ellipse.Center.Y + Math.Sin(angle) * ellipse.RadiusY);
+        var edgePoint = ellipse.GetPointAtAngle(angle);
         var distance = point.DistanceTo(edgePoint);
 
         if (distance > tolerance)
@@ -318,7 +329,7 @@ public static class CadEntityHitTester
             return false;
         }
 
-        if (!IsPointInsideEllipse(point, ellipse.Center, ellipse.RadiusX, ellipse.RadiusY))
+        if (!IsPointInsideEllipse(ellipse.ToLocal(point), ellipse.Center, ellipse.RadiusX, ellipse.RadiusY))
         {
             result = default;
             return false;
@@ -338,8 +349,9 @@ public static class CadEntityHitTester
         double tolerance,
         out CadHitTestResult result)
     {
-        var dx = point.X - ellipseArc.Center.X;
-        var dy = point.Y - ellipseArc.Center.Y;
+        var local = ellipseArc.ToLocal(point);
+        var dx = local.X - ellipseArc.Center.X;
+        var dy = local.Y - ellipseArc.Center.Y;
         var angle = Math.Atan2(dy / ellipseArc.RadiusY, dx / ellipseArc.RadiusX);
         if (!ContainsArcAngle(ellipseArc.StartAngleRadians, ellipseArc.SweepAngleRadians, angle))
         {
@@ -389,11 +401,18 @@ public static class CadEntityHitTester
         double tolerance,
         out CadHitTestResult result)
     {
+        var hit=HitRectangleLocalEdge(rectangle,rectangle.ToLocal(point),tolerance,out var local);
+        result=hit ? new CadHitTestResult(local.Kind,local.EntityPath,point,local.Distance) : default;
+        return hit;
+    }
+
+    private static bool HitRectangleLocalEdge(CadRectangle rectangle,CadPointD point,double tolerance,out CadHitTestResult result)
+    {
         if (!rectangle.HasRoundedCorners)
-            return HitRectEdge(rectangle.Id, rectangle.Bounds, point, tolerance, out result);
+            return HitRectEdge(rectangle.Id, rectangle.FrameBounds, point, tolerance, out result);
 
         result = default;
-        var bounds = rectangle.Bounds;
+        var bounds = rectangle.FrameBounds;
         if (bounds.IsEmpty)
             return false;
 
@@ -954,7 +973,8 @@ public static class CadEntityHitTester
 
     private static bool IsPointInsideRectangle(CadRectangle rectangle, CadPointD point)
     {
-        var bounds = rectangle.Bounds;
+        point = rectangle.ToLocal(point);
+        var bounds = rectangle.FrameBounds;
         if (!bounds.Contains(point))
             return false;
 

@@ -100,7 +100,7 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel,
         try
         {
             RefreshLayerOptions(_documentViewModel, rectangle);
-            RefreshGeometryProperties(rectangle.Bounds);
+            RefreshGeometryProperties(rectangle.FrameBounds);
             CornerRadiusX = ToDisplayLength(rectangle.CornerRadiusX);
             CornerRadiusY = ToDisplayLength(rectangle.CornerRadiusY);
             RefreshFillStyleOptions(rectangle.FillStyleId);
@@ -275,7 +275,7 @@ public partial class RectanglePropertyViewModel : EntityPropertyViewModel,
 
     private void CommitGeometry(CadRectD bounds)
     {
-        if (!TryGetRectangle(out var rectangle) || rectangle.Bounds.NearEquals(bounds, Epsilon))
+        if (!TryGetRectangle(out var rectangle) || rectangle.FrameBounds.NearEquals(bounds, Epsilon))
             return;
 
         _documentViewModel.CadEditor.SetRectangleGeometry(EntityId, bounds);

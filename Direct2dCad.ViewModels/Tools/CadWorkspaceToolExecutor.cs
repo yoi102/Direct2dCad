@@ -11,6 +11,8 @@ using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels.Services.Platform;
+using Direct2dCad.ViewModels.Services.Events;
+using MessagePipe;
 using Direct2dCad.ViewModels.Toolboxes.EntityProperty;
 
 namespace Direct2dCad.ViewModels.Tools;
@@ -19,7 +21,7 @@ namespace Direct2dCad.ViewModels.Tools;
 /// Routes one tool execution session across the open-document workspace. Each touched document
 /// receives its own command batch so its undo history remains independent.
 /// </summary>
-internal sealed class CadWorkspaceToolExecutor
+internal sealed partial class CadWorkspaceToolExecutor
 {
     private static readonly HashSet<string> CreationToolNames =
     [
@@ -29,15 +31,18 @@ internal sealed class CadWorkspaceToolExecutor
 
     private readonly ICadToolWorkspace _workspace;
     private readonly IImageImportService? _imageImportService;
+    private readonly IAsyncPublisher<CadToolActivityMessage>? _activityPublisher;
     private readonly Dictionary<string, CadDocumentToolExecutor> _documentExecutors = new(StringComparer.Ordinal);
     private string? _defaultDocumentId;
 
     public CadWorkspaceToolExecutor(
         ICadToolWorkspace workspace,
-        IImageImportService? imageImportService = null)
+        IImageImportService? imageImportService = null,
+        IAsyncPublisher<CadToolActivityMessage>? activityPublisher = null)
     {
         _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
         _imageImportService = imageImportService;
+        _activityPublisher = activityPublisher;
         _defaultDocumentId = workspace.GetActiveDocument()?.DocumentId;
     }
 
@@ -68,6 +73,27 @@ internal sealed class CadWorkspaceToolExecutor
 
     public async Task<string> ExecuteAsync(AiToolCall toolCall, CancellationToken cancellationToken)
     {
+        var documentName = ActivityDocumentName(toolCall.ArgumentsJson);
+        await PublishActivityAsync(toolCall, documentName, "Started", SummarizeJson(toolCall.ArgumentsJson));
+        try
+        {
+            var result = await ExecuteCoreAsync(toolCall, cancellationToken);
+            using var json = JsonDocument.Parse(result);
+            var root = json.RootElement;
+            var success = !root.TryGetProperty("success", out var flag) || flag.ValueKind != JsonValueKind.False;
+            if (success) documentName = ActivityResultDocumentName(root) ?? documentName;
+            await PublishActivityAsync(toolCall, documentName, success ? "Completed" : "Failed", SummarizeJson(result));
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            await PublishActivityAsync(toolCall, documentName, "Canceled", "Operation canceled.");
+            throw;
+        }
+    }
+
+    private async Task<string> ExecuteCoreAsync(AiToolCall toolCall, CancellationToken cancellationToken)
+    {
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
@@ -79,13 +105,17 @@ internal sealed class CadWorkspaceToolExecutor
             return toolCall.Name switch
             {
                 "list_documents" => ListDocuments(),
+                "list_entities" or "get_entity_statistics" => await QueryEntitiesAsync(toolCall.Name,root,cancellationToken),
                 "create_document" => CreateDocument(root),
                 "open_document" => await OpenDocumentAsync(root, cancellationToken),
+                "open_dxf" => await OpenDxfAsync(root,cancellationToken),
+                "export_dxf" => await ExportDxfAsync(root,cancellationToken),
                 "activate_document" => ActivateDocument(root),
                 "rename_document" => RenameDocument(root),
                 "save_document" => await SaveDocumentAsync(root, cancellationToken),
                 "close_document" => await CloseDocumentAsync(root),
                 "get_agent_capabilities" => GetAgentCapabilities(root),
+                "boolean_regions" => await BooleanRegionsAsync(root, cancellationToken),
                 "insert_image_from_file" => InsertImageFromFile(root),
                 "add_ole_object" => AddOleObject(root),
                 "list_document_catalog" => ExecuteForDocument(root, ListDocumentCatalog),
@@ -233,6 +263,16 @@ internal sealed class CadWorkspaceToolExecutor
             created_entity_id = createdEntityId.Value,
             applied_appearance = changedFields
         });
+    }
+
+    private async Task<string> QueryEntitiesAsync(string name,JsonElement arguments,CancellationToken token)
+    {
+        var document=ResolveDocument(arguments);
+        var result=await document.EditorTab.Operation.RunAsync(Direct2dCad.Lang.CadUiText.Get("QueryingDrawing"),
+            ct=>GetExecutor(document).QueryAsync(name,arguments,ct),token);
+        if(!_workspace.GetDocuments().Any(d=>d.DocumentId==document.DocumentId && ReferenceEquals(d.EditorTab,document.EditorTab)))
+            throw new OperationCanceledException("The document was closed.",token);
+        return AddDocumentId(result,document.DocumentId);
     }
 
     private object AddEntities(CadDocumentToolExecutor executor, JsonElement arguments)
@@ -1681,6 +1721,7 @@ internal sealed class CadWorkspaceToolExecutor
     {
         var tools = CadDocumentToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
         tools.AddRange(WorkspaceToolDefinitions());
+        tools.Add(Tool("boolean_regions", "Create one undoable Region from at least two explicit closed operands: union, intersection, or difference. Difference requires subject_entity_id; sources are replaced only after a non-empty result succeeds. Supports circles, rectangles, closed line/circular paths and Regions; unsupported geometry fails without edits.", BooleanRegionsSchema()));
         tools.Add(Tool("insert_image_from_file", "Import an image file and add it as an undoable CadImage in the active editing space. The image is stored in the document; it is not a live external link.",
             ObjectSchema(new Dictionary<string, object>
             {
@@ -1963,6 +2004,10 @@ internal sealed class CadWorkspaceToolExecutor
             ObjectSchema(new Dictionary<string, object> { ["name"] = StringSchema("Optional document name") }));
         yield return Tool("open_document", "Open and activate a .d2cad file from an absolute path.",
             ObjectSchema(new Dictionary<string, object> { ["file_path"] = StringSchema("Absolute .d2cad file path") }, ["file_path"]));
+        yield return Tool("open_dxf", "Import a bounded DXF into a new unsaved document. Units must be declared or explicitly supplied.",
+            ObjectSchema(new Dictionary<string,object>{["file_path"]=StringSchema("Absolute DXF path"),["source_unit"]=new{type="string",@enum=Enum.GetNames<Direct2dCad.Db.Cad.Settings.CadUnit>().Where(u=>u!="Unitless").ToArray()}},["file_path"]));
+        yield return Tool("export_dxf", "Export a snapshot to a separate DXF. Returns losses without writing until allow_loss is true; existing files require overwrite=true.",
+            ObjectSchema(new Dictionary<string,object>{["file_path"]=StringSchema("Absolute DXF destination"),["document_id"]=StringSchema("Open document ID"),["allow_loss"]=new{type="boolean"},["overwrite"]=new{type="boolean"}},["file_path"]));
         yield return Tool("activate_document", "Activate an open CAD document.",
             ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() }, ["document_id"]));
         yield return Tool("rename_document", "Rename an open CAD document. This changes document metadata, not drawing command history.",

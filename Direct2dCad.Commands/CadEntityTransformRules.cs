@@ -29,20 +29,15 @@ public static class CadEntityTransformRules
 
     public static string GetRotationConstraint(CadEntity entity) => entity switch
     {
-        CadEllipse or CadRectangle => "Only integer multiples of 90 degrees are supported.",
-        CadEllipseArc or CadOleObject => "Rotation is not supported by transform_entities.",
+        CadOleObject => "Rotation is not supported by transform_entities.",
         _ => "Any finite angle in degrees is supported."
     };
 
-    public static string GetScaleConstraint(CadEntity entity) => entity is CadEllipseArc
-        ? "Uniform scaling is not supported by transform_entities."
-        : "The factor must be greater than zero. Block references may use negative scale only through exact geometry editing.";
+    public static string GetScaleConstraint(CadEntity entity) => "The factor must be greater than zero. Block references may use negative scale only through exact geometry editing.";
 
     public static string GetMirrorConstraint(CadEntity entity) => entity switch
     {
-        CadEllipse or CadRectangle => "The mirror axis must be a multiple of 45 degrees.",
         CadOleObject => "Only horizontal or vertical mirror axes are supported.",
-        CadEllipseArc => "Mirroring is not supported by transform_entities.",
         _ => "Any finite mirror-axis angle is supported."
     };
 }

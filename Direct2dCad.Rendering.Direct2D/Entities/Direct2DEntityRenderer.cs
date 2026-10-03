@@ -35,6 +35,18 @@ internal sealed class Direct2DEntityRenderer(
         float? strokeWidthOverride = null,
         CadColor? strokeColorOverride = null)
     {
+        var rotation=entity switch {CadEllipse e=>e.RotationRadians,CadEllipseArc e=>e.RotationRadians,CadRectangle e=>e.RotationRadians,_=>0};
+        var center=entity switch {CadEllipse e=>e.Center,CadEllipseArc e=>e.Center,CadRectangle e=>e.FrameBounds.Center,_=>default};
+        var previous=context.Transform;
+        if(rotation!=0) context.Transform=CreateWorldRotationTransform(rotation,center,previous);
+        try { DrawCore(context,document,entity,resources,viewport,options,strokeBrushOverride,strokeWidthOverride,strokeColorOverride); }
+        finally { context.Transform=previous; }
+    }
+
+    private void DrawCore(ID2D1DeviceContext context,CadDocument document,CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket resources,CadViewport viewport,CadRenderOptions options,
+        ID2D1Brush? strokeBrushOverride,float? strokeWidthOverride,CadColor? strokeColorOverride)
+    {
         var strokeBrush = strokeBrushOverride ?? resources.StrokeBrush;
         var strokeWidth = strokeWidthOverride ?? resources.StrokeWidth;
         var renderDetail = Direct2DEntityLevelOfDetail.Resolve(
@@ -45,7 +57,7 @@ internal sealed class Direct2DEntityRenderer(
             strokeWidthOverride);
         if (renderDetail == Direct2DEntityRenderDetail.Skip)
             return;
-        if (TryDrawSimplified(
+        if (entity is not (CadEllipse or CadEllipseArc or CadRectangle) && TryDrawSimplified(
                 context,
                 entity,
                 resources,
@@ -153,10 +165,18 @@ internal sealed class Direct2DEntityRenderer(
                 resources,
                 options,
                 geometrySimplified);
+            if (Direct2DVisiblePolylineStroke.TryDraw(context, resourceCache.Factory, entity,
+                    geometry, resources, viewport, strokeBrush, resolvedStrokeWidth, strokeStyle))
+                return;
             // A custom graphic line type is not part of the realization key. Do
             // not reuse a realization built for another dash pattern; draw it
             // with the cached Direct2D stroke style instead.
-            var canUseStrokeRealization = resources.GraphicLineTypeStrokeStyle is null;
+            // A screen-constant stroke on a very long path would be widened and
+            // tessellated again for almost every zoom tick, exceeding the batch
+            // budget in a single native call. Draw it directly instead.
+            var canUseStrokeRealization = resources.GraphicLineTypeStrokeStyle is null &&
+                !(entity is CadPolyline { Points.Count: >= Direct2DVisiblePolylineStroke.MinimumPointCount } &&
+                  StrokeWidthChangesWithScale(strokeWidth, resolvedStrokeWidth, options));
             if (!options.EnableGeometryRealizations ||
                 !canUseStrokeRealization ||
                 !resourceCache.TryDrawStrokedGeometry(
@@ -370,7 +390,7 @@ internal sealed class Direct2DEntityRenderer(
         ID2D1Brush? strokeBrush,
         float strokeWidth)
     {
-        var bounds = rectangle.Bounds;
+        var bounds = rectangle.FrameBounds;
         if (bounds.IsEmpty)
             return;
 

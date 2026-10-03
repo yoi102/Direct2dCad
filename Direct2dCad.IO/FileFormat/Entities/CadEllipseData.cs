@@ -12,4 +12,5 @@ public sealed class CadEllipseData
     [Key(3)] public double RadiusY { get; set; }
     [Key(4)] public long? GraphicStyleId { get; set; }
     [Key(5)] public long? FillStyleId { get; set; }
+    [Key(6)] public double RotationRadians { get; set; }
 }

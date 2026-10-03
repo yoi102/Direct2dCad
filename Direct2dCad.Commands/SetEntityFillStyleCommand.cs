@@ -64,6 +64,7 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
             CadPolyline polyline => polyline.FillStyleId,
             CadSpline spline => spline.FillStyleId,
             CadCompositePath path => path.FillStyleId,
+            CadRegion path => path.FillStyleId,
             _ => throw new NotSupportedException($"Entity type has no fill style: {entity.GetType().Name}")
         };
     }
@@ -86,6 +87,9 @@ public sealed class SetEntityFillStyleCommand : ICadCommand
                 break;
             case CadSpline spline:
                 spline.SetFillStyleInternal(styleId);
+                break;
+            case CadRegion path:
+                path.SetFillStyleInternal(styleId);
                 break;
             case CadCompositePath path:
                 path.SetFillStyleInternal(styleId);

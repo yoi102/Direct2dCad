@@ -621,6 +621,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                    handleScene: _handleScene,
                    transientScene: _transientScene);
     }
+    public bool IsInitialViewReady=>!_renderer.HasVisiblePreparationPending;
+    public bool HasPresentedScene=>_hasRenderedFrame;
 
     private void RenderCore(
         CadRenderInvalidation? invalidation,
@@ -740,13 +742,11 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 }
 
                 if (_deferInitialPresentationUntilResourcesReady &&
-                    renderCacheBuildPending &&
+                    _renderer.HasVisiblePreparationPending &&
                     RenderCacheBuildRequested is not null)
                 {
-                    // Geometry is prepared off the UI thread, but resources tied to the
-                    // device context must be attached here. Let the UI idle scheduler finish
-                    // those batches before the first Present so a new document never appears
-                    // as a progressively populated scene.
+                    // Present as soon as the visible geometry is attached. Offscreen
+                    // preparation continues in bounded idle slices and never changes the view.
                     RenderCacheBuildRequested.Invoke(this, EventArgs.Empty);
                     return;
                 }

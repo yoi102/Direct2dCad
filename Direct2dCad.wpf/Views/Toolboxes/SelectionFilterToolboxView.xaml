@@ -3,13 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=toolboxes:SelectionFilterToolboxViewModel}"
              d:DesignHeight="420"
              d:DesignWidth="280">
-    <Grid Background="Transparent">
+    <Grid>
+        <TextBlock AutomationProperties.AutomationId="SelectionFilterEmptyHint" Margin="12,8" VerticalAlignment="Top"
+                   Text="{I18N {x:Static r:LangKeys.DrawingAssistantEmpty}}" TextWrapping="Wrap" Opacity="0.7"
+                   Visibility="{Binding HasDocument, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}}" />
+    <Grid Background="Transparent"
+          Visibility="{Binding HasDocument, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}, FallbackValue=Collapsed}">
         <DataGrid ItemsSource="{Binding Types}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
@@ -49,5 +55,6 @@
                 </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
+    </Grid>
     </Grid>
 </UserControl>

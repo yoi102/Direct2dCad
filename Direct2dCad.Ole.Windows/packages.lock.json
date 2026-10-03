@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "Vanara.PInvoke.Gdi32": {
+        "type": "Direct",
+        "requested": "[5.0.5, )",
+        "resolved": "5.0.5",
+        "contentHash": "X5Hu+l8wlGDkOSXsA5PMaJAWSYrgfZUBVF5CIXV8NqEfaA/25OHfKsdjwOQS1//UcJ1cnXra5SxcF70mPAF1iA==",
+        "dependencies": {
+          "Vanara.Core": "5.0.5"
+        }
+      },
+      "Vanara.PInvoke.Kernel32": {
+        "type": "Direct",
+        "requested": "[5.0.5, )",
+        "resolved": "5.0.5",
+        "contentHash": "RyUEG8DN5BUttC82xTdiVz/HpCKa/zeqv2j7kNfABSj3m/3hyH9PSQdeg/fwkOY5VbIWyBegnp+2AKfYAJL3PA==",
+        "dependencies": {
+          "Vanara.Core": "5.0.5"
+        }
+      },
+      "Vanara.PInvoke.Ole": {
+        "type": "Direct",
+        "requested": "[5.0.5, )",
+        "resolved": "5.0.5",
+        "contentHash": "SsABZcfJWY2OI/72kpV7m0BbwnVo2NnWvWDlkrYdoeQ65KVAM+5uPibU8itWr0zC8VYPvpgvYPbJxEtDjeaGVg==",
+        "dependencies": {
+          "Vanara.Core": "5.0.5",
+          "Vanara.PInvoke.Rpc": "5.0.5"
+        }
+      },
+      "Vanara.Core": {
+        "type": "Transitive",
+        "resolved": "5.0.5",
+        "contentHash": "e3+5FNx0tJGKXCl/2yieiiU2WoIQN3A3AO6xuKIQVhQlo45CGBrM5riU6FYDPC4iX3WBypty/h0EZL4xWV2ucA=="
+      },
+      "Vanara.PInvoke.Cryptography": {
+        "type": "Transitive",
+        "resolved": "5.0.5",
+        "contentHash": "lXcUtjy3vy+hjqrT2YnHFtAl56UdDPpNnqQaAuQ3+FoNlkeA7k1yFxvqMKOVJ3tM88NJPniOiJHl/tSF2eSW+A==",
+        "dependencies": {
+          "Vanara.Core": "5.0.5"
+        }
+      },
+      "Vanara.PInvoke.Rpc": {
+        "type": "Transitive",
+        "resolved": "5.0.5",
+        "contentHash": "yFoBrCGKxGJeoMPfnmix6fG3Wk8kl4MxJVDTCpFc6QI00lxxPwZqR4CPm0Ou6k8Sx4aHHxcN8TyiRO3qXZxicg==",
+        "dependencies": {
+          "Vanara.Core": "5.0.5",
+          "Vanara.PInvoke.Security": "5.0.5"
+        }
+      },
+      "Vanara.PInvoke.Security": {
+        "type": "Transitive",
+        "resolved": "5.0.5",
+        "contentHash": "XgZoG4GnU4Xetur8saYJqxQGJw5HCTu2hAz28sMuCqmy66//cNSvsroEClnxHF+f6jy4LG0K7esniZb6y7dOPg==",
+        "dependencies": {
+          "Vanara.Core": "5.0.5",
+          "Vanara.PInvoke.Cryptography": "5.0.5",
+          "Vanara.PInvoke.Kernel32": "5.0.5"
+        }
+      }
+    }
+  }
+}

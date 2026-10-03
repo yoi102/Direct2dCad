@@ -67,5 +67,16 @@ public enum CadCanvasToolMode
     [LocalizedDescription("InsertBlock", typeof(Strings))]
     InsertBlock,
     [LocalizedDescription("LayoutViewportMode", typeof(Strings))]
-    LayoutViewport
+    LayoutViewport,
+    [LocalizedDescription("Offset", typeof(Strings))] Offset,
+    [LocalizedDescription("Trim", typeof(Strings))] Trim,
+    [LocalizedDescription("Extend", typeof(Strings))] Extend,
+    [LocalizedDescription("Fillet", typeof(Strings))] Fillet,
+    [LocalizedDescription("Chamfer", typeof(Strings))] Chamfer,
+    [LocalizedDescription("Join", typeof(Strings))] Join,
+    [LocalizedDescription("Break", typeof(Strings))] Break,
+    [LocalizedDescription("RectArray", typeof(Strings))] RectArray,
+    [LocalizedDescription("PolarArray", typeof(Strings))] PolarArray,
+    DimLinearX, DimLinearY, DimAligned, DimRadius, DimDiameter, DimAngular, Leader,
+    BooleanUnion, BooleanIntersection, BooleanDifference
 }

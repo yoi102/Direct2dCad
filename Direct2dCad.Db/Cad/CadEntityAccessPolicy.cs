@@ -20,7 +20,7 @@ public static class CadEntityAccessPolicy
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(entity);
 
-        return !entity.IsErased &&
+        return !document.IsReadOnly && !entity.IsErased &&
                !entity.IsLocked &&
                document.TryGetLayer(entity.LayerId, out var layer) &&
                layer is { IsLocked: false, IsFrozen: false };
@@ -46,7 +46,7 @@ public static class CadEntityAccessPolicy
     public static bool CanAddToLayer(CadDocument document, LayerId layerId)
     {
         ArgumentNullException.ThrowIfNull(document);
-        return document.TryGetLayer(layerId, out var layer) &&
+        return !document.IsReadOnly && document.TryGetLayer(layerId, out var layer) &&
                layer is { IsLocked: false, IsFrozen: false };
     }
 

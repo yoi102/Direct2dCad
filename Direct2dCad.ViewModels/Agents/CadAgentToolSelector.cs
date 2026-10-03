@@ -134,6 +134,23 @@ internal static class CadAgentToolSelector
         if (ContainsAny(normalized, ImageTerms))
             Add(["insert_image_from_file"]);
 
+        if (ContainsAny(normalized, "boolean", "union", "intersect", "subtract", "difference", "布尔", "合并", "并集", "交集", "差集", "相减"))
+            Add(["boolean_regions", "get_entity_geometry", "select_entities"]);
+        if (ContainsAny(normalized, "dimension", "annotation", "leader", "标注", "尺寸", "引线", "寸法"))
+        {
+            if (ContainsAny(normalized, "detach", "解除关联", "取消关联", "断开关联"))
+                Add(["detach_dimension", "get_entity_geometry", "set_dimension", "add_dimension"]);
+            else if (ContainsAny(normalized, "edit", "change", "set", "修改", "更换", "设置", "字体", "箭头"))
+                Add(["set_dimension", "get_entity_geometry", "add_dimension", "detach_dimension"]);
+            else Add(["add_dimension", "get_entity_geometry", "set_dimension", "detach_dimension"]);
+        }
+        if (ContainsAny(normalized, "offset", "trim", "extend", "fillet", "chamfer", "join", "break", "偏移", "修剪", "延伸", "圆角", "倒角", "打断"))
+            Add(["edit_curves", "get_entity_geometry"]);
+        if (ContainsAny(normalized, "array", "阵列", "配列"))
+            Add(["array_entities", "get_entity_geometry"]);
+        if (ContainsAny(normalized, "dxf"))
+            Add(["open_dxf", "export_dxf"]);
+
         var isMeasurement = ContainsAny(normalized,
             "measure", "measurement", "distance", "perimeter", "area", "angle", "length",
             "\u6d4b\u91cf", "\u8ddd\u79bb", "\u5468\u957f", "\u9762\u79ef", "\u89d2\u5ea6", "\u957f\u5ea6",

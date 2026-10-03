@@ -11,7 +11,7 @@ namespace Direct2dCad.Db.Cad;
 /// 一张图纸的内存模型。
 /// Document 是 CAD DB 的聚合根，负责统一创建和维护 Layer / Block / Entity / Style / HatchPattern 的一致性。
 /// </summary>
-public sealed class CadDocument : IEquatable<CadDocument>
+public sealed partial class CadDocument : IEquatable<CadDocument>
 {
     private readonly CadIdGenerator _ids;
     private readonly Dictionary<LayerId, CadLayer> _layers = [];
@@ -27,8 +27,12 @@ public sealed class CadDocument : IEquatable<CadDocument>
     public CadDocumentSettings DocumentSettings { get; }
     public CadViewSettings ViewSettings { get; } = new();
 
-    public DocumentId Id { get; }
+    public DocumentId Id { get; private set; }
+    public void AssignIndependentIdentity() => Id = _ids.NewDocumentId();
     public string Name { get; private set; }
+    public string? CompatibilityNotice { get; private set; }
+    public bool IsReadOnly => CompatibilityNotice is not null;
+    public void SetCompatibilityReadOnly(string notice) => CompatibilityNotice = notice;
 
     public IReadOnlyDictionary<LayerId, CadLayer> Layers => _layers;
     public IReadOnlyDictionary<BlockId, CadBlockDefinition> Blocks => _blocks;
@@ -1402,7 +1406,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         return ResolveBlockBounds(blockId, [], []);
     }
 
-    public IReadOnlyList<EntityId> RefreshBlockReferenceBounds()
+    public IReadOnlyList<EntityId> RefreshBlockReferenceBounds(CancellationToken cancellationToken=default)
     {
         if (_blockReferenceIds.Count == 0)
             return [];
@@ -1411,6 +1415,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         var blockBounds = new Dictionary<BlockId, CadRectD>();
         foreach (var entityId in _blockReferenceIds)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (!_entities.TryGetValue(entityId, out var entity) ||
                 entity is not CadBlockReference reference)
             {
@@ -1420,7 +1425,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
             if (reference.IsErased)
                 continue;
 
-            var bounds = ResolveBlockReferenceBounds(reference, [], blockBounds);
+            var bounds = ResolveBlockReferenceBounds(reference, [], blockBounds,cancellationToken);
             if (reference.SetResolvedBounds(bounds))
                 changed.Add(reference.Id);
         }
@@ -1756,6 +1761,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
         CadPolyline polyline => polyline.GraphicStyleId == styleId || polyline.FillStyleId == styleId,
         CadSpline spline => spline.GraphicStyleId == styleId || spline.FillStyleId == styleId,
         CadCompositePath path => path.GraphicStyleId == styleId || path.FillStyleId == styleId,
+        CadRegion path => path.GraphicStyleId == styleId || path.FillStyleId == styleId,
         CadText text => text.GraphicStyleId == styleId || text.TextStyleId == styleId,
         CadShapeText shapeText => shapeText.GraphicStyleId == styleId,
         CadBlockReference blockReference => blockReference.GraphicStyleId == styleId,
@@ -1800,7 +1806,7 @@ public sealed class CadDocument : IEquatable<CadDocument>
     private CadRectD ResolveBlockBounds(
         BlockId blockId,
         HashSet<BlockId> visited,
-        Dictionary<BlockId, CadRectD> blockBounds)
+        Dictionary<BlockId, CadRectD> blockBounds,CancellationToken cancellationToken=default)
     {
         if (blockBounds.TryGetValue(blockId, out var cachedBounds))
             return cachedBounds;
@@ -1811,11 +1817,12 @@ public sealed class CadDocument : IEquatable<CadDocument>
         var bounds = CadRectD.Empty;
         foreach (var entity in GetEntitiesInBlock(blockId))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (entity.IsErased)
                 continue;
 
             bounds = bounds.Union(entity is CadBlockReference reference
-                ? ResolveBlockReferenceBounds(reference, visited, blockBounds)
+                ? ResolveBlockReferenceBounds(reference, visited, blockBounds,cancellationToken)
                 : entity.Bounds);
         }
 
@@ -1827,10 +1834,10 @@ public sealed class CadDocument : IEquatable<CadDocument>
     private CadRectD ResolveBlockReferenceBounds(
         CadBlockReference reference,
         HashSet<BlockId> visited,
-        Dictionary<BlockId, CadRectD> blockBounds)
+        Dictionary<BlockId, CadRectD> blockBounds,CancellationToken cancellationToken=default)
     {
         var definition = GetBlock(reference.DefinitionBlockId);
-        var localBounds = ResolveBlockBounds(reference.DefinitionBlockId, visited, blockBounds);
+        var localBounds = ResolveBlockBounds(reference.DefinitionBlockId, visited, blockBounds,cancellationToken);
         return localBounds.IsEmpty
             ? CadRectD.FromLTRB(reference.Position.X, reference.Position.Y, reference.Position.X, reference.Position.Y)
             : CadBlockTransform.TransformBounds(definition, reference, localBounds);

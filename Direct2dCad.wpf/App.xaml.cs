@@ -30,9 +30,11 @@ namespace Direct2dCad;
 public partial class App : System.Windows.Application
 {
     private IServiceProvider _serviceProvider;
+    private readonly WpfBindingDiagnostics? _bindingDiagnostics;
 
     public App()
     {
+        _bindingDiagnostics = WpfBindingDiagnostics.StartFromEnvironment();
         string lang = System.Globalization.CultureInfo.CurrentCulture.Name;
         var culture = new System.Globalization.CultureInfo(lang);
         Thread.CurrentThread.CurrentCulture = culture;
@@ -82,6 +84,7 @@ public partial class App : System.Windows.Application
             dock.AddToolbox<LayersToolboxViewModel>();
             dock.AddToolbox<BlocksToolboxViewModel>();
             dock.AddToolbox<EntityPropertiesToolboxViewModel>();
+            dock.AddToolbox<DrawingRecoveryToolboxViewModel>();
             dock.AddToolbox<EntitySearchToolboxViewModel>();
             dock.AddToolbox<SelectionFilterToolboxViewModel>();
             dock.AddToolbox<CommandLineToolboxViewModel>();
@@ -90,6 +93,7 @@ public partial class App : System.Windows.Application
         });
 
         services.AddTransient<IFileDialogService, FileDialogService>();
+        services.AddSingleton<IFileLocationService, FileLocationService>();
         services.AddSingleton<IImageImportService, ImageImportService>();
         services.AddSingleton<IAiFileImportService, AiFileImportService>();
         services.AddSingleton<IClipboardTextService, ClipboardTextService>();
@@ -120,5 +124,6 @@ public partial class App : System.Windows.Application
         }
 
         base.OnExit(e);
+        _bindingDiagnostics?.Dispose();
     }
 }

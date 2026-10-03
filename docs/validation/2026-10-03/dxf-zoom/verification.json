@@ -1,0 +1,368 @@
+{
+  "recorded_at": "2026-10-03T10:46:58.3240337+00:00",
+  "git_base": "041e291287e93429d49f498b5ca571f9a8f12427",
+  "local_changes": true,
+  "source": {
+    "name": "ArduinoUnoRev3PCB.dxf",
+    "bytes": 3585205,
+    "sha256": "3354C72BFCEF80571DBB617D95D889780232557EFECB718EF73D48B769106891",
+    "imported": 1681,
+    "unsupported": {
+      "Wide polyline": 10611
+    },
+    "entity_types": {
+      "CadPolyline": 717,
+      "CadCompositePath": 793,
+      "CadCircle": 171
+    },
+    "unit": "Millimeter"
+  },
+  "measurement": {
+    "surface": [
+      516,
+      384
+    ],
+    "hardware_direct2d": true,
+    "using_warp": false,
+    "anchor_world": [
+      64,
+      40
+    ],
+    "repeats": 3,
+    "ticks_per_repeat": 64,
+    "full_render_frames_per_mode": 192,
+    "includes": "Native host full redraw, EndDraw, copy and Present callback",
+    "excludes": "WPF input/composition and physical monitor FPS"
+  },
+  "before": [
+    {
+      "mode": "default",
+      "using_warp": false,
+      "width": 516,
+      "height": 384,
+      "anchor_world": {
+        "X": 64,
+        "Y": 40
+      },
+      "anchor_screen": {
+        "X": 438.0701754385965,
+        "Y": 127.43859649122808
+      },
+      "fitted_zoom": 5.614035087719298,
+      "frame_count": 192,
+      "median_ms": 43.4228,
+      "p95_ms": 69.2586,
+      "max_ms": 74.7036,
+      "median_cache_ms": 0.0087,
+      "median_submission_ms": 12.287,
+      "median_surface_ms": 43.4034,
+      "max_visible_entities": 1681,
+      "max_realization_builds": 21,
+      "median_allocated_bytes": 22296
+    },
+    {
+      "mode": "no-realizations",
+      "using_warp": false,
+      "width": 516,
+      "height": 384,
+      "anchor_world": {
+        "X": 64,
+        "Y": 40
+      },
+      "anchor_screen": {
+        "X": 438.0701754385965,
+        "Y": 127.43859649122808
+      },
+      "fitted_zoom": 5.614035087719298,
+      "frame_count": 192,
+      "median_ms": 32.6937,
+      "p95_ms": 60.1189,
+      "max_ms": 63.2206,
+      "median_cache_ms": 0.0083,
+      "median_submission_ms": 0.1868,
+      "median_surface_ms": 32.678,
+      "max_visible_entities": 1681,
+      "max_realization_builds": 0,
+      "median_allocated_bytes": 21616
+    },
+    {
+      "mode": "no-lod",
+      "using_warp": false,
+      "width": 516,
+      "height": 384,
+      "anchor_world": {
+        "X": 64,
+        "Y": 40
+      },
+      "anchor_screen": {
+        "X": 438.0701754385965,
+        "Y": 127.43859649122808
+      },
+      "fitted_zoom": 5.614035087719298,
+      "frame_count": 192,
+      "median_ms": 41.5635,
+      "p95_ms": 68.2508,
+      "max_ms": 78.9822,
+      "median_cache_ms": 0.0104,
+      "median_submission_ms": 11.7927,
+      "median_surface_ms": 41.539,
+      "max_visible_entities": 1681,
+      "max_realization_builds": 19,
+      "median_allocated_bytes": 21920
+    }
+  ],
+  "after": [
+    {
+      "mode": "default",
+      "using_warp": false,
+      "width": 516,
+      "height": 384,
+      "anchor_world": {
+        "X": 64,
+        "Y": 40
+      },
+      "anchor_screen": {
+        "X": 438.0701754385965,
+        "Y": 127.43859649122808
+      },
+      "fitted_zoom": 5.614035087719298,
+      "frame_count": 192,
+      "median_ms": 2.7571,
+      "p95_ms": 8.9156,
+      "max_ms": 21.1175,
+      "median_cache_ms": 0.01,
+      "median_submission_ms": 2.0301,
+      "median_surface_ms": 2.7321,
+      "max_visible_entities": 1681,
+      "max_realization_builds": 27,
+      "median_allocated_bytes": 26136
+    },
+    {
+      "mode": "no-realizations",
+      "using_warp": false,
+      "width": 516,
+      "height": 384,
+      "anchor_world": {
+        "X": 64,
+        "Y": 40
+      },
+      "anchor_screen": {
+        "X": 438.0701754385965,
+        "Y": 127.43859649122808
+      },
+      "fitted_zoom": 5.614035087719298,
+      "frame_count": 192,
+      "median_ms": 1.0453,
+      "p95_ms": 3.8419,
+      "max_ms": 17.4513,
+      "median_cache_ms": 0.0037,
+      "median_submission_ms": 0.2796,
+      "median_surface_ms": 1.0395,
+      "max_visible_entities": 1681,
+      "max_realization_builds": 0,
+      "median_allocated_bytes": 21904
+    },
+    {
+      "mode": "no-lod",
+      "using_warp": false,
+      "width": 516,
+      "height": 384,
+      "anchor_world": {
+        "X": 64,
+        "Y": 40
+      },
+      "anchor_screen": {
+        "X": 438.0701754385965,
+        "Y": 127.43859649122808
+      },
+      "fitted_zoom": 5.614035087719298,
+      "frame_count": 192,
+      "median_ms": 3.2719,
+      "p95_ms": 6.4603,
+      "max_ms": 9.6581,
+      "median_cache_ms": 0.0082,
+      "median_submission_ms": 2.573,
+      "median_surface_ms": 3.2581,
+      "max_visible_entities": 1681,
+      "max_realization_builds": 19,
+      "median_allocated_bytes": 25952
+    }
+  ],
+  "representative_frames": {
+    "before": [
+      {
+        "step": 1,
+        "zoom": 6.175438596491229,
+        "elapsed_ms": 14.7513,
+        "visible": 1681,
+        "cpu_submission_ms": 13.2419,
+        "realization_build_ms": 3.5611999999999995
+      },
+      {
+        "step": 8,
+        "zoom": 12.034182792982465,
+        "elapsed_ms": 16.0598,
+        "visible": 562,
+        "cpu_submission_ms": 14.9802,
+        "realization_build_ms": 13.243
+      },
+      {
+        "step": 16,
+        "zoom": 25.79633957253177,
+        "elapsed_ms": 49.3779,
+        "visible": 189,
+        "cpu_submission_ms": 14.0077,
+        "realization_build_ms": 13.1318
+      },
+      {
+        "step": 24,
+        "zoom": 55.29674484663933,
+        "elapsed_ms": 63.2925,
+        "visible": 53,
+        "cpu_submission_ms": 13.2205,
+        "realization_build_ms": 13.1038
+      },
+      {
+        "step": 32,
+        "zoom": 118.5334834826813,
+        "elapsed_ms": 74.7036,
+        "visible": 16,
+        "cpu_submission_ms": 12.3952,
+        "realization_build_ms": 12.3102
+      }
+    ],
+    "after": [
+      {
+        "step": 1,
+        "zoom": 6.175438596491229,
+        "elapsed_ms": 14.6335,
+        "visible": 1681,
+        "cpu_submission_ms": 13.3987,
+        "realization_build_ms": 2.0816999999999997
+      },
+      {
+        "step": 8,
+        "zoom": 12.034182792982465,
+        "elapsed_ms": 6.4426,
+        "visible": 562,
+        "cpu_submission_ms": 5.3768,
+        "realization_build_ms": 1.258
+      },
+      {
+        "step": 16,
+        "zoom": 25.79633957253177,
+        "elapsed_ms": 4.0442,
+        "visible": 189,
+        "cpu_submission_ms": 3.1872,
+        "realization_build_ms": 1.298
+      },
+      {
+        "step": 24,
+        "zoom": 55.29674484663933,
+        "elapsed_ms": 2.8497,
+        "visible": 53,
+        "cpu_submission_ms": 2.3564,
+        "realization_build_ms": 1.2717
+      },
+      {
+        "step": 32,
+        "zoom": 118.5334834826813,
+        "elapsed_ms": 1.3313,
+        "visible": 16,
+        "cpu_submission_ms": 1.0994,
+        "realization_build_ms": 0.2033
+      }
+    ]
+  },
+  "supplemental_run": {
+    "path": "TestResults/dxf-zoom/after/zoom.json",
+    "isolated_no_realizations_cpu_outlier_ms": 96.5059,
+    "final_no_realizations_max_ms": 17.4513,
+    "note": "Both raw traces retained; no claim that every frame in every mode meets 16.7 ms."
+  },
+  "validation": {
+    "solution_release_build": {
+      "status": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    "native_final": {
+      "passed": 138,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "TestResults/dxf-zoom/tests/render-regression-isolated.trx"
+    },
+    "prior_concurrent_run": {
+      "passed": 137,
+      "failed": 1,
+      "difference": "Existing boolean pixel test one green-channel value 15 vs 16. Four independent case rechecks passed; new heavy GPU tests now isolated from parallel collections."
+    },
+    "ui_final": {
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "trx": "TestResults/dxf-zoom/tests/dxf-wheel-final.trx",
+      "canvas": {
+        "Left": 371,
+        "Top": 250,
+        "Width": 924,
+        "Height": 383
+      },
+      "displayed_render_estimate_at_zoom_16": "182 FPS  ·  5.5 ms",
+      "screenshot_render_estimate_at_zoom_16": {
+        "fps": 184,
+        "render_cost_ms": 5.4,
+        "note": "Observed on final screenshot; a rolling render-duration estimate, not physical monitor FPS."
+      }
+    },
+    "synthetic_stroke_cases_pixel_exact": 48,
+    "external_strokes": {
+      "frames": 67,
+      "paths": 7,
+      "comparisons": 469,
+      "exact": 442,
+      "max_changed_pixels_per_path": 8,
+      "max_channel_difference": 16,
+      "test_limits": {
+        "pixels": 16,
+        "channel_difference": 32
+      }
+    },
+    "diff_check": "passed"
+  },
+  "source_files_sha256": {
+    "Direct2dCad.Rendering.Direct2D/Entities/Direct2DVisiblePolylineStroke.cs": "8F036997FD74969D4871604E70C282845AC72EBF65842EBD854AC458484A0D22",
+    "Direct2dCad.Rendering.Direct2D/Entities/Direct2DEntityRenderer.cs": "88A1C164D224803E4773D5ABC93DB16AE4F5E153EFD2846B85741B4DC605A46F",
+    "Direct2dCad.Rendering.Direct2D/Overlays/Direct2DSelectionRenderer.cs": "F933968D546DC20DD2468FCEE57B461BFF928A64FA37C563F70A2585FD3215C7",
+    "Direct2dCad.Rendering.Direct2D/Scene/Direct2DCommandListChunkCache.cs": "0C00C0821B3CCB51CB9B4CDDD8761B4EB98019178FFD203D178BE24D963F4344",
+    "Direct2dCad.Benchmarks/DxfZoomRunner.cs": "4E826F1CB504DF9A4246217A1695FBA0DDF5585E79301FE66517F21D57485FA1",
+    "Direct2dCad.Benchmarks/BenchmarkRenderSession.cs": "08EDD45E37E6409EFBCC7A52D5B2BFD2B21F296E3EC2905D2F3A3F2AE4ADF749",
+    "Direct2dCad.Benchmarks/Program.cs": "563D7B288030F6E52BA9894337735B96A944629BF66028E291CD0E193753E1D4",
+    "Direct2dCad.Windows.IntegrationTests/VisiblePolylineStrokeIntegrationTests.cs": "B5A3CFF67215DC944F72DB4A93E8611C139156F8B368563D21BF163BCA12C7AC",
+    "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.DxfZoom.cs": "DE748C001635DF0BB0984192B414B869ABAFD95ED04176CE605B5C6EC0B18649"
+  },
+  "raw_artifacts_sha256": {
+    "TestResults/dxf-zoom/before/zoom.json": "30EC3F70CD93B309F72037B56A143036A5E5C13D2F7400A19C6A30750E8A663B",
+    "TestResults/dxf-zoom/after-final/zoom.json": "ADCA655F538AF638B0F88F43A22C80C4AC556A167A34FAE582BBC828A35D0DB6",
+    "TestResults/dxf-zoom/after/zoom.json": "D7BE3FCE8ABD952D46B46FD379C1D3BA5B6A3B491B62885F820B8C1BD13EAF4E",
+    "TestResults/dxf-zoom/diagnostics/zoom.json": "29C5F6A3604EC0D3D04139D9500070550CF4A3942601748F508A533D437479AA",
+    "TestResults/dxf-zoom/large-paths/zoom.json": "CB6E4CB3F9AEEFAB1FAB0F670BF29DB89C93EF66E064189E50951211B22DF60E",
+    "TestResults/dxf-zoom/tests/render-regression.trx": "353CD6C53E8FC632AD1C60272FC3DF9968C3B14A1445E543552B44215C7C85E2",
+    "TestResults/dxf-zoom/tests/boolean-pixel-recheck.trx": "046484732F8601E80C51874054617538F0026C6BA7C3E32B187440151A1AB1A1",
+    "TestResults/dxf-zoom/tests/render-regression-isolated.trx": "0119ED07ACEE3175A779AE8D1030E15D104957564297E9A021F20BEB2CBBF5A4",
+    "TestResults/dxf-zoom/tests/dxf-wheel-final.trx": "0FF5E4D2DE61A617E83A73CD210642818FDC4AB68F0D8F6E2D574EFA3AF96A75",
+    "TestResults/dxf-zoom/ui-final/ui-wheel.json": "4C6FC65518682B37B5B492998E60ADC4002527E411CE3198EB423EAE07257727",
+    "docs/validation/2026-10-03/dxf-zoom/measurements.csv": "4308234EBE75646FB323CFB8020A0BAC9F48A38F8DDB3E62912B09FB85ADEA87",
+    "docs/validation/2026-10-03/dxf-zoom/ui-wheel.json": "4C6FC65518682B37B5B492998E60ADC4002527E411CE3198EB423EAE07257727",
+    "docs/validation/2026-10-03/dxf-zoom/stroke-pixels.json": "F76CE76A47EC2E44015C102490217252FEA37BD34C7C4D94ED22E83E0644DDA7",
+    "docs/validation/2026-10-03/dxf-zoom/screenshots/dxf-wheel-16.png": "1065C2C499EBAB5AE003796C3065036AEB7AB4A68BA7A669C79DFBA17B609D89",
+    "docs/validation/2026-10-03/dxf-zoom/screenshots/dxf-long-outline-selected.png": "E143428FC5C781C1E30A61BA084436FFC84CECC1E5BC7277CB84DD1B36E0781A"
+  },
+  "limitations": [
+    "10,611 wide polylines unsupported by current DXF importer; both timings use the same 1,681 imported entities.",
+    "Native antialiasing corner coverage and cache batching can produce small pixel differences; no entire-composited-frame bitwise guarantee.",
+    "Dashed/custom paths and transformed-block coordinates use the complete path.",
+    "No physical input latency, long stress, cross-GPU/DPI or hosted CI acceptance; no package rebuilt, signed or published."
+  ]
+}

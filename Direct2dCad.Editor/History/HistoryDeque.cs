@@ -3,19 +3,21 @@ using System.Collections;
 namespace Direct2dCad.Editor.History;
 
 // Array-backed stack with amortized O(1) removal of expired oldest entries.
-internal sealed class HistoryDeque<T> : IEnumerable<T>
+internal sealed class HistoryDeque<T>(Func<T,long>? estimate=null) : IEnumerable<T>
 {
     private readonly List<T> _items = [];
     private int _start;
 
     public int Count => _items.Count - _start;
+    public long EstimatedBytes {get;private set;}
     public T Oldest => _items[_start];
 
-    public void Push(T item) => _items.Add(item);
+    public void Push(T item) { _items.Add(item);EstimatedBytes+=estimate?.Invoke(item)??0; }
 
     public T Pop()
     {
         var item = _items[^1];
+        EstimatedBytes-=estimate?.Invoke(item)??0;
         _items.RemoveAt(_items.Count - 1);
         if (Count == 0)
             Clear();
@@ -42,6 +44,7 @@ internal sealed class HistoryDeque<T> : IEnumerable<T>
     public T RemoveOldest()
     {
         var item = _items[_start];
+        EstimatedBytes-=estimate?.Invoke(item)??0;
         _items[_start++] = default!;
         if (_start >= 256 && _start >= Count)
         {
@@ -57,6 +60,7 @@ internal sealed class HistoryDeque<T> : IEnumerable<T>
     {
         _items.Clear();
         _start = 0;
+        EstimatedBytes=0;
     }
 
     public IEnumerator<T> GetEnumerator()

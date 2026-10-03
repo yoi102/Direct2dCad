@@ -13,6 +13,7 @@ namespace Direct2dCad.ViewModels.Toolboxes;
 public partial class DocumentExplorerToolboxViewModel : CadToolboxViewModelBase
 {
     private IDockLayoutService? _dockLayoutService;
+    private MainViewModel? _workspace;
     private readonly ISubscriber<EditorTabDocumentSummaryChangedMessage> _documentSummaryChangedSubscriber;
     private bool _isSynchronizingSelection;
 
@@ -35,12 +36,13 @@ public partial class DocumentExplorerToolboxViewModel : CadToolboxViewModelBase
     [ObservableProperty]
     public partial DocumentExplorerItemViewModel? SelectedDocument { get; set; }
 
-    public void Attach(IDockLayoutService dockLayoutService)
+    public void Attach(IDockLayoutService dockLayoutService, MainViewModel? workspace = null)
     {
-        if (ReferenceEquals(_dockLayoutService, dockLayoutService))
+        if (ReferenceEquals(_dockLayoutService, dockLayoutService) && ReferenceEquals(_workspace, workspace))
             return;
 
         _dockLayoutService = dockLayoutService ?? throw new ArgumentNullException(nameof(dockLayoutService));
+        _workspace = workspace;
         RefreshDocuments();
     }
 
@@ -56,7 +58,7 @@ public partial class DocumentExplorerToolboxViewModel : CadToolboxViewModelBase
         if (_dockLayoutService is not null)
         {
             foreach (var document in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
-                Documents.Add(new DocumentExplorerItemViewModel(document, _documentSummaryChangedSubscriber));
+                Documents.Add(new DocumentExplorerItemViewModel(document, _documentSummaryChangedSubscriber, _workspace));
         }
 
         OnPropertyChanged(nameof(HasDocuments));
@@ -100,14 +102,17 @@ public sealed partial class DocumentExplorerItemViewModel : ObservableObject, ID
 
     public DocumentExplorerItemViewModel(
         EditorTabViewModel document,
-        ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber)
+        ISubscriber<EditorTabDocumentSummaryChangedMessage> documentSummaryChangedSubscriber,
+        MainViewModel? workspace = null)
     {
         Document = document ?? throw new ArgumentNullException(nameof(document));
+        Workspace = workspace;
         _documentSummaryChangedSubscription = documentSummaryChangedSubscriber.Subscribe(OnDocumentSummaryChanged);
         RefreshFromDocument();
     }
 
     public EditorTabViewModel Document { get; }
+    public MainViewModel? Workspace { get; }
 
     [ObservableProperty]
     public partial string DocumentName { get; set; } = string.Empty;

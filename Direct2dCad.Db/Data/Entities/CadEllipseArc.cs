@@ -13,6 +13,14 @@ public sealed class CadEllipseArc : Curve
     public CadPointD Center { get; private set; }
     public double RadiusX { get; private set; }
     public double RadiusY { get; private set; }
+    public double RotationRadians { get; private set; }
+    public CadMatrixD GeometryTransform => CadMatrixD.CreateRotation(RotationRadians, Center);
+    public CadPointD ToLocal(CadPointD point) => CadMatrixD.CreateRotation(-RotationRadians, Center).TransformPoint(point);
+    public void SetRotation(double angle)
+    {
+        if(!double.IsFinite(angle)) throw new ArgumentOutOfRangeException(nameof(angle));
+        RotationRadians=angle; RebuildDerivedGeometry();
+    }
     public double StartAngleRadians { get; private set; }
     public double SweepAngleRadians { get; private set; }
     public StyleId? GraphicStyleId { get; private set; }
@@ -21,7 +29,7 @@ public sealed class CadEllipseArc : Curve
     public CadPointD StartPoint => _startPoint;
     public CadPointD EndPoint => _endPoint;
     public override bool IsClosed => false;
-    public override double Length => ApproximateLength();
+    public override double Length => CadCurveMeasurements.Measure(this).Length;
 
     public override CadCurveOrientation Orientation =>
         SweepAngleRadians < 0
@@ -56,9 +64,9 @@ public sealed class CadEllipseArc : Curve
 
     public CadPointD GetPointAtAngle(double angleRadians)
     {
-        return new CadPointD(
+        return GeometryTransform.TransformPoint(new CadPointD(
             Center.X + Math.Cos(angleRadians) * RadiusX,
-            Center.Y + Math.Sin(angleRadians) * RadiusY);
+            Center.Y + Math.Sin(angleRadians) * RadiusY));
     }
 
     public void SetCenter(CadPointD center)
@@ -90,7 +98,9 @@ public sealed class CadEllipseArc : Curve
             .ExpandToInclude(StartPoint)
             .ExpandToInclude(EndPoint);
 
-        foreach (var angle in new[] { 0.0, Math.PI * 0.5, Math.PI, Math.PI * 1.5 })
+        var c=Math.Cos(RotationRadians);var s=Math.Sin(RotationRadians);
+        var x=Math.Atan2(-RadiusY*s,RadiusX*c);var y=Math.Atan2(RadiusY*c,RadiusX*s);
+        foreach (var angle in new[] { x,x+Math.PI,y,y+Math.PI })
         {
             if (ContainsAngle(angle))
                 bounds = bounds.ExpandToInclude(GetPointAtAngle(angle));

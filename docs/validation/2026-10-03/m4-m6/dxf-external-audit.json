@@ -1,0 +1,33 @@
+{
+  "validator": "ezdxf",
+  "validator_version": "1.4.3",
+  "rows": [
+    {
+      "file": "calibration.dxf",
+      "sha256": "3a9a06d8e9c386246a7be9bc01aa0f27992a55af0cf4d34fc73f1f7d7668cf53",
+      "version": "AC1018",
+      "entities": 7,
+      "units": 4,
+      "errors": [],
+      "fixes": []
+    },
+    {
+      "file": "external-roundtrip.dxf",
+      "sha256": "019add7b74dbd0db28472933c0028c00248507deea1bb1a83076b93dd7da5a04",
+      "version": "AC1018",
+      "entities": 11,
+      "units": 4,
+      "errors": [],
+      "fixes": []
+    }
+  ],
+  "calibration_checks": [
+    "100 mm line",
+    "hidden entity",
+    "Unicode text",
+    "layer true color",
+    "block and nonuniform insert"
+  ],
+  "external_geometry_matches": true,
+  "external_source_sha256": "a38bfd30108d0644215b3ada3977b25ebd48df9fbc22226462886588a4387663"
+}

@@ -19,6 +19,11 @@ public interface IEntitySettingsPropertySectionViewModel
 {
     int ZIndex { get; set; }
     bool IsVisible { get; set; }
+    bool SupportsGeometryOrientation => false;
+    double GeometryRotationDegrees { get=>0;set{} }
+    bool HasCurveMeasurement => false;
+    string CurveMeasurementDisplay => "";
+    string CurveMeasurementDetail => "";
 }
 
 public interface IFillPropertySectionViewModel

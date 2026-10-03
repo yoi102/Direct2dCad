@@ -66,11 +66,12 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
             RefreshLayerOptions(_documentViewModel, entity);
             Title = GetEntityTypeDisplayName(entity.GetType());
             SupportsStrokeAppearance = SupportsGraphicStyle(entity);
-            SupportsStrokeStyle = entity is CadEllipseArc or CadCompositePath;
+            SupportsStrokeStyle = entity is CadEllipseArc or CadCompositePath or CadRegion;
             ZIndex = entity.ZIndex;
             IsVisible = entity.IsVisible;
             UseByLayerColor = entity.UseLayerColor;
             UseByLayerLineWeight = entity.UseLayerLineWeight;
+            RefreshRegion(entity);
 
             if (SupportsStrokeAppearance)
             {
@@ -160,7 +161,7 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
     }
 
     private static bool SupportsGraphicStyle(CadEntity entity) =>
-        entity is CadEllipseArc or CadShapeText or CadBlockReference or CadCompositePath;
+        entity is CadEllipseArc or CadShapeText or CadBlockReference or CadCompositePath or CadRegion;
 
     private static StyleId? GetGraphicStyleId(CadEntity entity) => entity switch
     {
@@ -168,6 +169,7 @@ public partial class CommonEntityPropertyViewModel : EntityPropertyViewModel,
         CadShapeText shapeText => shapeText.GraphicStyleId,
         CadBlockReference blockReference => blockReference.GraphicStyleId,
         CadCompositePath path => path.GraphicStyleId,
+        CadRegion path => path.GraphicStyleId,
         _ => null
     };
 

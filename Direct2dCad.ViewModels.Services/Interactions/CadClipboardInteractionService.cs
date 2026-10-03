@@ -83,6 +83,11 @@ internal readonly struct CadClipboardInteractionService(
         var style = CreatePreviewStyle(item, effectiveLayer, document, parentStyle);
         switch (item.Entity)
         {
+            case CadDimensionClipboardSnapshot dimension:
+                var previewDocument = Direct2dCad.Db.Cad.CadDocument.Create("preview");
+                var annotation = previewDocument.AddDimension(dimension.Definition with { Anchors = dimension.Definition.Anchors.Select(a => a with { Reference = null }).ToArray() });
+                foreach (var stroke in annotation.Strokes) items.Add(new CadTransientLine(stroke.Start + delta, stroke.End + delta, style));
+                break;
             case CadBlockReferenceClipboardSnapshot blockReference:
                 AddBlockPreview(
                     items,
@@ -104,17 +109,17 @@ internal readonly struct CadClipboardInteractionService(
                 break;
 
             case CadEllipseClipboardSnapshot ellipse:
-                items.Add(new CadTransientEllipse(ellipse.Center + delta, ellipse.RadiusX, ellipse.RadiusY, style));
+                items.Add(new CadTransientGroup([new CadTransientEllipse(ellipse.Center + delta, ellipse.RadiusX, ellipse.RadiusY, style)],CadMatrixD.CreateRotation(ellipse.RotationRadians,ellipse.Center+delta)));
                 break;
 
             case CadEllipseArcClipboardSnapshot ellipseArc:
-                items.Add(new CadTransientEllipseArc(
+                items.Add(new CadTransientGroup([new CadTransientEllipseArc(
                     ellipseArc.Center + delta,
                     ellipseArc.RadiusX,
                     ellipseArc.RadiusY,
                     ellipseArc.StartAngleRadians,
                     ellipseArc.SweepAngleRadians,
-                    style));
+                    style)],CadMatrixD.CreateRotation(ellipseArc.RotationRadians,ellipseArc.Center+delta)));
                 break;
 
             case CadArcClipboardSnapshot arc:
@@ -127,11 +132,11 @@ internal readonly struct CadClipboardInteractionService(
                 break;
 
             case CadRectangleClipboardSnapshot rectangle:
-                items.Add(new CadTransientRectangle(
+                items.Add(new CadTransientGroup([new CadTransientRectangle(
                     rectangle.Bounds.Translate(delta),
                     style,
                     rectangle.CornerRadiusX,
-                    rectangle.CornerRadiusY));
+                    rectangle.CornerRadiusY)],CadMatrixD.CreateRotation(rectangle.RotationRadians,rectangle.Bounds.Center+delta)));
                 break;
 
             case CadPolylineClipboardSnapshot polyline:
@@ -148,6 +153,10 @@ internal readonly struct CadClipboardInteractionService(
                     style));
                 break;
 
+            case CadRegionClipboardSnapshot region:
+                foreach (var p in region.Contours.SelectMany(c => c.Edges))
+                    items.Add(p.IsLine ? new CadTransientLine(p.Start + delta, p.End + delta, style) : new CadTransientArc(p.Center + delta, p.Radius, p.StartAngle, p.Sweep, style));
+                break;
             case CadCompositePathClipboardSnapshot path:
                 items.Add(new CadTransientGroup(
                     [new CadTransientCompositePath(path.StartPoint, path.Segments, path.Closed, path.Bounds, style)],

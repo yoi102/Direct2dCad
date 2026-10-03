@@ -1,0 +1,17 @@
+{
+  "recordedUtc": "2026-10-03T01:17:06.6491218+00:00",
+  "gpu": [
+    {
+      "Name": "NVIDIA GeForce RTX 5070 Ti",
+      "DriverVersion": "32.0.16.1692",
+      "AdapterRAM": 4293918720
+    },
+    {
+      "Name": "Intel(R) UHD Graphics 770",
+      "DriverVersion": "32.0.101.7088",
+      "AdapterRAM": 2147479552
+    }
+  ],
+  "sdk": "10.0.401",
+  "os": "Microsoft Windows NT 10.0.26220.0"
+}

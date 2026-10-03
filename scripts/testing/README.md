@@ -1,6 +1,8 @@
 # 测试与覆盖率
 
-最新扩展范围、修复项与验证边界见 [覆盖扩展记录](COVERAGE.md)。
+2026-09-05 的扩展范围、修复项与覆盖率边界见 [覆盖扩展记录](COVERAGE.md)。2026-10-02 的源码审查、当前回归结果及 CAD 能力缺口见 [CAD 能力与不足](../../docs/CAD-READINESS.md)。两次运行的数字分别读取，不合并为一次验证。
+
+2026-10-03 的 M1–M3 实现、绘图辅助工具箱和最终本机托管/原生/桌面结果见[日期验证记录](../../docs/validation/2026-10-03/README.md)，每项目计数与 TRX 哈希保留在摘要 JSON。该次未采集新的业务覆盖率，也未运行云端 CI；`global.json` 固定 SDK 10.0.401，工作流为 `.github/workflows/managed-regression.yml`。
 
 ## 运行
 
@@ -73,6 +75,23 @@ Polygon 在模型中是闭合的 `CadPolyline`，不是另一种实体类。
 `Test-CoverageSummary.ps1` 用固定报告验证不同源根、重复类和生成文件排除；它也会随完整回归运行。
 这是**可执行行覆盖率，不是分支覆盖率或业务完整度**。不要合并不同代码版本的报告来声称覆盖率提高。
 UI 测试启动的 WPF 子进程没有被 Coverlet 插桩，因此 UI 操作不会计入该汇总。
+
+## M4–M6 验证入口
+
+最新实施与机器边界见 [状态](../../docs/M4-M6-STATUS.md) 和 [证据](../../docs/validation/2026-10-03/m4-m6/README.md)。新增回归包括七种标注、值快照/关联失效、复制与变换历史、纸面比例、DXF 损失/预算/隐藏状态、版本分页、历史字节预算及压缩副本。
+
+`EngineeringPrintIntegrationTests` 校验本机 Microsoft Print to PDF 的票据与预览，不提交打印作业。`VisiblePreparationIntegrationTests` 验证首屏不等待未调度/删除对象或 offscreen 捕获。UI 的标注用例通过真实窗口完成预选→放置→属性→撤销→模板。
+
+设置 `DIRECT2DCAD_UI_SCREENSHOT_DIRECTORY` 和 `DIRECT2DCAD_PRINT_EVIDENCE_DIRECTORY` 可保存截图和票据比例记录。`DIRECT2DCAD_UI_EXECUTABLE` 可指定已分发的 EXE；设置目录由测试隔离。
+
+```powershell
+# Python 环境需安装 ezdxf==1.4.3，校验器只读，不修复输入
+python scripts/testing/Validate-DxfExchange.py TestResults/m4-m6-final-evidence
+# 两个未签名包在独立路径测试安装、版本升级、回退、哈希拒绝和卸载
+scripts/delivery/Test-LocalPackage.ps1 -PackageDirectory TestResults/local-package -UpgradePackageDirectory TestResults/upgrade-package
+```
+
+依赖锁还原使用 `dotnet restore Direct2dCad.slnx --locked-mode`。托管 CI 与手动交互桌面回归/未签名包工作流分开；配置存在不等于线上已经运行。
 
 ## 仍需验收
 

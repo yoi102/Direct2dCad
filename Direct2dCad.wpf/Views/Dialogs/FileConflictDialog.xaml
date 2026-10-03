@@ -1,0 +1,20 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Dialogs.FileConflictDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services.Platform;assembly=Direct2dCad.ViewModels.Services"
+    Width="470" AutomationProperties.AutomationId="FileConflictDialog">
+    <StackPanel Margin="20">
+        <TextBlock x:Name="TitleText" FontSize="18" FontWeight="SemiBold"/>
+        <TextBlock x:Name="DescriptionText" Margin="0,16,0,8" TextWrapping="Wrap"/>
+        <TextBlock x:Name="PathText" Margin="0,0,0,20" TextWrapping="Wrap"/>
+        <WrapPanel HorizontalAlignment="Right">
+            <Button x:Name="SaveAsButton" AutomationProperties.AutomationId="ConflictSaveAsButton" Margin="0,0,8,0" IsDefault="True"
+                Command="{x:Static md:DialogHost.CloseDialogCommand}" CommandParameter="{x:Static svc:CadFileConflictChoice.SaveAs}"/>
+            <Button x:Name="OverwriteButton" AutomationProperties.AutomationId="ConflictOverwriteButton" Margin="0,0,8,0"
+                Command="{x:Static md:DialogHost.CloseDialogCommand}" CommandParameter="{x:Static svc:CadFileConflictChoice.Overwrite}"/>
+            <Button x:Name="CancelButton" AutomationProperties.AutomationId="ConflictCancelButton" IsCancel="True"
+                Command="{x:Static md:DialogHost.CloseDialogCommand}" CommandParameter="{x:Static svc:CadFileConflictChoice.Cancel}"/>
+        </WrapPanel>
+    </StackPanel>
+</UserControl>

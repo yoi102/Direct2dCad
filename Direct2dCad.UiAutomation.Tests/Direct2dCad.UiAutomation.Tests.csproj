@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.wpf\Direct2dCad.wpf.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Direct2dCad.ViewModels.Services\Direct2dCad.ViewModels.Services.csproj" />
   </ItemGroup>
 
   <ItemGroup>

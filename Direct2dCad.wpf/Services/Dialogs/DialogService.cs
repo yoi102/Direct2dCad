@@ -14,6 +14,11 @@ namespace Direct2dCad.wpf.Services.Dialogs;
 
 internal sealed class DialogService : IDialogService
 {
+    public Task<Direct2dCad.Db.Cad.Settings.CadUnit?> ChooseDxfSourceUnitAsync()
+    {
+        var dialog=new DxfUnitDialog{Owner=System.Windows.Application.Current?.MainWindow};
+        return Task.FromResult(dialog.ShowDialog()==true?dialog.Unit:null);
+    }
     private readonly ICadMessageLog _messageLog;
 
     public DialogService(ICadMessageLog messageLog)
@@ -81,6 +86,12 @@ internal sealed class DialogService : IDialogService
         var result = await ShowReplacingCurrentAsync(() => messageDialog, dialogIdentifier);
 
         return result is string resultString && resultString == bool.TrueString;
+    }
+
+    public async Task<CadFileConflictChoice> ShowFileConflictDialogAsync(string path,string dialogIdentifier=ViewServiceIdentifiers.RootDialogHost)
+    {
+        var result=await ShowReplacingCurrentAsync(()=>new FileConflictDialog(path),dialogIdentifier);
+        return result is CadFileConflictChoice choice ? choice : CadFileConflictChoice.Cancel;
     }
 
     public async Task<UnsavedDocumentDialogResult> ShowUnsavedDocumentDialogAsync(

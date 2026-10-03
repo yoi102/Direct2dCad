@@ -28,6 +28,9 @@ internal sealed class CadGripDragCommitter(
 
         switch (entity)
         {
+            case CadDimension dimension:
+                editor.Execute(new SetDimensionCommand(dimension.Id, dimension.Definition with { Placement = drag.DraggedGripPosition }));
+                break;
             case CadLine line:
                 CommitLineGripDrag(line, drag);
                 break;
@@ -56,9 +59,10 @@ internal sealed class CadGripDragCommitter(
                 CommitSplineGripDrag(spline, drag);
                 break;
 
-            case CadCompositePath path:
-                if (TryCreateUniformBoundsGripScale(path.Bounds, drag, out var pivot, out var factor, out _))
-                    editor.Execute(new ScaleEntitiesCommand([path.Id], pivot, factor));
+            case CadCompositePath:
+            case CadRegion:
+                if (TryCreateUniformBoundsGripScale(entity.Bounds, drag, out var pivot, out var factor, out _))
+                    editor.Execute(new ScaleEntitiesCommand([entity.Id], pivot, factor));
                 break;
 
             case CadText text:

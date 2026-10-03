@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using System.Globalization;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.CommandLine;
+using Direct2dCad.Lang;
 using Direct2dCad.Commands;
 using Direct2dCad.Commands.Clipboard;
 using Direct2dCad.Db;
@@ -94,6 +95,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private double _insertBlockScaleX = 1;
     private double _insertBlockScaleY = 1;
     private bool _disposed;
+    public bool IsDisposed => _disposed;
+    public DateTimeOffset LastInteractionAtUtc { get; private set; }=DateTimeOffset.UtcNow;
 
     [ObservableProperty]
     public partial CadEditor CadEditor { get; private set; } = new(CadDocument.Create("Untitled"));
@@ -271,6 +274,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     public CadDrawingDefaultsViewModel DrawingDefaults { get; } = new();
 
     public bool IsPanning => _pan.IsPanning || _layoutPan.IsPanning;
+    public CadCanvasCursorKind CanvasCursor => IsPanning || _gripDrag.IsActive
+        ? CadCanvasCursorKind.Hand
+        : CadCanvasCursorKind.Arrow;
     public CadUserSettings UserSettings { get; private set; } = CadUserSettings.CreateDefault();
 
     public CadDocumentViewModel(
@@ -332,6 +338,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.EditorStateChanged -= OnEditorStateChanged;
         CadEditor.CommandActivity -= OnCommandActivity;
         CadEditor = editor ?? throw new ArgumentNullException(nameof(editor));
+        CadEditor.DocumentCommands.Settings.MaximumUndoBytes=UserSettings.General.HistoryBudgetMegabytes*1024L*1024;
         CadEditor.EditorStateChanged += OnEditorStateChanged;
         CadEditor.CommandActivity += OnCommandActivity;
         _viewportInitialization.ResetInitialView();
@@ -390,6 +397,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void ApplyUserSettings(CadUserSettings? settings)
     {
+        CadEditor.DocumentCommands.Settings.MaximumUndoBytes=(settings?.General.HistoryBudgetMegabytes??256)*1024L*1024;
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
         Direct2DImageRenderHost.SetGraphicsDeviceMode(
@@ -487,7 +495,16 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult SetToolMode(CadCanvasToolMode toolMode)
     {
+        if (CadEditor.Document.IsReadOnly && toolMode != CadCanvasToolMode.Select)
+        {
+            _snackbarService.Enqueue(Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.CompatibilityReadOnly));
+            return CadCanvasInteractionResult.NotHandled;
+        }
+        ClearBooleanInteraction();
         var modeChanged = CadCanvasToolMode != toolMode;
+        _dynamicInputStep = null;
+        BeginDimension(toolMode);
+        BeginEditInteraction(toolMode);
         if (modeChanged && toolMode != CadCanvasToolMode.Select)
             CadEditor.Selection.Clear();
         if (toolMode != CadCanvasToolMode.InsertBlock)
@@ -495,6 +512,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (toolMode != CadCanvasToolMode.LayoutViewport)
             _layoutViewportCreation.Clear();
         CadCanvasToolMode = toolMode;
+        _objectSnap.Clear();
+        StepInputError = "";
         if (modeChanged)
             RefreshDrawingEntityName();
         _lastCommandLineInputPoint = null;
@@ -505,7 +524,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
-            Cursor: CadCanvasCursorKind.Cross);
+            Cursor: CanvasCursor);
     }
 
     public CadCanvasInteractionResult PointerDown(
@@ -514,6 +533,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         bool forcePan,
         CadCanvasInputModifiers modifiers = CadCanvasInputModifiers.None)
     {
+        LastInteractionAtUtc=DateTimeOffset.UtcNow;
         _currentMousePoint = screen;
         UpdatePointerWorldStatus(screen);
         _selectionCycle.Clear();
@@ -574,6 +594,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult PointerMove(CadPointD screen)
     {
+        LastInteractionAtUtc=DateTimeOffset.UtcNow;
         _currentMousePoint = screen;
         var requiresFullRender = false;
 
@@ -635,7 +656,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return new CadCanvasInteractionResult(
                 true,
                 ReleaseMouseCapture: true,
-                Cursor: CadCanvasCursorKind.Cross);
+                Cursor: CanvasCursor);
         }
 
         if (button == CadCanvasPointerButton.Left && _gripDrag.IsActive)
@@ -761,6 +782,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 ExitLayoutViewport();
         }
         CadCanvasToolMode = CadCanvasToolMode.Select;
+        ClearEditInteraction();
+        ClearBooleanInteraction();
+        _dimensionAnchors.Clear();
+        _reassociateDimension = null;
+        _objectSnap.Clear();
         CadEditor.Selection.Clear();
         _lastCommandLineInputPoint = null;
         ClearInteractionState(clearClipboard: false);
@@ -770,17 +796,23 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
-            Cursor: CadCanvasCursorKind.Cross);
+            Cursor: CanvasCursor);
     }
 
     public void Undo()
     {
+        if (IsBooleanTool) SetToolMode(CadCanvasToolMode.Select);
+        EndDimensionPropertyEdit();
         CadEditor.Undo();
+        RefreshDimensionContext(force: true);
     }
 
     public void Redo()
     {
+        if (IsBooleanTool) SetToolMode(CadCanvasToolMode.Select);
+        EndDimensionPropertyEdit();
         CadEditor.Redo();
+        RefreshDimensionContext(force: true);
     }
 
     [RelayCommand]
@@ -1251,7 +1283,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
-            Cursor: CadCanvasCursorKind.Cross);
+            Cursor: CanvasCursor);
     }
 
     public CadCanvasInteractionResult ClearSelection()
@@ -1364,6 +1396,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult CompleteCurrentDrawing()
     {
+        if (IsDimensionTool)
+        {
+            SetToolMode(CadCanvasToolMode.Select);
+            return CadCanvasInteractionResult.HandledOnly;
+        }
+        if (CompleteBooleanInteraction()) return CadCanvasInteractionResult.HandledOnly;
+        if (CompleteEditInteraction()) return CadCanvasInteractionResult.HandledOnly;
         if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
         {
             CompleteLayoutViewportCreation();
@@ -1372,6 +1411,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (CreateDrawingClickHandler().CompleteCurrentDrawing())
         {
+            StepInputError = "";
+            NotifyDrawingUx();
             RequestOverlayRender();
             return CadCanvasInteractionResult.HandledOnly;
         }
@@ -1627,19 +1668,50 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void HandleDrawingClick(CadPointD screen)
     {
-        var world = ScreenToWorld(screen, snapToGrid: true);
-        HandleDrawingWorldPoint(world);
+        // Entity picking uses the raw pointer, as does the edit preview. Only
+        // geometric point steps opt into snapping inside the edit workflow.
+        var world = ScreenToWorld(screen, snapToGrid: !IsCurveEditTool && !IsBooleanTool);
+        if (HasDynamicInput && HasLockedDynamicInput)
+        {
+            UpdateDynamicInputPointer(world);
+            SubmitDynamicInput();
+            return;
+        }
+        HandleDrawingWorldPoint(world,explicitInput:false);
     }
 
-    private bool HandleDrawingWorldPoint(CadPointD world)
+    private bool HandleDrawingWorldPoint(CadPointD world,bool explicitInput=true)
     {
+        LastInteractionAtUtc=DateTimeOffset.UtcNow;
+        StepInputError = "";
+        if (IsBooleanTool) return HandleBooleanClick(world);
+        if (IsDimensionTool)
+        {
+            if (!EnsureLayerAcceptsEntities(DrawingLayerId) || !HandleDimensionPoint(world, explicitInput)) return false;
+            _lastCommandLineInputPoint = new CadCommandLinePoint(world.X, world.Y);
+            ClearDynamicInputLocks();
+            return true;
+        }
+        if (IsCurveEditTool)
+        {
+            if (!HandleEditClick(world,explicitInput)) return false;
+            _lastCommandLineInputPoint=new CadCommandLinePoint(world.X,world.Y);
+            ClearDynamicInputLocks();
+            return true;
+        }
         if (!EnsureLayerAcceptsEntities(DrawingLayerId))
             return false;
 
         if (!CreateDrawingClickHandler().HandleClick(world))
+        {
+            StepInputError = CadUiText.Get("InvalidDrawingGeometry");
+            NotifyDrawingUx();
             return false;
+        }
 
         _lastCommandLineInputPoint = new CadCommandLinePoint(world.X, world.Y);
+        NotifyDrawingUx();
+        ClearDynamicInputLocks();
         RequestOverlayRender();
         return true;
     }
@@ -1691,7 +1763,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         RaiseInteractionStateChanged();
         PublishInteractionActivity("Begin paste preview");
         RequestOverlayRender();
-        return new CadCanvasInteractionResult(true, Cursor: CadCanvasCursorKind.Cross);
+        return new CadCanvasInteractionResult(true, Cursor: CanvasCursor);
     }
 
     private void ClearInteractionState(bool clearClipboard, bool render = true)
@@ -1753,7 +1825,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             !document.TryGetLayout(layoutId, out var layout) ||
             layout is null)
         {
-            throw new InvalidOperationException("Printing is only available in layout space.");
+            var bounds=document.GetEntitiesInBlock(BlockId.ModelSpace).Where(e=>!e.IsErased && e.IsVisible)
+                .Aggregate(CadRectD.Empty,(b,e)=>b.Union(e.Bounds));
+            if(bounds.IsEmpty) bounds=CadRectD.FromXYWH(0,0,297,210);
+            if(bounds.Width<1 || bounds.Height<1) bounds=bounds.Inflate(1,1);
+            var a=CadEditor.Viewport.ScreenToWorld(new(0,0));
+            var b=CadEditor.Viewport.ScreenToWorld(new(CadEditor.Viewport.ViewWidth,CadEditor.Viewport.ViewHeight));
+            return new(documentName,document,bounds,document.Layouts.Keys.First(),_oleSessions.Draw)
+            {IsModelSpace=true,CurrentViewBounds=CadRectD.FromLTRB(Math.Min(a.X,b.X),Math.Min(a.Y,b.Y),Math.Max(a.X,b.X),Math.Max(a.Y,b.Y))};
         }
 
         return new CadPrintRequest(
@@ -1803,24 +1882,30 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             viewportBounds.Height * 0.9 / Math.Max(modelBounds.Height, 1e-9)), 1e-6, 1e6);
     }
 
-    private IReadOnlyList<CadTransientItem> CreateTransientItems()
+    internal IReadOnlyList<CadTransientItem> CreateTransientItems()
     {
         _transientItemBuffer.Clear();
         var items = _transientItemBuffer;
 
-        if (_currentMousePoint is { } mousePoint)
+        if (_currentMousePoint is { } || HasDynamicInput && HasLockedDynamicInput)
         {
-            var rawMouseWorld = ScreenToWorld(mousePoint);
-            var snappedMouseWorld = SnapWorld(rawMouseWorld);
+            var mousePoint = _currentMousePoint ?? WorldToScreen(_dynamicInputPointer);
+            var rawMouseWorld = _currentMousePoint is not null ? ScreenToWorld(mousePoint) : _dynamicInputPointer;
+            var snappedMouseWorld = _currentMousePoint is not null ? SnapWorld(rawMouseWorld) : rawMouseWorld;
+            UpdateDynamicInputPointer(IsCurveEditTool ? rawMouseWorld : snappedMouseWorld);
+            var inputWorld = ResolveDynamicInputPreview(IsCurveEditTool ? rawMouseWorld : snappedMouseWorld);
             AddPastePreview(items, snappedMouseWorld);
             AddSelectionWindowPreview(items, mousePoint);
             AddGripDragPreview(items);
             AddBlockInsertionPreview(items, snappedMouseWorld);
-            AddDrawingPreview(items, snappedMouseWorld);
-            AddSnapMarker(items, rawMouseWorld, snappedMouseWorld);
+            AddDrawingPreview(items, inputWorld);
+            AddEditPreview(items, inputWorld);
+            AddDimensionPreview(items, inputWorld);
+            if (_currentMousePoint is not null) AddSnapMarker(items, snappedMouseWorld);
             AddLayoutViewportCreationPreview(items, mousePoint);
         }
-
+        AddBooleanPreview(items);
+        AddDimensionAnchorMarkers(items);
         return items;
     }
 
@@ -2053,7 +2138,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadCanvasInteractionResult(
             true,
             ReleaseMouseCapture: true,
-            Cursor: CadCanvasCursorKind.Cross);
+            Cursor: CanvasCursor);
     }
 
     private CadCanvasInteractionResult KeepActiveGripDragAfterRelease(CadPointD screen)
@@ -2338,7 +2423,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private CadTransientMeasurementBuilder CreateMeasurementBuilder()
     {
-        return new CadTransientMeasurementBuilder(CadEditor.Document, InteractionViewport);
+        return new CadTransientMeasurementBuilder(CadEditor.Document, InteractionViewport,
+            showLabels: !HasDynamicInput || DynamicInputFields.All(f => f.Key is "X" or "Y"));
     }
 
     private CadMultiPointDrawingPreviewBuilder CreateMultiPointDrawingPreviewBuilder()
@@ -2350,9 +2436,19 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             CreateMeasurementBuilder());
     }
 
-    private void AddSnapMarker(List<CadTransientItem> items, CadPointD rawWorld, CadPointD snappedWorld)
+    private void AddSnapMarker(List<CadTransientItem> items, CadPointD snappedWorld)
     {
-        CreateSnapInteractionService().AddSnapMarker(items, rawWorld, snappedWorld);
+        if(_objectSnap.Current is { } candidate && CadCanvasToolMode!=CadCanvasToolMode.Select)
+        {
+            var half=6/Math.Max(InteractionZoom,1e-9);var point=candidate.Point;
+            var style=CadTransientStyle.Construction with {StrokeColor=CadEditor.Document.ViewSettings.Grid.SnapMarkerColor,LinePattern=CadTransientLinePattern.Solid};
+            if(candidate.Kind==CadObjectSnapModes.Center) items.Add(new CadTransientCircle(point,half,style));
+            else if(candidate.Kind==CadObjectSnapModes.Midpoint) items.Add(new CadTransientPolyline([new(point.X-half,point.Y-half),new(point.X+half,point.Y-half),new(point.X,point.Y+half)],true,style));
+            else if(candidate.Kind==CadObjectSnapModes.Endpoint) items.Add(new CadTransientRectangle(CadRectD.FromCenter(point,half*2,half*2),style));
+            else {items.Add(new CadTransientLine(new(point.X-half,point.Y-half),new(point.X+half,point.Y+half),style));items.Add(new CadTransientLine(new(point.X-half,point.Y+half),new(point.X+half,point.Y-half),style));}
+            return;
+        }
+        CreateSnapInteractionService().AddSnapMarker(items, snappedWorld);
     }
 
     private double InteractionZoom => TryGetActiveLayoutViewport(out _, out var viewport)
@@ -2456,13 +2552,20 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private void UpdatePointerWorldStatus(CadPointD screen)
     {
         var world = ScreenToWorld(screen, snapToGrid: true);
+        UpdateDynamicInputPointer(IsCurveEditTool ? ScreenToWorld(screen, snapToGrid: false) : world);
         CurrentPointerWorldX = world.X;
         CurrentPointerWorldY = world.Y;
     }
 
     private CadPointD SnapWorld(CadPointD world)
     {
-        return CreateSnapInteractionService().SnapWorld(world);
+        if (CadCanvasToolMode == CadCanvasToolMode.Select && !_paste.IsPreviewActive)
+            return CreateSnapInteractionService().SnapWorld(world);
+        var point = _objectSnap.Resolve(CadEditor.Document, CadEditor.ActiveOwnerBlockId,
+            InteractionViewport, _entityBoundsQuery, world, DrawingAnchor);
+        OnPropertyChanged(nameof(SnapCandidateDisplay));
+        OnPropertyChanged(nameof(HasSnapCandidates));
+        return point;
     }
 
     private CadSnapInteractionService CreateSnapInteractionService()
@@ -2508,6 +2611,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
+        if(e.DocumentChanged) LastInteractionAtUtc=DateTimeOffset.UtcNow;
+        if (e.DocumentChanged && IsBooleanTool && !_committingBoolean) SetToolMode(CadCanvasToolMode.Select);
         _overlayScenes.ApplyDocumentChanges(e, CadEditor.Selection.EntityIds);
         var documentInvalidation = CreateDocumentInvalidation(e);
         _paste.InvalidatePreviewTemplate();
@@ -2673,9 +2778,11 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     }
 
     bool ICadCommandLineContext.SubmitDrawingPoint(CadCommandLinePoint point) =>
-        HandleDrawingWorldPoint(SnapWorld(new CadPointD(point.X, point.Y)));
+        HandleDrawingWorldPoint(new CadPointD(point.X, point.Y));
 
-    bool ICadCommandLineContext.CompleteCurrentDrawing() => CompleteCurrentDrawing().Handled;
+    string? ICadCommandLineContext.DrawingInputError => string.IsNullOrEmpty(StepInputError) ? null : StepInputError;
+
+    bool ICadCommandLineContext.CompleteCurrentDrawing() => CompleteCurrentDrawing().Handled && string.IsNullOrEmpty(StepInputError);
 
     CadCommandLineRenderStatistics? ICadCommandLineContext.GetRenderStatistics()
     {
@@ -2750,6 +2857,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void RaiseInteractionStateChanged(bool clearBlockDefinitionSelection = false)
     {
+        NotifyDrawingUx();
         _interactionStateChangedPublisher.Publish(
             new CadDocumentInteractionStateChangedMessage(
                 this,
@@ -2781,6 +2889,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void Dispose()
     {
+        ClearBooleanInteraction();
         if (_disposed)
             return;
 

@@ -42,6 +42,13 @@ public sealed class CadSettingsSection
     [Key(32)] public List<CadGridSpacingPresetData>? GridSpacingPresets { get; set; }
     [Key(33)] public Guid? GridMajorSpacingPresetId { get; set; }
     [Key(34)] public Guid? GridMinorSpacingPresetId { get; set; }
+    [Key(35)] public bool GridSnapEnabled { get; set; }
+    [Key(36)] public bool ObjectSnapEnabled { get; set; } = true;
+    [Key(37)] public bool OrthoEnabled { get; set; }
+    [Key(38)] public bool PolarEnabled { get; set; }
+    [Key(39)] public double PolarIncrementDegrees { get; set; } = 45;
+    [Key(40)] public double SnapScreenTolerance { get; set; } = 10;
+    [Key(41)] public CadObjectSnapModes ObjectSnapModes { get; set; } = CadObjectSnapModes.Default;
 }
 
 [MessagePackObject]

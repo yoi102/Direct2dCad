@@ -820,7 +820,7 @@ internal readonly partial struct CadRenderInvalidationCalculator(
             CadArc or
             CadPolyline or
             CadSpline or
-            CadCompositePath or
+            CadCompositePath or CadRegion or
             CadShapeText or
             CadBlockReference;
     }

@@ -24,6 +24,9 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
     private bool _disposed;
     private bool _priorityChosen;
     private bool _captureStarted;
+    private readonly HashSet<EntityId> _visiblePending=[];
+    public bool HasVisiblePending=>_document is not null && !_priorityChosen || _visiblePending.Count>0;
+    public void MarkApplied(EntityId id)=>_visiblePending.Remove(id);
 
     public bool NeedsPriority => !_priorityChosen && _document is not null && !_captureStarted;
 
@@ -115,9 +118,10 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
                 }
                 id = _entityIds[_captureIndex++];
             }
-            if (!_pendingIds.Remove(id) || _invalidated.Contains(id) ||
-                !_document.TryGetEntity(id, out var entity) || entity is null)
+            if (!_pendingIds.Remove(id))
                 continue;
+            if (_invalidated.Contains(id) || !_document.TryGetEntity(id, out var entity) || entity is null || entity.IsErased)
+            { _visiblePending.Remove(id); continue; }
             _waitingSnapshot = GeometryPreparationSnapshot.Capture(_document, entity);
         }
     }
@@ -137,7 +141,9 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
         // Include nested definitions without changing document draw order.
         while (pending.TryDequeue(out var id))
         {
+            if (!_pendingIds.Contains(id)) continue;
             _priority.Enqueue(id);
+            _visiblePending.Add(id);
             if (!_document.TryGetEntity(id, out var entity) ||
                 entity is not CadBlockReference reference ||
                 !_document.TryGetBlock(reference.DefinitionBlockId, out var block) || block is null)
@@ -154,13 +160,14 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
     {
         ThrowIfDisposed();
         foreach (var id in ids)
-            _invalidated.Add(id);
+        { _invalidated.Add(id);_visiblePending.Remove(id); }
     }
 
     public void Invalidate(EntityId id)
     {
         ThrowIfDisposed();
         _invalidated.Add(id);
+        _visiblePending.Remove(id);
     }
 
     public bool TryTakeNext(out Direct2DPreparedGeometry? prepared) =>
@@ -202,6 +209,7 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
         _entityIds = [];
         _priority.Clear();
         _pendingIds.Clear();
+        _visiblePending.Clear();
         _ready?.Writer.TryComplete();
         if (_ready is not null)
             while (_ready.Reader.TryRead(out var item))

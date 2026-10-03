@@ -77,6 +77,10 @@ public sealed class ToolboxLayoutPersistenceService
         {
             var toolboxes = CollectToolboxes(anchorables);
             var startupDocuments = CaptureStartupDocuments(dockingManager);
+            var startupToolboxes = dockingManager.Layout.Descendents()
+                .OfType<LayoutAnchorable>()
+                .Where(item => item.Content is IToolbox)
+                .ToArray();
             using var stream = new FileStream(
                 _layoutFilePath,
                 FileMode.Open,
@@ -88,6 +92,7 @@ public sealed class ToolboxLayoutPersistenceService
             serializer.Deserialize(stream);
 
             EnsureStartupDocuments(dockingManager, startupDocuments.Values);
+            EnsureNewToolboxes(dockingManager, startupToolboxes);
 
             SynchronizeToolboxZones(dockingManager);
             return true;
@@ -123,6 +128,28 @@ public sealed class ToolboxLayoutPersistenceService
         finally
         {
             TryDeleteTemporaryFile(temporaryFilePath);
+        }
+    }
+
+    private static void EnsureNewToolboxes(
+        ToggleDockingManager manager, IEnumerable<LayoutAnchorable> startupToolboxes)
+    {
+        var restoredIds = manager.Layout.Descendents().OfType<LayoutAnchorable>()
+            .Select(item => item.ContentId).ToHashSet(StringComparer.Ordinal);
+        foreach (var item in startupToolboxes)
+        {
+            if (restoredIds.Contains(item.ContentId) || item.Content is not IToolbox toolbox)
+                continue;
+
+            // Reuse the startup anchor so its MVVM bindings survive an upgrade.
+            // Only add missing panels; retain existing positions, sizes and visibility.
+            var side = toolbox.Zone.ToString().StartsWith("Right", StringComparison.Ordinal)
+                ? AnchorableShowStrategy.Right
+                : toolbox.Zone.ToString().StartsWith("Left", StringComparison.Ordinal)
+                    ? AnchorableShowStrategy.Left : AnchorableShowStrategy.Bottom;
+            item.Parent?.RemoveChild(item);
+            item.AddToLayout(manager, side);
+            if (!toolbox.IsOpenByDefault) item.Hide();
         }
     }
 

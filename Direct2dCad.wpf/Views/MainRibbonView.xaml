@@ -75,6 +75,67 @@
                     </Setter.Value>
                 </Setter>
                 </Style>
+
+                <Style x:Key="RibbonIconButtonStyle"
+                       TargetType="Button"
+                       BasedOn="{StaticResource MaterialDesignFlatButton}">
+                    <Setter Property="Width" Value="33" />
+                    <Setter Property="Height" Value="33" />
+                    <Setter Property="Margin" Value="5" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}, TargetNullValue=''}" />
+                </Style>
+
+                <Style x:Key="RibbonDropDownButtonStyle"
+                       TargetType="Button"
+                       BasedOn="{StaticResource MaterialDesignFlatButton}">
+                    <Setter Property="Width" Value="80" />
+                    <Setter Property="Height" Value="80" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}, TargetNullValue=''}" />
+                    <EventSetter Event="Click" Handler="RibbonDropDownButton_OnClick" />
+                    <EventSetter Event="PreviewKeyDown" Handler="RibbonDropDownButton_OnPreviewKeyDown" />
+                </Style>
+
+                <Style x:Key="RibbonDropDownMenuStyle"
+                       TargetType="ContextMenu"
+                       BasedOn="{StaticResource {x:Type ContextMenu}}">
+                    <Style.Resources>
+                        <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                            <Setter Property="Height" Value="36" />
+                        </Style>
+                    </Style.Resources>
+                    <Setter Property="DataContext" Value="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" />
+                    <Setter Property="Placement" Value="Bottom" />
+                    <Setter Property="VerticalOffset" Value="2" />
+                    <Setter Property="MinWidth" Value="220" />
+                </Style>
+
+                <Style x:Key="RibbonToolFocusVisual" TargetType="Control">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Control">
+                                <Rectangle Margin="1" RadiusX="3" RadiusY="3" StrokeThickness="1" StrokeDashArray="2,2"
+                                           Stroke="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+                <Style x:Key="RibbonToolToggleButtonStyle"
+                       TargetType="ToggleButton"
+                       BasedOn="{StaticResource {x:Type ToggleButton}}">
+                    <Setter Property="Width" Value="33" />
+                    <Setter Property="Height" Value="33" />
+                    <Setter Property="Margin" Value="5" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="FocusVisualStyle" Value="{StaticResource RibbonToolFocusVisual}" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}, TargetNullValue=''}" />
+                    <Style.Triggers>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
             </ResourceDictionary>
         </Grid.Resources>
 
@@ -210,11 +271,38 @@
 
                     <Button ToolTip="{I18N {x:Static r:LangKeys.New}}"
                             AutomationProperties.AutomationId="NewDocumentButton"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Width="80"
-                            Height="80"
-                            Padding="0"
-                            Command="{Binding NewCommand}">
+                            Style="{StaticResource RibbonDropDownButtonStyle}">
+                        <Button.ContextMenu>
+                            <ContextMenu Style="{StaticResource RibbonDropDownMenuStyle}"
+                                         AutomationProperties.AutomationId="NewDocumentMenu">
+                                <MenuItem Header="{I18N {x:Static r:LangKeys.BlankDrawing}}"
+                                          Icon="{md:PackIcon Kind=FilePlus, Size=22}"
+                                          Command="{Binding NewCommand}"
+                                          AutomationProperties.AutomationId="NewBlankDocumentMenuItem" />
+                                <Separator />
+                                <MenuItem Header="A4 · mm · 1:1"
+                                          Command="{Binding NewTemplateCommand}" CommandParameter="A4"
+                                          AutomationProperties.AutomationId="NewA4TemplateButton">
+                                    <MenuItem.Icon>
+                                        <ContentControl Width="24" Height="24" ContentTemplate="{StaticResource CadA4TemplateIconTemplate}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="A3 · mm · 1:100"
+                                          Command="{Binding NewTemplateCommand}" CommandParameter="A3-100"
+                                          AutomationProperties.AutomationId="NewA3TemplateButton">
+                                    <MenuItem.Icon>
+                                        <ContentControl Width="24" Height="24" ContentTemplate="{StaticResource CadA3TemplateIconTemplate}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="Letter · in · 1:1"
+                                          Command="{Binding NewTemplateCommand}" CommandParameter="Letter"
+                                          AutomationProperties.AutomationId="NewLetterTemplateButton">
+                                    <MenuItem.Icon>
+                                        <ContentControl Width="24" Height="24" ContentTemplate="{StaticResource CadLetterTemplateIconTemplate}" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <Grid RowDefinitions="* auto">
 
                             <md:PackIcon Kind="FilePlus"
@@ -222,19 +310,30 @@
                                          VerticalAlignment="Center"
                                          Width="50"
                                          Height="50" />
-                            <TextBlock Grid.Row="1"
-                                       HorizontalAlignment="Center"
-                                       Text="{I18N {x:Static r:LangKeys.New}}" />
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.New}}" />
+                                <md:PackIcon Kind="MenuDown" Width="14" Height="14" Margin="2,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
 
                         </Grid>
                     </Button>
 
                     <Button ToolTip="{I18N {x:Static r:LangKeys.OpenFile}}"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Width="80"
-                            Height="80"
-                            Padding="0"
-                            Command="{Binding OpenFileCommand}">
+                            AutomationProperties.AutomationId="OpenDocumentButton"
+                            Style="{StaticResource RibbonDropDownButtonStyle}">
+                        <Button.ContextMenu>
+                            <ContextMenu Style="{StaticResource RibbonDropDownMenuStyle}"
+                                         AutomationProperties.AutomationId="OpenDocumentMenu">
+                                <MenuItem Header="{I18N {x:Static r:LangKeys.OpenFile}}"
+                                          Icon="{md:PackIcon Kind=FolderOpen, Size=22}"
+                                          Command="{Binding OpenFileCommand}"
+                                          AutomationProperties.AutomationId="OpenNativeDocumentMenuItem" />
+                                <MenuItem Header="{I18N {x:Static r:LangKeys.ImportDxf}}"
+                                          Icon="{md:PackIcon Kind=FileImportOutline, Size=22}"
+                                          Command="{Binding ImportDxfCommand}"
+                                          AutomationProperties.AutomationId="ImportDxfButton" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <Grid RowDefinitions="* auto">
 
                             <md:PackIcon Kind="FolderOpen"
@@ -242,19 +341,35 @@
                                          VerticalAlignment="Center"
                                          Width="50"
                                          Height="50" />
-                            <TextBlock Grid.Row="1"
-                                       HorizontalAlignment="Center"
-                                       Text="{I18N {x:Static r:LangKeys.OpenFile}}" />
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.OpenFile}}" />
+                                <md:PackIcon Kind="MenuDown" Width="14" Height="14" Margin="2,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
 
                         </Grid>
                     </Button>
                     <Button ToolTip="{I18N {x:Static r:LangKeys.Save}}"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Width="80"
-                            Height="80"
-                            Padding="0"
-                            Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
-                            Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}">
+                            AutomationProperties.AutomationId="SaveDocumentButton"
+                            Style="{StaticResource RibbonDropDownButtonStyle}"
+                            Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
+                        <Button.ContextMenu>
+                            <ContextMenu Style="{StaticResource RibbonDropDownMenuStyle}"
+                                         AutomationProperties.AutomationId="SaveDocumentMenu">
+                                <MenuItem Header="{I18N {x:Static r:LangKeys.Save}}"
+                                          Icon="{md:PackIcon Kind=ContentSave, Size=22}"
+                                          Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}"
+                                          AutomationProperties.AutomationId="SaveDocumentMenuItem" />
+                                <MenuItem Header="{I18N {x:Static r:LangKeys.SaveAs}}"
+                                          Icon="{md:PackIcon Kind=ContentSaveAdd, Size=22}"
+                                          Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}"
+                                          AutomationProperties.AutomationId="SaveAsDocumentMenuItem" />
+                                <Separator />
+                                <MenuItem Header="{I18N {x:Static r:LangKeys.SaveCompressedCopy}}"
+                                          Icon="{md:PackIcon Kind=FolderZipOutline, Size=22}"
+                                          Command="{Binding CurrentEditorTabViewModel.SaveCompressedCopyCommand}"
+                                          AutomationProperties.AutomationId="SaveCompressedCopyButton" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
                         <Grid RowDefinitions="* auto"
                               Margin="0">
                             <md:PackIcon Kind="ContentSave"
@@ -262,29 +377,31 @@
                                          VerticalAlignment="Center"
                                          Width="50"
                                          Height="50" />
-                            <TextBlock Grid.Row="1"
-                                       HorizontalAlignment="Center"
-                                       Text="{I18N {x:Static r:LangKeys.Save}}" />
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{I18N {x:Static r:LangKeys.Save}}" />
+                                <md:PackIcon Kind="MenuDown" Width="14" Height="14" Margin="2,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
 
                         </Grid>
                     </Button>
-                    <Button ToolTip="{I18N {x:Static r:LangKeys.SaveAs}}"
-                            Style="{StaticResource MaterialDesignFlatButton}"
+                    <Button Style="{StaticResource MaterialDesignFlatButton}"
                             Width="80"
                             Height="80"
                             Padding="0"
+                            ToolTip="{I18N {x:Static r:LangKeys.ExportDxf}}"
+                            AutomationProperties.Name="{I18N {x:Static r:LangKeys.ExportDxf}}"
                             Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
-                            Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}">
+                            Command="{Binding CurrentEditorTabViewModel.ExportDxfCommand}"
+                            AutomationProperties.AutomationId="ExportDxfButton">
                         <Grid RowDefinitions="* auto">
-                            <md:PackIcon Kind="ContentSaveAdd"
+                            <md:PackIcon Kind="FileExportOutline"
                                          HorizontalAlignment="Center"
                                          VerticalAlignment="Center"
                                          Width="50"
                                          Height="50" />
                             <TextBlock Grid.Row="1"
                                        HorizontalAlignment="Center"
-                                       Text="{I18N {x:Static r:LangKeys.SaveAs}}" />
-
+                                       Text="{I18N {x:Static r:LangKeys.ExportDxf}}" />
                         </Grid>
                     </Button>
                     <Button ToolTip="{I18N {x:Static r:LangKeys.Print}}"
@@ -344,6 +461,8 @@
 
                     <WrapPanel Width="80">
                         <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.CircleCenterRadius}}"
+                                      AutomationProperties.AutomationId="CircleCenterRadiusToolButton"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.CircleCenterRadius}}"
                                       IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.CircleCenterRadius}}"
                                       Width="33"
                                       Height="33"
@@ -388,6 +507,8 @@
                         </ToggleButton>
 
                         <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.CircleCenterDiameter}}"
+                                      AutomationProperties.AutomationId="CircleCenterDiameterToolButton"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.CircleCenterDiameter}}"
                                       IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.CircleCenterDiameter}}"
                                       Width="33"
                                       Height="33"
@@ -1187,6 +1308,8 @@
                         </ToggleButton>
 
                         <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Rectangle}}"
+                                      AutomationProperties.AutomationId="RectangleToolButton"
+                                      AutomationProperties.Name="{I18N {x:Static r:LangKeys.Rectangle}}"
                                       IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Rectangle}}"
                                       Width="33"
                                       Height="33"
@@ -1302,6 +1425,198 @@
 
 
 
+                </WrapPanel>
+            </TabItem>
+            <TabItem AutomationProperties.AutomationId="EditRibbonTab"
+                     Header="{I18N {x:Static r:LangKeys.EditTools}}"
+                     Style="{StaticResource MahApps.Styles.TabItem}"
+                     Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
+                <WrapPanel Margin="10">
+                    <WrapPanel Width="86">
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="OffsetToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Offset}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Offset}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Offset">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadOffsetIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="TrimToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Trim}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Trim}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Trim">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadTrimIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="ExtendToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Extend}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Extend}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Extend">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadExtendIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="BreakToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Break}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Break}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Break">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadBreakIconTemplate}" />
+                        </ToggleButton>
+                    </WrapPanel>
+                    <Border Width="1" Height="76" Margin="15,5" Background="#616161" Opacity="0.4" />
+                    <WrapPanel Width="86">
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="FilletToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Fillet}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Fillet}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Fillet">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadFilletIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="ChamferToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Chamfer}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Chamfer}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Chamfer">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadChamferIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="JoinToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Join}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Join}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Join">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadJoinIconTemplate}" />
+                        </ToggleButton>
+                    </WrapPanel>
+                    <Border Width="1" Height="76" Margin="15,5" Background="#616161" Opacity="0.4" />
+                    <WrapPanel Width="43">
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="RectArrayToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.RectArray}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.RectArray}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="RectArray">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadRectArrayIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="PolarArrayToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.PolarArray}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.PolarArray}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="PolarArray">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadPolarArrayIconTemplate}" />
+                        </ToggleButton>
+                    </WrapPanel>
+                    <Border Width="1" Height="76" Margin="15,5" Background="#616161" Opacity="0.4" />
+                    <WrapPanel Width="86">
+                        <Button Style="{StaticResource RibbonIconButtonStyle}"
+                                AutomationProperties.AutomationId="BooleanUnionToolButton"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                ToolTip="{I18N {x:Static r:LangKeys.BooleanUnion}}"
+                                Command="{Binding CurrentEditorTabViewModel.BooleanUnionCommand}">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadBooleanUnionIconTemplate}" />
+                        </Button>
+                        <Button Style="{StaticResource RibbonIconButtonStyle}"
+                                AutomationProperties.AutomationId="BooleanIntersectionToolButton"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                ToolTip="{I18N {x:Static r:LangKeys.BooleanIntersection}}"
+                                Command="{Binding CurrentEditorTabViewModel.BooleanIntersectionCommand}">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadBooleanIntersectionIconTemplate}" />
+                        </Button>
+                        <Button Style="{StaticResource RibbonIconButtonStyle}"
+                                AutomationProperties.AutomationId="BooleanDifferenceToolButton"
+                                Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                ToolTip="{I18N {x:Static r:LangKeys.BooleanDifference}}"
+                                Command="{Binding CurrentEditorTabViewModel.BooleanDifferenceCommand}">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadBooleanDifferenceIconTemplate}" />
+                        </Button>
+                    </WrapPanel>
+                </WrapPanel>
+            </TabItem>
+            <TabItem AutomationProperties.AutomationId="AnnotationRibbonTab"
+                     Header="{I18N {x:Static r:LangKeys.Dimension}}"
+                     Style="{StaticResource MahApps.Styles.TabItem}"
+                     Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
+                <WrapPanel Margin="10">
+                    <WrapPanel Width="86">
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="DimLinearXToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.DimLinearX}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.DimLinearX}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="DimLinearX">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadDimLinearXIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="DimLinearYToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.DimLinearY}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.DimLinearY}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="DimLinearY">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadDimLinearYIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="DimAlignedToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.DimAligned}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.DimAligned}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="DimAligned">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadDimAlignedIconTemplate}" />
+                        </ToggleButton>
+                    </WrapPanel>
+                    <Border Width="1" Height="76" Margin="15,5" Background="#616161" Opacity="0.4" />
+                    <WrapPanel Width="43">
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="DimRadiusToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.DimRadius}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.DimRadius}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="DimRadius">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadDimRadiusIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="DimDiameterToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.DimDiameter}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.DimDiameter}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="DimDiameter">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadDimDiameterIconTemplate}" />
+                        </ToggleButton>
+                    </WrapPanel>
+                    <Border Width="1" Height="76" Margin="15,5" Background="#616161" Opacity="0.4" />
+                    <WrapPanel Width="43">
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="DimAngularToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.DimAngular}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.DimAngular}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="DimAngular">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadDimAngularIconTemplate}" />
+                        </ToggleButton>
+
+                        <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
+                                      AutomationProperties.AutomationId="LeaderToolButton"
+                                      ToolTip="{I18N {x:Static r:LangKeys.Leader}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Leader}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="Leader">
+                            <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadLeaderIconTemplate}" />
+                        </ToggleButton>
+                    </WrapPanel>
                 </WrapPanel>
             </TabItem>
         </TabControl>

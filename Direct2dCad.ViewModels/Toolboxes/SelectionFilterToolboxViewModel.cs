@@ -44,10 +44,12 @@ public partial class SelectionFilterToolboxViewModel : CadToolboxViewModelBase, 
     public partial bool? AreAllTypesEnabled { get; set; } = true;
 
     public ObservableCollection<SelectionFilterTypeItemViewModel> Types { get; } = [];
+    public bool HasDocument => _documentViewModel is not null;
 
     public void Attach(CadDocumentViewModel? documentViewModel)
     {
         _documentViewModel = documentViewModel;
+        OnPropertyChanged(nameof(HasDocument));
         _isSynchronizing = true;
         try
         {

@@ -95,7 +95,8 @@ public sealed class TransformEntitiesCommandTests
         var document = CadDocument.Create("Test");
         var line = document.AddLine(new CadPointD(1, 0), new CadPointD(2, 0));
         var ellipse = document.AddEllipse(new CadPointD(5, 5), 3, 2);
-        var command = new RotateEntitiesCommand([line.Id, ellipse.Id], CadPointD.Origin, Math.PI / 3);
+        var ole=document.AddOleObject(CadRectD.FromXYWH(0,0,1,1),[1,2,3]);
+        var command = new RotateEntitiesCommand([line.Id, ellipse.Id,ole.Id], CadPointD.Origin, Math.PI / 3);
 
         Assert.Throws<NotSupportedException>(() => command.Execute(document));
 
@@ -109,7 +110,7 @@ public sealed class TransformEntitiesCommandTests
     [Theory]
     [InlineData(30)]
     [InlineData(45)]
-    public void AxisAlignedEntities_RejectUnsupportedArbitraryRotation(double degrees)
+    public void DirectedEntities_SupportArbitraryRotationAndUndo(double degrees)
     {
         var document = CadDocument.Create("Test");
         var rectangle = document.AddRectangle(CadRectD.FromLTRB(0, 0, 10, 5));
@@ -119,20 +120,27 @@ public sealed class TransformEntitiesCommandTests
             CadPointD.Origin,
             degrees * Math.PI / 180.0);
 
-        Assert.Throws<NotSupportedException>(() => command.Execute(document));
-        Assert.Equal(CadRectD.FromLTRB(0, 0, 10, 5), rectangle.Bounds);
+        command.Execute(document);
+        Assert.Equal(degrees*Math.PI/180,ellipse.RotationRadians,10);
+        Assert.Equal(degrees*Math.PI/180,rectangle.RotationRadians,10);
+        Assert.Equal(10,rectangle.FrameBounds.Width,10);
+        Assert.Equal(5,rectangle.FrameBounds.Height,10);
+        command.Undo(document);
+        AssertRect(CadRectD.FromLTRB(0, 0, 10, 5), rectangle.Bounds);
         Assert.Equal(CadPointD.Origin, ellipse.Center);
     }
 
     [Fact]
-    public void EllipseArc_RejectsScaleBeforeMutatingGeometry()
+    public void EllipseArc_ScalesAndUndoRestoresGeometry()
     {
         var document = CadDocument.Create("Test");
         var ellipseArc = document.AddEllipseArc(CadPointD.Origin, 8, 4, 0.2, 1.1);
         var originalBounds = ellipseArc.Bounds;
         var command = new ScaleEntitiesCommand([ellipseArc.Id], CadPointD.Origin, 2);
 
-        Assert.Throws<NotSupportedException>(() => command.Execute(document));
+        command.Execute(document);
+        Assert.Equal(16,ellipseArc.RadiusX);Assert.Equal(8,ellipseArc.RadiusY);
+        command.Undo(document);
         Assert.Equal(originalBounds, ellipseArc.Bounds);
         Assert.Equal(8, ellipseArc.RadiusX, 10);
         Assert.Equal(4, ellipseArc.RadiusY, 10);
@@ -153,7 +161,7 @@ public sealed class TransformEntitiesCommandTests
     [Theory]
     [InlineData(22.5)]
     [InlineData(67.5)]
-    public void Mirror_RejectsUnsupportedAxisForEllipseAndRectangle(double degrees)
+    public void Mirror_SupportsArbitraryAxisAndIsReversible(double degrees)
     {
         var document = CadDocument.Create("Test");
         var ellipse = document.AddEllipse(CadPointD.Origin, 6, 3);
@@ -165,22 +173,28 @@ public sealed class TransformEntitiesCommandTests
             CadPointD.Origin,
             degrees * Math.PI / 180.0);
 
-        Assert.Throws<NotSupportedException>(() => command.Execute(document));
-        Assert.Equal(ellipseBounds, ellipse.Bounds);
-        Assert.Equal(rectangleBounds, rectangle.Bounds);
+        command.Execute(document);
+        Assert.Equal(degrees*Math.PI/90,ellipse.RotationRadians,10);
+        Assert.Equal(10,rectangle.FrameBounds.Width,10);
+        command.Undo(document);
+        AssertRect(ellipseBounds, ellipse.Bounds);
+        AssertRect(rectangleBounds, rectangle.Bounds);
     }
 
     [Fact]
-    public void EllipseArc_RejectsMirrorBeforeMutatingGeometry()
+    public void EllipseArc_MirrorKeepsSweepAndEndpointCorrespondence()
     {
         var document = CadDocument.Create("Test");
         var ellipseArc = document.AddEllipseArc(new CadPointD(2, 3), 8, 4, 0, Math.PI / 2);
         var originalBounds = ellipseArc.Bounds;
 
-        Assert.Throws<NotSupportedException>(() => new MirrorEntitiesCommand(
-            [ellipseArc.Id], CadPointD.Origin, 0).Execute(document));
-
-        Assert.Equal(originalBounds, ellipseArc.Bounds);
+        var end=ellipseArc.EndPoint;
+        var command=new MirrorEntitiesCommand([ellipseArc.Id], CadPointD.Origin, 0);
+        command.Execute(document);
+        AssertPoint(new(end.X,-end.Y),ellipseArc.EndPoint);
+        Assert.Equal(-Math.PI/2,ellipseArc.SweepAngleRadians);
+        command.Undo(document);
+        AssertRect(originalBounds, ellipseArc.Bounds);
     }
 
     private static void AssertPoint(CadPointD expected, CadPointD actual)

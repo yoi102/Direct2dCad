@@ -9,6 +9,7 @@ internal static class CadEntityQueryProtocol
     {
         var properties = new Dictionary<string, object>
         {
+            ["expected_document_version"]=new{type="integer",description="Use the document_version from the previous page. Rejects changed documents instead of mixing pages."},
             ["scope"] = new
             {
                 type = "string",

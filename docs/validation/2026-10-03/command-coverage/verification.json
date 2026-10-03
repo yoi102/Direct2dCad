@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-03",
+  "recorded_at": "2026-10-03T21:16:56.3636155+09:00",
+  "configuration": "Release",
+  "sdk": "10.0.401",
+  "build": {
+    "passed": true,
+    "warnings": 0,
+    "errors": 0
+  },
+  "catalogs": {
+    "basic_commands": 42,
+    "operation_shortcuts": 8,
+    "shared_tools": 89,
+    "contract_version": "1.8"
+  },
+  "tests": [
+    {
+      "file": "command-regressions.trx",
+      "total": 200,
+      "passed": 200,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed"
+    },
+    {
+      "file": "agent.trx",
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed"
+    },
+    {
+      "file": "codex.trx",
+      "total": 19,
+      "passed": 19,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed"
+    },
+    {
+      "file": "command-ui.trx",
+      "total": 4,
+      "passed": 4,
+      "failed": 0,
+      "not_executed": 0,
+      "outcome": "Completed"
+    }
+  ],
+  "binding_trace": {
+    "file": "welcome-bindings.log",
+    "bytes": 0,
+    "sessions": 1,
+    "result": "no warnings or errors"
+  },
+  "source_sha256": {
+    "Direct2dCad.wpf/Views/MainRibbonView.xaml": "11c0bf95882456996d2a1fbdfabfcb6005a682c728ef255c2c7a5ba66364d978",
+    "Direct2dCad.ViewModels/Tools/CadWorkspaceToolExecutor.cs": "740348af185bdf58428ae21d28ebd173a9c7ced0d977042f68aa003339b7b4aa",
+    "Direct2dCad.ViewModels/Tools/CadWorkspaceToolExecutor.Boolean.cs": "c276de6a8ef4c8ff284c92bd32e984eccf563f26af5fde80647e9a16cc025ae1",
+    "Direct2dCad.ViewModels/Tools/CadWorkspaceToolExecutor.Activity.cs": "e031efb2fd5e3c68eec25fd2f7f2842fea8ddb02fbb7a3ea13abe75189e7e97f",
+    "Direct2dCad.ViewModels/Tools/CadDocumentToolExecutor.Annotations.cs": "d1957530ab5116b84594b562d5e670a6a65ea8955b09860c45c2856581f0f75b",
+    "Direct2dCad.ViewModels/Tools/CadToolCommandLineService.Shortcuts.cs": "e0206db4de56598614e8ffc90c59bcbacc47e72547d4f07e9c34b5db2c4d32a6",
+    "Direct2dCad.ViewModels/Agents/CadAgentToolSelector.cs": "dfcc24a0bbc91406b94b6aad5736367a844489dc54d6c7e87a0f30b66a4bcf1d",
+    "Direct2dCad.ViewModels/Toolboxes/CommandLineToolboxViewModel.cs": "c0f638dba67c0e467cb20b2e273160d2768cb325c38387789501a491c05146f0",
+    "Direct2dCad.ViewModels/Toolboxes/AiAssistantToolboxViewModel.cs": "4f1534ade41b8aca89cd753cc6927598e2f3f507a66a062ec1f11b2539d5f796",
+    "Direct2dCad.ViewModels/Tools/CadAgentContract.cs": "59646dbd7e994f52da54a86b26223ac9d96e91d9e19060b95e2beb908efcef54"
+  },
+  "not_run": [
+    "Live LM Studio model execution",
+    "Online Codex session",
+    "Exhaustive multi-display DPI and human interaction acceptance"
+  ]
+}

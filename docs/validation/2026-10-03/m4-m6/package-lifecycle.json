@@ -1,0 +1,31 @@
+{
+  "rows": [
+    {
+      "version": "0.6.0-preview.1",
+      "passed": true,
+      "appDirectory": "C:\\Users\\yoiri\\source\\repos\\Direct2dCad\\TestResults\\m6-release-lifecycle\\installed\\versions\\0.6.0-preview.1-61079f8957a24e758a739207a8e9309f\\app",
+      "step": "install"
+    },
+    {
+      "version": "0.6.0-preview.2",
+      "passed": true,
+      "step": "upgrade"
+    },
+    {
+      "version": "0.6.0-preview.1",
+      "passed": true,
+      "step": "rollback"
+    },
+    {
+      "step": "tamper rejection",
+      "passed": true
+    },
+    {
+      "step": "uninstall preserves external settings and recovery",
+      "passed": true
+    }
+  ],
+  "isolated": true,
+  "limitations": "Same host, isolated paths; no shortcuts or associations. Does not replace clean-machine acceptance.",
+  "recordedUtc": "2026-10-03T01:27:34.5182464+00:00"
+}

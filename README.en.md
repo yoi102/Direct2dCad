@@ -19,38 +19,28 @@ Main capabilities:
 - Connect LM Studio or Codex to query drawings and execute undoable CAD operations through an Agent toolset.
 - Save and load `.d2cad` documents, with Chinese, Japanese, and English UI resources.
 
+## Documentation
+
+- [CAD capabilities, gaps, priorities and verification](docs/CAD-READINESS.md) (Chinese; reviewed 2026-10-02).
+- [Development roadmap and interaction acceptance](docs/ROADMAP.md) (Chinese; planned 2026-10-03).
+- [M1–M3 implementation status](docs/M1-M3-STATUS.md), [drawing and editing guide](docs/DRAWING-AND-EDITING.md), and [local validation](docs/validation/2026-10-03/README.md) (Chinese; updated 2026-10-03).
+- [Architecture, component responsibilities and current dependencies](docs/ARCHITECTURE.md) (Chinese).
+- [Terminal shortcuts, AI tools and execution logs](docs/COMMANDS-AND-AI.md) (Chinese; updated 2026-10-03).
+- [Rendering boundaries and benchmark instructions](docs/PERFORMANCE.md) (Chinese).
+- [Regression, coverage and manual acceptance](scripts/testing/README.md) (Chinese).
+
+M1–M6 implement exact input, object snaps, basic curve editing, file protection/recovery, seven annotation tools with direct associations, engineering templates, actual/fit/custom print preview, bounded DXF exchange, visible-priority preparation, history byte budgets and local packages. See [M4–M6 status](docs/M4-M6-STATUS.md), [annotation and exchange guide](docs/ANNOTATION-AND-EXCHANGE.md), [current evidence](docs/validation/2026-10-03/m4-m6/README.md) and [local delivery](docs/DELIVERY.md). Physical printing, clean-machine acceptance, signing and cloud CI remain separate gates; DWG and full DXF compatibility are outside this release. Historical reports retain their dated baselines.
+
+Precise numeric input and candidate switching appear on the canvas. The dockable **Drawing recovery** toolbox directly lists recoverable drawings; use the status-bar icon or `Ctrl+Shift+D` to reopen it. Draw, Modify and Dimensions tabs are hidden on Welcome and restored for a drawing. `HELP` lists terminal commands and shortcuts; `TOOLS` / `TOOLHELP` expose the shared JSON tools, including Boolean operations and dimension editing. AI queries, failures and cancellation also appear in Terminal. The status bar retains coordinates/units, grid spacing and snap icons with text tooltips. Its **View and snap details** icon opens advanced view/snap settings. `global.json` pins SDK 10.0.401 with patch roll-forward; cloud CI and printer/mixed-DPI acceptance remain separate.
+
 ## Demos and design
 
-- [Basic editing]
-  
-https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b
-
-
-https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed
-
-- [Blocks demo]
-  
-https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310
-
-- [Layouts demo]
-
-https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906
-
-- [OLE objects demo]
-
-https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3
-
-- [CAD Terminal demo]
-
-https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761
-
-- [LM Studio AI demo]
-
-https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7
-
-
-https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509
-
+- [Basic editing 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b), [Basic editing 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [Blocks](https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310)
+- [Layouts](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
+- [OLE objects](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
+- [Terminal](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
+- [LM Studio 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7), [LM Studio 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
 - [Figma design](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
 ## Solution structure

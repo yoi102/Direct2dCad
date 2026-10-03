@@ -12,12 +12,17 @@ using Direct2dCad.Editor.Commands;
 
 namespace Direct2dCad.ViewModels.Tools;
 
-internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewModel, Guid batchId)
+internal sealed partial class CadDocumentToolExecutor(CadDocumentViewModel documentViewModel, Guid batchId)
 {
     private const int MaximumListedEntities = 200;
 
     public static IReadOnlyList<AiToolDefinition> ToolDefinitions { get; } =
     [
+        Tool("add_dimension", "Create an undoable dimension. Use an exact source entity for associative line/radius dimensions, or explicit detached anchors. Values use millimetres; annotation_scale sets paper lettering size.", DimensionSchema()),
+        Tool("set_dimension", "Update one explicit dimension's placement, preset, lettering, arrow, precision, unit, scale or text override. Preserves anchors and association. Shape fonts use registry IDs; values use millimetres. null text_override restores measured text.", SetDimensionSchema()),
+        Tool("detach_dimension", "Detach one explicit dimension from its source geometry, preserving its last accepted anchor points. Undo restores association. No automatic rebinding.", new { type = "object", properties = new { entity_id = new { type = "integer", minimum = 1 } }, required = new[] { "entity_id" }, additionalProperties = false }),
+        Tool("edit_curves", "Offset, trim, extend, fillet, chamfer, join or break exact line/circular paths. Coordinates and distances use millimetres. Single surviving curves preserve IDs; split/join return new IDs. Unsupported curves fail without edits.", CurveEditSchema()),
+        Tool("array_entities", "Create an undoable rectangular or polar array, preserving source appearance and block dependencies. At most 10000 total entities.", ArraySchema()),
         Tool("get_document_summary", "Get the active CAD document, layers, selection, and bounds summary.",
             new { type = "object", properties = new { }, additionalProperties = false }),
         Tool("get_view_settings", "Get the document unit and the drawing-view settings shown in the status bar.",
@@ -241,6 +246,11 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
                 : toolCall.ArgumentsJson);
             return toolCall.Name switch
             {
+                "add_dimension" => AddDimension(arguments.RootElement),
+                "set_dimension" => SetDimension(arguments.RootElement),
+                "detach_dimension" => DetachDimension(arguments.RootElement),
+                "edit_curves" => EditCurves(arguments.RootElement),
+                "array_entities" => ArrayEntities(arguments.RootElement),
                 "get_document_summary" => GetDocumentSummary(),
                 "get_view_settings" => GetViewSettings(),
                 "set_view_settings" => SetViewSettings(arguments.RootElement),
@@ -304,6 +314,8 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         return Success(new
         {
             document = document.Name,
+            is_read_only = document.IsReadOnly,
+            compatibility_notice = document.CompatibilityNotice,
             active_space = editor.ActiveOwnerBlockId.ToString(),
             active_space_details = ActiveSpaceDetails(),
             entity_count = entities.Length,
@@ -578,7 +590,8 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             "intersections" => Success(new
             {
                 operation,
-                approximate = entities.Any(entity => entity is not CadLine),
+                approximate = entities.Any(entity => QueryPrimitives(entity).Approximate),
+                curve_tessellation_error_bound_millimeters=entities.Select(entity=>QueryPrimitives(entity).Error).DefaultIfEmpty().Max(),
                 points = FindIntersections(entities)
                     .Select(point => new { x = point.X, y = point.Y })
                     .ToArray()
@@ -595,19 +608,19 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
         IReadOnlyList<CadEntity> entities)
     {
         var point = RequiredPoint(arguments, "point");
-        var candidates = entities
-            .SelectMany(entity => FlattenEntity(entity).Zip(
-                FlattenEntity(entity).Skip(1),
-                (start, end) => ProjectToSegment(point, start, end)))
+        var geometry=entities.Select(QueryPrimitives).ToArray();
+        var candidates = geometry
+            .SelectMany(g=>g.Primitives.Select(p=>ProjectToPrimitive(point,p)))
             .OrderBy(candidate => candidate.DistanceSquared)
             .ToArray();
-        var nearest = candidates.FirstOrDefault();
-        if (nearest == default)
+        if (candidates.Length == 0)
             throw new ArgumentException("The selected entities have no measurable segments.");
+        var nearest = candidates[0];
         return Success(new
         {
             operation,
-            approximate = entities.Any(entity => entity is not CadLine),
+            approximate = geometry.Any(g=>g.Approximate),
+            distance_error_bound_millimeters=geometry.Select(g=>g.Error).DefaultIfEmpty().Max(),
             source_point = new { x = point.X, y = point.Y },
             projected_point = new { x = nearest.Point.X, y = nearest.Point.Y },
             distance_millimeters = Math.Sqrt(nearest.DistanceSquared)
@@ -663,42 +676,45 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
     private static IReadOnlyList<CadPointD> FindIntersections(IReadOnlyList<CadEntity> entities)
     {
         var points = new List<CadPointD>();
+        var geometry=entities.Select(QueryPrimitives).ToArray();var pairs=0;
         for (var leftIndex = 0; leftIndex < entities.Count; leftIndex++)
         {
-            var leftSegments = FlattenEntity(entities[leftIndex]).Zip(FlattenEntity(entities[leftIndex]).Skip(1));
+            var leftSegments = geometry[leftIndex].Primitives;
             for (var rightIndex = leftIndex + 1; rightIndex < entities.Count; rightIndex++)
             {
-                var rightSegments = FlattenEntity(entities[rightIndex]).Zip(FlattenEntity(entities[rightIndex]).Skip(1));
+                var rightSegments = geometry[rightIndex].Primitives;
                 foreach (var left in leftSegments)
                 foreach (var right in rightSegments)
-                    if (TryIntersectSegments(left.First, left.Second, right.First, right.Second, out var point) &&
-                        points.All(existing => existing.DistanceSquaredTo(point) > 1e-12))
-                        points.Add(point);
+                {
+                    if(++pairs>1000000) throw new InvalidOperationException("Intersection calculation exceeds its budget; query fewer entities.");
+                    foreach(var point in CadPlanarGeometry.Intersections(left,right))
+                        if(points.All(existing=>!CadGeometryTolerance.Coincident(existing,point))) points.Add(point);
+                }
             }
         }
         return points;
     }
 
+    private static (IReadOnlyList<CadPlanarPrimitive> Primitives,bool Approximate,double Error) QueryPrimitives(CadEntity entity)
+    {
+        try {return (CadPlanarCurves.Get(entity),false,0);}
+        catch(NotSupportedException) when(entity is Curve)
+        {
+            var tessellation=CadCurveTessellation.Create((Curve)entity);
+            if(tessellation.ReachedBudget) throw new InvalidOperationException("Curve calculation exceeds its precision budget.");
+            return (tessellation.Points.Zip(tessellation.Points.Skip(1),CadPlanarPrimitive.Line).ToArray(),true,tessellation.ErrorBound);
+        }
+    }
+    private static SegmentProjection ProjectToPrimitive(CadPointD point,CadPlanarPrimitive p)
+    {
+        var t=Math.Clamp(p.Parameter(point),0,1);
+        if(!p.IsLine && !p.Contains(point)) t=p.Start.DistanceTo(point)<p.End.DistanceTo(point) ? 0 : 1;
+        var nearest=p.At(t);return new(nearest,nearest.DistanceSquaredTo(point));
+    }
+
     private static IReadOnlyList<CadPointD> FlattenEntity(CadEntity entity)
     {
-        return entity switch
-        {
-            CadLine line => [line.Start, line.End],
-            CadPolyline polyline => CloseIfNeeded(polyline.Points, polyline.Closed),
-            CadSpline spline => CloseIfNeeded(spline.EnumerateFlattenedPoints(32).ToArray(), spline.Closed),
-            CadCompositePath path => CloseIfNeeded(path.EnumerateFlattenedPoints(32).ToArray(), path.Closed),
-            CadArc arc => SampleCircle(arc.Center, arc.Radius, arc.StartAngleRadians, arc.SweepAngleRadians),
-            CadCircle circle => SampleCircle(circle.Center, circle.Radius, 0, Math.PI * 2),
-            CadEllipse ellipse => SampleEllipse(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, 0, Math.PI * 2),
-            CadEllipseArc ellipseArc => SampleEllipse(ellipseArc.Center, ellipseArc.RadiusX, ellipseArc.RadiusY, ellipseArc.StartAngleRadians, ellipseArc.SweepAngleRadians),
-            CadRectangle rectangle => [
-                new CadPointD(rectangle.Bounds.MinX, rectangle.Bounds.MinY),
-                new CadPointD(rectangle.Bounds.MaxX, rectangle.Bounds.MinY),
-                new CadPointD(rectangle.Bounds.MaxX, rectangle.Bounds.MaxY),
-                new CadPointD(rectangle.Bounds.MinX, rectangle.Bounds.MaxY),
-                new CadPointD(rectangle.Bounds.MinX, rectangle.Bounds.MinY)],
-            _ => []
-        };
+        return entity is Curve curve ? CadCurveTessellation.Create(curve).Points : [];
     }
 
     private static IReadOnlyList<CadPointD> CloseIfNeeded(IReadOnlyList<CadPointD> points, bool closed) =>
@@ -761,13 +777,17 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
     private static object MeasureEntity(CadEntity entity)
     {
         var curve = entity as Curve;
-        var area = TryGetArea(entity);
+        var measurement = curve is not null ? CadCurveMeasurements.Measure(curve) : (CadCurveMeasurement?)null;
+        var area = measurement?.Area;
         var result = new Dictionary<string, object?>
         {
             ["entity_id"] = entity.Id.Value,
             ["type"] = entity.GetType().Name[3..],
             ["bounds"] = RectDto(entity.Bounds),
-            ["length_millimeters"] = curve?.Length,
+            ["length_millimeters"] = measurement?.Length,
+            ["approximate"] = measurement?.Approximate ?? false,
+            ["length_error_estimate_millimeters"] = measurement?.LengthErrorEstimate,
+            ["reached_calculation_budget"] = measurement?.ReachedBudget ?? false,
             ["closed"] = curve?.IsClosed,
             ["area_square_millimeters"] = area
         };
@@ -840,6 +860,15 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
 
         var target = CloneViewSettings(document.ViewSettings);
         var grid = target.Grid;
+        var snapping=target.Snap;
+        if(arguments.TryGetProperty("grid_snap_enabled",out var gs)) snapping=snapping with { GridEnabled=gs.GetBoolean() };
+        if(arguments.TryGetProperty("object_snap_enabled",out var os)) snapping=snapping with { ObjectsEnabled=os.GetBoolean() };
+        if(arguments.TryGetProperty("ortho_enabled",out var ortho)) snapping=snapping with { OrthoEnabled=ortho.GetBoolean(),PolarEnabled=ortho.GetBoolean() ? false : snapping.PolarEnabled };
+        if(arguments.TryGetProperty("polar_enabled",out var polar)) snapping=snapping with { PolarEnabled=polar.GetBoolean(),OrthoEnabled=polar.GetBoolean() ? false : snapping.OrthoEnabled };
+        if(arguments.TryGetProperty("polar_increment_degrees",out _)) snapping=snapping with { PolarIncrementDegrees=RequiredDouble(arguments,"polar_increment_degrees") };
+        if(arguments.TryGetProperty("snap_screen_tolerance",out _)) snapping=snapping with { ScreenTolerance=RequiredDouble(arguments,"snap_screen_tolerance") };
+        if(arguments.TryGetProperty("object_snap_modes",out var modes)) snapping=snapping with { Modes=modes.EnumerateArray().Aggregate(CadObjectSnapModes.None,(flags,e)=>flags|ParseEnumValue<CadObjectSnapModes>(e.GetString()!)) };
+        snapping.Validate(); target.Snap=snapping;
         var origin = target.Origin;
         var requestedUnit = arguments.TryGetProperty("unit", out _)
             ? ParseEnumValue<CadUnit>(RequiredString(arguments, "unit"))
@@ -1110,6 +1139,10 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             },
             length_precision = document.DocumentSettings.LengthPrecision,
             angle_precision = document.DocumentSettings.AnglePrecision,
+            snapping = new { grid_enabled=document.ViewSettings.Snap.GridEnabled,objects_enabled=document.ViewSettings.Snap.ObjectsEnabled,
+                ortho_enabled=document.ViewSettings.Snap.OrthoEnabled,polar_enabled=document.ViewSettings.Snap.PolarEnabled,
+                polar_increment_degrees=document.ViewSettings.Snap.PolarIncrementDegrees,screen_tolerance=document.ViewSettings.Snap.ScreenTolerance,
+                modes=Enum.GetValues<CadObjectSnapModes>().Where(m=>m!=CadObjectSnapModes.None && m!=CadObjectSnapModes.Default && (document.ViewSettings.Snap.Modes&m)==m).Select(m=>m.ToString()).ToArray() },
             grid = new
             {
                 type = grid.Type.ToString(),
@@ -1778,6 +1811,11 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
             properties = new Dictionary<string, object>
             {
                 ["unit"] = new { type = "string", @enum = Enum.GetNames<CadUnit>() },
+                ["grid_snap_enabled"]=new {type="boolean"},["object_snap_enabled"]=new {type="boolean"},
+                ["ortho_enabled"]=new {type="boolean"},["polar_enabled"]=new {type="boolean"},
+                ["polar_increment_degrees"]=new {type="number",exclusiveMinimum=0,maximum=180},
+                ["snap_screen_tolerance"]=new {type="number",minimum=2,maximum=30},
+                ["object_snap_modes"]=new {type="array",items=new {type="string",@enum=Enum.GetNames<CadObjectSnapModes>()}},
                 ["grid_type"] = new { type = "string", @enum = Enum.GetNames<CadGridType>() },
                 ["major_grid_preset"] = new { type = "string", description = "Existing grid preset name or GUID." },
                 ["minor_grid_preset"] = new { type = "string", description = "Existing grid preset name or GUID." },
@@ -1938,6 +1976,7 @@ internal sealed class CadDocumentToolExecutor(CadDocumentViewModel documentViewM
     {
         var result = new CadViewSettings
         {
+            Snap = source.Snap,
             BackgroundColor = source.BackgroundColor,
             Grid = new CadGridSettings
             {

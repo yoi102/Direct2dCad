@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -1440,4 +1440,209 @@
   <data name="PrintFailed" xml:space="preserve">
     <value>打印失败</value>
   </data>
+  <data name="SaveCompatibleCopy" xml:space="preserve"><value>另存兼容副本</value></data>
+  <data name="CompatibilityReadOnly" xml:space="preserve"><value>此图纸包含当前版本未识别的内容，已只读打开。</value></data>
+  <data name="CompatibilityCopyWarning" xml:space="preserve"><value>兼容副本仅保留已支持的内容，原图纸保持不变。</value></data>
+  <data name="SaveConflict" xml:space="preserve"><value>目标文件已存在或被外部修改</value></data>
+  <data name="RecoveryDrawings" xml:space="preserve"><value>可恢复的图纸</value></data>
+  <data name="OpenRecoveryCopy" xml:space="preserve"><value>打开恢复副本</value></data>
+  <data name="Later" xml:space="preserve"><value>稍后</value></data>
+  <data name="AutoRecoveryEnabled" xml:space="preserve"><value>自动保留恢复副本</value></data>
+  <data name="OpeningDrawing" xml:space="preserve"><value>正在打开图纸…</value></data>
+  <data name="SavingDrawing" xml:space="preserve"><value>正在保存图纸…</value></data>
+  <data name="Cancelling" xml:space="preserve"><value>正在取消…</value></data>
+  <data name="RecoveryFailed" xml:space="preserve"><value>恢复副本保存失败</value></data>
+  <data name="RecoveredSuffix" xml:space="preserve"><value>恢复</value></data>
+  <data name="GridSnap" xml:space="preserve"><value>网格吸附</value></data>
+  <data name="ObjectSnap" xml:space="preserve"><value>对象捕捉</value></data>
+  <data name="Ortho" xml:space="preserve"><value>正交</value></data>
+  <data name="Polar" xml:space="preserve"><value>极轴</value></data>
+  <data name="PolarAngle" xml:space="preserve"><value>极轴间隔 (°)</value></data>
+  <data name="SnapEndpoint" xml:space="preserve"><value>端点</value></data>
+  <data name="SnapMidpoint" xml:space="preserve"><value>中点</value></data>
+  <data name="SnapCenter" xml:space="preserve"><value>圆心</value></data>
+  <data name="SnapIntersection" xml:space="preserve"><value>交点</value></data>
+  <data name="SnapPerpendicular" xml:space="preserve"><value>垂足</value></data>
+  <data name="SnapTangent" xml:space="preserve"><value>切点</value></data>
+  <data name="SwitchCandidate" xml:space="preserve"><value>切换捕捉候选</value></data>
+  <data name="NewDrawingSettings" xml:space="preserve"><value>新建图形设置</value></data>
+  <data name="SelectedEntitySettings" xml:space="preserve"><value>已选实体</value></data>
+  <data name="MultipleEntitySettings" xml:space="preserve"><value>多选 · 只修改输入的字段</value></data>
+  <data name="SelectPrompt" xml:space="preserve"><value>选择对象；拖动框选</value></data>
+  <data name="SpecifyFirstPoint" xml:space="preserve"><value>指定第一个点或输入 X,Y</value></data>
+  <data name="SpecifyNextPoint" xml:space="preserve"><value>指定下一个点或输入 X,Y；Esc 退出</value></data>
+  <data name="SpecifyRadiusPoint" xml:space="preserve"><value>指定半径/直径端点或输入 X,Y</value></data>
+  <data name="SpecifyNextOrFinish" xml:space="preserve"><value>指定下一点；Enter 完成，Esc 退出</value></data>
+  <data name="InvalidStepInput" xml:space="preserve"><value>请输入有效坐标，例如 1.25,2.75、@10,0、@20&lt;45</value></data>
+  <data name="ViewDetails" xml:space="preserve"><value>视图与捕捉详情</value></data>
+  <data name="AdvancedStroke" xml:space="preserve"><value>端帽与连接</value></data>
+  <data name="FinishOperation" xml:space="preserve"><value>完成</value></data>
+  <data name="Offset" xml:space="preserve"><value>偏移</value></data>
+  <data name="Trim" xml:space="preserve"><value>修剪</value></data>
+  <data name="Extend" xml:space="preserve"><value>延伸</value></data>
+  <data name="Fillet" xml:space="preserve"><value>圆角</value></data>
+  <data name="Chamfer" xml:space="preserve"><value>倒角</value></data>
+  <data name="Join" xml:space="preserve"><value>连接</value></data>
+  <data name="Break" xml:space="preserve"><value>打断</value></data>
+  <data name="RectArray" xml:space="preserve"><value>矩形阵列</value></data>
+  <data name="PolarArray" xml:space="preserve"><value>环形阵列</value></data>
+  <data name="EditTools" xml:space="preserve"><value>修改</value></data>
+  <data name="EditChooseSource" xml:space="preserve"><value>选择源对象</value></data>
+  <data name="EditChooseSide" xml:space="preserve"><value>输入距离，悬停一侧预览；左键提交，Enter 退出</value></data>
+  <data name="EditChooseBoundaries" xml:space="preserve"><value>选择边界；Enter 进入修剪/延伸</value></data>
+  <data name="EditChooseSegment" xml:space="preserve"><value>悬停目标段预览；左键提交，Enter 退出</value></data>
+  <data name="EditChooseTwoLines" xml:space="preserve"><value>选择两条线及要保留的一侧</value></data>
+  <data name="EditConfirmCorner" xml:space="preserve"><value>调整尺寸；检查预览，Enter 或左键提交</value></data>
+  <data name="EditChooseChain" xml:space="preserve"><value>选择相连曲线；Enter 连接</value></data>
+  <data name="EditFirstBreak" xml:space="preserve"><value>指定第一个打断点</value></data>
+  <data name="EditSecondBreak" xml:space="preserve"><value>指定第二点删除中间段；Enter 仅在第一点打断</value></data>
+  <data name="EditChooseArray" xml:space="preserve"><value>选择对象；Enter 设置阵列</value></data>
+  <data name="EditArrayCenter" xml:space="preserve"><value>指定阵列中心</value></data>
+  <data name="EditConfirmArray" xml:space="preserve"><value>调整数量和间距；检查预览，Enter 或左键提交</value></data>
+  <data name="EditCannotApply" xml:space="preserve"><value>当前参数或对象无法完成操作，请修改后重试（详情见提示）</value></data>
+  <data name="DistanceParameter" xml:space="preserve"><value>距离/半径</value></data>
+  <data name="SecondDistanceParameter" xml:space="preserve"><value>第二距离</value></data>
+  <data name="ArrayRows" xml:space="preserve"><value>行数</value></data>
+  <data name="ArrayColumns" xml:space="preserve"><value>列数</value></data>
+  <data name="ArrayCount" xml:space="preserve"><value>数量</value></data>
+  <data name="ArraySpacingX" xml:space="preserve"><value>X 间距</value></data>
+  <data name="ArraySpacingY" xml:space="preserve"><value>Y 间距</value></data>
+  <data name="ArraySweep" xml:space="preserve"><value>总角度 (°)</value></data>
+  <data name="RotateCopies" xml:space="preserve"><value>旋转副本</value></data>
+  <data name="TrimCornerLines" xml:space="preserve"><value>裁剪原线</value></data>
+  <data name="OperationParameters" xml:space="preserve"><value>操作参数</value></data>
+  <data name="QueryingDrawing" xml:space="preserve"><value>正在查询图纸…</value></data>
+  <data name="CompatibleCopyOverwrite" xml:space="preserve"><value>将覆盖所选文件。</value></data>
+  <data name="HelpAvailableCommands" xml:space="preserve"><value>可用命令：</value></data>
+  <data name="HelpCoordinateExamples" xml:space="preserve"><value>坐标：LINE → 1.25,2.75 → @10,0 或 @10&lt;45。ARC SCE → 起点 → 圆心 → 终点方向。OFFSET → 距离 → 对象 → 一侧 → DONE。显式坐标不受捕捉影响。</value></data>
+  <data name="HelpHELP" xml:space="preserve"><value>列出命令；HELP LINE 查看用法。</value></data>
+  <data name="HelpCLEAR" xml:space="preserve"><value>清空命令记录显示。</value></data>
+  <data name="HelpSTATUS" xml:space="preserve"><value>查看当前图纸、对象数量和工具。</value></data>
+  <data name="HelpRENDERSTATS" xml:space="preserve"><value>查看渲染负载与缓存统计。</value></data>
+  <data name="HelpUNDO" xml:space="preserve"><value>撤销最近一次编辑。</value></data>
+  <data name="HelpREDO" xml:space="preserve"><value>重做最近撤销的编辑。</value></data>
+  <data name="HelpFIT" xml:space="preserve"><value>缩放以显示全部可见图形。</value></data>
+  <data name="HelpZOOM" xml:space="preserve"><value>缩放到图形范围。</value></data>
+  <data name="HelpSELECT" xml:space="preserve"><value>进入选择模式。</value></data>
+  <data name="HelpSELECTALL" xml:space="preserve"><value>选择所有可选对象，遵守过滤设置。</value></data>
+  <data name="HelpERASE" xml:space="preserve"><value>删除选中的对象，可撤销。</value></data>
+  <data name="HelpCOPY" xml:space="preserve"><value>复制选中对象及块依赖。</value></data>
+  <data name="HelpPASTE" xml:space="preserve"><value>移动粘贴预览，左键放置。</value></data>
+  <data name="HelpLINE" xml:space="preserve"><value>指定起点、终点；可输入小数、相对及极坐标。</value></data>
+  <data name="HelpCIRCLE" xml:space="preserve"><value>选择半径、直径、两点或三点方式，按提示取点。</value></data>
+  <data name="HelpARC" xml:space="preserve"><value>SCE：起点 → 圆心 → 终点方向；3P：起点 → 经过点 → 终点。</value></data>
+  <data name="HelpELLIPSE" xml:space="preserve"><value>CENTER：圆心 → 第一轴端 → 第二轴；ARC 再指定起止方向。</value></data>
+  <data name="HelpRECTANGLE" xml:space="preserve"><value>指定两个对角点。</value></data>
+  <data name="HelpPOLYLINE" xml:space="preserve"><value>连续指定顶点，DONE 完成。</value></data>
+  <data name="HelpPOLYGON" xml:space="preserve"><value>连续指定顶点，DONE 闭合。</value></data>
+  <data name="HelpSPLINE" xml:space="preserve"><value>指定拟合点，DONE 完成。</value></data>
+  <data name="HelpTEXT" xml:space="preserve"><value>在属性中填写文字，点击放置。</value></data>
+  <data name="HelpORIGIN" xml:space="preserve"><value>指定图纸原点。</value></data>
+  <data name="HelpMVIEW" xml:space="preserve"><value>在图纸空间指定模型视口矩形。</value></data>
+  <data name="HelpDONE" xml:space="preserve"><value>完成当前步骤或结束连续操作。</value></data>
+  <data name="HelpCANCEL" xml:space="preserve"><value>取消预览并返回选择；已提交编辑保留，可单独撤销。</value></data>
+  <data name="HelpOFFSET" xml:space="preserve"><value>距离 → 对象 → 一侧预览 → 点击。DONE 结束；每次点击可单独撤销。</value></data>
+  <data name="HelpTRIM" xml:space="preserve"><value>选择边界 → DONE → 悬停要移除的段并点击。</value></data>
+  <data name="HelpEXTEND" xml:space="preserve"><value>选择边界 → DONE → 悬停要延伸的端点并点击。</value></data>
+  <data name="HelpFILLET" xml:space="preserve"><value>选择两条直线或圆弧的保留侧，设置半径，预览后点击；完整圆需关闭裁剪。</value></data>
+  <data name="HelpCHAMFER" xml:space="preserve"><value>选择两条直线或圆弧，在属性中设置两个距离，预览后点击。</value></data>
+  <data name="HelpJOIN" xml:space="preserve"><value>选择一条连续的直线/圆弧链 → DONE；分叉会明确拒绝。</value></data>
+  <data name="HelpBREAK" xml:space="preserve"><value>对象 → 第一打断点 → 第二点；也可 DONE 仅分割一次。</value></data>
+  <data name="HelpRECTARRAY" xml:space="preserve"><value>选择对象 → DONE → 设置行列和间距 → 预览 → 点击。</value></data>
+  <data name="HelpPOLARARRAY" xml:space="preserve"><value>选择对象 → DONE → 圆心 → 设置数量和角度 → 预览 → 点击。</value></data>
+  <data name="PromptCenter" xml:space="preserve"><value>指定圆心</value></data>
+  <data name="PromptAxisStart" xml:space="preserve"><value>指定第一轴起点</value></data>
+  <data name="PromptAxisEnd" xml:space="preserve"><value>指定第一轴端点</value></data>
+  <data name="PromptSecondAxis" xml:space="preserve"><value>指定第二轴长度</value></data>
+  <data name="PromptArcStart" xml:space="preserve"><value>指定圆弧起点</value></data>
+  <data name="PromptArcThrough" xml:space="preserve"><value>指定圆弧经过点</value></data>
+  <data name="PromptArcEnd" xml:space="preserve"><value>指定终点方向</value></data>
+  <data name="PromptArcAngle" xml:space="preserve"><value>指定角度方向点</value></data>
+  <data name="PromptArcLength" xml:space="preserve"><value>指定弦长参考点</value></data>
+  <data name="PromptArcRadius" xml:space="preserve"><value>指定半径参考点</value></data>
+  <data name="MeasurementLength" xml:space="preserve"><value>长度</value></data>
+  <data name="MeasurementError" xml:space="preserve"><value>近似长度；误差估计</value></data>
+  <data name="CalculationBudgetReached" xml:space="preserve"><value>已达到计算预算</value></data>
+  <data name="FileConflictDescription" xml:space="preserve"><value>磁盘文件与此图纸的保存基线不一致。选择“另存”保留两个版本，或明确覆盖外部更改。</value></data>
+  <data name="OverwriteExternalChanges" xml:space="preserve"><value>覆盖外部更改</value></data>
+  <data name="CompatibleCopyDifferentPath" xml:space="preserve"><value>请选择不同路径保存兼容副本，以保留原文件内容。</value></data>
+  <data name="InvalidDrawingGeometry" xml:space="preserve"><value>这个点无法形成有效图形。请调整后重试，之前的点已保留。</value></data>
+  <data name="DrawingCannotComplete" xml:space="preserve"><value>还需要更多点才能完成绘制。</value></data>
+  <data name="DrawingRecovery" xml:space="preserve"><value>图纸恢复</value></data>
+  <data name="DrawingInput" xml:space="preserve"><value>精确输入</value></data>
+  <data name="DrawingInputHint" xml:space="preserve"><value>X,Y · @dX,dY · @距离&lt;角度</value></data>
+  <data name="DrawingAssistantEmpty" xml:space="preserve"><value>新建或打开图纸后即可使用。</value></data>
+  <data name="SnapSettings" xml:space="preserve"><value>捕捉与约束</value></data>
+  <data name="Dimension" xml:space="preserve"><value>标注</value></data>
+  <data name="DimensionSettings" xml:space="preserve"><value>标注设置</value></data>
+  <data name="DimLinearX" xml:space="preserve"><value>水平尺寸</value></data>
+  <data name="DimLinearY" xml:space="preserve"><value>垂直尺寸</value></data>
+  <data name="DimAligned" xml:space="preserve"><value>对齐尺寸</value></data>
+  <data name="DimRadius" xml:space="preserve"><value>半径尺寸</value></data>
+  <data name="DimDiameter" xml:space="preserve"><value>直径尺寸</value></data>
+  <data name="DimAngular" xml:space="preserve"><value>角度尺寸</value></data>
+  <data name="Leader" xml:space="preserve"><value>引线</value></data>
+  <data name="DimensionPlace" xml:space="preserve"><value>移动查看预览，点击放置</value></data>
+  <data name="DimensionFirst" xml:space="preserve"><value>选择直线或第一个基准点</value></data>
+  <data name="DimensionNext" xml:space="preserve"><value>选择下一个基准点</value></data>
+  <data name="DimensionChooseCircle" xml:space="preserve"><value>选择圆或圆弧</value></data>
+  <data name="DimensionStyle" xml:space="preserve"><value>样式</value></data>
+  <data name="DimensionPrecision" xml:space="preserve"><value>小数位数</value></data>
+  <data name="DimensionTextOverride" xml:space="preserve"><value>替代文字（* 表示手动值）</value></data>
+  <data name="DimensionTextHeight" xml:space="preserve"><value>纸面字号（mm）</value></data>
+  <data name="DimensionArrowSize" xml:space="preserve"><value>纸面箭头尺寸（mm）</value></data>
+  <data name="AnnotationScale" xml:space="preserve"><value>注释比例（1:100 填 100）</value></data>
+  <data name="ExtensionGap" xml:space="preserve"><value>尺寸界线间隔（mm）</value></data>
+  <data name="ExtensionBeyond" xml:space="preserve"><value>尺寸界线超出（mm）</value></data>
+  <data name="AssociationDetached" xml:space="preserve"><value>独立基准点，未关联</value></data>
+  <data name="AssociationValid" xml:space="preserve"><value>已关联源几何</value></data>
+  <data name="AssociationBroken" xml:space="preserve"><value>关联失效，请重新关联或解除</value></data>
+  <data name="Reassociate" xml:space="preserve"><value>重新关联</value></data>
+  <data name="DetachAssociation" xml:space="preserve"><value>解除关联</value></data>
+<data name="EngineeringTemplate" xml:space="preserve"><value>工程模板</value></data>
+<data name="PrintCurrentView" xml:space="preserve"><value>当前视图</value></data>
+<data name="PrintInsideBounds" xml:space="preserve"><value>内容位于可打印范围内。视口比例与纸张缩放分别生效。</value></data>
+<data name="PrintActualSize" xml:space="preserve"><value>实际尺寸 · 100%</value></data>
+<data name="PrintRange" xml:space="preserve"><value>模型输出范围</value></data>
+<data name="PaperScaling" xml:space="preserve"><value>纸张缩放</value></data>
+<data name="PrintClipped" xml:space="preserve"><value>超出红色可打印边界的内容将被裁剪；比例保持不变。</value></data>
+<data name="PrintExtents" xml:space="preserve"><value>全部可见图形</value></data>
+<data name="PrintCustom" xml:space="preserve"><value>自定义比例</value></data>
+<data name="PrintFit" xml:space="preserve"><value>适合可打印区域</value></data>
+<data name="ImportDxf" xml:space="preserve"><value>打开 DXF</value></data>
+<data name="DxfSourceUnit" xml:space="preserve"><value>DXF 原图单位</value></data>
+<data name="DxfImported" xml:space="preserve"><value>导入 {0} 个对象，{1} 项不支持或已替代</value></data>
+<data name="ExportSeparatePath" xml:space="preserve"><value>导出副本必须使用与源图纸不同的路径。</value></data>
+<data name="DxfUnitDescription" xml:space="preserve"><value>文件没有可靠的单位。请选择原图的单位；导入后保存在新的未命名图纸中。</value></data>
+<data name="ExportDxf" xml:space="preserve"><value>导出 DXF</value></data>
+<data name="DxfLossDescription" xml:space="preserve"><value>以下内容将被省略或转换。源图纸保留；是否继续导出？</value></data>
+<data name="SaveCompressedCopy" xml:space="preserve"><value>另存压缩副本</value></data>
+<data name="HistoryBudget" xml:space="preserve"><value>撤销历史容量 (MiB)</value></data>
+  <data name="DimensionArrowStyle" xml:space="preserve"><value>箭头样式</value></data>
+  <data name="DimensionArrowOpen" xml:space="preserve"><value>开放箭头</value></data>
+  <data name="DimensionArrowClosed" xml:space="preserve"><value>闭合箭头</value></data>
+  <data name="DimensionArrowSlash" xml:space="preserve"><value>斜线</value></data>
+  <data name="BlankDrawing" xml:space="preserve"><value>空白图纸</value></data>
+  <data name="DimensionTextAndArrows" xml:space="preserve"><value>文字与箭头</value></data>
+  <data name="DimensionDetails" xml:space="preserve"><value>比例与尺寸线</value></data>
+  <data name="DimensionLineWeight" xml:space="preserve"><value>标注线宽（mm）</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切换 · Enter 确认 · Esc 取消</value></data>
+  <data name="BooleanOperations" xml:space="preserve"><value>布尔运算</value></data>
+  <data name="BooleanUnion" xml:space="preserve"><value>并集</value></data>
+  <data name="BooleanIntersection" xml:space="preserve"><value>交集</value></data>
+  <data name="BooleanDifference" xml:space="preserve"><value>差集</value></data>
+  <data name="BooleanChooseSubject" xml:space="preserve"><value>点击要保留主体的边缘</value></data>
+  <data name="BooleanConfirm" xml:space="preserve"><value>Enter 确认 · Esc 取消</value></data>
+  <data name="BooleanEmpty" xml:space="preserve"><value>结果为空，已保留原实体</value></data>
+  <data name="Region" xml:space="preserve"><value>面域</value></data>
+  <data name="RegionContours" xml:space="preserve"><value>轮廓数</value></data>
+  <data name="BooleanCalculating" xml:space="preserve"><value>计算中…</value></data>
+  <data name="MeasurementArea" xml:space="preserve"><value>面积</value></data>
+  <data name="NoRecoveryDrawings" xml:space="preserve"><value>暂无可恢复的图纸。</value></data>
+  <data name="ClearAllRecovery" xml:space="preserve"><value>全部清除</value></data>
+  <data name="ClearRecoveryEntry" xml:space="preserve"><value>清除此恢复稿</value></data>
+  <data name="RecoveryCleanupFailed" xml:space="preserve"><value>恢复稿清理失败</value></data>
+  <data name="OpenContainingFolder" xml:space="preserve"><value>打开所在文件夹</value></data>
+  <data name="OpenSourceFolder" xml:space="preserve"><value>打开原图所在文件夹</value></data>
+  <data name="ActivateDocument" xml:space="preserve"><value>切换到此图纸</value></data>
 </root>

@@ -103,12 +103,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     public async Task<bool> ConfirmCloseAsync()
     {
         await _saveSession.WaitForIdleAsync();
-        if (!IsModified)
-            return true;
+        if (IsModified && !await ConfirmCloseCoreAsync())
+            return false;
 
-        return await ConfirmCloseCoreAsync();
-
+        await CompleteRecoveryCloseAsync();
+        return true;
     }
+
+    internal Task WaitForSaveIdleAsync() => _saveSession.WaitForIdleAsync();
 
     internal async Task<bool> SaveForCloseAsync()
     {
@@ -119,7 +121,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!string.IsNullOrWhiteSpace(CurrentFilePath))
-            return await SaveToAsync(cancellationToken: cancellationToken);
+            return await SaveToAsync(cancellationToken: cancellationToken, interactiveConflict: false);
 
         var fileName = string.IsNullOrWhiteSpace(CadDocumentViewModel.CadEditor.Document.Name)
             ? "Untitled.d2cad"
@@ -128,13 +130,14 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (selectedFileName is null)
             return false;
 
-        return await SaveToFileForWorkspaceToolAsync(selectedFileName, cancellationToken);
+        var authorized = await Task.Run(() => CadFileRevision.Capture(selectedFileName), cancellationToken);
+        return await SaveToAsync(selectedFileName, cancellationToken, interactiveConflict: false, overwriteAuthorization: authorized);
     }
 
     internal async Task<bool> SaveToFileForWorkspaceToolAsync(string filePath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return await SaveToAsync(filePath, cancellationToken);
+        return await SaveToAsync(filePath, cancellationToken, interactiveConflict: false);
     }
 
     private async Task<bool> ConfirmCloseCoreAsync()
@@ -153,6 +156,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     public string LayoutSpaceGroupName { get; } = $"LayoutSpaceMode_{Guid.NewGuid():N}";
 
     public string DocumentName => CadDocumentViewModel.CadEditor.Document.Name;
+    public bool IsCompatibilityReadOnly => CadDocumentViewModel.CadEditor.Document.IsReadOnly;
+    public CadLongOperation Operation { get; } = new();
 
     [ObservableProperty]
     public partial string CurrentFilePath { get; private set; } = string.Empty;
@@ -428,6 +433,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private async Task<bool> TrySaveFileAsync()
     {
+        if (IsCompatibilityReadOnly) return await SaveCompatibleCopyCoreAsync();
         if (string.IsNullOrWhiteSpace(CurrentFilePath))
             return await TrySaveAsFileAsync();
 
@@ -442,6 +448,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     private async Task<bool> TrySaveAsFileAsync()
     {
+        if (IsCompatibilityReadOnly) return await SaveCompatibleCopyCoreAsync();
         var fileName = string.IsNullOrWhiteSpace(CadDocumentViewModel.CadEditor.Document.Name)
                   ? "Untitled.d2cad"
                   : $"{CadDocumentViewModel.CadEditor.Document.Name}.d2cad";
@@ -449,10 +456,41 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (selectedFileName is null)
             return false;
 
-        return await SaveToAsync(selectedFileName);
+        var authorized = await Task.Run(() => CadFileRevision.Capture(selectedFileName));
+        return await SaveToAsync(selectedFileName, overwriteAuthorization: authorized);
     }
 
-    private bool CanPrint() => CadDocumentViewModel.ActiveLayoutId is not null;
+    [RelayCommand]
+    private Task SaveCompatibleCopyAsync() => SaveCompatibleCopyCoreAsync();
+
+    private async Task<bool> SaveCompatibleCopyCoreAsync()
+    {
+        var target = _fileDialogService.ChooseCompatibleCopyPath(DocumentName + ".compatible.d2cad");
+        if (target is null) return false;
+        if(!string.IsNullOrWhiteSpace(CurrentFilePath) && string.Equals(Path.GetFullPath(target),Path.GetFullPath(CurrentFilePath),StringComparison.OrdinalIgnoreCase))
+        { await _dialogService.ShowOrReplaceMessageDialogAsync(Direct2dCad.Lang.CadUiText.Get("CompatibleCopyDifferentPath"),Strings.SaveAs);return false; }
+        var expected = await Task.Run(() => CadFileRevision.Capture(target));
+        var warning=Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.CompatibilityCopyWarning);
+        if(expected.Exists) warning+=Environment.NewLine+Direct2dCad.Lang.CadUiText.Get("CompatibleCopyOverwrite")+Environment.NewLine+target;
+        if (!await _dialogService.ShowOrReplaceMessageDialogWithCancelAsync(
+            warning,
+            Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.SaveCompatibleCopy))) return false;
+        try
+        {
+            return await Operation.RunAsync(Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.SavingDrawing), async token =>
+            {
+                if (!await _saveSession.SaveCompatibilityCopyAsync(target, expected, token)) return false;
+                var document = await new CadDocumentStorage().LoadAsync(target, token);
+                if (_disposed) return false;
+                Load(document, target);
+                return true;
+            });
+        }
+        catch (OperationCanceledException) { return false; }
+        catch (Exception ex) { await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, Strings.SaveAs); return false; }
+    }
+
+    private bool CanPrint() => !_disposed;
 
     [RelayCommand(CanExecute = nameof(CanPrint))]
     private async Task PrintAsync()
@@ -473,15 +511,28 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
         try
         {
+            var editor=CadDocumentViewModel.CadEditor;
+            var version=editor.DocumentChangeVersion;
+            var request=CadDocumentViewModel.CreatePrintRequest(DocumentName);
+            var snapshot=await new CadDocumentStorage().CreateIndependentSnapshotAsync(editor.Document,
+                new(()=>!_disposed && ReferenceEquals(editor,CadDocumentViewModel.CadEditor) && editor.DocumentChangeVersion==version,async ct=>await Task.Delay(1,ct)));
             var printed = await _printService.PrintAsync(
-                CadDocumentViewModel.CreatePrintRequest(DocumentName),
+                request with {Document=snapshot},
                 onPrintStarted: () => _snackbarService.Enqueue(
                     Strings.PrintStarted,
                     neverConsiderToBeDuplicate: true),
                 onBusyChanged: SetPrintBusy,
                 onPrintCompleted: () => _snackbarService.Enqueue(
                     Strings.PrintCompleted,
-                    neverConsiderToBeDuplicate: true));
+                    neverConsiderToBeDuplicate: true),
+                onPrintFinished: result =>
+                {
+                    if (_disposed) return;
+                    if (result.Status == CadPrintCompletionStatus.Failed)
+                        _snackbarService.Enqueue($"{Strings.PrintFailed}: {result.Error}", neverConsiderToBeDuplicate: true);
+                    else if (result.Status == CadPrintCompletionStatus.Cancelled)
+                        _snackbarService.Enqueue(Strings.AiCancelled, neverConsiderToBeDuplicate: true);
+                });
             if (printed)
             {
                 _snackbarService.Enqueue(
@@ -577,7 +628,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
     }
 
-    private async Task<bool> SaveToAsync(string? filePath = null, CancellationToken cancellationToken = default)
+    private async Task<bool> SaveToAsync(string? filePath = null, CancellationToken cancellationToken = default,
+        bool interactiveConflict = true, CadFileRevision? overwriteAuthorization = null)
     {
         try
         {
@@ -586,12 +638,24 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
                 CurrentFilePath = _saveSession.FilePath;
                 SaveWorkspaceSettings();
                 RefreshModifiedState();
-                _snackbarService.Enqueue("File saved successfully.");
             }
 
-            return filePath is null
-                ? await _saveSession.SaveCurrentAsync(OnCommitted, () => _dialogService.ShowProgressBarDialog(), cancellationToken)
-                : await _saveSession.SaveAsync(filePath, OnCommitted, () => _dialogService.ShowProgressBarDialog(), cancellationToken);
+            var saved = await Operation.RunAsync(Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.SavingDrawing), token => filePath is null
+                ? _saveSession.SaveCurrentAsync(OnCommitted, cancellationToken: token, overwriteAuthorization: overwriteAuthorization)
+                : _saveSession.SaveAsync(filePath, OnCommitted, cancellationToken: token, overwriteAuthorization: overwriteAuthorization), cancellationToken);
+            if (saved && !IsModified) await RemoveRecoveryCopiesAsync();
+            return saved;
+        }
+        catch (CadFileConflictException conflict) when (interactiveConflict && overwriteAuthorization is null)
+        {
+            var choice=await _dialogService.ShowFileConflictDialogAsync(conflict.CurrentRevision.FullPath);
+            if(choice==CadFileConflictChoice.Cancel) return false;
+            if(choice==CadFileConflictChoice.SaveAs) return await TrySaveAsFileAsync();
+            return await SaveToAsync(filePath, cancellationToken, interactiveConflict: false, overwriteAuthorization: conflict.CurrentRevision);
+        }
+        catch (CadFileConflictException) when (!interactiveConflict)
+        {
+            throw;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -773,6 +837,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
     public bool TryRenameDocument(string name)
     {
+        if (IsCompatibilityReadOnly) return false;
         if (!TryNormalizeDocumentName(name, out var normalizedName))
             return false;
 
@@ -1041,8 +1106,11 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     {
         if (_disposed)
             return;
-
         _disposed = true;
+        Operation.Dispose();
+        _recoveryLifetime.Cancel();
+        if (!IsModified || _discardRecoveryOnClose) _ = RemoveRecoveryCopiesAsync();
+        _recoveryLifetime.Dispose();
         _saveSession.Dispose();
         SaveWorkspaceSettings();
         SaveUserSettings();
@@ -1078,6 +1146,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (!ReferenceEquals(message.DocumentViewModel, CadDocumentViewModel))
             return;
 
+        NotifyBooleanCommands();
         _selectionAvailability.Get(CadDocumentViewModel.CadEditor);
         if (_notifiedSelectionAvailabilityVersion != _selectionAvailability.Version)
         {
@@ -1105,6 +1174,8 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
         {
             CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
+            if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+                LayoutWorkspace.IsSettingsOpen = false;
             return;
         }
 
@@ -1159,6 +1230,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         else if (e.AffectsLayouts)
             LayoutWorkspace.HandleLayoutSettingsChanged();
         RefreshModifiedState();
+        NotifyBooleanCommands();
         UndoCommand.NotifyCanExecuteChanged();
         RedoCommand.NotifyCanExecuteChanged();
     }
@@ -1184,6 +1256,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         LayoutWorkspace.RefreshDocumentStructure();
         CurrentFilePath = fileName;
         _saveSession.Reset(CadDocumentViewModel.CadEditor, fileName);
+        OnPropertyChanged(nameof(IsCompatibilityReadOnly));
         RestoreWorkspaceSettings();
         Title = CadDocumentViewModel.CadEditor.Document.Name;
         RefreshModifiedState();

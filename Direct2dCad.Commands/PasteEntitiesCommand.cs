@@ -98,6 +98,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 _createdEntityIds.Add(created.Id);
             }
         }
+        context.RebindDimensions();
         _createdBlockIds.AddRange(context.CreatedBlockIds);
 
         return CreateChangeSet(
@@ -151,6 +152,11 @@ public sealed class PasteEntitiesCommand : ICadCommand
 
         created = item.Entity switch
         {
+            CadDimensionClipboardSnapshot dimension => document.AddDimension(dimension.Definition with
+            {
+                Anchors = dimension.Definition.Anchors.Select(a => a with { Point = a.Point + delta, Reference = null }).ToArray(),
+                Placement = dimension.Definition.Placement + delta
+            }, layerId, ownerBlockId),
             CadBlockReferenceClipboardSnapshot blockReference => document.AddBlockReference(
                 context.ResolveBlockDefinition(blockReference.SourceDefinitionBlockId),
                 blockReference.Position + delta,
@@ -221,6 +227,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 graphicStyleId,
                 fillStyleId,
                 spline.State.Name),
+            CadRegionClipboardSnapshot region => document.AddRegion(region.Contours.Select(c => c.Transform(p => p + delta)), layerId, graphicStyleId, fillStyleId, region.State.Name),
             CadCompositePathClipboardSnapshot path => document.AddCompositePath(
                 path.StartPoint + delta,
                 TranslateCompositePathSegments(path.Segments, delta),
@@ -271,8 +278,12 @@ public sealed class PasteEntitiesCommand : ICadCommand
             return false;
 
         ApplyState(created, item.Entity.State);
+        if(created is CadEllipse ellipseEntity && item.Entity is CadEllipseClipboardSnapshot ellipseSnapshot) ellipseEntity.SetRotation(ellipseSnapshot.RotationRadians);
+        if(created is CadEllipseArc ellipseArcEntity && item.Entity is CadEllipseArcClipboardSnapshot ellipseArcSnapshot) ellipseArcEntity.SetRotation(ellipseArcSnapshot.RotationRadians);
+        if(created is CadRectangle rectangleEntity && item.Entity is CadRectangleClipboardSnapshot rectangleSnapshot) rectangleEntity.SetRotation(rectangleSnapshot.RotationRadians);
         if (created is not CadBlockReference && !ownerBlockId.Equals(BlockId.ModelSpace))
             document.MoveEntityToBlock(created.Id, ownerBlockId);
+        context.Record(item, created);
         return true;
     }
 
@@ -348,6 +359,29 @@ public sealed class PasteEntitiesCommand : ICadCommand
 
         public CadDocument Document { get; } = document;
         public List<BlockId> CreatedBlockIds { get; } = [];
+        private readonly Dictionary<EntityId, CadEntity> _copies = [];
+        private readonly List<(CadDimension Dimension, CadDimensionDefinition Source)> _dimensions = [];
+
+        public void Record(CadClipboardEntityItem item, CadEntity created)
+        {
+            _copies[item.SourceEntityId] = created;
+            if (created is CadDimension dimension && item.Entity is CadDimensionClipboardSnapshot snapshot)
+                _dimensions.Add((dimension, snapshot.Definition));
+        }
+
+        public void RebindDimensions()
+        {
+            foreach (var (dimension, source) in _dimensions)
+            {
+                var anchors = dimension.Definition.Anchors.Select((anchor, index) =>
+                    source.Anchors[index].Reference is { } reference &&
+                    _copies.TryGetValue(new EntityId(reference.EntityId), out var copy) && copy.OwnerBlockId == dimension.OwnerBlockId
+                        ? anchor with { Reference = reference with { EntityId = copy.Id.Value, OwnerBlockId = copy.OwnerBlockId.Value } }
+                        : anchor).ToArray();
+                dimension.SetDefinition(dimension.Definition with { Anchors = anchors });
+                dimension.RefreshAssociation(Document);
+            }
+        }
 
         public BlockId ResolveBlockDefinition(BlockId sourceBlockId)
         {

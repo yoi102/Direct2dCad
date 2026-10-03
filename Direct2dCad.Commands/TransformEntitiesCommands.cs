@@ -7,6 +7,7 @@ namespace Direct2dCad.Commands;
 public sealed class RotateEntitiesCommand : ICadCommand
 {
     private readonly EntityId[] _entityIds;
+    private readonly DimensionTransformState _dimensions = new();
     private readonly CadPointD _pivot;
     private readonly double _angleRadians;
 
@@ -24,6 +25,7 @@ public sealed class RotateEntitiesCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         Validate(document);
+        _dimensions.Capture(document, _entityIds);
         foreach (var id in _entityIds)
             CadEntityTransform.Rotate(document.GetEntity(id), _pivot, _angleRadians);
         return ChangeSet(document);
@@ -33,6 +35,7 @@ public sealed class RotateEntitiesCommand : ICadCommand
     {
         foreach (var id in _entityIds)
             CadEntityTransform.Rotate(document.GetEntity(id), _pivot, -_angleRadians);
+        _dimensions.Restore(document);
         return ChangeSet(document);
     }
 
@@ -59,6 +62,7 @@ public sealed class RotateEntitiesCommand : ICadCommand
 public sealed class ScaleEntitiesCommand : ICadCommand
 {
     private readonly EntityId[] _entityIds;
+    private readonly DimensionTransformState _dimensions = new();
     private readonly CadPointD _pivot;
     private readonly double _factor;
 
@@ -78,6 +82,7 @@ public sealed class ScaleEntitiesCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         Validate(document, _factor);
+        _dimensions.Capture(document, _entityIds);
         foreach (var id in _entityIds)
             CadEntityTransform.UniformScale(document.GetEntity(id), _pivot, _factor);
         return ChangeSet(document);
@@ -88,6 +93,7 @@ public sealed class ScaleEntitiesCommand : ICadCommand
         var inverse = 1.0 / _factor;
         foreach (var id in _entityIds)
             CadEntityTransform.UniformScale(document.GetEntity(id), _pivot, inverse);
+        _dimensions.Restore(document);
         return ChangeSet(document);
     }
 
@@ -107,6 +113,7 @@ public sealed class ScaleEntitiesCommand : ICadCommand
 public sealed class MirrorEntitiesCommand : ICadCommand
 {
     private readonly EntityId[] _entityIds;
+    private readonly DimensionTransformState _dimensions = new();
     private readonly CadPointD _axisPoint;
     private readonly double _axisAngleRadians;
 
@@ -126,6 +133,7 @@ public sealed class MirrorEntitiesCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         Validate(document);
+        _dimensions.Capture(document, _entityIds);
         Apply(document);
         return ChangeSet(document);
     }
@@ -133,6 +141,7 @@ public sealed class MirrorEntitiesCommand : ICadCommand
     public CadDocumentChangeSet Undo(CadDocument document)
     {
         Apply(document);
+        _dimensions.Restore(document);
         return ChangeSet(document);
     }
 

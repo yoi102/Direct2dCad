@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/mozman/ezdxf",
+  "commit": "9fb787cc2cff2b566e4ef9cdea8888c7eb24ca8b",
+  "source": "examples/edgeminer/6_closed_loop_with_arcs.dxf",
+  "license": "MIT",
+  "sha256": "A38BFD30108D0644215B3ADA3977B25EBD48DF9FBC22226462886588A4387663"
+}

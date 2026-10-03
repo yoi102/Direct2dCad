@@ -1,0 +1,146 @@
+{
+  "date": "2026-10-03",
+  "baselineCommit": "041e291287e93429d49f498b5ca571f9a8f12427",
+  "uncommittedWorkspaceChanges": true,
+  "sdk": "10.0.401",
+  "build": {
+    "command": "dotnet build Direct2dCad.wpf/Direct2dCad.wpf.csproj -c Release --verbosity quiet",
+    "passed": true,
+    "warnings": 0,
+    "errors": 0
+  },
+  "managed": {
+    "passed": 131,
+    "total": 131,
+    "projects": [
+      {
+        "trx": "TestResults/region-grips/managed/capabilities.trx",
+        "sha256": "943890C4C37E7B67A6193DA5599186A1ABC3B079C7C696F5B448B8FAFE5E3CFD",
+        "total": 14,
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:58:56.0589839+09:00"
+      },
+      {
+        "trx": "TestResults/region-grips/managed/grips.trx",
+        "sha256": "7BF2C2F571F3B5C908B4A1193509A848C8CD25C650B9262DAB10FF9767EF4FE5",
+        "total": 105,
+        "passed": 105,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:57:52.6179566+09:00"
+      },
+      {
+        "trx": "TestResults/region-grips/managed/handles.trx",
+        "sha256": "C8BCBA25104CB70C29D53A1F886FA42434B9706BECB03CB8346720C9431655E0",
+        "total": 12,
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "finishedAt": "2026-10-03T18:59:00.3134499+09:00"
+      }
+    ]
+  },
+  "ui": {
+    "trx": "TestResults/region-grips/ui/ui.trx",
+    "sha256": "B2BE93A2AFE37DBEFAD3E5E5BEB6AFBB793EE4F4103371870720F541C74311AE",
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "finishedAt": "2026-10-03T18:58:54.1480252+09:00"
+  },
+  "sourceHashes": [
+    {
+      "file": "Direct2dCad.Db/Data/Entities/CadEntityCapabilities.cs",
+      "sha256": "413259377AE45DACD976CC4D19FE68817E6883EACF2B5C554B1197D7AD3B7E96"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Handles/CadHandleSceneBuilder.cs",
+      "sha256": "F5F551C2A2A370B3B6F603CC8369EF69DF67CFC32F6338F40A92D835B86958C3"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Interactions/CadGripDragCommitter.cs",
+      "sha256": "AA06AF97B612F3AD061507366CA7A3043C86BED9E9DF721B0FC1717A6855BBA0"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Interactions/CadGripDragPreviewBuilder.cs",
+      "sha256": "1ADFAE44FD2C556F9B2495B29C90833E4D00E429AC37C8332131D5D7F6C992F5"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Interactions/CadGripDragController.cs",
+      "sha256": "51206057368A01FA8AC0DB1FEB8E2E3BB10F86ABFC92C298806915B66AC4D7D3"
+    },
+    {
+      "file": "Direct2dCad.Db.Tests/CadEntityCapabilityMatrixTests.cs",
+      "sha256": "A74366B492CEFD433F785550083C801B7C539FB4A0CFE793C2A3473AA7DA2833"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Tests/RegionGripWorkflowTests.cs",
+      "sha256": "A330ADADD24EED27599E37DF90CA026E73F1E461DDDF94950D262FA0967442C2"
+    },
+    {
+      "file": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.RegionGrips.cs",
+      "sha256": "3B9D44C0341A645E711A7F7AC833B799C2EA6BF89E563C304F397A892582821B"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "screenshots/region-move-preview.png",
+      "sha256": "DE5D1491CEE1F8BE41A8F2FEFC437922B3EA562CBA52014B075501E4FA45AA6F",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/region-moved.png",
+      "sha256": "27FFA7BC401CF72C63D278E6F8B2E44A8CF84FF4FE1F3456A15F85F90D380F6B",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/region-scale-preview.png",
+      "sha256": "FA78EE6F30DADD8E9EC8D6C6469B72C377D5C60CE14F818927314E827E8CAE80",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/region-scaled.png",
+      "sha256": "46A943888386E5849C64F705341E812C823D44FAC3D4ABF237D8E3CA7D2878D6",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    },
+    {
+      "file": "screenshots/region-selected-grips.png",
+      "sha256": "5AE1648B399154492CFC5D2DF8E9FD256DDAAD1F2878369804F9B9752EED970F",
+      "source": "Final WPF UI automation run; 1300x900 window"
+    }
+  ],
+  "grips": {
+    "center": "Move editable selection",
+    "boundsCorners": "Uniform scale around the opposite corner"
+  },
+  "interaction": "Click grip, move pointer for preview, click target to commit; release preserves preview; Escape cancels",
+  "geometryChecks": [
+    "All five grips",
+    "Arc endpoints/centers/radii/sweeps",
+    "Holes and disconnected island membership",
+    "Area",
+    "Pure preview",
+    "Single undo and redo",
+    "Center in material gap",
+    "Mixed selection move",
+    "Cancel and lock rejection"
+  ],
+  "uiChecks": [
+    "Actual center/corner picking",
+    "Preview and Escape",
+    "Second-click commit",
+    "Public query bounds",
+    "Undo and redo"
+  ],
+  "packageRebuilt": false,
+  "clipboardDesktopTestsRun": false,
+  "notRun": [
+    "Full solution regression",
+    "Long-term stress",
+    "Mixed multi-monitor DPI",
+    "Rebuilt package, signing, push or publication"
+  ]
+}

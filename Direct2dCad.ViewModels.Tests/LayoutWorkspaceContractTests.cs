@@ -110,8 +110,10 @@ public sealed class LayoutWorkspaceContractTests
         tab.LayoutWorkspace.SelectedTab = tab.LayoutWorkspace.Tabs[1];
         var layout = vm.CadEditor.Document.GetLayout(vm.ActiveLayoutId!.Value);
         var count = layout.Viewports.Count;
+        tab.LayoutWorkspace.IsSettingsOpen = true;
         tab.LayoutWorkspace.AddViewportCommand.Execute(null);
         Assert.Equal(CadCanvasToolMode.LayoutViewport, vm.CadCanvasToolMode);
+        Assert.False(tab.LayoutWorkspace.SettingsVisibility);
         Click(new(20, 20));
         Click(new(80, 70));
         Assert.Equal(count + 1, layout.Viewports.Count);

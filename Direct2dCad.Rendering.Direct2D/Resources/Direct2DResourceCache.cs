@@ -105,6 +105,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     }
 
     public IReadOnlyDictionary<EntityId, EntityResourceBucket> EntityResources => _entityResources;
+    internal bool HasVisiblePreparationPending=>_backgroundGeometryPreparation?.HasVisiblePending==true;
 
     public void ResetDeviceResources(
         ID2D1Factory? d2D1Factory,
@@ -159,6 +160,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             }
             else if (options.EntityBoundsQuery is { } query)
                 preparation.Prioritize(query(options.ActiveOwnerBlockId, viewport.VisibleWorldBounds));
+            else preparation.Prioritize(document.GetEntitiesInBlock(options.ActiveOwnerBlockId)
+                .Where(e=>!e.IsErased && e.Bounds.Intersects(viewport.VisibleWorldBounds)).Select(e=>e.Id));
         }
         preparation.CaptureStep(new ResourcePreparationBudget(Math.Max(2, maximumEntityCount * 2), TimeSpan.FromMilliseconds(2)));
 
@@ -169,6 +172,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             try
             {
                 RebuildEntityResources(document, prepared.EntityId, prepared);
+                preparation.MarkApplied(prepared.EntityId);
             }
             finally
             {
@@ -795,9 +799,11 @@ internal sealed class Direct2DResourceCache : IDisposable
                 CreatePolylineGeometry(polyline.Points, polyline.Closed),
                 polyline.Points.Count),
             CadSpline spline => CreateSplineGeometry(spline.GetBezierSegments(), spline.Closed),
+            CadRegion region => (_geometryFactory.CreateRegion(Factory!, region.Contours), region.Contours.Sum(c => c.Edges.Count)),
             CadCompositePath path => (
                 _geometryFactory.CreateCompositePath(Factory!, path),
                 path.Segments.Count),
+            CadDimension dimension => CreateShapeTextGeometry(dimension.Strokes),
             CadShapeText shapeText => CreateShapeTextGeometry(shapeText.CreateStrokeSegments()),
             _ => (null, 0)
         };
@@ -931,7 +937,7 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     private ID2D1Geometry CreateRectangleGeometry(CadRectangle rectangle)
     {
-        var bounds = rectangle.Bounds;
+        var bounds = rectangle.FrameBounds;
         var radiusX = ClampCornerRadius(rectangle.CornerRadiusX, bounds.Width);
         var radiusY = ClampCornerRadius(rectangle.CornerRadiusY, bounds.Height);
         if (radiusX > 0 && radiusY > 0)
@@ -987,6 +993,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
             CadCompositePath path => path.GraphicStyleId,
+            CadRegion path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
@@ -1004,8 +1011,9 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadArc or
             CadPolyline or
             CadSpline or
-            CadCompositePath or
+            CadCompositePath or CadRegion or
             CadText or
+            CadDimension or
             CadShapeText;
     }
 
@@ -1019,7 +1027,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadArc or
             CadPolyline or
             CadSpline or
-            CadCompositePath or
+            CadCompositePath or CadRegion or
             CadShapeText;
     }
 
@@ -1079,6 +1087,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             CadPolyline { Closed: true } polyline => polyline.FillStyleId,
             CadSpline { Closed: true } spline => spline.FillStyleId,
             CadCompositePath { Closed: true } path => path.FillStyleId,
+            CadRegion path => path.FillStyleId,
             _ => null
         };
 

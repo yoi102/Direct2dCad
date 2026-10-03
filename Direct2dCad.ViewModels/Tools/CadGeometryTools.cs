@@ -30,7 +30,7 @@ internal static class CadGeometryTools
                 ["entity_ids"] = EntityIdsSchema(),
                 ["delta_x"] = Number("World-coordinate X offset"),
                 ["delta_y"] = Number("World-coordinate Y offset")
-            }, ["entity_ids", "delta_x", "delta_y"]))
+            }, ["delta_x", "delta_y"]))
     ];
 
     internal static object Execute(CadDocumentToolExecutor executor, string toolName, JsonElement arguments) => toolName switch
@@ -65,7 +65,10 @@ internal static class CadGeometryTools
             throw new ArgumentException(
                 $"entity_type does not match entity {id.Value}; expected {EntityType(entity)}.");
         }
-        foreach (var command in CreateGeometryCommands(entity, arguments))
+        var commands=CreateGeometryCommands(entity, arguments).ToList();
+        if(entity is CadEllipse or CadEllipseArc or CadRectangle && arguments.TryGetProperty("rotation_degrees",out _))
+            commands.Add(new SetEntityOrientationCommand(id,RequiredDouble(arguments,"rotation_degrees")/DegreesPerRadian));
+        foreach (var command in commands)
             executor.ExecuteCommand(command);
         return new
         {
@@ -102,7 +105,7 @@ internal static class CadGeometryTools
 
     private static object DuplicateEntities(CadDocumentToolExecutor executor, JsonElement arguments)
     {
-        var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: false);
+        var ids = executor.ResolveEntityIdsForTool(arguments, allowSelectionFallback: true);
         var command = new DuplicateEntitiesCommand(
             ids,
             new CadVectorD(RequiredDouble(arguments, "delta_x"), RequiredDouble(arguments, "delta_y")),
@@ -185,6 +188,13 @@ internal static class CadGeometryTools
 
     private static object GeometryDto(CadDocumentToolExecutor executor, CadEntity entity) => entity switch
     {
+        CadDimension d => new {kind=d.Definition.Kind.ToString(),anchors=d.Definition.Anchors.Select(a=>PointDto(a.Point)).ToArray(),anchor_references=d.Definition.Anchors.Select(a=>a.Reference).ToArray(),placement=PointDto(d.Definition.Placement),style=d.Definition.Style,annotation_scale=d.Definition.AnnotationScale,text_override=d.Definition.TextOverride,rotation_degrees=d.Definition.LinearRotationRadians*DegreesPerRadian,association=d.AssociationState.ToString(),measurement=d.Measurement,text=d.DisplayText},
+        CadRegion region => new { closed = true, area = region.Area, perimeter = region.Length,
+            contours = region.Contours.Select(c => new { signed_area = c.SignedArea, edges = c.Edges.Select(p => new
+            { kind = p.IsLine ? "Line" : "Arc", start = PointDto(p.Start), end = PointDto(p.End),
+                center = p.IsLine ? null : (object)PointDto(p.Center), radius = p.IsLine ? (double?)null : p.Radius,
+                start_angle_degrees = p.IsLine ? (double?)null : p.StartAngle*DegreesPerRadian,
+                sweep_angle_degrees = p.IsLine ? (double?)null : p.Sweep*DegreesPerRadian }).ToArray() }).ToArray() },
         CadLine line => new { start = PointDto(line.Start), end = PointDto(line.End) },
         CadCircle circle => new { center = PointDto(circle.Center), radius = circle.Radius },
         CadArc arc => new
@@ -196,18 +206,20 @@ internal static class CadGeometryTools
             start = PointDto(arc.StartPoint),
             end = PointDto(arc.EndPoint)
         },
-        CadEllipse ellipse => new { center = PointDto(ellipse.Center), radius_x = ellipse.RadiusX, radius_y = ellipse.RadiusY },
+        CadEllipse ellipse => new { center = PointDto(ellipse.Center), radius_x = ellipse.RadiusX, radius_y = ellipse.RadiusY,rotation_degrees=ellipse.RotationRadians*DegreesPerRadian },
         CadEllipseArc ellipseArc => new
         {
             center = PointDto(ellipseArc.Center),
             radius_x = ellipseArc.RadiusX,
             radius_y = ellipseArc.RadiusY,
+            rotation_degrees=ellipseArc.RotationRadians*DegreesPerRadian,
             start_angle_degrees = ellipseArc.StartAngleRadians * DegreesPerRadian,
             sweep_angle_degrees = ellipseArc.SweepAngleRadians * DegreesPerRadian
         },
         CadRectangle rectangle => new
         {
-            bounds = RectDto(rectangle.Bounds),
+            bounds = RectDto(rectangle.FrameBounds),
+            rotation_degrees=rectangle.RotationRadians*DegreesPerRadian,
             corner_radius_x = rectangle.CornerRadiusX,
             corner_radius_y = rectangle.CornerRadiusY
         },
@@ -296,6 +308,8 @@ internal static class CadGeometryTools
         CadPolyline => "Polyline",
         CadSpline => "Spline",
         CadCompositePath => "CompositePath",
+        CadDimension => "Dimension",
+        CadRegion => "Region",
         CadText => "Text",
         CadShapeText => "ShapeText",
         CadImage => "Image",
@@ -400,7 +414,7 @@ internal static class CadGeometryTools
             {
                 type = "string",
                 @enum = new[] { "move", "rotate", "scale", "mirror" },
-                description = "move supports all editable entities; rotate rejects EllipseArc and OleObject and requires 90-degree multiples for Ellipse/Rectangle; scale rejects EllipseArc; mirror rejects EllipseArc, requires 45-degree axes for Ellipse/Rectangle, and horizontal/vertical axes for OleObject."
+                description = "move supports all editable entities; rotate supports arbitrary angles including oriented Ellipse/EllipseArc/Rectangle, except OleObject; scale requires a positive factor; mirror supports arbitrary axes except OleObject requires horizontal/vertical axes. All operands are validated before modification."
             },
             ["delta_x"] = Number("Required for move"),
             ["delta_y"] = Number("Required for move"),

@@ -21,6 +21,11 @@ public sealed class CadDocumentCommandManager
     public bool CanRedo => _historyRecoveryFailure is null && _history.CanRedo;
     public bool IsHistoryHealthy => _historyRecoveryFailure is null;
     public CommandHistorySettings Settings => _settings;
+    public long EstimatedHistoryBytes=>_history.EstimatedRetainedBytes;
+    private void EnsureEditable()
+    {
+        if (_document.IsReadOnly) throw new InvalidOperationException(_document.CompatibilityNotice);
+    }
     public object CreateUndoHistorySnapshot() => _history.CreateUndoSnapshot();
     public bool UndoHistoryEquals(object? snapshot) => _history.UndoStackEquals(snapshot);
 
@@ -39,13 +44,14 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet Execute(ICadCommand command)
     {
+        EnsureEditable();
         ArgumentNullException.ThrowIfNull(command);
         EnsureOutsideAtomicBatch();
         EnsureHistoryHealthy();
 
         var result = command.Execute(_document);
-        _history.PushExecuted(command);
-        _history.TrimUndo(_settings.MaximumUndoCommands);
+        _history.PushExecuted(command,estimatedBytes:CadCommandPayloadEstimate.Estimate(command));
+        _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
         _changes.Publish(result);
         PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.DocumentChanged);
         return result;
@@ -53,6 +59,7 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet ExecuteInBatch(ICadCommand command, Guid batchId)
     {
+        EnsureEditable();
         ArgumentNullException.ThrowIfNull(command);
         EnsureHistoryHealthy();
         if (batchId == Guid.Empty)
@@ -61,9 +68,9 @@ public sealed class CadDocumentCommandManager
             throw new InvalidOperationException("An atomic operation cannot execute a different command batch.");
 
         var result = command.Execute(_document);
-        _history.PushExecuted(command, batchId);
+        _history.PushExecuted(command, batchId,CadCommandPayloadEstimate.Estimate(command));
         if (_atomicBatchId is null)
-            _history.TrimUndo(_settings.MaximumUndoCommands);
+            _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
         _changes.Publish(result);
         PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.DocumentChanged);
         return result;
@@ -89,7 +96,7 @@ public sealed class CadDocumentCommandManager
         {
             var result = operation();
             if (_history.UndoCount > undoCount)
-                _history.TrimUndo(_settings.MaximumUndoCommands);
+                _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
             return result;
         }
         catch
@@ -170,7 +177,7 @@ public sealed class CadDocumentCommandManager
             _history.PushExecuted(command, batchId);
         }
 
-        _history.TrimUndo(_settings.MaximumUndoCommands);
+        _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
         var combined = CadDocumentChangeSet.Combine(results);
         _changes.Publish(combined);
         PublishActivity(name, CadCommandActivityKind.Execute, commandArray.Length, combined.DocumentChanged);

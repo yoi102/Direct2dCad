@@ -5,6 +5,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Handles;
 using Vortice.Direct2D1;
@@ -449,7 +450,11 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         {
             return _resourceCache.TryGetEntityResources(entity.Id, out var resources) &&
                    resources is not null &&
-                   resources.HatchBrush is null;
+                   resources.HatchBrush is null &&
+                   // Long solid outlines need viewport-local edge culling. Dashed
+                   // paths keep their reusable recording and complete dash phase.
+                   !(entity is CadPolyline { Points.Count: >= Direct2DVisiblePolylineStroke.MinimumPointCount,
+                       StrokeStyle.DashStyle: CadStrokeDashStyle.Solid } && resources.GraphicLineTypeStrokeStyle is null);
         }
         if (blockCacheability.TryGetValue(reference.DefinitionBlockId, out var cached))
             return cached;

@@ -1,0 +1,106 @@
+{
+  "recordedUtc": "2026-10-03T01:23:33.9766676+00:00",
+  "projects": [
+    {
+      "project": "Direct2dCad.Agent.Codex.Tests",
+      "passed": 19,
+      "failed": 0,
+      "total": 19,
+      "report": "yoiri_YOIRI_2026-10-03_09_57_26_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.Agent.Tests",
+      "passed": 7,
+      "failed": 0,
+      "total": 7,
+      "report": "yoiri_YOIRI_2026-10-03_09_57_27_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.AI.Tests",
+      "passed": 21,
+      "failed": 0,
+      "total": 21,
+      "report": "yoiri_YOIRI_2026-10-03_09_57_29_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.Commands.Tests",
+      "passed": 82,
+      "failed": 0,
+      "total": 82,
+      "report": "yoiri_YOIRI_2026-10-03_10_16_57_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.Db.Tests",
+      "passed": 87,
+      "failed": 0,
+      "total": 87,
+      "report": "yoiri_YOIRI_2026-10-03_10_15_02_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.Editor.Tests",
+      "passed": 66,
+      "failed": 0,
+      "total": 66,
+      "report": "yoiri_YOIRI_2026-10-03_09_57_36_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.HitTesting.Tests",
+      "passed": 18,
+      "failed": 0,
+      "total": 18,
+      "report": "yoiri_YOIRI_2026-10-03_09_57_41_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.Indexing.Tests",
+      "passed": 18,
+      "failed": 0,
+      "total": 18,
+      "report": "yoiri_YOIRI_2026-10-03_09_57_42_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.IO.Tests",
+      "passed": 48,
+      "failed": 0,
+      "total": 48,
+      "report": "yoiri_YOIRI_2026-10-03_10_21_20_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.Tests",
+      "passed": 96,
+      "failed": 0,
+      "total": 96,
+      "report": "yoiri_YOIRI_2026-10-03_09_57_46_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.UiAutomation.Tests",
+      "passed": 10,
+      "failed": 0,
+      "total": 10,
+      "report": "yoiri_YOIRI_2026-10-03_10_17_25_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.ViewModels.Services.Tests",
+      "passed": 90,
+      "failed": 0,
+      "total": 90,
+      "report": "yoiri_YOIRI_2026-10-03_09_59_27_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.ViewModels.Tests",
+      "passed": 767,
+      "failed": 0,
+      "total": 767,
+      "report": "yoiri_YOIRI_2026-10-03_10_21_20_net10.0.trx"
+    },
+    {
+      "project": "Direct2dCad.Windows.IntegrationTests",
+      "passed": 132,
+      "failed": 0,
+      "total": 132,
+      "report": "yoiri_YOIRI_2026-10-03_10_16_58_net10.0.trx"
+    }
+  ],
+  "passed": 1461.0,
+  "failed": 0.0,
+  "clipboard_ui_excluded": true
+}

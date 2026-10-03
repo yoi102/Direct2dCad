@@ -274,7 +274,7 @@ internal static class CadDrawingGeometryFactory
 
     public static bool IsValidArcGeometry(double radius, double sweepAngleRadians)
     {
-        return radius > double.Epsilon &&
+        return IsValidCircleGeometry(radius) && double.IsFinite(sweepAngleRadians) &&
                Math.Abs(sweepAngleRadians) > 1e-9 &&
                Math.Abs(sweepAngleRadians) <= TwoPi;
     }

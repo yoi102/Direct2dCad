@@ -1,0 +1,29 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.CadEditParametersView"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang">
+ <UserControl.Resources><BooleanToVisibilityConverter x:Key="Bool"/></UserControl.Resources>
+ <StackPanel AutomationProperties.AutomationId="EditParametersSurface" Margin="10,4" IsEnabled="{Binding CanEditDocument, FallbackValue=False}"
+             Visibility="{Binding IsCurveEditTool, Converter={StaticResource Bool}, FallbackValue=Collapsed}">
+  <TextBlock Text="{I18N {x:Static r:LangKeys.OperationParameters}}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+  <StackPanel Visibility="{Binding HasDistanceParameter, Converter={StaticResource Bool}}">
+   <TextBlock Text="{I18N {x:Static r:LangKeys.DistanceParameter}}"/>
+   <TextBox Text="{Binding EditDistance, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}" ToolTip="{Binding DocumentUnit}"/>
+  </StackPanel>
+  <StackPanel Visibility="{Binding HasChamferParameter, Converter={StaticResource Bool}}">
+   <TextBlock Text="{I18N {x:Static r:LangKeys.SecondDistanceParameter}}"/><TextBox Text="{Binding EditSecondDistance, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
+  </StackPanel>
+  <CheckBox Content="{I18N {x:Static r:LangKeys.TrimCornerLines}}" IsChecked="{Binding TrimCornerLines}" Visibility="{Binding HasCornerParameters, Converter={StaticResource Bool}}" Margin="0,6"/>
+  <StackPanel Visibility="{Binding HasRectArrayParameters, Converter={StaticResource Bool}}">
+   <TextBlock Text="{I18N {x:Static r:LangKeys.ArrayRows}}"/><TextBox Text="{Binding ArrayRows, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
+   <TextBlock Text="{I18N {x:Static r:LangKeys.ArrayColumns}}"/><TextBox Text="{Binding ArrayColumns, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
+   <TextBlock Text="{I18N {x:Static r:LangKeys.ArraySpacingX}}"/><TextBox Text="{Binding ArraySpacingX, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
+   <TextBlock Text="{I18N {x:Static r:LangKeys.ArraySpacingY}}"/><TextBox Text="{Binding ArraySpacingY, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
+  </StackPanel>
+  <StackPanel Visibility="{Binding HasPolarArrayParameters, Converter={StaticResource Bool}}">
+   <TextBlock Text="{I18N {x:Static r:LangKeys.ArrayCount}}"/><TextBox Text="{Binding ArrayCount, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
+   <TextBlock Text="{I18N {x:Static r:LangKeys.ArraySweep}}"/><TextBox Text="{Binding ArraySweepDegrees, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"/>
+   <CheckBox Content="{I18N {x:Static r:LangKeys.RotateCopies}}" IsChecked="{Binding ArrayRotateCopies}" Margin="0,6"/>
+  </StackPanel>
+  <TextBlock Text="{Binding StepInputError}" ToolTip="{Binding EditErrorDetail}" TextWrapping="Wrap" Margin="0,4"/>
+ </StackPanel>
+</UserControl>

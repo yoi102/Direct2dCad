@@ -13,6 +13,7 @@ public sealed class CadSnapInteractionServiceTests
     public void SnapWorld_UsesOriginAndIndependentMinorSpacing()
     {
         var document = CadDocument.Create("Grid snap");
+        document.ViewSettings.Snap=document.ViewSettings.Snap with {GridEnabled=true};
         document.ViewSettings.Origin.Position = new CadPointD(1, -2);
         document.ViewSettings.Grid.SpacingX = 20;
         document.ViewSettings.Grid.SpacingY = 30;
@@ -43,7 +44,6 @@ public sealed class CadSnapInteractionServiceTests
 
         service.AddSnapMarker(
             items,
-            new CadPointD(10.25, -4.75),
             new CadPointD(10, -5));
 
         Assert.Equal(expectedItemCount, items.Count);
@@ -54,15 +54,21 @@ public sealed class CadSnapInteractionServiceTests
     }
 
     [Fact]
-    public void AddSnapMarker_DoesNothingWhenPointIsAlreadySnapped()
+    public void AddSnapMarker_RemainsVisibleWithoutGridSnapAndPreservesPointerPosition()
     {
         var document = CadDocument.Create("Snap marker");
+        document.ViewSettings.Grid.SnapMarkerType = CadSnapMarkerType.Square;
         var service = new CadSnapInteractionService(document, CreateViewport());
         var items = new List<CadTransientItem>();
+        var pointer = new CadPointD(10.25, -4.75);
 
-        service.AddSnapMarker(items, new CadPointD(10, -5), new CadPointD(10, -5));
+        Assert.False(document.ViewSettings.Snap.GridEnabled);
+        var acceptedPoint = service.SnapWorld(pointer);
+        Assert.Equal(pointer, acceptedPoint);
+        service.AddSnapMarker(items, acceptedPoint);
 
-        Assert.Empty(items);
+        var marker = Assert.IsType<CadTransientRectangle>(Assert.Single(items));
+        Assert.Equal(pointer, marker.Bounds.Center);
     }
 
     [Fact]
@@ -79,7 +85,6 @@ public sealed class CadSnapInteractionServiceTests
 
         service.AddSnapMarker(
             items,
-            new CadPointD(10.25, -4.75),
             snappedWorld);
 
         var marker = Assert.IsType<CadTransientInfiniteCross>(Assert.Single(items));

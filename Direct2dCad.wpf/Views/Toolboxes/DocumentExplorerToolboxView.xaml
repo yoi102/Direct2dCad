@@ -39,7 +39,7 @@
             </Button>
         </DockPanel>
 
-        <ListBox Grid.Row="1"
+        <ListBox Grid.Row="1" AutomationProperties.AutomationId="DocumentExplorerList"
                  ItemsSource="{Binding Documents}"
                  SelectedItem="{Binding SelectedDocument, Mode=TwoWay}"
                  Background="Transparent"
@@ -47,72 +47,88 @@
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                  VirtualizingPanel.ScrollUnit="Pixel"
                  Style="{StaticResource MaterialDesignNavigationListBox}">
-
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource ToolboxListItem}">
+                    <Setter Property="AutomationProperties.AutomationId" Value="DocumentExplorerItem" />
+                    <Setter Property="AutomationProperties.Name" Value="{Binding DocumentName}" />
+                    <Setter Property="ContextMenu">
+                        <Setter.Value>
+                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                <MenuItem AutomationProperties.AutomationId="ActivateExplorerDocumentMenuItem"
+                                          Header="{I18N {x:Static r:LangKeys.ActivateDocument}}"
+                                          Command="{Binding Workspace.ActivateEditorDocumentCommand}" CommandParameter="{Binding Document}">
+                                    <MenuItem.Icon><md:PackIcon Kind="OpenInApp" Width="16" Height="16" /></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{I18N {x:Static r:LangKeys.Save}}" Command="{Binding Document.SaveFileCommand}">
+                                    <MenuItem.Icon><md:PackIcon Kind="ContentSaveOutline" Width="16" Height="16" /></MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem AutomationProperties.AutomationId="OpenExplorerDocumentFolderMenuItem"
+                                          Header="{I18N {x:Static r:LangKeys.OpenContainingFolder}}"
+                                          Command="{Binding Workspace.OpenFileFolderCommand}" CommandParameter="{Binding FilePath}">
+                                    <MenuItem.Icon><md:PackIcon Kind="FolderOpenOutline" Width="16" Height="16" /></MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem AutomationProperties.AutomationId="CloseExplorerDocumentMenuItem"
+                                          Header="{I18N {x:Static r:LangKeys.Close}}"
+                                          Command="{Binding Workspace.CloseEditorDocumentCommand}" CommandParameter="{Binding Document}">
+                                    <MenuItem.Icon><md:PackIcon Kind="Close" Width="16" Height="16" /></MenuItem.Icon>
+                                </MenuItem>
+                            </ContextMenu>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type toolboxes:DocumentExplorerItemViewModel}">
-                    <StackPanel Orientation="Horizontal">
-                        <Border  x:Name="SelectedBorder"
-                                 Visibility="Hidden"
-                                 Background="{DynamicResource MaterialDesign.Brush.Primary}"
-                                 CornerRadius="2"
-                                 Width="2" />
+                    <Grid
+                              ToolTip="{Binding ToolTipText}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="22" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                        <Grid     Margin="4,0"
-                                  ToolTip="{Binding ToolTipText}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="22" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                        <md:PackIcon Grid.Column="0"
+                                     Kind="FileDocumentOutline"
+                                     Width="16"
+                                     Height="16"
+                                     VerticalAlignment="Top"
+                                     Margin="0,2,6,0" />
 
-                            <md:PackIcon Grid.Column="0"
-                                         Kind="FileDocumentOutline"
-                                         Width="16"
-                                         Height="16"
-                                         VerticalAlignment="Top"
-                                         Margin="0,2,6,0" />
+                        <StackPanel Grid.Column="1"
+                                    ToolTip="{Binding DisplayPath}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="1"
-                                        ToolTip="{Binding DisplayPath}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                                <yr:EditableTextBlock Grid.Column="0"
+                                                      Text="{Binding DocumentName, Mode=TwoWay}"
+                                                      FontSize="13"
+                                                      FontWeight="SemiBold"
+                                                      TextTrimming="CharacterEllipsis"
+                                                      EmptyTextErrorMessage="{I18N {x:Static r:LangKeys.DocumentNameCannotBeEmpty}}">
+                                    <yr:EditableTextBlock.ToolTip>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Document.Id, StringFormat='id: {0}'}" />
+                                            <TextBlock Text="{Binding ToolTipText}" />
+                                        </StackPanel>
+                                    </yr:EditableTextBlock.ToolTip>
 
-                                    <yr:EditableTextBlock Grid.Column="0"
-                                                          Text="{Binding DocumentName, Mode=TwoWay}"
-                                                          FontSize="13"
-                                                          FontWeight="SemiBold"
-                                                          TextTrimming="CharacterEllipsis"
-                                                          EmptyTextErrorMessage="{I18N {x:Static r:LangKeys.DocumentNameCannotBeEmpty}}">
-                                        <yr:EditableTextBlock.ToolTip>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding Document.Id, StringFormat='id: {0}'}" />
-                                                <TextBlock Text="{Binding ToolTipText}" />
-                                            </StackPanel>
-                                        </yr:EditableTextBlock.ToolTip>
-                                        
-                                    </yr:EditableTextBlock>
+                                </yr:EditableTextBlock>
 
-                                    <TextBlock x:Name="ModifiedMarker"
-                                               Grid.Column="1"
-                                               Text="*"
-                                               Foreground="#FFE53935"
-                                               FontSize="16"
-                                               FontWeight="Bold"
-                                               Margin="4,-2,0,0"
-                                               Visibility="Collapsed" />
-                                </Grid>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
+                                <TextBlock x:Name="ModifiedMarker"
+                                           Grid.Column="1"
+                                           Text="*"
+                                           Foreground="#FFE53935"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Margin="4,-2,0,0"
+                                           Visibility="Collapsed" />
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
                     <DataTemplate.Triggers>
-                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
-                                     Value="True">
-                            <Setter TargetName="SelectedBorder"
-                                    Property="Visibility"
-                                    Value="Visible" />
-                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsModified}"
                                      Value="True">
                             <Setter TargetName="ModifiedMarker"

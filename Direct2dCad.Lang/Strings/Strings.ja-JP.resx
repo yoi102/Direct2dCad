@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -1440,4 +1440,209 @@
   <data name="PrintFailed" xml:space="preserve">
     <value>印刷に失敗しました</value>
   </data>
+  <data name="SaveCompatibleCopy" xml:space="preserve"><value>互換コピーを保存</value></data>
+  <data name="CompatibilityReadOnly" xml:space="preserve"><value>未対応の内容があるため読み取り専用です。</value></data>
+  <data name="CompatibilityCopyWarning" xml:space="preserve"><value>互換コピーには対応する内容のみ保存されます。元の図面は変更されません。</value></data>
+  <data name="SaveConflict" xml:space="preserve"><value>保存先が既に存在するか外部で変更されました</value></data>
+  <data name="RecoveryDrawings" xml:space="preserve"><value>復元できる図面</value></data>
+  <data name="OpenRecoveryCopy" xml:space="preserve"><value>復元コピーを開く</value></data>
+  <data name="Later" xml:space="preserve"><value>後で</value></data>
+  <data name="AutoRecoveryEnabled" xml:space="preserve"><value>復元コピーを自動保存</value></data>
+  <data name="OpeningDrawing" xml:space="preserve"><value>図面を開いています…</value></data>
+  <data name="SavingDrawing" xml:space="preserve"><value>図面を保存しています…</value></data>
+  <data name="Cancelling" xml:space="preserve"><value>キャンセルしています…</value></data>
+  <data name="RecoveryFailed" xml:space="preserve"><value>復元コピーを保存できませんでした</value></data>
+  <data name="RecoveredSuffix" xml:space="preserve"><value>復元</value></data>
+  <data name="GridSnap" xml:space="preserve"><value>グリッドスナップ</value></data>
+  <data name="ObjectSnap" xml:space="preserve"><value>オブジェクトスナップ</value></data>
+  <data name="Ortho" xml:space="preserve"><value>直交</value></data>
+  <data name="Polar" xml:space="preserve"><value>極トラッキング</value></data>
+  <data name="PolarAngle" xml:space="preserve"><value>極角度 (°)</value></data>
+  <data name="SnapEndpoint" xml:space="preserve"><value>端点</value></data>
+  <data name="SnapMidpoint" xml:space="preserve"><value>中点</value></data>
+  <data name="SnapCenter" xml:space="preserve"><value>中心</value></data>
+  <data name="SnapIntersection" xml:space="preserve"><value>交点</value></data>
+  <data name="SnapPerpendicular" xml:space="preserve"><value>垂線</value></data>
+  <data name="SnapTangent" xml:space="preserve"><value>接点</value></data>
+  <data name="SwitchCandidate" xml:space="preserve"><value>候補を切り替え</value></data>
+  <data name="NewDrawingSettings" xml:space="preserve"><value>新規図形の設定</value></data>
+  <data name="SelectedEntitySettings" xml:space="preserve"><value>選択した図形</value></data>
+  <data name="MultipleEntitySettings" xml:space="preserve"><value>複数選択 · 入力した項目のみ変更</value></data>
+  <data name="SelectPrompt" xml:space="preserve"><value>図形を選択、または範囲選択</value></data>
+  <data name="SpecifyFirstPoint" xml:space="preserve"><value>最初の点を指定、または X,Y を入力</value></data>
+  <data name="SpecifyNextPoint" xml:space="preserve"><value>次の点、または X,Y を入力；Esc で終了</value></data>
+  <data name="SpecifyRadiusPoint" xml:space="preserve"><value>半径/直径の点、または X,Y を入力</value></data>
+  <data name="SpecifyNextOrFinish" xml:space="preserve"><value>次の点；Enter で完了、Esc で終了</value></data>
+  <data name="InvalidStepInput" xml:space="preserve"><value>1.25,2.75、@10,0、@20&lt;45 などの座標を入力</value></data>
+  <data name="ViewDetails" xml:space="preserve"><value>表示とスナップの詳細</value></data>
+  <data name="AdvancedStroke" xml:space="preserve"><value>線端と接合</value></data>
+  <data name="FinishOperation" xml:space="preserve"><value>完了</value></data>
+  <data name="Offset" xml:space="preserve"><value>オフセット</value></data>
+  <data name="Trim" xml:space="preserve"><value>トリム</value></data>
+  <data name="Extend" xml:space="preserve"><value>延長</value></data>
+  <data name="Fillet" xml:space="preserve"><value>フィレット</value></data>
+  <data name="Chamfer" xml:space="preserve"><value>面取り</value></data>
+  <data name="Join" xml:space="preserve"><value>結合</value></data>
+  <data name="Break" xml:space="preserve"><value>分割</value></data>
+  <data name="RectArray" xml:space="preserve"><value>矩形配列</value></data>
+  <data name="PolarArray" xml:space="preserve"><value>円形配列</value></data>
+  <data name="EditTools" xml:space="preserve"><value>修正</value></data>
+  <data name="EditChooseSource" xml:space="preserve"><value>元の図形を選択</value></data>
+  <data name="EditChooseSide" xml:space="preserve"><value>距離を入力、片側にホバー；クリックで適用、Enter で終了</value></data>
+  <data name="EditChooseBoundaries" xml:space="preserve"><value>境界を選択；Enter で編集開始</value></data>
+  <data name="EditChooseSegment" xml:space="preserve"><value>対象区間にホバー；クリックで適用、Enter で終了</value></data>
+  <data name="EditChooseTwoLines" xml:space="preserve"><value>残す側に近い位置で 2 本の線を選択</value></data>
+  <data name="EditConfirmCorner" xml:space="preserve"><value>寸法を調整；プレビューを確認、Enter またはクリックで適用</value></data>
+  <data name="EditChooseChain" xml:space="preserve"><value>連続した曲線を選択；Enter で結合</value></data>
+  <data name="EditFirstBreak" xml:space="preserve"><value>最初の分割点を指定</value></data>
+  <data name="EditSecondBreak" xml:space="preserve"><value>2 点目で区間を削除；Enter で最初の点のみ分割</value></data>
+  <data name="EditChooseArray" xml:space="preserve"><value>図形を選択；Enter で配列設定</value></data>
+  <data name="EditArrayCenter" xml:space="preserve"><value>配列の中心を指定</value></data>
+  <data name="EditConfirmArray" xml:space="preserve"><value>数と間隔を設定；プレビューを確認、Enter またはクリックで適用</value></data>
+  <data name="EditCannotApply" xml:space="preserve"><value>この図形または値では適用できません。変更して再試行（詳細はヒント）</value></data>
+  <data name="DistanceParameter" xml:space="preserve"><value>距離 / 半径</value></data>
+  <data name="SecondDistanceParameter" xml:space="preserve"><value>2 番目の距離</value></data>
+  <data name="ArrayRows" xml:space="preserve"><value>行数</value></data>
+  <data name="ArrayColumns" xml:space="preserve"><value>列数</value></data>
+  <data name="ArrayCount" xml:space="preserve"><value>数</value></data>
+  <data name="ArraySpacingX" xml:space="preserve"><value>X 間隔</value></data>
+  <data name="ArraySpacingY" xml:space="preserve"><value>Y 間隔</value></data>
+  <data name="ArraySweep" xml:space="preserve"><value>総角度 (°)</value></data>
+  <data name="RotateCopies" xml:space="preserve"><value>コピーを回転</value></data>
+  <data name="TrimCornerLines" xml:space="preserve"><value>元の線をトリム</value></data>
+  <data name="OperationParameters" xml:space="preserve"><value>操作パラメータ</value></data>
+  <data name="QueryingDrawing" xml:space="preserve"><value>図面を検索しています…</value></data>
+  <data name="CompatibleCopyOverwrite" xml:space="preserve"><value>選択したファイルを上書きします。</value></data>
+  <data name="HelpAvailableCommands" xml:space="preserve"><value>使用できるコマンド：</value></data>
+  <data name="HelpCoordinateExamples" xml:space="preserve"><value>座標：LINE → 1.25,2.75 → @10,0 または @10&lt;45。ARC SCE → 始点 → 中心 → 終点方向。OFFSET → 距離 → 対象 → 側 → DONE。明示的な座標はスナップの影響を受けません。</value></data>
+  <data name="HelpHELP" xml:space="preserve"><value>コマンド一覧。HELP LINE で使い方を表示。</value></data>
+  <data name="HelpCLEAR" xml:space="preserve"><value>ターミナルの表示を消去。</value></data>
+  <data name="HelpSTATUS" xml:space="preserve"><value>図面、オブジェクト数、ツールの状態を表示。</value></data>
+  <data name="HelpRENDERSTATS" xml:space="preserve"><value>描画負荷とキャッシュ統計を表示。</value></data>
+  <data name="HelpUNDO" xml:space="preserve"><value>直前の編集を元に戻す。</value></data>
+  <data name="HelpREDO" xml:space="preserve"><value>元に戻した編集をやり直す。</value></data>
+  <data name="HelpFIT" xml:space="preserve"><value>表示中の図形全体に合わせる。</value></data>
+  <data name="HelpZOOM" xml:space="preserve"><value>図形の範囲にズーム。</value></data>
+  <data name="HelpSELECT" xml:space="preserve"><value>選択モードに切り替え。</value></data>
+  <data name="HelpSELECTALL" xml:space="preserve"><value>フィルターに従って全対象を選択。</value></data>
+  <data name="HelpERASE" xml:space="preserve"><value>選択した対象を削除。元に戻せます。</value></data>
+  <data name="HelpCOPY" xml:space="preserve"><value>選択した対象とブロックの依存関係をコピー。</value></data>
+  <data name="HelpPASTE" xml:space="preserve"><value>貼り付けプレビューを移動し、クリックで配置。</value></data>
+  <data name="HelpLINE" xml:space="preserve"><value>始点、終点を指定。小数、相対座標、極座標に対応。</value></data>
+  <data name="HelpCIRCLE" xml:space="preserve"><value>半径、直径、2点、3点を選び、点を指定。</value></data>
+  <data name="HelpARC" xml:space="preserve"><value>SCE：始点 → 中心 → 終点方向。3P：始点 → 通過点 → 終点。</value></data>
+  <data name="HelpELLIPSE" xml:space="preserve"><value>CENTER：中心 → 第1軸端 → 第2軸。ARC は開始・終了方向を追加。</value></data>
+  <data name="HelpRECTANGLE" xml:space="preserve"><value>対角の2点を指定。</value></data>
+  <data name="HelpPOLYLINE" xml:space="preserve"><value>頂点を指定し、DONE で完了。</value></data>
+  <data name="HelpPOLYGON" xml:space="preserve"><value>頂点を指定し、DONE で閉じる。</value></data>
+  <data name="HelpSPLINE" xml:space="preserve"><value>通過点を指定し、DONE で完了。</value></data>
+  <data name="HelpTEXT" xml:space="preserve"><value>プロパティで文字を入力し、クリックで配置。</value></data>
+  <data name="HelpORIGIN" xml:space="preserve"><value>図面の原点を指定。</value></data>
+  <data name="HelpMVIEW" xml:space="preserve"><value>ペーパー空間でビューポートの矩形を指定。</value></data>
+  <data name="HelpDONE" xml:space="preserve"><value>現在の手順または連続操作を完了。</value></data>
+  <data name="HelpCANCEL" xml:space="preserve"><value>プレビューを取消して選択に戻る。確定済みの編集は保持。</value></data>
+  <data name="HelpOFFSET" xml:space="preserve"><value>距離 → 対象 → 側をプレビュー → クリック。DONE で終了。各操作を元に戻せます。</value></data>
+  <data name="HelpTRIM" xml:space="preserve"><value>境界を選択 → DONE → 削除する区間をクリック。</value></data>
+  <data name="HelpEXTEND" xml:space="preserve"><value>境界を選択 → DONE → 延長する端点付近をクリック。</value></data>
+  <data name="HelpFILLET" xml:space="preserve"><value>残す側で2本の線・円弧を選び半径を設定。プレビュー後クリック。円はトリムを無効にします。</value></data>
+  <data name="HelpCHAMFER" xml:space="preserve"><value>2本の線・円弧を選び、プロパティで2つの距離を設定。プレビュー後クリック。</value></data>
+  <data name="HelpJOIN" xml:space="preserve"><value>連続する線・円弧を選択 → DONE。分岐は受け付けません。</value></data>
+  <data name="HelpBREAK" xml:space="preserve"><value>対象 → 第1切断点 → 第2点。DONE で1点のみ分割。</value></data>
+  <data name="HelpRECTARRAY" xml:space="preserve"><value>対象を選択 → DONE → 行・列・間隔を設定 → プレビュー → クリック。</value></data>
+  <data name="HelpPOLARARRAY" xml:space="preserve"><value>対象を選択 → DONE → 中心 → 数・角度を設定 → プレビュー → クリック。</value></data>
+  <data name="PromptCenter" xml:space="preserve"><value>中心を指定</value></data>
+  <data name="PromptAxisStart" xml:space="preserve"><value>第1軸の始点を指定</value></data>
+  <data name="PromptAxisEnd" xml:space="preserve"><value>第1軸の終点を指定</value></data>
+  <data name="PromptSecondAxis" xml:space="preserve"><value>第2軸を指定</value></data>
+  <data name="PromptArcStart" xml:space="preserve"><value>円弧の始点を指定</value></data>
+  <data name="PromptArcThrough" xml:space="preserve"><value>円弧の通過点を指定</value></data>
+  <data name="PromptArcEnd" xml:space="preserve"><value>終点方向を指定</value></data>
+  <data name="PromptArcAngle" xml:space="preserve"><value>角度の方向点を指定</value></data>
+  <data name="PromptArcLength" xml:space="preserve"><value>弦長の参照点を指定</value></data>
+  <data name="PromptArcRadius" xml:space="preserve"><value>半径の参照点を指定</value></data>
+  <data name="MeasurementLength" xml:space="preserve"><value>長さ</value></data>
+  <data name="MeasurementError" xml:space="preserve"><value>近似長さ・推定誤差</value></data>
+  <data name="CalculationBudgetReached" xml:space="preserve"><value>計算上限に到達</value></data>
+  <data name="FileConflictDescription" xml:space="preserve"><value>ディスク上のファイルが保存時の状態と異なります。「名前を付けて保存」で両方を残すか、外部の変更を上書きしてください。</value></data>
+  <data name="OverwriteExternalChanges" xml:space="preserve"><value>外部の変更を上書き</value></data>
+  <data name="CompatibleCopyDifferentPath" xml:space="preserve"><value>元の内容を保持するため、互換コピーには別のパスを選んでください。</value></data>
+  <data name="InvalidDrawingGeometry" xml:space="preserve"><value>この点では有効な図形を作成できません。前の点は保持されています。点を調整して再試行してください。</value></data>
+  <data name="DrawingCannotComplete" xml:space="preserve"><value>作図を完了するには、さらに点が必要です。</value></data>
+  <data name="DrawingRecovery" xml:space="preserve"><value>図面の復元</value></data>
+  <data name="DrawingInput" xml:space="preserve"><value>数値入力</value></data>
+  <data name="DrawingInputHint" xml:space="preserve"><value>X,Y · @dX,dY · @距離&lt;角度</value></data>
+  <data name="DrawingAssistantEmpty" xml:space="preserve"><value>図面を新規作成するか開いてください。</value></data>
+  <data name="SnapSettings" xml:space="preserve"><value>スナップと作図補助</value></data>
+  <data name="Dimension" xml:space="preserve"><value>寸法</value></data>
+  <data name="DimensionSettings" xml:space="preserve"><value>寸法設定</value></data>
+  <data name="DimLinearX" xml:space="preserve"><value>水平寸法</value></data>
+  <data name="DimLinearY" xml:space="preserve"><value>垂直寸法</value></data>
+  <data name="DimAligned" xml:space="preserve"><value>平行寸法</value></data>
+  <data name="DimRadius" xml:space="preserve"><value>半径寸法</value></data>
+  <data name="DimDiameter" xml:space="preserve"><value>直径寸法</value></data>
+  <data name="DimAngular" xml:space="preserve"><value>角度寸法</value></data>
+  <data name="Leader" xml:space="preserve"><value>引出線</value></data>
+  <data name="DimensionPlace" xml:space="preserve"><value>移動してプレビュー、クリックで配置</value></data>
+  <data name="DimensionFirst" xml:space="preserve"><value>直線または最初の基準点を選択</value></data>
+  <data name="DimensionNext" xml:space="preserve"><value>次の基準点を選択</value></data>
+  <data name="DimensionChooseCircle" xml:space="preserve"><value>円または円弧を選択</value></data>
+  <data name="DimensionStyle" xml:space="preserve"><value>スタイル</value></data>
+  <data name="DimensionPrecision" xml:space="preserve"><value>小数桁数</value></data>
+  <data name="DimensionTextOverride" xml:space="preserve"><value>置換文字（* は手動値）</value></data>
+  <data name="DimensionTextHeight" xml:space="preserve"><value>紙面文字高さ（mm）</value></data>
+  <data name="DimensionArrowSize" xml:space="preserve"><value>紙面矢印サイズ（mm）</value></data>
+  <data name="AnnotationScale" xml:space="preserve"><value>注釈倍率（1:100 は 100）</value></data>
+  <data name="ExtensionGap" xml:space="preserve"><value>寸法補助線の間隔（mm）</value></data>
+  <data name="ExtensionBeyond" xml:space="preserve"><value>寸法補助線の延長（mm）</value></data>
+  <data name="AssociationDetached" xml:space="preserve"><value>独立基準点、関連なし</value></data>
+  <data name="AssociationValid" xml:space="preserve"><value>形状と関連済み</value></data>
+  <data name="AssociationBroken" xml:space="preserve"><value>関連が無効：再関連または解除</value></data>
+  <data name="Reassociate" xml:space="preserve"><value>再関連</value></data>
+  <data name="DetachAssociation" xml:space="preserve"><value>関連解除</value></data>
+<data name="EngineeringTemplate" xml:space="preserve"><value>製図テンプレート</value></data>
+<data name="PrintCurrentView" xml:space="preserve"><value>現在の表示</value></data>
+<data name="PrintInsideBounds" xml:space="preserve"><value>印刷可能範囲内です。ビューポートと用紙の倍率は別々に適用されます。</value></data>
+<data name="PrintActualSize" xml:space="preserve"><value>実寸 · 100%</value></data>
+<data name="PrintRange" xml:space="preserve"><value>モデルの出力範囲</value></data>
+<data name="PaperScaling" xml:space="preserve"><value>用紙の倍率</value></data>
+<data name="PrintClipped" xml:space="preserve"><value>赤い印刷可能範囲の外側は切り取られます。倍率は変わりません。</value></data>
+<data name="PrintExtents" xml:space="preserve"><value>図面全体</value></data>
+<data name="PrintCustom" xml:space="preserve"><value>倍率を指定</value></data>
+<data name="PrintFit" xml:space="preserve"><value>印刷可能範囲に合わせる</value></data>
+<data name="ImportDxf" xml:space="preserve"><value>DXFを開く</value></data>
+<data name="DxfSourceUnit" xml:space="preserve"><value>DXFの元の単位</value></data>
+<data name="DxfImported" xml:space="preserve"><value>{0}個のオブジェクトを読み込み、{1}項目は未対応または置換</value></data>
+<data name="ExportSeparatePath" xml:space="preserve"><value>出力先は元の図面と異なるパスを指定してください。</value></data>
+<data name="DxfUnitDescription" xml:space="preserve"><value>単位が不明です。元の図面の単位を選択してください。新しい未保存の図面に読み込みます。</value></data>
+<data name="ExportDxf" xml:space="preserve"><value>DXFを出力</value></data>
+<data name="DxfLossDescription" xml:space="preserve"><value>以下の内容は省略または変換されます。元の図面は保持されます。出力しますか？</value></data>
+<data name="SaveCompressedCopy" xml:space="preserve"><value>圧縮コピーを保存</value></data>
+<data name="HistoryBudget" xml:space="preserve"><value>元に戻す履歴の容量 (MiB)</value></data>
+  <data name="DimensionArrowStyle" xml:space="preserve"><value>矢印スタイル</value></data>
+  <data name="DimensionArrowOpen" xml:space="preserve"><value>開いた矢印</value></data>
+  <data name="DimensionArrowClosed" xml:space="preserve"><value>閉じた矢印</value></data>
+  <data name="DimensionArrowSlash" xml:space="preserve"><value>斜線</value></data>
+  <data name="BlankDrawing" xml:space="preserve"><value>空の図面</value></data>
+  <data name="DimensionTextAndArrows" xml:space="preserve"><value>文字と矢印</value></data>
+  <data name="DimensionDetails" xml:space="preserve"><value>尺度と寸法線</value></data>
+  <data name="DimensionLineWeight" xml:space="preserve"><value>寸法線幅（mm）</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切替 · Enter 確定 · Esc 中止</value></data>
+  <data name="BooleanOperations" xml:space="preserve"><value>ブール演算</value></data>
+  <data name="BooleanUnion" xml:space="preserve"><value>和集合</value></data>
+  <data name="BooleanIntersection" xml:space="preserve"><value>積集合</value></data>
+  <data name="BooleanDifference" xml:space="preserve"><value>差集合</value></data>
+  <data name="BooleanChooseSubject" xml:space="preserve"><value>残す図形の輪郭をクリック</value></data>
+  <data name="BooleanConfirm" xml:space="preserve"><value>Enter で確定 · Esc で取消</value></data>
+  <data name="BooleanEmpty" xml:space="preserve"><value>結果は空です。元の図形を保持しました</value></data>
+  <data name="Region" xml:space="preserve"><value>リージョン</value></data>
+  <data name="RegionContours" xml:space="preserve"><value>輪郭数</value></data>
+  <data name="BooleanCalculating" xml:space="preserve"><value>計算中…</value></data>
+  <data name="MeasurementArea" xml:space="preserve"><value>面積</value></data>
+  <data name="NoRecoveryDrawings" xml:space="preserve"><value>復元できる図面はありません。</value></data>
+  <data name="ClearAllRecovery" xml:space="preserve"><value>すべて削除</value></data>
+  <data name="ClearRecoveryEntry" xml:space="preserve"><value>復元コピーを削除</value></data>
+  <data name="RecoveryCleanupFailed" xml:space="preserve"><value>復元コピーを削除できませんでした</value></data>
+  <data name="OpenContainingFolder" xml:space="preserve"><value>保存フォルダーを開く</value></data>
+  <data name="OpenSourceFolder" xml:space="preserve"><value>元の図面のフォルダーを開く</value></data>
+  <data name="ActivateDocument" xml:space="preserve"><value>この図面に切り替え</value></data>
 </root>

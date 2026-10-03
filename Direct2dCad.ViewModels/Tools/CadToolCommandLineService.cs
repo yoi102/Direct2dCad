@@ -15,7 +15,7 @@ public interface ICadToolCommandLineService
 
 public sealed record CadToolCommandLineExecution(bool Success, string Message);
 
-internal sealed class CadToolCommandLineService(
+internal sealed partial class CadToolCommandLineService(
     ICadToolWorkspace workspace,
     IImageImportService? imageImportService = null) : ICadToolCommandLineService
 {
@@ -35,6 +35,9 @@ internal sealed class CadToolCommandLineService(
         if (command.Length == 0)
             return null;
 
+        var shortcut = await TryShortcutAsync(command, remainder, cancellationToken);
+        if (shortcut is not null) return shortcut;
+
         if (command.Equals("TOOLS", StringComparison.OrdinalIgnoreCase))
             return new CadToolCommandLineExecution(true, FormatToolList(remainder));
 
@@ -44,6 +47,8 @@ internal sealed class CadToolCommandLineService(
         if (command.Equals("HELP", StringComparison.OrdinalIgnoreCase))
         {
             var (requestedTool, _) = SplitHead(remainder);
+            if (FindShortcut(requestedTool) is { } requestedShortcut)
+                return new(true, requestedShortcut.Help);
             return Tools.ContainsKey(requestedTool)
                 ? FormatToolHelpExecution(requestedTool)
                 : null;
@@ -102,7 +107,8 @@ internal sealed class CadToolCommandLineService(
         if (prefixOnly.Any(char.IsWhiteSpace))
             return [];
 
-        return new[] { "TOOLS", "TOOL", "TOOLHELP" }
+        return new[] { "TOOLS", "TOOL", "TOOLHELP", "CADHELP" }
+            .Concat(Shortcuts.SelectMany(s => s.Names))
             .Concat(Tools.Keys.Where(name => !BuiltInCommandCollisions.Contains(name)))
             .Where(name => name.StartsWith(prefixOnly, StringComparison.OrdinalIgnoreCase))
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)

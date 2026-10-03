@@ -13,7 +13,46 @@ public sealed partial class CadDocumentStorage
         ArgumentNullException.ThrowIfNull(document);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(capture);
-        void CheckCurrent()
+        if (document.IsReadOnly && !capture.AllowCompatibilityCopy)
+            throw new InvalidOperationException(document.CompatibilityNotice);
+        var payloads = await CaptureSectionsAsync(document,capture,cancellationToken);
+        try
+        {
+            await Task.Run(() => WriteSectionsAsync(payloads,filePath,true,cancellationToken,
+                capture.ExpectedDestination,capture.UpdateOrigin ? revision=>CadDocumentOrigin.Set(document,revision) : null),cancellationToken).ConfigureAwait(false);
+        }
+        finally { payloads.Clear(); }
+    }
+
+    public async Task<CadDocument> CreateIndependentSnapshotAsync(CadDocument document,CadSnapshotCaptureOptions capture,
+        CancellationToken cancellationToken=default)
+    {
+        var payloads=await CaptureSectionsAsync(document,capture,cancellationToken);
+        var notice=document.CompatibilityNotice;
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var serialized=new Dictionary<CadSectionKind,SerializedSectionPayload>();
+                foreach(var payload in payloads)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var section=payload.Serialize();
+                    serialized.Add(section.Kind,new(new(section.Kind,
+                        Direct2dCad.IO.Versioning.CadSectionMigrationRegistry.GetCurrentVersion(section.Kind),
+                        section.Compression,0,section.Payload.Length),section.Payload));
+                }
+                var snapshot=LoadFromPayloads(serialized,LoadLimits,cancellationToken);
+                if(!string.IsNullOrWhiteSpace(notice)) snapshot.SetCompatibilityReadOnly(notice);
+                return snapshot;
+            }
+            finally { payloads.Clear(); }
+        },cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<Queue<ISectionPayload>> CaptureSectionsAsync(CadDocument document,CadSnapshotCaptureOptions capture,
+        CancellationToken cancellationToken)
+    {        void CheckCurrent()
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!capture.IsCurrent())
@@ -34,7 +73,13 @@ public sealed partial class CadDocumentStorage
 
         // Let the progress surface render before capturing. Never enumerate live state on Task.Run.
         await CheckpointAsync(force: true);
-        var entities = CadDocumentMapper.IndexEntities(document);
+        var references=new List<CadEntity>(document.Entities.Count);
+        foreach(var entity in document.Entities.Values)
+        {
+            references.Add(entity);
+            if((references.Count & 127)==0) await CheckpointAsync();
+        }
+        var entities=references.ToLookup(entity=>entity.GetType());
         var payloads = new Queue<ISectionPayload>();
         try
         {
@@ -76,9 +121,13 @@ public sealed partial class CadDocumentStorage
             await AddEntities(CadSectionKind.Images, entities[typeof(CadImage)], CadDocumentMapper.ToImagesSection, (a, b) => a.Images.AddRange(b.Images));
             await AddEntities(CadSectionKind.OleObjects, entities[typeof(CadOleObject)], CadDocumentMapper.ToOleObjectsSection, (a, b) => a.OleObjects.AddRange(b.OleObjects));
             await AddEntities(CadSectionKind.BlockReferences, entities[typeof(CadBlockReference)], index => CadDocumentMapper.ToBlockReferencesSection(document, index), (a, b) => a.BlockReferences.AddRange(b.BlockReferences));
+            if (entities[typeof(CadRegion)].Any()) await AddEntities(CadSectionKind.Regions, entities[typeof(CadRegion)],
+                index => CadRegionStorage.Capture(index[typeof(CadRegion)]), (a, b) => a.Regions.AddRange(b.Regions));
+            await AddEntities(CadSectionKind.Dimensions, entities[typeof(CadDimension)],
+                index => CadDimensionStorage.Capture(index[typeof(CadDimension)]), (a,b) => a.Dimensions.AddRange(b.Dimensions));
             CheckCurrent();
-            await Task.Run(() => WriteSectionsAsync(payloads, filePath, true, cancellationToken), cancellationToken).ConfigureAwait(false);
+            return payloads;
         }
-        finally { payloads.Clear(); }
+        catch { payloads.Clear(); throw; }
     }
 }

@@ -8,6 +8,7 @@ using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO;
 using Direct2dCad.Rendering;
+using Direct2dCad.ViewModels.Services.Documents;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Settings;
@@ -42,7 +43,9 @@ public partial class MainViewModel : ObservableObject
         IDialogService dialogService,
         IUserSettingsStore userSettingsStore,
         ISnackbarService snackbarService,
-        IActiveEditorContext activeEditorContext
+        IActiveEditorContext activeEditorContext,
+        CadRecoveryStore? recoveryStore = null,
+        IFileLocationService? fileLocationService = null
         )
     {
         dockLayoutService.AnchorableStateChanged += OnAnchorableStateChanged;
@@ -58,11 +61,15 @@ public partial class MainViewModel : ObservableObject
         _userSettings = userSettingsStore.Load();
         _snackbarService = snackbarService;
         _activeEditorContext = activeEditorContext;
+        _recoveryStore = recoveryStore ?? new(trackSession: true);
+        _fileLocationService = fileLocationService;
         DocumentExplorer = _dockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DocumentExplorerToolboxViewModel));
-        DocumentExplorer.Attach(_dockLayoutService);
+        DocumentExplorer.Attach(_dockLayoutService, this);
         Layers = _dockLayoutService.GetAnchorable<LayersToolboxViewModel>() ?? throw new ArgumentNullException(nameof(LayersToolboxViewModel));
         Blocks = _dockLayoutService.GetAnchorable<BlocksToolboxViewModel>() ?? throw new ArgumentNullException(nameof(BlocksToolboxViewModel));
         EntityProperties = _dockLayoutService.GetAnchorable<EntityPropertiesToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntityPropertiesToolboxViewModel));
+        DrawingRecovery = _dockLayoutService.GetAnchorable<DrawingRecoveryToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DrawingRecoveryToolboxViewModel));
+        DrawingRecovery.Workspace = this;
         EntitySearch = _dockLayoutService.GetAnchorable<EntitySearchToolboxViewModel>() ?? throw new ArgumentNullException(nameof(EntitySearchToolboxViewModel));
         SelectionFilter = _dockLayoutService.GetAnchorable<SelectionFilterToolboxViewModel>() ?? throw new ArgumentNullException(nameof(SelectionFilterToolboxViewModel));
         CommandLine = _dockLayoutService.GetAnchorable<CommandLineToolboxViewModel>() ?? throw new ArgumentNullException(nameof(CommandLineToolboxViewModel));
@@ -76,6 +83,7 @@ public partial class MainViewModel : ObservableObject
             _userSettings.General.SecondaryColor);
         CurrentCultureLCID = _userSettings.General.CultureLcid;
         cultureSettingService.ChangeCulture(CurrentCultureLCID);
+        DrawingRecovery.RefreshTitle();
     }
 
     /// <summary>The MVVM layout tree — bind to DockLayout on the DockingManager.</summary>
@@ -96,12 +104,23 @@ public partial class MainViewModel : ObservableObject
     public CommandLineToolboxViewModel CommandLine { get; }
     public MessageToolboxViewModel Messages { get; }
     public AiAssistantToolboxViewModel AiAssistant { get; }
+    public DrawingRecoveryToolboxViewModel DrawingRecovery { get; }
+
+    [RelayCommand]
+    private void ShowDrawingRecovery()
+    {
+        RefreshRecoveryEntries();
+        DrawingRecovery.IsOpen = true;
+        DrawingRecovery.IsActive = true;
+        _dockLayoutService.ActiveDockable = DrawingRecovery;
+    }
 
     [ObservableProperty]
     public partial EditorTabViewModel? CurrentEditorTabViewModel { get; private set; }
 
     partial void OnCurrentEditorTabViewModelChanged(EditorTabViewModel? value)
     {
+        value?.UseRecoveryStore(_recoveryStore);
         _activeEditorContext.SetCurrent(value);
 
         if (_printAvailabilityDocument is not null)
@@ -162,6 +181,8 @@ public partial class MainViewModel : ObservableObject
         {
             // Static documents such as the welcome page are not CAD contexts.
             _isDocumentContextActive = false;
+            CurrentEditorTabViewModel = null;
+            TabControlSelectedIndex = 0;
         }
 
         UpdatePrintAvailability();
@@ -200,6 +221,23 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void NewTemplate(string key)
+    {
+        var document=Direct2dCad.Db.Cad.CadEngineeringTemplates.Create(key);
+        var tab=_dockLayoutService.OpenOrActivateDocument(e=>false,()=>
+        {
+            var newTab=Ioc.Default.GetRequiredService<EditorTabViewModel>();
+            newTab.Load(document,string.Empty);
+            var viewport=document.Layouts.Values.Single().Viewports.Single();
+            newTab.CadDocumentViewModel.DimensionAnnotationScale=1/viewport.Scale;
+            newTab.CadDocumentViewModel.DimensionUnit=document.DocumentSettings.Unit;
+            return newTab;
+        });
+        CurrentEditorTabViewModel=tab;
+        DocumentExplorer.RefreshDocuments();
+    }
+
+    [RelayCommand]
     private async Task OpenFileAsync()
     {
         var fileName = _fileDialogService.OpenD2cadFile();
@@ -223,8 +261,11 @@ public partial class MainViewModel : ObservableObject
             }
 
             Direct2dCad.Db.Cad.CadDocument document;
-            using (_dialogService.ShowProgressBarDialog())
-                document = await _storage.LoadAsync(fileName);
+            var activeBeforeOpen = _dockLayoutService.ActiveDockable;
+            document = await OpenOperation.RunAsync(Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.OpeningDrawing),
+                token => _storage.LoadAsync(fileName, token));
+            var focusChanged = !ReferenceEquals(activeBeforeOpen, _dockLayoutService.ActiveDockable);
+            var activeAfterOpen = _dockLayoutService.ActiveDockable;
 
             var tab = _dockLayoutService.OpenOrActivateDocument(
             e => e.CurrentFilePath == fileName,
@@ -232,13 +273,14 @@ public partial class MainViewModel : ObservableObject
             {
                 var newTab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
                 newTab.Load(document, fileName);
-                _snackbarService.Enqueue("File opened successfully.");
                 return newTab;
             });
 
-            CurrentEditorTabViewModel = tab;
+            if (!focusChanged) CurrentEditorTabViewModel = tab;
+            else _dockLayoutService.ActiveDockable = activeAfterOpen;
             DocumentExplorer.RefreshDocuments();
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Open failed");
@@ -387,12 +429,16 @@ public partial class MainViewModel : ObservableObject
 
     public async Task<bool> ConfirmCloseApplicationAsync()
     {
-        var modifiedDocuments = _dockLayoutService.Documents
-            .OfType<EditorTabViewModel>()
+        var documents = _dockLayoutService.Documents.OfType<EditorTabViewModel>().ToArray();
+        foreach (var document in documents) await document.WaitForSaveIdleAsync();
+        var modifiedDocuments = documents
             .Where(document => document.IsModified)
             .ToArray();
         if (modifiedDocuments.Length == 0)
+        {
+            await CompleteRecoverySessionAsync(documents);
             return true;
+        }
 
         var result = await _dialogService.ShowUnsavedDocumentsDialogAsync(
             modifiedDocuments
@@ -403,7 +449,10 @@ public partial class MainViewModel : ObservableObject
         if (result == UnsavedDocumentDialogResult.Cancel)
             return false;
         if (result == UnsavedDocumentDialogResult.Discard)
+        {
+            await CompleteRecoverySessionAsync(documents);
             return true;
+        }
 
         foreach (var document in modifiedDocuments)
         {
@@ -411,6 +460,7 @@ public partial class MainViewModel : ObservableObject
                 return false;
         }
 
+        await CompleteRecoverySessionAsync(documents);
         return true;
     }
 
@@ -424,6 +474,7 @@ public partial class MainViewModel : ObservableObject
                 CurrentEditorTabViewModel = null;
             }
             editorTabViewModel.Dispose();
+            RefreshRecoveryEntries();
             DocumentExplorer.RefreshDocuments();
         }
 
@@ -446,7 +497,7 @@ public partial class MainViewModel : ObservableObject
     {
         IsPrintAvailable =
             _isDocumentContextActive &&
-            CurrentEditorTabViewModel?.CadDocumentViewModel.ActiveLayoutId is not null;
+            CurrentEditorTabViewModel is not null;
     }
 
     #region TitleBar
@@ -477,6 +528,7 @@ public partial class MainViewModel : ObservableObject
             return;
         CurrentCultureLCID = lcid;
         _cultureSettingService.ChangeCulture(lcid);
+        DrawingRecovery.RefreshTitle();
         _userSettings.General.CultureLcid = lcid;
         SaveUserSettings();
     }

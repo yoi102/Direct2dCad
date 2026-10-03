@@ -43,7 +43,7 @@
                     BorderBrush="{DynamicResource MaterialDesign.Brush.Foreground}"
                     BorderThickness="1"
                     CornerRadius="3">
-                <StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
                     <TextBlock Margin="0,0,0,18"
                                FontSize="16"
                                FontWeight="SemiBold"
@@ -87,8 +87,23 @@
                                        Maximum="999"
                                        Interval="1"
                                        Value="1"
-                                       AutomationProperties.AutomationId="PrintPreviewCopiesInput" />
+                                       AutomationProperties.AutomationId="PrintPreviewCopiesInput" ValueChanged="OptionsChanged" />
 
+                    <TextBlock Text="{I18N {x:Static r:LangKeys.PaperScaling}}" Margin="0,10,0,5"/>
+                    <ComboBox x:Name="ScalingCombo" SelectionChanged="OptionsChanged" AutomationProperties.AutomationId="PrintScalingCombo">
+                        <ComboBoxItem Content="{I18N {x:Static r:LangKeys.PrintActualSize}}"/>
+                        <ComboBoxItem Content="{I18N {x:Static r:LangKeys.PrintFit}}"/>
+                        <ComboBoxItem Content="{I18N {x:Static r:LangKeys.PrintCustom}}"/>
+                    </ComboBox>
+                    <mah:NumericUpDown x:Name="PercentInput" Minimum="0.01" Maximum="10000" Value="100" StringFormat="{}{0:0.##}%" ValueChanged="OptionsChanged" Margin="0,6"/>
+                    <TextBlock x:Name="RangeLabel" Text="{I18N {x:Static r:LangKeys.PrintRange}}" Margin="0,10,0,5"/>
+                    <ComboBox x:Name="RangeCombo" SelectionChanged="OptionsChanged">
+                        <ComboBoxItem Content="{I18N {x:Static r:LangKeys.PrintExtents}}"/>
+                        <ComboBoxItem Content="{I18N {x:Static r:LangKeys.PrintCurrentView}}"/>
+                    </ComboBox>
+                    <TextBlock x:Name="ClippingText" Margin="0,10" TextWrapping="Wrap"/>
+
+                    <Expander Header="{I18N {x:Static r:LangKeys.ViewDetails}}"><StackPanel>
                     <TextBlock Margin="0,0,0,5"
                                Text="{I18N {x:Static r:LangKeys.PrintResolution}}" />
                     <mah:NumericUpDown x:Name="DpiInput"
@@ -98,13 +113,14 @@
                                        Interval="50"
                                        StringFormat="F0"
                                        Value="300"
-                                       AutomationProperties.AutomationId="PrintPreviewDpiInput" />
+                                       AutomationProperties.AutomationId="PrintPreviewDpiInput" ValueChanged="OptionsChanged" />
+                    </StackPanel></Expander>
 
                     <TextBlock Margin="0,20,0,0"
                                Opacity="0.68"
                                Text="{I18N {x:Static r:LangKeys.PrintPreviewPrinterNote}}"
                                TextWrapping="Wrap" />
-                </StackPanel>
+                </StackPanel></ScrollViewer>
             </Border>
 
             <Border Grid.Column="2"
@@ -117,7 +133,7 @@
                     <Border x:Name="PreviewPageBorder"
                             Width="600"
                             Height="424"
-                            Padding="6"
+                            Padding="0"
                             Background="White"
                             BorderBrush="#FF9A9A9A"
                             BorderThickness="1">
@@ -142,7 +158,7 @@
                     Click="Cancel_Click"
                     Content="{I18N {x:Static r:LangKeys.Cancel}}"
                     IsCancel="True" />
-            <Button MinWidth="112"
+            <Button x:Name="PrintButton" MinWidth="112" IsEnabled="False"
                     AutomationProperties.AutomationId="PrintFromPreviewButton"
                     Click="Print_Click"
                     Content="{I18N {x:Static r:LangKeys.Print}}"

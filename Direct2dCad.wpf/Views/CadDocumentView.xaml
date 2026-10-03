@@ -5,16 +5,120 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
              xmlns:controls="clr-namespace:Direct2dCad.wpf.Controls"
+             xmlns:selectors="clr-namespace:Direct2dCad.wpf.Selectors"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:viewmodels="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+             PreviewKeyDown="DynamicInput_OnPreviewKeyDown"
+             PreviewTextInput="DynamicInput_OnPreviewTextInput"
+             PreviewMouseMove="DynamicInput_OnPreviewMouseMove"
+             MouseLeave="DynamicInput_OnMouseLeave"
              d:DataContext="{d:DesignInstance Type=viewmodels:CadDocumentViewModel}"
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="CadToolIconResources.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="Bool" />
+            <selectors:CadCursorToolIconTemplateSelector x:Key="CursorToolIconSelector" />
+            <TextBlock x:Key="CursorPasteText" Text="{I18N {x:Static r:LangKeys.Paste}}" />
+        </ResourceDictionary>
+    </UserControl.Resources>
     <Grid>
         <controls:CadCanvas x:Name="cadCanvas"
                             AutomationProperties.AutomationId="CadCanvas"
                             DocumentViewModel="{Binding}"
                             SaveCommand="{Binding SaveCommand, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}"
                             RadialMenuActionCommand="{Binding RadialMenuActionCommand, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}" />
+        <Canvas IsHitTestVisible="False" ClipToBounds="True">
+            <Border x:Name="cursorToolBadge" Width="28" Height="28" Padding="4" CornerRadius="4" BorderThickness="0"
+                    Background="#80333333"
+                    BorderBrush="{DynamicResource MaterialDesign.Brush.Foreground.Secondary}"
+                    Canvas.Left="{Binding CursorBadgePosition.X, ElementName=cadCanvas}"
+                    Canvas.Top="{Binding CursorBadgePosition.Y, ElementName=cadCanvas}"
+                    Visibility="{Binding IsCursorBadgeVisible, ElementName=cadCanvas, Converter={StaticResource Bool}}">
+                <Label AutomationProperties.AutomationId="CursorToolModeIcon" Focusable="False" Padding="0"
+                       Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                       HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                       ContentTemplateSelector="{StaticResource CursorToolIconSelector}">
+                    <Label.Style>
+                        <Style TargetType="Label" BasedOn="{StaticResource {x:Type Label}}">
+                            <Setter Property="Content" Value="{Binding CadCanvasToolMode}" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding CurrentToolNameDisplay}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPastePreviewActive}" Value="True">
+                                    <Setter Property="Content" Value="Paste" />
+                                    <Setter Property="AutomationProperties.Name" Value="{Binding Text, Source={StaticResource CursorPasteText}}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Label.Style>
+                </Label>
+            </Border>
+        </Canvas>
+        <Grid x:Name="dynamicInputOverlay" IsHitTestVisible="False" ClipToBounds="True">
+            <Grid x:Name="dynamicInputSurface" Visibility="Collapsed" SizeChanged="DynamicInput_OnSizeChanged">
+                    <Canvas>
+                        <Path x:Name="dynamicInputGuides" Stroke="#8A8A8A"
+                              StrokeThickness="1" StrokeDashArray="2,3" Opacity="0.8" />
+                    </Canvas>
+                    <ItemsControl x:Name="dynamicInputItems" ItemsSource="{Binding DynamicInputFields}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Height="24">
+                                    <TextBox AutomationProperties.AutomationId="{Binding AutomationId}"
+                                             AutomationProperties.Name="{Binding Label}"
+                                             AutomationProperties.HelpText="{Binding DataContext.DynamicInputHint, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}"
+                                             Width="48" FontSize="12" TextAlignment="Center" VerticalContentAlignment="Center"
+                                             Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                             Background="{DynamicResource MaterialDesign.Brush.Background}"
+                                             Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                             GotKeyboardFocus="DynamicInputField_OnGotKeyboardFocus">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox">
+                                                <Setter Property="Padding" Value="4,1" />
+                                                <Setter Property="BorderThickness" Value="1" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Foreground.Secondary}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Key}" Value="X"><Setter Property="Padding" Value="16,1,4,1" /></DataTrigger>
+                                                    <DataTrigger Binding="{Binding Key}" Value="Y"><Setter Property="Padding" Value="16,1,4,1" /></DataTrigger>
+                                                    <DataTrigger Binding="{Binding Key}" Value="Angle"><Setter Property="Padding" Value="4,1,16,1" /></DataTrigger>
+                                                    <DataTrigger Binding="{Binding IsLocked}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" /></DataTrigger>
+                                                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" /></Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                    <TextBlock FontSize="10" Margin="4,0" VerticalAlignment="Center" Opacity="0.7">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Setter Property="HorizontalAlignment" Value="Left" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Key}" Value="X"><Setter Property="Text" Value="X" /><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                                    <DataTrigger Binding="{Binding Key}" Value="Y"><Setter Property="Text" Value="Y" /><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                                    <DataTrigger Binding="{Binding Key}" Value="Angle"><Setter Property="Text" Value="°" /><Setter Property="HorizontalAlignment" Value="Right" /><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="dynamicInputError" Text="{Binding DynamicInputError}" AutomationProperties.AutomationId="DynamicInputError"
+                               HorizontalAlignment="Left" VerticalAlignment="Top" MaxWidth="180"
+                               FontSize="11" TextWrapping="Wrap" Foreground="#F07178">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+            </Grid>
+        </Grid>
     </Grid>
 </UserControl>

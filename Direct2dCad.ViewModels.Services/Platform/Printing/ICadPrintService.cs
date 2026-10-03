@@ -11,7 +11,20 @@ public interface ICadPrintService
         CadPrintRequest request,
         Action? onPrintStarted = null,
         Action<bool>? onBusyChanged = null,
-        Action? onPrintCompleted = null);
+        Action? onPrintCompleted = null,
+        Action<CadPrintCompletion>? onPrintFinished = null);
+}
+
+public enum CadPrintCompletionStatus { Completed, Cancelled, Failed }
+
+public sealed record CadPrintCompletion(CadPrintCompletionStatus Status, string? Error = null)
+{
+    public static async Task<CadPrintCompletion> ObserveAsync(Task writingCompletion)
+    {
+        try { await writingCompletion.ConfigureAwait(false); return new(CadPrintCompletionStatus.Completed); }
+        catch (OperationCanceledException) { return new(CadPrintCompletionStatus.Cancelled); }
+        catch (Exception ex) { return new(CadPrintCompletionStatus.Failed, ex.Message); }
+    }
 }
 
 public sealed record CadPrintRequest(
@@ -19,4 +32,8 @@ public sealed record CadPrintRequest(
     CadDocument Document,
     CadRectD PaperBounds,
     LayoutId ActiveLayoutId,
-    Direct2DOleDrawCallback? OleDrawCallback = null);
+    Direct2DOleDrawCallback? OleDrawCallback = null)
+{
+    public bool IsModelSpace { get; init; }
+    public CadRectD? CurrentViewBounds { get; init; }
+}

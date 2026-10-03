@@ -12,6 +12,7 @@ public interface ICadCommandLineContext
     bool CanRedo { get; }
     CadCommandLinePoint? LastInputPoint { get; }
     CadUnit Unit => CadUnit.Millimeter;
+    string? DrawingInputError => null;
 
     void SetToolMode(CadCommandLineDrawingMode mode);
     void Cancel();
@@ -23,6 +24,7 @@ public interface ICadCommandLineContext
     CadCommandLineClipboardSummary? CopySelection();
     CadCommandLineClipboardSummary? BeginPaste();
     bool SubmitDrawingPoint(CadCommandLinePoint point);
+    bool SubmitScalarInput(double value) => false;
     bool CompleteCurrentDrawing();
     CadCommandLineRenderStatistics? GetRenderStatistics();
 }

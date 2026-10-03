@@ -35,6 +35,12 @@ internal readonly struct CadGripDragPreviewBuilder(
         var auxiliaryStyle = styleService.CreateGripAuxiliaryStyle();
         switch (entity)
         {
+            case CadDimension dimension:
+                var previewDocument = Direct2dCad.Db.Cad.CadDocument.Create("preview");
+                var previewDimension = previewDocument.AddDimension(dimension.Definition with { Placement = drag.DraggedGripPosition,
+                    Anchors = dimension.Definition.Anchors.Select(a => a with { Reference = null }).ToArray() });
+                foreach (var stroke in previewDimension.Strokes) items.Add(new CadTransientLine(stroke.Start, stroke.End, style));
+                break;
             case CadLine line:
                 AddLineGripPreview(items, line, drag, style);
                 break;
@@ -63,10 +69,11 @@ internal readonly struct CadGripDragPreviewBuilder(
                 AddSplineGripPreview(items, spline, drag, style);
                 break;
 
-            case CadCompositePath path:
-                if (TryCreateUniformBoundsGripScale(path.Bounds, drag, out _, out _, out var transform))
+            case CadCompositePath:
+            case CadRegion:
+                if (TryCreateUniformBoundsGripScale(entity.Bounds, drag, out _, out _, out var transform))
                     items.Add(new CadTransientGroup(
-                        [new CadTransientEntityReference(path.Id, CadVectorD.Zero, style)], transform, style, path.Bounds));
+                        [new CadTransientEntityReference(entity.Id, CadVectorD.Zero, style)], transform, style, entity.Bounds));
                 break;
 
             case CadText text:
@@ -206,7 +213,7 @@ internal readonly struct CadGripDragPreviewBuilder(
         if (!TryCreateEllipseGripGeometry(ellipse, drag, out var center, out var radiusX, out var radiusY))
             return;
 
-        items.Add(new CadTransientEllipse(center, radiusX, radiusY, style));
+        items.Add(new CadTransientGroup([new CadTransientEllipse(center, radiusX, radiusY, style)],CadMatrixD.CreateRotation(ellipse.RotationRadians,center)));
         items.Add(new CadTransientLine(center, drag.DraggedGripPosition, auxiliaryStyle));
     }
 
@@ -232,11 +239,11 @@ internal readonly struct CadGripDragPreviewBuilder(
         CadTransientStyle style)
     {
         if (TryCreateRectangleGripGeometry(rectangle, drag, out var bounds))
-            items.Add(new CadTransientRectangle(
+            items.Add(new CadTransientGroup([new CadTransientRectangle(
                 bounds,
                 style,
                 rectangle.CornerRadiusX,
-                rectangle.CornerRadiusY));
+                rectangle.CornerRadiusY)],CadMatrixD.CreateRotation(rectangle.RotationRadians,bounds.Center)));
     }
 
     private static void AddPolylineGripPreview(

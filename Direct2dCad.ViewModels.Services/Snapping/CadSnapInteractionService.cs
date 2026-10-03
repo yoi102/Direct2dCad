@@ -12,6 +12,7 @@ internal readonly struct CadSnapInteractionService(
 {
     public CadPointD SnapWorld(CadPointD world)
     {
+        if (!document.ViewSettings.Snap.GridEnabled) return world;
         var grid = document.ViewSettings.Grid;
         var spacingX = grid.GetSnapSpacingX();
         var spacingY = grid.GetSnapSpacingY();
@@ -25,10 +26,10 @@ internal readonly struct CadSnapInteractionService(
             origin.Y + Math.Round((world.Y - origin.Y) / spacingY) * spacingY);
     }
 
-    public void AddSnapMarker(List<CadTransientItem> items, CadPointD rawWorld, CadPointD snappedWorld)
+    public void AddSnapMarker(List<CadTransientItem> items, CadPointD snappedWorld)
     {
         var grid = document.ViewSettings.Grid;
-        if (grid.SnapMarkerType == CadSnapMarkerType.None || rawWorld == snappedWorld)
+        if (grid.SnapMarkerType == CadSnapMarkerType.None)
             return;
 
         var markerLength = grid.SnapMarkerLength > 0 ? grid.SnapMarkerLength : 14.0;

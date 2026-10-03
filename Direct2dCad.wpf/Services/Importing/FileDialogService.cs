@@ -5,6 +5,10 @@ namespace Direct2dCad.wpf.Services.Importing;
 
 internal class FileDialogService : IFileDialogService
 {
+    public string? OpenDxfFile()
+    {var dialog=new OpenFileDialog{Filter="DXF (*.dxf)|*.dxf",DefaultExt=".dxf"};return dialog.ShowDialog()==true?dialog.FileName:null;}
+    public string? ExportDxfFile(string fileName)
+    {var dialog=new SaveFileDialog{Filter="DXF R2000 (*.dxf)|*.dxf",DefaultExt=".dxf",AddExtension=true,FileName=fileName,OverwritePrompt=false};return dialog.ShowDialog()==true?dialog.FileName:null;}
     public string? SaveAsD2cad(string fileName)
     {
         var dialog = new SaveFileDialog
@@ -32,6 +36,11 @@ internal class FileDialogService : IFileDialogService
             return null;
 
         return dialog.FileName;
+    }
+    public string? ChooseCompatibleCopyPath(string fileName)
+    {
+        var dialog=new SaveFileDialog {Filter="Direct2dCad (*.d2cad)|*.d2cad",DefaultExt=".d2cad",AddExtension=true,FileName=fileName,OverwritePrompt=false};
+        return dialog.ShowDialog()==true ? dialog.FileName : null;
     }
 
     public string? OpenFile()

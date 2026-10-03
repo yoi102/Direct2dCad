@@ -31,7 +31,10 @@ public sealed record CadClipboardEntityItem(
     CadLayerClipboardSnapshot Layer,
     CadStyleClipboardSnapshot? GraphicStyle,
     CadStyleClipboardSnapshot? FillStyle,
-    CadStyleClipboardSnapshot? TextStyle);
+    CadStyleClipboardSnapshot? TextStyle)
+{
+    public EntityId SourceEntityId { get; init; }
+}
 
 public sealed record CadLayerClipboardSnapshot(
     string Name,
@@ -58,6 +61,9 @@ public sealed record CadEntityStateClipboardSnapshot(
 
 public abstract record CadEntityClipboardSnapshot(CadEntityStateClipboardSnapshot State);
 
+public sealed record CadDimensionClipboardSnapshot(CadEntityStateClipboardSnapshot State,
+    CadDimensionDefinition Definition) : CadEntityClipboardSnapshot(State);
+
 public sealed record CadBlockReferenceClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
     BlockId SourceDefinitionBlockId,
@@ -80,7 +86,7 @@ public sealed record CadEllipseClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
     CadPointD Center,
     double RadiusX,
-    double RadiusY) : CadEntityClipboardSnapshot(State);
+    double RadiusY, double RotationRadians=0) : CadEntityClipboardSnapshot(State);
 
 public sealed record CadEllipseArcClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
@@ -88,7 +94,7 @@ public sealed record CadEllipseArcClipboardSnapshot(
     double RadiusX,
     double RadiusY,
     double StartAngleRadians,
-    double SweepAngleRadians) : CadEntityClipboardSnapshot(State);
+    double SweepAngleRadians, double RotationRadians=0) : CadEntityClipboardSnapshot(State);
 
 public sealed record CadArcClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
@@ -101,7 +107,7 @@ public sealed record CadRectangleClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
     CadRectD Bounds,
     double CornerRadiusX,
-    double CornerRadiusY) : CadEntityClipboardSnapshot(State);
+    double CornerRadiusY, double RotationRadians=0) : CadEntityClipboardSnapshot(State);
 
 public sealed record CadPolylineClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
@@ -112,6 +118,9 @@ public sealed record CadSplineClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
     IReadOnlyList<CadPointD> FitPoints,
     bool Closed) : CadEntityClipboardSnapshot(State);
+
+public sealed record CadRegionClipboardSnapshot(CadEntityStateClipboardSnapshot State,
+    IReadOnlyList<CadRegionContour> Contours, CadRectD Bounds) : CadEntityClipboardSnapshot(State);
 
 public sealed record CadCompositePathClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
@@ -300,7 +309,7 @@ public static class CadClipboardSnapshotFactory
             layerSnapshot,
             CreateStyleSnapshot(document, ResolveGraphicStyleId(entity)),
             CreateStyleSnapshot(document, ResolveFillStyleId(entity)),
-            CreateStyleSnapshot(document, ResolveTextStyleId(entity)));
+            CreateStyleSnapshot(document, ResolveTextStyleId(entity))) { SourceEntityId = entity.Id };
         return true;
     }
 
@@ -369,6 +378,7 @@ public static class CadClipboardSnapshotFactory
 
         snapshot = entity switch
         {
+            CadDimension dimension => new CadDimensionClipboardSnapshot(state, dimension.Definition.Copy()),
             CadBlockReference blockReference => new CadBlockReferenceClipboardSnapshot(
                 state,
                 blockReference.DefinitionBlockId,
@@ -378,14 +388,14 @@ public static class CadClipboardSnapshotFactory
                 blockReference.ScaleY),
             CadLine line => new CadLineClipboardSnapshot(state, line.Start, line.End),
             CadCircle circle => new CadCircleClipboardSnapshot(state, circle.Center, circle.Radius),
-            CadEllipse ellipse => new CadEllipseClipboardSnapshot(state, ellipse.Center, ellipse.RadiusX, ellipse.RadiusY),
+            CadEllipse ellipse => new CadEllipseClipboardSnapshot(state, ellipse.Center, ellipse.RadiusX, ellipse.RadiusY,ellipse.RotationRadians),
             CadEllipseArc ellipseArc => new CadEllipseArcClipboardSnapshot(
                 state,
                 ellipseArc.Center,
                 ellipseArc.RadiusX,
                 ellipseArc.RadiusY,
                 ellipseArc.StartAngleRadians,
-                ellipseArc.SweepAngleRadians),
+                ellipseArc.SweepAngleRadians,ellipseArc.RotationRadians),
             CadArc arc => new CadArcClipboardSnapshot(
                 state,
                 arc.Center,
@@ -394,9 +404,9 @@ public static class CadClipboardSnapshotFactory
                 arc.SweepAngleRadians),
             CadRectangle rectangle => new CadRectangleClipboardSnapshot(
                 state,
-                rectangle.Bounds,
+                rectangle.FrameBounds,
                 rectangle.CornerRadiusX,
-                rectangle.CornerRadiusY),
+                rectangle.CornerRadiusY,rectangle.RotationRadians),
             CadPolyline polyline => new CadPolylineClipboardSnapshot(
                 state,
                 polyline.Points.ToArray(),
@@ -405,6 +415,7 @@ public static class CadClipboardSnapshotFactory
                 state,
                 spline.FitPoints.ToArray(),
                 spline.Closed),
+            CadRegion region => new CadRegionClipboardSnapshot(state, region.Contours.ToArray(), region.Bounds),
             CadCompositePath path => new CadCompositePathClipboardSnapshot(
                 state,
                 path.StartPoint,
@@ -518,6 +529,7 @@ public static class CadClipboardSnapshotFactory
             CadPolyline polyline => polyline.GraphicStyleId,
             CadSpline spline => spline.GraphicStyleId,
             CadCompositePath path => path.GraphicStyleId,
+            CadRegion path => path.GraphicStyleId,
             CadText text => text.GraphicStyleId,
             CadShapeText shapeText => shapeText.GraphicStyleId,
             CadBlockReference blockReference => blockReference.GraphicStyleId,
@@ -533,6 +545,7 @@ public static class CadClipboardSnapshotFactory
             CadPolyline polyline => polyline.FillStyleId,
             CadSpline spline => spline.FillStyleId,
             CadCompositePath path => path.FillStyleId,
+            CadRegion path => path.FillStyleId,
             _ => null
         };
 

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Lang\Direct2dCad.Lang.csproj" />
   </ItemGroup>
 
 </Project>

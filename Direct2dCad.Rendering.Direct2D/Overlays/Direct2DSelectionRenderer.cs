@@ -276,6 +276,11 @@ internal sealed class Direct2DSelectionRenderer(
                     style,
                     options.IsLevelOfDetailEnabled);
                 break;
+            case CadRegion region:
+                foreach (var edge in region.Contours.SelectMany(c => c.Edges))
+                    if (edge.IsLine) transientRenderer.DrawLine(context, viewport, edge.Start + offset, edge.End + offset, style);
+                    else transientRenderer.DrawArc(context, viewport, edge.Center + offset, edge.Radius, edge.StartAngle, edge.Sweep, style);
+                break;
             case CadCompositePath path:
                 DrawTranslatedCompositePath(
                     context,
@@ -564,10 +569,15 @@ internal sealed class Direct2DSelectionRenderer(
         var strokeWidthChangesWithScale = style.KeepStrokeWidthScreenConstant ||
                                           Math.Abs(strokeWidth - style.StrokeWidth) >
                                           Math.Max(1e-6, Math.Abs(style.StrokeWidth) * 1e-5);
-        var canUseStrokeRealization = resources.GraphicLineTypeStrokeStyle is null;
+        var canUseStrokeRealization = options.EnableGeometryRealizations &&
+            resources.GraphicLineTypeStrokeStyle is null &&
+            !(entity is CadPolyline { Points.Count: >= Direct2DVisiblePolylineStroke.MinimumPointCount } && strokeWidthChangesWithScale);
         if (offset == CadVectorD.Zero)
         {
             DrawCachedFill(context, entity, resources, geometry, entity.Bounds, style, viewport, options);
+            if (Direct2DVisiblePolylineStroke.TryDraw(context, resourceCache.Factory, entity,
+                    geometry, resources, viewport, brush, strokeWidth, strokeStyle))
+                return true;
             if (!canUseStrokeRealization ||
                 !resourceCache.TryDrawStrokedGeometry(
                     context,
@@ -829,7 +839,7 @@ internal sealed class Direct2DSelectionRenderer(
             CadArc or
             CadPolyline or
             CadSpline or
-            CadCompositePath or
+            CadCompositePath or CadRegion or
             CadShapeText;
     }
 

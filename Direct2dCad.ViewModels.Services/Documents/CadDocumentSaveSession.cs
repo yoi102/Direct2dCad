@@ -14,6 +14,7 @@ public sealed class CadDocumentSaveSession : IDisposable
     private long _directVersion;
     private long _savedDirectVersion;
     private bool _disposed;
+    private CadFileRevision? _fileRevision;
 
     public string FilePath { get; private set; }
     public bool IsModified => string.IsNullOrWhiteSpace(FilePath) ||
@@ -28,6 +29,8 @@ public sealed class CadDocumentSaveSession : IDisposable
         _writer = writer;
         FilePath = filePath;
         _savedHistory = editor.CreateDocumentHistorySnapshot();
+        _fileRevision = string.IsNullOrWhiteSpace(filePath) ? null :
+            CadDocumentOrigin.Get(editor.Document) ?? CadFileRevision.Capture(filePath);
     }
 
     public void MarkDirectChange() => _directVersion++;
@@ -44,23 +47,36 @@ public sealed class CadDocumentSaveSession : IDisposable
         FilePath = filePath;
         _savedHistory = editor.CreateDocumentHistorySnapshot();
         _savedDirectVersion = _directVersion;
+        _fileRevision = string.IsNullOrWhiteSpace(filePath) ? null :
+            CadDocumentOrigin.Get(editor.Document) ?? CadFileRevision.Capture(filePath);
     }
 
     public Task<bool> SaveAsync(string filePath, Action? committed = null, Func<IDisposable>? beginSave = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, CadFileRevision? overwriteAuthorization = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-        return SaveCoreAsync(filePath, committed, beginSave, cancellationToken);
+        return SaveCoreAsync(filePath, committed, beginSave, cancellationToken, overwriteAuthorization);
     }
 
     public Task<bool> SaveCurrentAsync(Action? committed = null, Func<IDisposable>? beginSave = null,
-        CancellationToken cancellationToken = default) =>
-        SaveCoreAsync(null, committed, beginSave, cancellationToken);
+        CancellationToken cancellationToken = default, CadFileRevision? overwriteAuthorization = null) =>
+        SaveCoreAsync(null, committed, beginSave, cancellationToken, overwriteAuthorization);
 
-    private async Task<bool> SaveCoreAsync(string? filePath, Action? committed, Func<IDisposable>? beginSave,
+    public Task<bool> SaveCompatibilityCopyAsync(string filePath, CadFileRevision expectedDestination,
         CancellationToken cancellationToken = default)
     {
+        if (!string.IsNullOrWhiteSpace(FilePath) && string.Equals(Path.GetFullPath(filePath),
+            Path.GetFullPath(FilePath), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("A compatible copy must use a different path from the original drawing.");
+        return SaveCoreAsync(filePath, null, null, cancellationToken, expectedDestination, isCompatibilityCopy: true);
+    }
+
+    private async Task<bool> SaveCoreAsync(string? filePath, Action? committed, Func<IDisposable>? beginSave,
+        CancellationToken cancellationToken = default, CadFileRevision? overwriteAuthorization = null, bool isCompatibilityCopy = false)
+    {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_editor.Document.IsReadOnly && !isCompatibilityCopy)
+            throw new InvalidOperationException(_editor.Document.CompatibilityNotice);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
         var token = linked.Token;
         await _gate.WaitAsync(token);
@@ -70,6 +86,15 @@ public sealed class CadDocumentSaveSession : IDisposable
             filePath ??= FilePath;
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new InvalidOperationException("A file path is required before saving the current document.");
+            var current = File.Exists(filePath)
+                ? await Task.Run(() => CadFileRevision.Capture(filePath), token)
+                : CadFileRevision.Capture(filePath);
+            var samePath = !string.IsNullOrWhiteSpace(FilePath) &&
+                string.Equals(Path.GetFullPath(FilePath), current.FullPath, StringComparison.OrdinalIgnoreCase);
+            var expected = overwriteAuthorization ?? (samePath ? _fileRevision : null);
+            if (expected is null ? current.Exists : !expected.Matches(current))
+                throw new CadFileConflictException(current);
+            expected ??= current;
             using var activity = beginSave?.Invoke();
             for (var attempt = 0; ; attempt++)
             {
@@ -80,13 +105,16 @@ public sealed class CadDocumentSaveSession : IDisposable
                 var directVersion = _directVersion;
                 var capture = new CadSnapshotCaptureOptions(
                     () => ReferenceEquals(editor, _editor) && editor.DocumentChangeVersion == version && _directVersion == directVersion,
-                    async ct => await Task.Delay(1, ct));
+                    async ct => await Task.Delay(1, ct))
+                { ExpectedDestination = expected, AllowCompatibilityCopy = isCompatibilityCopy, UpdateOrigin = !isCompatibilityCopy };
                 try { await _writer.SaveAsync(editor.Document, filePath, capture, token); }
                 catch (CadSnapshotChangedException) when (attempt < 2) { continue; }
 
                 if (token.IsCancellationRequested || !ReferenceEquals(editor, _editor) || _disposed)
                     return false;
+                if (isCompatibilityCopy) return true;
                 FilePath = filePath;
+                _fileRevision = CadDocumentOrigin.Get(editor.Document) ?? CadFileRevision.Capture(filePath);
                 _savedHistory = history;
                 _savedDirectVersion = directVersion;
                 committed?.Invoke();

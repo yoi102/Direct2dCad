@@ -43,9 +43,11 @@ public partial class CadCanvas : IDisposable
         Stretch = System.Windows.Media.Stretch.Fill;
 
         Loaded += CadCanvas_Loaded;
+        Unloaded += (_, _) => SetValue(IsCursorBadgeVisiblePropertyKey, false);
         SizeChanged += CadCanvas_SizeChanged;
         MouseDown += CadCanvas_MouseDown;
         MouseMove += CadCanvas_MouseMove;
+        MouseEnter += (_, _) => UpdateCursor(DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
         MouseLeave += CadCanvas_MouseLeave;
         MouseUp += CadCanvas_MouseUp;
         MouseWheel += CadCanvas_MouseWheel;
@@ -65,6 +67,19 @@ public partial class CadCanvas : IDisposable
             typeof(CadDocumentViewModel),
             typeof(CadCanvas),
             new PropertyMetadata(null, OnDocumentViewModelChanged));
+
+    private static readonly DependencyPropertyKey CursorBadgePositionPropertyKey =
+        DependencyProperty.RegisterReadOnly(nameof(CursorBadgePosition), typeof(Point), typeof(CadCanvas),
+            new PropertyMetadata(default(Point)));
+    public static readonly DependencyProperty CursorBadgePositionProperty = CursorBadgePositionPropertyKey.DependencyProperty;
+    public Point CursorBadgePosition => (Point)GetValue(CursorBadgePositionProperty);
+
+    private static readonly DependencyPropertyKey IsCursorBadgeVisiblePropertyKey =
+        DependencyProperty.RegisterReadOnly(nameof(IsCursorBadgeVisible), typeof(bool), typeof(CadCanvas),
+            new PropertyMetadata(false));
+    public static readonly DependencyProperty IsCursorBadgeVisibleProperty = IsCursorBadgeVisiblePropertyKey.DependencyProperty;
+    public bool IsCursorBadgeVisible => (bool)GetValue(IsCursorBadgeVisibleProperty);
+    public bool IsRadialMenuActive => _isRadialMenuActive;
 
     public ICommand? SaveCommand
     {
@@ -123,8 +138,12 @@ public partial class CadCanvas : IDisposable
             newViewModel.AttachRenderResources();
             canvas.UpdateViewportSize();
             canvas.UpdateRenderSize();
-            canvas.UpdateCursor(CadCanvasCursorKind.Cross);
+            canvas.UpdateCursor(newViewModel.CanvasCursor);
             newViewModel.RequestRender();
+        }
+        else
+        {
+            canvas.UpdateCursor(CadCanvasCursorKind.Arrow);
         }
     }
 
@@ -133,14 +152,17 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null)
             return;
 
-        if (e.PropertyName == nameof(CadDocumentViewModel.CadCanvasToolMode))
+        if (e.PropertyName is nameof(CadDocumentViewModel.CadCanvasToolMode)
+            or nameof(CadDocumentViewModel.IsPanning)
+            or nameof(CadDocumentViewModel.IsPastePreviewActive))
         {
-            UpdateCursor(CadCanvasCursorKind.Cross);
+            UpdateCursor(DocumentViewModel.CanvasCursor);
         }
     }
 
     private void CadCanvas_Loaded(object sender, RoutedEventArgs e)
     {
+        UpdateCursor(DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
         UpdateViewportSize();
         UpdateRenderSize();
         DocumentViewModel?.RequestRender();
@@ -151,6 +173,7 @@ public partial class CadCanvas : IDisposable
         CancelPendingViewportInteraction();
         UpdateViewportSize();
         UpdateRenderSize();
+        UpdateCursorBadge();
         DocumentViewModel?.RequestRender();
     }
 
@@ -173,6 +196,7 @@ public partial class CadCanvas : IDisposable
             _rightPanPending = true;
             _rightPanActive = false;
             _rightPanStart = screen;
+            UpdateCursorBadge();
             e.Handled = false;
             return;
         }
@@ -228,6 +252,7 @@ public partial class CadCanvas : IDisposable
 
     private void CadCanvas_MouseLeave(object sender, MouseEventArgs e)
     {
+        SetValue(IsCursorBadgeVisiblePropertyKey, false);
         if (DocumentViewModel is null || IsMouseCaptured)
             return;
 
@@ -253,6 +278,7 @@ public partial class CadCanvas : IDisposable
             {
                 RadialMenuActionCommand.Execute(selectedAction);
             }
+            UpdateCursor(DocumentViewModel.CanvasCursor);
 
             e.Handled = true;
             return;
@@ -337,7 +363,11 @@ public partial class CadCanvas : IDisposable
                    RenderCacheIdleBuildBudgetMilliseconds);
 
             if (buildPending)
+            {
+                if(!viewModel.Direct2DImageRenderHost.HasPresentedScene && viewModel.Direct2DImageRenderHost.IsInitialViewReady)
+                    viewModel.RequestRenderCacheRefresh();
                 OnRenderCacheBuildRequested(sender, EventArgs.Empty);
+            }
             else
                 viewModel.RequestRenderCacheRefresh();
         });
@@ -463,6 +493,7 @@ public partial class CadCanvas : IDisposable
         var gesture = ToRadialMenuGesture(modifiers);
         _radialMenu.Show(this, position, settings.GetActions(gesture));
         _isRadialMenuActive = CaptureMouse();
+        UpdateCursor(DocumentViewModel.CanvasCursor);
         if (!_isRadialMenuActive)
             _radialMenu.Close();
         return _isRadialMenuActive;
@@ -472,6 +503,7 @@ public partial class CadCanvas : IDisposable
     {
         _radialMenu.Close();
         _isRadialMenuActive = false;
+        UpdateCursor(DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
         if (IsMouseCaptured)
             ReleaseMouseCapture();
     }
@@ -510,8 +542,7 @@ public partial class CadCanvas : IDisposable
         if (result.ReleaseMouseCapture && IsMouseCaptured)
             ReleaseMouseCapture();
 
-        if (result.Cursor is { } cursor)
-            UpdateCursor(cursor);
+        UpdateCursor(result.Cursor ?? DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
     }
 
     private void SchedulePointerMove()
@@ -679,7 +710,32 @@ public partial class CadCanvas : IDisposable
 
     private void UpdateCursor(CadCanvasCursorKind cursor)
     {
-        Cursor = cursor == CadCanvasCursorKind.Hand ? Cursors.Hand : Cursors.Cross;
+        Cursor = (_isRadialMenuActive ? CadCanvasCursorKind.Arrow : cursor) switch
+        {
+            CadCanvasCursorKind.Hand => Cursors.Hand,
+            _ => Cursors.Arrow
+        };
+        UpdateCursorBadge();
+    }
+
+    private void UpdateCursorBadge()
+    {
+        var visible = !_disposed && IsLoaded && IsMouseOver && !_isRadialMenuActive &&
+                      Mouse.RightButton == MouseButtonState.Released && Mouse.MiddleButton == MouseButtonState.Released &&
+                      DocumentViewModel is { CanvasCursor: CadCanvasCursorKind.Arrow } document &&
+                      (document.HasActiveDrawingTool || document.IsPastePreviewActive);
+        if (visible)
+        {
+            const double badgeSize = 28;
+            const double offset = 16;
+            var pointer = Mouse.GetPosition(this);
+            var x = pointer.X + offset;
+            var y = pointer.Y + offset;
+            if (x + badgeSize > ActualWidth) x = pointer.X - offset - badgeSize;
+            if (y + badgeSize > ActualHeight) y = pointer.Y - offset - badgeSize;
+            SetValue(CursorBadgePositionPropertyKey, new Point(Math.Max(0, x), Math.Max(0, y)));
+        }
+        SetValue(IsCursorBadgeVisiblePropertyKey, visible);
     }
 
     private static CadCanvasPointerButton ToPointerButton(MouseButton button)

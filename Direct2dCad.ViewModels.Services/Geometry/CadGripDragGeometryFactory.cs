@@ -92,7 +92,16 @@ internal static class CadGripDragGeometryFactory
         GripDragState drag,
         out CadRectD bounds)
     {
-        return TryCreateBoundsGripGeometry(rectangle.Bounds, drag, out bounds);
+        var old=rectangle.FrameBounds;
+        var local=rectangle.ToLocal(drag.Handle.Position);
+        var opposite=new CadPointD(Math.Abs(local.X-old.MinX)<Math.Abs(local.X-old.MaxX) ? old.MaxX : old.MinX,
+            Math.Abs(local.Y-old.MinY)<Math.Abs(local.Y-old.MaxY) ? old.MaxY : old.MinY);
+        var worldOpposite=rectangle.GeometryTransform.TransformPoint(opposite);
+        var target=drag.DraggedGripPosition;
+        var center=new CadPointD((worldOpposite.X+target.X)/2,(worldOpposite.Y+target.Y)/2);
+        var delta=CadMatrixD.CreateRotation(-rectangle.RotationRadians).TransformVector(target-worldOpposite);
+        bounds=CadRectD.FromCenter(center,Math.Abs(delta.X),Math.Abs(delta.Y));
+        return drag.Handle.Type==CadHandleType.BoundsCorner && IsValidRectangleBounds(bounds);
     }
 
     public static bool TryCreateBoundsGripGeometry(
@@ -256,14 +265,13 @@ internal static class CadGripDragGeometryFactory
         if (drag.Handle.Type != CadHandleType.Radius)
             return false;
 
-        var isHorizontalRadiusGrip =
-            Math.Abs(drag.Handle.Position.X - ellipse.Center.X) >=
-            Math.Abs(drag.Handle.Position.Y - ellipse.Center.Y);
+        var grip=ellipse.ToLocal(drag.Handle.Position);var target=ellipse.ToLocal(drag.DraggedGripPosition);
+        var isHorizontalRadiusGrip = Math.Abs(grip.X-ellipse.Center.X)>=Math.Abs(grip.Y-ellipse.Center.Y);
 
         if (isHorizontalRadiusGrip)
-            radiusX = Math.Abs(drag.DraggedGripPosition.X - ellipse.Center.X);
+            radiusX = Math.Abs(target.X - ellipse.Center.X);
         else
-            radiusY = Math.Abs(drag.DraggedGripPosition.Y - ellipse.Center.Y);
+            radiusY = Math.Abs(target.Y - ellipse.Center.Y);
 
         return IsValidEllipseGeometry(radiusX, radiusY);
     }

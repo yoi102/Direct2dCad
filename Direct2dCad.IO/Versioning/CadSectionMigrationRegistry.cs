@@ -22,8 +22,10 @@ internal static class CadSectionMigrationRegistry
                 .ReadsVersion<CadDocumentSection>(2)
                 .Migrates<CadDocumentSection, CadDocumentSection>(1, static old => old),
 
-            Section<CadSettingsSection>(CadSectionKind.Settings, currentVersion: 1)
-                .ReadsVersion<CadSettingsSection>(1),
+            Section<CadSettingsSection>(CadSectionKind.Settings, currentVersion: 2)
+                .ReadsVersion<CadSettingsSection>(1)
+                .ReadsVersion<CadSettingsSection>(2)
+                .Migrates<CadSettingsSection, CadSettingsSection>(1, static old => { old.GridSnapEnabled = true; return old; }),
 
             Section<CadLayerSection>(CadSectionKind.Layers, currentVersion: 1)
                 .ReadsVersion<CadLayerSection>(1),
@@ -43,14 +45,18 @@ internal static class CadSectionMigrationRegistry
             Section<CadCirclesSection>(CadSectionKind.Circles, currentVersion: 1)
                 .ReadsVersion<CadCirclesSection>(1),
 
-            Section<CadEllipsesSection>(CadSectionKind.Ellipses, currentVersion: 1)
-                .ReadsVersion<CadEllipsesSection>(1),
+            Section<CadEllipsesSection>(CadSectionKind.Ellipses, currentVersion: 2)
+                .ReadsVersion<CadEllipsesSection>(1)
+                .ReadsVersion<CadEllipsesSection>(2)
+                .Migrates<CadEllipsesSection,CadEllipsesSection>(1, static old => old),
 
             Section<CadArcsSection>(CadSectionKind.Arcs, currentVersion: 1)
                 .ReadsVersion<CadArcsSection>(1),
 
-            Section<CadRectanglesSection>(CadSectionKind.Rectangles, currentVersion: 1)
-                .ReadsVersion<CadRectanglesSection>(1),
+            Section<CadRectanglesSection>(CadSectionKind.Rectangles, currentVersion: 2)
+                .ReadsVersion<CadRectanglesSection>(1)
+                .ReadsVersion<CadRectanglesSection>(2)
+                .Migrates<CadRectanglesSection,CadRectanglesSection>(1, static old => old),
 
             Section<CadPolylinesSection>(CadSectionKind.Polylines, currentVersion: 1)
                 .ReadsVersion<CadPolylinesSection>(1),
@@ -58,6 +64,10 @@ internal static class CadSectionMigrationRegistry
             Section<CadSplinesSection>(CadSectionKind.Splines, currentVersion: 1)
                 .ReadsVersion<CadSplinesSection>(1),
 
+            Section<CadDimensionsSection>(CadSectionKind.Dimensions, currentVersion: 1)
+                .ReadsVersion<CadDimensionsSection>(1),
+
+            Section<CadRegionsSection>(CadSectionKind.Regions, currentVersion: 1).ReadsVersion<CadRegionsSection>(1),
             Section<CadCompositePathsSection>(CadSectionKind.CompositePaths, currentVersion: 1)
                 .ReadsVersion<CadCompositePathsSection>(1),
 

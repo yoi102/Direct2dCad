@@ -165,6 +165,7 @@ public sealed class CreateFillStyleCommand : ICadCommand
         CadPolyline polyline => polyline.FillStyleId == styleId,
         CadSpline spline => spline.FillStyleId == styleId,
         CadCompositePath path => path.FillStyleId == styleId,
+        CadRegion path => path.FillStyleId == styleId,
         _ => false
     };
 
