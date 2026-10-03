@@ -1487,20 +1487,23 @@
   <data name="RectArray" xml:space="preserve"><value>矩形配列</value></data>
   <data name="PolarArray" xml:space="preserve"><value>円形配列</value></data>
   <data name="EditTools" xml:space="preserve"><value>修正</value></data>
-  <data name="EditChooseSource" xml:space="preserve"><value>元の図形を選択</value></data>
-  <data name="EditChooseSide" xml:space="preserve"><value>距離を入力、片側にホバー；クリックで適用、Enter で終了</value></data>
-  <data name="EditChooseBoundaries" xml:space="preserve"><value>境界を選択；Enter で編集開始</value></data>
-  <data name="EditChooseSegment" xml:space="preserve"><value>対象区間にホバー；クリックで適用、Enter で終了</value></data>
+  <data name="EditChooseSource" xml:space="preserve"><value>編集するオブジェクトを選択</value></data>
+  <data name="EditChooseSide" xml:space="preserve"><value>マウスで D を調整、クリックで作成。Tab: 入力、Enter: 終了</value></data>
+  <data name="EditChooseSideLocked" xml:space="preserve"><value>距離固定、クリックで作成。Ctrl+Delete: マウス追従、Enter: 終了</value></data>
+  <data name="EditKeyboardHint" xml:space="preserve"><value>Enter: 次へ / 確定 · R: 選び直す · Esc: 取消</value></data>
+  <data name="EditChooseBoundaries" xml:space="preserve"><value>境界を選び Enter で次へ。再クリックで選択解除</value></data>
+  <data name="EditChooseSegment" xml:space="preserve"><value>対象に重ねて確認。赤は削除、緑は追加。クリックで適用</value></data>
   <data name="EditChooseTwoLines" xml:space="preserve"><value>残す側に近い位置で 2 本の線を選択</value></data>
-  <data name="EditConfirmCorner" xml:space="preserve"><value>寸法を調整；プレビューを確認、Enter またはクリックで適用</value></data>
-  <data name="EditChooseChain" xml:space="preserve"><value>連続した曲線を選択；Enter で結合</value></data>
-  <data name="EditFirstBreak" xml:space="preserve"><value>最初の分割点を指定</value></data>
-  <data name="EditSecondBreak" xml:space="preserve"><value>2 点目で区間を削除；Enter で最初の点のみ分割</value></data>
-  <data name="EditChooseArray" xml:space="preserve"><value>図形を選択；Enter で配列設定</value></data>
-  <data name="EditArrayCenter" xml:space="preserve"><value>配列の中心を指定</value></data>
-  <data name="EditConfirmArray" xml:space="preserve"><value>数と間隔を設定；プレビューを確認、Enter またはクリックで適用</value></data>
-  <data name="EditCannotApply" xml:space="preserve"><value>この図形または値では適用できません。変更して再試行（詳細はヒント）</value></data>
-  <data name="DistanceParameter" xml:space="preserve"><value>距離 / 半径</value></data>
+  <data name="EditConfirmCorner" xml:space="preserve"><value>寸法を調整、クリック / Enter で確定、Esc で取消</value></data>
+  <data name="EditChooseChain" xml:space="preserve"><value>つながる曲線を選び Enter で結合。再クリックで選択解除</value></data>
+  <data name="EditFirstBreak" xml:space="preserve"><value>曲線上の最初の分割点をクリック</value></data>
+  <data name="EditSecondBreak" xml:space="preserve"><value>次の分割点をクリック、Enter で最初の点のみ分割、Esc で取消</value></data>
+  <data name="EditChooseArray" xml:space="preserve"><value>対象を選び Enter で次へ。再クリックで選択解除</value></data>
+  <data name="EditChooseArraySource" xml:space="preserve"><value>対象をクリックして配列をプレビュー。Esc: 取消</value></data>
+  <data name="EditArrayCenter" xml:space="preserve"><value>マウスで中心を指定、クリックで完了。Tab: 数値調整、Esc: 取消</value></data>
+  <data name="EditConfirmArray" xml:space="preserve"><value>Tab: 数値調整、クリック / Enter: 確定、Esc: 取消</value></data>
+  <data name="EditCannotApply" xml:space="preserve"><value>ここでは適用できません。位置や値を変更してください</value></data>
+  <data name="DistanceParameter" xml:space="preserve"><value>距離</value></data>
   <data name="SecondDistanceParameter" xml:space="preserve"><value>2 番目の距離</value></data>
   <data name="ArrayRows" xml:space="preserve"><value>行数</value></data>
   <data name="ArrayColumns" xml:space="preserve"><value>列数</value></data>
@@ -1646,4 +1649,25 @@
   <data name="OpenContainingFolder" xml:space="preserve"><value>保存フォルダーを開く</value></data>
   <data name="OpenSourceFolder" xml:space="preserve"><value>元の図面のフォルダーを開く</value></data>
   <data name="ActivateDocument" xml:space="preserve"><value>この図面に切り替え</value></data>
+  <data name="EditUnsupportedObject" xml:space="preserve"><value>このオブジェクトは非対応です。対応する曲線を選択</value></data>
+  <data name="EditSingleBreak" xml:space="preserve"><value>ここで分割</value></data>
+  <data name="EditJoinDisconnected" xml:space="preserve"><value>外観が一致し、端点がつながる曲線を選択</value></data>
+  <data name="EditArrayPreviewLimited" xml:space="preserve"><value>最初の 256 配置を表示。確定すると配列全体を作成</value></data>
+  <data name="EditNoIntersection" xml:space="preserve"><value>有効な交点がありません。境界や位置を変更</value></data>
+  <data name="EditChooseSecondCurve" xml:space="preserve"><value>次の曲線または隣接するパスの辺に重ねてプレビューし、クリックで選択</value></data>
+  <data name="EditNext" xml:space="preserve"><value>次へ</value></data>
+  <data name="EditChooseFirstCurve" xml:space="preserve"><value>最初の曲線の残す側をクリック</value></data>
+  <data name="EditReduceDistance" xml:space="preserve"><value>距離を小さくして有効なオフセットを作成</value></data>
+  <data name="EditInvalidParameters" xml:space="preserve"><value>有効な正の寸法を入力してください</value></data>
+  <data name="EditInvalidArrayParameters" xml:space="preserve"><value>有効な数量と間隔を入力。配列の総数は最大 10000</value></data>
+  <data name="EditReselect" xml:space="preserve"><value>オブジェクトを選び直す</value></data>
+  <data name="EditWholePolyline" xml:space="preserve"><value>ポリラインの全コーナー</value></data>
+  <data name="EditChoosePolyline" xml:space="preserve"><value>ポリラインを選択して全コーナーをプレビュー。Tab で寸法、クリック / Enter で確定</value></data>
+  <data name="GripScale" xml:space="preserve"><value>倍率</value></data>
+  <data name="EditChooseAdjacentSegments" xml:space="preserve"><value>同じパスの隣接する2辺を選択してください</value></data>
+  <data name="EditChoosePathEndpoint" xml:space="preserve"><value>異なるパスを接続する場合は端のセグメントを選択してください</value></data>
+  <data name="EditNoSharpCorners" xml:space="preserve"><value>このパスには処理する鋭角がありません</value></data>
+  <data name="EditCornerTooLarge" xml:space="preserve"><value>重なりやセグメントの超過を避けるため寸法を小さくしてください</value></data>
+  <data name="GripEdit" xml:space="preserve"><value>形状編集</value></data>
+  <data name="GripEditPrompt" xml:space="preserve"><value>グリップを移動、または Tab で数値入力。クリック / Enter で確定、Esc で取消</value></data>
 </root>

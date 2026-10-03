@@ -113,7 +113,10 @@ public sealed partial class MainWindowUiTests
     {
         var trace = fixture.ReadBindingTrace();
         if (Environment.GetEnvironmentVariable("DIRECT2DCAD_UI_SCREENSHOT_DIRECTORY") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, name + ".bindings.log"), trace);
+        }
         Assert.True(string.IsNullOrWhiteSpace(trace), "WPF binding diagnostics: " + trace);
     }
 

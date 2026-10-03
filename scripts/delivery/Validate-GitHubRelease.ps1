@@ -1,4 +1,8 @@
-param([Parameter(Mandatory)][string]$ReleaseDirectory)
+param(
+    [Parameter(Mandatory)][string]$ReleaseDirectory,
+    [string]$ExpectedReleaseVersion = '0.1.3',
+    [string]$ExpectedInstallerVersion = '1.0.3'
+)
 
 $ErrorActionPreference = 'Stop'
 $releaseRoot = [IO.Path]::GetFullPath($ReleaseDirectory)
@@ -20,8 +24,9 @@ foreach ($requiredFile in @('Direct2dCad.exe','Direct2dCad.dll','Direct2dCad.ico
         throw "The self-contained app is missing $requiredFile."
     }
 }
-$appVersion = [Reflection.AssemblyName]::GetAssemblyName((Join-Path $publishDirectory 'Direct2dCad.dll')).Version.ToString()
-if ($appVersion -ne '0.0.0.2') { throw "Expected app version 0.0.0.2, found $appVersion." }
+$assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName((Join-Path $publishDirectory 'Direct2dCad.dll')).Version
+$appVersion = if ($assemblyVersion.Revision -eq 0) { $assemblyVersion.ToString(3) } else { $assemblyVersion.ToString() }
+if ($appVersion -ne $ExpectedReleaseVersion) { throw "Expected app version $ExpectedReleaseVersion, found $appVersion." }
 
 $iconReader = [IO.BinaryReader]::new([IO.File]::OpenRead((Join-Path $publishDirectory 'Direct2dCad.ico')))
 try {
@@ -53,13 +58,17 @@ function ReadMsiProperty([string]$name) {
     return $rows[0].Values[0]
 }
 
-if ((ReadMsiProperty 'ProductVersion') -ne '1.0.2') { throw 'The MSI upgrade version must be 1.0.2.' }
-if ((ReadMsiProperty 'ARPVERSION') -ne '0.0.0.2') { throw 'The MSI display version must be 0.0.0.2.' }
+if ((ReadMsiProperty 'ProductVersion') -ne $ExpectedInstallerVersion) { throw "The MSI upgrade version must be $ExpectedInstallerVersion." }
+if ((ReadMsiProperty 'ARPVERSION') -ne $ExpectedReleaseVersion) { throw "The MSI display version must be $ExpectedReleaseVersion." }
 if ((ReadMsiProperty 'ARPPRODUCTICON') -ne 'Direct2dCadIcon') { throw 'The MSI Add/Remove Programs icon is not configured.' }
 $iconRows = @(ReadMsiRows "SELECT ``Name`` FROM ``Icon``" 1)
 if (@($iconRows | Where-Object { $_.Values[0] -eq 'Direct2dCadIcon' }).Count -ne 1) { throw 'The application icon is missing from the MSI.' }
 $shortcuts = @(ReadMsiRows "SELECT ``Shortcut``,``Directory_``,``Name``,``Target``,``Icon_`` FROM ``Shortcut``" 5)
 if ($shortcuts.Count -ne 2) { throw "Expected Start menu and desktop shortcuts; found $($shortcuts.Count)." }
+$shortcutDirectories = @($shortcuts | ForEach-Object { $_.Values[1] })
+foreach ($requiredDirectory in @('ApplicationProgramsFolder','DesktopFolder')) {
+    if ($requiredDirectory -notin $shortcutDirectories) { throw "The MSI is missing the $requiredDirectory shortcut." }
+}
 foreach ($shortcut in $shortcuts) {
     if ($shortcut.Values[3] -ne '[INSTALLFOLDER]Direct2dCad.exe' -or $shortcut.Values[4] -ne 'Direct2dCadIcon') {
         throw 'An MSI shortcut does not target the app using its configured icon.'
@@ -87,7 +96,7 @@ foreach ($package in @(Get-Item -LiteralPath $msiPath,$zipPath)) {
 [ordered]@{
     releaseVersion = $appVersion
     runtimeIncluded = $includedFrameworks
-    installerVersion = ReadMsiProperty 'ProductVersion'
+    installerProductVersion = ReadMsiProperty 'ProductVersion'
     displayVersion = ReadMsiProperty 'ARPVERSION'
     shortcuts = @($shortcuts | ForEach-Object { [ordered]@{directory=$_.Values[1];name=$_.Values[2];target=$_.Values[3];icon=$_.Values[4]} })
     productIcon = ReadMsiProperty 'ARPPRODUCTICON'

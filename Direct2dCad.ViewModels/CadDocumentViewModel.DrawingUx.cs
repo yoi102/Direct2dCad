@@ -12,6 +12,19 @@ namespace Direct2dCad.ViewModels;
 
 public partial class CadDocumentViewModel
 {
+    private string? _lastPublishedStepPrompt;
+    private bool _suppressStepPrompt;
+
+    private void PublishCurrentStepPrompt()
+    {
+        if (_suppressStepPrompt) return;
+        if (!HasActiveDrawingTool && !IsGripEditing) { _lastPublishedStepPrompt = null; return; }
+        var prompt = CurrentStepPrompt;
+        if (prompt == _lastPublishedStepPrompt) return;
+        _lastPublishedStepPrompt = prompt;
+        PublishInteractionActivity(prompt);
+    }
+
     private readonly CadObjectSnapController _objectSnap = new();
     public bool IsGridSnapEnabled { get => CadEditor.Document.ViewSettings.Snap.GridEnabled; set => SetSnapping(CadEditor.Document.ViewSettings.Snap with { GridEnabled=value }); }
     public bool IsObjectSnapEnabled { get => CadEditor.Document.ViewSettings.Snap.ObjectsEnabled; set => SetSnapping(CadEditor.Document.ViewSettings.Snap with { ObjectsEnabled=value }); }
@@ -23,7 +36,7 @@ public partial class CadDocumentViewModel
     public string SnapCandidateDisplay => _objectSnap.Current is { } candidate ? CadUiText.Get("Snap"+candidate.Kind) : "";
     public bool HasSnapCandidates => _objectSnap.Candidates.Count>1;
     public bool HasActiveDrawingTool => CadCanvasToolMode != CadCanvasToolMode.Select;
-    public string CurrentToolNameDisplay => CadUiText.Get(CadCanvasToolMode.ToString());
+    public string CurrentToolNameDisplay => CadUiText.Get(IsGripEditing ? "GripEdit" : CadCanvasToolMode.ToString());
     public bool CanEditDocument => !CadEditor.Document.IsReadOnly;
     public string PropertyContext => CadEditor.Selection.EntityIds.Count switch
     { 0 => CadUiText.Get(LangKeys.NewDrawingSettings), 1 => CadUiText.Get(LangKeys.SelectedEntitySettings), _ => CadUiText.Get(LangKeys.MultipleEntitySettings) };
@@ -37,6 +50,7 @@ public partial class CadDocumentViewModel
     {
         get
         {
+            if (IsGripEditing) return CadUiText.Get("GripEditPrompt");
             if (IsBooleanTool) return BooleanPrompt;
             if (IsDimensionTool) return DimensionPrompt;
             if (IsCurveEditTool) return EditPrompt;
@@ -104,8 +118,10 @@ public partial class CadDocumentViewModel
     {
         RefreshDynamicInput();
         RefreshDimensionContext();
+        NotifyEditUx();
         foreach (var name in new[]{nameof(IsCurveEditTool),nameof(HasDistanceParameter),nameof(HasChamferParameter),nameof(HasRectArrayParameters),nameof(HasPolarArrayParameters),nameof(HasCornerParameters)}) OnPropertyChanged(name);
         foreach (var name in new[]{nameof(CurrentStepPrompt),nameof(CurrentToolNameDisplay),nameof(HasActiveDrawingTool),nameof(PropertyContext),nameof(CanEditDocument),nameof(IsGridSnapEnabled),nameof(IsObjectSnapEnabled),nameof(IsOrthoEnabled),nameof(IsPolarEnabled),nameof(PolarIncrementDegrees),nameof(IsPerpendicularSnapEnabled),nameof(IsTangentSnapEnabled),nameof(SnapCandidateDisplay),nameof(HasSnapCandidates)}) OnPropertyChanged(name);
+        PublishCurrentStepPrompt();
     }
 }
 

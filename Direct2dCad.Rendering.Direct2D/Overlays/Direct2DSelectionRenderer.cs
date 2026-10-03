@@ -43,12 +43,12 @@ internal sealed class Direct2DSelectionRenderer(
         CadDocument document,
         CadViewport viewport,
         CadSelectionEntityReference reference,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        bool cullToViewport = true)
     {
         _visitedBlocks.Clear();
-        var renderWorldBounds = options.DirtyWorldBounds is { IsEmpty: false } dirty
-            ? dirty
-            : viewport.VisibleWorldBounds;
+        CadRectD? renderWorldBounds = !cullToViewport ? null : options.DirtyWorldBounds is { IsEmpty: false } dirty
+            ? dirty : viewport.VisibleWorldBounds;
         DrawSelectionReference(
             context,
             document,

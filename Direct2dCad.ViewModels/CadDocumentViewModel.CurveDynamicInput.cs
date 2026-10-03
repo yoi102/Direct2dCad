@@ -249,7 +249,19 @@ public partial class CadDocumentViewModel
             var state = _dynamicInputResolvedState ?? _drawingState;
             var spans = new List<CadDynamicInputMeasurement>();
             void Add(string key, CadPointD start, CadPointD end, int stack = 0) => spans.Add(new(key, WorldToScreen(start), WorldToScreen(end), stack));
-            if (_dynamicInputKind == DynamicInputKind.Curve)
+            if (_dynamicInputKind == DynamicInputKind.Grip && GripDynamicInputAnchor is { } gripAnchor)
+            {
+                var keys=GetGripDynamicInputKeys();
+                if(keys[0] is "Length" or "Radius" or "AxisX" or "AxisY") Add(keys[0],gripAnchor,point);
+                if(keys.Length>1 && keys[1]=="Angle") Add("Angle",gripAnchor,point,1);
+                if(keys[0]=="Width" && GripEntity is Direct2dCad.Db.Data.Entities.CadRectangle rectangle)
+                {
+                    var local=CadMatrixD.CreateRotation(-rectangle.RotationRadians).TransformVector(point-gripAnchor);
+                    var corner=gripAnchor+CadMatrixD.CreateRotation(rectangle.RotationRadians).TransformVector(new(local.X,0));
+                    Add("Width",gripAnchor,corner); Add("Height",corner,point);
+                }
+            }
+            else if (_dynamicInputKind == DynamicInputKind.Curve)
             {
                 if (IsEllipseDrawing)
                 {

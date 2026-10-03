@@ -256,8 +256,7 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null || IsMouseCaptured)
             return;
 
-        UnschedulePointerMove();
-        _pointerMovePending = false;
+        FlushPendingPointerMove();
         DocumentViewModel.PointerLeave();
     }
 
@@ -403,6 +402,13 @@ public partial class CadCanvas : IDisposable
         if (key == Key.Enter)
         {
             ApplyInteractionResult(DocumentViewModel.CompleteCurrentDrawing(), e);
+            return;
+        }
+
+        if (key == Key.R && Keyboard.Modifiers == ModifierKeys.None && DocumentViewModel.IsCurveEditTool)
+        {
+            DocumentViewModel.ReselectEditObjectsCommand.Execute(null);
+            e.Handled = true;
             return;
         }
 

@@ -1722,20 +1722,23 @@
   <data name="RectArray" xml:space="preserve"><value>Rectangular array</value></data>
   <data name="PolarArray" xml:space="preserve"><value>Polar array</value></data>
   <data name="EditTools" xml:space="preserve"><value>Modify</value></data>
-  <data name="EditChooseSource" xml:space="preserve"><value>Select a source object</value></data>
-  <data name="EditChooseSide" xml:space="preserve"><value>Set distance, hover on a side; click to apply, Enter to exit</value></data>
-  <data name="EditChooseBoundaries" xml:space="preserve"><value>Select boundaries; Enter to start editing</value></data>
-  <data name="EditChooseSegment" xml:space="preserve"><value>Hover over a target segment; click to apply, Enter to exit</value></data>
+  <data name="EditChooseSource" xml:space="preserve"><value>Select the object to edit</value></data>
+  <data name="EditChooseSide" xml:space="preserve"><value>Move to set D; click to create. Tab: type, Enter: finish</value></data>
+  <data name="EditChooseSideLocked" xml:space="preserve"><value>Distance locked; click to create. Ctrl+Delete: follow mouse, Enter: finish</value></data>
+  <data name="EditKeyboardHint" xml:space="preserve"><value>Enter: next / confirm · R: reselect · Esc: cancel</value></data>
+  <data name="EditChooseBoundaries" xml:space="preserve"><value>Select boundaries, Enter: next; click again to deselect</value></data>
+  <data name="EditChooseSegment" xml:space="preserve"><value>Hover over the segment; red is removed, green is added. Click to apply</value></data>
   <data name="EditChooseTwoLines" xml:space="preserve"><value>Select two lines near the sides to keep</value></data>
-  <data name="EditConfirmCorner" xml:space="preserve"><value>Set size; review preview, Enter or click to apply</value></data>
-  <data name="EditChooseChain" xml:space="preserve"><value>Select connected curves; Enter to join</value></data>
-  <data name="EditFirstBreak" xml:space="preserve"><value>Specify the first break point</value></data>
-  <data name="EditSecondBreak" xml:space="preserve"><value>Choose second point to remove interval; Enter to split at first point</value></data>
-  <data name="EditChooseArray" xml:space="preserve"><value>Select objects; Enter to set up the array</value></data>
-  <data name="EditArrayCenter" xml:space="preserve"><value>Specify array center</value></data>
-  <data name="EditConfirmArray" xml:space="preserve"><value>Set count and spacing; review preview, Enter or click to apply</value></data>
-  <data name="EditCannotApply" xml:space="preserve"><value>Cannot apply with these objects or values; adjust and retry (details in tooltip)</value></data>
-  <data name="DistanceParameter" xml:space="preserve"><value>Distance / radius</value></data>
+  <data name="EditConfirmCorner" xml:space="preserve"><value>Edit sizes; click or Enter: confirm, Esc: cancel</value></data>
+  <data name="EditChooseChain" xml:space="preserve"><value>Select connected curves, Enter: join; click again to deselect</value></data>
+  <data name="EditFirstBreak" xml:space="preserve"><value>Click the first break point on the curve</value></data>
+  <data name="EditSecondBreak" xml:space="preserve"><value>Click the second break point, Enter: split at first, Esc: cancel</value></data>
+  <data name="EditChooseArray" xml:space="preserve"><value>Select objects, Enter: next; click again to deselect</value></data>
+  <data name="EditChooseArraySource" xml:space="preserve"><value>Click the array source to preview; Esc: cancel</value></data>
+  <data name="EditArrayCenter" xml:space="preserve"><value>Move to set the center, click to finish. Tab: edit values, Esc: cancel</value></data>
+  <data name="EditConfirmArray" xml:space="preserve"><value>Tab: edit values, click or Enter: confirm, Esc: cancel</value></data>
+  <data name="EditCannotApply" xml:space="preserve"><value>Cannot apply here. Choose another position or adjust the values</value></data>
+  <data name="DistanceParameter" xml:space="preserve"><value>Distance</value></data>
   <data name="SecondDistanceParameter" xml:space="preserve"><value>Second distance</value></data>
   <data name="ArrayRows" xml:space="preserve"><value>Rows</value></data>
   <data name="ArrayColumns" xml:space="preserve"><value>Columns</value></data>
@@ -1881,4 +1884,25 @@
   <data name="OpenContainingFolder" xml:space="preserve"><value>Open containing folder</value></data>
   <data name="OpenSourceFolder" xml:space="preserve"><value>Open original drawing folder</value></data>
   <data name="ActivateDocument" xml:space="preserve"><value>Activate drawing</value></data>
+  <data name="EditUnsupportedObject" xml:space="preserve"><value>This object is not supported by the tool. Select a compatible curve</value></data>
+  <data name="EditSingleBreak" xml:space="preserve"><value>Split here</value></data>
+  <data name="EditJoinDisconnected" xml:space="preserve"><value>The selected curves must form a connected chain with matching appearance</value></data>
+  <data name="EditArrayPreviewLimited" xml:space="preserve"><value>Preview shows the first 256 placements; Confirm creates the full array</value></data>
+  <data name="EditNoIntersection" xml:space="preserve"><value>No usable intersection. Choose another boundary or position</value></data>
+  <data name="EditChooseSecondCurve" xml:space="preserve"><value>Hover over the next curve or adjacent path segment to preview, then click to select</value></data>
+  <data name="EditNext" xml:space="preserve"><value>Next</value></data>
+  <data name="EditChooseFirstCurve" xml:space="preserve"><value>Select the first curve near the side to keep</value></data>
+  <data name="EditReduceDistance" xml:space="preserve"><value>Reduce the distance to keep a valid offset</value></data>
+  <data name="EditInvalidParameters" xml:space="preserve"><value>Enter a valid positive size</value></data>
+  <data name="EditInvalidArrayParameters" xml:space="preserve"><value>Enter valid array counts and spacing; at most 10000 total entities</value></data>
+  <data name="EditReselect" xml:space="preserve"><value>Select objects again</value></data>
+  <data name="EditWholePolyline" xml:space="preserve"><value>All polyline corners</value></data>
+  <data name="EditChoosePolyline" xml:space="preserve"><value>Select a polyline to preview all corners; Tab: edit sizes, click / Enter: confirm</value></data>
+  <data name="GripScale" xml:space="preserve"><value>Scale factor</value></data>
+  <data name="EditChooseAdjacentSegments" xml:space="preserve"><value>Choose two adjacent segments of the same path</value></data>
+  <data name="EditChoosePathEndpoint" xml:space="preserve"><value>Choose endpoint segments to connect different paths</value></data>
+  <data name="EditNoSharpCorners" xml:space="preserve"><value>This path has no sharp corners</value></data>
+  <data name="EditCornerTooLarge" xml:space="preserve"><value>Reduce the corner sizes to keep a valid path</value></data>
+  <data name="GripEdit" xml:space="preserve"><value>Edit shape</value></data>
+  <data name="GripEditPrompt" xml:space="preserve"><value>Move the grip or Tab to edit values; click / Enter: confirm, Esc: cancel</value></data>
 </root>

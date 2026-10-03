@@ -93,7 +93,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _resourceCache,
             _entityRenderer,
             transientRenderer,
-            _oleRenderer);
+            _oleRenderer,
+            _selectionRenderer);
         _blockReferenceRenderer = new Direct2DBlockReferenceRenderer(
             _resourceCache,
             _entityRenderer,

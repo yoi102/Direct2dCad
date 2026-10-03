@@ -145,8 +145,12 @@ public partial class CadDocumentView : IDisposable
                 var inlineBadge = cursorFields.Length > 0 && cadCanvas.IsCursorBadgeVisible;
                 var groupWidth = cursorFields.Sum(box => widths[((CadDynamicInputField)box.DataContext).Key]) +
                     Math.Max(0, cursorFields.Length - 1) * 6 + (inlineBadge ? 34 : 0);
-                var groupX = Math.Clamp(_dynamicInputPointer.X + 18, 4, Math.Max(4, cadCanvas.ActualWidth - groupWidth - 4));
-                var groupY = Math.Clamp(_dynamicInputPointer.Y + 18, 6, Math.Max(6, cadCanvas.ActualHeight - 30));
+                var desiredX = _dynamicInputPointer.X + 18;
+                var desiredY = _dynamicInputPointer.Y + 18;
+                if (desiredX + groupWidth > cadCanvas.ActualWidth - 4) desiredX = _dynamicInputPointer.X - groupWidth - 18;
+                if (desiredY + 24 > cadCanvas.ActualHeight - 4) desiredY = _dynamicInputPointer.Y - 30;
+                var groupX = Math.Clamp(desiredX, 4, Math.Max(4, cadCanvas.ActualWidth - groupWidth - 4));
+                var groupY = Math.Clamp(desiredY, 6, Math.Max(6, cadCanvas.ActualHeight - 30));
                 cursorToolBadge.SetCurrentValue(Canvas.LeftProperty, inlineBadge ? groupX : cadCanvas.CursorBadgePosition.X);
                 cursorToolBadge.SetCurrentValue(Canvas.TopProperty, inlineBadge ? groupY - 2 : cadCanvas.CursorBadgePosition.Y);
                 if (inlineBadge) groupX += 34;
@@ -168,7 +172,7 @@ public partial class CadDocumentView : IDisposable
                 {
                     var start = new Point(anchor.X, anchor.Y);
                     var direction = endpoint - start;
-                    if (positions.ContainsKey("Width") && positions.ContainsKey("Height"))
+                    if (positions.ContainsKey("Width") && positions.ContainsKey("Height") && !measuredKeys.Contains("Width"))
                     {
                         var xCorner = new Point(geometry.XCorner.X, geometry.XCorner.Y);
                         var yCorner = new Point(geometry.YCorner.X, geometry.YCorner.Y);
@@ -252,6 +256,10 @@ public partial class CadDocumentView : IDisposable
     }
     private void DynamicInput_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (_dynamicInputDocument is { IsCurveEditTool: true } editDocument)
+        {
+            if (e.Key==Key.Escape) { editDocument.Escape(); cadCanvas.Focus(); e.Handled=true; return; }
+        }
         if (_dynamicInputDocument is not { HasDynamicInput: true } document || dynamicInputSurface.Visibility != Visibility.Visible) return;
         if (e.Key == Key.Tab && Keyboard.Modifiers == ModifierKeys.Control && document.HasSnapCandidates)
         {
@@ -307,6 +315,8 @@ public partial class CadDocumentView : IDisposable
         get => (ICommand?)GetValue(SaveCommandProperty);
             set => SetValue(SaveCommandProperty, value);
     }
+
+    private void EditParameters_OnRequestCanvasFocus(object? sender, EventArgs e) => cadCanvas.Focus();
 
     public ICommand? RadialMenuActionCommand
     {

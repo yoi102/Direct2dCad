@@ -1487,20 +1487,23 @@
   <data name="RectArray" xml:space="preserve"><value>矩形阵列</value></data>
   <data name="PolarArray" xml:space="preserve"><value>环形阵列</value></data>
   <data name="EditTools" xml:space="preserve"><value>修改</value></data>
-  <data name="EditChooseSource" xml:space="preserve"><value>选择源对象</value></data>
-  <data name="EditChooseSide" xml:space="preserve"><value>输入距离，悬停一侧预览；左键提交，Enter 退出</value></data>
-  <data name="EditChooseBoundaries" xml:space="preserve"><value>选择边界；Enter 进入修剪/延伸</value></data>
-  <data name="EditChooseSegment" xml:space="preserve"><value>悬停目标段预览；左键提交，Enter 退出</value></data>
+  <data name="EditChooseSource" xml:space="preserve"><value>选择要修改的对象</value></data>
+  <data name="EditChooseSide" xml:space="preserve"><value>移动鼠标调整 D，左键创建；Tab 输入，Enter 结束</value></data>
+  <data name="EditChooseSideLocked" xml:space="preserve"><value>距离已锁定，左键创建；Ctrl+Delete 恢复跟随，Enter 结束</value></data>
+  <data name="EditKeyboardHint" xml:space="preserve"><value>Enter 下一步 / 确认 · R 重新选择 · Esc 取消</value></data>
+  <data name="EditChooseBoundaries" xml:space="preserve"><value>选择边界，Enter 下一步；再次点击取消选择</value></data>
+  <data name="EditChooseSegment" xml:space="preserve"><value>悬停目标段，红色为删除、绿色为新增；左键应用</value></data>
   <data name="EditChooseTwoLines" xml:space="preserve"><value>选择两条线及要保留的一侧</value></data>
-  <data name="EditConfirmCorner" xml:space="preserve"><value>调整尺寸；检查预览，Enter 或左键提交</value></data>
-  <data name="EditChooseChain" xml:space="preserve"><value>选择相连曲线；Enter 连接</value></data>
-  <data name="EditFirstBreak" xml:space="preserve"><value>指定第一个打断点</value></data>
-  <data name="EditSecondBreak" xml:space="preserve"><value>指定第二点删除中间段；Enter 仅在第一点打断</value></data>
-  <data name="EditChooseArray" xml:space="preserve"><value>选择对象；Enter 设置阵列</value></data>
-  <data name="EditArrayCenter" xml:space="preserve"><value>指定阵列中心</value></data>
-  <data name="EditConfirmArray" xml:space="preserve"><value>调整数量和间距；检查预览，Enter 或左键提交</value></data>
-  <data name="EditCannotApply" xml:space="preserve"><value>当前参数或对象无法完成操作，请修改后重试（详情见提示）</value></data>
-  <data name="DistanceParameter" xml:space="preserve"><value>距离/半径</value></data>
+  <data name="EditConfirmCorner" xml:space="preserve"><value>调整尺寸，左键或 Enter 确认；Esc 取消</value></data>
+  <data name="EditChooseChain" xml:space="preserve"><value>选择相连曲线，Enter 连接；再次点击取消选择</value></data>
+  <data name="EditFirstBreak" xml:space="preserve"><value>在曲线上点击第一个打断点</value></data>
+  <data name="EditSecondBreak" xml:space="preserve"><value>左键指定第二断点，Enter 在首点打断；Esc 取消</value></data>
+  <data name="EditChooseArray" xml:space="preserve"><value>选择对象，Enter 下一步；再次点击取消选择</value></data>
+  <data name="EditChooseArraySource" xml:space="preserve"><value>点击阵列对象即可预览；Esc 取消</value></data>
+  <data name="EditArrayCenter" xml:space="preserve"><value>移动鼠标指定中心，左键完成；Tab 调整参数，Esc 取消</value></data>
+  <data name="EditConfirmArray" xml:space="preserve"><value>Tab 调整参数，左键或 Enter 确认；Esc 取消</value></data>
+  <data name="EditCannotApply" xml:space="preserve"><value>此处无法应用，请换个位置或调整参数</value></data>
+  <data name="DistanceParameter" xml:space="preserve"><value>距离</value></data>
   <data name="SecondDistanceParameter" xml:space="preserve"><value>第二距离</value></data>
   <data name="ArrayRows" xml:space="preserve"><value>行数</value></data>
   <data name="ArrayColumns" xml:space="preserve"><value>列数</value></data>
@@ -1646,4 +1649,25 @@
   <data name="OpenContainingFolder" xml:space="preserve"><value>打开所在文件夹</value></data>
   <data name="OpenSourceFolder" xml:space="preserve"><value>打开原图所在文件夹</value></data>
   <data name="ActivateDocument" xml:space="preserve"><value>切换到此图纸</value></data>
+  <data name="EditUnsupportedObject" xml:space="preserve"><value>此对象不支持当前工具，请选择兼容曲线</value></data>
+  <data name="EditSingleBreak" xml:space="preserve"><value>在此打断</value></data>
+  <data name="EditJoinDisconnected" xml:space="preserve"><value>曲线须首尾相连且外观一致，才能连接</value></data>
+  <data name="EditArrayPreviewLimited" xml:space="preserve"><value>预览显示前 256 个位置，确认后生成完整阵列</value></data>
+  <data name="EditNoIntersection" xml:space="preserve"><value>没有可用交点，请换个边界或位置</value></data>
+  <data name="EditChooseSecondCurve" xml:space="preserve"><value>悬停另一条曲线或多段线相邻边预览，点击选择</value></data>
+  <data name="EditNext" xml:space="preserve"><value>下一步</value></data>
+  <data name="EditChooseFirstCurve" xml:space="preserve"><value>选择第一条曲线，点击要保留的一侧</value></data>
+  <data name="EditReduceDistance" xml:space="preserve"><value>请减小距离，避免偏移结果退化</value></data>
+  <data name="EditInvalidParameters" xml:space="preserve"><value>请输入有效的正数尺寸</value></data>
+  <data name="EditInvalidArrayParameters" xml:space="preserve"><value>请输入有效数量和间距，阵列总实体数不能超过 10000</value></data>
+  <data name="EditReselect" xml:space="preserve"><value>重新选择对象</value></data>
+  <data name="EditWholePolyline" xml:space="preserve"><value>整条多段线的拐角</value></data>
+  <data name="EditChoosePolyline" xml:space="preserve"><value>选择多段线预览全部拐角；Tab 调整尺寸，左键 / Enter 确认</value></data>
+  <data name="GripScale" xml:space="preserve"><value>缩放系数</value></data>
+  <data name="EditChooseAdjacentSegments" xml:space="preserve"><value>请选择同一多段线的两条相邻边</value></data>
+  <data name="EditChoosePathEndpoint" xml:space="preserve"><value>连接不同路径时，请选择它们的端部线段</value></data>
+  <data name="EditNoSharpCorners" xml:space="preserve"><value>这条路径没有可处理的尖角</value></data>
+  <data name="EditCornerTooLarge" xml:space="preserve"><value>请减小圆角或倒角尺寸，避免重叠或超出线段</value></data>
+  <data name="GripEdit" xml:space="preserve"><value>形状编辑</value></data>
+  <data name="GripEditPrompt" xml:space="preserve"><value>移动控制点或按 Tab 修改数值；左键 / Enter 确认，Esc 取消</value></data>
 </root>

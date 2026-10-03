@@ -131,7 +131,8 @@ public sealed record CadTransientShapeText(
 public sealed record CadTransientEntityReference(
     EntityId EntityId,
     CadVectorD Offset,
-    CadTransientStyle Style)
+    CadTransientStyle Style,
+    bool UseSourceAppearance = true)
     : CadTransientItem(Style);
 
 public sealed record CadTransientBlockReference(

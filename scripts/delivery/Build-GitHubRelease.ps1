@@ -1,6 +1,6 @@
 param(
-    [string]$OutputDirectory = 'TestResults/github-release-0.0.0.2',
-    [string]$ReleaseVersion = '0.0.0.2'
+    [string]$OutputDirectory = 'TestResults/github-release-0.1.3',
+    [string]$ReleaseVersion = '0.1.3'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +13,7 @@ if (Test-Path -LiteralPath $releaseRoot) {
     throw "Release output already exists. Choose a fresh OutputDirectory: $releaseRoot"
 }
 
-$wixVersion = '1.0.2' # Keep MSI upgrades ahead of the existing 1.0.0 package; ARPVERSION displays the four-part release tag.
+$wixVersion = '1.0.3' # Keep the MSI upgrade version monotonic; ARPVERSION displays the app release version.
 $publishDirectory = Join-Path $releaseRoot 'publish'
 $installerDirectory = Join-Path $releaseRoot 'installer'
 $distDirectory = Join-Path $releaseRoot 'dist'
@@ -47,7 +47,7 @@ if (-not $runtimeConfig.runtimeOptions.includedFrameworks) {
 
 dotnet build (Join-Path $repoRoot 'installer/Direct2dCad.Msi/Direct2dCad.Msi.wixproj') `
     -c Release -p:RestoreLockedMode=false `
-    "-p:Version=$wixVersion" "-p:PublishDirectory=$publishDirectory" `
+    "-p:Version=$wixVersion" "-p:ReleaseVersion=$ReleaseVersion" "-p:PublishDirectory=$publishDirectory" `
     "-p:ReleaseArtifactsDirectory=$installerDirectory" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'WiX installer build failed.' }
 
@@ -76,7 +76,8 @@ $releaseFiles = foreach ($file in @(Get-Item -LiteralPath $releaseMsi,$portableZ
 }
 $manifest = [ordered]@{
     releaseVersion = $ReleaseVersion
-    installerVersion = $wixVersion
+    installerProductVersion = $wixVersion
+    displayVersion = $ReleaseVersion
     runtime = 'win-x64 self-contained; .NET 10 included'
     icon = 'Direct2dCad.ico; embedded in application and registered in MSI'
     shortcuts = @('Start menu','Desktop')
@@ -87,5 +88,8 @@ $manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $relea
 
 Write-Output "Release files: $distDirectory"
 $releaseFiles | ConvertTo-Json -Depth 4
-& (Join-Path $PSScriptRoot 'Validate-GitHubRelease.ps1') -ReleaseDirectory $releaseRoot
+& (Join-Path $PSScriptRoot 'Validate-GitHubRelease.ps1') `
+    -ReleaseDirectory $releaseRoot `
+    -ExpectedReleaseVersion $ReleaseVersion `
+    -ExpectedInstallerVersion $wixVersion
 if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw 'Release package self-validation failed.' }

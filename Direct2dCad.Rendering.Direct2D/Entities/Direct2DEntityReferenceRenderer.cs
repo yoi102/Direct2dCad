@@ -3,6 +3,8 @@ using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Ole;
+using Direct2dCad.Rendering.Direct2D.Overlays;
+using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Direct2D.Transient;
 using Direct2dCad.Rendering.Transient;
@@ -14,7 +16,8 @@ internal sealed class Direct2DEntityReferenceRenderer(
     Direct2DResourceCache resourceCache,
     Direct2DEntityRenderer entityRenderer,
     Direct2DTransientRenderer transientRenderer,
-    Direct2DOleRenderer oleRenderer)
+    Direct2DOleRenderer oleRenderer,
+    Direct2DSelectionRenderer selectionRenderer)
 {
     public void Draw(
         ID2D1DeviceContext context,
@@ -25,6 +28,15 @@ internal sealed class Direct2DEntityReferenceRenderer(
     {
         if (!document.TryGetEntity(reference.EntityId, out var entity) || entity is null || entity.IsErased)
             return;
+
+        if (!reference.UseSourceAppearance)
+        {
+            var style=new CadHandleStyle(reference.Style.StrokeColor,reference.Style.FillColor ?? CadColor.Transparent,
+                Size:0,StrokeWidth:reference.Style.StrokeWidth,KeepSizeScreenConstant:reference.Style.KeepStrokeWidthScreenConstant);
+            selectionRenderer.DrawInlineSelectionReference(context,document,viewport,
+                new CadSelectionEntityReference(entity.Id,entity.Bounds,reference.Offset,style),options,cullToViewport:false);
+            return;
+        }
 
         if (TryDrawTranslated(context, document, entity, viewport, reference, options))
             return;

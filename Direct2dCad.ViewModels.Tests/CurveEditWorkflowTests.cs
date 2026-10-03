@@ -88,9 +88,9 @@ public sealed class CurveEditWorkflowTests
     public void ArrayPreviewCancelsOrCommitsAsOneHistoryUnit(CadCanvasToolMode mode)
     {
         using var c=new CadToolboxTestContext();var vm=c.Document;vm.SetViewportSize(800,600);var line=vm.CadEditor.AddLine(new(10,0),new(20,0));vm.SelectEntities([line]);
-        var history=vm.CadEditor.CreateDocumentHistorySnapshot();vm.SetToolMode(mode);if(mode==CadCanvasToolMode.PolarArray) Click(vm,default);
+        var history=vm.CadEditor.CreateDocumentHistorySnapshot();vm.SetToolMode(mode);
         vm.PointerMove(new(400,300));Assert.True(vm.CadEditor.DocumentHistoryEquals(history));vm.Escape();Assert.Single(vm.CadEditor.Document.Entities);
-        vm.SelectEntities([line]);vm.SetToolMode(mode);if(mode==CadCanvasToolMode.PolarArray) Click(vm,default);Click(vm,new(40,40));
+        vm.SelectEntities([line]);vm.SetToolMode(mode);Click(vm,new(40,40));
         Assert.Equal(6,vm.CadEditor.Document.Entities.Values.Count(e=>!e.IsErased));vm.Undo();Assert.Single(vm.CadEditor.Document.Entities.Values,e=>!e.IsErased);vm.Redo();Assert.Equal(6,vm.CadEditor.Document.Entities.Values.Count(e=>!e.IsErased));
     }
     [Fact]public void InvalidOffsetRetainsParametersAndDoesNotAddHistory()

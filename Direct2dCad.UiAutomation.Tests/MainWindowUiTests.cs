@@ -843,9 +843,10 @@ public sealed partial class MainWindowUiTests : IDisposable
         polarAngle.Focus(); Keyboard.Type(VirtualKeyShort.RETURN);
         var perpendicular = fixture.WaitForElement("PerpendicularSnapToggle", includePopups: true).AsToggleButton();
         var tangent = fixture.WaitForElement("TangentSnapToggle", includePopups: true).AsToggleButton();
-        perpendicular.Click(); tangent.Click();
-        Assert.Equal(ToggleState.On, perpendicular.ToggleState);
-        Assert.Equal(ToggleState.On, tangent.ToggleState);
+        perpendicular.Click();
+        fixture.WaitUntil(() => perpendicular.ToggleState == ToggleState.On, "Perpendicular snap did not turn on.");
+        tangent.Click();
+        fixture.WaitUntil(() => tangent.ToggleState == ToggleState.On, "Tangent snap did not turn on.");
         Assert.True(fixture.WaitForElement("BackgroundColorPicker", includePopups: true).IsEnabled);
         CaptureScreenshot("status-view-settings-900x700.png");
         var originMarker = fixture.WaitForElement("OriginMarkerSelector", includePopups: true).AsComboBox();
@@ -875,11 +876,24 @@ public sealed partial class MainWindowUiTests : IDisposable
         EnterDynamicFields(("Length", "38.75"), ("Angle", "0"));
         var input=GetOrOpenCommandLineInput();var output=fixture.WaitForElement("CommandLineOutput");
         ExecuteCommandAndWaitForOutput(input,output,"STATUS","Entities: 1");ExecuteCommandAndWaitForOutput(input,output,"SELECTALL","Selected 1 entities.");
+        // Docking the recovery pane preserves the original view; fit the line into the reduced canvas before editing it.
+        fixture.WaitForElement("FitCanvasButton").AsButton().Invoke();
         fixture.WaitForElement("EditRibbonTab").AsTabItem().Select();fixture.WaitForElement("OffsetToolButton").AsToggleButton().Click();
         fixture.WaitUntil(()=>fixture.WaitForElement("CurrentToolStatusText").Name == "Offset","Offset mode did not appear.");
         CaptureScreenshot("edit-ribbon-active-900x700.png", ribbonOnly: true);
-        ShowDynamicInputOnCanvas(); EnterDynamicCoordinates("20", "20");
-        var canvas=fixture.WaitForElement("CadCanvas");canvas.Focus();Keyboard.Type(VirtualKeyShort.ESC);
+        var canvas=fixture.WaitForElement("CadCanvas"); var canvasBounds=canvas.BoundingRectangle;
+        Mouse.MoveTo(new Point(canvasBounds.Left+canvasBounds.Width/2,canvasBounds.Top+canvasBounds.Height*2/3));
+        canvas.Focus();
+        fixture.WaitForElement("EditDistanceInput").AsTextBox().Text="10";
+        var offsetPoint=new Point(canvasBounds.Right-30,canvasBounds.Bottom-30);
+        Mouse.MoveTo(offsetPoint);
+        CaptureScreenshot("edit-offset-narrow-pointer-diagnostic.png");
+        fixture.WaitUntil(()=>CountAllEditPreviewPixels(canvas)>8,"The narrow offset preview did not appear before clicking.");
+        CaptureScreenshot("edit-offset-narrow-before-click.png");
+        Mouse.Click(offsetPoint);
+        CaptureScreenshot("edit-offset-narrow-after-click.png");
+        ExecuteCommandAndWaitForOutput(input,output,"STATUS","Entities: 2");
+        canvas.Focus();Keyboard.Type(VirtualKeyShort.ESC);
         ExecuteCommandAndWaitForOutput(input,output,"STATUS","Entities: 2");ExecuteCommandAndWaitForOutput(input,output,"UNDO","Undo completed.");ExecuteCommandAndWaitForOutput(input,output,"STATUS","Entities: 1");
         fixture.EnsureApplicationIsRunning();
     }
@@ -1350,12 +1364,16 @@ public sealed partial class MainWindowUiTests : IDisposable
     private void CreateNewDocument()
     {
         fixture.MainWindow.Focus();
-        fixture.WaitForElement("FileRibbonTab").AsTabItem().Select();
+        var tab=fixture.WaitForElement("FileRibbonTab").AsTabItem();
+        tab.Select();
+        fixture.WaitUntil(()=>tab.IsSelected,"The file ribbon did not become active.");
         var button = fixture.WaitForElement("NewDocumentButton").AsButton();
         fixture.WaitUntil(
             () => button.IsEnabled && !button.IsOffscreen,
             "The new-document button did not become interactive.");
-        button.Invoke();
+        button.Focus();
+        fixture.WaitUntil(()=>button.Properties.HasKeyboardFocus.ValueOrDefault,"The new-document button did not receive focus.");
+        Keyboard.Type(VirtualKeyShort.DOWN);
         fixture.WaitForElement("NewBlankDocumentMenuItem", includePopups: true).AsMenuItem().Invoke();
         WaitForRibbonMenuClosed("NewDocumentMenu");
     }

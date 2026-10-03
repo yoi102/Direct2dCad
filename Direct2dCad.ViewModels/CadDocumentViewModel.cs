@@ -77,6 +77,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private LayerId _drawingLayerId = LayerId.Default;
     private LayerId _pasteTargetLayerId = LayerId.Default;
     private CadPointD? _currentMousePoint;
+    private CadPointD? _previewMouseWorld;
     private CadCommandLinePoint? _lastCommandLineInputPoint;
     private readonly CadLayoutViewportPanController _layoutPan = new();
     private bool _viewportInteractionRequiresHandleSceneUpdate;
@@ -502,29 +503,40 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         }
         ClearBooleanInteraction();
         var modeChanged = CadCanvasToolMode != toolMode;
-        _dynamicInputStep = null;
-        BeginDimension(toolMode);
-        BeginEditInteraction(toolMode);
-        if (modeChanged && toolMode != CadCanvasToolMode.Select)
-            CadEditor.Selection.Clear();
-        if (toolMode != CadCanvasToolMode.InsertBlock)
-            _insertBlockDefinitionId = null;
-        if (toolMode != CadCanvasToolMode.LayoutViewport)
-            _layoutViewportCreation.Clear();
-        CadCanvasToolMode = toolMode;
-        _objectSnap.Clear();
-        StepInputError = "";
-        if (modeChanged)
-            RefreshDrawingEntityName();
-        _lastCommandLineInputPoint = null;
-        ClearInteractionState(clearClipboard: false);
-        RaiseInteractionStateChanged(clearBlockDefinitionSelection: modeChanged);
-        if (modeChanged)
-            PublishInteractionActivity($"Tool mode: {toolMode}");
-        return new CadCanvasInteractionResult(
-            true,
-            ReleaseMouseCapture: true,
-            Cursor: CanvasCursor);
+        var suppressPrompt = _suppressStepPrompt;
+        _suppressStepPrompt = true;
+        try
+        {
+            _dynamicInputStep = null;
+            BeginDimension(toolMode);
+            BeginEditInteraction(toolMode);
+            if (modeChanged && toolMode != CadCanvasToolMode.Select)
+                CadEditor.Selection.Clear();
+            if (toolMode != CadCanvasToolMode.InsertBlock)
+                _insertBlockDefinitionId = null;
+            if (toolMode != CadCanvasToolMode.LayoutViewport)
+                _layoutViewportCreation.Clear();
+            CadCanvasToolMode = toolMode;
+            _objectSnap.Clear();
+            StepInputError = "";
+            if (modeChanged)
+                RefreshDrawingEntityName();
+            _lastCommandLineInputPoint = null;
+            ClearInteractionState(clearClipboard: false);
+            if (IsCurveEditTool) CadEditor.Selection.Replace(_editTargets);
+            RaiseInteractionStateChanged(clearBlockDefinitionSelection: modeChanged);
+            if (modeChanged)
+                PublishInteractionActivity($"Tool mode: {toolMode}");
+            return new CadCanvasInteractionResult(
+                true,
+                ReleaseMouseCapture: true,
+                Cursor: CanvasCursor);
+        }
+        finally
+        {
+            _suppressStepPrompt = suppressPrompt;
+            PublishCurrentStepPrompt();
+        }
     }
 
     public CadCanvasInteractionResult PointerDown(
@@ -611,7 +623,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         if (_gripDrag.IsActive)
         {
-            _gripDrag.UpdatePointer(_screenToSnappedWorld, screen);
+            UpdateGripDynamicInputPointer(_screenToSnappedWorld(screen));
             if (requiresFullRender)
             {
                 if (!RenderPanInteractionPreview())
@@ -641,6 +653,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (_currentMousePoint is null)
             return;
 
+        _previewMouseWorld = IsCurveEditTool ? ScreenToWorld(_currentMousePoint.Value) : _screenToSnappedWorld(_currentMousePoint.Value);
         _currentMousePoint = null;
         RequestOverlayRender();
     }
@@ -1396,6 +1409,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult CompleteCurrentDrawing()
     {
+        if (_gripDrag.IsActive)
+        {
+            if(!SubmitDynamicInput()) { StepInputError=DynamicInputError; return CadCanvasInteractionResult.NotHandled; }
+            StepInputError="";
+            return new CadCanvasInteractionResult(true, ReleaseMouseCapture: !_gripDrag.IsActive, Cursor: CanvasCursor);
+        }
         if (IsDimensionTool)
         {
             SetToolMode(CadCanvasToolMode.Select);
@@ -1671,7 +1690,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         // Entity picking uses the raw pointer, as does the edit preview. Only
         // geometric point steps opt into snapping inside the edit workflow.
         var world = ScreenToWorld(screen, snapToGrid: !IsCurveEditTool && !IsBooleanTool);
-        if (HasDynamicInput && HasLockedDynamicInput)
+        if (HasDynamicInput && HasLockedDynamicInput && !IsCurveEditTool)
         {
             UpdateDynamicInputPointer(world);
             SubmitDynamicInput();
@@ -1696,7 +1715,6 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         {
             if (!HandleEditClick(world,explicitInput)) return false;
             _lastCommandLineInputPoint=new CadCommandLinePoint(world.X,world.Y);
-            ClearDynamicInputLocks();
             return true;
         }
         if (!EnsureLayerAcceptsEntities(DrawingLayerId))
@@ -1774,6 +1792,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _selectionDrag.Clear();
         _selectionCycle.Clear();
         _gripDrag.Clear();
+        _previewMouseWorld = null;
+        OnPropertyChanged(nameof(IsGripEditing));
         _paste.Clear(clearClipboard);
         OnPropertyChanged(nameof(IsPastePreviewActive));
         OnPropertyChanged(nameof(ActivePasteSnapshot));
@@ -1887,23 +1907,27 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _transientItemBuffer.Clear();
         var items = _transientItemBuffer;
 
-        if (_currentMousePoint is { } || HasDynamicInput && (HasLockedDynamicInput || _isDynamicInputInteracting))
+        if (_currentMousePoint is { } || _previewMouseWorld is not null &&
+            (HasActiveDrawingTool || _gripDrag.IsActive || _paste.IsPreviewActive) ||
+            HasDynamicInput && (HasLockedDynamicInput || _isDynamicInputInteracting))
         {
-            var mousePoint = _currentMousePoint ?? WorldToScreen(_dynamicInputPointer);
-            var rawMouseWorld = _currentMousePoint is not null ? ScreenToWorld(mousePoint) : _dynamicInputPointer;
+            var fallbackWorld = _previewMouseWorld ?? _dynamicInputPointer;
+            var mousePoint = _currentMousePoint ?? WorldToScreen(fallbackWorld);
+            var rawMouseWorld = _currentMousePoint is not null ? ScreenToWorld(mousePoint) : fallbackWorld;
             var snappedMouseWorld = _currentMousePoint is not null ? SnapWorld(rawMouseWorld) : rawMouseWorld;
-            UpdateDynamicInputPointer(IsCurveEditTool ? rawMouseWorld : snappedMouseWorld);
+            if (_gripDrag.IsActive) UpdateGripDynamicInputPointer(snappedMouseWorld);
+            else UpdateDynamicInputPointer(IsCurveEditTool ? rawMouseWorld : snappedMouseWorld);
             var inputWorld = ResolveDynamicInputPreview(IsCurveEditTool ? rawMouseWorld : snappedMouseWorld);
             AddPastePreview(items, snappedMouseWorld);
             AddSelectionWindowPreview(items, mousePoint);
             AddGripDragPreview(items);
             AddBlockInsertionPreview(items, snappedMouseWorld);
             AddDrawingPreview(items, inputWorld);
-            AddEditPreview(items, inputWorld);
             AddDimensionPreview(items, inputWorld);
             if (_currentMousePoint is not null) AddSnapMarker(items, snappedMouseWorld);
             AddLayoutViewportCreationPreview(items, mousePoint);
         }
+        AddEditPreview(items, _dynamicInputPointer);
         AddBooleanPreview(items);
         AddDimensionAnchorMarkers(items);
         return items;
@@ -2103,6 +2127,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
         _selectionDrag.Clear();
         _paste.Clear(clearClipboard: false);
+        _dynamicInputStep = null;
+        _dynamicInputPointer = _gripDrag.ActiveDrag!.DraggedGripPosition;
+        NotifyDrawingUx();
+        OnPropertyChanged(nameof(IsGripEditing));
         RequestOverlayRender(updateHandleScene: true);
         return true;
     }
@@ -2120,16 +2148,25 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadGripDragPreviewBuilder(CadEditor, CreatePreviewStyleService(), CreateTextMeasurementService());
     }
 
-    private void CommitGripDrag(CadPointD screen)
+    private void CommitGripDrag(CadPointD screen, bool preserveNumericPoint = false)
     {
+        if (!preserveNumericPoint)
+        {
+            UpdateGripDynamicInputPointer(_screenToSnappedWorld(screen));
+            if (!TryGetDynamicInputPoint(out _)) { DynamicInputError=CadUiText.Get("InvalidDynamicInput"); return; }
+        }
+        var numericPoint = _gripDrag.ActiveDrag!.CurrentPointerWorld;
         if (!_gripDrag.Commit(
                 CadEditor,
                 CreateGripDragCommitter(),
-                _screenToSnappedWorld,
+                _ => numericPoint,
                 screen))
         {
             RequestOverlayRender(updateHandleScene: true);
         }
+        _dynamicInputStep = null;
+        NotifyDrawingUx();
+        OnPropertyChanged(nameof(IsGripEditing));
     }
 
     private CadCanvasInteractionResult CommitActiveGripDrag(CadPointD screen)
@@ -2137,13 +2174,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CommitGripDrag(screen);
         return new CadCanvasInteractionResult(
             true,
-            ReleaseMouseCapture: true,
+            ReleaseMouseCapture: !_gripDrag.IsActive,
             Cursor: CanvasCursor);
     }
 
     private CadCanvasInteractionResult KeepActiveGripDragAfterRelease(CadPointD screen)
     {
-        _gripDrag.UpdatePointer(_screenToSnappedWorld, screen);
+        UpdateGripDynamicInputPointer(_screenToSnappedWorld(screen));
         RequestOverlayRender(updateHandleScene: true);
         return new CadCanvasInteractionResult(
             true,

@@ -1,0 +1,702 @@
+{
+  "date": "2026-10-04",
+  "scope": "Nine modification tools with real previews, compact cursor parameters and visible selection/confirmation stages",
+  "environment": {
+    "os": "Windows x64",
+    "sdk": "10.0.401",
+    "branch": "master",
+    "baseCommit": "7eaa99c92784e24168c9adf3495436c3403a8a71",
+    "state": "local uncommitted workspace",
+    "settings": "isolated UI automation fixture",
+    "uiLanguage": "English; Chinese and Japanese resource keys also checked"
+  },
+  "releaseBuild": {
+    "outcome": "Passed",
+    "warnings": 0,
+    "errors": 0,
+    "command": "dotnet build Direct2dCad.UiAutomation.Tests/Direct2dCad.UiAutomation.Tests.csproj -c Release --no-restore -v quiet"
+  },
+  "models": {
+    "trx": "TestResults/edit-cursor/model-final/yoiri_YOIRI_2026-10-04_01_47_33_net10.0.trx",
+    "sha256": "d2e53b6c409136340f9827d2a86b46baef8210c8d2afdcbcac4957027decad8c",
+    "total": 73,
+    "passed": 73,
+    "failed": 0,
+    "start": "2026-10-04T01:47:31.7518263+09:00",
+    "finish": "2026-10-04T01:47:36.5763321+09:00",
+    "results": [
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.InvalidOffsetRetainsParametersAndDoesNotAddHistory",
+        "outcome": "Passed",
+        "duration": "00:00:00.1187996"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.InvalidArrayCursorTextCannotCommitAndCanBeCorrectedWithoutLosingOtherFields(text: \"2147483648\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.0588048"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.ArrayParametersChangePreviewAndPolarCenterCanBePreviewedBeforePicking(mode: PolarArray)",
+        "outcome": "Passed",
+        "duration": "00:00:00.3792971"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.LargeArraysExplainThePreviewLimitInsteadOfSilentlyShowingAFewCopies",
+        "outcome": "Passed",
+        "duration": "00:00:00.2103738"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.CornerPreviewsOnHoverBeforeSecondPickAndCanBeCancelledWithoutChangingHistory(mode: Chamfer)",
+        "outcome": "Passed",
+        "duration": "00:00:00.2141833"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.BothEllipseSemiaxesAreEditableAndPreviewDoesNotAlterTheConfirmedConstruction(mode: EllipseCenter, vertical: False, expectedCenterX: 0)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1326208"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.CenterArcChordLengthRejectsImpossibleLengthsAndCreatesTheExactChord(mode: ArcStartCenterLength)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0723804"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.PolarCursorParametersPreviewImmediatelyAndDoNotChooseTheCenterOrCommitOnEnter",
+        "outcome": "Passed",
+        "duration": "00:00:00.0684280"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.CenterArcsAcceptAnExactRadiusThenAnExactSweepAngle(mode: ArcCenterStartAngle)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1217543"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.BothEllipseSemiaxesAreEditableAndPreviewDoesNotAlterTheConfirmedConstruction(mode: EllipseAxisEnd, vertical: False, expectedCenterX: 10)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1019127"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.ArrayPreviewCancelsOrCommitsAsOneHistoryUnit(mode: PolarArray)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1336794"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.CornerNeedsOneConfirmationAfterTwoObjectPicks(mode: Chamfer)",
+        "outcome": "Passed",
+        "duration": "00:00:00.5037083"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.InvalidSweepPreservesTheStepAndHistory(invalid: \"NaN\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1430047"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.PickingUsesRawPointEvenWhenGridSnappingIsEnabled",
+        "outcome": "Passed",
+        "duration": "00:00:00.1224125"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.EllipseAxesUseDocumentUnitsAndNumericDisplaysAvoidScientificNotation",
+        "outcome": "Passed",
+        "duration": "00:00:00.5037104"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.ArrayParametersChangePreviewAndPolarCenterCanBePreviewedBeforePicking(mode: RectArray)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1269830"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.ReselectKeepsParametersAndCannotDiscardAnInvalidEditorValue",
+        "outcome": "Passed",
+        "duration": "00:00:00.3556409"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.CenterArcsAcceptAnExactRadiusThenAnExactSweepAngle(mode: ArcCenterStartEnd)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0945590"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.CornerNeedsOneConfirmationAfterTwoObjectPicks(mode: Fillet)",
+        "outcome": "Passed",
+        "duration": "00:00:00.3176028"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.DirectionAndContinueArcInputsControlTangencyAndSize",
+        "outcome": "Passed",
+        "duration": "00:00:00.2922998"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: Trim)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1361588"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: Join)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0959421"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.InvalidSizeKeepsStepGeometryAndHistoryAndCanBeCorrected(invalid: \"0\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1119943"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.ThreePointCircleRadiusControlsTheActualPreviewAndEntityWithoutMovingTheConfirmedPoints",
+        "outcome": "Passed",
+        "duration": "00:00:00.0747992"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.CenterArcsAcceptAnExactRadiusThenAnExactSweepAngle(mode: ArcStartCenterAngle)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0895688"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.BrokenPiecesRemainIndividuallySelectableAfterWheelZoomAndHistory(removeGap: False)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1023959"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.ArrayPreviewCancelsOrCommitsAsOneHistoryUnit(mode: RectArray)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1303780"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.OffsetCursorDistanceCanCommitByMouseAndReselectKeepsTheTypedValue",
+        "outcome": "Passed",
+        "duration": "00:00:00.5052034"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.BoundarySelectionCanAdvanceWithAVisibleActionAndPreviewTheChosenSegment(mode: Extend)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0968279"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: Fillet)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1270451"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.CenterArcChordLengthRejectsImpossibleLengthsAndCreatesTheExactChord(mode: ArcCenterStartLength)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0766494"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.JoinPreviewsTheResultAndAllowsPickedCurvesToBeDeselected",
+        "outcome": "Passed",
+        "duration": "00:00:00.2225929"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.OffsetPreviewIsPureAndEscapePreservesEachCommittedEdit",
+        "outcome": "Passed",
+        "duration": "00:00:00.1547978"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: Offset)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1212774"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.CoordinateInputFollowsPointerKeepsTypedAxisAndCommitsExactPointWithoutSnappingAgain",
+        "outcome": "Passed",
+        "duration": "00:00:00.1025285"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.UnitConversionCancelAndToolChangesKeepInputsWithinTheirDocument",
+        "outcome": "Passed",
+        "duration": "00:00:00.0721458"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.InvalidArrayCursorTextCannotCommitAndCanBeCorrectedWithoutLosingOtherFields(text: \"Infinity\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.0712832"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.ExplicitBreakPointsRemainExactDespiteGridAndOrtho",
+        "outcome": "Passed",
+        "duration": "00:00:00.1099484"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: PolarArray)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1649542"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.CircleSizeChangesPreviewAndMouseClickUsesTheSameTypedSize(mode: CircleCenterDiameter, key: \"Diameter\", size: 22, radius: 11)",
+        "outcome": "Passed",
+        "duration": "00:00:00.2920936"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.ThreePointArcRadiusAndAngleMustAlsoPassThroughTheConfirmedSecondPoint",
+        "outcome": "Passed",
+        "duration": "00:00:00.0713429"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.RectangleUsesTypedDimensionsAndPointerQuadrant",
+        "outcome": "Passed",
+        "duration": "00:00:00.0849931"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.CornerPreviewsOnHoverBeforeSecondPickAndCanBeCancelledWithoutChangingHistory(mode: Fillet)",
+        "outcome": "Passed",
+        "duration": "00:00:00.2122684"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.InvalidSizeKeepsStepGeometryAndHistoryAndCanBeCorrected(invalid: \"\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1242950"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.InvalidSizeKeepsStepGeometryAndHistoryAndCanBeCorrected(invalid: \"NaN\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1282502"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.BreakKeepsItsFirstMarkerAndPreviewsRetainedPiecesBeforeConfirmation",
+        "outcome": "Passed",
+        "duration": "00:00:00.0716257"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.InvalidSweepPreservesTheStepAndHistory(invalid: \"-1\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1849138"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: RectArray)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1284314"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.InvalidEditorTextAndInvalidArrayValuesCannotCommitOrLeaveTheStep",
+        "outcome": "Passed",
+        "duration": "00:00:00.0746778"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: Break)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1048624"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.InvalidSizeKeepsStepGeometryAndHistoryAndCanBeCorrected(invalid: \"-\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1676593"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.InvalidSweepPreservesTheStepAndHistory(invalid: \"0\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1296814"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.InvalidSizeKeepsStepGeometryAndHistoryAndCanBeCorrected(invalid: \"-1\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.0922195"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.EllipseArcKeepsBothAxesEditableAtTheStartAndSweepStepsAndCommitsAllTypedValues",
+        "outcome": "Passed",
+        "duration": "00:00:00.0834657"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.BothEllipseSemiaxesAreEditableAndPreviewDoesNotAlterTheConfirmedConstruction(mode: EllipseCenter, vertical: True, expectedCenterX: 0)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1469635"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.OffsetPreviewRemainsWhenPointerLeavesCanvasAndChangingDistanceChangesActualGeometry",
+        "outcome": "Passed",
+        "duration": "00:00:00.2117762"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.DynamicScreenGeometryUsesTheConstrainedRectangleCornersWithoutChangingHistory",
+        "outcome": "Passed",
+        "duration": "00:00:00.1422497"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.InvalidSizeKeepsStepGeometryAndHistoryAndCanBeCorrected(invalid: \"abc\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1271866"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.InvalidArrayCursorTextCannotCommitAndCanBeCorrectedWithoutLosingOtherFields(text: \"2.5\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.0745037"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.CircleSizeChangesPreviewAndMouseClickUsesTheSameTypedSize(mode: CircleCenterRadius, key: \"Radius\", size: 22, radius: 22)",
+        "outcome": "Passed",
+        "duration": "00:00:00.5036973"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.UneditedFieldsCommitTheFullPrecisionPointerAndAngleCanBeLockedAlone",
+        "outcome": "Passed",
+        "duration": "00:00:00.1258883"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.InvalidSizeKeepsStepGeometryAndHistoryAndCanBeCorrected(invalid: \"Infinity\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1122782"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveEditWorkflowTests.BrokenPiecesRemainIndividuallySelectableAfterWheelZoomAndHistory(removeGap: True)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1122150"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.BoundarySelectionCanAdvanceWithAVisibleActionAndPreviewTheChosenSegment(mode: Trim)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0951461"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.InvalidArrayCursorTextCannotCommitAndCanBeCorrectedWithoutLosingOtherFields(text: \"bad\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.0743968"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.StartEndArcAngleSupportsMajorArcsAndRadiusRejectsValuesBelowHalfTheChord",
+        "outcome": "Passed",
+        "duration": "00:00:00.0759638"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.InvalidSweepPreservesTheStepAndHistory(invalid: \"360\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.1200634"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.TwoPointDiameterInputUsesTheFixedEndpointAndItsOwnMeasurementLine",
+        "outcome": "Passed",
+        "duration": "00:00:00.0659717"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: Extend)",
+        "outcome": "Passed",
+        "duration": "00:00:00.1293841"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.InvalidSweepPreservesTheStepAndHistory(invalid: \"1e309\")",
+        "outcome": "Passed",
+        "duration": "00:00:00.0956724"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.CurveDynamicInputTests.CenterArcsAcceptAnExactRadiusThenAnExactSweepAngle(mode: ArcStartCenterEnd)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0895026"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.DynamicInputTests.AnnotationDynamicCoordinatesRetainConfirmedMarkersAndDoNotCommitDuringTyping",
+        "outcome": "Passed",
+        "duration": "00:00:00.1128639"
+      },
+      {
+        "name": "Direct2dCad.ViewModels.Tests.EditCanvasInteractionTests.EditToolsKeepPreselectionAndOnlyShowApplicableCursorParameters(mode: Chamfer)",
+        "outcome": "Passed",
+        "duration": "00:00:00.0813352"
+      }
+    ]
+  },
+  "ui": {
+    "distinctCases": 10,
+    "latestOutcomePerCase": "Passed",
+    "singleRun": false,
+    "mainRun": {
+      "trx": "TestResults/edit-cursor/ui-final/yoiri_YOIRI_2026-10-04_01_51_41_net10.0.trx",
+      "sha256": "cce2a8ebf6a87907195c09a40aff96dc3d5e34c1bf58d627a46fbc40e928c2ff",
+      "total": 10,
+      "passed": 9,
+      "failed": 1,
+      "start": "2026-10-04T01:51:34.4702664+09:00",
+      "finish": "2026-10-04T01:53:23.7050436+09:00",
+      "results": [
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ThreePointCircleRadiusOverlayCanBeClickedAndConfirmedFromTheCanvas",
+          "outcome": "Passed",
+          "duration": "00:00:08.3302240"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.OffsetCursorInputRefreshesPreviewWhileEditingAndBlocksInvalidText",
+          "outcome": "Passed",
+          "duration": "00:00:08.7491589"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.EllipseArcAxesAndSweepHavePrefixesAndSupportTabAndMouseEditingAtTheirGeometry",
+          "outcome": "Passed",
+          "duration": "00:00:07.8686743"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ArrayCursorFieldsStayCompactInANarrowCanvasAndCommitOnlyCorrectedParameters",
+          "outcome": "Passed",
+          "duration": "00:00:09.0995818"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CornerToolsPreviewTheHoveredSecondCurveAndKeepParametersOnCanvas",
+          "outcome": "Passed",
+          "duration": "00:00:11.2091375"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.BoundaryBreakAndJoinToolsHaveVisibleStagesMarkersAndPreviews",
+          "outcome": "Passed",
+          "duration": "00:00:15.4824058"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.DrawingStepInputAndEditRibbonRemainAccessibleInANarrowWindow",
+          "outcome": "Failed",
+          "duration": "00:00:26.5411235"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.PolarArrayOnlyShowsTwoCursorFieldsAndSupportsTabTypingBeforeAndAfterChoosingCenter",
+          "outcome": "Passed",
+          "duration": "00:00:07.9863958"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.SwitchingBetweenEditToolsCannotCommitAnInvalidVisibleParameter",
+          "outcome": "Passed",
+          "duration": "00:00:06.4593982"
+        },
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ArcRadiusAndSweepAreEditableWithoutCoordinateOnlyFields",
+          "outcome": "Passed",
+          "duration": "00:00:06.9680122"
+        }
+      ]
+    },
+    "focusedNarrowRerun": {
+      "trx": "TestResults/edit-cursor/ui-narrow-fit/yoiri_YOIRI_2026-10-04_02_01_50_net10.0.trx",
+      "sha256": "3fa4a632b5768b052b0a3678c5db9e86ad735ae13fa4ba9c9b073cc81ee662bd",
+      "total": 1,
+      "passed": 1,
+      "failed": 0,
+      "start": "2026-10-04T02:01:33.0564256+09:00",
+      "finish": "2026-10-04T02:01:50.6337990+09:00",
+      "results": [
+        {
+          "name": "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.DrawingStepInputAndEditRibbonRemainAccessibleInANarrowWindow",
+          "outcome": "Passed",
+          "duration": "00:00:17.0444881"
+        }
+      ]
+    },
+    "reasonForRerun": "Old helper only recognized drawing field IDs. Recovery pane docking also preserved a view whose source line was outside the reduced canvas. The fixture now fits the line and verifies the real green preview before clicking; entity counts and undo requirements are unchanged.",
+    "productUnchangedAfterMainRun": true
+  },
+  "bindingDiagnostics": {
+    "errors": 0,
+    "checkedLogs": [
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/arc.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/array-canvas.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/boundary-break-join-canvas.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/circle-three-point.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/corner-canvas.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/ellipse-arc.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/offset-canvas.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/polar-array-canvas.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "TestResults/edit-cursor/screenshots-final/switch-edit-tools-canvas.bindings.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ]
+  },
+  "screenshots": [
+    {
+      "file": "join-preview.png",
+      "source": "TestResults/edit-cursor/screenshots-final/join-canvas-preview.png",
+      "sha256": "ae2dc0e23f058ad2f7668d7628e7239a9dd1315b13ddeb410a9516f61e312ff1",
+      "visuallyInspected": true
+    },
+    {
+      "file": "chamfer-cursor-input.png",
+      "source": "TestResults/edit-cursor/screenshots-final/chamfer-canvas-preview.png",
+      "sha256": "bfe7bec656c9aa28615679af801d07669d5c1fcfb9b30a289bbbe64172615391",
+      "visuallyInspected": true
+    },
+    {
+      "file": "break-preview.png",
+      "source": "TestResults/edit-cursor/screenshots-final/break-canvas-preview.png",
+      "sha256": "31b37dd83d4eec296e7330c76cc99eb965bf7704355c1585c5180600ea13785a",
+      "visuallyInspected": true
+    },
+    {
+      "file": "rect-array-cursor-900x700.png",
+      "source": "TestResults/edit-cursor/screenshots-final/rect-array-canvas-900x700.png",
+      "sha256": "b326463b8abd80da16c646aaf38f0e80309e8a16d8546e4dee901e671e505359",
+      "visuallyInspected": true
+    },
+    {
+      "file": "polar-array-cursor-input.png",
+      "source": "TestResults/edit-cursor/screenshots-final/polar-array-canvas-preview.png",
+      "sha256": "0a6afdb3dd3fd2c5785f4a44ff7d0d17b9cb5770e2c01a50d88a8cb0a46688ea",
+      "visuallyInspected": true
+    },
+    {
+      "file": "trim-preview.png",
+      "source": "TestResults/edit-cursor/screenshots-final/trim-canvas-preview.png",
+      "sha256": "aa14cfefb505c29085d9184cdb8d8bf84b89a629871b2614b90a7c9672593cd2",
+      "visuallyInspected": true
+    },
+    {
+      "file": "fillet-cursor-input.png",
+      "source": "TestResults/edit-cursor/screenshots-final/fillet-canvas-preview.png",
+      "sha256": "e2b43afa740c53f08c747aadaa7ebc63b5f844d3a1594aad02504d54ff58dd0c",
+      "visuallyInspected": true
+    },
+    {
+      "file": "offset-cursor-input.png",
+      "source": "TestResults/edit-cursor/screenshots-final/offset-canvas-toolbar.png",
+      "sha256": "d7cbb1bc590c114435ff9ee518100e876ab1522964f659f73b06a543e25baf57",
+      "visuallyInspected": true
+    },
+    {
+      "file": "extend-preview.png",
+      "source": "TestResults/edit-cursor/screenshots-final/extend-canvas-preview.png",
+      "sha256": "f9086f4881dfcf44b71bb6ebcdba86a4e42318c538a17c882aebd7aef08ee269",
+      "visuallyInspected": true
+    },
+    {
+      "file": "offset-preview-narrow-recovery-pane.png",
+      "source": "TestResults/edit-cursor/screenshots-narrow-fit/edit-offset-narrow-before-click.png",
+      "sha256": "9bbc39f4bfd57313606b6f150b3c2e7c54e32b175826556709d752eba086acb3",
+      "visuallyInspected": true
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "Direct2dCad.Lang/Strings/Strings.ja-JP.resx",
+      "sha256": "47563823af5e180f1afe59b84c80a06e30484dc19429dd8e9853566b11e3d941"
+    },
+    {
+      "path": "Direct2dCad.Lang/Strings/Strings.resx",
+      "sha256": "f4962f8edb14e8c8896f96e28bcfc44e703319bb6516f2408f50b6e011f9be11"
+    },
+    {
+      "path": "Direct2dCad.Lang/Strings/Strings.zh-CN.resx",
+      "sha256": "8517a56b747c7b5390554f95f178578c3d0188336530f5c082cadf19af8b41a4"
+    },
+    {
+      "path": "Direct2dCad.Rendering.Direct2D/Entities/Direct2DEntityReferenceRenderer.cs",
+      "sha256": "f742dab295cc15798fd22fc821c0c4bb714406d1a797a82f3cba7b5d288bde30"
+    },
+    {
+      "path": "Direct2dCad.Rendering.Direct2D/Overlays/Direct2DSelectionRenderer.cs",
+      "sha256": "0c5d47917ce2bb49b3b4f3379fdbb0a5361ceb6e4d451b9610d2a6dac452c2fa"
+    },
+    {
+      "path": "Direct2dCad.Rendering.Direct2D/Scene/Direct2DSceneRender.cs",
+      "sha256": "70a51cf05c2cd25927db1f5df4f9bfb2757c025e84f34cb2ccc034bd27a28d77"
+    },
+    {
+      "path": "Direct2dCad.Rendering.Transient/CadTransientItem.cs",
+      "sha256": "82e833a3d5aa49355b99b7c09426383d83bfb701aa1b6864b31b39d45e77d539"
+    },
+    {
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.cs",
+      "sha256": "b70183cf71a5e50573e3868016c40089b833898809e0607612c2359ed1ca533b"
+    },
+    {
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.CurveDynamicInput.cs",
+      "sha256": "f7017b538ae6b9a95a00a3503d292d231dad757caf20e442213e980908051f9c"
+    },
+    {
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.EditCanvas.cs",
+      "sha256": "40aa72ba579dee514460317817572420673df32cf4b90dd8d183577b99915439"
+    },
+    {
+      "path": "Direct2dCad.ViewModels.Tests/EditCanvasInteractionTests.cs",
+      "sha256": "10c4d822d9b83789e0320371b66e39926b585b2f16af94de129e9d027133e856"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.cs",
+      "sha256": "a0f0ff4a2d74531c8655a43e01edb6486e22fb593a0c17cebd4d26189aa48ae7"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.DrawingUx.cs",
+      "sha256": "bd20160144c616ef1c29f648dd1d313803213e854c80dd5d8c238beeb714c4b5"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.DynamicInput.cs",
+      "sha256": "d95649f6a9a7e2014c4886ef1420cd6bd8fefeadcea5aae5efe0241cae9abd0d"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.EditDynamicInput.cs",
+      "sha256": "d2dc3ca6a8d1f4caaf85740a03d94ec11630caa3bf941ba7fa56d2392540eec9"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.Editing.cs",
+      "sha256": "32022cabe4d9b83ed28f76e9f645aaab8a584b8bcd9dbd2c940824d3837ec179"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.EditUx.cs",
+      "sha256": "afeeecc1bcc449f210c2a62a5753e2c6ed16083f12d5fce5f517ee4c37bf97a2"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadDocumentView.xaml",
+      "sha256": "fa04bac959ac0c6a5e60dd1ebcac319aee0dd1283ed65eba636bf4d819996837"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadDocumentView.xaml.cs",
+      "sha256": "e63bf9637870b95fd0c5cf009deadb61c62341bcd83ecb493dd242e379d374b5"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadEditParametersView.xaml",
+      "sha256": "383564b82f59e60d29aa33d79c6e234be23b7d04929ce1b510e29bee81bd6ef9"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadEditParametersView.xaml.cs",
+      "sha256": "f0787adbc0f5d3cb7a7e26d82cd896e03648bf5f6312e2a9af9ef10959d7777e"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/EditorTabView.xaml",
+      "sha256": "ad2f8026b8a43c0ed5d5bfbb8d0e4f77d39e253e5098eb1cd8d697ffd766b890"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/Toolboxes/EntityPropertiesToolboxView.xaml",
+      "sha256": "7d77e9462f67e6dfee664feeba895dc417ed3c13e1d409b4a3df6671bff2354d"
+    }
+  ],
+  "previewLimit": {
+    "arrayPlacements": 256,
+    "commitEntityBudget": 10000
+  },
+  "retainedFailureEvidence": [
+    "TestResults/edit-canvas",
+    "TestResults/edit-cursor/model",
+    "TestResults/edit-cursor/ui-narrow-final",
+    "TestResults/edit-cursor/ui-narrow-diagnostic",
+    "TestResults/edit-cursor/ui-narrow-pointer"
+  ],
+  "notRun": [
+    "Full product regression",
+    "Mixed-monitor DPI and all locale visual acceptance",
+    "Performance/input latency measurement",
+    "New release, installer or signing"
+  ]
+}

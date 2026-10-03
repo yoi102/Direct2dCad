@@ -33,7 +33,7 @@ public sealed record CadCurveEditPlan(IReadOnlyList<CadCurveReplacement> Replace
 }
 
 /// <summary>Pure geometry plans are shared by pointer previews, Terminal and workspace tools.</summary>
-public static class CadCurveEditing
+public static partial class CadCurveEditing
 {
     public static CadCurveEditPlan Offset(CadEntity entity, double distance, CadPointD side)
     {
@@ -184,7 +184,8 @@ public static class CadCurveEditing
     }
     public static CadCurveEditPlan Corner(CadEntity first,CadEntity second,CadPointD firstPick,CadPointD secondPick,double size,double secondDistance,bool fillet,bool trim=true)
     {
-        if(first.Id==second.Id) throw new InvalidOperationException("Choose two different curves.");
+        if(first.Id==second.Id || CadCurveShape.From(first).Segments.Count>1 || CadCurveShape.From(second).Segments.Count>1)
+            return PathCorner(first,second,firstPick,secondPick,size,secondDistance,fillet,trim);
         if(first is not CadLine || second is not CadLine)
             return CurvedCorner(first,second,firstPick,secondPick,size,secondDistance,fillet,trim);
         var a=(CadLine)first; var b=(CadLine)second;
@@ -320,6 +321,12 @@ public static class CadCurveEditing
     {
         var n=shape.Segments.Count;
         while(start>=n) { start-=n; end-=n; }
+        // Crossing the parameter seam does not split one circle into two entities.
+        if(n==1 && !shape.Segments[0].IsLine)
+        {
+            var p=shape.Segments[0];
+            return new CadCurveShape([CadPlanarPrimitive.Arc(p.Center,p.Radius,p.StartAngle+p.Sweep*start,p.Sweep*(end-start))]).Validate();
+        }
         if(end<=n) return Slice(shape,start,end);
         if(end-n<=1e-9) return Slice(shape,start,n);
         var segments=Slice(shape,start,n).Segments.Concat(Slice(shape,0,end-n).Segments).ToArray();

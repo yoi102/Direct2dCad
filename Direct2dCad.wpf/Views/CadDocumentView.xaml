@@ -124,5 +124,8 @@
                     </TextBlock>
             </Grid>
         </Grid>
+        <Grid Margin="12" VerticalAlignment="Top">
+            <local:CadEditParametersView x:Name="editParameters" HorizontalAlignment="Left" RequestCanvasFocus="EditParameters_OnRequestCanvasFocus" />
+        </Grid>
     </Grid>
 </UserControl>

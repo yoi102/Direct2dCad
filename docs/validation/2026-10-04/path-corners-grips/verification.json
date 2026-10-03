@@ -1,0 +1,211 @@
+{
+  "date": "2026-10-04",
+  "repository": "C:\\Users\\yoiri\\source\\repos\\Direct2dCad",
+  "head": "7eaa99c92784e24168c9adf3495436c3403a8a71",
+  "scope": "Polyline corners, circle breaks, canvas-leave previews and grip dynamic input",
+  "build": {
+    "command": "dotnet build Direct2dCad.wpf/Direct2dCad.wpf.csproj -c Release --nologo -v quiet",
+    "errors": 0,
+    "configuration": "Release",
+    "warnings": 0
+  },
+  "test_runs": [
+    {
+      "path": "TestResults/path-corners/commands-final/yoiri_YOIRI_2026-10-04_03_54_26_net10.0.trx",
+      "sha256": "06608783C470675AC56B7B923F9EA8BBA6899C5A8657C89AAC728B773609FA12",
+      "total": 30,
+      "passed": 30,
+      "failed": 0
+    },
+    {
+      "path": "TestResults/path-corners/viewmodels-verified/yoiri_YOIRI_2026-10-04_03_54_52_net10.0.trx",
+      "sha256": "56EB269395A31862D65143B68D8D117900EA01996E1F59D700CA92C937415CB9",
+      "total": 198,
+      "passed": 198,
+      "failed": 0
+    },
+    {
+      "path": "TestResults/path-corners/ui-foreground/yoiri_YOIRI_2026-10-04_03_52_11_net10.0.trx",
+      "sha256": "57EB8B0BF4CC75D8FAC3D00377C58071E7E99ADE886F93F29AE9BE67BF69BBAD",
+      "total": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "path": "TestResults/path-corners/ui-circle-final/yoiri_YOIRI_2026-10-04_03_59_20_net10.0.trx",
+      "sha256": "DB354E910335BFEAFD1041D4EE64DA7BE56E1BCCB5898CD6F4FF02765FA8C8AC",
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    }
+  ],
+  "binding_logs": [
+    {
+      "name": "circle-grip-and-drawing-leave.bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "line-grip-input.bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    },
+    {
+      "name": "polyline-corners.bindings.log",
+      "bytes": 0,
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+    }
+  ],
+  "resources": {
+    "duplicates": 0,
+    "keys_per_language": 671,
+    "key_sets_equal": true
+  },
+  "diff_check": "passed",
+  "final_source_hashes": [
+    {
+      "path": "Direct2dCad.Commands/CadCurveEditing.cs",
+      "sha256": "09192B85D214F4D5CDD60CB082AC1A2D1B1EF77CAD5E4BAAC1E284B1B60AD19F"
+    },
+    {
+      "path": "Direct2dCad.Commands/CadCurveEditing.PathCorners.cs",
+      "sha256": "71DBC307702F89D8999599D8A2BFD2DCF98DBAF007D30A4B66B146F7175213B7"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.cs",
+      "sha256": "6D13FB2A77C47A550215012E7856B69D03391292C414F191F1BCEF6801B93C48"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.Editing.cs",
+      "sha256": "42C9A82F770DFCD4260B565138EE32C461DF0CC517414AF522723BD0DD6CC2EF"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.EditUx.cs",
+      "sha256": "E44635124B71B5696D48F2F127E2401F62154BCDBF7F15E988745DD1FDF64629"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.DynamicInput.cs",
+      "sha256": "ED7021CDC63FD83A28FA69F960D385881A0B97D1D00B560643D07AE5F8EC5A03"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.CurveDynamicInput.cs",
+      "sha256": "010759F0178FEAFC4E207FA65A8A28E4CC5ED1C0656C5BAB4D12E3AAB3546EFA"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.GripDynamicInput.cs",
+      "sha256": "6BC3D376441D286D500F6FBC93D29BEA6FB9FE7DCC8015B12CCA2BBC37285100"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/CadDocumentViewModel.DrawingUx.cs",
+      "sha256": "95ADF74F4D649C8BBC3879626995B1B76E8B20912308215C94FE3380834BA5C1"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/Tools/CadAgentContract.cs",
+      "sha256": "AB9F7C6E5D0AB6D0D966A7433846E928F1E2E310C5CA9AC5E41EA32A477B63D1"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/Tools/CadDocumentToolExecutor.cs",
+      "sha256": "4E0AE88DCE2CF8B7E5604A40FA9EF57F92C6C9DED192676A564513C197642351"
+    },
+    {
+      "path": "Direct2dCad.ViewModels/Tools/CadDocumentToolExecutor.CurveEditing.cs",
+      "sha256": "7050C9C67A54EDDD50CF79E1BCA8E17D87752463D7F8CA0B40076CD2EE14D13D"
+    },
+    {
+      "path": "Direct2dCad.wpf/Controls/CadCanvas.xaml.cs",
+      "sha256": "248E25B6FF21C8B8C9A457D18F9EC2F0519B404318458339521965AB0EAC9B65"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadDocumentView.xaml.cs",
+      "sha256": "C664A564783DD1F084A044FA84BEAA800A1B2FDF47A84422CF2AAF1968A6B55D"
+    },
+    {
+      "path": "Direct2dCad.wpf/Views/CadEditParametersView.xaml",
+      "sha256": "1A55EA9CA30D4A7BAA15A3AB29D7E2B03E6DCEA330B5138716D5DFE6529BB50F"
+    },
+    {
+      "path": "Direct2dCad.Commands.Tests/PolylineCornerTests.cs",
+      "sha256": "C5C965DF3C7D6B619D4A00C2850251457DBC31AF6EBD038ECAD56C48C2E47B8C"
+    },
+    {
+      "path": "Direct2dCad.ViewModels.Tests/GripDynamicInputTests.cs",
+      "sha256": "FD7835C1A1869904F76B8BAD76DC8F8B7EC5FF763F30A0508DC184D8F4B175E3"
+    },
+    {
+      "path": "Direct2dCad.ViewModels.Tests/PathCornerToolTests.cs",
+      "sha256": "E762EFF904194BD1370CD7E5849CD97C7D299840B03F248132B7817AA13A1C3E"
+    },
+    {
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.PathCornerGrips.cs",
+      "sha256": "4B7706DCBD86F0E8A8A8D90C95E58957C4C2AFDACB798B44D3DE3E1995F3CE22"
+    },
+    {
+      "path": "Direct2dCad.Lang/Strings/Strings.resx",
+      "sha256": "8E7409BED09DA9AB945BB2649E4EB03A8E76663CA239F533866AEC15CBAE0889"
+    },
+    {
+      "path": "Direct2dCad.Lang/Strings/Strings.zh-CN.resx",
+      "sha256": "CC910AA46879795A3F17AD68CFF4515F7BB2D5BCBF6F68FA3C21697001DB7038"
+    },
+    {
+      "path": "Direct2dCad.Lang/Strings/Strings.ja-JP.resx",
+      "sha256": "3A61F3AF1ADFD1642701C59E8FC4E2B1F866B9E14405F8E53D7D191B8FCD7F32"
+    }
+  ],
+  "final_application_hashes": [
+    {
+      "path": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.exe",
+      "sha256": "FA161A5EE15C0A352ECF73BF2E408C4F7A4E79301797CD0CFCFC4AC2B0E21742"
+    },
+    {
+      "path": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.dll",
+      "sha256": "B44A5C3BF6A4E9A0DF48D595ECBFEE84E1D28D68185EF8E6F6EAF26189009604"
+    },
+    {
+      "path": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.ViewModels.dll",
+      "sha256": "D64B95712E7EF1524BB4B9404AA3B69BC74341CFD4E819C2EC54F36BA044FBE7"
+    },
+    {
+      "path": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.Commands.dll",
+      "sha256": "20675046F84AB90902773005F8FEB27FBE0D4A7C0EABE8D594E1081A0D363426"
+    }
+  ],
+  "screenshots": [
+    {
+      "name": "circle-grip-radius-input.png",
+      "sha256": "A81F6B126C90A712BC369195553347D028316E8B0D5C273EB3925E2D3429EE95"
+    },
+    {
+      "name": "drawing-preview-before-leave.png",
+      "sha256": "5222A4D67F601CEF70BC7598336DBED39037909B7FCFC871F802FF7755ACA5AA"
+    },
+    {
+      "name": "drawing-preview-outside-canvas.png",
+      "sha256": "01F9D813710B837036680DFC85373B463BC0284E8D4C9C5210D7D405311C8677"
+    },
+    {
+      "name": "line-grip-numeric-preview.png",
+      "sha256": "0A6610C8622BCB0180A329DDE24C878F7DE1A204DFC776019BC834B907F61C4A"
+    },
+    {
+      "name": "line-grip-outside-canvas.png",
+      "sha256": "095B4BA18A4EAABCBC08550B0E9FC26E2A195B3D69C70625CBF886CA65ACECDE"
+    },
+    {
+      "name": "polyline-all-chamfer-preview.png",
+      "sha256": "B9E3513CE4C5B30FC5AB5A50DB9EC1F94EC9E4FEA07A7645B3CB0628781EB59D"
+    },
+    {
+      "name": "polyline-local-fillet-preview.png",
+      "sha256": "61DC79CAA155575DACB2426CF15F6450A5DAC9F56BD89B1AF20154FBB683BCB9"
+    }
+  ],
+  "ui_scope": "Three unique UI cases passed together. Circle numeric preview was rerun on the final build. Earlier foreground-obstructed records are not evidence. Source/application hashes describe final build, not the earlier three-case UI binary.",
+  "not_run": [
+    "full product regression",
+    "mixed DPI and all-language visual acceptance",
+    "performance measurements",
+    "commit/push",
+    "installer or GitHub release"
+  ]
+}

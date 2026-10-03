@@ -17,7 +17,8 @@ internal sealed partial class CadDocumentToolExecutor
             ["x"]=Number("Side or picked segment X; millimetres"),["y"]=Number("Side or picked segment Y; millimetres"),
             ["x2"]=Number("Second corner/break pick X"),["y2"]=Number("Second corner/break pick Y"),
             ["distance"]=Number("Offset distance, fillet radius or first chamfer distance; positive"),
-            ["second_distance"]=Number("Second chamfer distance; positive"),["trim"]=new {type="boolean"}
+            ["second_distance"]=Number("Second chamfer distance; positive"),["trim"]=new {type="boolean"},
+            ["all_corners"]=new {type="boolean",description="Apply fillet/chamfer to all sharp corners of one open or closed path. Otherwise use two picks on adjacent segments of one path or two different curves."}
         }, required=new[]{"operation","entity_ids"},additionalProperties=false
     };
     private static object ArraySchema() => new
@@ -39,7 +40,9 @@ internal sealed partial class CadDocumentToolExecutor
         var ids=ResolveEntityIds(args,false); var document=documentViewModel.CadEditor.Document;
         var entities=ids.Select(document.GetEntity).ToArray();
         var operation=args.GetProperty("operation").GetString();
-        var point=operation=="join" ? default : new CadPointD(EditNumber(args,"x"),EditNumber(args,"y"));
+        var allCorners=args.TryGetProperty("all_corners",out var all) && all.GetBoolean();
+        if(allCorners && operation is not ("fillet" or "chamfer")) throw new ArgumentException("all_corners only applies to fillet/chamfer.");
+        var point=operation=="join" || allCorners ? default : new CadPointD(EditNumber(args,"x"),EditNumber(args,"y"));
         var second=args.TryGetProperty("x2",out _) ? new CadPointD(EditNumber(args,"x2"),EditNumber(args,"y2")) : (CadPointD?)null;
         var boundaries=args.TryGetProperty("boundary_ids",out var b) ? ValidateEntityIds(b.EnumerateArray().Select(e=>new EntityId(e.GetInt64())).ToArray()).Select(document.GetEntity).ToArray() : [];
         if(operation is not "join" && operation is not ("fillet" or "chamfer") && ids.Length!=1) throw new ArgumentException("This operation requires exactly one target.");
@@ -50,11 +53,12 @@ internal sealed partial class CadDocumentToolExecutor
             "extend"=>CadCurveEditing.Extend(entities[0],boundaries,point),
             "join"=>CadCurveEditing.Join(entities),
             "break"=>CadCurveEditing.Break(entities[0],point,second),
-            "fillet" or "chamfer" when entities.Length==2=>CadCurveEditing.Corner(entities[0],entities[1],point,second ?? throw new ArgumentException("The second pick is required."),EditNumber(args,"distance"),EditNumber(args,"second_distance",EditNumber(args,"distance")),operation=="fillet",!args.TryGetProperty("trim",out var t) || t.GetBoolean()),
+            "fillet" or "chamfer" when allCorners && entities.Length==1=>CadCurveEditing.AllCorners(entities[0],EditNumber(args,"distance"),EditNumber(args,"second_distance",EditNumber(args,"distance")),operation=="fillet"),
+            "fillet" or "chamfer" when !allCorners && entities.Length is 1 or 2=>CadCurveEditing.Corner(entities[0],entities.Length==1 ? entities[0] : entities[1],point,second ?? throw new ArgumentException("The second pick is required."),EditNumber(args,"distance"),EditNumber(args,"second_distance",EditNumber(args,"distance")),operation=="fillet",!args.TryGetProperty("trim",out var t) || t.GetBoolean()),
             _=>throw new ArgumentException("Unsupported operation or target count.")
         };
         var command=new EditCurvesCommand(operation!,plan); ExecuteCommand(command);
-        return Success(new {operation,result_entity_ids=command.ResultEntityIds.Select(id=>id.Value),replaced_entity_ids=plan.Replacements.Select(r=>r.SourceId.Value),reference_rule="preserve unique surviving IDs; do not auto-rebind split or joined references"});
+        return Success(new {operation,result_entity_ids=command.ResultEntityIds.Select(id=>id.Value),replaced_entity_ids=plan.Replacements.Select(r=>r.SourceId.Value),reference_rule="preserve compatible surviving IDs; type conversions, splits and joins return new IDs without guessing reference rebinding"});
     }
     private string ArrayEntities(JsonElement args)
     {

@@ -2,10 +2,11 @@
   <PropertyGroup>
     <OutputType>Package</OutputType>
     <InstallerPlatform>x64</InstallerPlatform>
-    <Version Condition="'$(Version)' == ''">1.0.2</Version>
+    <Version Condition="'$(Version)' == ''">1.0.3</Version>
+    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.1.3</ReleaseVersion>
     <PackageName>Direct2dCad</PackageName>
     <OutputName>Direct2dCad</OutputName>
-    <DefineConstants>$(DefineConstants);PublishDirectory=$(PublishDirectory);ReleaseVersion=0.0.0.2;Version=$(Version)</DefineConstants>
+    <DefineConstants>$(DefineConstants);PublishDirectory=$(PublishDirectory);ReleaseVersion=$(ReleaseVersion);Version=$(Version)</DefineConstants>
     <OutputPath Condition="'$(ReleaseArtifactsDirectory)' != ''">$(ReleaseArtifactsDirectory)\</OutputPath>
     <SuppressIces>ICE30;ICE38;ICE43;ICE57</SuppressIces>
   </PropertyGroup>

@@ -111,7 +111,6 @@
             </ScrollViewer.Resources>
             <StackPanel>
                 <TextBlock Text="{Binding DocumentViewModel.PropertyContext}" Margin="12,6" TextWrapping="Wrap" FontWeight="SemiBold" />
-                <views:CadEditParametersView DataContext="{Binding DocumentViewModel}" />
                 <views:CadAnnotationParametersView DataContext="{Binding DocumentViewModel}" />
                 <ContentControl Content="{Binding Entity}" IsEnabled="{Binding DocumentViewModel.CanEditDocument}"
                                 HorizontalContentAlignment="Stretch" />
