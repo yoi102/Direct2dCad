@@ -1,4 +1,5 @@
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
   <Package Name="Direct2dCad"
            Manufacturer="Direct2dCad"
            Version="$(var.Version)"
@@ -9,6 +10,8 @@
     <SummaryInformation Description="Direct2dCad $(var.ReleaseVersion) for Windows x64" Manufacturer="Direct2dCad" />
     <MajorUpgrade DowngradeErrorMessage="A newer version of Direct2dCad is already installed." />
     <MediaTemplate EmbedCab="yes" />
+
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
 
     <Icon Id="Direct2dCadIcon" SourceFile="$(var.PublishDirectory)\Direct2dCad.ico" />
     <Property Id="ARPPRODUCTICON" Value="Direct2dCadIcon" />

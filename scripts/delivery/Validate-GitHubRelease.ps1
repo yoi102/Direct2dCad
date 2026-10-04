@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$ReleaseDirectory,
-    [string]$ExpectedReleaseVersion = '0.1.4',
-    [string]$ExpectedInstallerVersion = '1.0.4'
+    [string]$ExpectedReleaseVersion = '0.1.5',
+    [string]$ExpectedInstallerVersion = '1.0.5'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -78,6 +78,15 @@ $upgradeRows = @(ReadMsiRows "SELECT ``UpgradeCode`` FROM ``Upgrade``" 1)
 if (@($upgradeRows | Where-Object { $_.Values[0] -eq '{15045137-B490-4015-B5E5-C33A4E2341F2}' }).Count -lt 1) {
     throw 'The MSI does not use the existing application upgrade code.'
 }
+$dialogs = @(ReadMsiRows "SELECT ``Dialog`` FROM ``Dialog``" 1)
+if (@($dialogs | Where-Object { $_.Values[0] -eq 'InstallDirDlg' }).Count -ne 1) {
+    throw 'The MSI does not include the installation directory selection dialog.'
+}
+$installDirectoryControls = @(ReadMsiRows "SELECT ``Control``,``Type`` FROM ``Control`` WHERE ``Dialog_`` = 'InstallDirDlg'" 2)
+if (@($installDirectoryControls | Where-Object { $_.Values[0] -eq 'Folder' -and $_.Values[1] -eq 'PathEdit' }).Count -ne 1 -or
+    @($installDirectoryControls | Where-Object { $_.Values[0] -eq 'ChangeFolder' }).Count -ne 1) {
+    throw 'The MSI installation directory dialog does not provide editable path and folder browsing controls.'
+}
 $msiFiles = @(ReadMsiRows "SELECT ``FileName`` FROM ``File``" 1)
 foreach ($runtimeFile in @('hostfxr.dll','coreclr.dll')) {
     $match = @($msiFiles | Where-Object { $_.Values[0].Split('|')[-1] -eq $runtimeFile })
@@ -100,6 +109,7 @@ foreach ($package in @(Get-Item -LiteralPath $msiPath,$zipPath)) {
     displayVersion = ReadMsiProperty 'ARPVERSION'
     shortcuts = @($shortcuts | ForEach-Object { [ordered]@{directory=$_.Values[1];name=$_.Values[2];target=$_.Values[3];icon=$_.Values[4]} })
     productIcon = ReadMsiProperty 'ARPPRODUCTICON'
+    installDirectoryDialog = $true
     installerSigned = $false
     packages = @(Get-Item -LiteralPath $msiPath,$zipPath | ForEach-Object {
         [ordered]@{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}

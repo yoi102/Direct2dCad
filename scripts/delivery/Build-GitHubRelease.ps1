@@ -1,6 +1,6 @@
 param(
-    [string]$OutputDirectory = 'TestResults/github-release-0.1.4',
-    [string]$ReleaseVersion = '0.1.4'
+    [string]$OutputDirectory = 'TestResults/github-release-0.1.5',
+    [string]$ReleaseVersion = '0.1.5'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +13,7 @@ if (Test-Path -LiteralPath $releaseRoot) {
     throw "Release output already exists. Choose a fresh OutputDirectory: $releaseRoot"
 }
 
-$wixVersion = '1.0.4' # Keep the MSI upgrade version monotonic; ARPVERSION displays the app release version.
+$wixVersion = '1.0.5' # Keep the MSI upgrade version monotonic; ARPVERSION displays the app release version.
 $publishDirectory = Join-Path $releaseRoot 'publish'
 $installerDirectory = Join-Path $releaseRoot 'installer'
 $distDirectory = Join-Path $releaseRoot 'dist'
@@ -81,6 +81,7 @@ $manifest = [ordered]@{
     runtime = 'win-x64 self-contained; .NET 10 included'
     icon = 'Direct2dCad.ico; embedded in application and registered in MSI'
     shortcuts = @('Start menu','Desktop')
+    installDirectorySelection = 'WixUI_InstallDir'
     signed = $false
     files = @($releaseFiles)
 }
