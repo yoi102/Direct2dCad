@@ -356,7 +356,7 @@ internal sealed class Direct2DSharedDeviceSceneRenderer : IDisposable
                 try
                 {
                     _context.Target = _target.Target;
-                    _renderer.BeginFrame();
+                    _renderer.BeginFrame(viewportZoom: viewport.Zoom);
                     frameBegun = true;
                     _renderer.PrepareParallelEntityResources(document, entities);
                     _context.BeginDraw();

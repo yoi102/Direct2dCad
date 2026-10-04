@@ -1,6 +1,6 @@
 param(
-    [string]$OutputDirectory = 'TestResults/github-release-0.1.3',
-    [string]$ReleaseVersion = '0.1.3'
+    [string]$OutputDirectory = 'TestResults/github-release-0.1.4',
+    [string]$ReleaseVersion = '0.1.4'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +13,7 @@ if (Test-Path -LiteralPath $releaseRoot) {
     throw "Release output already exists. Choose a fresh OutputDirectory: $releaseRoot"
 }
 
-$wixVersion = '1.0.3' # Keep the MSI upgrade version monotonic; ARPVERSION displays the app release version.
+$wixVersion = '1.0.4' # Keep the MSI upgrade version monotonic; ARPVERSION displays the app release version.
 $publishDirectory = Join-Path $releaseRoot 'publish'
 $installerDirectory = Join-Path $releaseRoot 'installer'
 $distDirectory = Join-Path $releaseRoot 'dist'

@@ -26,6 +26,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
     private ID2D1DeviceContext1? _deviceContext;
     private double _buildElapsedMilliseconds;
     private int _remainingBuilds;
+    private bool _allowRealizationDraws = true;
     private double _scaleMultiplier = 1.0;
     private int _fillDrawCount;
     private int _strokeDrawCount;
@@ -68,17 +69,18 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         return new ScaleMultiplierScope(this, previous);
     }
 
-    public void BeginFrame()
+    public void BeginFrame(bool allowRealizations = true)
     {
         ThrowIfDisposed();
-        BeginBuildBatch();
+        BeginBuildBatch(allowRealizations);
     }
 
-    public void BeginBuildBatch()
+    public void BeginBuildBatch(bool allowRealizations = true)
     {
         ThrowIfDisposed();
         _buildElapsedMilliseconds = 0.0;
-        _remainingBuilds = MaximumBuildsPerBatch;
+        _allowRealizationDraws = allowRealizations;
+        _remainingBuilds = allowRealizations ? MaximumBuildsPerBatch : 0;
     }
 
     public Direct2DGeometryRealizationStatistics CaptureStatistics()
@@ -112,6 +114,11 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         ID2D1Brush brush)
     {
         ThrowIfDisposed();
+        if (!_allowRealizationDraws)
+        {
+            _fallbackCount++;
+            return false;
+        }
         if (_deviceContext is null ||
             !CanRealize(entity, resources, geometry, out var geometryKind))
         {
@@ -175,6 +182,11 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         bool strokeWidthChangesWithScale)
     {
         ThrowIfDisposed();
+        if (!_allowRealizationDraws)
+        {
+            _fallbackCount++;
+            return false;
+        }
         if (_deviceContext is null ||
             strokeWidth <= 0.0f ||
             !CanRealize(entity, resources, geometry, out var geometryKind))

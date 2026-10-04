@@ -28,6 +28,11 @@ internal sealed class Direct2DResourceCache : IDisposable
     private readonly Direct2DGeometryFactory _geometryFactory = new();
     private readonly Direct2DHatchTileCache _hatchTiles;
     private Direct2DGeometryPreparationService? _backgroundGeometryPreparation;
+    private readonly List<EntityId> _preparationCandidateIds = [];
+    private readonly List<EntityId> _preparationQueryIds = [];
+    private readonly List<PreparationLayoutViewKey> _preparationLayoutViews = [];
+    private PreparationViewKey? _preparationView;
+    private float _preparationStrokeWidth;
     private Direct2DLevelOfDetailPreparation? _lodPreparation;
     private float _maximumStrokeWidth;
     private bool _maximumStrokeWidthDirty;
@@ -137,6 +142,104 @@ internal sealed class Direct2DResourceCache : IDisposable
             ? new Direct2DGeometryPreparationService(factory)
             : null;
         _backgroundGeometryPreparation?.Schedule(document);
+        _preparationView = null;
+        _preparationLayoutViews.Clear();
+        _preparationStrokeWidth = 0;
+        if (_backgroundGeometryPreparation is not null)
+        {
+            // Include not-yet-prepared wide strokes in the initial visibility query.
+            foreach (var entity in document.Entities.Values)
+            {
+                if (entity.IsErased || !document.Layers.TryGetValue(entity.LayerId, out var layer))
+                    continue;
+                var graphic = ResolveGraphicStyle(document, entity, layer);
+                _preparationStrokeWidth = Math.Max(_preparationStrokeWidth,
+                    ResolveStrokeWidth(entity.LineWeight, entity.UseLayerLineWeight,
+                        graphic?.LineWeight, layer.LineWeight));
+            }
+        }
+    }
+
+    internal void UpdateVisiblePreparationPriority(
+        CadDocument document, CadViewport viewport, CadRenderOptions options)
+    {
+        if (_backgroundGeometryPreparation is not { } preparation)
+            return;
+        var key = new PreparationViewKey(viewport.VisibleWorldBounds, viewport.Zoom,
+            options.ActiveOwnerBlockId, options.ActiveLayoutId, options.KeepStrokeWidthScreenConstant,
+            options.MinimumScreenStrokeWidth, options.EntityLineWeightWorldScale);
+        CadLayout? layout = null;
+        if (options.ActiveLayoutId is { } layoutId)
+            document.TryGetLayout(layoutId, out layout);
+        var layoutViewsChanged = UpdateLayoutViews(layout);
+        if (_preparationView == key && !layoutViewsChanged)
+            return;
+
+        _preparationCandidateIds.Clear();
+        if (layout is not null)
+        {
+            Collect(layout.PaperSpaceBlockId, viewport.VisibleWorldBounds, viewport,
+                Direct2DLayoutRenderer.CreatePaperSpaceOptions(layout, options));
+            foreach (var modelView in layout.Viewports)
+            {
+                if (!modelView.IsVisible)
+                    continue;
+                var paperBounds = modelView.Bounds.Intersection(viewport.VisibleWorldBounds);
+                if (paperBounds.IsEmpty)
+                    continue;
+                var modelViewport = Direct2DLayoutRenderer.CreateModelViewport(viewport, modelView);
+                Collect(BlockId.ModelSpace, CadLayoutViewportMapper.PaperToModelBounds(modelView, paperBounds),
+                    modelViewport, Direct2DLayoutRenderer.CreateModelViewportOptions(options, modelView));
+            }
+        }
+        else
+            Collect(options.ActiveOwnerBlockId, viewport.VisibleWorldBounds, viewport, options);
+
+        preparation.Prioritize(_preparationCandidateIds);
+        _preparationView = key;
+
+        void Collect(BlockId owner, CadRectD bounds, CadViewport view, CadRenderOptions viewOptions)
+        {
+            var padding = Direct2DEntityVisibility.ResolveBroadPhasePadding(this, view, viewOptions,
+                Math.Max(_preparationStrokeWidth, MaximumStrokeWidth));
+            bounds = bounds.Inflate(padding + Math.Max(viewOptions.MinimumScreenStrokeWidth, 6.0) /
+                Math.Max(view.Zoom, double.Epsilon));
+            if (options.EntityBoundsQueryInto is { } queryInto)
+            {
+                _preparationQueryIds.Clear();
+                queryInto(owner, bounds, _preparationQueryIds);
+                _preparationCandidateIds.AddRange(_preparationQueryIds);
+            }
+            else if (options.EntityBoundsQuery is { } query)
+                _preparationCandidateIds.AddRange(query(owner, bounds));
+            else
+                foreach (var entity in document.GetEntitiesInBlock(owner))
+                    if (!entity.IsErased && entity.Bounds.Intersects(bounds))
+                        _preparationCandidateIds.Add(entity.Id);
+        }
+    }
+
+    private bool UpdateLayoutViews(CadLayout? layout)
+    {
+        var views = layout?.Viewports;
+        var count = views?.Count ?? 0;
+        var changed = _preparationLayoutViews.Count != count;
+        for (var index = 0; index < count; index++)
+        {
+            var view = views![index];
+            var key = new PreparationLayoutViewKey(view.Id, view.Bounds, view.ModelCenter,
+                view.Scale, view.RotationRadians, view.IsVisible);
+            if (index == _preparationLayoutViews.Count)
+                _preparationLayoutViews.Add(key);
+            else if (_preparationLayoutViews[index] != key)
+            {
+                _preparationLayoutViews[index] = key;
+                changed = true;
+            }
+        }
+        if (_preparationLayoutViews.Count > count)
+            _preparationLayoutViews.RemoveRange(count, _preparationLayoutViews.Count - count);
+        return changed;
     }
 
     internal bool ApplyBackgroundGeometryPreparation(
@@ -150,19 +253,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         if (_backgroundGeometryPreparation is not { } preparation)
             return false;
 
-        if (preparation.NeedsPriority && viewport is not null && options is not null)
-        {
-            if (options.EntityBoundsQueryInto is { } queryInto)
-            {
-                var ids = new List<EntityId>();
-                queryInto(options.ActiveOwnerBlockId, viewport.VisibleWorldBounds, ids);
-                preparation.Prioritize(ids);
-            }
-            else if (options.EntityBoundsQuery is { } query)
-                preparation.Prioritize(query(options.ActiveOwnerBlockId, viewport.VisibleWorldBounds));
-            else preparation.Prioritize(document.GetEntitiesInBlock(options.ActiveOwnerBlockId)
-                .Where(e=>!e.IsErased && e.Bounds.Intersects(viewport.VisibleWorldBounds)).Select(e=>e.Id));
-        }
+        if (viewport is not null && options is not null)
+            UpdateVisiblePreparationPriority(document, viewport, options);
         preparation.CaptureStep(new ResourcePreparationBudget(Math.Max(2, maximumEntityCount * 2), TimeSpan.FromMilliseconds(2)));
 
         var budget = new ResourcePreparationBudget(Math.Max(1, maximumEntityCount), TimeSpan.FromMilliseconds(2));
@@ -186,8 +278,19 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         preparation.Dispose();
         _backgroundGeometryPreparation = null;
+        _preparationCandidateIds.Clear();
+        _preparationQueryIds.Clear();
+        _preparationLayoutViews.Clear();
         return false;
     }
+
+    private readonly record struct PreparationViewKey(
+        CadRectD Bounds, double Zoom, BlockId Owner, LayoutId? Layout,
+        bool KeepStrokeWidthScreenConstant, double MinimumScreenStrokeWidth, double LineWeightWorldScale);
+
+    private readonly record struct PreparationLayoutViewKey(
+        LayoutViewportId Id, CadRectD Bounds, CadPointD ModelCenter,
+        double Scale, double Rotation, bool Visible);
 
     public bool TryGetEntityResources(EntityId entityId, out EntityResourceBucket? bucket)
     {
@@ -195,10 +298,10 @@ internal sealed class Direct2DResourceCache : IDisposable
         return _entityResources.TryGetValue(entityId, out bucket);
     }
 
-    public void BeginFrame()
+    public void BeginFrame(bool allowRealizations = true)
     {
         ThrowIfDisposed();
-        _geometryRealizations.BeginFrame();
+        _geometryRealizations.BeginFrame(allowRealizations);
     }
 
     public void BeginGeometryRealizationBuildBatch()

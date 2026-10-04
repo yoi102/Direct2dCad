@@ -571,12 +571,13 @@ internal static class Direct2DEntityVisibility
     internal static double ResolveBroadPhasePadding(
         Direct2DResourceCache resourceCache,
         CadViewport viewport,
-        CadRenderOptions options)
+        CadRenderOptions options,
+        float? preparationStrokeWidth = null)
     {
         var zoom = Math.Max(viewport.Zoom, double.Epsilon);
         var minimumPadding = DefaultBroadPhasePaddingPixels / zoom;
         var maximumStrokeWidth = Math.Max(
-            resourceCache.MaximumStrokeWidth,
+            preparationStrokeWidth ?? resourceCache.MaximumStrokeWidth,
             0.0f);
         var maximumWorldStrokeWidth = options.KeepStrokeWidthScreenConstant
             ? CadLineWeightDisplay.ToDipsSingle(maximumStrokeWidth) / zoom

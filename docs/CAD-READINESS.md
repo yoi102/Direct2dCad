@@ -154,10 +154,10 @@ Direct2dCad 已经具备可用的二维编辑器基础：实体模型、图层/�
 ### R6 · P2：大图纸加载、首屏与查询仍有同步工作边界
 
 - 加载先持有全部 section payload，再解压 DTO 并构建实体，峰值内存可能叠加。解码与模型映射已通过 `Task.Run` 执行，但映射内部没有协作取消，GUI 打开入口未传入取消令牌。
-- 首次 Present 等完整资源准备完成；目前没有“可见区域就绪立即首屏”。单个巨大实体操作无法由时间预算抢占。
+- 首次 Present 已支持可见区域及嵌套定义就绪即显示；等待集合随模型视区及 Layout 模型视口更新。完整准备继续后台执行，单个巨大实体操作仍无法由时间预算抢占。
 - AI 分页控制返回量，查询仍遍历作用域实体计数/比较；高 offset 保留 `offset + limit` 候选。工具在 UI 同步上下文中执行，同步遍历没有协作取消。
 
-建议以固定真实图纸测首屏、峰值内存、P95 输入延迟及取消响应，再做 section 流式解码、渐进首屏和版本化查询索引/游标分页。已有原生准备队列上限、约 2 ms 消费预算和增量索引，不能把这些已完成措施重新列为缺失。
+建议继续以固定真实图纸测峰值内存、物理输入 P95 延迟及取消响应，再做 section 流式解码和版本化查询索引/游标分页。已有可见优先首屏、原生准备队列上限、约 2 ms 消费预算和增量索引，不能把这些已完成措施重新列为缺失。2026-10-04 两份真实图纸的原生首屏及绘制对照见[验证记录](validation/2026-10-04/render-optimization/README.md)，尚未测量物理输入和 WPF 合成延迟。
 
 依据：[加载](../Direct2dCad.IO/CadDocumentStorage.cs#L157)、[打开入口](../Direct2dCad.ViewModels/MainViewModel.cs#L227)、[首次 Present](../Direct2dCad.Rendering.Direct2D/Hosting/Direct2DImageRenderHost.cs#L742)、[查询遍历](../Direct2dCad.ViewModels/Tools/CadEntityQuery.cs#L72)、[分页](../Direct2dCad.ViewModels/Tools/CadEntityQuery.Paging.cs#L17)、[UI 工具分发](../Direct2dCad.Agent.Codex/CodexAppServerClient.cs#L572)。
 

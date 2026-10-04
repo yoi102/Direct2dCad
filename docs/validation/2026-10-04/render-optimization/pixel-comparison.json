@@ -1,0 +1,50 @@
+[
+  {
+    "before": "pUntitled-before-confirm",
+    "after": "pUntitled-after-final",
+    "image": "fitted",
+    "size": "1600x900",
+    "comparison": {
+      "different_pixels": 64,
+      "over16_pixels": 0,
+      "max_channel_delta": 9,
+      "mean_absolute_channel_delta": 5.555555555555556E-05
+    }
+  },
+  {
+    "before": "pUntitled-before-confirm",
+    "after": "pUntitled-after-final",
+    "image": "zoomed",
+    "size": "1600x900",
+    "comparison": {
+      "different_pixels": 0,
+      "over16_pixels": 0,
+      "max_channel_delta": 0,
+      "mean_absolute_channel_delta": 0.0
+    }
+  },
+  {
+    "before": "p2Untitled-before",
+    "after": "p2Untitled-after-final",
+    "image": "fitted",
+    "size": "1600x900",
+    "comparison": {
+      "different_pixels": 184012,
+      "over16_pixels": 48389,
+      "max_channel_delta": 134,
+      "mean_absolute_channel_delta": 0.796382175925926
+    }
+  },
+  {
+    "before": "p2Untitled-before",
+    "after": "p2Untitled-after-final",
+    "image": "zoomed",
+    "size": "1600x900",
+    "comparison": {
+      "different_pixels": 0,
+      "over16_pixels": 0,
+      "max_channel_delta": 0,
+      "mean_absolute_channel_delta": 0.0
+    }
+  }
+]

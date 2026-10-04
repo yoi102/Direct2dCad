@@ -352,6 +352,7 @@ public partial class CadCanvas : IDisposable
             }
 
             var started = Stopwatch.GetTimestamp();
+            var wasVisibleViewReady = viewModel.Direct2DImageRenderHost.IsInitialViewReady;
             var buildPending = false;
             do
             {
@@ -363,7 +364,8 @@ public partial class CadCanvas : IDisposable
 
             if (buildPending)
             {
-                if(!viewModel.Direct2DImageRenderHost.HasPresentedScene && viewModel.Direct2DImageRenderHost.IsInitialViewReady)
+                if ((!wasVisibleViewReady || !viewModel.Direct2DImageRenderHost.HasPresentedScene) &&
+                    viewModel.Direct2DImageRenderHost.IsInitialViewReady)
                     viewModel.RequestRenderCacheRefresh();
                 OnRenderCacheBuildRequested(sender, EventArgs.Empty);
             }

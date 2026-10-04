@@ -14,5 +14,5 @@ jobs:
         run: ./scripts/delivery/Build-LocalPackage.ps1 -OutputDirectory TestResults/review-package
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: Direct2dCad-0.1.3-win-x64-review
+          name: Direct2dCad-0.1.4-win-x64-review
           path: TestResults/review-package.zip

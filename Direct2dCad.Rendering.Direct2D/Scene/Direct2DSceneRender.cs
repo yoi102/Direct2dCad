@@ -43,6 +43,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private readonly List<CadEntity> _parallelVisibleEntities = new(256);
     private readonly Dictionary<EntityId, InlineMovePreview> _inlineMovePreviews = [];
     private bool _disposed;
+    private double? _lastFrameZoom;
 
     public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
 
@@ -162,6 +163,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             writeFactory,
             deviceContext,
             prepareBackgroundResources ? document : null);
+        _lastFrameZoom = null;
         _commandListCache.ResetBackgroundResources(factory, device);
 
         if (!prepareBackgroundResources && document is not null)
@@ -217,14 +219,21 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     public void BeginFrame(
         bool isFullFrame = true,
         int dirtyRegionCount = 1,
-        double dirtyPlanningMilliseconds = 0)
+        double dirtyPlanningMilliseconds = 0,
+        double? viewportZoom = null)
     {
         ThrowIfDisposed();
         _statistics.BeginFrame(
             isFullFrame,
             dirtyRegionCount,
             dirtyPlanningMilliseconds);
-        _resourceCache.BeginFrame();
+        // During zoom, use the direct geometry path. Stable frames and idle cache building can
+        // amortize tessellation instead of doing it at every zoom step.
+        var allowRealizations = viewportZoom is null || _lastFrameZoom is null ||
+                                     viewportZoom.Value == _lastFrameZoom.Value;
+        if (viewportZoom is not null)
+            _lastFrameZoom = viewportZoom;
+        _resourceCache.BeginFrame(allowRealizations);
         _styleResources.BeginFrame();
         _textFormatResources.BeginFrame();
     }
@@ -369,6 +378,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     }
 
     internal bool HasVisiblePreparationPending=>_resourceCache.HasVisiblePreparationPending;
+    internal void UpdateVisiblePreparationPriority(CadDocument document, CadViewport viewport, CadRenderOptions options) =>
+        _resourceCache.UpdateVisiblePreparationPriority(document, viewport, options);
     public bool PrepareRenderCaches(
         CadDocument document,
         CadViewport viewport,

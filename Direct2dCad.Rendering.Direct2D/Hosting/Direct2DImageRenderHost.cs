@@ -46,7 +46,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     private CadDocument? _baseSceneDocument;
     private bool _baseSceneValid;
     private bool _baseSceneDirty = true;
-    private bool _deferInitialPresentationUntilResourcesReady;
     private bool _hasRenderedFrame;
     private bool _disposed;
 
@@ -180,7 +179,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         _document = document ?? throw new ArgumentNullException(nameof(document));
         _viewport = viewport ?? throw new ArgumentNullException(nameof(viewport));
         _hasRenderedFrame = false;
-        _deferInitialPresentationUntilResourcesReady = true;
         InvalidateBaseScene(releaseSnapshot: true);
         EndViewportInteraction();
         RefreshPendingTextMeasurements(document);
@@ -379,6 +377,12 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (exposedRects is null)
             return false;
 
+        if (exposedRects.Count > 0 && !IsInitialViewReady)
+        {
+            RenderCacheBuildRequested?.Invoke(this, EventArgs.Empty);
+            return false;
+        }
+
         var frameStartTimestamp = Stopwatch.GetTimestamp();
         try
         {
@@ -393,7 +397,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                         _transientScene,
                         _renderOptions);
                 }
-                _renderer.BeginFrame();
+                _renderer.BeginFrame(viewportZoom: previewViewport.Zoom);
                 frameStarted = true;
             }
 
@@ -621,7 +625,16 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                    handleScene: _handleScene,
                    transientScene: _transientScene);
     }
-    public bool IsInitialViewReady=>!_renderer.HasVisiblePreparationPending;
+    public bool IsInitialViewReady
+    {
+        get
+        {
+            ThrowIfDisposed();
+            if (_document is not null && _viewport is not null)
+                _renderer.UpdateVisiblePreparationPriority(_document, _viewport, _renderOptions);
+            return !_renderer.HasVisiblePreparationPending;
+        }
+    }
     public bool HasPresentedScene=>_hasRenderedFrame;
 
     private void RenderCore(
@@ -703,7 +716,8 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                 effectiveInvalidation.IsFull || combinedDirtyRegionMask is not null
                     ? 1
                     : effectiveInvalidation.DirtyScreenRects.Count,
-                dirtyPlanningMilliseconds);
+                dirtyPlanningMilliseconds,
+                viewportZoom: _viewport?.Zoom);
             try
             {
                 if (_document is not null && _viewport is not null)
@@ -741,8 +755,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                     }
                 }
 
-                if (_deferInitialPresentationUntilResourcesReady &&
-                    _renderer.HasVisiblePreparationPending &&
+                if (_renderer.HasVisiblePreparationPending &&
                     RenderCacheBuildRequested is not null)
                 {
                     // Present as soon as the visible geometry is attached. Offscreen
@@ -750,8 +763,6 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                     RenderCacheBuildRequested.Invoke(this, EventArgs.Empty);
                     return;
                 }
-
-                _deferInitialPresentationUntilResourcesReady = false;
 
                 var surfaceStarted = Stopwatch.GetTimestamp();
                 try

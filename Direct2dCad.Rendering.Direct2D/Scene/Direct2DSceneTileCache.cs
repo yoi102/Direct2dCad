@@ -30,7 +30,10 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     private const double MaximumFallbackZoomRatio = 2.0;
     private const int MaximumMissingTilesForPartialReplay = 1;
     private const double MinimumCoverageForPartialReplay = 0.75;
-    private const double MaximumCachedStrokeExtentPixels = 64.0;
+    // Query and invalidate a conservative painted fringe, including miter joins.
+    // Allow ordinary CAD line weights up to half a tile; very large strokes still
+    // use the immediate path to avoid excessive candidate/invalidation regions.
+    private const double MaximumCachedStrokeExtentPixels = TilePixelSize / 2.0;
     private const double MaximumStrokeExtentMultiplier = 5.0;
 
     private readonly Direct2DResourceCache _resourceCache;
@@ -384,6 +387,23 @@ internal sealed class Direct2DSceneTileCache : IDisposable
                 result,
                 visible.Center.X / worldSize,
                 visible.Center.Y / worldSize);
+
+            // Build the visible tiles first, then one bounded ring during idle
+            // preparation. Small pans can reuse it without an expensive cache miss.
+            var minX = FloorToInt(visible.MinX / worldSize);
+            var maxX = FloorToInt(Math.BitDecrement(visible.MaxX / worldSize));
+            var minY = FloorToInt(visible.MinY / worldSize);
+            var maxY = FloorToInt(Math.BitDecrement(visible.MaxY / worldSize));
+            var prefetchedCount = ((double)maxX - minX + 3) * ((double)maxY - minY + 3);
+            if (prefetchedCount <= MaximumTilesPerProfile &&
+                minX > int.MinValue && maxX < int.MaxValue &&
+                minY > int.MinValue && maxY < int.MaxValue)
+            {
+                for (long y = minY - 1; y <= (long)maxY + 1; y++)
+                for (long x = minX - 1; x <= (long)maxX + 1; x++)
+                    if (x < minX || x > maxX || y < minY || y > maxY)
+                        result.Add(new TileCoordinate((int)x, (int)y));
+            }
         }
     }
 

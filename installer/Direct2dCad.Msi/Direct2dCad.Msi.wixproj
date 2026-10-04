@@ -2,8 +2,8 @@
   <PropertyGroup>
     <OutputType>Package</OutputType>
     <InstallerPlatform>x64</InstallerPlatform>
-    <Version Condition="'$(Version)' == ''">1.0.3</Version>
-    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.1.3</ReleaseVersion>
+    <Version Condition="'$(Version)' == ''">1.0.4</Version>
+    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.1.4</ReleaseVersion>
     <PackageName>Direct2dCad</PackageName>
     <OutputName>Direct2dCad</OutputName>
     <DefineConstants>$(DefineConstants);PublishDirectory=$(PublishDirectory);ReleaseVersion=$(ReleaseVersion);Version=$(Version)</DefineConstants>

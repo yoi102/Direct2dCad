@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$ReleaseDirectory,
-    [string]$ExpectedReleaseVersion = '0.1.3',
-    [string]$ExpectedInstallerVersion = '1.0.3'
+    [string]$ExpectedReleaseVersion = '0.1.4',
+    [string]$ExpectedInstallerVersion = '1.0.4'
 )
 
 $ErrorActionPreference = 'Stop'

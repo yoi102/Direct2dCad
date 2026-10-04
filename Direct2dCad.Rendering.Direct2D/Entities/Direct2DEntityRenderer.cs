@@ -35,12 +35,40 @@ internal sealed class Direct2DEntityRenderer(
         float? strokeWidthOverride = null,
         CadColor? strokeColorOverride = null)
     {
-        var rotation=entity switch {CadEllipse e=>e.RotationRadians,CadEllipseArc e=>e.RotationRadians,CadRectangle e=>e.RotationRadians,_=>0};
-        var center=entity switch {CadEllipse e=>e.Center,CadEllipseArc e=>e.Center,CadRectangle e=>e.FrameBounds.Center,_=>default};
-        var previous=context.Transform;
-        if(rotation!=0) context.Transform=CreateWorldRotationTransform(rotation,center,previous);
-        try { DrawCore(context,document,entity,resources,viewport,options,strokeBrushOverride,strokeWidthOverride,strokeColorOverride); }
-        finally { context.Transform=previous; }
+        var rotation = entity switch
+        {
+            CadEllipse ellipse => ellipse.RotationRadians,
+            CadEllipseArc arc => arc.RotationRadians,
+            CadRectangle rectangle => rectangle.RotationRadians,
+            _ => 0
+        };
+        // Most primitives already use the current world transform. Reapplying
+        // it for every entity splits Direct2D's drawing batches unnecessarily.
+        if (rotation == 0)
+        {
+            DrawCore(context, document, entity, resources, viewport, options,
+                strokeBrushOverride, strokeWidthOverride, strokeColorOverride);
+            return;
+        }
+
+        var center = entity switch
+        {
+            CadEllipse ellipse => ellipse.Center,
+            CadEllipseArc arc => arc.Center,
+            CadRectangle rectangle => rectangle.FrameBounds.Center,
+            _ => default
+        };
+        var previous = context.Transform;
+        context.Transform = CreateWorldRotationTransform(rotation, center, previous);
+        try
+        {
+            DrawCore(context, document, entity, resources, viewport, options,
+                strokeBrushOverride, strokeWidthOverride, strokeColorOverride);
+        }
+        finally
+        {
+            context.Transform = previous;
+        }
     }
 
     private void DrawCore(ID2D1DeviceContext context,CadDocument document,CadEntity entity,

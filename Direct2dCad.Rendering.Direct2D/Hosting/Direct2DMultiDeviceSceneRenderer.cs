@@ -476,7 +476,7 @@ internal sealed class Direct2DMultiDeviceSceneRenderer : IDisposable
                     _target.AcquireForDraw();
                     mutexAcquired = true;
                     _d2dContext.Target = _target.Target;
-                    _renderer.BeginFrame();
+                    _renderer.BeginFrame(viewportZoom: viewport.Zoom);
                     frameBegun = true;
                     _renderer.PrepareParallelEntityResources(document, entities);
                     _d2dContext.BeginDraw();

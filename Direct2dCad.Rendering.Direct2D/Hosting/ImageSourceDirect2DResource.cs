@@ -280,7 +280,15 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         EnsureTargetReady();
 
         BeginDraw();
-        drawAction(_d2dContext);
+        try
+        {
+            drawAction(_d2dContext);
+        }
+        catch
+        {
+            AbortDraw();
+            throw;
+        }
         EndDraw(dirtyRect, present);
     }
 
@@ -295,8 +303,33 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         EnsureTargetReady();
 
         BeginDraw();
-        drawAction(_d2dContext);
+        try
+        {
+            drawAction(_d2dContext);
+        }
+        catch
+        {
+            AbortDraw();
+            throw;
+        }
         EndDraw(dirtyRects, present);
+    }
+
+    private void AbortDraw()
+    {
+        try
+        {
+            // End the native batch without publishing a partially drawn frame.
+            _d2dContext?.EndDraw();
+        }
+        catch
+        {
+            // Preserve the original callback exception.
+        }
+        finally
+        {
+            _isDrawing = false;
+        }
     }
 
     public bool CaptureBaseScene(IReadOnlyList<CadScreenRect>? dirtyRects)
@@ -378,11 +411,11 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         if (dirtyRects is not { Count: > 0 })
         {
             _d3dContext.CopyResource(destination, source);
-            _d3dContext.Flush();
+            // Both textures stay on this device. Submission order is sufficient;
+            // the shared WPF surface is still flushed by PresentBackBuffer.
             return;
         }
 
-        var copiedAnyRegion = false;
         foreach (var dirtyRect in dirtyRects)
         {
             var left = Math.Clamp(dirtyRect.X, 0, _width);
@@ -407,11 +440,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
                 source,
                 0,
                 new Box(left, top, 0, right, bottom, 1));
-            copiedAnyRegion = true;
         }
-
-        if (copiedAnyRegion)
-            _d3dContext.Flush();
     }
 
     public bool CaptureFrameSnapshot()

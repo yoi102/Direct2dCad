@@ -1,0 +1,798 @@
+{
+  "recorded_at": "2026-10-04T03:11:26.630819+00:00",
+  "baseline_commit": "82ee15adf5355a7d504dae7a4242713614782635",
+  "after": "Modified working tree, Release",
+  "environment": {
+    "os": {
+      "Caption": "Microsoft Windows 11 Pro for Workstations Insider Preview",
+      "Version": "10.0.26220"
+    },
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13700K",
+    "installed_gpus": [
+      {
+        "Name": "NVIDIA GeForce RTX 5070 Ti",
+        "DriverVersion": "32.0.16.1692"
+      },
+      {
+        "Name": "Intel(R) UHD Graphics 770",
+        "DriverVersion": "32.0.101.7088"
+      }
+    ],
+    "gpu_mode": "Hardware Direct2D, UsingWarp=false; adapter selection not separately recorded"
+  },
+  "runs": [
+    {
+      "run": "pUntitled-before-confirm",
+      "recorded_at": "2026-10-04T11:59:19.5288609+09:00",
+      "source": "pUntitled.d2cad",
+      "source_sha256": "EB95124FF72B90525155C57F3F91EB275868B01122E7CC9666352279A5D487C5",
+      "file_bytes": 539837,
+      "assembly_sha256": "9706DF38ED2B542F76CA1694A3E6D64206D228176A70D21C3DB1A9B359943DA1",
+      "runtime": "10.0.11",
+      "machine": "local Windows PC",
+      "surface": "1600x900",
+      "rows": [
+        {
+          "iteration": 1,
+          "load_ms": 266.4327,
+          "first_visible_present_ms": 818.8137,
+          "all_resources_ready_ms": 1213.7627,
+          "entity_count": 27365,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadBlockReference",
+              "count": 4560
+            },
+            {
+              "type": "CadCircle",
+              "count": 13685
+            },
+            {
+              "type": "CadLine",
+              "count": 4560
+            },
+            {
+              "type": "CadText",
+              "count": 4560
+            }
+          ]
+        },
+        {
+          "iteration": 2,
+          "load_ms": 127.8658,
+          "first_visible_present_ms": 375.7127,
+          "all_resources_ready_ms": 703.0237,
+          "entity_count": 27365,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadBlockReference",
+              "count": 4560
+            },
+            {
+              "type": "CadCircle",
+              "count": 13685
+            },
+            {
+              "type": "CadLine",
+              "count": 4560
+            },
+            {
+              "type": "CadText",
+              "count": 4560
+            }
+          ]
+        },
+        {
+          "iteration": 3,
+          "load_ms": 159.3395,
+          "first_visible_present_ms": 385.994,
+          "all_resources_ready_ms": 703.0456,
+          "entity_count": 27365,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadBlockReference",
+              "count": 4560
+            },
+            {
+              "type": "CadCircle",
+              "count": 13685
+            },
+            {
+              "type": "CadLine",
+              "count": 4560
+            },
+            {
+              "type": "CadText",
+              "count": 4560
+            }
+          ]
+        }
+      ],
+      "metrics": [
+        {
+          "mode": "warm-full",
+          "frame_count": 192,
+          "median_ms": 0.1106,
+          "mean_ms": 0.1418572916666667,
+          "p95_ms": 0.2517,
+          "max_ms": 0.4206,
+          "median_allocated_bytes": 5216.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 12
+        },
+        {
+          "mode": "overlay-dirty",
+          "frame_count": 192,
+          "median_ms": 0.0708,
+          "mean_ms": 0.14974583333333327,
+          "p95_ms": 0.1647,
+          "max_ms": 7.4413,
+          "median_allocated_bytes": 5936.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 0
+        },
+        {
+          "mode": "pan",
+          "frame_count": 192,
+          "median_ms": 0.1629,
+          "mean_ms": 44.131914062500016,
+          "p95_ms": 167.0923,
+          "max_ms": 171.461,
+          "median_allocated_bytes": 6984.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 12
+        },
+        {
+          "mode": "zoom",
+          "frame_count": 192,
+          "median_ms": 3.2488,
+          "mean_ms": 47.709385937499995,
+          "p95_ms": 196.1838,
+          "max_ms": 225.0633,
+          "median_allocated_bytes": 33392.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 516,
+          "median_tile_replays": 0
+        }
+      ],
+      "maximum_estimated_cache_bytes": 20916768.0,
+      "cache_budget_bytes": 536870912,
+      "limitations": "Native offscreen Direct2D host, LOD enabled. CPU wall-clock includes EndDraw and a shared-texture Present callback, not GPU timestamps or WPF input/composition latency. First Present includes bounds/index and device/resource preparation after decode. Thread.Yield owner loop; no WPF Dispatcher pacing. Source documents are read-only. PowerShell invocation overhead is present equally in both versions.",
+      "raw_evidence": "artifacts/render-optimization-20261004/pUntitled-before-confirm/measurements.json"
+    },
+    {
+      "run": "pUntitled-after-final",
+      "recorded_at": "2026-10-04T12:03:58.7866474+09:00",
+      "source": "pUntitled.d2cad",
+      "source_sha256": "EB95124FF72B90525155C57F3F91EB275868B01122E7CC9666352279A5D487C5",
+      "file_bytes": 539837,
+      "assembly_sha256": "AF913D97A3F702069FB38EFA13336735A1C6A982D4513D165E92BBC65078187F",
+      "runtime": "10.0.11",
+      "machine": "local Windows PC",
+      "surface": "1600x900",
+      "rows": [
+        {
+          "iteration": 1,
+          "load_ms": 257.0139,
+          "first_visible_present_ms": 839.085,
+          "all_resources_ready_ms": 1222.8645,
+          "entity_count": 27365,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadBlockReference",
+              "count": 4560
+            },
+            {
+              "type": "CadCircle",
+              "count": 13685
+            },
+            {
+              "type": "CadLine",
+              "count": 4560
+            },
+            {
+              "type": "CadText",
+              "count": 4560
+            }
+          ]
+        },
+        {
+          "iteration": 2,
+          "load_ms": 121.6045,
+          "first_visible_present_ms": 363.9792,
+          "all_resources_ready_ms": 685.0063,
+          "entity_count": 27365,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadBlockReference",
+              "count": 4560
+            },
+            {
+              "type": "CadCircle",
+              "count": 13685
+            },
+            {
+              "type": "CadLine",
+              "count": 4560
+            },
+            {
+              "type": "CadText",
+              "count": 4560
+            }
+          ]
+        },
+        {
+          "iteration": 3,
+          "load_ms": 161.5987,
+          "first_visible_present_ms": 387.4226,
+          "all_resources_ready_ms": 732.9945,
+          "entity_count": 27365,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadBlockReference",
+              "count": 4560
+            },
+            {
+              "type": "CadCircle",
+              "count": 13685
+            },
+            {
+              "type": "CadLine",
+              "count": 4560
+            },
+            {
+              "type": "CadText",
+              "count": 4560
+            }
+          ]
+        }
+      ],
+      "metrics": [
+        {
+          "mode": "warm-full",
+          "frame_count": 192,
+          "median_ms": 0.1505,
+          "mean_ms": 0.22377760416666662,
+          "p95_ms": 0.2268,
+          "max_ms": 14.3623,
+          "median_allocated_bytes": 5576.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 12
+        },
+        {
+          "mode": "overlay-dirty",
+          "frame_count": 192,
+          "median_ms": 0.0768,
+          "mean_ms": 0.10661093749999993,
+          "p95_ms": 0.1424,
+          "max_ms": 3.9253,
+          "median_allocated_bytes": 6264.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 0
+        },
+        {
+          "mode": "pan",
+          "frame_count": 192,
+          "median_ms": 0.1454,
+          "mean_ms": 0.16893333333333338,
+          "p95_ms": 0.2322,
+          "max_ms": 3.0135,
+          "median_allocated_bytes": 7448.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 12
+        },
+        {
+          "mode": "zoom",
+          "frame_count": 192,
+          "median_ms": 3.7099,
+          "mean_ms": 47.67166406250001,
+          "p95_ms": 191.6477,
+          "max_ms": 233.7028,
+          "median_allocated_bytes": 33408.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 516,
+          "median_tile_replays": 0
+        }
+      ],
+      "maximum_estimated_cache_bytes": 39938880.0,
+      "cache_budget_bytes": 536870912,
+      "limitations": "Native offscreen Direct2D host, LOD enabled. CPU wall-clock includes EndDraw and a shared-texture Present callback, not GPU timestamps or WPF input/composition latency. First Present starts after decode and fitted-document descriptor creation; includes viewport, index, device and resource preparation. Thread.Yield owner loop; no WPF Dispatcher pacing. The dirty overlay scenario has no selected entities or transients. Source documents are read-only. Run each assembly version in a fresh STA PowerShell process. PowerShell invocation overhead is present equally in both versions.",
+      "raw_evidence": "artifacts/render-optimization-20261004/pUntitled-after-final/measurements.json"
+    },
+    {
+      "run": "p2Untitled-before",
+      "recorded_at": "2026-10-04T11:51:12.594039+09:00",
+      "source": "p2Untitled.d2cad",
+      "source_sha256": "BEB168E79972CC421FBFE68475329A424DB247452C8974D3580D699B2145612E",
+      "file_bytes": 2336311,
+      "assembly_sha256": "9706DF38ED2B542F76CA1694A3E6D64206D228176A70D21C3DB1A9B359943DA1",
+      "runtime": "10.0.11",
+      "machine": "local Windows PC",
+      "surface": "1600x900",
+      "rows": [
+        {
+          "iteration": 1,
+          "load_ms": 443.7524,
+          "first_visible_present_ms": 1239.6495,
+          "all_resources_ready_ms": 1916.3859,
+          "entity_count": 50410,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadArc",
+              "count": 6720
+            },
+            {
+              "type": "CadBlockReference",
+              "count": 6720
+            },
+            {
+              "type": "CadCircle",
+              "count": 16807
+            },
+            {
+              "type": "CadImage",
+              "count": 1
+            },
+            {
+              "type": "CadPolyline",
+              "count": 6720
+            },
+            {
+              "type": "CadRectangle",
+              "count": 3362
+            },
+            {
+              "type": "CadSpline",
+              "count": 6720
+            },
+            {
+              "type": "CadText",
+              "count": 3360
+            }
+          ]
+        },
+        {
+          "iteration": 2,
+          "load_ms": 578.2528,
+          "first_visible_present_ms": 1641.4122,
+          "all_resources_ready_ms": 2587.0384,
+          "entity_count": 50410,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadArc",
+              "count": 6720
+            },
+            {
+              "type": "CadBlockReference",
+              "count": 6720
+            },
+            {
+              "type": "CadCircle",
+              "count": 16807
+            },
+            {
+              "type": "CadImage",
+              "count": 1
+            },
+            {
+              "type": "CadPolyline",
+              "count": 6720
+            },
+            {
+              "type": "CadRectangle",
+              "count": 3362
+            },
+            {
+              "type": "CadSpline",
+              "count": 6720
+            },
+            {
+              "type": "CadText",
+              "count": 3360
+            }
+          ]
+        },
+        {
+          "iteration": 3,
+          "load_ms": 457.5901,
+          "first_visible_present_ms": 1262.9121,
+          "all_resources_ready_ms": 2184.7316,
+          "entity_count": 50410,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadArc",
+              "count": 6720
+            },
+            {
+              "type": "CadBlockReference",
+              "count": 6720
+            },
+            {
+              "type": "CadCircle",
+              "count": 16807
+            },
+            {
+              "type": "CadImage",
+              "count": 1
+            },
+            {
+              "type": "CadPolyline",
+              "count": 6720
+            },
+            {
+              "type": "CadRectangle",
+              "count": 3362
+            },
+            {
+              "type": "CadSpline",
+              "count": 6720
+            },
+            {
+              "type": "CadText",
+              "count": 3360
+            }
+          ]
+        }
+      ],
+      "metrics": [
+        {
+          "mode": "warm-full",
+          "frame_count": 192,
+          "median_ms": 706.7046,
+          "mean_ms": 690.0512697916666,
+          "p95_ms": 814.1753,
+          "max_ms": 852.2014,
+          "median_allocated_bytes": 1026640.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 36960,
+          "median_tile_replays": 0
+        },
+        {
+          "mode": "overlay-dirty",
+          "frame_count": 192,
+          "median_ms": 0.2667,
+          "mean_ms": 0.33550416666666655,
+          "p95_ms": 0.4569,
+          "max_ms": 7.5752,
+          "median_allocated_bytes": 5808.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 0
+        },
+        {
+          "mode": "pan",
+          "frame_count": 192,
+          "median_ms": 716.9951,
+          "mean_ms": 712.7766645833334,
+          "p95_ms": 813.4588,
+          "max_ms": 965.0169,
+          "median_allocated_bytes": 1028512.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 36960,
+          "median_tile_replays": 0
+        },
+        {
+          "mode": "zoom",
+          "frame_count": 192,
+          "median_ms": 33.82,
+          "mean_ms": 196.41531458333318,
+          "p95_ms": 760.9663,
+          "max_ms": 825.6692,
+          "median_allocated_bytes": 32776.0,
+          "realization_builds": 171.0,
+          "median_entity_submissions": 711,
+          "median_tile_replays": 0
+        }
+      ],
+      "maximum_estimated_cache_bytes": 37437216.0,
+      "cache_budget_bytes": 536870912,
+      "limitations": "Native offscreen Direct2D host, LOD enabled. CPU wall-clock includes EndDraw and a shared-texture Present callback, not GPU timestamps or WPF input/composition latency. First Present includes bounds/index and device/resource preparation after decode. Thread.Yield owner loop; no WPF Dispatcher pacing. Source documents are read-only. PowerShell invocation overhead is present equally in both versions.",
+      "raw_evidence": "artifacts/render-optimization-20261004/p2Untitled-before/measurements.json"
+    },
+    {
+      "run": "p2Untitled-after-final",
+      "recorded_at": "2026-10-04T12:05:18.9964186+09:00",
+      "source": "p2Untitled.d2cad",
+      "source_sha256": "BEB168E79972CC421FBFE68475329A424DB247452C8974D3580D699B2145612E",
+      "file_bytes": 2336311,
+      "assembly_sha256": "AF913D97A3F702069FB38EFA13336735A1C6A982D4513D165E92BBC65078187F",
+      "runtime": "10.0.11",
+      "machine": "local Windows PC",
+      "surface": "1600x900",
+      "rows": [
+        {
+          "iteration": 1,
+          "load_ms": 461.3355,
+          "first_visible_present_ms": 1228.1146,
+          "all_resources_ready_ms": 2515.6984,
+          "entity_count": 50410,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadArc",
+              "count": 6720
+            },
+            {
+              "type": "CadBlockReference",
+              "count": 6720
+            },
+            {
+              "type": "CadCircle",
+              "count": 16807
+            },
+            {
+              "type": "CadImage",
+              "count": 1
+            },
+            {
+              "type": "CadPolyline",
+              "count": 6720
+            },
+            {
+              "type": "CadRectangle",
+              "count": 3362
+            },
+            {
+              "type": "CadSpline",
+              "count": 6720
+            },
+            {
+              "type": "CadText",
+              "count": 3360
+            }
+          ]
+        },
+        {
+          "iteration": 2,
+          "load_ms": 287.6329,
+          "first_visible_present_ms": 632.9645,
+          "all_resources_ready_ms": 1711.6028,
+          "entity_count": 50410,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadArc",
+              "count": 6720
+            },
+            {
+              "type": "CadBlockReference",
+              "count": 6720
+            },
+            {
+              "type": "CadCircle",
+              "count": 16807
+            },
+            {
+              "type": "CadImage",
+              "count": 1
+            },
+            {
+              "type": "CadPolyline",
+              "count": 6720
+            },
+            {
+              "type": "CadRectangle",
+              "count": 3362
+            },
+            {
+              "type": "CadSpline",
+              "count": 6720
+            },
+            {
+              "type": "CadText",
+              "count": 3360
+            }
+          ]
+        },
+        {
+          "iteration": 3,
+          "load_ms": 311.5972,
+          "first_visible_present_ms": 615.6871,
+          "all_resources_ready_ms": 1702.1728,
+          "entity_count": 50410,
+          "using_warp": false,
+          "types": [
+            {
+              "type": "CadArc",
+              "count": 6720
+            },
+            {
+              "type": "CadBlockReference",
+              "count": 6720
+            },
+            {
+              "type": "CadCircle",
+              "count": 16807
+            },
+            {
+              "type": "CadImage",
+              "count": 1
+            },
+            {
+              "type": "CadPolyline",
+              "count": 6720
+            },
+            {
+              "type": "CadRectangle",
+              "count": 3362
+            },
+            {
+              "type": "CadSpline",
+              "count": 6720
+            },
+            {
+              "type": "CadText",
+              "count": 3360
+            }
+          ]
+        }
+      ],
+      "metrics": [
+        {
+          "mode": "warm-full",
+          "frame_count": 192,
+          "median_ms": 0.2157,
+          "mean_ms": 0.23964270833333326,
+          "p95_ms": 0.3471,
+          "max_ms": 0.6402,
+          "median_allocated_bytes": 5200.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 12
+        },
+        {
+          "mode": "overlay-dirty",
+          "frame_count": 192,
+          "median_ms": 0.1427,
+          "mean_ms": 0.21326875000000003,
+          "p95_ms": 0.2491,
+          "max_ms": 5.7903,
+          "median_allocated_bytes": 5856.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 0
+        },
+        {
+          "mode": "pan",
+          "frame_count": 192,
+          "median_ms": 0.1928,
+          "mean_ms": 0.23991302083333332,
+          "p95_ms": 0.302,
+          "max_ms": 3.4721,
+          "median_allocated_bytes": 7072.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 0,
+          "median_tile_replays": 12
+        },
+        {
+          "mode": "zoom",
+          "frame_count": 192,
+          "median_ms": 1.8992,
+          "mean_ms": 49.00121875,
+          "p95_ms": 203.527,
+          "max_ms": 235.587,
+          "median_allocated_bytes": 30288.0,
+          "realization_builds": 0.0,
+          "median_entity_submissions": 385,
+          "median_tile_replays": 0
+        }
+      ],
+      "maximum_estimated_cache_bytes": 68731648.0,
+      "cache_budget_bytes": 536870912,
+      "limitations": "Native offscreen Direct2D host, LOD enabled. CPU wall-clock includes EndDraw and a shared-texture Present callback, not GPU timestamps or WPF input/composition latency. First Present starts after decode and fitted-document descriptor creation; includes viewport, index, device and resource preparation. Thread.Yield owner loop; no WPF Dispatcher pacing. The dirty overlay scenario has no selected entities or transients. Source documents are read-only. Run each assembly version in a fresh STA PowerShell process. PowerShell invocation overhead is present equally in both versions.",
+      "raw_evidence": "artifacts/render-optimization-20261004/p2Untitled-after-final/measurements.json"
+    }
+  ],
+  "pcb": [
+    {
+      "run": "pcb-before-final",
+      "source_sha256": "3354C72BFCEF80571DBB617D95D889780232557EFECB718EF73D48B769106891",
+      "imported": 1681,
+      "unsupported": {
+        "Wide polyline": 10611
+      },
+      "surface": "516x384",
+      "metrics": [
+        {
+          "mode": "default",
+          "median_ms": 2.6802,
+          "mean_ms": 3.381370833333334,
+          "p95_ms": 7.7306,
+          "max_ms": 17.925,
+          "frame_count": 192,
+          "realization_builds": 1381.0,
+          "median_allocated_bytes": 26136
+        },
+        {
+          "mode": "no-realizations",
+          "median_ms": 1.1397,
+          "mean_ms": 1.5278307291666675,
+          "p95_ms": 3.9424,
+          "max_ms": 10.2487,
+          "frame_count": 192,
+          "realization_builds": 0.0,
+          "median_allocated_bytes": 21904
+        },
+        {
+          "mode": "no-lod",
+          "median_ms": 3.4288,
+          "mean_ms": 3.3086921874999984,
+          "p95_ms": 6.5125,
+          "max_ms": 9.9497,
+          "frame_count": 192,
+          "realization_builds": 1378.0,
+          "median_allocated_bytes": 25952
+        }
+      ],
+      "raw_evidence": "artifacts/render-optimization-20261004/pcb-before-final/zoom.json",
+      "limitations": "Native hardware/WARP Direct2D host with a 516x384 offscreen Present sink; full redraw per zoom tick, default screen-constant strokes, no WPF mouse/composition latency. Three repeats, 32 zoom-in and 32 zoom-out ticks around (64,40) mm. Input DXF is read-only; missing units explicitly use millimeters."
+    },
+    {
+      "run": "pcb-after-final",
+      "source_sha256": "3354C72BFCEF80571DBB617D95D889780232557EFECB718EF73D48B769106891",
+      "imported": 1681,
+      "unsupported": {
+        "Wide polyline": 10611
+      },
+      "surface": "516x384",
+      "metrics": [
+        {
+          "mode": "default",
+          "median_ms": 1.6565,
+          "mean_ms": 2.4305572916666676,
+          "p95_ms": 6.3613,
+          "max_ms": 15.9304,
+          "frame_count": 192,
+          "realization_builds": 0.0,
+          "median_allocated_bytes": 22272
+        },
+        {
+          "mode": "no-realizations",
+          "median_ms": 0.9944,
+          "mean_ms": 1.2851343749999997,
+          "p95_ms": 3.4591,
+          "max_ms": 4.1563,
+          "frame_count": 192,
+          "realization_builds": 0.0,
+          "median_allocated_bytes": 21888
+        },
+        {
+          "mode": "no-lod",
+          "median_ms": 1.0187,
+          "mean_ms": 1.3973552083333332,
+          "p95_ms": 3.8072,
+          "max_ms": 4.5908,
+          "frame_count": 192,
+          "realization_builds": 0.0,
+          "median_allocated_bytes": 21568
+        }
+      ],
+      "raw_evidence": "artifacts/render-optimization-20261004/pcb-after-final/zoom.json",
+      "limitations": "Native hardware/WARP Direct2D host with a 516x384 offscreen Present sink; full redraw per zoom tick, default screen-constant strokes, no WPF mouse/composition latency. Three repeats, 32 zoom-in and 32 zoom-out ticks around (64,40) mm. Input DXF is read-only; missing units explicitly use millimeters."
+    }
+  ],
+  "checks": {
+    "release_solution_build": "PASS, 0 warnings, 0 errors",
+    "native_render_suite": "210 passed, 0 skipped, external DXF enabled",
+    "viewmodel_interaction_and_settings": "44 passed",
+    "diff_check": "PASS",
+    "manual_wpf_input_composition": "NOT RUN",
+    "gpu_timestamp": "NOT RUN",
+    "optional_background_chunk_recording": "Default OFF; mutable-document thread risk remains"
+  }
+}
