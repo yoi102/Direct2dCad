@@ -1867,6 +1867,18 @@
   <data name="DynamicInputHint" xml:space="preserve"><value>Tab: next · Enter: confirm · Esc: cancel</value></data>
   <data name="InvalidDynamicInput" xml:space="preserve"><value>Enter a valid value for this geometry.</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>Boolean operations</value></data>
+  <data name="BooleanSelectionMinimum" xml:space="preserve"><value>Select at least two objects for a Boolean operation.</value></data>
+  <data name="BooleanSelectionPending" xml:space="preserve"><value>Confirm or cancel the current Boolean operation first.</value></data>
+  <data name="BooleanSelectionReadOnly" xml:space="preserve"><value>This drawing is read-only.</value></data>
+  <data name="BooleanSelectionMaximum" xml:space="preserve"><value>Select no more than {0} objects for a Boolean operation.</value></data>
+  <data name="BooleanSelectionUnavailable" xml:space="preserve"><value>A selected object or its layer is no longer available. Select the objects again.</value></data>
+  <data name="BooleanSelectionWrongSpace" xml:space="preserve"><value>All selected objects must belong to the current editing space.</value></data>
+  <data name="BooleanSelectionEntityLocked" xml:space="preserve"><value>A selected {0} is locked.</value></data>
+  <data name="BooleanSelectionLayerLocked" xml:space="preserve"><value>A selected object is on locked layer “{0}”.</value></data>
+  <data name="BooleanSelectionLayerFrozen" xml:space="preserve"><value>A selected object is on frozen layer “{0}”.</value></data>
+  <data name="BooleanSelectionUnsupportedType" xml:space="preserve"><value>{0} is not supported by Boolean operations. Use regions or closed boundaries made of lines and circular arcs.</value></data>
+  <data name="BooleanSelectionRoundedRectangle" xml:space="preserve"><value>Rounded rectangles are not supported by Boolean operations. Use a rectangle without rounded corners.</value></data>
+  <data name="BooleanSelectionOpenBoundary" xml:space="preserve"><value>The selected {0} has an open boundary. Boolean operations require closed boundaries.</value></data>
   <data name="BooleanUnion" xml:space="preserve"><value>Union</value></data>
   <data name="BooleanIntersection" xml:space="preserve"><value>Intersection</value></data>
   <data name="BooleanDifference" xml:space="preserve"><value>Difference</value></data>
@@ -1905,4 +1917,13 @@
   <data name="EditCornerTooLarge" xml:space="preserve"><value>Reduce the corner sizes to keep a valid path</value></data>
   <data name="GripEdit" xml:space="preserve"><value>Edit shape</value></data>
   <data name="GripEditPrompt" xml:space="preserve"><value>Move the grip or Tab to edit values; click / Enter: confirm, Esc: cancel</value></data>
+  <data name="DrawingMorePointsRequired" xml:space="preserve"><value>Specify {0} more point(s) to finish.</value></data>
+  <data name="DrawingNoStepToUndo" xml:space="preserve"><value>There is no drawing point to undo.</value></data>
+  <data name="DrawingStepUndone" xml:space="preserve"><value>Previous drawing point undone.</value></data>
+  <data name="DrawingUndoStepHint" xml:space="preserve"><value>Backspace / BACK: undo previous point</value></data>
+  <data name="TerminalCommandCancellingFormat" xml:space="preserve"><value>Cancelling terminal command: {0}</value></data>
+  <data name="TerminalCommandCanceledFormat" xml:space="preserve"><value>Terminal command canceled: {0}</value></data>
+  <data name="TerminalCommandBusy" xml:space="preserve"><value>A terminal command is still running. Press Esc to cancel it, then wait for it to stop.</value></data>
+  <data name="TerminalDocumentUnavailable" xml:space="preserve"><value>The original document was closed or replaced. The command was canceled.</value></data>
+  <data name="PastePlacementPrompt" xml:space="preserve"><value>Click in the drawing to place the copied objects; Esc cancels.</value></data>
 </root>

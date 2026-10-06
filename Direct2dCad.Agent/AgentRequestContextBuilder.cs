@@ -34,7 +34,12 @@ internal static class AgentRequestContextBuilder
 
         var systemMessage = AiChatMessage.System(systemPrompt);
         var systemTokens = EstimateMessageTokens(systemMessage);
-        var availableToolTokens = Math.Max(0, promptBudget - systemTokens - MinimumHistoryTokens);
+        var latestUser = conversation.ToList().FindLastIndex(message =>
+            message.Role == AiChatRole.User && !message.IsToolResultAttachment);
+        var imageTokens = conversation.Skip(Math.Max(0, latestUser))
+            .Sum(message => (message.ContentParts ?? []).Count(part => part.Type == AiChatContentPartType.Image) * 1024);
+        var historyReserve = Math.Max(MinimumHistoryTokens, imageTokens > 0 ? imageTokens + 512 : 0);
+        var availableToolTokens = Math.Max(0, promptBudget - systemTokens - historyReserve);
         var selectedTools = FitTools(tools, availableToolTokens, promptBudget, aggressive);
         var fixedTokens = systemTokens + selectedTools.Sum(EstimateToolTokens);
         var historyBudget = Math.Max(0, promptBudget - fixedTokens);
@@ -91,7 +96,7 @@ internal static class AgentRequestContextBuilder
             .ToArray();
         var turnStarts = compacted
             .Select((message, index) => (message, index))
-            .Where(item => item.message.Role == AiChatRole.User)
+            .Where(item => item.message.Role == AiChatRole.User && !item.message.IsToolResultAttachment)
             .Select(item => item.index)
             .ToArray();
         if (turnStarts.Length == 0)
@@ -118,11 +123,17 @@ internal static class AgentRequestContextBuilder
     {
         while (selected.Count > 0 && selected.Sum(EstimateMessageTokens) > tokenBudget)
         {
-            var secondUser = selected.FindIndex(1, message => message.Role == AiChatRole.User);
+            var secondUser = selected.FindIndex(1, message => message.Role == AiChatRole.User && !message.IsToolResultAttachment);
             if (secondUser > 0)
             {
                 selected.RemoveRange(0, secondUser);
                 continue;
+            }
+
+            if (selected.Any(message => message.IsToolResultAttachment))
+            {
+                TrimMultimodalTurnToBudget(selected, tokenBudget);
+                break;
             }
 
             var assistant = selected.FindIndex(1, message => message.Role == AiChatRole.Assistant);
@@ -149,6 +160,25 @@ internal static class AgentRequestContextBuilder
             selected[user] = TruncateMessageToTokenBudget(selected[user], tokenBudget);
             break;
         }
+    }
+
+    private static void TrimMultimodalTurnToBudget(List<AiChatMessage> messages, int tokenBudget)
+    {
+        // Retain the tool exchange and its screenshot together. Removing either can make the
+        // model evaluate a different document version or lose the user's current instruction.
+        foreach (var index in Enumerable.Range(0, messages.Count)
+                     .OrderByDescending(index => EstimateMessageTokens(messages[index])))
+        {
+            var overflow = messages.Sum(EstimateMessageTokens) - tokenBudget;
+            if (overflow <= 0) return;
+            var message = messages[index];
+            var minimum = EstimateMessageTokens(CreateCharacterBudgetMessage(message, 0));
+            var budget = Math.Max(minimum + 32, EstimateMessageTokens(message) - overflow);
+            if (budget < EstimateMessageTokens(message))
+                messages[index] = TruncateMessageToTokenBudget(message, budget);
+        }
+        if (messages.Sum(EstimateMessageTokens) > tokenBudget)
+            throw new InvalidOperationException("The tool image and its execution context cannot fit in the configured context window. Increase the context window or start a new conversation.");
     }
 
     private static void RemoveAssistantExchange(List<AiChatMessage> messages, int assistantIndex)
@@ -219,6 +249,7 @@ internal static class AgentRequestContextBuilder
 
     private static AiChatMessage CompactMessage(AiChatMessage message, int maximumToolResultCharacters)
     {
+        message = message.CanonicalizeContent();
         if (message.Role != AiChatRole.Tool ||
             string.IsNullOrEmpty(message.Content) ||
             message.Content.Length <= maximumToolResultCharacters)
@@ -242,16 +273,9 @@ internal static class AgentRequestContextBuilder
 
         if (message.ContentParts is { Count: > 0 } contentParts &&
             contentParts.Any(part => part.Type == AiChatContentPartType.Image) &&
-            contentParts.Count(part => part.Type == AiChatContentPartType.Image) * 1024 > tokenBudget)
+            contentParts.Count(part => part.Type == AiChatContentPartType.Image) * 1024 + 8 >= tokenBudget)
         {
-            message = message with
-            {
-                ContentParts = contentParts
-                    .Where(part => part.Type != AiChatContentPartType.Image)
-                    .ToArray()
-            };
-            if (EstimateMessageTokens(message) <= tokenBudget)
-                return message;
+            throw new InvalidOperationException("The image input cannot fit in the configured context window. Increase the context window or reduce the attached images.");
         }
 
         var textLength = (message.Content?.Length ?? 0) +
@@ -334,6 +358,7 @@ internal static class AgentRequestContextBuilder
 
     internal static int EstimateMessageTokens(AiChatMessage message)
     {
+        message = message.CanonicalizeContent();
         var total = 8 + EstimateTextTokens(message.Content);
         if (message.ContentParts is { Count: > 0 } contentParts)
         {

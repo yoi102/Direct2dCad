@@ -301,7 +301,7 @@ public sealed class DimensionWorkflowTests
 
     [Theory]
     [InlineData("Cancel")][InlineData("Finish")][InlineData("Switch")]
-    public void CancellingFinishingOrSwitchingToolsClearsUncommittedPointMarkers(string action)
+    public void PendingMarkersSurviveIncompleteFinishButClearOnCancelOrToolSwitch(string action)
     {
         using var context = new CadToolboxTestContext();
         var vm = context.Document;
@@ -313,7 +313,13 @@ public sealed class DimensionWorkflowTests
         if (action == "Cancel") vm.Escape();
         else if (action == "Finish") vm.CompleteCurrentDrawing();
         else vm.SetToolMode(CadCanvasToolMode.Line);
-        Assert.Empty(AnchorMarkers(vm));
+        if (action == "Finish")
+        {
+            Assert.Equal(new CadPointD(10, 10), Assert.Single(AnchorMarkers(vm)).Center);
+            Assert.Equal(CadCanvasToolMode.Leader, vm.CadCanvasToolMode);
+            Assert.NotEmpty(vm.StepInputError);
+        }
+        else Assert.Empty(AnchorMarkers(vm));
         Assert.Empty(vm.CadEditor.Document.Entities);
         Assert.True(vm.CadEditor.DocumentHistoryEquals(history));
         vm.SetToolMode(CadCanvasToolMode.Leader);

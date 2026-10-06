@@ -70,7 +70,7 @@
                                        Opacity="0.7"
                                        Text="{I18N {x:Static r:LangKeys.MultipleValues}}"
                                        Visibility="{Binding HasMixedZIndex, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            <mah:NumericUpDown Interval="1" StringFormat="F0"
+                            <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.DrawOrder}}" Interval="1" StringFormat="F0"
                                                Value="{Binding ZIndex, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
@@ -124,7 +124,7 @@
                         <TextBlock Grid.Row="1" VerticalAlignment="Center"
                                    Text="{I18N {x:Static r:LangKeys.LineWeight}}" />
                         <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Vertical">
-                            <mah:NumericUpDown Width="112"
+                            <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.LineWeight}}" Width="112"
                                                IsEnabled="{Binding LineWeightControlsEnabled}"
                                                Minimum="0.01"
                                                Interval="0.05"
@@ -201,7 +201,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock VerticalAlignment="Center"
                                    Text="{I18N {x:Static r:LangKeys.Opacity}}" />
-                        <mah:NumericUpDown Grid.Column="1"
+                        <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Opacity}}" Grid.Column="1"
                                            Minimum="0" Maximum="1" Interval="0.05" StringFormat="F2"
                                            Value="{Binding Opacity, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                     </Grid>

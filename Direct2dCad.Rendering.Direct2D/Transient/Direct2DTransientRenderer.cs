@@ -107,6 +107,34 @@ internal sealed class Direct2DTransientRenderer(
         DrawGeometry(context, viewport, geometry, path.Style);
     }
 
+    public void DrawRegion(
+        ID2D1DeviceContext context,
+        CadViewport viewport,
+        CadRegion region,
+        CadVectorD offset,
+        CadTransientStyle style,
+        bool isLevelOfDetailEnabled)
+    {
+        if (resourceCache.Factory is not { } factory)
+            return;
+
+        using var geometry = geometryFactory.CreateRegion(factory, region.Contours);
+        var previousTransform = context.Transform;
+        if (offset != CadVectorD.Zero)
+            context.Transform = Matrix3x2.CreateTranslation((float)offset.X, (float)offset.Y) * previousTransform;
+        try
+        {
+            if (HasFill(style))
+                DrawFill(context, geometry, region.Bounds, style, viewport, isLevelOfDetailEnabled);
+            DrawGeometry(context, viewport, geometry, style);
+        }
+        finally
+        {
+            if (offset != CadVectorD.Zero)
+                context.Transform = previousTransform;
+        }
+    }
+
     public void DrawArc(
         ID2D1DeviceContext context,
         CadViewport viewport,
@@ -131,7 +159,8 @@ internal sealed class Direct2DTransientRenderer(
         double radiusY,
         double startAngleRadians,
         double sweepAngleRadians,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        double rotationRadians = 0)
     {
         if (resourceCache.Factory is not { } factory ||
             radiusX <= 0 || radiusY <= 0 || Math.Abs(sweepAngleRadians) <= double.Epsilon)
@@ -146,7 +175,22 @@ internal sealed class Direct2DTransientRenderer(
             radiusY,
             startAngleRadians,
             sweepAngleRadians);
-        DrawGeometry(context, viewport, geometry, style);
+        if (Math.Abs(rotationRadians) <= 1e-12)
+        {
+            DrawGeometry(context, viewport, geometry, style);
+            return;
+        }
+
+        var previousTransform = context.Transform;
+        context.Transform = Matrix3x2.CreateRotation((float)rotationRadians, ToVector2(center)) * previousTransform;
+        try
+        {
+            DrawGeometry(context, viewport, geometry, style);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
     }
 
     public void DrawCircle(

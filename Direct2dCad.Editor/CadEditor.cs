@@ -104,6 +104,10 @@ public sealed class CadEditor
     public CadDocumentChangeSet ExecuteInBatch(ICadCommand command, Guid batchId) =>
         DocumentCommands.ExecuteInBatch(command, batchId);
 
+    /// <summary>Pins created entities to the current editing owner before publishing changes, including redo.</summary>
+    public CadDocumentChangeSet ExecuteCreationInBatch(ICadCommand command, Guid batchId) =>
+        DocumentCommands.ExecuteInBatch(new CreateEntitiesInOwnerCommand(command, ActiveOwnerBlockId), batchId);
+
     public CadEditorCommandResult Execute(ICadEditorCommand command) => EditorCommands.Execute(command);
 
     public CadEditorCommandResult ExecuteRange(

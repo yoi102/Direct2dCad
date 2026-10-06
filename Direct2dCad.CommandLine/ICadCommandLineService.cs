@@ -7,6 +7,7 @@ public interface ICadCommandLineService
     CadCommandLineResult Execute(string commandLine, ICadCommandLineContext? context);
 
     IReadOnlyList<string> Complete(string commandPrefix, int maximumCount = 12);
+    string? GetInputHint(string commandText) => null;
 }
 
 public sealed record CadCommandLineDescriptor(

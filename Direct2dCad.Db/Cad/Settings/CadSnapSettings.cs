@@ -4,7 +4,7 @@ namespace Direct2dCad.Db.Cad.Settings;
 public enum CadObjectSnapModes
 {
     None = 0, Endpoint = 1, Midpoint = 2, Center = 4, Intersection = 8,
-    Perpendicular = 16, Tangent = 32,
+    Perpendicular = 16, Tangent = 32, Nearest = 64, Quadrant = 128,
     Default = Endpoint | Midpoint | Center | Intersection
 }
 
@@ -23,7 +23,7 @@ public sealed record CadSnapSettings
     {
         if (!double.IsFinite(ScreenTolerance) || ScreenTolerance is < 2 or > 30 ||
             !double.IsFinite(PolarIncrementDegrees) || PolarIncrementDegrees is <= 0 or > 180 ||
-            (Modes & ~(CadObjectSnapModes.Default | CadObjectSnapModes.Perpendicular | CadObjectSnapModes.Tangent)) != 0 ||
+            (Modes & ~(CadObjectSnapModes.Default | CadObjectSnapModes.Perpendicular | CadObjectSnapModes.Tangent | CadObjectSnapModes.Nearest | CadObjectSnapModes.Quadrant)) != 0 ||
             OrthoEnabled && PolarEnabled)
             throw new ArgumentOutOfRangeException(nameof(CadSnapSettings));
     }

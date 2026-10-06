@@ -12,19 +12,19 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
         ArgumentNullException.ThrowIfNull(request);
         Validate(request);
 
-        var availableTools = request.Toolset?.ToolDefinitions ?? [];
-        var selectedTools = request.Toolset?.SelectTools(request.UserPrompt) ?? [];
+        IReadOnlyList<AiToolDefinition> selectedTools = SelectInitialTools(request);
         var contextWindowTokens = NormalizeContextWindow(request.ContextWindowTokens);
 
         for (var round = 0; round < request.MaximumToolRounds; round++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var completion = await CompleteWithContextRetryAsync(
                 request,
                 selectedTools,
-                availableTools,
                 contextWindowTokens,
                 reportEvent,
                 cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             contextWindowTokens = completion.ContextWindowTokens;
 
             request.Conversation.AddAssistant(completion.Completion);
@@ -39,6 +39,7 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
 
             if (completion.Completion.ToolCalls.Count == 0)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 return new AgentRunResult(
                     completion.Completion.Model,
                     contextWindowTokens,
@@ -48,17 +49,32 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
             if (request.Toolset is null)
                 throw new InvalidOperationException("The model requested tools, but no agent toolset is available.");
 
+            var images = new List<(string ToolName, IReadOnlyList<AiChatContentPart> Parts)>();
             foreach (var toolCall in completion.Completion.ToolCalls)
             {
-                var result = await request.Toolset.ExecuteAsync(toolCall, cancellationToken);
-                request.Conversation.AddToolResult(toolCall, result);
+                cancellationToken.ThrowIfCancellationRequested();
+                string result;
+                if (toolCall.Name == AgentToolDiscovery.Name)
+                {
+                    var discovered = AgentToolDiscovery.Execute(request.Toolset, toolCall.ArgumentsJson);
+                    result = discovered.Result;
+                    selectedTools = new[] { AgentToolDiscovery.Definition }.Concat(discovered.Tools).Concat(selectedTools)
+                        .DistinctBy(tool => tool.Name).ToArray();
+                }
+                else result = await request.Toolset.ExecuteAsync(toolCall, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                var content = request.Conversation.AddToolResult(toolCall, result);
+                if (content.Images.Count > 0) images.Add((toolCall.Name, content.Images));
                 await ReportAsync(
                     reportEvent,
                     new AgentRunEvent(
                         AgentRunEventKind.ToolResult,
-                        result,
+                        content.Text,
                         toolCall.Name));
             }
+            // Finish every tool response in the assistant exchange before appending
+            // image-bearing user messages; providers require contiguous tool replies.
+            foreach (var item in images) request.Conversation.AddToolImages(item.ToolName, item.Parts);
         }
 
         throw new InvalidOperationException("The model exceeded the maximum number of agent tool rounds.");
@@ -67,7 +83,6 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
     private async Task<CompletionAttempt> CompleteWithContextRetryAsync(
         AgentRunRequest request,
         IReadOnlyList<AiToolDefinition> selectedTools,
-        IReadOnlyList<AiToolDefinition> availableTools,
         int contextWindowTokens,
         Func<AgentRunEvent, ValueTask>? reportEvent,
         CancellationToken cancellationToken)
@@ -75,13 +90,10 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
         for (var attempt = 0; attempt < 2; attempt++)
         {
             var aggressive = attempt > 0;
-            var tools = aggressive && request.Toolset is not null && availableTools.Count > 0
-                ? request.Toolset.SelectTools(request.UserPrompt, aggressive: true)
-                : selectedTools;
             var context = AgentRequestContextBuilder.Build(
                 request.SystemPrompt,
                 request.Conversation.Messages,
-                tools,
+                selectedTools,
                 contextWindowTokens,
                 aggressive);
             try
@@ -111,6 +123,26 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
         }
 
         throw new InvalidOperationException("The agent request could not fit in the configured context window.");
+    }
+
+    private static IReadOnlyList<AiToolDefinition> SelectInitialTools(AgentRunRequest request)
+    {
+        if (request.Toolset is null) return [];
+        var selected = request.Toolset.SelectTools(request.UserPrompt).AsEnumerable();
+        var prompt = request.UserPrompt.Trim();
+        var continuation = new[] { "继续", "接着", "然后", "同样", "刚才", "上一个", "这个", "那个", "它" }
+            .Any(term => prompt.Contains(term, StringComparison.Ordinal)) ||
+            System.Text.RegularExpressions.Regex.IsMatch(prompt, @"\b(continue|go\s+on|same|that|it)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (continuation)
+        {
+            var previous = request.Conversation.Messages
+                .Where(message => message.Role == AiChatRole.User && !message.IsToolResultAttachment && message.Content is not null && message.Content != request.UserPrompt)
+                .TakeLast(4).Reverse();
+            var previousTools = previous.SelectMany(message => request.Toolset.SelectTools(message.Content!));
+            var calledNames = request.Conversation.Messages.SelectMany(message => message.ToolCalls ?? []).TakeLast(12).Select(call => call.Name).ToHashSet(StringComparer.Ordinal);
+            selected = request.Toolset.ToolDefinitions.Where(tool => calledNames.Contains(tool.Name)).Concat(previousTools).Concat(selected);
+        }
+        return new[] { AgentToolDiscovery.Definition }.Concat(selected).DistinctBy(tool => tool.Name).ToArray();
     }
 
     private static void Validate(AgentRunRequest request)

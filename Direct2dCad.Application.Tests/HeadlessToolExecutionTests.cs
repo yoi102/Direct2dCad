@@ -5,7 +5,7 @@ using Direct2dCad.Db.Cad;
 
 namespace Direct2dCad.Application.Tests;
 
-public sealed class HeadlessToolExecutionTests
+public sealed partial class HeadlessToolExecutionTests
 {
     [Fact]
     public async Task ToolsEditTwoHeadlessDocumentsWithIndependentUndoAndQueries()
@@ -132,6 +132,12 @@ public sealed class HeadlessToolExecutionTests
 
     private sealed class HeadlessWorkspace : ICadToolWorkspace, IDisposable
     {
+        public Func<string, int, CancellationToken, Task<CadToolImage>>? CaptureHandler { get; set; }
+        public Func<string, CancellationToken, Task<bool>>? PrintHandler { get; set; }
+        public Task<CadToolImage> CaptureViewAsync(string id, int size, CancellationToken token) =>
+            CaptureHandler?.Invoke(id, size, token) ?? throw new NotSupportedException("View capture is unavailable in this host.");
+        public Task<bool> PrintDocumentAsync(string id, CancellationToken token) =>
+            PrintHandler?.Invoke(id, token) ?? throw new NotSupportedException("Printing is unavailable in this host.");
         private readonly List<CadToolWorkspaceDocument> _documents = [];
         private string? _active;
         public IReadOnlyList<CadToolWorkspaceDocument> GetDocuments() => _documents.Select(d => d with { IsActive = d.DocumentId == _active }).ToArray();

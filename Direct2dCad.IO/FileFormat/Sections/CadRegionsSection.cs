@@ -26,4 +26,6 @@ public sealed class CadRegionEdgeData
     [Key(3)] public double Radius { get; set; }
     [Key(4)] public double StartAngle { get; set; }
     [Key(5)] public double Sweep { get; set; }
+    [Key(6)] public double EllipseRadiusY { get; set; }
+    [Key(7)] public double EllipseRotation { get; set; }
 }

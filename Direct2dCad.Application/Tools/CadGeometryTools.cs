@@ -190,9 +190,13 @@ internal static class CadGeometryTools
     {
         CadDimension d => new {kind=d.Definition.Kind.ToString(),anchors=d.Definition.Anchors.Select(a=>PointDto(a.Point)).ToArray(),anchor_references=d.Definition.Anchors.Select(a=>a.Reference).ToArray(),placement=PointDto(d.Definition.Placement),style=d.Definition.Style,annotation_scale=d.Definition.AnnotationScale,text_override=d.Definition.TextOverride,rotation_degrees=d.Definition.LinearRotationRadians*DegreesPerRadian,association=d.AssociationState.ToString(),measurement=d.Measurement,text=d.DisplayText},
         CadRegion region => new { closed = true, area = region.Area, perimeter = region.Length,
+            perimeter_approximate = region.Contours.Any(c => c.Edges.Any(p => p.IsEllipse)),
             contours = region.Contours.Select(c => new { signed_area = c.SignedArea, edges = c.Edges.Select(p => new
-            { kind = p.IsLine ? "Line" : "Arc", start = PointDto(p.Start), end = PointDto(p.End),
-                center = p.IsLine ? null : (object)PointDto(p.Center), radius = p.IsLine ? (double?)null : p.Radius,
+            { kind = p.IsLine ? "Line" : p.IsEllipse ? "EllipseArc" : "Arc", start = PointDto(p.Start), end = PointDto(p.End),
+                center = p.IsLine ? null : (object)PointDto(p.Center), radius = p.IsLine || p.IsEllipse ? (double?)null : p.Radius,
+                radius_x = p.IsEllipse ? (double?)p.RadiusX : null,
+                radius_y = p.IsEllipse ? (double?)p.RadiusY : null,
+                rotation_degrees = p.IsEllipse ? (double?)(p.Rotation * DegreesPerRadian) : null,
                 start_angle_degrees = p.IsLine ? (double?)null : p.StartAngle*DegreesPerRadian,
                 sweep_angle_degrees = p.IsLine ? (double?)null : p.Sweep*DegreesPerRadian }).ToArray() }).ToArray() },
         CadLine line => new { start = PointDto(line.Start), end = PointDto(line.End) },

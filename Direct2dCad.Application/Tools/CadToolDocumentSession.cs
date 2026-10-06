@@ -5,13 +5,14 @@ using Direct2dCad.Editor.Commands;
 
 namespace Direct2dCad.Application.Tools;
 
-/// <summary>A model-space tool session for scripts and other hosts without a window or rendering backend.</summary>
+/// <summary>A tool session for scripts and other hosts without a window or rendering backend.</summary>
 public sealed class CadToolDocumentSession : ICadToolDocumentSession, IDisposable
 {
     public CadToolDocumentSession(CadDocument document)
     {
         CadEditor = new CadEditor(document ?? throw new ArgumentNullException(nameof(document)));
         CadEditor.Viewport.SetSize(1024, 768);
+        CadEditor.DocumentChanged += OnDocumentChanged;
     }
 
     public CadEditor CadEditor { get; }
@@ -20,14 +21,14 @@ public sealed class CadToolDocumentSession : ICadToolDocumentSession, IDisposabl
     public string ToolMode => "Select";
     public double CurrentPointerWorldX { get; set; }
     public double CurrentPointerWorldY { get; set; }
-    public LayoutId? ActiveLayoutId => null;
-    public LayoutViewportId? ActiveLayoutViewportId => null;
+    public LayoutId? ActiveLayoutId { get; private set; }
+    public LayoutViewportId? ActiveLayoutViewportId { get; private set; }
     public BlockId? EditingBlockId { get; private set; }
     public string EditingBlockName => EditingBlockId is { } id ? CadEditor.Document.GetBlock(id).Name : "";
     public bool IsEditingBlock => EditingBlockId is not null;
-    public bool IsModelSpaceActive => true;
-    public bool IsLayoutViewportActive => false;
-    public bool IsPaperSpaceActive => false;
+    public bool IsModelSpaceActive => ActiveLayoutId is null;
+    public bool IsLayoutViewportActive => ActiveLayoutViewportId is not null;
+    public bool IsPaperSpaceActive => ActiveLayoutId is not null && ActiveLayoutViewportId is null;
     public event EventHandler? RenderRequested;
 
     public void FitToWindow()
@@ -73,14 +74,67 @@ public sealed class CadToolDocumentSession : ICadToolDocumentSession, IDisposabl
         ThrowIfDisposed();
         CadEditor.Selection.Clear();
         EditingBlockId = null;
-        CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
+        CadEditor.ActiveOwnerBlockId = IsPaperSpaceActive
+            ? CadEditor.Document.GetLayout(ActiveLayoutId!.Value).PaperSpaceBlockId : BlockId.ModelSpace;
         RequestRender();
+    }
+
+    public void ActivateModelSpace()
+    {
+        ThrowIfDisposed();
+        EditingBlockId = null;
+        ActiveLayoutId = null;
+        ActiveLayoutViewportId = null;
+        CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
+        CadEditor.Selection.Clear();
+        RequestRender();
+    }
+
+    public void ActivateLayout(LayoutId layoutId)
+    {
+        ThrowIfDisposed();
+        var layout = CadEditor.Document.GetLayout(layoutId);
+        EditingBlockId = null;
+        ActiveLayoutId = layout.Id;
+        ActiveLayoutViewportId = null;
+        CadEditor.ActiveOwnerBlockId = layout.PaperSpaceBlockId;
+        CadEditor.Selection.Clear();
+        RequestRender();
+    }
+
+    public void ActivateLayoutViewport(LayoutViewportId viewportId)
+    {
+        ThrowIfDisposed();
+        if (ActiveLayoutId is not { } id)
+            throw new InvalidOperationException("Activate a layout first.");
+        var viewport = CadEditor.Document.GetLayout(id).GetViewport(viewportId);
+        if (!viewport.IsVisible) throw new InvalidOperationException("A hidden viewport cannot be activated.");
+        EditingBlockId = null;
+        ActiveLayoutViewportId = viewportId;
+        CadEditor.ActiveOwnerBlockId = BlockId.ModelSpace;
+        CadEditor.Selection.Clear();
+        RequestRender();
+    }
+
+    public void ExitLayoutViewport()
+    {
+        if (ActiveLayoutId is { } id) ActivateLayout(id);
     }
 
     public void Dispose()
     {
         IsDisposed = true;
+        CadEditor.DocumentChanged -= OnDocumentChanged;
         RenderRequested = null;
+    }
+
+    private void OnDocumentChanged(object? sender, CadDocumentChangeSet changes)
+    {
+        if (ActiveLayoutId is not { } id) return;
+        if (!CadEditor.Document.TryGetLayout(id, out var layout) || layout is null)
+            ActivateModelSpace();
+        else if (ActiveLayoutViewportId is { } viewportId && !layout.Viewports.Any(v => v.Id == viewportId && v.IsVisible))
+            ExitLayoutViewport();
     }
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(IsDisposed, this);

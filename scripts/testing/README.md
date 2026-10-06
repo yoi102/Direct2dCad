@@ -6,7 +6,11 @@
 
 2026-10-06 的命令、历史、文档 scope、Application 层与渲染预算优化见[架构优化验收](../../docs/ARCHITECTURE-OPTIMIZATION.md)。本轮验证按托管、原生和真实窗口分别记录，详见[日期验证记录](../../docs/validation/2026-10-06/architecture/README.md)。
 
+同日后续的终端取消、空回车、绘图点撤回、参数纠错、捕获生命周期、全局保存及界面可访问性见[交互优化说明](../../docs/INTERACTION-OPTIMIZATION.md)及[独立验证记录](../../docs/interaction-optimization/validation-2026-10-06/README.md)。`CommandLineInteractionTests`、`ToolSessionRecoveryTests`、`EditParameterRecoveryTests` 覆盖核心交互；Windows 集成测试检查 WPF 事件与控件，UI 自动化补充真实窗口的 Backspace / Enter / Ctrl+S 路径。
+
 ## 运行
+
+命令行与 AI Agent 整改的定向回归、完整回归、真实渲染及真实 provider 证据见[整改说明](../../docs/COMMANDLINE-AND-AI-IMPLEMENTATION.md)。schema 兼容性测试保留原 API 的有效枚举写法；离线故障测试与真实模型测试分别记录。
 
 在 Windows 和解决方案所需的 .NET SDK 环境中运行。脚本先验证架构引用图、架构检查器的隔离样例和覆盖率汇总器，再构建整个解决方案，随后逐个运行测试项目，避免并发构建和原生资源竞争。
 
@@ -104,6 +108,11 @@ python scripts/testing/Validate-DxfExchange.py TestResults/m4-m6-final-evidence
 # 生成并只读校验布尔面域的全部边界、实心 HATCH 孔洞/孔内岛与块内样式
 dotnet run -c Release --project Direct2dCad.Benchmarks -- --region-dxf-evidence TestResults/region-dxf/evidence
 python scripts/testing/Validate-RegionDxfExport.py TestResults/region-dxf/evidence
+# 导出椭圆面域、镜像孔洞和三种混合布尔结果，再独立核对精确 HATCH/ELLIPSE
+$env:DIRECT2DCAD_ELLIPSE_DXF_EVIDENCE = "$PWD/TestResults/ellipse-dxf"
+dotnet test Direct2dCad.IO.Tests -c Release --filter FullyQualifiedName~EllipticalRegionExchangeTests
+python scripts/testing/Validate-EllipticalRegionDxf.py TestResults/ellipse-dxf
+Remove-Item Env:DIRECT2DCAD_ELLIPSE_DXF_EVIDENCE
 # 两个未签名包在独立路径测试安装、版本升级、回退、哈希拒绝和卸载
 scripts/delivery/Test-LocalPackage.ps1 -PackageDirectory TestResults/local-package -UpgradePackageDirectory TestResults/upgrade-package
 ```

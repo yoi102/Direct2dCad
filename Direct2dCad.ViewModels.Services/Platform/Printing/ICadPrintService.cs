@@ -12,7 +12,8 @@ public interface ICadPrintService
         Action? onPrintStarted = null,
         Action<bool>? onBusyChanged = null,
         Action? onPrintCompleted = null,
-        Action<CadPrintCompletion>? onPrintFinished = null);
+        Action<CadPrintCompletion>? onPrintFinished = null,
+        CancellationToken cancellationToken = default);
 }
 
 public enum CadPrintCompletionStatus { Completed, Cancelled, Failed }

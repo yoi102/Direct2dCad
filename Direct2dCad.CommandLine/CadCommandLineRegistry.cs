@@ -31,6 +31,7 @@ public sealed class CadCommandLineRegistry
 
     public IReadOnlyList<string> Complete(string prefix, int maximumCount = 12)
     {
+        if (maximumCount <= 0) return [];
         var normalizedPrefix = CadCommandLineSyntax.NormalizeCommandName(prefix);
         return _orderedHandlers
             .Where(handler => EnumerateNames(handler.Descriptor)
@@ -38,7 +39,7 @@ public sealed class CadCommandLineRegistry
             .Select(handler => handler.Descriptor.Name)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order(StringComparer.OrdinalIgnoreCase)
-            .Take(Math.Max(1, maximumCount))
+            .Take(maximumCount)
             .ToArray();
     }
 

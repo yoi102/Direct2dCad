@@ -282,25 +282,23 @@ public sealed class AgentRequestContextBuilderTests
         var user = Assert.Single(context.Messages, item => item.Role == AiChatRole.User);
         Assert.Contains(
             "content truncated to fit the model context window",
-            user.ContentParts![0].Text,
+            Assert.Single(user.ContentParts!, part => part.FileName == "notes.txt").Text,
             StringComparison.Ordinal);
         Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 4096);
     }
 
     [Fact]
-    public void Build_DropsImagesWhenSystemPromptLeavesNoImageBudget()
+    public void Build_ReportsInsufficientImageBudgetWithoutSilentlyDroppingImage()
     {
-        var context = AgentRequestContextBuilder.Build(
+        var exception = Assert.Throws<InvalidOperationException>(() => AgentRequestContextBuilder.Build(
             new string('s', 10_000),
             [AiChatMessage.User(
                 "describe the image",
                 [AiChatContentPart.Image("data:image/png;base64,AA==")])],
             [],
-            4096);
+            4096));
 
-        var user = Assert.Single(context.Messages, message => message.Role == AiChatRole.User);
-        Assert.Empty(user.ContentParts ?? []);
-        Assert.True(context.EstimatedPromptTokens + context.MaxOutputTokens <= 4096);
+        Assert.Contains("image input cannot fit", exception.Message);
     }
 
     [Fact]

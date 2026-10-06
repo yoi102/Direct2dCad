@@ -115,6 +115,10 @@
                 BorderThickness="1"
                 CornerRadius="2">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -128,6 +132,7 @@
                            Text=">" />
                 <TextBox x:Name="CommandInput"
                          AutomationProperties.AutomationId="CommandLineInput"
+                         AutomationProperties.HelpText="{Binding InputHint}"
                          Grid.Column="1"
                          Padding="0"
                          VerticalContentAlignment="Center"
@@ -136,6 +141,11 @@
                          FontFamily="Cascadia Mono, Consolas"
                          FontSize="13"
                          Text="{Binding CommandText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,3,0,0"
+                           AutomationProperties.AutomationId="CommandLineInputHint"
+                           FontSize="11" Opacity="0.8" TextWrapping="Wrap"
+                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                           Text="{Binding InputHint}" />
             </Grid>
         </Border>
 

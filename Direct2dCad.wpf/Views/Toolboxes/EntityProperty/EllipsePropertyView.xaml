@@ -29,13 +29,13 @@
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterX}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterX}}" Grid.Row="0" Grid.Column="1" Value="{Binding CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterY}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterY}}" Grid.Row="1" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.RadiusX}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding RadiusX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.RadiusX}}" Grid.Row="2" Grid.Column="1" Value="{Binding RadiusX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.RadiusY}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding RadiusY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.RadiusY}}" Grid.Row="3" Grid.Column="1" Value="{Binding RadiusY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DiameterX}}" VerticalAlignment="Center" />
                     <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding DiameterX, Mode=OneWay, StringFormat=F3}" IsReadOnly="True" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DiameterY}}" VerticalAlignment="Center" />

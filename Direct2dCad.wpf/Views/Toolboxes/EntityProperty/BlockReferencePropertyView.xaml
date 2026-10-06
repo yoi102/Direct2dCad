@@ -55,15 +55,15 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="X" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding PositionX, Mode=TwoWay}" StringFormat="F3" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="X" Grid.Row="0" Grid.Column="1" Value="{Binding PositionX, Mode=TwoWay}" StringFormat="F3" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Y" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding PositionY, Mode=TwoWay}" StringFormat="F3" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="Y" Grid.Row="1" Grid.Column="1" Value="{Binding PositionY, Mode=TwoWay}" StringFormat="F3" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Rotation}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding RotationDegrees, Mode=TwoWay}" StringFormat="F2" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Rotation}}" Grid.Row="2" Grid.Column="1" Value="{Binding RotationDegrees, Mode=TwoWay}" StringFormat="F2" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding ScaleXLabel}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding ScaleX, Mode=TwoWay}" Minimum="-100000" Maximum="100000" StringFormat="F3" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{Binding ScaleXLabel}" Grid.Row="3" Grid.Column="1" Value="{Binding ScaleX, Mode=TwoWay}" Minimum="-100000" Maximum="100000" StringFormat="F3" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding ScaleYLabel}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding ScaleY, Mode=TwoWay}" Minimum="-100000" Maximum="100000" StringFormat="F3" />
+                    <mah:NumericUpDown AutomationProperties.Name="{Binding ScaleYLabel}" Grid.Row="4" Grid.Column="1" Value="{Binding ScaleY, Mode=TwoWay}" Minimum="-100000" Maximum="100000" StringFormat="F3" />
                 </Grid>
             </Expander>
         </StackPanel>

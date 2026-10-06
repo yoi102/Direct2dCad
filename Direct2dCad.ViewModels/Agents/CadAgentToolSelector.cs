@@ -114,6 +114,7 @@ internal static class CadAgentToolSelector
 
         var normalized = prompt?.Trim().ToLowerInvariant() ?? string.Empty;
         var requested = new List<string>();
+        var priority = new List<string>();
         var requestedSet = new HashSet<string>(StringComparer.Ordinal);
         void Add(IEnumerable<string> names)
         {
@@ -200,27 +201,21 @@ internal static class CadAgentToolSelector
                 : ViewSettingsTools);
         }
 
-        var isDrawing = !isViewSettings && (ContainsAny(normalized, DrawingTerms) ||
-                        EntityCreationTools.Any(item => ContainsAny(normalized, item.Terms)));
+        // Units can describe geometry; they must not exclude drawing or editing tools.
+        var isDrawing = ContainsAny(normalized, DrawingTerms) ||
+                        EntityCreationTools.Any(item => ContainsAny(normalized, item.Terms));
         if (isDrawing)
         {
-            var specificTools = EntityCreationTools
-                .Where(item => ContainsAny(normalized, item.Terms))
-                .Select(item => item.Tool)
-                .ToList();
-            if (specificTools.Contains("add_arc", StringComparer.Ordinal))
-                specificTools.Remove("add_circle");
-            if (specificTools.Contains("add_ellipse_arc", StringComparer.Ordinal))
+            // Remove longer entity phrases before looking for their substrings. This
+            // avoids treating "圆弧" as "圆", while preserving "圆和圆弧".
+            var remaining = normalized;
+            var specificTools = new List<string>();
+            foreach (var item in EntityCreationTools.SelectMany(item => item.Terms.Select(term => (item.Tool, Term: term)))
+                         .OrderByDescending(item => item.Term.Length))
             {
-                specificTools.Remove("add_ellipse");
-                specificTools.Remove("add_arc");
-            }
-            if (specificTools.Contains("add_shape_text", StringComparer.Ordinal))
-                specificTools.Remove("add_text");
-            if (specificTools.Contains("add_polyline", StringComparer.Ordinal) ||
-                specificTools.Contains("add_spline", StringComparer.Ordinal))
-            {
-                specificTools.Remove("add_line");
+                if (!remaining.Contains(item.Term, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!specificTools.Contains(item.Tool, StringComparer.Ordinal)) specificTools.Add(item.Tool);
+                remaining = remaining.Replace(item.Term, " ", StringComparison.OrdinalIgnoreCase);
             }
             var needsBulk = specificTools.Count == 0 || ContainsAny(normalized,
                 "multiple", "many", "batch", "pattern", "outline", "drawing",
@@ -229,6 +224,10 @@ internal static class CadAgentToolSelector
                 Add(["add_entities"]);
             else
                 Add(specificTools);
+            if ((ContainsAny(normalized, "绘制", "画一个", "画一条", "画一段", "创建", "添加", "新建") ||
+                 System.Text.RegularExpressions.Regex.IsMatch(normalized, @"\b(draw|sketch|add|create)\b")) &&
+                !ContainsAny(normalized, "style", "font", "样式", "字体"))
+                priority.AddRange(needsBulk ? ["add_entities"] : specificTools);
 
             if (ContainsAny(normalized, "composite", "mixed path", "closed contour", "复合路径", "混合路径", "闭合轮廓"))
                 Add(["add_composite_path"]);
@@ -258,12 +257,50 @@ internal static class CadAgentToolSelector
                 Add(["create_layer"]);
             Add(LayerTools);
         }
-        if (!isViewSettings && ContainsAny(normalized, EditingTerms))
+        if (ContainsAny(normalized, EditingTerms))
             Add(EditingTools);
+        if (!ContainsAny(normalized, "viewport", "zoom", "pan", "视图", "视口"))
+        {
+            if (ContainsAny(normalized, "move", "移动")) priority.Add("move_entities");
+            if (ContainsAny(normalized, "rotate", "scale", "mirror", "旋转", "缩放", "镜像")) priority.Add("transform_entities");
+        }
         if (ContainsAny(normalized, "block", "块", "块定义", "块引用"))
             Add(BlockTools);
-        if (ContainsAny(normalized, "style", "font", "hatch", "line type", "linetype", "pattern"))
+        if (ContainsAny(normalized, "style", "font", "hatch", "line type", "linetype", "pattern", "样式", "字体", "填充图案", "线型"))
+        {
             Add(StyleTools);
+            if (ContainsAny(normalized, "create", "add", "创建", "新建", "添加"))
+            {
+                if (ContainsAny(normalized, "text", "font", "文字", "文本", "字体")) priority.Add("create_text_style");
+                else if (ContainsAny(normalized, "fill", "填充")) priority.Add("create_fill_style");
+                else if (ContainsAny(normalized, "line type", "linetype", "线型")) priority.Add("create_line_type");
+                else if (ContainsAny(normalized, "hatch", "pattern", "图案")) priority.Add("create_hatch_pattern");
+                else priority.Add("create_graphic_style");
+            }
+            else if (ContainsAny(normalized, "rename", "重命名", "改名"))
+                priority.Add(ContainsAny(normalized, "line type", "linetype", "线型") ? "rename_line_type" : "rename_style");
+            else if (ContainsAny(normalized, "delete", "remove", "删除", "移除"))
+                priority.Add(ContainsAny(normalized, "line type", "linetype", "线型") ? "delete_line_type" : "delete_style");
+            else if (ContainsAny(normalized, "edit", "change", "set", "修改", "更改", "设置"))
+            {
+                if (ContainsAny(normalized, "text style", "文字样式", "文本样式")) priority.Add("set_text_style_properties");
+                else if (ContainsAny(normalized, "graphic style", "图形样式", "图元样式")) priority.Add("set_graphic_style_properties");
+            }
+            else if (ContainsAny(normalized, "list", "show", "列出", "查看")) priority.Add("list_styles");
+        }
+        if (ContainsAny(normalized, "ole", "embedded object", "嵌入对象"))
+        {
+            Add(["add_ole_object", "set_ole_object_data", "get_entity_geometry", "set_entity_specific_properties"]);
+            priority.Add(ContainsAny(normalized, "edit", "replace", "修改", "替换") ? "set_ole_object_data" : "add_ole_object");
+        }
+        if (ContainsAny(normalized, "layout", "paper space", "布局", "图纸空间", "视口"))
+            Add(availableTools.Where(tool => tool.Name.Contains("layout", StringComparison.Ordinal) || tool.Name == "activate_space").Select(tool => tool.Name));
+        if (ContainsAny(normalized, "reassociate", "重新关联", "重关联")) priority.Add("reassociate_dimension");
+        if (ContainsAny(normalized, "capture", "screenshot", "render", "截图", "画面", "看图")) priority.Add("capture_view");
+        if (ContainsAny(normalized, "print", "打印")) priority.Add("print_document");
+        // Explicit tool names remain reachable as the registry grows.
+        priority.AddRange(availableTools.Where(tool => normalized.Equals(tool.Name, StringComparison.OrdinalIgnoreCase) ||
+            tool.Name.Contains('_') && normalized.Contains(tool.Name, StringComparison.OrdinalIgnoreCase)).Select(tool => tool.Name));
         if (ContainsAny(normalized,
                 "document", "file", "open", "save", "close", "rename",
                 "文档", "文件", "打开", "保存", "关闭", "重命名", "新建"))
@@ -279,7 +316,7 @@ internal static class CadAgentToolSelector
         Add(CoreTools);
 
         var definitions = availableTools.ToDictionary(tool => tool.Name, StringComparer.Ordinal);
-        return requested
+        return priority.Concat(requested).Distinct(StringComparer.Ordinal)
             .Where(definitions.ContainsKey)
             .Select(name => definitions[name])
             .ToArray();

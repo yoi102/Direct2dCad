@@ -33,4 +33,12 @@ public interface ICadToolWorkspace
     bool RenameDocument(string documentId, string name);
     Task<bool> SaveDocumentAsync(string documentId, string? filePath, CancellationToken cancellationToken);
     Task<bool> CloseDocumentAsync(string documentId);
+    bool SupportsViewCapture => false;
+    bool SupportsPrinting => false;
+    Task<CadToolImage> CaptureViewAsync(string documentId, int maximumSize, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("View capture is unavailable in this host.");
+    Task<bool> PrintDocumentAsync(string documentId, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("Printing is unavailable in this host.");
 }
+
+public sealed record CadToolImage(byte[] Data, string MimeType, int Width, int Height);

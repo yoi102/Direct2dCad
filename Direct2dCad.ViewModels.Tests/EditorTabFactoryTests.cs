@@ -172,6 +172,6 @@ public sealed class EditorTabFactoryTests
     {
         public Task<bool> PrintAsync(CadPrintRequest request, Action? onPrintStarted = null,
             Action<bool>? onBusyChanged = null, Action? onPrintCompleted = null,
-            Action<CadPrintCompletion>? onPrintFinished = null) => Task.FromResult(false);
+            Action<CadPrintCompletion>? onPrintFinished = null, CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 }

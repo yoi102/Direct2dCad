@@ -215,12 +215,11 @@ public partial class CommandLineToolboxView : UserControl
                     e.Handled = true;
                     break;
                 }
-                if (viewModel.ExecuteCommandCommand.CanExecute(null))
-                    viewModel.ExecuteCommandCommand.Execute(null);
+                viewModel.SubmitCommandInput();
                 e.Handled = true;
                 break;
             case Key.Up:
-                if (viewModel.HasSuggestions)
+                if (viewModel.HasSuggestions && !viewModel.IsNavigatingHistory)
                     MoveSuggestionSelection(viewModel, moveNext: false);
                 else
                     viewModel.ShowPreviousCommand();
@@ -228,7 +227,7 @@ public partial class CommandLineToolboxView : UserControl
                 e.Handled = true;
                 break;
             case Key.Down:
-                if (viewModel.HasSuggestions)
+                if (viewModel.HasSuggestions && !viewModel.IsNavigatingHistory)
                     MoveSuggestionSelection(viewModel, moveNext: true);
                 else
                     viewModel.ShowNextCommand();
@@ -241,7 +240,9 @@ public partial class CommandLineToolboxView : UserControl
                 e.Handled = true;
                 break;
             case Key.Escape:
-                if (viewModel.HasSuggestions)
+                if (viewModel.IsCommandExecuting)
+                    viewModel.CancelCurrentCommand();
+                else if (viewModel.HasSuggestions)
                     viewModel.DismissSuggestions();
                 else
                     viewModel.CancelCurrentCommand();

@@ -10,7 +10,7 @@ namespace Direct2dCad.ViewModels.Tests;
 public sealed class BooleanRegionWorkflowTests
 {
     [Fact]
-    public async Task CancellingPendingWorkerCannotReappearOrCommit()
+    public Task CancellingPendingWorkerCannotReappearOrCommit() => CadViewModelTestThread.RunAsync(async () =>
     {
         using var c = new CadToolboxTestContext(); var vm = c.Document;
         var ids = Enumerable.Range(0, 200).Select(i => vm.CadEditor.AddCircle(new(i * 30, 0), 10)).ToArray();
@@ -18,9 +18,9 @@ public sealed class BooleanRegionWorkflowTests
         var pending = vm.BeginBoolean(CadBooleanOperation.Union); vm.Escape(); await pending;
         Assert.False(vm.IsBooleanTool); Assert.False(vm.IsBooleanCalculating); Assert.Equal(CadCanvasToolMode.Select, vm.CadCanvasToolMode);
         Assert.True(vm.CadEditor.DocumentHistoryEquals(before)); Assert.Equal(200, vm.CadEditor.Document.Entities.Count);
-    }
+    });
     [Theory][InlineData(CadBooleanOperation.Union)][InlineData(CadBooleanOperation.Intersection)]
-    public async Task PreviewDoesNotMutateAndEnterCommitsOneUndo(CadBooleanOperation operation)
+    public Task PreviewDoesNotMutateAndEnterCommitsOneUndo(CadBooleanOperation operation) => CadViewModelTestThread.RunAsync(async () =>
     {
         using var c = new CadToolboxTestContext(); var vm = c.Document; vm.SetViewportSize(800, 600); c.Properties.Attach(vm);
         var a = vm.CadEditor.AddCircle(default, 10); var b = vm.CadEditor.AddCircle(new(10, 0), 10);
@@ -36,9 +36,9 @@ public sealed class BooleanRegionWorkflowTests
         var properties = Assert.IsType<CommonEntityPropertyViewModel>(c.Properties.Entity); Assert.True(properties.IsRegion); Assert.True(properties.SupportsStrokeStyle); Assert.True(properties.FillControlsEnabled);
         vm.Undo(); Assert.True(result.IsErased); Assert.False(vm.CadEditor.Document.GetEntity(a).IsErased);
         vm.Redo(); Assert.False(result.IsErased);
-    }
+    });
     [Fact]
-    public async Task DifferencePicksSubjectWithRawPointerAndRejectsUnsupportedSelection()
+    public Task DifferencePicksSubjectWithRawPointerAndRejectsUnsupportedSelection() => CadViewModelTestThread.RunAsync(async () =>
     {
         using var c = new CadToolboxTestContext(); var vm = c.Document; vm.SetViewportSize(800, 600); c.Properties.Attach(vm); vm.CadEditor.Viewport.SetView(20, new(400, 300));
         var small = vm.CadEditor.AddCircle(default, 3); var large = vm.CadEditor.AddCircle(default, 10);
@@ -49,9 +49,9 @@ public sealed class BooleanRegionWorkflowTests
         var r = Assert.IsType<CadRegion>(vm.CadEditor.Document.GetEntity(Assert.Single(vm.CadEditor.Selection.EntityIds)));
         Assert.Equal(Math.PI * 91, r.Area, 7); Assert.False(r.Contains(default));
         vm.Undo(); var line = vm.CadEditor.AddLine(default, new(10, 0)); vm.SelectEntities([large, line]); Assert.False(vm.CanBooleanSelection);
-    }
+    });
     [Fact]
-    public async Task DifferenceSubjectPickingFollowsLayerDrawingPriority()
+    public Task DifferenceSubjectPickingFollowsLayerDrawingPriority() => CadViewModelTestThread.RunAsync(async () =>
     {
         using var c = new CadToolboxTestContext(); var vm = c.Document; var document = vm.CadEditor.Document;
         vm.SetViewportSize(800, 600); vm.CadEditor.Viewport.SetView(20, new(400, 300));
@@ -66,14 +66,14 @@ public sealed class BooleanRegionWorkflowTests
         await vm.BooleanPreviewCompletion; vm.CompleteCurrentDrawing();
         var result = Assert.IsType<CadRegion>(document.GetEntity(Assert.Single(vm.CadEditor.Selection.EntityIds)));
         Assert.Equal(foreground, result.LayerId); Assert.Equal(Math.PI * (100 - 9.8 * 9.8), result.Area, 7);
-    }
+    });
 
     [Fact]
-    public async Task EmptyPreviewKeepsHistoryAndDocument()
+    public Task EmptyPreviewKeepsHistoryAndDocument() => CadViewModelTestThread.RunAsync(async () =>
     {
         using var c = new CadToolboxTestContext(); var vm = c.Document;
         var a = vm.CadEditor.AddCircle(default, 3); var b = vm.CadEditor.AddCircle(new(100, 0), 3); vm.SelectEntities([a, b]);
         var before = vm.CadEditor.CreateDocumentHistorySnapshot(); await vm.BeginBoolean(CadBooleanOperation.Intersection); vm.CompleteCurrentDrawing();
         Assert.NotEmpty(vm.StepInputError); Assert.True(vm.CadEditor.DocumentHistoryEquals(before)); Assert.Equal(2, vm.CadEditor.Document.Entities.Count); vm.Escape();
-    }
+    });
 }

@@ -9,6 +9,14 @@ internal sealed class ToolExecutionWorkspace : ICadToolWorkspace, IDisposable
     private readonly List<(CadToolboxTestContext Context, EditorTabViewModel Tab)> _documents = [];
     private string? _active;
     public bool AllowClose { get; set; } = true;
+    public bool AllowSave { get; set; } = true;
+    public CadToolImage? CapturedImage { get; set; }
+    public bool SupportsViewCapture => CapturedImage is not null;
+    public Task<CadToolImage> CaptureViewAsync(string documentId, int maximumSize, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        return Task.FromResult(CapturedImage ?? throw new NotSupportedException());
+    }
     public IReadOnlyList<CadToolWorkspaceDocument> GetDocuments() => _documents.Select(item => Describe(item.Tab)).ToArray();
     public CadToolWorkspaceDocument? GetActiveDocument() => GetDocuments().FirstOrDefault(item => item.DocumentId == _active);
     public CadToolWorkspaceDocument GetRequiredDocument(string documentId) => GetDocuments().Single(item => item.DocumentId == documentId);
@@ -33,7 +41,8 @@ internal sealed class ToolExecutionWorkspace : ICadToolWorkspace, IDisposable
     }
     public bool RenameDocument(string documentId, string name) => ((EditorTabViewModel)GetRequiredDocument(documentId).Host).TryRenameDocument(name);
     public Task<bool> SaveDocumentAsync(string documentId, string? filePath, CancellationToken cancellationToken) =>
-        ((EditorTabViewModel)GetRequiredDocument(documentId).Host).SaveToFileForWorkspaceToolAsync(filePath ?? "test.d2cad", cancellationToken);
+        AllowSave ? ((EditorTabViewModel)GetRequiredDocument(documentId).Host).SaveToFileForWorkspaceToolAsync(filePath ?? "test.d2cad", cancellationToken)
+            : Task.FromResult(false);
     public Task<bool> CloseDocumentAsync(string documentId)
     {
         if (!AllowClose) return Task.FromResult(false);

@@ -57,7 +57,8 @@ public sealed partial class MainWindowUiTests
     private static JsonElement ReadLatestJson(FlaUI.Core.AutomationElements.AutomationElement output)
     {
         var text = output.Properties.HelpText.ValueOrDefault!;
-        using var json = JsonDocument.Parse(text[text.IndexOf('{')..]);
+        var reader = new Utf8JsonReader(System.Text.Encoding.UTF8.GetBytes(text[text.IndexOf('{')..]));
+        using var json = JsonDocument.ParseValue(ref reader);
         return json.RootElement.Clone();
     }
 }

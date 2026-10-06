@@ -47,8 +47,21 @@ public sealed record AiChatMessage(
     string? Content,
     IReadOnlyList<AiToolCall>? ToolCalls = null,
     string? ToolCallId = null,
-    IReadOnlyList<AiChatContentPart>? ContentParts = null)
+    IReadOnlyList<AiChatContentPart>? ContentParts = null,
+    bool IsToolResultAttachment = false)
 {
+    public AiChatMessage CanonicalizeContent()
+    {
+        if (ContentParts is not { Count: > 0 } parts)
+            return this;
+        // Content is a fallback representation, often duplicated by the UI's first text part.
+        // Keep one complete representation for both token budgeting and serialization.
+        if (!string.IsNullOrEmpty(Content) && !parts.Any(part =>
+                part.Type == AiChatContentPartType.Text && part.Text == Content))
+            parts = new[] { AiChatContentPart.TextPart(Content) }.Concat(parts).ToArray();
+        return this with { Content = null, ContentParts = parts };
+    }
+
     public static AiChatMessage System(string content) => new(AiChatRole.System, content);
     public static AiChatMessage User(
         string content,

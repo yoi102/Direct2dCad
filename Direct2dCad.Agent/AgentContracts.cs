@@ -30,8 +30,18 @@ public sealed class AgentConversation
     internal void AddAssistant(AiChatCompletion completion) =>
         _messages.Add(AiChatMessage.Assistant(completion.Content, completion.ToolCalls));
 
-    internal void AddToolResult(AiToolCall toolCall, string result) =>
-        _messages.Add(AiChatMessage.Tool(toolCall.Id, result));
+    internal AiToolResultContent AddToolResult(AiToolCall toolCall, string result)
+    {
+        var content = AiToolResultContent.Parse(result);
+        _messages.Add(AiChatMessage.Tool(toolCall.Id, content.Text));
+        return content;
+    }
+
+    internal void AddToolImages(string toolName, IReadOnlyList<AiChatContentPart> images)
+    {
+        var source = $"[Tool image from {toolName}] Inspect the captured document image together with the preceding tool result.";
+        _messages.Add(AiChatMessage.User(source, [AiChatContentPart.TextPart(source), .. images]) with { IsToolResultAttachment = true });
+    }
 }
 
 public sealed record AgentRunRequest(

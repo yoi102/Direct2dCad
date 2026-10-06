@@ -392,7 +392,7 @@ public sealed class CadWorkspaceToolExecutorTests
         var capabilities = CadAgentContract.CreateCapabilities([], null, includeExamples: false);
         using var json = JsonDocument.Parse(JsonSerializer.Serialize(capabilities));
         var root = json.RootElement;
-        Assert.Equal("1.8", root.GetProperty("contract_version").GetString());
+        Assert.Equal("1.10", root.GetProperty("contract_version").GetString());
         Assert.Contains("line_types", root.GetProperty("rules").EnumerateObject().Select(property => property.Name));
         var circle = root.GetProperty("entity_capabilities").EnumerateArray()
             .Single(item => item.GetProperty("type").GetString() == "Circle");

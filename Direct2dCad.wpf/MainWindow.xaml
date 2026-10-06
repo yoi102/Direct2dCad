@@ -32,6 +32,9 @@
                  Height="900"
                  Width="1300">
     <mah:MetroWindow.InputBindings>
+        <KeyBinding Key="S"
+                    Modifiers="Control"
+                    Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}" />
         <KeyBinding Key="P"
                     Modifiers="Control"
                     Command="{Binding CurrentEditorTabViewModel.PrintCommand}" />

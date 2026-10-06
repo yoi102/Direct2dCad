@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using Direct2dCad.AI.Contracts;
 
@@ -732,6 +733,8 @@ public sealed class CodexAppServerClientTests
         private readonly Channel<string> _incoming = Channel.CreateUnbounded<string>();
         private readonly ConcurrentQueue<JsonElement> _messages = new();
         private bool _disposed;
+        private string? _threadId;
+        private string? _turnId;
 
         public Func<string, long, JsonElement, FakeTransport, Task>? RequestHandler { get; set; }
         public Func<long, JsonElement, FakeTransport, Task>? ResponseHandler { get; set; }
@@ -781,8 +784,15 @@ public sealed class CodexAppServerClientTests
 
         public string GetErrorSummary() => string.Empty;
 
-        public void Reply(long id, object result) =>
+        public void Reply(long id, object result)
+        {
+            var value = JsonSerializer.SerializeToElement(result);
+            if (value.TryGetProperty("thread", out var thread) && thread.TryGetProperty("id", out var threadId))
+                _threadId = threadId.GetString();
+            if (value.TryGetProperty("turn", out var turn) && turn.TryGetProperty("id", out var turnId))
+                _turnId = turnId.GetString();
             Send(new { id, result });
+        }
 
         public void ReplyError(long id, int code, string message) =>
             Send(new { id, error = new { code, message } });
@@ -790,7 +800,17 @@ public sealed class CodexAppServerClientTests
         public void Send(object message)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            _incoming.Writer.TryWrite(JsonSerializer.Serialize(message));
+            var node = JsonSerializer.SerializeToNode(message)!;
+            if (node["method"] is JsonValue method && node["params"] is JsonObject parameters)
+            {
+                // Current app-server notifications and tool requests require these identities.
+                parameters.TryAdd("threadId", JsonValue.Create(_threadId));
+                if (method.GetValue<string>() == "turn/completed" && parameters["turn"] is JsonObject turn)
+                    turn.TryAdd("id", JsonValue.Create(_turnId));
+                else
+                    parameters.TryAdd("turnId", JsonValue.Create(_turnId));
+            }
+            _incoming.Writer.TryWrite(node.ToJsonString());
         }
 
         public void Dispose()

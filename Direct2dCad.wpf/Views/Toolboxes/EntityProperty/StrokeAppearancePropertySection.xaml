@@ -61,7 +61,7 @@
                        Text="{I18N {x:Static r:LangKeys.LineWeight}}"
                        VerticalAlignment="Center" />
             <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Vertical">
-                <mah:NumericUpDown Width="112"
+                <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.LineWeight}}" Width="112"
                                    Value="{Binding ViewModel.LineWeight, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                    IsEnabled="{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Mode=OneWay}"
                                    Minimum="0.01"

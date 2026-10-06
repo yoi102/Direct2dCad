@@ -2,7 +2,7 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Db.Data.Entities;
 
-/// <summary>An immutable closed boundary of exact lines and circular arcs.</summary>
+/// <summary>An immutable closed boundary of exact lines, circular arcs and elliptical arcs.</summary>
 public sealed class CadRegionContour
 {
     public IReadOnlyList<CadPlanarPrimitive> Edges { get; }
@@ -21,6 +21,8 @@ public sealed class CadRegionContour
         for (var i = 0; i < array.Length; i++)
         {
             var p = array[i];
+            if (!double.IsFinite(p.EllipseRadiusY) || p.EllipseRadiusY < 0 || !double.IsFinite(p.Rotation) || (p.IsLine && p.IsEllipse))
+                throw new ArgumentException("Invalid elliptical boundary parameters.", nameof(edges));
             CadCompositePath.GuardPoint(p.Start, nameof(edges));
             CadCompositePath.GuardPoint(p.End, nameof(edges));
             if (!CadGeometryTolerance.Coincident(p.End, array[(i + 1) % array.Length].Start))
@@ -38,15 +40,13 @@ public sealed class CadRegionContour
                 CadCompositePath.GuardSweep(p.Sweep);
                 if (!double.IsFinite(p.Radius) || p.Radius <= CadGeometryTolerance.Absolute || !double.IsFinite(p.StartAngle) ||
                     !CadGeometryTolerance.Coincident(p.Start, p.At(0)) || !CadGeometryTolerance.Coincident(p.End, p.At(1)))
-                    throw new ArgumentException("Invalid circular boundary.", nameof(edges));
+                    throw new ArgumentException("Invalid curved boundary.", nameof(edges));
+                if (p.IsEllipse && p.RadiusY <= CadGeometryTolerance.Absolute)
+                    throw new ArgumentException("Invalid elliptical boundary radius.", nameof(edges));
                 var c = p.Center - origin;
-                area += (c.X * (b.Y - a.Y) - c.Y * (b.X - a.X) + p.Radius * p.Radius * p.Sweep) / 2;
-                length += p.Radius * Math.Abs(p.Sweep);
-                foreach (var angle in new[] { 0d, Math.PI / 2, Math.PI, Math.PI * 1.5 })
-                {
-                    var q = CadPlanarPrimitive.Point(p.Center, p.Radius, angle);
-                    if (p.Contains(q)) bounds = bounds.ExpandToInclude(q);
-                }
+                area += (c.X * (b.Y - a.Y) - c.Y * (b.X - a.X) + p.RadiusX * p.RadiusY * p.Sweep) / 2;
+                length += p.Length;
+                foreach (var t in p.ExtremaParameters()) bounds = bounds.ExpandToInclude(p.At(t));
             }
             bounds = bounds.ExpandToInclude(p.Start).ExpandToInclude(p.End);
         }
@@ -59,6 +59,25 @@ public sealed class CadRegionContour
     {
         if (p.IsLine) return CadPlanarPrimitive.Line(transform(p.Start), transform(p.End));
         var start = transform(p.Start); var center = transform(p.Center);
+        if (p.IsEllipse)
+        {
+            // A unit probe loses relative precision when either the source or
+            // destination is far from the origin. Affine similarity transforms
+            // allow a larger probe before subtracting the transformed center.
+            var coordinateScale = Math.Max(Math.Max(Math.Abs(p.Center.X), Math.Abs(p.Center.Y)),
+                Math.Max(Math.Abs(center.X), Math.Abs(center.Y)));
+            var probe = Math.Max(1, Math.Max(Math.Max(p.RadiusX, p.RadiusY),
+                coordinateScale * 1e-4));
+            var x = (transform(p.Center + new CadVectorD(Math.Cos(p.Rotation), Math.Sin(p.Rotation)) * probe) - center) / probe;
+            var y = (transform(p.Center + new CadVectorD(-Math.Sin(p.Rotation), Math.Cos(p.Rotation)) * probe) - center) / probe;
+            var scale = x.Length;
+            if (scale <= 0 || Math.Abs(scale - y.Length) > Math.Max(1, scale) * 1e-10 ||
+                Math.Abs(x.Dot(y)) > Math.Max(1, scale * scale) * 1e-10)
+                throw new NotSupportedException("Elliptical region boundaries require a similarity transform.");
+            var reflected = x.Cross(y) < 0;
+            return CadPlanarPrimitive.EllipseArc(center, p.RadiusX * scale, p.RadiusY * scale,
+                Math.Atan2(x.Y, x.X), reflected ? -p.StartAngle : p.StartAngle, reflected ? -p.Sweep : p.Sweep);
+        }
         return CadPlanarPrimitive.Arc(center, start.DistanceTo(center), Math.Atan2(start.Y - center.Y, start.X - center.X), mirrored ? -p.Sweep : p.Sweep);
     }));
 }

@@ -13,7 +13,18 @@ public static class CadCurveMeasurements
         token.ThrowIfCancellationRequested();
         switch(curve)
         {
-            case CadRegion region: return new(region.Length, 0, region.Area, false);
+            case CadRegion region:
+                var ellipticalCount = region.Contours.Sum(contour => contour.Edges.Count(edge => edge.IsEllipse));
+                if (ellipticalCount == 0) return new(region.Length, 0, region.Area, false);
+                var regionLength = 0.0; var regionError = 0.0; var regionBudget = false;
+                foreach (var edge in region.Contours.SelectMany(contour => contour.Edges))
+                {
+                    token.ThrowIfCancellationRequested();
+                    if (!edge.IsEllipse) { regionLength += edge.Length; continue; }
+                    var measured = EllipseLength(edge.RadiusX, edge.RadiusY, edge.StartAngle, edge.Sweep, error / ellipticalCount, token);
+                    regionLength += measured.Value; regionError += measured.Error; regionBudget |= measured.Budget;
+                }
+                return new(regionLength, regionError, region.Area, true, regionBudget);
             case CadLine line: return new(line.Start.DistanceTo(line.End),0,null,false);
             case CadCircle circle: return new(2*Math.PI*circle.Radius,0,Math.PI*circle.Radius*circle.Radius,false);
             case CadArc arc: return new(arc.Radius*Math.Abs(arc.SweepAngleRadians),0,arc.IsFullCircle ? Math.PI*arc.Radius*arc.Radius : null,false);
@@ -84,7 +95,7 @@ public static class CadCurveMeasurements
         { var t=(nodes[i]+1)/2;var u=1-t;var p=b.Evaluate(t);var derivative=(b.Control1-b.Start)*(3*u*u)+(b.Control2-b.Control1)*(6*u*t)+(b.End-b.Control2)*(3*t*t);sum+=weights[i]*(p.X*derivative.Y-p.Y*derivative.X)/4; }
         return sum;
     }
-    private static (double Value,double Error,bool Budget) EllipseLength(double rx,double ry,double start,double sweep,double error,CancellationToken token)
+    internal static (double Value,double Error,bool Budget) EllipseLength(double rx,double ry,double start,double sweep,double error,CancellationToken token)
     {
         double Speed(double t) => Math.Sqrt(rx*rx*Math.Sin(t)*Math.Sin(t)+ry*ry*Math.Cos(t)*Math.Cos(t));
         var budget=false;var nodes=0;

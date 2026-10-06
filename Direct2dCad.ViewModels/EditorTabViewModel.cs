@@ -1050,6 +1050,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         _userSettings.CopyFrom(settings);
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
         ApplyUserSettingsToToolbar();
+        NotifyBooleanCommands();
     }
 
     public void ApplyDocumentViewSettings(CadViewSettings settings)

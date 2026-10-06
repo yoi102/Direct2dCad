@@ -1022,31 +1022,15 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     private ID2D1PathGeometry CreateEllipseArcPathGeometry(CadEllipseArc ellipseArc)
     {
-        var geometry = Factory!.CreatePathGeometry();
-        using var sink = geometry.Open();
-        sink.BeginFigure(ToVector2(ellipseArc.StartPoint), FigureBegin.Hollow);
-        sink.AddArc(CreateEllipseArcSegment(
-            ellipseArc.EndPoint,
+        // Match background preparation: the draw path applies entity rotation,
+        // so the cached path must use the arc's unrotated local coordinates.
+        return _geometryFactory.CreateEllipseArc(
+            Factory!,
+            ellipseArc.Center,
             ellipseArc.RadiusX,
             ellipseArc.RadiusY,
-            ellipseArc.SweepAngleRadians));
-        sink.EndFigure(FigureEnd.Open);
-        sink.Close();
-        return geometry;
-    }
-
-    private static ArcSegment CreateEllipseArcSegment(
-        CadPointD endPoint,
-        double radiusX,
-        double radiusY,
-        double sweepAngleRadians)
-    {
-        return new ArcSegment(
-            ToVector2(endPoint),
-            new Size((float)radiusX, (float)radiusY),
-            rotationAngle: 0,
-            ToD2DSweepDirection(sweepAngleRadians),
-            Math.Abs(sweepAngleRadians) > Math.PI ? ArcSize.Large : ArcSize.Small);
+            ellipseArc.StartAngleRadians,
+            ellipseArc.SweepAngleRadians);
     }
 
     private static ArcSegment CreateArcSegment(

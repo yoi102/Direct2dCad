@@ -45,7 +45,8 @@ public sealed record CadTransientEllipseArc(
     double RadiusY,
     double StartAngleRadians,
     double SweepAngleRadians,
-    CadTransientStyle Style)
+    CadTransientStyle Style,
+    double RotationRadians = 0)
     : CadTransientItem(Style);
 
 public sealed record CadTransientArc(

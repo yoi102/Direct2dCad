@@ -365,10 +365,8 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # Release MSI sources are generated from the self-contained application output.
-/installer/Direct2dCad.Msi/.build/
-/docs/validation
-/docs/commandline-ai-implementation/validation-2026-10-06
-/docs/commandline-ai-review/2026-10-06
-/docs/commandline-optimization
-/docs/interaction-optimization
-/docs/selection-boolean/validation-2026-10-06
+/docs/
+/installer/
+/erver/
+/scripts/
+/TestResults/

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Direct2dCad.Commands;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
@@ -6,6 +7,7 @@ using Direct2dCad.Db.Geometry;
 using Direct2dCad.Lang;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Enums;
+using Direct2dCad.ViewModels.Services.Interactions;
 
 namespace Direct2dCad.ViewModels;
 
@@ -20,16 +22,63 @@ public partial class CadDocumentViewModel
     public Task BooleanPreviewCompletion { get; private set; } = Task.CompletedTask;
     public bool IsBooleanCalculating { get; private set; }
     public bool IsBooleanTool => CadCanvasToolMode is CadCanvasToolMode.BooleanUnion or CadCanvasToolMode.BooleanIntersection or CadCanvasToolMode.BooleanDifference;
-    public bool CanBooleanSelection
+    public bool CanBooleanSelection => BooleanSelectionDisabledReason.Length == 0;
+    public string BooleanSelectionDisabledReason => GetBooleanSelectionDisabledReason();
+
+    // The command predicate and its explanation share the same validation path.
+    private string GetBooleanSelectionDisabledReason()
     {
-        get
+        if (IsBooleanTool)
+            return CadUiText.Get("BooleanSelectionPending");
+        var document = CadEditor.Document;
+        if (document.IsReadOnly)
+            return CadUiText.Get("BooleanSelectionReadOnly");
+        var ids = CadEditor.Selection.EntityIds;
+        if (ids.Count < 2)
+            return CadUiText.Get("BooleanSelectionMinimum");
+        if (ids.Count > CadRegionBoolean.MaximumInputEdges)
+            return FormatBooleanReason("BooleanSelectionMaximum", CadRegionBoolean.MaximumInputEdges);
+
+        foreach (var id in ids)
         {
-            var document = CadEditor.Document; var ids = CadEditor.Selection.EntityIds;
-            return !IsBooleanTool && !document.IsReadOnly && ids.Count >= 2 && ids.Count <= CadRegionBoolean.MaximumInputEdges &&
-                ids.All(id => document.TryGetEntity(id, out var e) && e is not null && e.OwnerBlockId == CadEditor.ActiveOwnerBlockId &&
-                    CadEntityAccessPolicy.IsEditable(document, e) && CadEntityAccessPolicy.CanAddToLayer(document, e.LayerId) && CadRegionBoolean.Supports(e));
+            if (!document.TryGetEntity(id, out var entity) || entity is null || entity.IsErased)
+                return CadUiText.Get("BooleanSelectionUnavailable");
+            if (entity.OwnerBlockId != CadEditor.ActiveOwnerBlockId)
+                return CadUiText.Get("BooleanSelectionWrongSpace");
+            if (!CadEntityAccessPolicy.IsEditable(document, entity) ||
+                !CadEntityAccessPolicy.CanAddToLayer(document, entity.LayerId))
+            {
+                if (entity.IsLocked)
+                    return FormatBooleanReason("BooleanSelectionEntityLocked", BooleanEntityTypeName(entity));
+                if (document.TryGetLayer(entity.LayerId, out var layer) && layer is not null)
+                {
+                    if (layer.IsFrozen)
+                        return FormatBooleanReason("BooleanSelectionLayerFrozen", layer.Name);
+                    if (layer.IsLocked)
+                        return FormatBooleanReason("BooleanSelectionLayerLocked", layer.Name);
+                }
+                return CadUiText.Get("BooleanSelectionUnavailable");
+            }
+            if (!CadRegionBoolean.Supports(entity))
+            {
+                if (entity is CadRectangle { HasRoundedCorners: true })
+                    return CadUiText.Get("BooleanSelectionRoundedRectangle");
+                if (entity is CadArc { IsFullCircle: false } or CadPolyline { Closed: false } or CadCompositePath { Closed: false })
+                    return FormatBooleanReason("BooleanSelectionOpenBoundary", BooleanEntityTypeName(entity));
+                return FormatBooleanReason("BooleanSelectionUnsupportedType", BooleanEntityTypeName(entity));
+            }
         }
+        return string.Empty;
     }
+
+    private static string BooleanEntityTypeName(CadEntity entity)
+    {
+        var descriptor = CadSelectionEntityTypeCatalog.All.FirstOrDefault(item => item.EntityType == entity.GetType());
+        return descriptor is null ? entity.GetType().Name : CadUiText.Get(descriptor.ResourceKey);
+    }
+
+    private static string FormatBooleanReason(string key, object value) =>
+        string.Format(CultureInfo.CurrentUICulture, CadUiText.Get(key), value);
     private CadBooleanOperation BooleanOperation => CadCanvasToolMode switch
     {
         CadCanvasToolMode.BooleanIntersection => CadBooleanOperation.Intersection,
@@ -51,8 +100,10 @@ public partial class CadDocumentViewModel
         });
         _booleanTargets = targets;
         CadEditor.Selection.Replace(targets);
-        if (operation != CadBooleanOperation.Difference) BooleanPreviewCompletion = UpdateBooleanPreviewAsync();
         NotifyDrawingUx(); RaiseInteractionStateChanged(); RequestOverlayRender(updateHandleScene: true);
+        // Finish synchronous state publication before starting work that can complete asynchronously.
+        // The continuation remains on the calling UI synchronization context.
+        if (operation != CadBooleanOperation.Difference) BooleanPreviewCompletion = UpdateBooleanPreviewAsync();
         await BooleanPreviewCompletion;
     }
     private void ClearBooleanInteraction()
@@ -78,7 +129,8 @@ public partial class CadDocumentViewModel
             StepInputError = CadUiText.Get("BooleanChooseSubject"); NotifyDrawingUx(); return false;
         }
         _booleanSubject = subject.Id;
-        BooleanPreviewCompletion = UpdateBooleanPreviewAsync(); NotifyDrawingUx(); RequestOverlayRender(); return true;
+        NotifyDrawingUx(); RequestOverlayRender();
+        BooleanPreviewCompletion = UpdateBooleanPreviewAsync(); return true;
     }
     private async Task UpdateBooleanPreviewAsync()
     {
@@ -93,7 +145,7 @@ public partial class CadDocumentViewModel
             var result = await command.PrepareAsync(CadEditor.Document, cancellation.Token);
             if (cancellation.IsCancellationRequested || !ReferenceEquals(_booleanCancellation, cancellation)) return;
             if (result.Count == 0) { StepInputError = CadUiText.Get("BooleanEmpty"); _snackbarService.Enqueue(StepInputError); return; }
-            _booleanPreview = result; _booleanCommand = command;
+            _booleanPreview = result; _booleanCommand = command; StepInputError = "";
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
@@ -107,15 +159,26 @@ public partial class CadDocumentViewModel
     private bool CompleteBooleanInteraction()
     {
         if (!IsBooleanTool) return false;
-        if (_booleanPreview is null || IsBooleanCalculating)
+        if (IsBooleanCalculating)
         {
-            if (_booleanSubject is null && BooleanOperation == CadBooleanOperation.Difference) StepInputError = CadUiText.Get("BooleanChooseSubject");
+            StepInputError = CadUiText.Get("BooleanCalculating");
+            NotifyDrawingUx(); return true;
+        }
+        if (_booleanPreview is null || _booleanCommand is null)
+        {
+            if (_booleanSubject is null && BooleanOperation == CadBooleanOperation.Difference)
+                StepInputError = CadUiText.Get("BooleanChooseSubject");
+            else if (string.IsNullOrEmpty(StepInputError))
+                StepInputError = CadUiText.Get("BooleanEmpty");
+            // Consume Enter in the active tool, but report failure to DONE through DrawingInputError.
+            // Preserve computation errors (including an empty intersection) for the user.
             NotifyDrawingUx(); return true;
         }
         try
         {
+            StepInputError = "";
             _committingBoolean = true;
-            var command = _booleanCommand!;
+            var command = _booleanCommand;
             CadEditor.DocumentCommands.Execute(command);
             SetToolMode(CadCanvasToolMode.Select);
             CadEditor.Selection.Replace([command.ResultEntityId!.Value]);

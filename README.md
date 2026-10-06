@@ -50,7 +50,7 @@ AI 可查询实体、图层和块，创建或修改图形，并打开、保存�
 
 ## 从源码运行
 
-开发者文档：[架构与项目职责](docs/ARCHITECTURE.md) · [架构优化实施与验收](docs/ARCHITECTURE-OPTIMIZATION.md)。
+开发者文档：[架构与项目职责](docs/ARCHITECTURE.md) · [架构优化实施与验收](docs/ARCHITECTURE-OPTIMIZATION.md) · [交互优化实施与验收](docs/INTERACTION-OPTIMIZATION.md) · [命令行与 AI Agent 整改](docs/COMMANDLINE-AND-AI-IMPLEMENTATION.md) · [椭圆布尔与旋转选择修复](docs/SELECTION-AND-BOOLEAN-FIXES.md)。
 
 需要 Windows x64 和 .NET 10 SDK。仓库的 `global.json` 指定 SDK 10.0.401，并允许同特性带的补丁升级。
 

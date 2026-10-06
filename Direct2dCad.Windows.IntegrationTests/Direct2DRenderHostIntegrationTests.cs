@@ -56,16 +56,24 @@ public sealed class Direct2DRenderHostIntegrationTests
             host.SetScene(document, viewport, prepareResourcesInBackground: false);
             editor.RegisterGeometryResourceManager(host, rebuildExistingResources: false);
         }
-        indexed.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false,
+        // Compare index selection at the same deterministic raster profile. Lazy
+        // realization construction is time-budgeted per host; a cold nested block
+        // may record direct geometry on one host and a realization on the other.
+        // Those valid paths have different AA rounding and are covered separately.
+        indexed.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false, EnableGeometryRealizations = false,
             EntityBoundsQuery = editor.SpatialIndex.Query, EntityBoundsQueryInto = editor.SpatialIndex.Query, EntityBoundsCount = editor.SpatialIndex.CountIntersecting });
-        full.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false });
+        full.SetRenderOptions(new CadRenderOptions { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false, EnableGeometryRealizations = false });
         var command = new Direct2dCad.Commands.BooleanRegionsCommand([a.Id, b.Id], operation, a.Id);
         void Verify(bool resultVisible)
         {
             foreach (var scale in new[] { .5, 1, 2, 4, 2, .5 })
             {
                 viewport.SetView(scale, new(width / 2, height / 2)); indexed.Render(CadRenderInvalidation.Full); full.Render(CadRenderInvalidation.Full);
-                var pixels = indexed.CaptureBackBufferPixels(); Assert.Equal(full.CaptureBackBufferPixels(), pixels);
+                var pixels = indexed.CaptureBackBufferPixels();
+                var expected = full.CaptureBackBufferPixels();
+                Assert.True(expected.AsSpan().SequenceEqual(pixels),
+                    $"Pixel equality failed: {operation}, nested={nested}, resultVisible={resultVisible}, scale={scale}. " +
+                    $"Indexed: {indexed.RenderStatistics}; Full: {full.RenderStatistics}");
                 Assert.True(ContainsNonBlackPixel(pixels));
                 if (resultVisible && operation == CadBooleanOperation.Difference)
                 {

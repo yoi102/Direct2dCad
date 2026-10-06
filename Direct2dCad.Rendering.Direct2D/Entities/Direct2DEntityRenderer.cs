@@ -35,31 +35,17 @@ internal sealed class Direct2DEntityRenderer(
         float? strokeWidthOverride = null,
         CadColor? strokeColorOverride = null)
     {
-        var rotation = entity switch
-        {
-            CadEllipse ellipse => ellipse.RotationRadians,
-            CadEllipseArc arc => arc.RotationRadians,
-            CadRectangle rectangle => rectangle.RotationRadians,
-            _ => 0
-        };
         // Most primitives already use the current world transform. Reapplying
         // it for every entity splits Direct2D's drawing batches unnecessarily.
-        if (rotation == 0)
+        if (!TryGetGeometryRotation(entity, CadVectorD.Zero, out var rotation))
         {
             DrawCore(context, document, entity, resources, viewport, options,
                 strokeBrushOverride, strokeWidthOverride, strokeColorOverride);
             return;
         }
 
-        var center = entity switch
-        {
-            CadEllipse ellipse => ellipse.Center,
-            CadEllipseArc arc => arc.Center,
-            CadRectangle rectangle => rectangle.FrameBounds.Center,
-            _ => default
-        };
         var previous = context.Transform;
-        context.Transform = CreateWorldRotationTransform(rotation, center, previous);
+        context.Transform = rotation * previous;
         try
         {
             DrawCore(context, document, entity, resources, viewport, options,
@@ -777,6 +763,32 @@ internal sealed class Direct2DEntityRenderer(
         return options.KeepStrokeWidthScreenConstant ||
                Math.Abs(resolvedWidth - modelWidth) >
                Math.Max(1e-6f, Math.Abs(modelWidth) * 1e-5f);
+    }
+
+    internal static bool TryGetGeometryRotation(
+        CadEntity entity,
+        CadVectorD offset,
+        out Matrix3x2 rotation)
+    {
+        // These primitives and their cached geometries are stored in a local,
+        // unrotated frame. Bounds remains the world AABB for culling only.
+        var (angle, center) = entity switch
+        {
+            CadEllipse ellipse => (ellipse.RotationRadians, ellipse.Center),
+            CadEllipseArc arc => (arc.RotationRadians, arc.Center),
+            CadRectangle rectangle => (rectangle.RotationRadians, rectangle.FrameBounds.Center),
+            _ => (0.0, default(CadPointD))
+        };
+        if (Math.Abs(angle) <= 1e-12)
+        {
+            rotation = Matrix3x2.Identity;
+            return false;
+        }
+
+        // Preview primitives already contain the translation in their points.
+        // Rotate about the translated center, then preserve any parent transform.
+        rotation = Matrix3x2.CreateRotation((float)angle, ToVector2(center + offset));
+        return true;
     }
 
     private static Matrix3x2 CreateWorldRotationTransform(double rotation, CadPointD center, Matrix3x2 transform)

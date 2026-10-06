@@ -161,7 +161,8 @@ internal sealed class Direct2DSelectionRenderer(
             selectionStrokeWidth);
         if (detail == Direct2DEntityRenderDetail.Skip)
             return;
-        if (detail == Direct2DEntityRenderDetail.Simplified)
+        if (detail == Direct2DEntityRenderDetail.Simplified &&
+            entity is not (CadEllipse or CadEllipseArc or CadRectangle))
         {
             var brush = styleResources.GetBrush(context, selectionStyle.StrokeColor);
             var bounds = entity.Bounds.Translate(offset);
@@ -189,6 +190,37 @@ internal sealed class Direct2DSelectionRenderer(
             return;
         }
 
+        if (!Direct2DEntityRenderer.TryGetGeometryRotation(entity, offset, out var rotation))
+        {
+            DrawSelectionGeometry(context, document, viewport, entity, resources, offset,
+                selectionStyle, selectionStrokeWidth, options);
+            return;
+        }
+
+        var previousTransform = context.Transform;
+        context.Transform = rotation * previousTransform;
+        try
+        {
+            DrawSelectionGeometry(context, document, viewport, entity, resources, offset,
+                selectionStyle, selectionStrokeWidth, options);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
+    }
+
+    private void DrawSelectionGeometry(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadViewport viewport,
+        CadEntity entity,
+        Direct2DResourceCache.EntityResourceBucket? resources,
+        CadVectorD offset,
+        CadHandleStyle selectionStyle,
+        float selectionStrokeWidth,
+        CadRenderOptions options)
+    {
         var style = WithResolvedStrokeWidth(
             ToTransientStyle(document, selectionStyle, resources),
             selectionStrokeWidth,
@@ -242,7 +274,7 @@ internal sealed class Direct2DSelectionRenderer(
                 transientRenderer.DrawRectangle(
                     context,
                     viewport,
-                    rectangle.Bounds.Translate(offset),
+                    rectangle.FrameBounds.Translate(offset),
                     style,
                     rectangle.CornerRadiusX,
                     rectangle.CornerRadiusY,
@@ -277,9 +309,7 @@ internal sealed class Direct2DSelectionRenderer(
                     options.IsLevelOfDetailEnabled);
                 break;
             case CadRegion region:
-                foreach (var edge in region.Contours.SelectMany(c => c.Edges))
-                    if (edge.IsLine) transientRenderer.DrawLine(context, viewport, edge.Start + offset, edge.End + offset, style);
-                    else transientRenderer.DrawArc(context, viewport, edge.Center + offset, edge.Radius, edge.StartAngle, edge.Sweep, style);
+                transientRenderer.DrawRegion(context, viewport, region, offset, style, options.IsLevelOfDetailEnabled);
                 break;
             case CadCompositePath path:
                 DrawTranslatedCompositePath(
@@ -572,9 +602,15 @@ internal sealed class Direct2DSelectionRenderer(
         var canUseStrokeRealization = options.EnableGeometryRealizations &&
             resources.GraphicLineTypeStrokeStyle is null &&
             !(entity is CadPolyline { Points.Count: >= Direct2DVisiblePolylineStroke.MinimumPointCount } && strokeWidthChangesWithScale);
+        var fillBounds = entity switch
+        {
+            CadRectangle rectangle => rectangle.FrameBounds,
+            CadEllipse ellipse => CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2),
+            _ => entity.Bounds
+        };
         if (offset == CadVectorD.Zero)
         {
-            DrawCachedFill(context, entity, resources, geometry, entity.Bounds, style, viewport, options);
+            DrawCachedFill(context, entity, resources, geometry, fillBounds, style, viewport, options);
             if (Direct2DVisiblePolylineStroke.TryDraw(context, resourceCache.Factory, entity,
                     geometry, resources, viewport, brush, strokeWidth, strokeStyle))
                 return true;
@@ -601,7 +637,7 @@ internal sealed class Direct2DSelectionRenderer(
             (float)offset.Y) * previousTransform;
         try
         {
-            DrawCachedFill(context, entity, resources, geometry, entity.Bounds, style, viewport, options);
+            DrawCachedFill(context, entity, resources, geometry, fillBounds, style, viewport, options);
             if (!canUseStrokeRealization ||
                 !resourceCache.TryDrawStrokedGeometry(
                     context,

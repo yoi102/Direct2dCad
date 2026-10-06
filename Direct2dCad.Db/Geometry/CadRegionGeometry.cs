@@ -20,6 +20,26 @@ public static class CadRegionGeometry
                     p.Start.X + (point.Y - p.Start.Y) * (p.End.X - p.Start.X) / (p.End.Y - p.Start.Y) > point.X) inside = !inside;
                 continue;
             }
+            if (p.IsEllipse)
+            {
+                // Each span is monotone in Y. Solve the original ellipse parameter on
+                // that span, retaining the half-open ray rule at extrema and vertices.
+                var parameters = p.ExtremaParameters().Append(0).Append(1).Distinct().Order().ToArray();
+                for (var i = 1; i < parameters.Length; i++)
+                {
+                    var lo = parameters[i - 1]; var hi = parameters[i];
+                    var a = p.At(lo); var b = p.At(hi);
+                    if ((a.Y > point.Y) == (b.Y > point.Y)) continue;
+                    var ascending = b.Y > a.Y;
+                    for (var iteration = 0; iteration < 56; iteration++)
+                    {
+                        var mid = (lo + hi) / 2;
+                        if ((p.At(mid).Y < point.Y) == ascending) lo = mid; else hi = mid;
+                    }
+                    if (p.At((lo + hi) / 2).X > point.X) inside = !inside;
+                }
+                continue;
+            }
             var cuts = new List<double> { 0, 1 };
             foreach (var angle in new[] { Math.PI / 2, Math.PI * 1.5 })
             {
@@ -42,6 +62,7 @@ public static class CadRegionGeometry
     public static double Distance(CadPlanarPrimitive p, CadPointD point)
     {
         if (p.IsLine) return point.DistanceTo(p.At(Math.Clamp(p.Parameter(point), 0, 1)));
+        if (p.IsEllipse) return point.DistanceTo(p.NearestPoint(point));
         var angle = Math.Atan2(point.Y - p.Center.Y, point.X - p.Center.X);
         return p.Contains(CadPlanarPrimitive.Point(p.Center, p.Radius, angle))
             ? Math.Abs(point.DistanceTo(p.Center) - p.Radius) : Math.Min(point.DistanceTo(p.Start), point.DistanceTo(p.End));

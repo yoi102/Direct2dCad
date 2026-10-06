@@ -30,25 +30,25 @@
                         <RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Left}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Left, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Left}}" Grid.Row="0" Grid.Column="1" Value="{Binding Left, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Bottom}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="1" Grid.Column="1" Value="{Binding Bottom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Bottom}}" Grid.Row="1" Grid.Column="1" Value="{Binding Bottom, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Right}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding Right, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Right}}" Grid.Row="2" Grid.Column="1" Value="{Binding Right, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Top}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding Top, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Top}}" Grid.Row="3" Grid.Column="1" Value="{Binding Top, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterX}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="4" Grid.Column="1" Value="{Binding CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterX}}" Grid.Row="4" Grid.Column="1" Value="{Binding CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterY}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="5" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterY}}" Grid.Row="5" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="6" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Width}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="6" Grid.Column="1" Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Width}}" Grid.Row="6" Grid.Column="1" Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="7" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Height}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="7" Grid.Column="1" Value="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Height}}" Grid.Row="7" Grid.Column="1" Value="{Binding Height, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="8" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CornerX}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="8" Grid.Column="1" Value="{Binding CornerRadiusX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.CornerX}}" Grid.Row="8" Grid.Column="1" Value="{Binding CornerRadiusX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
                     <TextBlock Grid.Row="9" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CornerY}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown Grid.Row="9" Grid.Column="1" Value="{Binding CornerRadiusY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" StringFormat="F3" Interval="1" />
+                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.CornerY}}" Grid.Row="9" Grid.Column="1" Value="{Binding CornerRadiusY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="0" StringFormat="F3" Interval="1" />
                 </Grid>
             </Expander>
             <ep:StrokeStylePropertySection ViewModel="{Binding}" />

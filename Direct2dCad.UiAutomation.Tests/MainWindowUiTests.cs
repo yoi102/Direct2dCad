@@ -705,6 +705,9 @@ public sealed partial class MainWindowUiTests : IDisposable
         fixture.WaitUntil(() => icon.BoundingRectangle.Left > initialIconBounds.Left + 20,
             "The tool icon did not follow the pointer.");
         CaptureScreenshot("cursor-line-tool.png");
+        // Activating a tool reveals the compact step row and resizes the canvas.
+        // Check clipping against the current drawable surface, not its idle size.
+        bounds = canvas.BoundingRectangle;
         Mouse.MoveTo((int)bounds.Right - 2, (int)bounds.Bottom - 2);
         fixture.WaitUntil(() => !icon.IsOffscreen && icon.BoundingRectangle.Right <= bounds.Right &&
             icon.BoundingRectangle.Bottom <= bounds.Bottom, "The tool icon was clipped at the canvas edge.");

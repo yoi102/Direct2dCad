@@ -1632,6 +1632,18 @@
   <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切换 · Enter 确认 · Esc 取消</value></data>
   <data name="InvalidDynamicInput" xml:space="preserve"><value>请输入符合当前图形的有效数值。</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>布尔运算</value></data>
+  <data name="BooleanSelectionMinimum" xml:space="preserve"><value>请至少选择两个对象进行布尔运算。</value></data>
+  <data name="BooleanSelectionPending" xml:space="preserve"><value>请先确认或取消当前布尔运算。</value></data>
+  <data name="BooleanSelectionReadOnly" xml:space="preserve"><value>当前图纸为只读，无法进行布尔运算。</value></data>
+  <data name="BooleanSelectionMaximum" xml:space="preserve"><value>一次布尔运算最多选择 {0} 个对象。</value></data>
+  <data name="BooleanSelectionUnavailable" xml:space="preserve"><value>所选对象或其图层已不可用，请重新选择对象。</value></data>
+  <data name="BooleanSelectionWrongSpace" xml:space="preserve"><value>所选对象必须全部位于当前编辑空间。</value></data>
+  <data name="BooleanSelectionEntityLocked" xml:space="preserve"><value>选中的{0}已锁定。</value></data>
+  <data name="BooleanSelectionLayerLocked" xml:space="preserve"><value>所选对象所在的图层“{0}”已锁定。</value></data>
+  <data name="BooleanSelectionLayerFrozen" xml:space="preserve"><value>所选对象所在的图层“{0}”已冻结。</value></data>
+  <data name="BooleanSelectionUnsupportedType" xml:space="preserve"><value>布尔运算暂不支持{0}。请选择面域，或由直线和圆弧构成的闭合边界。</value></data>
+  <data name="BooleanSelectionRoundedRectangle" xml:space="preserve"><value>布尔运算暂不支持圆角矩形，请选择没有圆角的矩形。</value></data>
+  <data name="BooleanSelectionOpenBoundary" xml:space="preserve"><value>选中的{0}边界未闭合，布尔运算需要闭合边界。</value></data>
   <data name="BooleanUnion" xml:space="preserve"><value>并集</value></data>
   <data name="BooleanIntersection" xml:space="preserve"><value>交集</value></data>
   <data name="BooleanDifference" xml:space="preserve"><value>差集</value></data>
@@ -1670,4 +1682,13 @@
   <data name="EditCornerTooLarge" xml:space="preserve"><value>请减小圆角或倒角尺寸，避免重叠或超出线段</value></data>
   <data name="GripEdit" xml:space="preserve"><value>形状编辑</value></data>
   <data name="GripEditPrompt" xml:space="preserve"><value>移动控制点或按 Tab 修改数值；左键 / Enter 确认，Esc 取消</value></data>
+  <data name="DrawingMorePointsRequired" xml:space="preserve"><value>还需指定 {0} 个点才能完成。</value></data>
+  <data name="DrawingNoStepToUndo" xml:space="preserve"><value>当前没有可撤回的绘图点。</value></data>
+  <data name="DrawingStepUndone" xml:space="preserve"><value>已撤回上一绘图点。</value></data>
+  <data name="DrawingUndoStepHint" xml:space="preserve"><value>Backspace / BACK 撤回上一点</value></data>
+  <data name="TerminalCommandCancellingFormat" xml:space="preserve"><value>正在取消终端命令：{0}</value></data>
+  <data name="TerminalCommandCanceledFormat" xml:space="preserve"><value>终端命令已取消：{0}</value></data>
+  <data name="TerminalCommandBusy" xml:space="preserve"><value>终端命令仍在执行。按 Esc 取消，并等待它停止后再执行下一条命令。</value></data>
+  <data name="TerminalDocumentUnavailable" xml:space="preserve"><value>原文档已关闭或替换，命令已取消。</value></data>
+  <data name="PastePlacementPrompt" xml:space="preserve"><value>在画布中单击以放置复制的对象；Esc 取消。</value></data>
 </root>

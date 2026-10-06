@@ -836,6 +836,56 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             Cursor: CanvasCursor);
     }
 
+    /// <summary>Cancels only the pointer gesture when capture is interrupted; confirmed drawing input survives.</summary>
+    public CadCanvasInteractionResult CancelCapturedPointerGesture()
+    {
+        if (_disposed)
+            return new CadCanvasInteractionResult(true, ReleaseMouseCapture: true, Cursor: CadCanvasCursorKind.Arrow);
+
+        // Layout panning previews a document property. Capture loss must not commit it.
+        var cancelledLayoutPan = _layoutPan.IsPanning;
+        if (cancelledLayoutPan)
+            _layoutPan.Cancel();
+        EndPan();
+        _selectionDrag.Clear();
+        if (_gripDrag.IsActive)
+        {
+            _gripDrag.Clear();
+            _dynamicInputStep = null;
+            OnPropertyChanged(nameof(IsGripEditing));
+        }
+        RaiseInteractionStateChanged();
+        if (cancelledLayoutPan)
+            RequestRender();
+        else
+            RequestOverlayRender(updateHandleScene: true);
+        return new CadCanvasInteractionResult(true, ReleaseMouseCapture: true, Cursor: CanvasCursor);
+    }
+
+    public bool CanUndoCurrentDrawingStep => !IsGripEditing && !IsPastePreviewActive &&
+        _drawingState.GetPendingPointCount(CadCanvasToolMode) > 0;
+
+    public bool CanCompletePointSequence => _drawingState.CanComplete(CadCanvasToolMode);
+
+    public CadCanvasInteractionResult UndoCurrentDrawingStep()
+    {
+        if (!CanUndoCurrentDrawingStep || !_drawingState.UndoLastPoint(CadCanvasToolMode))
+        {
+            StepInputError = CadUiText.Get("DrawingNoStepToUndo");
+            return CadCanvasInteractionResult.NotHandled;
+        }
+
+        _lastCommandLineInputPoint = DrawingAnchor is { } anchor
+            ? new CadCommandLinePoint(anchor.X, anchor.Y) : null;
+        _dynamicInputStep = null;
+        _objectSnap.Clear();
+        StepInputError = "";
+        RaiseInteractionStateChanged();
+        RequestOverlayRender();
+        PublishInteractionActivity("Undo current drawing point");
+        return CadCanvasInteractionResult.HandledOnly;
+    }
+
     public void Undo()
     {
         if (IsBooleanTool) SetToolMode(CadCanvasToolMode.Select);
@@ -1028,7 +1078,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     [RelayCommand]
     public void BeginLayoutViewportCreation()
     {
-        if (ActiveLayoutId is null)
+        if (ActiveLayoutId is null || !CanEditDocument)
             return;
 
         if (IsLayoutViewportActive)
@@ -1040,29 +1090,44 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     }
 
     private void HandleLayoutViewportCreationClick(CadPointD screen)
+        => HandleLayoutViewportCreationPoint(SnapWorld(CadEditor.Viewport.ScreenToWorld(screen)), explicitInput: false);
+
+    private bool HandleLayoutViewportCreationPoint(CadPointD raw, bool explicitInput)
     {
         if (!_layoutViewportCreation.IsActive ||
             ActiveLayoutId is not { } layoutId ||
             IsLayoutViewportActive)
-            return;
+        {
+            StepInputError = "MVIEW requires an active paper layout and a pending corner step.";
+            return false;
+        }
 
         var layout = CadEditor.Document.GetLayout(layoutId);
-        var raw = SnapWorld(CadEditor.Viewport.ScreenToWorld(screen));
+        if (explicitInput && !layout.PaperBounds.Contains(raw))
+        {
+            StepInputError = "The viewport corner must lie within the paper bounds.";
+            return false;
+        }
         var point = new CadPointD(
             Math.Clamp(raw.X, layout.PaperBounds.Left, layout.PaperBounds.Right),
             Math.Clamp(raw.Y, layout.PaperBounds.Bottom, layout.PaperBounds.Top));
         if (_layoutViewportCreation.FirstCorner is null)
         {
             _layoutViewportCreation.SetFirstCorner(point);
+            _lastCommandLineInputPoint = new(point.X, point.Y);
             PublishInteractionActivity("MVIEW: specify the opposite corner");
             RequestOverlayRender();
-            return;
+            return true;
         }
 
         var bounds = _layoutViewportCreation.CreateBounds(point);
-        var minimumPaperSize = 8.0 / Math.Max(CadEditor.Viewport.Zoom, 1e-6);
+        var minimumPaperSize = explicitInput ? 1e-9 : 8.0 / Math.Max(CadEditor.Viewport.Zoom, 1e-6);
         if (bounds.Width < minimumPaperSize || bounds.Height < minimumPaperSize)
-            return;
+        {
+            StepInputError = explicitInput ? "The viewport must have nonzero width and height."
+                : "The viewport must be at least eight screen pixels across.";
+            return false;
+        }
 
         ResolveModelFit(bounds, out var modelCenter, out var scale);
         var viewportId = CadEditor.AddLayoutViewport(
@@ -1074,7 +1139,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             batchId: _layoutViewportCreation.BatchId);
         _layoutViewportCreation.BeginAdjusting(viewportId);
         ActivateLayoutViewport(viewportId);
+        _lastCommandLineInputPoint = new(point.X, point.Y);
         PublishInteractionActivity("MVIEW: use the wheel and right-drag to adjust; click to finish");
+        return true;
     }
 
     private void CompleteLayoutViewportCreation()
@@ -1089,9 +1156,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         PublishInteractionActivity("MVIEW complete");
     }
 
+    public bool CanActivateDoubleClickObjectOrSpace => CadCanvasToolMode == CadCanvasToolMode.Select &&
+        !IsGripEditing && !IsPastePreviewActive && !IsPanning && !_selectionDrag.IsDragging &&
+        !_drawingState.HasPendingPoints;
+
     public CadCanvasInteractionResult HandleDoubleClick(CadPointD screen)
     {
-        if (CadCanvasToolMode == CadCanvasToolMode.LayoutViewport)
+        if (!CanActivateDoubleClickObjectOrSpace)
             return CadCanvasInteractionResult.NotHandled;
         if (ActiveLayoutId is not { } layoutId)
             return CadCanvasInteractionResult.NotHandled;
@@ -1401,6 +1472,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult OpenOleObjectAt(CadPointD screen)
     {
+        if (!CanActivateDoubleClickObjectOrSpace)
+            return CadCanvasInteractionResult.NotHandled;
+
         var world = ScreenToWorld(screen, snapToGrid: false);
         var queryBounds = CadRectD.FromCenter(world, 1e-6, 1e-6);
         var oleObject = CadEditor.SpatialIndex.Query(CadEditor.ActiveOwnerBlockId, queryBounds)
@@ -1433,6 +1507,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public CadCanvasInteractionResult CompleteCurrentDrawing()
     {
+        if (IsPastePreviewActive)
+        {
+            StepInputError = CadUiText.Get("PastePlacementPrompt");
+            NotifyDrawingUx();
+            return CadCanvasInteractionResult.HandledOnly;
+        }
         if (_gripDrag.IsActive)
         {
             if(!SubmitDynamicInput()) { StepInputError=DynamicInputError; return CadCanvasInteractionResult.NotHandled; }
@@ -1441,6 +1521,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         }
         if (IsDimensionTool)
         {
+            if (_dimensionAnchors.Count > 0 || _reassociateDimension is not null)
+            {
+                StepInputError = DimensionPrompt;
+                NotifyDrawingUx();
+                return CadCanvasInteractionResult.HandledOnly;
+            }
             SetToolMode(CadCanvasToolMode.Select);
             return CadCanvasInteractionResult.HandledOnly;
         }
@@ -1452,6 +1538,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return CadCanvasInteractionResult.HandledOnly;
         }
 
+        StepInputError = "";
         if (CreateDrawingClickHandler().CompleteCurrentDrawing())
         {
             StepInputError = "";
@@ -1460,6 +1547,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             return CadCanvasInteractionResult.HandledOnly;
         }
 
+        var minimum = CadDrawingSessionState.GetMinimumCompletionPointCount(CadCanvasToolMode);
+        var missing = minimum - _drawingState.GetPendingPointCount(CadCanvasToolMode);
+        if (missing > 0)
+            StepInputError = string.Format(System.Globalization.CultureInfo.CurrentCulture,
+                CadUiText.Get("DrawingMorePointsRequired"), missing);
+        else if (string.IsNullOrEmpty(StepInputError))
+            StepInputError = CadUiText.Get("DrawingCannotComplete");
+        NotifyDrawingUx();
         return CadCanvasInteractionResult.NotHandled;
     }
 
@@ -1727,6 +1822,23 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         LastInteractionAtUtc=DateTimeOffset.UtcNow;
         StepInputError = "";
+        if (IsPastePreviewActive)
+        {
+            if (!CommitPasteWorldPoint(world)) return false;
+            _lastCommandLineInputPoint = new(world.X, world.Y);
+            return true;
+        }
+        if (_layoutViewportCreation.IsActive)
+        {
+            if (!HandleLayoutViewportCreationPoint(world, explicitInput)) return false;
+            _lastCommandLineInputPoint = new(world.X, world.Y);
+            return true;
+        }
+        if (CadCanvasToolMode == CadCanvasToolMode.Select)
+        {
+            StepInputError = "Start a drawing command or paste preview before entering a point.";
+            return false;
+        }
         if (IsBooleanTool) return HandleBooleanClick(world);
         if (IsDimensionTool)
         {
@@ -1771,11 +1883,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     }
 
     private void CommitPaste(CadPointD screen)
+        => CommitPasteWorldPoint(ScreenToWorld(screen, snapToGrid: true));
+
+    private bool CommitPasteWorldPoint(CadPointD target)
     {
         if (!EnsureLayerAcceptsEntities(PasteTargetLayerId))
-            return;
+            return false;
 
-        var target = ScreenToWorld(screen, snapToGrid: true);
         var createdIds = _paste.Commit(
             CreateClipboardInteractionService(),
             target,
@@ -1792,6 +1906,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         OnPropertyChanged(nameof(IsPastePreviewActive));
         OnPropertyChanged(nameof(ActivePasteSnapshot));
         RequestOverlayRender(updateHandleScene: true);
+        return createdIds.Count > 0;
     }
 
     private CadCanvasInteractionResult BeginPastePreviewCore()
@@ -2812,9 +2927,27 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         SetToolMode(Enum.Parse<CadCanvasToolMode>(mode.ToString()));
     }
 
+    bool ICadCommandLineContext.TrySetToolMode(CadCommandLineDrawingMode mode)
+    {
+        if (!CanEditDocument && mode != CadCommandLineDrawingMode.Select)
+        {
+            StepInputError = CadUiText.Get(Direct2dCad.Lang.LangKeys.CompatibilityReadOnly);
+            return false;
+        }
+        if (mode == CadCommandLineDrawingMode.LayoutViewport && ActiveLayoutId is null)
+        {
+            StepInputError = "MVIEW requires an active paper layout.";
+            return false;
+        }
+        ((ICadCommandLineContext)this).SetToolMode(mode);
+        return ((ICadCommandLineContext)this).ToolMode == mode;
+    }
+
     void ICadCommandLineContext.Cancel() => Escape();
 
     void ICadCommandLineContext.Undo() => Undo();
+
+    bool ICadCommandLineContext.UndoCurrentDrawingStep() => UndoCurrentDrawingStep().Handled;
 
     void ICadCommandLineContext.Redo() => Redo();
 

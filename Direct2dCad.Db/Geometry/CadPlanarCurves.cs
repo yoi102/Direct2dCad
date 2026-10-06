@@ -4,7 +4,7 @@ namespace Direct2dCad.Db.Geometry;
 
 public static class CadPlanarCurves
 {
-    /// <summary>Exact line/circular primitives only. Unsupported curves fail explicitly.</summary>
+    /// <summary>Exact line, circular and elliptical primitives. Unsupported curves fail explicitly.</summary>
     public static IReadOnlyList<CadPlanarPrimitive> Get(CadEntity entity)
     {
         switch (entity)
@@ -13,6 +13,8 @@ public static class CadPlanarCurves
             case CadLine line: return [CadPlanarPrimitive.Line(line.Start, line.End)];
             case CadCircle circle: return [CadPlanarPrimitive.Arc(circle.Center, circle.Radius, 0, 2 * Math.PI)];
             case CadArc arc: return [CadPlanarPrimitive.Arc(arc.Center, arc.Radius, arc.StartAngleRadians, arc.SweepAngleRadians)];
+            case CadEllipse ellipse: return [CadPlanarPrimitive.EllipseArc(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, ellipse.RotationRadians, 0, Math.PI * 2)];
+            case CadEllipseArc arc: return [CadPlanarPrimitive.EllipseArc(arc.Center, arc.RadiusX, arc.RadiusY, arc.RotationRadians, arc.StartAngleRadians, arc.SweepAngleRadians)];
             case CadPolyline polyline:
                 return Lines(polyline.Points, polyline.Closed);
             case CadRectangle rectangle when !rectangle.HasRoundedCorners:
@@ -33,7 +35,7 @@ public static class CadPlanarCurves
                 }
                 if (path.Closed && !CadGeometryTolerance.Coincident(start,path.StartPoint)) primitives.Add(CadPlanarPrimitive.Line(start,path.StartPoint));
                 return primitives;
-            default: throw new NotSupportedException("This operation supports lines, circles, circular arcs and line/arc paths.");
+            default: throw new NotSupportedException("This operation supports lines, circular and elliptical arcs, and line/arc paths.");
         }
     }
     private static IReadOnlyList<CadPlanarPrimitive> Lines(IReadOnlyList<CadPointD> points, bool closed)

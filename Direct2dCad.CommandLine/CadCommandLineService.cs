@@ -26,7 +26,8 @@ public sealed class CadCommandLineService : ICadCommandLineService
         if (context is not null && CadCommandLinePointParser.LooksLikePoint(commandLine))
             return ExecutePoint(commandLine, context);
 
-        var tokens = CadCommandLineSyntax.Tokenize(commandLine);
+        if (!CadCommandLineSyntax.TryTokenize(commandLine, out var tokens, out var syntaxError))
+            return Failure(syntaxError!);
         if (tokens.Length == 0)
             return Failure("Enter a command. Type HELP to list available commands.");
 
@@ -41,8 +42,33 @@ public sealed class CadCommandLineService : ICadCommandLineService
             tokens.Skip(1).ToArray()));
     }
 
-    public IReadOnlyList<string> Complete(string commandPrefix, int maximumCount = 12) =>
-        _registry.Complete(commandPrefix, maximumCount);
+    public IReadOnlyList<string> Complete(string commandPrefix, int maximumCount = 12)
+    {
+        if (maximumCount <= 0) return [];
+        var text = commandPrefix.TrimStart();
+        var separator = text.IndexOfAny([' ', '\t']);
+        if (separator < 0) return _registry.Complete(text, maximumCount);
+        if (!_registry.TryResolve(text[..separator], out var handler) || handler is null) return [];
+        var prefix = text[(separator + 1)..].TrimStart();
+        var options = handler.Descriptor.Name switch
+        {
+            "CIRCLE" => new[] { "RADIUS", "DIAMETER", "2P", "3P" },
+            "ARC" => ["3P", "SCE", "SCA", "SCL", "SEA", "SED", "SER", "CSE", "CSA", "CSL", "CONTINUE"],
+            "ELLIPSE" => ["CENTER", "AXIS", "ARC"],
+            "ZOOM" => ["EXTENTS"],
+            "HELP" => Commands.Select(c => c.Name).ToArray(),
+            _ => []
+        };
+        return options.Where(o => o.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Take(maximumCount).Select(o => $"{handler.Descriptor.Name} {o}").ToArray();
+    }
+
+    public string? GetInputHint(string commandText)
+    {
+        var head = commandText.TrimStart().Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        return head is not null && _registry.TryResolve(head, out var handler) && handler is not null
+            ? handler.Descriptor.Syntax + " — " + handler.Descriptor.Description : null;
+    }
 
     private void RegisterBuiltInHandlers()
     {
@@ -60,6 +86,10 @@ public sealed class CadCommandLineService : ICadCommandLineService
             "Show renderer workload, retained-cache, and GPU-memory statistics.",
             ExecuteRenderStatistics);
         Register("UNDO", "U", "UNDO", "Undo the last document command.", ExecuteUndo);
+        Register("BACK", "UNDOPOINT", "BACK", "Undo the last uncommitted drawing point.", request =>
+            request.Context.UndoCurrentDrawingStep()
+                ? Success(Direct2dCad.Lang.CadUiText.Get("DrawingStepUndone"))
+                : Failure(request.Context.DrawingInputError ?? Direct2dCad.Lang.CadUiText.Get("DrawingNoStepToUndo")));
         Register("REDO", "", "REDO", "Redo the last undone document command.", ExecuteRedo);
         Register("FIT", "ZE", "FIT", "Fit visible content to the viewport.", ExecuteFit);
         Register("ZOOM", "Z", "ZOOM EXTENTS", "Zoom to drawing extents.", ExecuteZoom);
@@ -85,11 +115,11 @@ public sealed class CadCommandLineService : ICadCommandLineService
                 : Failure("The clipboard does not contain supported CAD content."));
         RegisterMode("LINE", "L", "LINE", "Enter line drawing mode.", CadCommandLineDrawingMode.Line);
         Register("CIRCLE", "C", "CIRCLE [RADIUS|DIAMETER|2P|3P]", "Enter a circle drawing mode.", request =>
-            ActivateMode(request.Context, ParseCircleMode(request.Arguments)));
+            ActivateParsedMode(request, ParseCircleMode(request.Arguments), "CIRCLE [RADIUS|DIAMETER|2P|3P]"));
         Register("ARC", "A", "ARC [3P|SCE|SCA|SCL|SEA|SED|SER|CSE|CSA|CSL|CONTINUE]", "Enter an arc drawing mode.", request =>
-            ActivateMode(request.Context, ParseArcMode(request.Arguments)));
+            ActivateParsedMode(request, ParseArcMode(request.Arguments), "ARC [3P|SCE|SCA|SCL|SEA|SED|SER|CSE|CSA|CSL|CONTINUE]"));
         Register("ELLIPSE", "EL", "ELLIPSE [CENTER|AXIS|ARC]", "Enter an ellipse drawing mode.", request =>
-            ActivateMode(request.Context, ParseEllipseMode(request.Arguments)));
+            ActivateParsedMode(request, ParseEllipseMode(request.Arguments), "ELLIPSE [CENTER|AXIS|ARC]"));
         RegisterMode("RECTANGLE", "REC", "RECTANGLE", "Enter rectangle drawing mode.", CadCommandLineDrawingMode.Rectangle);
         RegisterMode("POLYLINE", "PL", "POLYLINE", "Enter polyline drawing mode.", CadCommandLineDrawingMode.Polyline);
         RegisterMode("POLYGON", "POL", "POLYGON", "Enter polygon drawing mode.", CadCommandLineDrawingMode.Polygon);
@@ -104,9 +134,9 @@ public sealed class CadCommandLineService : ICadCommandLineService
         RegisterMode("DIMDIAMETER", "", "DIMDIAMETER", "Choose a circle or arc and place a diameter dimension.", CadCommandLineDrawingMode.DimDiameter);
         RegisterMode("DIMANGULAR", "", "DIMANGULAR", "Choose a vertex and two ray points, then place the angle.", CadCommandLineDrawingMode.DimAngular);
         RegisterMode("LEADER", "", "LEADER", "Create a leader with override text.", CadCommandLineDrawingMode.Leader);
-        Register("DONE", "D", "DONE", "Complete the current multi-point drawing.", request =>
+        Register("DONE", "D", "DONE", "Finish or advance the current interaction step.", request =>
             request.Context.CompleteCurrentDrawing()
-                ? Success("Current drawing completed.")
+                ? Success("Current step accepted.")
                 : Failure(request.Context.DrawingInputError ?? "The current drawing cannot be completed yet."));
         Register("CANCEL", "ESC", "CANCEL", "Cancel the current interaction and select.", request =>
         {
@@ -124,7 +154,8 @@ public sealed class CadCommandLineService : ICadCommandLineService
     {
         _registry.Register(new DelegateCommandLineHandler(
             new CadCommandLineDescriptor(name, aliases, syntax, description),
-            execute));
+            request => request.Arguments.Count > (name is "HELP" or "ZOOM" or "CIRCLE" or "ARC" or "ELLIPSE" ? 1 : 0)
+                ? Failure($"Usage: {syntax}") : execute(request)));
     }
 
     private void RegisterMode(
@@ -273,15 +304,17 @@ public sealed class CadCommandLineService : ICadCommandLineService
         ICadCommandLineContext context,
         CadCommandLineDrawingMode mode)
     {
-        context.SetToolMode(mode);
-        return Success($"{mode} mode active. Specify a point on the canvas or enter X,Y.");
+        return context.TrySetToolMode(mode)
+            ? Success($"{mode} mode active. Specify a point on the canvas or enter X,Y.")
+            : Failure(context.DrawingInputError ?? $"Cannot activate {mode} in the current document or space.");
     }
+
+    private static CadCommandLineResult ActivateParsedMode(CadCommandLineRequest request,
+        CadCommandLineDrawingMode? mode, string syntax) => mode is { } value
+        ? ActivateMode(request.Context, value) : Failure($"Usage: {syntax}");
 
     private static CadCommandLineResult ExecutePoint(string commandLine, ICadCommandLineContext context)
     {
-        if (context.ToolMode == CadCommandLineDrawingMode.Select)
-            return Failure("Start a drawing command before entering a point.");
-
         if (!CadCommandLinePointParser.TryParse(
                 commandLine,
                 context.LastInputPoint,
@@ -297,7 +330,7 @@ public sealed class CadCommandLineService : ICadCommandLineService
             : Failure(context.DrawingInputError ?? "The current tool does not accept point input.");
     }
 
-    private static CadCommandLineDrawingMode ParseCircleMode(IReadOnlyList<string> arguments)
+    private static CadCommandLineDrawingMode? ParseCircleMode(IReadOnlyList<string> arguments)
     {
         if (arguments.Count == 0)
             return CadCommandLineDrawingMode.CircleCenterRadius;
@@ -307,11 +340,12 @@ public sealed class CadCommandLineService : ICadCommandLineService
             "D" or "DIAMETER" => CadCommandLineDrawingMode.CircleCenterDiameter,
             "2P" or "TWOPOINT" => CadCommandLineDrawingMode.CircleTwoPoint,
             "3P" or "THREEPOINT" => CadCommandLineDrawingMode.CircleThreePoint,
-            _ => CadCommandLineDrawingMode.CircleCenterRadius
+            "R" or "RADIUS" => CadCommandLineDrawingMode.CircleCenterRadius,
+            _ => null
         };
     }
 
-    private static CadCommandLineDrawingMode ParseEllipseMode(IReadOnlyList<string> arguments)
+    private static CadCommandLineDrawingMode? ParseEllipseMode(IReadOnlyList<string> arguments)
     {
         if (arguments.Count == 0)
             return CadCommandLineDrawingMode.EllipseCenter;
@@ -320,11 +354,12 @@ public sealed class CadCommandLineService : ICadCommandLineService
         {
             "AXIS" or "END" => CadCommandLineDrawingMode.EllipseAxisEnd,
             "ARC" => CadCommandLineDrawingMode.EllipseArc,
-            _ => CadCommandLineDrawingMode.EllipseCenter
+            "CENTER" => CadCommandLineDrawingMode.EllipseCenter,
+            _ => null
         };
     }
 
-    private static CadCommandLineDrawingMode ParseArcMode(IReadOnlyList<string> arguments)
+    private static CadCommandLineDrawingMode? ParseArcMode(IReadOnlyList<string> arguments)
     {
         if (arguments.Count == 0)
             return CadCommandLineDrawingMode.ArcThreePoint;
@@ -341,7 +376,8 @@ public sealed class CadCommandLineService : ICadCommandLineService
             "CSA" => CadCommandLineDrawingMode.ArcCenterStartAngle,
             "CSL" => CadCommandLineDrawingMode.ArcCenterStartLength,
             "CONTINUE" or "CON" => CadCommandLineDrawingMode.ArcContinue,
-            _ => CadCommandLineDrawingMode.ArcThreePoint
+            "3P" => CadCommandLineDrawingMode.ArcThreePoint,
+            _ => null
         };
     }
 

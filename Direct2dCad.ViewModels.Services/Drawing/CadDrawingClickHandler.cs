@@ -358,7 +358,7 @@ internal sealed class CadDrawingClickHandler(
 
     private bool CompletePolyline()
     {
-        if (state.PendingPolylinePoints.Count < 2)
+        if (!state.CanComplete(CadCanvasToolMode.Polyline))
             return false;
 
         creator.AddPolyline(state.PendingPolylinePoints);
@@ -379,7 +379,7 @@ internal sealed class CadDrawingClickHandler(
 
     private bool CompleteSpline()
     {
-        if (state.PendingSplinePoints.Count < 2)
+        if (!state.CanComplete(CadCanvasToolMode.Spline))
             return false;
 
         creator.AddSpline(state.PendingSplinePoints);
@@ -400,7 +400,7 @@ internal sealed class CadDrawingClickHandler(
 
     private bool CompletePolygon()
     {
-        if (state.PendingPolygonPoints.Count < 3)
+        if (!state.CanComplete(CadCanvasToolMode.Polygon))
             return false;
 
         creator.AddPolygon(state.PendingPolygonPoints);

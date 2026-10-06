@@ -1,6 +1,10 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using AvalonDock;
 using AvalonDock.DependencyInjection;
@@ -10,6 +14,7 @@ using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.wpf.Services.Application;
+using Direct2dCad.wpf.Views.Toolboxes.EntityProperty;
 using MessagePipe;
 
 namespace Direct2dCad.wpf;
@@ -36,6 +41,7 @@ public partial class MainWindow
         _viewModel = viewModel;
         _toolboxLayoutPersistence = toolboxLayoutPersistence;
         DataContext = _viewModel;
+        PreviewKeyDown += OnSavePreviewKeyDown;
 
         _toolboxLayoutSaveTimer = new DispatcherTimer
         {
@@ -93,6 +99,48 @@ public partial class MainWindow
         _viewModel.DrawingRecovery.IsOpen = _viewModel.HasRecoveryEntries;
         _recoveryTimer.Tick += OnRecoveryTick;
         _recoveryTimer.Start();
+    }
+
+    private void OnSavePreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control &&
+            !TryCommitFocusedPropertyEdit(Keyboard.FocusedElement as DependencyObject))
+        {
+            // Keep focus and the invalid text. The normal window key binding may
+            // save only after the active property editor has accepted its value.
+            e.Handled = true;
+        }
+    }
+
+    internal static bool TryCommitFocusedPropertyEdit(DependencyObject? focusedElement)
+    {
+        if (focusedElement is not TextBox { IsReadOnly: false } textBox)
+            return true;
+
+        var ancestors = new List<DependencyObject>();
+        for (DependencyObject? current = textBox; current is not null;)
+        {
+            ancestors.Add(current);
+            if (current is UserControl &&
+                current.GetType().Namespace == typeof(EntityHeaderPropertySection).Namespace)
+            {
+                var expression = textBox.GetBindingExpression(TextBox.TextProperty);
+                if (expression is not null &&
+                    expression.ParentBinding.Mode is not (BindingMode.OneWay or BindingMode.OneTime))
+                {
+                    expression.UpdateSource();
+                    if (expression.HasError)
+                        return false;
+                }
+                return !ancestors.Any(Validation.GetHasError);
+            }
+            current = LogicalTreeHelper.GetParent(current) ??
+                (current is Visual visual ? VisualTreeHelper.GetParent(visual) : null);
+        }
+
+        // Terminal drafts and on-canvas numeric input have their own submission
+        // contracts, and are deliberately left untouched by document saving.
+        return true;
     }
 
     private async void OnRecoveryTick(object? sender, EventArgs e)

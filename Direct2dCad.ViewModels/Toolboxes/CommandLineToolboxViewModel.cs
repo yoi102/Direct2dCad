@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.CommandLine;
 using Direct2dCad.Editor.Commands;
+using Direct2dCad.Lang;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Tools;
 using Direct2dCad.ViewModels.Collections;
@@ -28,8 +29,12 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     private readonly Queue<CadCommandLineEntryViewModel> _pendingEntries = [];
     private readonly List<string> _commandHistory = [];
     private CadDocumentViewModel? _documentViewModel;
+    private TerminalExecution? _execution;
+    private string? _lastRepeatableCommand;
     private int _droppedPendingEntryCount;
     private int _historyIndex;
+    private bool _recallingHistory;
+    public bool IsNavigatingHistory { get; private set; }
     private bool _disposed;
 
     public CommandLineToolboxViewModel(
@@ -87,7 +92,9 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     public string LatestOutputText { get; private set; } = string.Empty;
 
     public bool HasDocument => _documentViewModel is not null;
+    public bool IsCommandExecuting => _execution is not null;
     public bool HasSuggestions => Suggestions.Count > 0;
+    public string? InputHint { get; private set; }
     public bool HasPendingEntries
     {
         get
@@ -116,71 +123,103 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     {
         if (_disposed) return;
         var commandLine = CommandText.Trim();
+        if (IsCancelCommand(commandLine))
+        {
+            CancelCurrentCommand();
+            return;
+        }
+        if (_execution is not null)
+        {
+            AddMessage(CadCommandLineEntryKind.Warning, CadUiText.Get("TerminalCommandBusy"));
+            return;
+        }
+        var document = _documentViewModel;
+        var explicitInput = commandLine.Length > 0;
         if (commandLine.Length == 0)
         {
-            if (_commandHistory.Count == 0)
+            if (document is { HasActiveDrawingTool: true } or { IsGripEditing: true } or { IsPastePreviewActive: true })
+                commandLine = "DONE";
+            else if (_lastRepeatableCommand is { } repeated)
+                commandLine = repeated;
+            else
                 return;
-
-            commandLine = _commandHistory[^1];
         }
 
         AddEntry(CadCommandLineEntryKind.Input, $"> {commandLine}");
-        AddToHistory(commandLine);
+        if (explicitInput) AddToHistory(commandLine);
         CommandText = string.Empty;
-
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_disposeCancellation.Token);
+        var execution = new TerminalExecution(commandLine, document, document?.CadEditor, cancellation);
+        _execution = execution;
+        OnPropertyChanged(nameof(IsCommandExecuting));
         try
         {
-            var toolResult = await _toolCommandLineService.TryExecuteAsync(
-                commandLine,
-                _disposeCancellation.Token);
+            var result = CommandName(commandLine) == "SCRIPT"
+                ? await ExecuteScriptAsync(commandLine, cancellation.Token)
+                : await DispatchLineAsync(commandLine, document, execution.Editor, cancellation.Token);
             if (_disposed) return;
-            if (toolResult is not null)
+            if (result.ClearOutput)
             {
-                AddMessage(
-                    toolResult.Success ? CadCommandLineEntryKind.Output : CadCommandLineEntryKind.Error,
-                    toolResult.Message);
+                ClearOutput();
                 return;
             }
+            RememberSuccessfulCommand(commandLine, result.Success);
+            if (!string.IsNullOrWhiteSpace(result.Message))
+                AddMessage(result.Success ? CadCommandLineEntryKind.Output : CadCommandLineEntryKind.Error, result.Message);
         }
-        catch (OperationCanceledException) when (_disposeCancellation.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
-            return;
-        }
-        catch (Exception exception)
-        {
-            AddMessage(CadCommandLineEntryKind.Error, exception.Message);
-            return;
-        }
-
-        CadCommandLineResult result;
-        try
-        {
-            result = _commandLineService.Execute(commandLine, _documentViewModel);
+            if (!_disposed)
+                AddMessage(CadCommandLineEntryKind.Warning,
+                    string.Format(CadUiText.Get("TerminalCommandCanceledFormat"), commandLine));
         }
         catch (Exception exception)
         {
-            AddMessage(CadCommandLineEntryKind.Error, exception.Message);
-            return;
+            if (!_disposed)
+            {
+                if (cancellation.IsCancellationRequested)
+                    AddMessage(CadCommandLineEntryKind.Warning,
+                        string.Format(CadUiText.Get("TerminalCommandCanceledFormat"), commandLine));
+                else AddMessage(CadCommandLineEntryKind.Error, exception.Message);
+            }
         }
-
-        if (result.ClearOutput)
+        finally
         {
-            ClearOutput();
-            return;
-        }
-
-        if (commandLine.Equals("HELP", StringComparison.OrdinalIgnoreCase) || commandLine == "?")
-        {
-            var additionalHelp = await _toolCommandLineService.TryExecuteAsync("CADHELP", _disposeCancellation.Token);
-            if (additionalHelp is not null) result = result with { Message = result.Message + Environment.NewLine + additionalHelp.Message };
-        }
-        if (!string.IsNullOrWhiteSpace(result.Message))
-        {
-            AddMessage(
-                result.Success ? CadCommandLineEntryKind.Output : CadCommandLineEntryKind.Error,
-                result.Message);
+            if (ReferenceEquals(_execution, execution))
+            {
+                _execution = null;
+                if (!_disposed) OnPropertyChanged(nameof(IsCommandExecuting));
+            }
         }
     }
+
+    public void SubmitCommandInput()
+    {
+        if (_disposed) return;
+        if (IsCancelCommand(CommandText.Trim())) CancelCurrentCommand();
+        else if (ExecuteCommandCommand.CanExecute(null)) ExecuteCommandCommand.Execute(null);
+        else AddMessage(CadCommandLineEntryKind.Warning, CadUiText.Get("TerminalCommandBusy"));
+    }
+
+    private static bool IsCancelCommand(string commandLine) =>
+        CadCommandLineSyntax.TryTokenize(commandLine, out var tokens, out _) && tokens.Length == 1 &&
+        CadCommandLineSyntax.NormalizeCommandName(tokens[0]) is "CANCEL" or "ESC";
+
+    private static string CommandName(string commandLine) =>
+        CadCommandLineSyntax.NormalizeCommandName(commandLine.TrimStart().Split((char[]?)null, 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? string.Empty);
+
+    private void RememberSuccessfulCommand(string commandLine, bool success)
+    {
+        var name = CommandName(commandLine);
+        if (!success || CadCommandLinePointParser.LooksLikePoint(commandLine) ||
+            double.TryParse(commandLine, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out _)) return;
+        if (name is "CANCEL" or "ESC" or "DONE" or "D" or "BACK" or "UNDOPOINT" or "SCRIPT") return;
+        _lastRepeatableCommand = commandLine;
+    }
+
+    private sealed record TerminalExecution(string CommandLine, CadDocumentViewModel? Document,
+        Direct2dCad.Editor.CadEditor? Editor, CancellationTokenSource Cancellation);
 
     public void ShowPreviousCommand()
     {
@@ -188,7 +227,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
             return;
 
         _historyIndex = Math.Max(0, _historyIndex - 1);
-        CommandText = _commandHistory[_historyIndex];
+        RecallHistory(_commandHistory[_historyIndex]);
     }
 
     public void ShowNextCommand()
@@ -197,9 +236,17 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
             return;
 
         _historyIndex = Math.Min(_commandHistory.Count, _historyIndex + 1);
-        CommandText = _historyIndex < _commandHistory.Count
+        RecallHistory(_historyIndex < _commandHistory.Count
             ? _commandHistory[_historyIndex]
-            : string.Empty;
+            : string.Empty);
+    }
+
+    private void RecallHistory(string text)
+    {
+        _recallingHistory = true;
+        IsNavigatingHistory = true;
+        try { CommandText = text; DismissSuggestions(); }
+        finally { _recallingHistory = false; }
     }
 
     public void CompleteCommand()
@@ -208,7 +255,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
             return;
 
         var suggestion = SelectedSuggestion ?? Suggestions[0];
-        CommandText = suggestion + (Suggestions.Count == 1 ? " " : string.Empty);
+        CommandText = suggestion + " ";
     }
 
     public void SelectPreviousSuggestion() => MoveSuggestion(-1);
@@ -234,16 +281,34 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
 
     public void CancelCurrentCommand()
     {
-        CommandText = "CANCEL";
-        _ = ExecuteCommandAsync();
+        if (_disposed) return;
+        CommandText = string.Empty;
+        DismissSuggestions();
+        if (_execution is { } execution)
+        {
+            if (execution.Cancellation.IsCancellationRequested) return;
+            AddMessage(CadCommandLineEntryKind.Warning,
+                string.Format(CadUiText.Get("TerminalCommandCancellingFormat"), execution.CommandLine));
+            execution.Cancellation.Cancel();
+            return;
+        }
+        try
+        {
+            var result = _commandLineService.Execute("CANCEL", _documentViewModel);
+            AddMessage(result.Success ? CadCommandLineEntryKind.Output : CadCommandLineEntryKind.Error, result.Message);
+        }
+        catch (Exception exception) { AddMessage(CadCommandLineEntryKind.Error, exception.Message); }
     }
 
     partial void OnCommandTextChanged(string value)
     {
         Suggestions.Clear();
         SelectedSuggestion = null;
-        var prefix = value.Trim();
-        if (prefix.Length > 0)
+        if (!_recallingHistory) IsNavigatingHistory = false;
+        InputHint = _commandLineService.GetInputHint(value) ?? _toolCommandLineService.GetInputHint(value);
+        OnPropertyChanged(nameof(InputHint));
+        var prefix = value.TrimStart();
+        if (prefix.Length > 0 && !_recallingHistory)
         {
             var suggestions = _commandLineService.Complete(prefix)
                 .Concat(_toolCommandLineService.Complete(prefix))

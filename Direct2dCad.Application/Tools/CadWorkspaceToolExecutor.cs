@@ -67,6 +67,8 @@ public sealed partial class CadWorkspaceToolExecutor
 
             {{activeDetails}}
 
+            Arguments are validated before editing. Unknown or duplicate keys are errors. Legacy enum casing and hyphen/underscore spellings normalize to the canonical schema value. Known optional non-nullable fields may use null to mean omitted; explicitly nullable fields keep their documented clear/reset meaning.
+
             Recommended execution order: inspect the workspace and active document, query the relevant entities/layers/styles, choose one coherent mutation or add_entities batch, verify returned IDs and active-space constraints, then report only confirmed changes. For a complex drawing, plan the parts mentally before issuing mutations and prefer add_entities over many single-entity calls.
             """;
     }
@@ -80,9 +82,14 @@ public sealed partial class CadWorkspaceToolExecutor
             var result = await ExecuteCoreAsync(toolCall, cancellationToken);
             using var json = JsonDocument.Parse(result);
             var root = json.RootElement;
+            // A printer submission is already externally queued. Preserve its truthful receipt
+            // if cancellation raced with submission; never relabel it as an unsubmitted cancel.
+            var printSubmitted = toolCall.Name == "print_document" && root.TryGetProperty("result", out var print) &&
+                print.TryGetProperty("submitted", out var submitted) && submitted.ValueKind == JsonValueKind.True;
+            if (!printSubmitted) cancellationToken.ThrowIfCancellationRequested();
             var success = !root.TryGetProperty("success", out var flag) || flag.ValueKind != JsonValueKind.False;
             if (success) documentName = ActivityResultDocumentName(root) ?? documentName;
-            await PublishActivityAsync(toolCall, documentName, success ? "Completed" : "Failed", SummarizeJson(result));
+            await PublishActivityAsync(toolCall, documentName, success ? "Completed" : "Failed", SummarizeJson(AiToolResultContent.Parse(result).Text));
             return result;
         }
         catch (OperationCanceledException)
@@ -101,6 +108,8 @@ public sealed partial class CadWorkspaceToolExecutor
                 ? "{}"
                 : toolCall.ArgumentsJson);
             var root = arguments.RootElement;
+            root = CadToolSchemaValidator.NormalizeAndValidate(toolCall.Name, root, ToolDefinitions);
+            toolCall = toolCall with { ArgumentsJson = root.GetRawText() };
 
             return toolCall.Name switch
             {
@@ -116,6 +125,13 @@ public sealed partial class CadWorkspaceToolExecutor
                 "close_document" => await CloseDocumentAsync(root),
                 "get_agent_capabilities" => GetAgentCapabilities(root),
                 "boolean_regions" => await BooleanRegionsAsync(root, cancellationToken),
+                "capture_view" => await CaptureViewAsync(root, cancellationToken),
+                "print_document" => await PrintDocumentAsync(root, cancellationToken),
+                "activate_space" => ActivateSpace(root),
+                "list_layouts" or "create_layout" or "rename_layout" or "delete_layout" or
+                    "set_layout_paper" or "add_layout_viewport" or "set_layout_viewport" or
+                    "delete_layout_viewport" or "reassociate_dimension" =>
+                    ExecuteForDocument(root, (executor, args) => ExecutePresentationTool(executor, toolCall.Name, args)),
                 "insert_image_from_file" => InsertImageFromFile(root),
                 "add_ole_object" => AddOleObject(root),
                 "list_document_catalog" => ExecuteForDocument(root, ListDocumentCatalog),
@@ -178,7 +194,9 @@ public sealed partial class CadWorkspaceToolExecutor
         return Success(CadAgentContract.CreateCapabilities(
             _workspace.GetDocuments(),
             _defaultDocumentId,
-            includeExamples));
+            includeExamples,
+            _workspace.SupportsViewCapture,
+            _workspace.SupportsPrinting));
     }
 
     private string CreateDocument(JsonElement arguments)
@@ -221,10 +239,14 @@ public sealed partial class CadWorkspaceToolExecutor
             document.DocumentId,
             OptionalString(arguments, "file_path"),
             cancellationToken);
-        return Success(new
+        var result = new
         {
             saved,
             document = DocumentDto(_workspace.GetRequiredDocument(document.DocumentId))
+        };
+        return saved ? Success(result) : JsonSerializer.Serialize(new
+        {
+            success = false, code = "save_not_completed", error = "Save did not complete; it was cancelled or failed.", result
         });
     }
 
@@ -239,11 +261,15 @@ public sealed partial class CadWorkspaceToolExecutor
                 _defaultDocumentId = _workspace.GetActiveDocument()?.DocumentId ?? _workspace.GetDocuments().FirstOrDefault()?.DocumentId;
         }
 
-        return Success(new
+        var result = new
         {
             closed,
             document_id = document.DocumentId,
             default_document_id = _defaultDocumentId
+        };
+        return closed ? Success(result) : JsonSerializer.Serialize(new
+        {
+            success = false, code = "cancelled", error = "Close was cancelled; the document remains open.", result
         });
     }
 
@@ -253,7 +279,7 @@ public sealed partial class CadWorkspaceToolExecutor
         var executor = GetExecutor(document);
 
         if (!CreationToolNames.Contains(toolCall.Name))
-            return AddDocumentId(executor.Execute(toolCall), document.DocumentId);
+            return AddDocumentId(executor.ExecuteValidated(toolCall), document.DocumentId);
 
         var (createdEntityId, changedFields) = executor.ExecuteAtomically(
             () => ExecuteCreationTool(executor, toolCall.Name, arguments));
@@ -318,7 +344,7 @@ public sealed partial class CadWorkspaceToolExecutor
             return (createdId, ApplyCreationProperties(executor, createdId, toolName, arguments));
         }
         var toolCall = new AiToolCall(Guid.NewGuid().ToString("N"), toolName, arguments.GetRawText());
-        var creationResult = executor.Execute(toolCall);
+        var creationResult = executor.ExecuteValidated(toolCall);
         if (!TryReadCreatedEntityId(creationResult, out var createdEntityId))
             throw new InvalidOperationException(ReadToolError(creationResult));
 
@@ -340,7 +366,7 @@ public sealed partial class CadWorkspaceToolExecutor
             name: OptionalString(arguments, "name") ?? NextEntityName(
                 executor.Session.CadEditor.Document,
                 "CompositePath"));
-        executor.ExecuteCommand(command);
+        executor.ExecuteCreationCommand(command);
         var entityId = command.CreatedEntityId ?? throw new InvalidOperationException("The composite path was not created.");
         executor.Session.SelectEntities([entityId]);
         return entityId;
@@ -402,7 +428,7 @@ public sealed partial class CadWorkspaceToolExecutor
                 OptionalBool(documentArguments, "visible", true),
                 OptionalUnitInterval(documentArguments, "opacity", 1.0),
                 OptionalFinite(documentArguments, "rotation_degrees", 0) * Math.PI / 180.0);
-            executor.ExecuteCommand(command);
+            executor.ExecuteCreationCommand(command);
             var entityId = command.CreatedEntityId ??
                            throw new InvalidOperationException("The image entity was not created.");
             if (HasValue(documentArguments, "locked") &&
@@ -442,7 +468,7 @@ public sealed partial class CadWorkspaceToolExecutor
                 OptionalInt(documentArguments, "z_index", 0),
                 OptionalBool(documentArguments, "visible", true),
                 OptionalUnitInterval(documentArguments, "opacity", 1.0));
-            executor.ExecuteCommand(command);
+            executor.ExecuteCreationCommand(command);
             var entityId = command.CreatedEntityId ??
                            throw new InvalidOperationException("The OLE entity was not created.");
             if (HasValue(documentArguments, "locked") &&
@@ -1721,7 +1747,7 @@ public sealed partial class CadWorkspaceToolExecutor
     {
         var tools = CadDocumentToolExecutor.ToolDefinitions.Select(AddDocumentAndAppearanceParameters).ToList();
         tools.AddRange(WorkspaceToolDefinitions());
-        tools.Add(Tool("boolean_regions", "Create one undoable Region from at least two explicit closed operands: union, intersection, or difference. Difference requires subject_entity_id; sources are replaced only after a non-empty result succeeds. Supports circles, rectangles, closed line/circular paths and Regions; unsupported geometry fails without edits.", BooleanRegionsSchema()));
+        tools.Add(Tool("boolean_regions", "Create one undoable Region from at least two explicit closed operands: union, intersection, or difference. Difference requires subject_entity_id; sources are replaced only after a non-empty result succeeds. Supports circles, ellipses, rectangles, closed line/circular paths and Regions including exact elliptical arcs; unsupported geometry fails without edits.", BooleanRegionsSchema()));
         tools.Add(Tool("insert_image_from_file", "Import an image file and add it as an undoable CadImage in the active editing space. The image is stored in the document; it is not a live external link.",
             ObjectSchema(new Dictionary<string, object>
             {
@@ -1862,6 +1888,7 @@ public sealed partial class CadWorkspaceToolExecutor
             }, ["block"])));
         tools.Add(Tool("exit_block_edit", "Leave block editing and return to model space.",
             ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
+        AddPresentationToolDefinitions(tools);
         return tools;
     }
 

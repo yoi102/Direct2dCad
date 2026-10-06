@@ -139,6 +139,26 @@ public sealed partial class CadDxfStorage
             {
                 case "LINE":entity=document.AddLine(Point(r),Point(r,11),layer);break;
                 case "CIRCLE":entity=document.AddCircle(Point(r),r.Number(40)*factor,layer);break;
+                case "ELLIPSE":
+                    var major = Point(r,11); var majorLength = major.DistanceTo(default);
+                    var ratio = r.Number(40); var ellipseStart = r.Number(41); var ellipseEnd = r.Number(42, Math.PI*2);
+                    if (majorLength <= CadGeometryTolerance.Absolute || ratio <= 0 || ratio > 1 ||
+                        ellipseEnd-ellipseStart > Math.PI*2+1e-10 || ellipseEnd-ellipseStart < -Math.PI*2-1e-10)
+                        throw new InvalidDataException("Invalid DXF ellipse axes or parameter interval.");
+                    var ellipseSweep = Math.Abs(ellipseEnd-ellipseStart) >= Math.PI*2-1e-10 ? Math.PI*2 : CadPlanarPrimitive.PositiveAngle(ellipseEnd-ellipseStart);
+                    if (ellipseSweep < 1e-12) { Count(report,"Degenerate ELLIPSE"); return; }
+                    var ellipseRotation = Math.Atan2(major.Y,major.X);
+                    if (ellipseSweep >= Math.PI*2-1e-10)
+                    {
+                        var ellipse = document.AddEllipse(Point(r),majorLength,majorLength*ratio,layer);
+                        ellipse.SetRotation(ellipseRotation); entity=ellipse;
+                    }
+                    else
+                    {
+                        var ellipseArc = document.AddEllipseArc(Point(r),majorLength,majorLength*ratio,ellipseStart,ellipseSweep,layer);
+                        ellipseArc.SetRotation(ellipseRotation); entity=ellipseArc;
+                    }
+                    break;
                 case "ARC":
                     var start=r.Number(50)*Math.PI/180;var sweep=((r.Number(51)-r.Number(50)+360)%360)*Math.PI/180;
                     if(sweep<1e-12){Count(report,"Degenerate ARC");return;}
@@ -234,7 +254,7 @@ public sealed partial class CadDxfStorage
             if(e is CadDimension)Count(report,"Dimension association flattened to strokes");
             else if(e is CadRegion region)
             {
-                Count(report,"Region converted to boundary polylines");
+                Count(report,region.Contours.Any(c=>c.Edges.Any(p=>p.IsEllipse)) ? "Region converted to exact boundary curves" : "Region converted to boundary polylines");
                 if(region.FillStyleId is not null && !TryRegionSolidFill(doc,region,out _))Count(report,"Fill omitted");
             }
             else if(e is not (CadLine or CadCircle or CadArc or CadPolyline or CadText or CadBlockReference or CadCompositePath) || e is CadCompositePath p && p.Segments.Any(s=>s is CadCompositeSplineSegment))Count(report,e.GetType().Name);
@@ -295,12 +315,17 @@ public sealed partial class CadDxfStorage
                     else Pair(62,e.ColorSource==CadColorSource.ByBlock?0:256);
                     Pair(370,e.UseLayerLineWeight?-1:(int)Math.Round((e.LineWeight?.Value??.18)*100));
                     Pair(6,e.StrokeStyle.DashStyle switch {CadStrokeDashStyle.Dash=>"DASHED",CadStrokeDashStyle.Dot=>"DOTTED",CadStrokeDashStyle.DashDot=>"DASHDOT",_=>"CONTINUOUS"});
-                    Pair(100,type switch {"LINE"=>"AcDbLine","CIRCLE" or "ARC"=>"AcDbCircle","LWPOLYLINE"=>"AcDbPolyline","TEXT"=>"AcDbText","INSERT"=>"AcDbBlockReference","HATCH"=>"AcDbHatch",_=>throw new InvalidOperationException("Unsupported DXF class.")});
+                    Pair(100,type switch {"LINE"=>"AcDbLine","CIRCLE" or "ARC"=>"AcDbCircle","ELLIPSE"=>"AcDbEllipse","LWPOLYLINE"=>"AcDbPolyline","TEXT"=>"AcDbText","INSERT"=>"AcDbBlockReference","HATCH"=>"AcDbHatch",_=>throw new InvalidOperationException("Unsupported DXF class.")});
                 }
                 void Polyline(CadEntity e,IReadOnlyList<(CadPointD Point,double Bulge)> points,bool closed)
                 {Common(e,"LWPOLYLINE");Pair(90,points.Count);Pair(70,closed?1:0);foreach(var v in points){Pair(10,v.Point.X*factor);Pair(20,v.Point.Y*factor);if(v.Bulge!=0)Pair(42,v.Bulge);}}
                 void Region(CadRegion region)
                 {
+                    if (region.Contours.Any(c=>c.Edges.Any(p=>p.IsEllipse)))
+                    {
+                        WriteEllipticalRegion(region, factor, TryRegionSolidFill(doc,region,out var solid) ? solid : null, Pair, Common, token);
+                        return;
+                    }
                     var boundaries=region.Contours.Select(c=>RegionVertices(c,token)).ToArray();
                     if(TryRegionSolidFill(doc,region,out var color))
                     {
@@ -353,10 +378,10 @@ public sealed partial class CadDxfStorage
         finally{if(File.Exists(temp))File.Delete(temp);}
     }
     private static StyleId? GraphicStyle(CadEntity e)=>e switch
-    {CadLine v=>v.GraphicStyleId,CadCircle v=>v.GraphicStyleId,CadArc v=>v.GraphicStyleId,CadPolyline v=>v.GraphicStyleId,CadCompositePath v=>v.GraphicStyleId,CadText v=>v.GraphicStyleId,CadBlockReference v=>v.GraphicStyleId,CadRegion v=>v.GraphicStyleId,_=>null};
+    {CadLine v=>v.GraphicStyleId,CadCircle v=>v.GraphicStyleId,CadArc v=>v.GraphicStyleId,CadEllipse v=>v.GraphicStyleId,CadEllipseArc v=>v.GraphicStyleId,CadPolyline v=>v.GraphicStyleId,CadCompositePath v=>v.GraphicStyleId,CadText v=>v.GraphicStyleId,CadBlockReference v=>v.GraphicStyleId,CadRegion v=>v.GraphicStyleId,_=>null};
     private static void SetGraphicStyle(CadEntity e,StyleId id)
     {
         switch(e)
-        {case CadLine v:v.SetGraphicStyleInternal(id);break;case CadCircle v:v.SetGraphicStyleInternal(id);break;case CadArc v:v.SetGraphicStyleInternal(id);break;case CadPolyline v:v.SetGraphicStyleInternal(id);break;case CadCompositePath v:v.SetGraphicStyleInternal(id);break;case CadText v:v.SetGraphicStyleInternal(id);break;case CadBlockReference v:v.SetGraphicStyleInternal(id);break;}
+        {case CadLine v:v.SetGraphicStyleInternal(id);break;case CadCircle v:v.SetGraphicStyleInternal(id);break;case CadArc v:v.SetGraphicStyleInternal(id);break;case CadEllipse v:v.SetGraphicStyleInternal(id);break;case CadEllipseArc v:v.SetGraphicStyleInternal(id);break;case CadPolyline v:v.SetGraphicStyleInternal(id);break;case CadCompositePath v:v.SetGraphicStyleInternal(id);break;case CadText v:v.SetGraphicStyleInternal(id);break;case CadBlockReference v:v.SetGraphicStyleInternal(id);break;}
     }
 }

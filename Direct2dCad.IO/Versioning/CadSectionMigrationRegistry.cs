@@ -67,7 +67,10 @@ internal static class CadSectionMigrationRegistry
             Section<CadDimensionsSection>(CadSectionKind.Dimensions, currentVersion: 1)
                 .ReadsVersion<CadDimensionsSection>(1),
 
-            Section<CadRegionsSection>(CadSectionKind.Regions, currentVersion: 1).ReadsVersion<CadRegionsSection>(1),
+            Section<CadRegionsSection>(CadSectionKind.Regions, currentVersion: 2)
+                .ReadsVersion<CadRegionsSection>(1)
+                .ReadsVersion<CadRegionsSection>(2)
+                .Migrates<CadRegionsSection, CadRegionsSection>(1, static old => old),
             Section<CadCompositePathsSection>(CadSectionKind.CompositePaths, currentVersion: 1)
                 .ReadsVersion<CadCompositePathsSection>(1),
 

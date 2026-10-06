@@ -46,10 +46,11 @@ Terminal 别名：`DIM`/`DIMLINEAR`、`DIMVERTICAL`、`DIMALIGNED`、`DIMRADIUS`
 | LAYER | 名称、真彩色/基础 ACI、线宽、可见/冻结/锁定；BYLAYER 常用虚线解析到实体 |
 | BLOCK / INSERT | 定义、基点、嵌套、旋转和非均匀比例；循环/深度超限拒绝，阵列 INSERT 单独汇总 |
 | 尺寸 | 导出为笔画，明确报告关联和尺寸语义丢失 |
-| 面域（CadRegion） | 导出全部闭合轮廓为 LWPOLYLINE，直线和带符号的圆弧 bulge 保留，整圆拆成有限 bulge 的精确圆弧；孔洞和分离区域均写出。摘要报告面域转换为独立轮廓，不再省略实体 |
+| 面域（CadRegion） | 纯直线/圆弧轮廓导出为 LWPOLYLINE，圆弧 bulge 保留，整圆拆成有限 bulge 的精确圆弧；含椭圆弧时导出独立 LINE/ARC/CIRCLE/ELLIPSE，不以折线替代。孔洞和分离区域均写出，摘要报告边界转换 |
 | 面域实心填充 | 导出独立真彩色/透明度的 SOLID HATCH，普通奇偶规则保留孔洞及孔内岛；没有填充的面域只输出描边。渐变/图案填充报告 `Fill omitted`，仍保留所有边界 |
 | HATCH 导入 | 当前仍汇总为未支持；本软件重新导入上述文件时恢复轮廓，不恢复 HATCH 填充或单个面域语义 |
-| 特殊内容 | 样条、椭圆、OLE、光栅、纸空间等汇总；实体锁、其他实体填充、端帽/连接、自定义线型等损失先确认 |
+| ELLIPSE 导入 | 恢复独立椭圆或椭圆弧，保留半轴、旋转及参数角；独立椭圆实体的 DXF 导出尚未覆盖，面域中的椭圆弧使用上述精确边界导出路径 |
+| 特殊内容 | 样条、OLE、光栅、纸空间等汇总；实体锁、其他实体填充、端帽/连接、自定义线型等损失先确认 |
 
 实体隐藏状态保留。ACI 1–7 保留；其余 ACI 替代为白色并汇总，不宣称完整调色板支持。没有可靠单位时集中选择一次；不猜单位。最大 64 MiB、300 万组码、50 万记录和 32 层块深度。记录和结构非法时拒绝整次导入。
 
@@ -58,3 +59,5 @@ Terminal 别名：`DIM`/`DIMLINEAR`、`DIMVERTICAL`、`DIMALIGNED`、`DIMRADIUS`
 固定外部 ezdxf 样图、来源许可和 SHA256 位于 [samples/dxf](samples/dxf/ezdxf-source.json)。独立 ezdxf 1.4.3 校验了导出文件结构、100 mm 线、隐藏状态、中文、图层颜色、块和非均匀插入，并比对外部样图的线/圆弧几何。详见 [M4–M6 证据](validation/2026-10-03/m4-m6/README.md)。DWG 和完整 DXF 对象覆盖另列阶段。
 
 面域导出及实心 HATCH 的解析边界、孔内岛、整圆、混合边界与块归属专项见 [2026-10-04 面域 DXF 证据](validation/2026-10-04/region-dxf/README.md)。使用标准边界/HATCH 表达，不输出 ACIS `REGION` 数据；目标 CAD 的人工打开验收另列。
+
+椭圆弧面域增加 ELLIPSE 边界和 HATCH 椭圆边，保留半轴、旋转与顺逆方向；整周 HATCH 椭圆拆成两个精确半椭圆。文件迁移、第三方曲线/孔洞/面积校验见[椭圆布尔与选择修复](SELECTION-AND-BOOLEAN-FIXES.md)。

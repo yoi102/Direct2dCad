@@ -18,7 +18,7 @@ public partial class CadDocumentViewModel
     private void PublishCurrentStepPrompt()
     {
         if (_suppressStepPrompt) return;
-        if (!HasActiveDrawingTool && !IsGripEditing) { _lastPublishedStepPrompt = null; return; }
+        if (!HasActiveDrawingTool && !IsGripEditing && !IsPastePreviewActive) { _lastPublishedStepPrompt = null; return; }
         var prompt = CurrentStepPrompt;
         if (prompt == _lastPublishedStepPrompt) return;
         _lastPublishedStepPrompt = prompt;
@@ -46,22 +46,26 @@ public partial class CadDocumentViewModel
         _drawingState.PendingEllipsePoints.LastOrDefaultNullable() ?? _drawingState.PendingCircleSecondPoint ??
         _drawingState.PendingArcStartPoint ?? _drawingState.PendingWorldPoint;
 
-    public string CurrentStepPrompt
+    public string CurrentStepPrompt => CreateCurrentStepPrompt() +
+        (CanUndoCurrentDrawingStep ? " · " + CadUiText.Get("DrawingUndoStepHint") : "");
+
+    private string CreateCurrentStepPrompt()
     {
-        get
-        {
-            if (IsGripEditing) return CadUiText.Get("GripEditPrompt");
-            if (IsBooleanTool) return BooleanPrompt;
-            if (IsDimensionTool) return DimensionPrompt;
-            if (IsCurveEditTool) return EditPrompt;
-            if (CadCanvasToolMode == CadCanvasToolMode.Select) return CadUiText.Get(LangKeys.SelectPrompt);
-            var detailed=DetailedDrawingStep();
-            if(detailed is not null) return CadUiText.Get(CadCanvasToolMode.ToString())+": "+CadUiText.Get(detailed);
-            var step = DrawingAnchor is null ? LangKeys.SpecifyFirstPoint : LangKeys.SpecifyNextPoint;
-            if (CadCanvasToolMode is CadCanvasToolMode.CircleCenterRadius or CadCanvasToolMode.CircleCenterDiameter && DrawingAnchor is not null) step=LangKeys.SpecifyRadiusPoint;
-            if (CadCanvasToolMode is CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline && DrawingAnchor is not null) step=LangKeys.SpecifyNextOrFinish;
-            return CadUiText.Get(CadCanvasToolMode.ToString()) + ": " + CadUiText.Get(step);
-        }
+        if (IsPastePreviewActive) return CadUiText.Get("PastePlacementPrompt");
+        if (IsGripEditing) return CadUiText.Get("GripEditPrompt");
+        if (IsBooleanTool) return BooleanPrompt;
+        if (IsDimensionTool) return DimensionPrompt;
+        if (IsCurveEditTool) return EditPrompt;
+        if (CadCanvasToolMode == CadCanvasToolMode.Select) return CadUiText.Get(LangKeys.SelectPrompt);
+        var detailed = DetailedDrawingStep();
+        if (detailed is not null)
+            return CadUiText.Get(CadCanvasToolMode.ToString()) + ": " + CadUiText.Get(detailed);
+        var step = DrawingAnchor is null ? LangKeys.SpecifyFirstPoint : LangKeys.SpecifyNextPoint;
+        if (CadCanvasToolMode is CadCanvasToolMode.CircleCenterRadius or CadCanvasToolMode.CircleCenterDiameter && DrawingAnchor is not null)
+            step = LangKeys.SpecifyRadiusPoint;
+        if (CanCompletePointSequence)
+            step = LangKeys.SpecifyNextOrFinish;
+        return CadUiText.Get(CadCanvasToolMode.ToString()) + ": " + CadUiText.Get(step);
     }
 
     private string? DetailedDrawingStep()
@@ -92,7 +96,8 @@ public partial class CadDocumentViewModel
         StepInputError = "";
         if (input.Length==0)
         {
-            if (!CompleteCurrentDrawing().Handled) StepInputError = CadUiText.Get("DrawingCannotComplete");
+            if (!CompleteCurrentDrawing().Handled && string.IsNullOrEmpty(StepInputError))
+                StepInputError = CadUiText.Get("DrawingCannotComplete");
             return;
         }
         var result=new CadCommandLineService().Execute(input,this);
@@ -116,6 +121,9 @@ public partial class CadDocumentViewModel
     }
     private void NotifyDrawingUx()
     {
+        OnPropertyChanged(nameof(CanUndoCurrentDrawingStep));
+        OnPropertyChanged(nameof(CanCompletePointSequence));
+        OnPropertyChanged(nameof(CanActivateDoubleClickObjectOrSpace));
         RefreshDynamicInput();
         RefreshDimensionContext();
         NotifyEditUx();

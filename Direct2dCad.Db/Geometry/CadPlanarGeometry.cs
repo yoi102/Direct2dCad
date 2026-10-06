@@ -8,25 +8,104 @@ public static class CadGeometryTolerance
     public static bool Coincident(CadPointD a, CadPointD b) => a.DistanceTo(b) <= For(Math.Max(Math.Max(Math.Abs(a.X), Math.Abs(a.Y)), Math.Max(Math.Abs(b.X), Math.Abs(b.Y))));
 }
 
-public readonly record struct CadPlanarPrimitive(CadPointD Start, CadPointD End, CadPointD Center, double Radius, double StartAngle, double Sweep)
+public readonly record struct CadPlanarPrimitive(CadPointD Start, CadPointD End, CadPointD Center, double Radius, double StartAngle, double Sweep,
+    double EllipseRadiusY = 0, double EllipseRotation = 0)
 {
     public bool IsLine => Radius == 0;
+    public bool IsEllipse => EllipseRadiusY > 0;
+    public double RadiusX => Radius;
+    public double RadiusY => IsEllipse ? EllipseRadiusY : Radius;
+    public double Rotation => EllipseRotation;
     public static CadPlanarPrimitive Line(CadPointD a, CadPointD b) => new(a, b, default, 0, 0, 0);
     public static CadPlanarPrimitive Arc(CadPointD center, double radius, double start, double sweep) =>
         new(Point(center, radius, start), Point(center, radius, start + sweep), center, radius, start, sweep);
+    public static CadPlanarPrimitive EllipseArc(CadPointD center, double rx, double ry, double rotation, double start, double sweep)
+    {
+        var primitive = new CadPlanarPrimitive(default, default, center, rx, start, sweep, ry, rotation);
+        return primitive with { Start = primitive.At(0), End = primitive.At(1) };
+    }
     public static CadPointD Point(CadPointD c, double r, double a) => new(c.X + r * Math.Cos(a), c.Y + r * Math.Sin(a));
-    public CadPointD At(double t) => IsLine ? new(Start.X + (End.X - Start.X) * t, Start.Y + (End.Y - Start.Y) * t) : Point(Center, Radius, StartAngle + Sweep * t);
+    public CadPointD At(double t)
+    {
+        if (IsLine) return new(Start.X + (End.X - Start.X) * t, Start.Y + (End.Y - Start.Y) * t);
+        var angle = StartAngle + Sweep * t;
+        var x = RadiusX * Math.Cos(angle); var y = RadiusY * Math.Sin(angle);
+        var c = Math.Cos(Rotation); var s = Math.Sin(Rotation);
+        return new(Center.X + c * x - s * y, Center.Y + s * x + c * y);
+    }
+    public CadVectorD TangentAt(double t)
+    {
+        if (IsLine) return End - Start;
+        var angle = StartAngle + Sweep * t;
+        var x = -RadiusX * Math.Sin(angle) * Sweep; var y = RadiusY * Math.Cos(angle) * Sweep;
+        var c = Math.Cos(Rotation); var s = Math.Sin(Rotation);
+        return new(c * x - s * y, s * x + c * y);
+    }
+    public CadPlanarPrimitive Slice(double a, double b) => IsLine ? Line(At(a), At(b)) : IsEllipse
+        ? EllipseArc(Center, RadiusX, RadiusY, Rotation, StartAngle + Sweep * a, Sweep * (b - a))
+        : Arc(Center, Radius, StartAngle + Sweep * a, Sweep * (b - a));
+    public CadPlanarPrimitive Reversed() => Slice(1, 0);
+    public double Length => IsLine ? Start.DistanceTo(End) : IsEllipse
+        ? CadCurveMeasurements.EllipseLength(RadiusX, RadiusY, StartAngle, Sweep, CadCurveMeasurements.DefaultError, default).Value
+        : Radius * Math.Abs(Sweep);
+    public IEnumerable<double> ExtremaParameters()
+    {
+        if (IsLine) yield break;
+        var c = Math.Cos(Rotation); var s = Math.Sin(Rotation);
+        var x = Math.Atan2(-RadiusY * s, RadiusX * c);
+        var y = Math.Atan2(RadiusY * c, RadiusX * s);
+        foreach (var angle in new[] { x, x + Math.PI, y, y + Math.PI })
+        {
+            var t = AngleParameter(angle);
+            if (t > 0 && t < 1) yield return t;
+        }
+    }
+    public CadRectD Bounds
+    {
+        get
+        {
+            var bounds = CadRectD.Empty.ExpandToInclude(Start).ExpandToInclude(End);
+            foreach (var t in ExtremaParameters()) bounds = bounds.ExpandToInclude(At(t));
+            return bounds;
+        }
+    }
+    public CadPointD NearestPoint(CadPointD point)
+    {
+        if (IsLine) return At(Math.Clamp(Parameter(point), 0, 1));
+        if (!IsEllipse)
+        {
+            var direction = point - Center;
+            if (direction.LengthSquared == 0) return Start;
+            var projected = Center + direction.Normalize() * Radius;
+            return Contains(projected) ? projected : Start.DistanceTo(point) <= End.DistanceTo(point) ? Start : End;
+        }
+        var c = Math.Cos(Rotation); var s = Math.Sin(Rotation);
+        var dx = point.X - Center.X; var dy = point.Y - Center.Y;
+        var x = c * dx + s * dy; var y = -s * dx + c * dy;
+        var best = Start; var distance = best.DistanceTo(point);
+        if (End.DistanceTo(point) < distance) { best = End; distance = best.DistanceTo(point); }
+        foreach (var angle in CadConicIntersections.TrigonometricRoots(0, RadiusY * RadiusY - RadiusX * RadiusX, 0, -RadiusY * y, RadiusX * x, 0))
+        {
+            var t = AngleParameter(angle);
+            if (t < -1e-10 || t > 1 + 1e-10) continue;
+            var candidate = At(Math.Clamp(t, 0, 1)); var candidateDistance = candidate.DistanceTo(point);
+            if (candidateDistance < distance) { best = candidate; distance = candidateDistance; }
+        }
+        return best;
+    }
     public double Parameter(CadPointD p)
     {
         if (IsLine)
         {
-            var dx = End.X - Start.X; var dy = End.Y - Start.Y;
-            var d = dx * dx + dy * dy;
-            return d <= CadGeometryTolerance.Absolute * CadGeometryTolerance.Absolute ? 0 : ((p.X - Start.X) * dx + (p.Y - Start.Y) * dy) / d;
+            var lineDx = End.X - Start.X; var lineDy = End.Y - Start.Y;
+            var d = lineDx * lineDx + lineDy * lineDy;
+            return d <= CadGeometryTolerance.Absolute * CadGeometryTolerance.Absolute ? 0 : ((p.X - Start.X) * lineDx + (p.Y - Start.Y) * lineDy) / d;
         }
-        var a = Math.Atan2(p.Y - Center.Y, p.X - Center.X) - StartAngle;
-        return PositiveAngle(Sweep > 0 ? a : -a) / Math.Abs(Sweep);
+        var c = Math.Cos(Rotation); var s = Math.Sin(Rotation);
+        var dx = p.X - Center.X; var dy = p.Y - Center.Y;
+        return AngleParameter(Math.Atan2((-s * dx + c * dy) / RadiusY, (c * dx + s * dy) / RadiusX));
     }
+    private double AngleParameter(double angle) => PositiveAngle(Sweep > 0 ? angle - StartAngle : StartAngle - angle) / Math.Abs(Sweep);
     public bool Contains(CadPointD p)
     {
         var t = Parameter(p);
@@ -40,6 +119,7 @@ public static class CadPlanarGeometry
     public static double Cross(CadVectorD a, CadVectorD b) => a.X * b.Y - a.Y * b.X;
     public static IReadOnlyList<CadPointD> Intersections(CadPlanarPrimitive a, CadPlanarPrimitive b, bool extendA = false, bool extendB = false)
     {
+        if (a.IsEllipse || b.IsEllipse) return CadConicIntersections.Intersections(a, b, extendA, extendB);
         var result = new List<CadPointD>(2);
         void Add(CadPointD p)
         {

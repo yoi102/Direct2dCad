@@ -29,7 +29,9 @@ internal sealed class Direct2DGeometryFactory
                     else
                     {
                         var count = Math.Max(1, (int)Math.Ceiling(Math.Abs(edge.Sweep) / Math.PI));
-                        for (var i = 1; i <= count; i++) sink.AddArc(CreateArcSegment(edge.At((double)i / count), edge.Radius, edge.Sweep / count));
+                        for (var i = 1; i <= count; i++)
+                            sink.AddArc(CreateEllipseArcSegment(edge.At((double)i / count),
+                                edge.RadiusX, edge.RadiusY, edge.Sweep / count, edge.Rotation));
                     }
                 }
                 sink.EndFigure(FigureEnd.Closed);
@@ -218,9 +220,12 @@ internal sealed class Direct2DGeometryFactory
         var geometry = factory.CreatePathGeometry();
         using var sink = geometry.Open();
         var startPoint = GetEllipsePoint(center, radiusX, radiusY, startAngleRadians);
-        var endPoint = GetEllipsePoint(center, radiusX, radiusY, startAngleRadians + sweepAngleRadians);
         sink.BeginFigure(ToVector2(startPoint), FigureBegin.Hollow);
-        sink.AddArc(CreateEllipseArcSegment(endPoint, radiusX, radiusY, sweepAngleRadians));
+        var count = Math.Max(1, (int)Math.Ceiling(Math.Abs(sweepAngleRadians) / Math.PI));
+        for (var index = 1; index <= count; index++)
+            sink.AddArc(CreateEllipseArcSegment(
+                GetEllipsePoint(center, radiusX, radiusY, startAngleRadians + sweepAngleRadians * index / count),
+                radiusX, radiusY, sweepAngleRadians / count));
         sink.EndFigure(FigureEnd.Open);
         sink.Close();
         return geometry;
@@ -240,12 +245,13 @@ internal sealed class Direct2DGeometryFactory
         CadPointD endPoint,
         double radiusX,
         double radiusY,
-        double sweep)
+        double sweep,
+        double rotation = 0)
     {
         return new ArcSegment(
             ToVector2(endPoint),
             new Size((float)radiusX, (float)radiusY),
-            0,
+            (float)(rotation * 180 / Math.PI),
             ToSweepDirection(sweep),
             Math.Abs(sweep) > Math.PI ? ArcSize.Large : ArcSize.Small);
     }

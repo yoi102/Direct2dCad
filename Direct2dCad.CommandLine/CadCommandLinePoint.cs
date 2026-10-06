@@ -7,8 +7,12 @@ public readonly record struct CadCommandLinePoint(double X, double Y);
 
 public static class CadCommandLinePointParser
 {
-    public static bool LooksLikePoint(string value) =>
-        value.Contains(',') || value.StartsWith('@');
+    public static bool LooksLikePoint(string value)
+    {
+        var text = value.Trim();
+        return text.StartsWith('@') || text.Length > 0 &&
+            (char.IsDigit(text[0]) || text[0] is '-' or '+' or '.') && (text.Contains(',') || text.Contains('<'));
+    }
 
     public static bool TryParse(
         string value,

@@ -203,7 +203,7 @@ internal readonly partial struct CadRenderInvalidationCalculator(
                 ellipse.Style,
                 minimumPaddingPixels: 24.0),
             CadTransientEllipseArc ellipseArc when ellipseArc.RadiusX > 0 && ellipseArc.RadiusY > 0 => CreateTransientBoundsInvalidation(
-                CadRectD.FromCenter(ellipseArc.Center, ellipseArc.RadiusX * 2, ellipseArc.RadiusY * 2),
+                RotateBounds(CadRectD.FromCenter(ellipseArc.Center, ellipseArc.RadiusX * 2, ellipseArc.RadiusY * 2), ellipseArc.RotationRadians),
                 ellipseArc.Style,
                 minimumPaddingPixels: 24.0),
             CadTransientArc arc when arc.Radius > 0 => CreateTransientBoundsInvalidation(
@@ -283,7 +283,7 @@ internal readonly partial struct CadRenderInvalidationCalculator(
             CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 =>
                 CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2),
             CadTransientEllipseArc ellipseArc when ellipseArc.RadiusX > 0 && ellipseArc.RadiusY > 0 =>
-                CadRectD.FromCenter(ellipseArc.Center, ellipseArc.RadiusX * 2, ellipseArc.RadiusY * 2),
+                RotateBounds(CadRectD.FromCenter(ellipseArc.Center, ellipseArc.RadiusX * 2, ellipseArc.RadiusY * 2), ellipseArc.RotationRadians),
             CadTransientArc arc when arc.Radius > 0 =>
                 CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2),
             CadTransientPolyline polyline => BoundsFromPoints(polyline.Points),

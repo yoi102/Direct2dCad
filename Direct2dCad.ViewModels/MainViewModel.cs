@@ -522,6 +522,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CurrentCultureLCID = lcid;
         _cultureSettingService.ChangeCulture(lcid);
         DrawingRecovery.RefreshTitle();
+        foreach (var editorTab in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
+            editorTab.RefreshBooleanAvailability();
         _userSettings.General.CultureLcid = lcid;
         SaveUserSettings();
     }

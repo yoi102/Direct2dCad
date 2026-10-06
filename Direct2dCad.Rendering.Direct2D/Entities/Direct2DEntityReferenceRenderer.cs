@@ -41,6 +41,32 @@ internal sealed class Direct2DEntityReferenceRenderer(
         if (TryDrawTranslated(context, document, entity, viewport, reference, options))
             return;
 
+        if (!Direct2DEntityRenderer.TryGetGeometryRotation(entity, reference.Offset, out var rotation))
+        {
+            DrawUncachedGeometry(context, document, entity, viewport, reference, options);
+            return;
+        }
+
+        var previousTransform = context.Transform;
+        context.Transform = rotation * previousTransform;
+        try
+        {
+            DrawUncachedGeometry(context, document, entity, viewport, reference, options);
+        }
+        finally
+        {
+            context.Transform = previousTransform;
+        }
+    }
+
+    private void DrawUncachedGeometry(
+        ID2D1DeviceContext context,
+        CadDocument document,
+        CadEntity entity,
+        CadViewport viewport,
+        CadTransientEntityReference reference,
+        CadRenderOptions options)
+    {
         switch (entity)
         {
             case CadLine line:
@@ -80,7 +106,7 @@ internal sealed class Direct2DEntityReferenceRenderer(
                 transientRenderer.DrawRectangle(
                     context,
                     viewport,
-                    rectangle.Bounds.Translate(reference.Offset),
+                    rectangle.FrameBounds.Translate(reference.Offset),
                     reference.Style,
                     rectangle.CornerRadiusX,
                     rectangle.CornerRadiusY,
@@ -130,6 +156,10 @@ internal sealed class Direct2DEntityReferenceRenderer(
                     document.ViewSettings.BackgroundColor,
                     text.InvertedMarginFactor,
                     text.ShapeFontId);
+                break;
+            case CadRegion region:
+                transientRenderer.DrawRegion(context, viewport, region, reference.Offset,
+                    reference.Style, options.IsLevelOfDetailEnabled);
                 break;
             case CadText text:
                 transientRenderer.DrawText(

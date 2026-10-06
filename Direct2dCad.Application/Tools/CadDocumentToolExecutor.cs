@@ -203,6 +203,12 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
         return session.CadEditor.DocumentCommands.ExecuteAtomicBatch(batchId, operation);
     }
 
+    internal void ExecuteCreationCommand(ICadCommand command)
+    {
+        ObjectDisposedException.ThrowIf(session.IsDisposed, session);
+        session.CadEditor.ExecuteCreationInBatch(command, batchId);
+    }
+
     internal EntityId[] ResolveEntityIdsForTool(JsonElement arguments, bool allowSelectionFallback) =>
         ResolveEntityIds(arguments, allowSelectionFallback);
 
@@ -239,7 +245,12 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
         });
     }
 
-    public string Execute(AiToolCall toolCall)
+    public string Execute(AiToolCall toolCall) => ExecuteCore(toolCall, validateSchema: true);
+
+    // Workspace dispatch has already validated its expanded appearance/document schema.
+    internal string ExecuteValidated(AiToolCall toolCall) => ExecuteCore(toolCall, validateSchema: false);
+
+    private string ExecuteCore(AiToolCall toolCall, bool validateSchema)
     {
         try
         {
@@ -247,6 +258,11 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
             using var arguments = JsonDocument.Parse(string.IsNullOrWhiteSpace(toolCall.ArgumentsJson)
                 ? "{}"
                 : toolCall.ArgumentsJson);
+            if (validateSchema)
+            {
+                var normalized = CadToolSchemaValidator.NormalizeAndValidate(toolCall.Name, arguments.RootElement, ToolDefinitions);
+                return ExecuteCore(toolCall with { ArgumentsJson = normalized.GetRawText() }, validateSchema: false);
+            }
             return toolCall.Name switch
             {
                 "add_dimension" => AddDimension(arguments.RootElement),
@@ -710,9 +726,7 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
     }
     private static SegmentProjection ProjectToPrimitive(CadPointD point,CadPlanarPrimitive p)
     {
-        var t=Math.Clamp(p.Parameter(point),0,1);
-        if(!p.IsLine && !p.Contains(point)) t=p.Start.DistanceTo(point)<p.End.DistanceTo(point) ? 0 : 1;
-        var nearest=p.At(t);return new(nearest,nearest.DistanceSquaredTo(point));
+        var nearest=p.NearestPoint(point);return new(nearest,nearest.DistanceSquaredTo(point));
     }
 
     private static IReadOnlyList<CadPointD> FlattenEntity(CadEntity entity)
@@ -1566,7 +1580,7 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
 
     private string ExecuteCreate(ICadCommand command, Func<EntityId?> getCreatedEntityId)
     {
-        session.CadEditor.ExecuteInBatch(command, batchId);
+        ExecuteCreationCommand(command);
         var id = getCreatedEntityId() ?? throw new InvalidOperationException("The CAD command did not create an entity.");
         return Success(new { created_entity_id = id.Value });
     }

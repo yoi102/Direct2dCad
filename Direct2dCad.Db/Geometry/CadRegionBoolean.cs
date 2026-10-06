@@ -10,7 +10,8 @@ public static class CadRegionBoolean
     public const int MaximumInputEdges = 2048;
     public static bool Supports(CadEntity entity) => entity switch
     {
-        CadRegion => true, CadCircle => true, CadArc a => a.IsFullCircle,
+        CadRegion => true, CadCircle => true, CadEllipse => true, CadArc a => a.IsFullCircle,
+        CadEllipseArc a => Math.Abs(Math.Abs(a.SweepAngleRadians) - 2 * Math.PI) <= 1e-12,
         CadRectangle r => !r.HasRoundedCorners,
         CadPolyline p => p.Closed && p.Points.Count >= 3,
         CadCompositePath p => p.Closed && p.Segments.All(s => s is CadCompositeLineSegment or CadCompositeArcSegment),
@@ -19,7 +20,7 @@ public static class CadRegionBoolean
 
     public static IReadOnlyList<CadRegionContour> GetContours(CadEntity entity)
     {
-        if (!Supports(entity)) throw new NotSupportedException("Boolean operations require closed line/circular-arc boundaries or regions.");
+        if (!Supports(entity)) throw new NotSupportedException("Boolean operations require closed line, circular or elliptical boundaries, or regions.");
         return entity is CadRegion region ? region.Contours : [new CadRegionContour(CadPlanarCurves.Get(entity).Where(p => !p.IsLine || !CadGeometryTolerance.Coincident(p.Start, p.End)))];
     }
 
@@ -32,20 +33,24 @@ public static class CadRegionBoolean
             throw new ArgumentException("At least two operands and a valid operation/subject are required.");
         token.ThrowIfCancellationRequested();
         var shapes = operands.ToArray();
+        var shapeBounds = shapes.Select(s => s.Aggregate(CadRectD.Empty, (b, c) => b.Union(c.Bounds))).ToArray();
         if (shapes.Sum(s => s.Sum(c => (long)c.Edges.Count)) > MaximumInputEdges)
             throw new NotSupportedException("Boolean input exceeds the 2048-edge operation budget.");
         foreach (var shape in shapes) ValidateSimple(shape, token);
         var edges = shapes.SelectMany(s => s).SelectMany(c => c.Edges).ToArray();
+        foreach (var edge in edges) if (edge.IsEllipse) CadConicIntersections.ValidateCondition(edge);
+        var bounds = edges.Select(BoundaryBounds).ToArray();
         var cuts = edges.Select(p => new List<double> { 0, 1 }).ToArray();
         var cutCount = edges.Length * 2;
         for (var i = 0; i < edges.Length; i++)
         {
             token.ThrowIfCancellationRequested();
             if (!edges[i].IsLine)
-                foreach (var a in new[] { 0d, Math.PI / 2, Math.PI, Math.PI * 1.5 }) AddCut(i, CadPlanarPrimitive.Point(edges[i].Center, edges[i].Radius, a));
+                foreach (var t in edges[i].ExtremaParameters()) AddCut(i, edges[i].At(t));
             for (var j = i + 1; j < edges.Length; j++)
             {
                 if ((j & 127) == 0) token.ThrowIfCancellationRequested();
+                if (!bounds[i].Intersects(bounds[j])) continue;
                 foreach (var q in Nodes(edges[i], edges[j])) { AddCut(i, q); AddCut(j, q); }
             }
         }
@@ -60,12 +65,25 @@ public static class CadRegionBoolean
         }
         bool Material(CadPointD q)
         {
-            return operation switch
+            bool Inside(int index) => shapeBounds[index].Contains(q) && CadRegionGeometry.Contains(shapes[index], q);
+            if (operation == CadBooleanOperation.Difference)
             {
-                CadBooleanOperation.Union => shapes.Any(s => CadRegionGeometry.Contains(s, q)),
-                CadBooleanOperation.Intersection => shapes.All(s => CadRegionGeometry.Contains(s, q)),
-                _ => CadRegionGeometry.Contains(shapes[subject], q) && !shapes.Where((_, i) => i != subject).Any(s => CadRegionGeometry.Contains(s, q))
-            };
+                if (!Inside(subject)) return false;
+                for (var index = 0; index < shapes.Length; index++)
+                {
+                    if ((index & 127) == 0) token.ThrowIfCancellationRequested();
+                    if (index != subject && Inside(index)) return false;
+                }
+                return true;
+            }
+            for (var index = 0; index < shapes.Length; index++)
+            {
+                if ((index & 127) == 0) token.ThrowIfCancellationRequested();
+                var inside = Inside(index);
+                if (operation == CadBooleanOperation.Union && inside) return true;
+                if (operation == CadBooleanOperation.Intersection && !inside) return false;
+            }
+            return operation == CadBooleanOperation.Intersection;
         }
         var boundary = new List<CadPlanarPrimitive>();
         for (var i = 0; i < edges.Length; i++)
@@ -77,10 +95,21 @@ public static class CadRegionBoolean
                 token.ThrowIfCancellationRequested();
                 var p = Slice(edges[i], ts[j - 1], ts[j]); var mid = p.At(.5);
                 var tolerance = CadGeometryTolerance.For(Math.Max(Math.Abs(mid.X), Math.Abs(mid.Y)));
-                var length = p.IsLine ? p.Start.DistanceTo(p.End) : p.Radius * Math.Abs(p.Sweep);
+                var length = p.Length;
                 if (length <= tolerance * 2) continue;
                 var tangent = Tangent(p, .5); var normal = new CadVectorD(-tangent.Y, tangent.X);
-                var clearance = edges.Select(e => CadRegionGeometry.Distance(e, mid)).Where(d => d > tolerance * 4).DefaultIfEmpty(length).Min();
+                var clearance = length;
+                for (var k = 0; k < edges.Length; k++)
+                {
+                    if ((k & 127) == 0) token.ThrowIfCancellationRequested();
+                    var dx = Math.Max(bounds[k].MinX - mid.X, Math.Max(0, mid.X - bounds[k].MaxX));
+                    var dy = Math.Max(bounds[k].MinY - mid.Y, Math.Max(0, mid.Y - bounds[k].MaxY));
+                    if (dx * dx + dy * dy > clearance * clearance) continue;
+                    var distance = CadRegionGeometry.Distance(edges[k], mid);
+                    if (k != i && distance <= tolerance * 4 && !CadConicIntersections.SameSupport(edges[i], edges[k]))
+                        throw new InvalidOperationException("Distinct boundaries cannot be separated within geometry tolerance.");
+                    if (distance > tolerance * 4 && distance < clearance) clearance = distance;
+                }
                 var epsilon = Math.Min(Math.Max(length * 1e-4, tolerance * 8), Math.Min(length * .1, clearance * .2));
                 if (epsilon <= tolerance * 4) throw new InvalidOperationException("Boundary separation is below the geometry tolerance.");
                 var left = Material(mid + normal * epsilon); var right = Material(mid - normal * epsilon);
@@ -112,9 +141,11 @@ public static class CadRegionBoolean
     private static void ValidateSimple(IReadOnlyList<CadRegionContour> contours, CancellationToken token)
     {
         var all = contours.SelectMany((c, ci) => c.Edges.Select((p, pi) => (p, ci, pi, count: c.Edges.Count))).ToArray();
+        var bounds = all.Select(x => BoundaryBounds(x.p)).ToArray();
         for (var i = 0; i < all.Length; i++) for (var j = i + 1; j < all.Length; j++)
         {
             if ((j & 127) == 0) token.ThrowIfCancellationRequested();
+            if (!bounds[i].Intersects(bounds[j])) continue;
             var a = all[i]; var b = all[j];
             var adjacent = a.ci == b.ci && (b.pi == a.pi + 1 || a.pi == 0 && b.pi == a.count - 1);
             foreach (var q in Nodes(a.p, b.p))
@@ -132,12 +163,19 @@ public static class CadRegionBoolean
     private static IEnumerable<CadPointD> Nodes(CadPlanarPrimitive a, CadPlanarPrimitive b)
     {
         foreach (var q in CadPlanarGeometry.Intersections(a, b)) yield return q;
-        // Node collinear and coincident-circle overlaps at both operands' endpoints.
+        // Node collinear and coincident circular/elliptical overlaps at both operands' endpoints.
         foreach (var q in new[] { a.Start, a.End, b.Start, b.End })
             if (CadRegionGeometry.Distance(a, q) <= CadGeometryTolerance.Absolute && CadRegionGeometry.Distance(b, q) <= CadGeometryTolerance.Absolute) yield return q;
     }
-    private static CadPlanarPrimitive Slice(CadPlanarPrimitive p, double a, double b) => p.IsLine ? CadPlanarPrimitive.Line(p.At(a), p.At(b)) : CadPlanarPrimitive.Arc(p.Center, p.Radius, p.StartAngle + p.Sweep * a, p.Sweep * (b - a));
-    private static CadPlanarPrimitive Reverse(CadPlanarPrimitive p) => p.IsLine ? CadPlanarPrimitive.Line(p.End, p.Start) : CadPlanarPrimitive.Arc(p.Center, p.Radius, p.StartAngle + p.Sweep, -p.Sweep);
+    private static CadPlanarPrimitive Slice(CadPlanarPrimitive p, double a, double b) => p.Slice(a, b);
+    private static CadPlanarPrimitive Reverse(CadPlanarPrimitive p) => p.Reversed();
     private static bool Same(CadPlanarPrimitive a, CadPlanarPrimitive b, double tolerance) => a.IsLine == b.IsLine && a.Start.DistanceTo(b.Start) <= tolerance && a.End.DistanceTo(b.End) <= tolerance && a.At(.5).DistanceTo(b.At(.5)) <= tolerance;
-    private static CadVectorD Tangent(CadPlanarPrimitive p, double t) => p.IsLine ? (p.End - p.Start).Normalize() : new CadVectorD(-Math.Sin(p.StartAngle + p.Sweep * t) * Math.Sign(p.Sweep), Math.Cos(p.StartAngle + p.Sweep * t) * Math.Sign(p.Sweep));
+    private static CadVectorD Tangent(CadPlanarPrimitive p, double t) => p.TangentAt(t).Normalize();
+    private static CadRectD BoundaryBounds(CadPlanarPrimitive p)
+    {
+        var bounds = CadRectD.Empty.ExpandToInclude(p.Start).ExpandToInclude(p.End);
+        foreach (var t in p.ExtremaParameters()) bounds = bounds.ExpandToInclude(p.At(t));
+        return bounds.Inflate(CadGeometryTolerance.For(Math.Max(Math.Max(Math.Abs(bounds.MinX), Math.Abs(bounds.MaxX)),
+            Math.Max(Math.Abs(bounds.MinY), Math.Abs(bounds.MaxY)))) * 4);
+    }
 }

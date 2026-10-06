@@ -66,7 +66,7 @@ public static class CadCurveTessellation
                 break;
             default:
                 foreach(var p in CadPlanarCurves.Get(curve))
-                {if(p.IsLine) {Point(p.Start);Point(p.End);} else Ellipse(p.Center,p.Radius,p.Radius,p.StartAngle,p.Sweep,CadMatrixD.Identity);}break;
+                {if(p.IsLine) {Point(p.Start);Point(p.End);} else Ellipse(p.Center,p.RadiusX,p.RadiusY,p.StartAngle,p.Sweep,CadMatrixD.CreateRotation(p.Rotation,p.Center));}break;
         }
         if(curve.IsClosed && points.Count>0) Point(points[0]);
         return new(points,maximum,exhausted);

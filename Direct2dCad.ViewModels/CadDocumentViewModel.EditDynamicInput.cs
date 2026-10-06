@@ -55,6 +55,30 @@ public partial class CadDocumentViewModel
         _ => []
     };
 
+    private bool TrySubmitEditDistance(double value)
+    {
+        var millimetres = Millimetres(value);
+        if (!double.IsFinite(millimetres) || millimetres <= CadGeometryTolerance.Absolute) return false;
+
+        // A terminal submission is explicit even when the model already holds this
+        // value. Repair the submitted field without discarding another field's text.
+        var applying = _applyingEditDynamicInput;
+        _applyingEditDynamicInput = true;
+        try { EditDistance = value; }
+        finally { _applyingEditDynamicInput = applying; }
+        if (CadCanvasToolMode == CadCanvasToolMode.Offset) _offsetDistanceLockedByParameter = true;
+        DynamicInputFields.FirstOrDefault(field => field.Key is "EditDistance" or "EditRadius")
+            ?.Refresh(value, DocumentLengthPrecision, reset: true);
+
+        var valid = TryApplyEditDynamicInput();
+        DynamicInputError = valid ? "" : EditFeedback;
+        if (valid) { StepInputError = ""; EditErrorDetail = ""; }
+        NotifyEditUx();
+        PublishCurrentStepPrompt();
+        RequestOverlayRender();
+        return valid;
+    }
+
     private bool TryApplyEditDynamicInput()
     {
         var values = GetEditDynamicInputValues();

@@ -11,6 +11,20 @@ namespace Direct2dCad.ViewModels.Tests;
 
 public sealed class AgentExecutionContractTests
 {
+    [Fact]
+    public async Task SaveNotCompletedIsAFailureAndKeepsTheModifiedDocumentOpen()
+    {
+        using var workspace = new ToolExecutionWorkspace { AllowSave = false };
+        var document = workspace.CreateDocument("Unsaved");
+        var executor = new CadWorkspaceToolExecutor(workspace);
+        await Execute(executor, "add_line", new { x1 = 0, y1 = 0, x2 = 10, y2 = 0 });
+        var result = await Execute(executor, "save_document", new { }, success: false);
+        Assert.Equal("save_not_completed", result.GetProperty("code").GetString());
+        Assert.False(result.GetProperty("result").GetProperty("saved").GetBoolean());
+        Assert.True(((EditorTabViewModel)document.Host).IsModified);
+        Assert.Single(workspace.GetDocuments());
+    }
+
     public static IEnumerable<object[]> Creations => new (string Type, string Json)[]
     {
         ("line", "{\"x1\":0,\"y1\":0,\"x2\":20,\"y2\":30}"),
@@ -148,7 +162,8 @@ public sealed class AgentExecutionContractTests
         await Execute(executor, "save_document", new { file_path = "saved.d2cad" });
         Assert.False(((EditorTabViewModel)two.Host).IsModified);
         workspace.AllowClose = false;
-        await Execute(executor, "close_document", new { });
+        var cancelled = await Execute(executor, "close_document", new { }, success: false);
+        Assert.Equal("cancelled", cancelled.GetProperty("code").GetString());
         Assert.Equal(2, workspace.GetDocuments().Count);
         workspace.AllowClose = true;
         await Execute(executor, "close_document", new { });

@@ -9,10 +9,13 @@ public sealed record CadCurveShape(IReadOnlyList<CadPlanarPrimitive> Segments, b
 {
     public static CadCurveShape From(CadEntity entity) => entity is CadRegion
         ? throw new NotSupportedException("Region boundary editing is not supported by this curve tool. Use Boolean operations or whole-entity transforms.")
+        : entity is CadEllipse or CadEllipseArc
+        ? throw new NotSupportedException("Elliptical curve editing is not supported by this curve tool. Use Boolean operations or whole-entity transforms.")
         : new(CadPlanarCurves.Get(entity), entity is Curve { IsClosed:true });
     public CadCurveShape Validate()
     {
         if (Segments.Count==0) throw new InvalidOperationException("The operation produced an empty curve.");
+        if (Segments.Any(p => p.IsEllipse)) throw new NotSupportedException("This curve-editing plan supports only lines and circular arcs.");
         foreach(var p in Segments)
             if (!double.IsFinite(p.Start.X) || !double.IsFinite(p.Start.Y) || !double.IsFinite(p.End.X) || !double.IsFinite(p.End.Y) ||
                 (p.IsLine ? p.Start.DistanceTo(p.End) : p.Radius*Math.Abs(p.Sweep)) <= CadGeometryTolerance.Absolute || !double.IsFinite(p.Radius))
@@ -286,7 +289,7 @@ public static partial class CadCurveEditing
         return pick.DistanceTo(p.Start)<pick.DistanceTo(p.End) ? Slice(shape,0,t) : Slice(shape,t,1);
     }
     public static StyleId? GraphicStyle(CadEntity entity) => entity switch
-    { CadRegion e=>e.GraphicStyleId,CadLine e=>e.GraphicStyleId,CadCircle e=>e.GraphicStyleId,CadArc e=>e.GraphicStyleId,CadPolyline e=>e.GraphicStyleId,CadCompositePath e=>e.GraphicStyleId,CadRectangle e=>e.GraphicStyleId,_=>null };
+    { CadRegion e=>e.GraphicStyleId,CadLine e=>e.GraphicStyleId,CadCircle e=>e.GraphicStyleId,CadEllipse e=>e.GraphicStyleId,CadEllipseArc e=>e.GraphicStyleId,CadArc e=>e.GraphicStyleId,CadPolyline e=>e.GraphicStyleId,CadCompositePath e=>e.GraphicStyleId,CadRectangle e=>e.GraphicStyleId,_=>null };
     private static double NearestParameter(CadCurveShape shape,CadPointD pick)
     {
         var best=double.MaxValue; var parameter=0.0;

@@ -11,6 +11,7 @@ public interface ICadToolCommandLineService
         CancellationToken cancellationToken = default);
 
     IReadOnlyList<string> Complete(string commandText, int maximumCount = 12);
+    string? GetInputHint(string commandText) => null;
 }
 
 public sealed record CadToolCommandLineExecution(bool Success, string Message);
@@ -32,6 +33,7 @@ public sealed partial class CadToolCommandLineService(
         CancellationToken cancellationToken = default)
     {
         var (command, remainder) = SplitHead(commandLine);
+        command = Direct2dCad.CommandLine.CadCommandLineSyntax.NormalizeCommandName(command);
         if (command.Length == 0)
             return null;
 
@@ -46,10 +48,13 @@ public sealed partial class CadToolCommandLineService(
 
         if (command.Equals("HELP", StringComparison.OrdinalIgnoreCase))
         {
-            var (requestedTool, _) = SplitHead(remainder);
+            var (requestedTool, extra) = SplitHead(remainder);
+            if (extra.Length > 0) return null;
+            if (requestedTool.Equals("SCRIPT", StringComparison.OrdinalIgnoreCase))
+                return new(true, "SCRIPT \"absolute-path.scr\" — One command per line; blank lines and lines beginning with ; or # are skipped. Stops at the first error and preserves earlier edits. Nested scripts are rejected. Escape cancels.");
             if (FindShortcut(requestedTool) is { } requestedShortcut)
                 return new(true, requestedShortcut.Help);
-            return Tools.ContainsKey(requestedTool)
+            return !BuiltInCommandCollisions.Contains(requestedTool) && Tools.ContainsKey(requestedTool)
                 ? FormatToolHelpExecution(requestedTool)
                 : null;
         }
@@ -70,8 +75,9 @@ public sealed partial class CadToolCommandLineService(
                 return null;
         }
 
-        if (!Tools.ContainsKey(toolName))
+        if (!Tools.TryGetValue(toolName, out var definition))
             return Failure($"Unknown CAD tool '{toolName}'. Type TOOLS to list available tools.");
+        toolName = definition.Name;
 
         argumentsJson = string.IsNullOrWhiteSpace(argumentsJson) ? "{}" : argumentsJson.Trim();
         if (!LooksLikeJsonObject(argumentsJson))
@@ -90,6 +96,7 @@ public sealed partial class CadToolCommandLineService(
             return [];
 
         var trimmedStart = commandText.TrimStart();
+        if (CompleteShortcutArguments(trimmedStart, maximumCount) is { } arguments) return arguments;
         if (trimmedStart.StartsWith("TOOL ", StringComparison.OrdinalIgnoreCase))
         {
             var prefix = trimmedStart[5..].Trim();
@@ -107,7 +114,7 @@ public sealed partial class CadToolCommandLineService(
         if (prefixOnly.Any(char.IsWhiteSpace))
             return [];
 
-        return new[] { "TOOLS", "TOOL", "TOOLHELP", "CADHELP" }
+        return new[] { "TOOLS", "TOOL", "TOOLHELP", "CADHELP", "SCRIPT" }
             .Concat(Shortcuts.SelectMany(s => s.Names))
             .Concat(Tools.Keys.Where(name => !BuiltInCommandCollisions.Contains(name)))
             .Where(name => name.StartsWith(prefixOnly, StringComparison.OrdinalIgnoreCase))
@@ -118,7 +125,8 @@ public sealed partial class CadToolCommandLineService(
 
     private static CadToolCommandLineExecution FormatToolHelpExecution(string input)
     {
-        var (toolName, _) = SplitHead(input);
+        var (toolName, extra) = SplitHead(input);
+        if (extra.Length > 0) return Failure("Usage: TOOLHELP <tool-name>.");
         if (toolName.Length == 0)
             return Failure("Usage: TOOLHELP <tool-name>.");
         if (!Tools.TryGetValue(toolName, out var tool))
@@ -157,16 +165,22 @@ public sealed partial class CadToolCommandLineService(
 
     private static CadToolCommandLineExecution FormatExecutionResult(string toolName, string result)
     {
+        var content = AiToolResultContent.Parse(result);
+        result = content.Text;
         try
         {
             using var document = JsonDocument.Parse(result);
             var root = document.RootElement;
             var success = !root.TryGetProperty("success", out var successElement) ||
                           successElement.ValueKind != JsonValueKind.False;
+            if (toolName == "save_document" && root.TryGetProperty("result", out var payload) &&
+                payload.TryGetProperty("saved", out var saved) && saved.ValueKind == JsonValueKind.False)
+                success = false;
             var formatted = JsonSerializer.Serialize(root, IndentedJson);
             return new CadToolCommandLineExecution(
                 success,
-                $"{toolName}:{Environment.NewLine}{formatted}");
+                $"{toolName}:{Environment.NewLine}{formatted}" +
+                (content.Images.Count > 0 ? Environment.NewLine + "The terminal shows image metadata only. AI clients receive the image content." : string.Empty));
         }
         catch (JsonException)
         {

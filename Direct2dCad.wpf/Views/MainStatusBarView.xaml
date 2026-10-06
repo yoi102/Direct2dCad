@@ -7,8 +7,7 @@
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              xmlns:ex="clr-namespace:Direct2dCad.wpf.Extensions"
              xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels.Abstractions"
-             AutomationProperties.AutomationId="MainStatusBarSurface"
-             Height="32">
+             AutomationProperties.AutomationId="MainStatusBarSurface">
     <UserControl.Resources>
         <Style x:Key="StatusIconToggle" TargetType="ToggleButton">
             <Setter Property="Width" Value="28" />
@@ -67,7 +66,29 @@
         </Style>
     </UserControl.Resources>
     <Border Background="{DynamicResource MaterialDesign.Brush.Background}">
-        <DockPanel Margin="4,0">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="32" /></Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Margin="8,2,8,0" FontSize="12" TextTrimming="CharacterEllipsis"
+                       AutomationProperties.AutomationId="CurrentDrawingStepText"
+                       AutomationProperties.LiveSetting="Polite"
+                       DataContext="{Binding CurrentEditorTabViewModel.CadDocumentViewModel}">
+                <TextBlock.ToolTip>
+                    <StackPanel><TextBlock Text="{Binding StepInputError}" /><TextBlock Text="{Binding CurrentStepPrompt}" /></StackPanel>
+                </TextBlock.ToolTip>
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasActiveDrawingTool}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                            <DataTrigger Binding="{Binding IsGripEditing}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                            <DataTrigger Binding="{Binding IsPastePreviewActive}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+                <Run Text="{Binding StepInputError, Mode=OneWay}" Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                <Run Text="{Binding CurrentStepPrompt, Mode=OneWay}" />
+            </TextBlock>
+        <DockPanel Grid.Row="1" Margin="4,0">
             <Button DockPanel.Dock="Right" AutomationProperties.AutomationId="ShowDrawingAssistantButton"
                     Command="{Binding ShowDrawingRecoveryCommand}" Style="{StaticResource StatusActionButton}"
                     AutomationProperties.Name="{I18N {x:Static r:LangKeys.DrawingRecovery}}">
@@ -269,5 +290,6 @@
                 </StatusBarItem>
             </StatusBar>
         </DockPanel>
+        </Grid>
     </Border>
 </UserControl>

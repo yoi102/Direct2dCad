@@ -17,7 +17,8 @@ internal static class CadRegionStorage
         {
             Entity = CadDocumentMapper.ToEntityData(r), GraphicStyleId = r.GraphicStyleId?.Value, FillStyleId = r.FillStyleId?.Value,
             Contours = r.Contours.Select(c => c.Edges.Select(p => new CadRegionEdgeData
-            { Start = Data(p.Start), End = Data(p.End), Center = Data(p.Center), Radius = p.Radius, StartAngle = p.StartAngle, Sweep = p.Sweep }).ToList()).ToList()
+            { Start = Data(p.Start), End = Data(p.End), Center = Data(p.Center), Radius = p.Radius, StartAngle = p.StartAngle, Sweep = p.Sweep,
+                EllipseRadiusY = p.EllipseRadiusY, EllipseRotation = p.EllipseRotation }).ToList()).ToList()
         }).ToList()
     };
     public static void Restore(CadDocument document, CadRegionsSection section, CancellationToken token)
@@ -29,7 +30,7 @@ internal static class CadRegionStorage
                 throw new InvalidDataException("Region boundary exceeds the geometry budget.");
             var e = data.Entity;
             var region = new CadRegion(new(e.Id), new(e.LayerId), new(e.OwnerBlockId),
-                data.Contours.Select(c => new CadRegionContour(c.Select(p => new CadPlanarPrimitive(Point(p.Start), Point(p.End), Point(p.Center), p.Radius, p.StartAngle, p.Sweep)))), e.Name);
+                data.Contours.Select(c => new CadRegionContour(c.Select(p => new CadPlanarPrimitive(Point(p.Start), Point(p.End), Point(p.Center), p.Radius, p.StartAngle, p.Sweep, p.EllipseRadiusY, p.EllipseRotation)))), e.Name);
             region.SetGraphicStyleInternal(data.GraphicStyleId is { } graphic ? new StyleId(graphic) : null);
             region.SetFillStyleInternal(data.FillStyleId is { } fill ? new StyleId(fill) : null);
             CadDocumentMapper.ApplyEntityState(document, region, e);

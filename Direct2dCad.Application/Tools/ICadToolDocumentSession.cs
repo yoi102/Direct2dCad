@@ -26,4 +26,8 @@ public interface ICadToolDocumentSession
     void SelectEntities(IEnumerable<EntityId> entityIds);
     void EditBlockDefinition(BlockId blockId);
     void ExitBlockEditing();
+    void ActivateModelSpace() => throw new NotSupportedException("Space switching is unavailable in this host.");
+    void ActivateLayout(LayoutId layoutId) => throw new NotSupportedException("Space switching is unavailable in this host.");
+    void ActivateLayoutViewport(LayoutViewportId viewportId) => throw new NotSupportedException("Space switching is unavailable in this host.");
+    void ExitLayoutViewport() => throw new NotSupportedException("Space switching is unavailable in this host.");
 }

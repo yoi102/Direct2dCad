@@ -18,7 +18,13 @@ public sealed partial class CadToolCommandLineService
         new(["DUPLICATE", "DUP"], "DUPLICATE dx,dy — Copy selected entities with an offset in the display unit. COPY remains the clipboard command."),
         new(["UNION"], "UNION — Unite at least two selected closed entities into one Region."),
         new(["INTERSECT"], "INTERSECT — Intersect at least two selected closed entities into one Region."),
-        new(["SUBTRACT"], "SUBTRACT subject_entity_id — Subtract all other selected operands from the explicit selected subject.")
+        new(["SUBTRACT"], "SUBTRACT subject_entity_id — Subtract all other selected operands from the explicit selected subject."),
+        new(["NEW"], "NEW [\"name\"] — Create and activate a document."),
+        new(["OPEN"], "OPEN \"absolute-path.d2cad\" — Open and activate a document."),
+        new(["SAVE"], "SAVE [\"absolute-path.d2cad\"] — Save the active document; new documents require a path."),
+        new(["LAYER", "LA"], "LAYER [LIST|NEW name|SET name|ON name|OFF name|LOCK name|UNLOCK name|FREEZE name|THAW name|RENAME name new_name] — Quote names containing spaces."),
+        new(["DIST", "DI"], "DIST x1,y1 x2,y2 — Measure distance and angle in the current display unit."),
+        new(["AREA"], "AREA [entity_id ...] — Measure selected or supplied closed entities in the current display unit squared.")
     ];
 
     private static Shortcut? FindShortcut(string command) => Shortcuts.FirstOrDefault(s =>
@@ -27,13 +33,16 @@ public sealed partial class CadToolCommandLineService
     private async Task<CadToolCommandLineExecution?> TryShortcutAsync(string command, string remainder, CancellationToken token)
     {
         if (command.Equals("CADHELP", StringComparison.OrdinalIgnoreCase))
-            return new(true, string.Join(Environment.NewLine, Shortcuts.Select(s => s.Help)) + Environment.NewLine +
+            return remainder.Length > 0 ? Failure("Usage: CADHELP") : new(true, string.Join(Environment.NewLine, Shortcuts.Select(s => s.Help)) + Environment.NewLine +
+                "SCRIPT \"absolute-path.scr\" — Execute terminal commands sequentially; stop on the first error. Earlier edits are retained." + Environment.NewLine +
                 "All CAD/AI tools are available as TOOL <name> {JSON}. JSON geometry uses millimetres. Type TOOLS or TOOLHELP <name>.");
         if (FindShortcut(command) is not { } shortcut) return null;
         try
         {
+            var arguments = CadCommandLineSyntax.Tokenize(remainder);
+            var friendly = await TryFriendlyShortcutAsync(shortcut.Names[0], arguments, shortcut.Help, token);
+            if (friendly is not null) return friendly;
             var document = workspace.GetActiveDocument() ?? throw new InvalidOperationException("No active document.");
-            var arguments = remainder.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
             var name = shortcut.Names[0];
             var expected = name is "UNION" or "INTERSECT" ? 0 : name is "MOVE" or "DUPLICATE" or "SUBTRACT" ? 1 : 2;
             if (arguments.Length != expected) return Failure(shortcut.Help);

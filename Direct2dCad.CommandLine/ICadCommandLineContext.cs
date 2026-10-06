@@ -15,8 +15,14 @@ public interface ICadCommandLineContext
     string? DrawingInputError => null;
 
     void SetToolMode(CadCommandLineDrawingMode mode);
+    bool TrySetToolMode(CadCommandLineDrawingMode mode)
+    {
+        SetToolMode(mode);
+        return ToolMode == mode;
+    }
     void Cancel();
     void Undo();
+    bool UndoCurrentDrawingStep() => false;
     void Redo();
     void FitToWindow();
     int SelectAll();

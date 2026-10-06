@@ -71,7 +71,14 @@ internal sealed class CadObjectSnapController
                     else if (Math.Abs(x.Length-y.Length) <= 1e-9*Math.Max(x.Length,y.Length) && Math.Abs(x.Dot(y)) <= 1e-9*x.Length*y.Length)
                     {
                         var c = transform.TransformPoint(p.Center); var start = transform.TransformPoint(p.Start);
-                        primitives.Add(CadPlanarPrimitive.Arc(c,p.Radius*x.Length,Math.Atan2(start.Y-c.Y,start.X-c.X),p.Sweep*Math.Sign(x.Cross(y))));
+                        if (p.IsEllipse)
+                        {
+                            var axis = transform.TransformVector(new(Math.Cos(p.Rotation), Math.Sin(p.Rotation)));
+                            var sign = Math.Sign(x.Cross(y));
+                            primitives.Add(CadPlanarPrimitive.EllipseArc(c, p.RadiusX * x.Length, p.RadiusY * x.Length,
+                                Math.Atan2(axis.Y, axis.X), p.StartAngle * sign, p.Sweep * sign));
+                        }
+                        else primitives.Add(CadPlanarPrimitive.Arc(c,p.Radius*x.Length,Math.Atan2(start.Y-c.Y,start.X-c.X),p.Sweep*Math.Sign(x.Cross(y))));
                     }
                 }
             }
@@ -80,8 +87,32 @@ internal sealed class CadObjectSnapController
             for (var i=0; i<Math.Min(primitives.Count,128);i++)
             {
                 var p = primitives[i];
-                for (var j=i+1;j<Math.Min(primitives.Count,128);j++)
-                    foreach (var point in CadPlanarGeometry.Intersections(p,primitives[j])) Add(point,CadObjectSnapModes.Intersection,1);
+                if ((settings.Modes & CadObjectSnapModes.Nearest) != 0)
+                    Add(p.NearestPoint(pointer), CadObjectSnapModes.Nearest, 5);
+                if (!p.IsLine && (settings.Modes & CadObjectSnapModes.Quadrant) != 0)
+                {
+                    foreach (var t in p.ExtremaParameters()) Add(p.At(t), CadObjectSnapModes.Quadrant, 3);
+                    // A full ellipse may have an extremum at its parameter seam.
+                    foreach (var t in new[] { 0d, 1d })
+                    {
+                        var tangent = p.TangentAt(t);
+                        if (Math.Min(Math.Abs(tangent.X), Math.Abs(tangent.Y)) <= 1e-10 * tangent.Length)
+                            Add(p.At(t), CadObjectSnapModes.Quadrant, 3);
+                    }
+                }
+                if ((settings.Modes & CadObjectSnapModes.Intersection) != 0)
+                    for (var j=i+1;j<Math.Min(primitives.Count,128);j++)
+                    {
+                        try
+                        {
+                            foreach (var point in CadPlanarGeometry.Intersections(p,primitives[j])) Add(point,CadObjectSnapModes.Intersection,1);
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            // Ambiguous conic roots offer no intersection snap; other
+                            // exact candidates and free pointer movement remain available.
+                        }
+                    }
                 if (anchor is { } a)
                 {
                     if (p.IsLine)
@@ -89,7 +120,7 @@ internal sealed class CadObjectSnapController
                         var point = p.At(p.Parameter(a));
                         if (p.Contains(point)) Add(point,CadObjectSnapModes.Perpendicular,4);
                     }
-                    else
+                    else if (!p.IsEllipse)
                     {
                         var distance = a.DistanceTo(p.Center);
                         if (distance > p.Radius+CadGeometryTolerance.Absolute)
@@ -99,6 +130,8 @@ internal sealed class CadObjectSnapController
                             { var point = CadPlanarPrimitive.Point(p.Center,p.Radius,angle2); if(p.Contains(point)) Add(point,CadObjectSnapModes.Tangent,4); }
                         }
                     }
+                    // Elliptical perpendicular/tangent snap is intentionally unavailable:
+                    // a circular-radius construction is not a valid ellipse solution.
                 }
             }
         }

@@ -268,7 +268,7 @@ public partial class CadDocumentViewModel
     private static readonly CadTransientStyle EditResultStyle=new(CadColor.FromArgb(255,92,230,145),2);
     private static readonly CadTransientStyle EditRemovedStyle=new(CadColor.FromArgb(255,255,92,92),2);
     private static CadPointD ProjectEditPoint(CadEntity entity,CadPointD point) => CadPlanarCurves.Get(entity)
-        .Select(segment=>segment.At(Math.Clamp(segment.Parameter(point),0,1))).MinBy(p=>p.DistanceTo(point));
+        .Select(segment=>segment.NearestPoint(point)).MinBy(p=>p.DistanceTo(point));
     private void AddEditPointMarker(List<CadTransientItem> items,CadPointD point) =>
         items.Add(new CadTransientCircle(point,4/Math.Max(InteractionZoom,1e-9),EditSourceStyle with { FillColor=EditSourceStyle.StrokeColor }));
     private static string EditFailureMessage(Exception ex) => CadUiText.Get(ex switch
@@ -286,7 +286,9 @@ public partial class CadDocumentViewModel
         _ => "EditCannotApply"
     });
     private static void AddEditPrimitive(List<CadTransientItem> items,CadPlanarPrimitive p,CadTransientStyle style)
-    { items.Add(p.IsLine ? new CadTransientLine(p.Start,p.End,style) : new CadTransientArc(p.Center,p.Radius,p.StartAngle,p.Sweep,style)); }
+    { items.Add(p.IsLine ? new CadTransientLine(p.Start,p.End,style) : p.IsEllipse
+        ? new CadTransientEllipseArc(p.Center,p.RadiusX,p.RadiusY,p.StartAngle,p.Sweep,style,p.Rotation)
+        : new CadTransientArc(p.Center,p.Radius,p.StartAngle,p.Sweep,style)); }
     private void AddArrayPreview(List<CadTransientItem> items,CadPointD pointer)
     {
         if(!_editReady) return;
@@ -312,15 +314,26 @@ public partial class CadDocumentViewModel
     }
     bool ICadCommandLineContext.SubmitScalarInput(double value)
     {
-        if(!double.IsFinite(value) || value<=0) return false;
+        StepInputError = "";
+        if(!double.IsFinite(value) || value<=0 || IsPastePreviewActive) return false;
         if(HasDistanceParameter)
         {
-            if(CadCanvasToolMode==CadCanvasToolMode.Offset) _offsetDistanceLockedByParameter=true;
-            EditDistance=value; StepInputError=""; NotifyEditUx(); PublishCurrentStepPrompt(); RequestOverlayRender(); return true;
+            return TrySubmitEditDistance(value);
         }
-        if(DrawingAnchor is not { } anchor || CadCanvasToolMode is not (CadCanvasToolMode.Line or CadCanvasToolMode.CircleCenterRadius or CadCanvasToolMode.CircleCenterDiameter)) return false;
+        if(DrawingAnchor is not { } anchor || CadCanvasToolMode is not (CadCanvasToolMode.Line or CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline or CadCanvasToolMode.CircleCenterRadius or CadCanvasToolMode.CircleCenterDiameter)) return false;
         var direction=_currentMousePoint is { } p ? (ScreenToWorld(p)-anchor).Normalize() : CadVectorD.UnitX;
         if(direction.Length==0) direction=CadVectorD.UnitX;
+        if (DynamicInputFields.FirstOrDefault(field => field.Key == "Angle" && field.IsLocked) is { } angle)
+        {
+            if (!double.TryParse(angle.Text, System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.CurrentCulture, out var degrees) || !double.IsFinite(degrees))
+            {
+                StepInputError = "Enter a finite dynamic-input angle.";
+                return false;
+            }
+            var radians = degrees * Math.PI / 180;
+            direction = new CadVectorD(Math.Cos(radians), Math.Sin(radians));
+        }
         return HandleDrawingWorldPoint(anchor+direction*Millimetres(value));
     }
 }

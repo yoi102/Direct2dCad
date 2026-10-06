@@ -104,7 +104,15 @@ internal static class CadVectorPrintGeometryFactory
             context.BeginFigure(ToPoint(contour.Edges[0].Start), true, true);
             foreach (var p in contour.Edges)
                 if (p.IsLine) context.LineTo(ToPoint(p.End), true, false);
-                else AppendArc(context, p.Center, p.Radius, p.Radius, p.StartAngle, p.Sweep);
+                else
+                {
+                    var count = Math.Max(1, (int)Math.Ceiling(Math.Abs(p.Sweep) / Math.PI));
+                    for (var index = 1; index <= count; index++)
+                        context.ArcTo(ToPoint(p.At((double)index / count)), new Size(p.RadiusX, p.RadiusY),
+                            p.Rotation * 180 / Math.PI, isLargeArc: false,
+                            p.Sweep > 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise,
+                            isStroked: true, isSmoothJoin: false);
+                }
         }
         return geometry;
     }

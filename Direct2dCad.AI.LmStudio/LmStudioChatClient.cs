@@ -86,6 +86,7 @@ public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
 
     private static ChatMessagePayload CreateMessagePayload(AiChatMessage message)
     {
+        message = message.CanonicalizeContent();
         return new ChatMessagePayload(
             Role: message.Role switch
             {

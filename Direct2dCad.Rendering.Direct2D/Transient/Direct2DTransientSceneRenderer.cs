@@ -139,7 +139,8 @@ internal sealed class Direct2DTransientSceneRenderer(
                         arc.RadiusY,
                         arc.StartAngleRadians,
                         arc.SweepAngleRadians,
-                        arc.Style);
+                        arc.Style,
+                        arc.RotationRadians);
                     break;
                 case CadTransientArc arc when arc.Radius > 0 && Math.Abs(arc.SweepAngleRadians) > double.Epsilon:
                     primitives.DrawArc(context, viewport, arc.Center, arc.Radius, arc.StartAngleRadians, arc.SweepAngleRadians, arc.Style);

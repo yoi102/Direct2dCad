@@ -27,6 +27,9 @@ public partial class CadCanvas : IDisposable
     private readonly DispatcherTimer _viewportInteractionCompletionTimer;
     private readonly CadRadialMenuPopup _radialMenu = new();
     private bool _isRadialMenuActive;
+    private bool _endingPointerGesture;
+    private bool _releasingMouseCapture;
+    private Window? _ownerWindow;
 
     public CadCanvas()
     {
@@ -43,13 +46,15 @@ public partial class CadCanvas : IDisposable
         Stretch = System.Windows.Media.Stretch.Fill;
 
         Loaded += CadCanvas_Loaded;
-        Unloaded += (_, _) => SetValue(IsCursorBadgeVisiblePropertyKey, false);
+        Unloaded += CadCanvas_Unloaded;
         SizeChanged += CadCanvas_SizeChanged;
         MouseDown += CadCanvas_MouseDown;
         MouseMove += CadCanvas_MouseMove;
         MouseEnter += (_, _) => UpdateCursor(DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
         MouseLeave += CadCanvas_MouseLeave;
         MouseUp += CadCanvas_MouseUp;
+        LostMouseCapture += CadCanvas_LostMouseCapture;
+        LostKeyboardFocus += CadCanvas_LostKeyboardFocus;
         MouseWheel += CadCanvas_MouseWheel;
         KeyDown += CadCanvas_KeyDown;
         KeyUp += CadCanvas_KeyUp;
@@ -119,6 +124,7 @@ public partial class CadCanvas : IDisposable
 
         if (e.OldValue is CadDocumentViewModel oldViewModel)
         {
+            canvas.EndCapturedPointerGesture(oldViewModel);
             canvas._viewportInteractionCompletionTimer.Stop();
             oldViewModel.CancelViewportInteractionPreview();
             oldViewModel.SetRenderScheduler(null);
@@ -162,10 +168,77 @@ public partial class CadCanvas : IDisposable
 
     private void CadCanvas_Loaded(object sender, RoutedEventArgs e)
     {
+        SetOwnerWindow(Window.GetWindow(this));
         UpdateCursor(DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
         UpdateViewportSize();
         UpdateRenderSize();
         DocumentViewModel?.RequestRender();
+    }
+
+    private void CadCanvas_Unloaded(object sender, RoutedEventArgs e)
+    {
+        EndCapturedPointerGesture();
+        SetOwnerWindow(null);
+        SetValue(IsCursorBadgeVisiblePropertyKey, false);
+    }
+
+    private void SetOwnerWindow(Window? window)
+    {
+        if (ReferenceEquals(_ownerWindow, window))
+            return;
+        if (_ownerWindow is not null)
+            _ownerWindow.Deactivated -= OwnerWindow_Deactivated;
+        _ownerWindow = window;
+        if (_ownerWindow is not null)
+            _ownerWindow.Deactivated += OwnerWindow_Deactivated;
+    }
+
+    private void OwnerWindow_Deactivated(object? sender, EventArgs e) => EndCapturedPointerGesture();
+
+    private void CadCanvas_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (!IsKeyboardFocusWithin &&
+            (IsMouseCaptured || _rightPanPending || _rightPanActive || _isRadialMenuActive))
+            EndCapturedPointerGesture();
+    }
+
+    private void CadCanvas_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        // PointerUp may intentionally release capture while leaving a click-started
+        // grip edit active. Only an unexpected loss cancels the gesture.
+        if (!_releasingMouseCapture && !IsMouseCaptured)
+            EndCapturedPointerGesture();
+    }
+
+    private void EndCapturedPointerGesture(CadDocumentViewModel? viewModel = null)
+    {
+        if (_endingPointerGesture)
+            return;
+        _endingPointerGesture = true;
+        try
+        {
+            UnschedulePointerMove();
+            _pointerMovePending = false;
+            ResetRightPanState();
+            CloseRadialMenu();
+            var document = viewModel ?? DocumentViewModel;
+            if (document is not null)
+                ApplyInteractionResult(document.CancelCapturedPointerGesture());
+            CancelPendingViewportInteraction();
+        }
+        finally
+        {
+            _endingPointerGesture = false;
+        }
+    }
+
+    private void ReleasePointerCapture()
+    {
+        if (!IsMouseCaptured)
+            return;
+        _releasingMouseCapture = true;
+        try { ReleaseMouseCapture(); }
+        finally { _releasingMouseCapture = false; }
     }
 
     private void CadCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -208,7 +281,8 @@ public partial class CadCanvas : IDisposable
             return;
         }
 
-        if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2)
+        if (e.ChangedButton == MouseButton.Left && e.ClickCount == 2 &&
+            DocumentViewModel.CanActivateDoubleClickObjectOrSpace)
         {
             ApplyInteractionResult(
                 DocumentViewModel.HandleDoubleClick(screen),
@@ -256,6 +330,7 @@ public partial class CadCanvas : IDisposable
         if (DocumentViewModel is null || IsMouseCaptured)
             return;
 
+        ResetRightPanState();
         FlushPendingPointerMove();
         DocumentViewModel.PointerLeave();
     }
@@ -269,8 +344,7 @@ public partial class CadCanvas : IDisposable
         {
             var action = _radialMenu.Complete(e.GetPosition(this));
             _isRadialMenuActive = false;
-            if (IsMouseCaptured)
-                ReleaseMouseCapture();
+            ReleasePointerCapture();
             if (action is { } selectedAction &&
                 selectedAction != CadRadialMenuAction.None &&
                 RadialMenuActionCommand?.CanExecute(selectedAction) == true)
@@ -397,6 +471,7 @@ public partial class CadCanvas : IDisposable
 
         if (key == Key.Escape)
         {
+            EndCapturedPointerGesture();
             ApplyInteractionResult(DocumentViewModel.Escape(), e);
             return;
         }
@@ -404,6 +479,12 @@ public partial class CadCanvas : IDisposable
         if (key == Key.Enter)
         {
             ApplyInteractionResult(DocumentViewModel.CompleteCurrentDrawing(), e);
+            return;
+        }
+
+        if (key == Key.Back && Keyboard.Modifiers == ModifierKeys.None)
+        {
+            ApplyInteractionResult(DocumentViewModel.UndoCurrentDrawingStep(), e);
             return;
         }
 
@@ -452,15 +533,6 @@ public partial class CadCanvas : IDisposable
                 e.Handled = true;
                 break;
 
-            case Key.S:
-                if (Keyboard.Modifiers != ModifierKeys.Control)
-                    break;
-
-                if (SaveCommand?.CanExecute(null) == true)
-                    SaveCommand.Execute(null);
-
-                e.Handled = true;
-                break;
             case Key.C:
                 DocumentViewModel.CopySelection();
                 e.Handled = true;
@@ -512,8 +584,7 @@ public partial class CadCanvas : IDisposable
         _radialMenu.Close();
         _isRadialMenuActive = false;
         UpdateCursor(DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
-        if (IsMouseCaptured)
-            ReleaseMouseCapture();
+        ReleasePointerCapture();
     }
 
     private void UpdateRadialMenuProfile(ModifierKeys modifiers)
@@ -544,11 +615,14 @@ public partial class CadCanvas : IDisposable
 
     private void ApplyInteractionResult(CadCanvasInteractionResult result)
     {
-        if (result.CaptureMouse)
-            CaptureMouse();
+        if (result.CaptureMouse && !CaptureMouse())
+        {
+            EndCapturedPointerGesture();
+            return;
+        }
 
-        if (result.ReleaseMouseCapture && IsMouseCaptured)
-            ReleaseMouseCapture();
+        if (result.ReleaseMouseCapture)
+            ReleasePointerCapture();
 
         UpdateCursor(result.Cursor ?? DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
     }
@@ -791,6 +865,8 @@ public partial class CadCanvas : IDisposable
             return;
 
         _disposed = true;
+        EndCapturedPointerGesture();
+        SetOwnerWindow(null);
         if (DocumentViewModel is { } viewModel)
         {
             viewModel.SetRenderScheduler(null);

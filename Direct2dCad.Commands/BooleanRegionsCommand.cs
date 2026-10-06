@@ -58,7 +58,7 @@ public sealed class BooleanRegionsCommand : ICadCommand
         CadRegion? result = null;
         try
         {
-            var fill = source switch { CadCircle e => e.FillStyleId, CadRectangle e => e.FillStyleId,
+            var fill = source switch { CadCircle e => e.FillStyleId, CadEllipse e => e.FillStyleId, CadRectangle e => e.FillStyleId,
                 CadPolyline e => e.FillStyleId, CadCompositePath e => e.FillStyleId, CadRegion e => e.FillStyleId, _ => null };
             result = document.AddRegion(contours, source.LayerId, CadCurveEditing.GraphicStyle(source), fill, source.Name);
             document.MoveEntityToBlock(result.Id, source.OwnerBlockId);

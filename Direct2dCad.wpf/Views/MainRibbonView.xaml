@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="Direct2dCad.wpf.Views.MainRibbonView"
+<UserControl x:Class="Direct2dCad.wpf.Views.MainRibbonView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -244,7 +244,8 @@
             <TabItem Header="{I18N {x:Static r:LangKeys.File}}"
                      AutomationProperties.AutomationId="FileRibbonTab"
                      Style="{StaticResource MahApps.Styles.TabItem}">
-                <WrapPanel Margin="10">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False" Focusable="False" PanningMode="HorizontalOnly">
+                <StackPanel Orientation="Horizontal" Margin="10,2">
 
                     <Button ToolTip="{I18N {x:Static r:LangKeys.ApplicationSettings}}"
                             AutomationProperties.AutomationId="UserSettingsButton"
@@ -423,14 +424,16 @@
                                        Text="{I18N {x:Static r:LangKeys.Print}}" />
                         </Grid>
                     </Button>
-                </WrapPanel>
+                </StackPanel>
+                </ScrollViewer>
             </TabItem>
 
             <TabItem Header="{I18N {x:Static r:LangKeys.Draw}}"
                      AutomationProperties.AutomationId="DrawRibbonTab"
                      Style="{StaticResource MahApps.Styles.TabItem}"
                      Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
-                <WrapPanel Margin="10">
+                <ScrollViewer AutomationProperties.AutomationId="DrawRibbonScrollViewer" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False" Focusable="False" PanningMode="HorizontalOnly">
+                <StackPanel Orientation="Horizontal" Margin="10,2">
 
                     <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Select}}"
                                   AutomationProperties.AutomationId="SelectToolButton"
@@ -1425,13 +1428,15 @@
 
 
 
-                </WrapPanel>
+                </StackPanel>
+                </ScrollViewer>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="EditRibbonTab"
                      Header="{I18N {x:Static r:LangKeys.EditTools}}"
                      Style="{StaticResource MahApps.Styles.TabItem}"
                      Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
-                <WrapPanel Margin="10">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False" Focusable="False" PanningMode="HorizontalOnly">
+                <StackPanel Orientation="Horizontal" Margin="10,2">
                     <WrapPanel Width="86">
                         <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
                                       AutomationProperties.AutomationId="OffsetToolButton"
@@ -1522,33 +1527,41 @@
                     <WrapPanel Width="86">
                         <Button Style="{StaticResource RibbonIconButtonStyle}"
                                 AutomationProperties.AutomationId="BooleanUnionToolButton"
+                                AutomationProperties.HelpText="{Binding CurrentEditorTabViewModel.BooleanUnionHelpText}"
                                 Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                ToolTip="{I18N {x:Static r:LangKeys.BooleanUnion}}"
+                                ToolTip="{Binding CurrentEditorTabViewModel.BooleanUnionHelpText}"
+                                ToolTipService.ShowOnDisabled="True"
                                 Command="{Binding CurrentEditorTabViewModel.BooleanUnionCommand}">
                             <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadBooleanUnionIconTemplate}" />
                         </Button>
                         <Button Style="{StaticResource RibbonIconButtonStyle}"
                                 AutomationProperties.AutomationId="BooleanIntersectionToolButton"
+                                AutomationProperties.HelpText="{Binding CurrentEditorTabViewModel.BooleanIntersectionHelpText}"
                                 Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                ToolTip="{I18N {x:Static r:LangKeys.BooleanIntersection}}"
+                                ToolTip="{Binding CurrentEditorTabViewModel.BooleanIntersectionHelpText}"
+                                ToolTipService.ShowOnDisabled="True"
                                 Command="{Binding CurrentEditorTabViewModel.BooleanIntersectionCommand}">
                             <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadBooleanIntersectionIconTemplate}" />
                         </Button>
                         <Button Style="{StaticResource RibbonIconButtonStyle}"
                                 AutomationProperties.AutomationId="BooleanDifferenceToolButton"
+                                AutomationProperties.HelpText="{Binding CurrentEditorTabViewModel.BooleanDifferenceHelpText}"
                                 Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                ToolTip="{I18N {x:Static r:LangKeys.BooleanDifference}}"
+                                ToolTip="{Binding CurrentEditorTabViewModel.BooleanDifferenceHelpText}"
+                                ToolTipService.ShowOnDisabled="True"
                                 Command="{Binding CurrentEditorTabViewModel.BooleanDifferenceCommand}">
                             <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadBooleanDifferenceIconTemplate}" />
                         </Button>
                     </WrapPanel>
-                </WrapPanel>
+                </StackPanel>
+                </ScrollViewer>
             </TabItem>
             <TabItem AutomationProperties.AutomationId="AnnotationRibbonTab"
                      Header="{I18N {x:Static r:LangKeys.Dimension}}"
                      Style="{StaticResource MahApps.Styles.TabItem}"
                      Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
-                <WrapPanel Margin="10">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" CanContentScroll="False" Focusable="False" PanningMode="HorizontalOnly">
+                <StackPanel Orientation="Horizontal" Margin="10,2">
                     <WrapPanel Width="86">
                         <ToggleButton Style="{StaticResource RibbonToolToggleButtonStyle}"
                                       AutomationProperties.AutomationId="DimLinearXToolButton"
@@ -1617,7 +1630,8 @@
                             <ContentControl Width="33" Height="33" ContentTemplate="{StaticResource CadLeaderIconTemplate}" />
                         </ToggleButton>
                     </WrapPanel>
-                </WrapPanel>
+                </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
     </Grid>

@@ -26,9 +26,11 @@ public sealed class CadPrintService : ICadPrintService
         Action? onPrintStarted = null,
         Action<bool>? onBusyChanged = null,
         Action? onPrintCompleted = null,
-        Action<CadPrintCompletion>? onPrintFinished = null)
+        Action<CadPrintCompletion>? onPrintFinished = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var renderBounds = ResolveRenderBounds(request);
         var preparation = await RunWithBusyIndicatorAsync(
@@ -46,15 +48,24 @@ public sealed class CadPrintService : ICadPrintService
         {
             Owner = System.Windows.Application.Current?.MainWindow
         };
+        cancellationToken.ThrowIfCancellationRequested();
+        using var cancellation = cancellationToken.Register(() => previewDialog.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (previewDialog.IsVisible) previewDialog.Close();
+        })));
         if (previewDialog.ShowDialog() != true || previewDialog.Selection is null)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             return false;
+        }
 
+        cancellationToken.ThrowIfCancellationRequested();
         onPrintStarted?.Invoke();
         var submission = await RunTaskWithBusyIndicatorAsync(
             () => StartPrintJobAsync(
                 request,
                 renderBounds,
-                previewDialog.Selection),
+                previewDialog.Selection, cancellationToken),
             onBusyChanged);
         _ = NotifyWhenPrintCompletesAsync(
             submission,
@@ -142,7 +153,8 @@ public sealed class CadPrintService : ICadPrintService
     private static Task<CadPrintSubmission> StartPrintJobAsync(
         CadPrintRequest request,
         CadRectD renderBounds,
-        CadPrintPreviewSelection selection)
+        CadPrintPreviewSelection selection,
+        CancellationToken cancellationToken)
     {
         var started = new TaskCompletionSource<CadPrintSubmission>(
             TaskCreationOptions.RunContinuationsAsynchronously);
@@ -153,6 +165,7 @@ public sealed class CadPrintService : ICadPrintService
             Dispatcher? workerDispatcher = null;
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 using var printServer = new LocalPrintServer();
                 using var printQueue = printServer.GetPrintQueue(selection.QueueName);
                 using var ticketStream=new MemoryStream(selection.ValidatedTicket ?? throw new InvalidOperationException("Print preview must be validated first."));
@@ -177,6 +190,7 @@ public sealed class CadPrintService : ICadPrintService
                 }
 
                 writer.WritingCompleted += HandleWritingCompleted;
+                cancellationToken.ThrowIfCancellationRequested();
                 writer.WriteAsync(visual, printTicket);
                 started.TrySetResult(new CadPrintSubmission(writingCompletion.Task));
 

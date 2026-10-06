@@ -34,10 +34,10 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="#" Binding="{Binding Index, Mode=OneWay}" IsReadOnly="True" Width="36" />
                             <DataGridTemplateColumn Header="{I18N {x:Static r:LangKeys.X}}" Width="*">
-                                <DataGridTemplateColumn.CellTemplate><DataTemplate><mah:NumericUpDown Value="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellTemplate><DataTemplate><mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.X}}" Value="{Binding X, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                             <DataGridTemplateColumn Header="{I18N {x:Static r:LangKeys.Y}}" Width="*">
-                                <DataGridTemplateColumn.CellTemplate><DataTemplate><mah:NumericUpDown Value="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                                <DataGridTemplateColumn.CellTemplate><DataTemplate><mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Y}}" Value="{Binding Y, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
