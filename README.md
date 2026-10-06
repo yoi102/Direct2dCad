@@ -69,7 +69,10 @@ dotnet publish .\Direct2dCad.wpf\Direct2dCad.wpf.csproj -c Release -r win-x64 --
 
 ## 演示与设计
 
-- [基本操作演示 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)、[基本操作演示 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [基本操作演示 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)
+- [基本操作演示 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [基本操作演示 3](https://github.com/user-attachments/assets/bc4d198b-6fc4-41e9-8b05-926b85c0c560)
+- [基本操作演示 4](https://github.com/user-attachments/assets/f5e29d71-08de-4a61-8dda-ee3dab1f81be)
 - [Block 演示](https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310)
 - [Layout 演示](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
 - [OLE 演示](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
