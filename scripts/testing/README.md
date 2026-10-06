@@ -4,9 +4,11 @@
 
 2026-10-03 的 M1–M3 实现、绘图辅助工具箱和最终本机托管/原生/桌面结果见[日期验证记录](../../docs/validation/2026-10-03/README.md)，每项目计数与 TRX 哈希保留在摘要 JSON。该次未采集新的业务覆盖率，也未运行云端 CI；`global.json` 固定 SDK 10.0.401，工作流为 `.github/workflows/managed-regression.yml`。
 
+2026-10-06 的命令、历史、文档 scope、Application 层与渲染预算优化见[架构优化验收](../../docs/ARCHITECTURE-OPTIMIZATION.md)。本轮验证按托管、原生和真实窗口分别记录，详见[日期验证记录](../../docs/validation/2026-10-06/architecture/README.md)。
+
 ## 运行
 
-在 Windows 和解决方案所需的 .NET SDK 环境中运行。脚本先验证覆盖率汇总器，再构建整个解决方案，随后逐个运行测试项目，避免并发构建和原生资源竞争。
+在 Windows 和解决方案所需的 .NET SDK 环境中运行。脚本先验证架构引用图、架构检查器的隔离样例和覆盖率汇总器，再构建整个解决方案，随后逐个运行测试项目，避免并发构建和原生资源竞争。
 
 ```powershell
 # 托管回归及覆盖率
@@ -29,6 +31,7 @@ UI 自动化需要可交互、未锁定的 Windows 桌面，并会启动测试�
 | `Direct2dCad.Db.Tests` | 实体几何、样式、层、块、布局及几何缓存 |
 | `Direct2dCad.Commands.Tests` | 属性修改、变换、批量操作、层/块/布局、剪贴板及 undo/redo |
 | `Direct2dCad.Editor.Tests` | 命令历史、选择状态、空间归属、索引及资源变更分发 |
+| `Direct2dCad.Application.Tests` | 无界面工具执行、多文档撤销、快照查询与取消、关闭会话和应用契约边界 |
 | `Direct2dCad.HitTesting.Tests` / `Direct2dCad.Indexing.Tests` | 命中规则、空间查询、增量更新 |
 | `Direct2dCad.IO.Tests` | 文件往返、二进制快照、取消、协作采集及原子保存 |
 | `Direct2dCad.Tests` | 跨层契约、脏区域、布局投影、缓存与选择 |
@@ -56,6 +59,17 @@ Polygon 在模型中是闭合的 `CadPolyline`，不是另一种实体类。
 - CompositePath 的 Direct2D 预览：真正的混合曲线、填充、移动局部刷新与完整帧对比、缓存复用和释放。
 
 矩阵验证的是各类实体的共同契约，不表示每一个专属属性、参数组合或 UI 布局均已穷举。
+
+## 架构约束
+
+`Test-Architecture.ps1` 从解决方案和项目 XML 建立引用图，检查项目缺失、未列入解决方案的引用、循环依赖，以及核心层、Application、ViewModels/Services 的直接和传递依赖。应用层不能依赖 ViewModels/WPF；ViewModels/Services 不能依赖 Direct2D 后端或原生绘制包。检查读取所有声明的条件引用，不执行 MSBuild 的任意导入；当前项目使用字面量引用路径。
+
+`Test-ArchitectureGuard.ps1` 用 11 个隔离项目图验证检查器会拒绝违规并接受合法结构。两者已接入默认回归，也可单独运行：
+
+```powershell
+.\scripts\testing\Test-Architecture.ps1
+.\scripts\testing\Test-ArchitectureGuard.ps1
+```
 
 ## 查看覆盖率
 
@@ -87,6 +101,9 @@ UI 测试启动的 WPF 子进程没有被 Coverlet 插桩，因此 UI 操作不�
 ```powershell
 # Python 环境需安装 ezdxf==1.4.3，校验器只读，不修复输入
 python scripts/testing/Validate-DxfExchange.py TestResults/m4-m6-final-evidence
+# 生成并只读校验布尔面域的全部边界、实心 HATCH 孔洞/孔内岛与块内样式
+dotnet run -c Release --project Direct2dCad.Benchmarks -- --region-dxf-evidence TestResults/region-dxf/evidence
+python scripts/testing/Validate-RegionDxfExport.py TestResults/region-dxf/evidence
 # 两个未签名包在独立路径测试安装、版本升级、回退、哈希拒绝和卸载
 scripts/delivery/Test-LocalPackage.ps1 -PackageDirectory TestResults/local-package -UpgradePackageDirectory TestResults/upgrade-package
 ```

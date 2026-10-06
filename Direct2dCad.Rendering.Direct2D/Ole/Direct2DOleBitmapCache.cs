@@ -7,7 +7,7 @@ internal sealed class Direct2DOleBitmapCache : IDisposable
 {
     private const double MaxDownscaleReuse = 2.0;
     internal const long CacheBudgetBytes = 128L * 1024 * 1024;
-    private readonly Dictionary<Direct2DOleRenderKey, Entry> _entries = [];
+    private readonly Dictionary<CadOleRenderKey, Entry> _entries = [];
     private readonly List<Entry> _retiredEntries = [];
     private readonly Direct2DRenderStatisticsCollector _statistics;
     private long _usageStamp;
@@ -20,9 +20,9 @@ internal sealed class Direct2DOleBitmapCache : IDisposable
 
     public long EstimatedBytes => Math.Max(0, _estimatedBytes);
 
-    public IEnumerable<Direct2DOleRenderKey> Keys => _entries.Keys;
+    public IEnumerable<CadOleRenderKey> Keys => _entries.Keys;
 
-    public bool TryGetValue(Direct2DOleRenderKey key, out Entry entry)
+    public bool TryGetValue(CadOleRenderKey key, out Entry entry)
     {
         if (_entries.TryGetValue(key, out var found))
         {
@@ -35,7 +35,7 @@ internal sealed class Direct2DOleBitmapCache : IDisposable
         return false;
     }
 
-    public void Set(Direct2DOleRenderKey key, Entry entry)
+    public void Set(CadOleRenderKey key, Entry entry)
     {
         entry.LastUsed = ++_usageStamp;
         if (_entries.TryGetValue(key, out var previous))
@@ -56,7 +56,7 @@ internal sealed class Direct2DOleBitmapCache : IDisposable
         _estimatedBytes += entry.EstimatedBytes;
     }
 
-    public void TrimToBudget(Direct2DOleRenderKey protectedKey)
+    public void TrimToBudget(CadOleRenderKey protectedKey)
     {
         while (EstimatedBytes > CacheBudgetBytes)
         {
@@ -75,7 +75,7 @@ internal sealed class Direct2DOleBitmapCache : IDisposable
         }
     }
 
-    public bool Remove(Direct2DOleRenderKey key)
+    public bool Remove(CadOleRenderKey key)
     {
         if (!_entries.Remove(key, out var entry))
             return false;

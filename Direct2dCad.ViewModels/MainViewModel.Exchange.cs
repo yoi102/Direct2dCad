@@ -1,4 +1,3 @@
-using CommunityToolkit.Mvvm.DependencyInjection;
 using AvalonDock.Mvvm;
 using AvalonDock.Core;
 using CommunityToolkit.Mvvm.Input;
@@ -27,7 +26,7 @@ public partial class MainViewModel
                 result=await OpenOperation.RunAsync(CadUiText.Get("ImportDxf"),ct=>storage.ImportAsync(path,unit,ct));
             }
             var changedFocus=!ReferenceEquals(focus,_dockLayoutService.ActiveDockable);var finalFocus=_dockLayoutService.ActiveDockable;
-            var tab=_dockLayoutService.OpenOrActivateDocument(e=>false,()=>{var t=Ioc.Default.GetRequiredService<EditorTabViewModel>();t.Load(result.Document,string.Empty);return t;});
+            var tab=_dockLayoutService.OpenOrActivateDocument(e=>false,()=>_editorTabFactory.Create(t=>t.Load(result.Document,string.Empty)));
             if(changedFocus)_dockLayoutService.ActiveDockable=finalFocus;else CurrentEditorTabViewModel=tab;
             DocumentExplorer.RefreshDocuments();
             _snackbarService.Enqueue(string.Format(CadUiText.Get("DxfImported"),result.Imported,result.Unsupported.Values.Sum()));

@@ -63,6 +63,8 @@ internal sealed class Direct2DRenderStatisticsCollector
     public long GpuCacheBytes { get; private set; }
     public long GpuCachePeakBytes => _gpuCachePeakBytes;
     public long GpuCacheBudgetBytes { get; private set; }
+    public long GridTileCacheBytes { get; private set; }
+    public long TransientGroupCacheBytes { get; private set; }
     public int GpuCacheEvictionCount { get; private set; }
     public int RenderCacheHitCount { get; private set; }
     public int RenderCacheMissCount { get; private set; }
@@ -330,8 +332,10 @@ internal sealed class Direct2DRenderStatisticsCollector
         long hatchTileBytes,
         long imageBitmapBytes,
         long oleTileBytes,
-        long budgetBytes)
+        long budgetBytes, long gridTileBytes = 0, long transientGroupBytes = 0)
     {
+        GridTileCacheBytes = Math.Max(0, gridTileBytes);
+        TransientGroupCacheBytes = Math.Max(0, transientGroupBytes);
         SceneTileCacheBytes = Math.Max(0, sceneTileBytes);
         CommandListCacheBytes = Math.Max(0, commandListBytes);
         SelectionCommandListCacheBytes = Math.Max(0, selectionCommandListBytes);
@@ -347,7 +351,7 @@ internal sealed class Direct2DRenderStatisticsCollector
                         GeometryRealizationCacheBytes +
                         HatchTileCacheBytes +
                         ImageBitmapCacheBytes +
-                        OleTileCacheBytes;
+                        OleTileCacheBytes + GridTileCacheBytes + TransientGroupCacheBytes;
         _gpuCachePeakBytes = Math.Max(_gpuCachePeakBytes, GpuCacheBytes);
         GpuCacheBudgetBytes = Math.Max(0, budgetBytes);
     }
@@ -430,7 +434,9 @@ internal sealed class Direct2DRenderStatisticsCollector
         ParallelWorkerCount = ParallelWorkerCount,
         ParallelEntityCount = ParallelEntityCount,
         ParallelRenderMilliseconds = ParallelRenderMilliseconds,
-        ParallelGpuCacheBytes = ParallelGpuCacheBytes
+        ParallelGpuCacheBytes = ParallelGpuCacheBytes,
+        GridTileCacheBytes = GridTileCacheBytes,
+        TransientGroupCacheBytes = TransientGroupCacheBytes
     };
 
     private static double NormalizeDuration(double milliseconds) =>

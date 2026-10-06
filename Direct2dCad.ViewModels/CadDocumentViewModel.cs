@@ -17,8 +17,6 @@ using Direct2dCad.Editor.Commands;
 using Direct2dCad.HitTesting;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.Rendering;
-using Direct2dCad.Rendering.Direct2D.Hosting;
-using Direct2dCad.Rendering.Direct2D.Ole;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 using Direct2dCad.ViewModels.Drawing;
@@ -102,7 +100,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     [ObservableProperty]
     public partial CadEditor CadEditor { get; private set; } = new(CadDocument.Create("Untitled"));
 
-    public Direct2DImageRenderHost Direct2DImageRenderHost { get; } = new();
+    public ICadRenderSession RenderSession { get; }
 
     [ObservableProperty]
     public partial double CurrentPointerWorldX { get; private set; }
@@ -291,38 +289,62 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         IImageImportService imageImportService,
         IClipboardTextService clipboardTextService,
         IOleHostService oleHostService,
-        ISnackbarService snackbarService)
+        ISnackbarService snackbarService,
+        ICadRenderSessionFactory renderSessionFactory)
     {
-        _interactionStateChangedPublisher = interactionStateChangedPublisher;
-        _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
-        _selectionFilterChangedPublisher = selectionFilterChangedPublisher;
-        _commandActivityPublisher = commandActivityPublisher;
-        _interactionActivityPublisher = interactionActivityPublisher;
-        _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
-        _clipboardTextService = clipboardTextService ?? throw new ArgumentNullException(nameof(clipboardTextService));
-        _snackbarService = snackbarService ?? throw new ArgumentNullException(nameof(snackbarService));
-        _screenToWorld = ScreenToWorld;
-        _worldToScreen = WorldToScreen;
-        _screenToSnappedWorld = ScreenToSnappedWorld;
-        _canSelectEntity = CanSelectEntity;
-        _createEntityPreviewStyle = CreateEntityPreviewStyle;
-        _resolveContinueArcBase = ResolveContinueArcBase;
-        _createDrawingTextRequest = CreateDrawingTextRequest;
-        _entityBoundsQuery = QueryEntityBounds;
-        _entityBoundsQueryInto = QueryEntityBounds;
-        _entityBoundsCount = (owner, bounds) => CadEditor.SpatialIndex.CountIntersecting(owner, bounds);
-        _oleSessions = new CadOleSessionController(CadEditor, oleHostService, oleObjectUpdatedSubscriber,
-            entityId =>
-            {
-                Direct2DImageRenderHost.InvalidateOleBitmap(entityId);
-                RequestRender();
-            });
-        Direct2DImageRenderHost.SetOleDrawCallback(_oleSessions.Draw);
-        Direct2DImageRenderHost.SetOleReleaseCallback(_oleSessions.Release);
-        _paste = new CadPasteInteractionController(clipboardStore);
-        DrawingDefaults.DefaultsChanged += OnDrawingDefaultsChanged;
-        CadEditor.EditorStateChanged += OnEditorStateChanged;
-        CadEditor.CommandActivity += OnCommandActivity;
+        ArgumentNullException.ThrowIfNull(imageImportService);
+        ArgumentNullException.ThrowIfNull(clipboardTextService);
+        ArgumentNullException.ThrowIfNull(snackbarService);
+        ArgumentNullException.ThrowIfNull(oleHostService);
+        ArgumentNullException.ThrowIfNull(oleObjectUpdatedSubscriber);
+        ArgumentNullException.ThrowIfNull(clipboardStore);
+        RenderSession = (renderSessionFactory ?? throw new ArgumentNullException(nameof(renderSessionFactory))).Create();
+        CadOleSessionController? initializingOleSessions = null;
+        try
+        {
+            _interactionStateChangedPublisher = interactionStateChangedPublisher;
+            _viewSettingsChangedPublisher = viewSettingsChangedPublisher;
+            _selectionFilterChangedPublisher = selectionFilterChangedPublisher;
+            _commandActivityPublisher = commandActivityPublisher;
+            _interactionActivityPublisher = interactionActivityPublisher;
+            _imageImportService = imageImportService ?? throw new ArgumentNullException(nameof(imageImportService));
+            _clipboardTextService = clipboardTextService ?? throw new ArgumentNullException(nameof(clipboardTextService));
+            _snackbarService = snackbarService ?? throw new ArgumentNullException(nameof(snackbarService));
+            _screenToWorld = ScreenToWorld;
+            _worldToScreen = WorldToScreen;
+            _screenToSnappedWorld = ScreenToSnappedWorld;
+            _canSelectEntity = CanSelectEntity;
+            _createEntityPreviewStyle = CreateEntityPreviewStyle;
+            _resolveContinueArcBase = ResolveContinueArcBase;
+            _createDrawingTextRequest = CreateDrawingTextRequest;
+            _entityBoundsQuery = QueryEntityBounds;
+            _entityBoundsQueryInto = QueryEntityBounds;
+            _entityBoundsCount = (owner, bounds) => CadEditor.SpatialIndex.CountIntersecting(owner, bounds);
+            _oleSessions = initializingOleSessions = new CadOleSessionController(CadEditor, oleHostService, oleObjectUpdatedSubscriber,
+                entityId =>
+                {
+                    RenderSession.InvalidateOleBitmap(entityId);
+                    RequestRender();
+                });
+            RenderSession.SetOleDrawCallback(_oleSessions.Draw);
+            RenderSession.SetOleReleaseCallback(_oleSessions.Release);
+            _paste = new CadPasteInteractionController(clipboardStore);
+            DrawingDefaults.DefaultsChanged += OnDrawingDefaultsChanged;
+            CadEditor.EditorStateChanged += OnEditorStateChanged;
+            CadEditor.CommandActivity += OnCommandActivity;
+        }
+        catch (Exception initializationError)
+        {
+            List<Exception>? cleanupErrors = null;
+            try { initializingOleSessions?.Dispose(); }
+            catch (Exception exception) { (cleanupErrors ??= []).Add(exception); }
+            try { RenderSession.Dispose(); }
+            catch (Exception exception) { (cleanupErrors ??= []).Add(exception); }
+            if (cleanupErrors is not null)
+                throw new AggregateException("Render session initialization and cleanup failed.",
+                    new[] { initializationError }.Concat(cleanupErrors));
+            throw;
+        }
     }
 
     internal void ReplaceEditor(CadEditor editor)
@@ -340,6 +362,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         CadEditor.CommandActivity -= OnCommandActivity;
         CadEditor = editor ?? throw new ArgumentNullException(nameof(editor));
         CadEditor.DocumentCommands.Settings.MaximumUndoBytes=UserSettings.General.HistoryBudgetMegabytes*1024L*1024;
+        CadEditor.EditorCommands.Settings.MaximumUndoBytes=UserSettings.General.HistoryBudgetMegabytes*1024L*1024;
         CadEditor.EditorStateChanged += OnEditorStateChanged;
         CadEditor.CommandActivity += OnCommandActivity;
         _viewportInitialization.ResetInitialView();
@@ -372,7 +395,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _deferredDocumentInvalidation = CadRenderInvalidation.Empty;
         _renderResources.Attach(
             CadEditor,
-            Direct2DImageRenderHost,
+            RenderSession,
             _overlayScenes.TransientScene,
             _overlayScenes.HandleScene,
             OnDocumentChanged);
@@ -380,7 +403,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void DetachRenderResources()
     {
-        _renderResources.Detach(CadEditor, Direct2DImageRenderHost, OnDocumentChanged);
+        _renderResources.Detach(CadEditor, RenderSession, OnDocumentChanged);
     }
 
     public void SetViewportSize(double width, double height)
@@ -393,15 +416,16 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void SetRenderSize(int width, int height)
     {
-        Direct2DImageRenderHost.SetSize(Math.Max(1, width), Math.Max(1, height));
+        RenderSession.SetSize(Math.Max(1, width), Math.Max(1, height));
     }
 
     public void ApplyUserSettings(CadUserSettings? settings)
     {
         CadEditor.DocumentCommands.Settings.MaximumUndoBytes=(settings?.General.HistoryBudgetMegabytes??256)*1024L*1024;
+        CadEditor.EditorCommands.Settings.MaximumUndoBytes=(settings?.General.HistoryBudgetMegabytes??256)*1024L*1024;
         UserSettings = settings ?? CadUserSettings.CreateDefault();
         UserSettings.Normalize();
-        Direct2DImageRenderHost.SetGraphicsDeviceMode(
+        RenderSession.SetGraphicsDeviceMode(
             UserSettings.Rendering.GraphicsDeviceMode);
         ShowFramesPerSecond = UserSettings.Rendering.ShowFramesPerSecond;
         RequestRender();
@@ -611,9 +635,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var requiresFullRender = false;
 
         if (_pan.IsPanning &&
-            !Direct2DImageRenderHost.IsViewportInteractionActive)
+            !RenderSession.IsViewportInteractionActive)
         {
-            Direct2DImageRenderHost.BeginViewportInteraction();
+            RenderSession.BeginViewportInteraction();
         }
 
         if (MovePan(screen))
@@ -629,7 +653,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 if (!RenderPanInteractionPreview())
                     RequestRender(CadRenderInvalidation.Full, updateHandleScene: true);
             }
-            else if (!Direct2DImageRenderHost.IsViewportInteractionActive)
+            else if (!RenderSession.IsViewportInteractionActive)
             {
                 RequestOverlayRender(updateHandleScene: true);
             }
@@ -641,7 +665,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             if (!RenderPanInteractionPreview())
                 RequestRender(CadRenderInvalidation.Full, updateHandleScene: false);
         }
-        else if (!Direct2DImageRenderHost.IsViewportInteractionActive)
+        else if (!RenderSession.IsViewportInteractionActive)
         {
             RequestOverlayRender();
         }
@@ -728,13 +752,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         }
 
         if (UserSettings.Rendering.IsZoomSnapshotPreviewEnabled)
-            Direct2DImageRenderHost.BeginViewportInteraction();
+            RenderSession.BeginViewportInteraction();
         _viewportInteractionRequiresHandleSceneUpdate = true;
         CadEditor.Execute(new ZoomViewportCommand(screen, factor));
         UpdatePointerWorldStatus(screen);
         if (!RenderZoomInteractionPreview())
         {
-            Direct2DImageRenderHost.EndViewportInteraction();
+            RenderSession.EndViewportInteraction();
             _viewportInteractionRequiresHandleSceneUpdate = false;
             RequestRender(
                 CadRenderInvalidation.Full,
@@ -748,13 +772,13 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void CompleteViewportInteractionPreview()
     {
-        if (!Direct2DImageRenderHost.IsViewportInteractionActive)
+        if (!RenderSession.IsViewportInteractionActive)
         {
             _viewportInteractionRequiresHandleSceneUpdate = false;
             return;
         }
 
-        Direct2DImageRenderHost.EndViewportInteraction();
+        RenderSession.EndViewportInteraction();
         var updateHandleScene = _viewportInteractionRequiresHandleSceneUpdate;
         _viewportInteractionRequiresHandleSceneUpdate = false;
         RequestRender(
@@ -765,7 +789,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     public void CancelViewportInteractionPreview()
     {
-        Direct2DImageRenderHost.EndViewportInteraction();
+        RenderSession.EndViewportInteraction();
         _viewportInteractionRequiresHandleSceneUpdate = false;
     }
 
@@ -1547,10 +1571,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         bool baseSceneChanged)
     {
         var interruptedViewportInteraction =
-            Direct2DImageRenderHost.IsViewportInteractionActive;
+            RenderSession.IsViewportInteractionActive;
         if (interruptedViewportInteraction)
         {
-            Direct2DImageRenderHost.EndViewportInteraction();
+            RenderSession.EndViewportInteraction();
             _viewportInteractionRequiresHandleSceneUpdate = false;
         }
 
@@ -1602,17 +1626,17 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             effectiveInvalidation = requestedInvalidation.Union(overlayInvalidation);
         }
 
-        Direct2DImageRenderHost.SetRenderOptions(CreateRenderOptions(drawGripHandles));
-        Direct2DImageRenderHost.Render(effectiveInvalidation, baseSceneChanged);
-        RenderFrameTimeMilliseconds = Direct2DImageRenderHost.AverageFrameRenderTimeMilliseconds;
-        var framesPerSecond = Direct2DImageRenderHost.FramesPerSecond;
+        RenderSession.SetRenderOptions(CreateRenderOptions(drawGripHandles));
+        RenderSession.Render(effectiveInvalidation, baseSceneChanged);
+        RenderFrameTimeMilliseconds = RenderSession.AverageFrameRenderTimeMilliseconds;
+        var framesPerSecond = RenderSession.FramesPerSecond;
         if (!RenderFramesPerSecond.Equals(framesPerSecond))
             RenderFramesPerSecond = framesPerSecond;
     }
 
     private void UpdateTextMeasurements()
     {
-        _renderResources.UpdateTextMeasurements(CadEditor, Direct2DImageRenderHost);
+        _renderResources.UpdateTextMeasurements(CadEditor, RenderSession);
     }
 
     private bool BeginPan(CadPointD screen)
@@ -1626,7 +1650,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         else
         {
             _pan.Begin(screen);
-            Direct2DImageRenderHost.BeginViewportInteraction();
+            RenderSession.BeginViewportInteraction();
             _viewportInteractionRequiresHandleSceneUpdate = false;
         }
         OnPropertyChanged(nameof(IsPanning));
@@ -1635,10 +1659,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private void EndPan()
     {
-        var hadViewportPreview = Direct2DImageRenderHost.IsViewportInteractionActive;
+        var hadViewportPreview = RenderSession.IsViewportInteractionActive;
         var hasMoved = _pan.End();
         hasMoved |= _layoutPan.End();
-        Direct2DImageRenderHost.EndViewportInteraction();
+        RenderSession.EndViewportInteraction();
         _viewportInteractionRequiresHandleSceneUpdate = false;
         OnPropertyChanged(nameof(IsPanning));
         if (hasMoved)
@@ -1660,12 +1684,12 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     private bool RenderViewportInteractionPreview()
     {
-        if (!Direct2DImageRenderHost.RenderViewportInteractionPreview())
+        if (!RenderSession.RenderViewportInteractionPreview())
             return false;
 
         RenderFrameTimeMilliseconds =
-            Direct2DImageRenderHost.AverageFrameRenderTimeMilliseconds;
-        var framesPerSecond = Direct2DImageRenderHost.FramesPerSecond;
+            RenderSession.AverageFrameRenderTimeMilliseconds;
+        var framesPerSecond = RenderSession.FramesPerSecond;
         if (!RenderFramesPerSecond.Equals(framesPerSecond))
             RenderFramesPerSecond = framesPerSecond;
         return true;
@@ -2104,8 +2128,8 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         return new CadRenderInvalidationCalculator(
             CadEditor.Document,
             viewport,
-            Direct2DImageRenderHost.TargetWidth,
-            Direct2DImageRenderHost.TargetHeight,
+            RenderSession.TargetWidth,
+            RenderSession.TargetHeight,
             _createEntityPreviewStyle);
     }
 
@@ -2642,12 +2666,22 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         return new CadTextMeasurementService(
             CadEditor.Document,
-            Direct2DImageRenderHost,
+            RenderSession,
             InteractionViewport);
     }
 
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet e)
     {
+        if (e.IsDerivedGeometry)
+        {
+            _overlayScenes.ApplyDocumentChanges(e, CadEditor.Selection.EntityIds);
+            var derivedInvalidation = CreateDocumentInvalidation(e);
+            if (_renderResources.IsApplyingTextMeasurementChanges)
+                _deferredDocumentInvalidation = _deferredDocumentInvalidation.Union(derivedInvalidation);
+            else
+                RequestRender(derivedInvalidation);
+            return;
+        }
         if(e.DocumentChanged) LastInteractionAtUtc=DateTimeOffset.UtcNow;
         if (e.DocumentChanged && IsBooleanTool && !_committingBoolean) SetToolMode(CadCanvasToolMode.Select);
         _overlayScenes.ApplyDocumentChanges(e, CadEditor.Selection.EntityIds);
@@ -2823,10 +2857,10 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
 
     CadCommandLineRenderStatistics? ICadCommandLineContext.GetRenderStatistics()
     {
-        var statistics = Direct2DImageRenderHost.RenderStatistics;
+        var statistics = RenderSession.RenderStatistics;
         return new CadCommandLineRenderStatistics(
-            Direct2DImageRenderHost.FramesPerSecond,
-            Direct2DImageRenderHost.AverageFrameRenderTimeMilliseconds,
+            RenderSession.FramesPerSecond,
+            RenderSession.AverageFrameRenderTimeMilliseconds,
             statistics.RenderDurationMilliseconds,
             statistics.IsFullFrame,
             statistics.DirtyRegionCount,
@@ -2879,7 +2913,17 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
             statistics.ParallelWorkerCount,
             statistics.ParallelEntityCount,
             statistics.ParallelRenderMilliseconds,
-            statistics.ParallelGpuCacheBytes);
+            statistics.ParallelGpuCacheBytes)
+        {
+            GridTileCacheBytes = statistics.GridTileCacheBytes,
+            TransientGroupCacheBytes = statistics.TransientGroupCacheBytes,
+            DocumentRetainedCacheBytes = RenderSession.ResourceStatistics.EstimatedRetainedCacheBytes,
+            DocumentRetainedCacheLimitBytes = RenderSession.ResourceStatistics.RetainedCacheLimitBytes,
+            ProcessRetainedCacheBytes = RenderSession.ProcessResourceStatistics.EstimatedRetainedCacheBytes,
+            ProcessRetainedCacheLimitBytes = RenderSession.ProcessResourceStatistics.RetainedCacheLimitBytes,
+            RenderSessionCount = RenderSession.ProcessResourceStatistics.DocumentCount,
+            DocumentRendererCount = RenderSession.ResourceStatistics.RendererCount
+        };
     }
 
     private static CadCommandLineClipboardSummary? CreateClipboardSummary(CadClipboardSnapshot? snapshot)
@@ -2920,29 +2964,44 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         var style = new CadPreviewStyleService(CadEditor.Document, UserSettings,
             keepEntityStrokeWidthScreenConstant: ActiveLayoutId is null);
         return new(CadEditor.Document, CadEditor.Viewport,
-            Direct2DImageRenderHost.TargetWidth, Direct2DImageRenderHost.TargetHeight,
+            RenderSession.TargetWidth, RenderSession.TargetHeight,
             style.CreateEntityPreviewStyle, ActiveLayoutId, CadEditor.ActiveOwnerBlockId);
     }
 
     public void Dispose()
     {
-        ClearBooleanInteraction();
         if (_disposed)
             return;
 
         _disposed = true;
-        _layoutPan.Cancel();
-        _pan.End();
         _renderScheduler = null;
         _hasPendingRender = false;
         _renderScheduled = false;
         _renderSchedulerVersion = unchecked(_renderSchedulerVersion + 1);
-        DetachRenderResources();
-        _oleSessions.Dispose();
+
+        List<Exception>? cleanupErrors = null;
+        void Cleanup(Action action)
+        {
+            try { action(); }
+            catch (Exception exception) { (cleanupErrors ??= []).Add(exception); }
+        }
+
+        Cleanup(ClearBooleanInteraction);
+        Cleanup(_layoutPan.Cancel);
+        Cleanup(() => _pan.End());
+        Cleanup(DetachRenderResources);
+        Cleanup(_oleSessions.Dispose);
         CadEditor.EditorStateChanged -= OnEditorStateChanged;
         CadEditor.CommandActivity -= OnCommandActivity;
         DrawingDefaults.DefaultsChanged -= OnDrawingDefaultsChanged;
-        Direct2DImageRenderHost.Dispose();
+        // The session owns a process-budget lease, so an earlier platform/OLE
+        // cleanup failure must never leave it registered for the app lifetime.
+        Cleanup(RenderSession.Dispose);
+
+        if (cleanupErrors is { Count: 1 })
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cleanupErrors[0]).Throw();
+        if (cleanupErrors is not null)
+            throw new AggregateException("Document cleanup failed.", cleanupErrors);
     }
 
     private void ThrowIfDisposed()

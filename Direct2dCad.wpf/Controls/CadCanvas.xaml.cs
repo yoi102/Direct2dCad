@@ -123,7 +123,7 @@ public partial class CadCanvas : IDisposable
             oldViewModel.CancelViewportInteractionPreview();
             oldViewModel.SetRenderScheduler(null);
             oldViewModel.PropertyChanged -= canvas.OnDocumentViewModelPropertyChanged;
-            oldViewModel.Direct2DImageRenderHost.RenderCacheBuildRequested -=
+            oldViewModel.RenderSession.RenderCacheBuildRequested -=
                 canvas.OnRenderCacheBuildRequested;
             oldViewModel.DetachRenderResources();
         }
@@ -132,9 +132,9 @@ public partial class CadCanvas : IDisposable
         {
             newViewModel.SetRenderScheduler(canvas.ScheduleRenderFlush);
             newViewModel.PropertyChanged += canvas.OnDocumentViewModelPropertyChanged;
-            newViewModel.Direct2DImageRenderHost.RenderCacheBuildRequested +=
+            newViewModel.RenderSession.RenderCacheBuildRequested +=
                 canvas.OnRenderCacheBuildRequested;
-            newViewModel.Direct2DImageRenderHost.AttachImageSource(canvas.d3d11ImageSource);
+            ((Direct2dCad.Rendering.Direct2D.Hosting.Direct2DImageRenderHost)newViewModel.RenderSession).AttachImageSource(canvas.d3d11ImageSource);
             newViewModel.AttachRenderResources();
             canvas.UpdateViewportSize();
             canvas.UpdateRenderSize();
@@ -340,7 +340,7 @@ public partial class CadCanvas : IDisposable
             _renderCacheBuildScheduled = false;
             if (_disposed ||
                 DocumentViewModel is not { } viewModel ||
-                !ReferenceEquals(sender, viewModel.Direct2DImageRenderHost))
+                !ReferenceEquals(sender, viewModel.RenderSession))
             {
                 return;
             }
@@ -352,11 +352,11 @@ public partial class CadCanvas : IDisposable
             }
 
             var started = Stopwatch.GetTimestamp();
-            var wasVisibleViewReady = viewModel.Direct2DImageRenderHost.IsInitialViewReady;
+            var wasVisibleViewReady = viewModel.RenderSession.IsInitialViewReady;
             var buildPending = false;
             do
             {
-                buildPending = viewModel.Direct2DImageRenderHost.PrepareRenderCacheStep();
+                buildPending = viewModel.RenderSession.PrepareRenderCacheStep();
             }
             while (buildPending &&
                    Stopwatch.GetElapsedTime(started).TotalMilliseconds <
@@ -364,8 +364,8 @@ public partial class CadCanvas : IDisposable
 
             if (buildPending)
             {
-                if ((!wasVisibleViewReady || !viewModel.Direct2DImageRenderHost.HasPresentedScene) &&
-                    viewModel.Direct2DImageRenderHost.IsInitialViewReady)
+                if ((!wasVisibleViewReady || !viewModel.RenderSession.HasPresentedScene) &&
+                    viewModel.RenderSession.IsInitialViewReady)
                     viewModel.RequestRenderCacheRefresh();
                 OnRenderCacheBuildRequested(sender, EventArgs.Empty);
             }
@@ -627,7 +627,7 @@ public partial class CadCanvas : IDisposable
         {
             _renderCacheBuildDeferred = false;
             OnRenderCacheBuildRequested(
-                viewModel.Direct2DImageRenderHost,
+                viewModel.RenderSession,
                 EventArgs.Empty);
         }
     }
@@ -795,7 +795,7 @@ public partial class CadCanvas : IDisposable
         {
             viewModel.SetRenderScheduler(null);
             viewModel.PropertyChanged -= OnDocumentViewModelPropertyChanged;
-            viewModel.Direct2DImageRenderHost.RenderCacheBuildRequested -=
+            viewModel.RenderSession.RenderCacheBuildRequested -=
                 OnRenderCacheBuildRequested;
             viewModel.DetachRenderResources();
         }

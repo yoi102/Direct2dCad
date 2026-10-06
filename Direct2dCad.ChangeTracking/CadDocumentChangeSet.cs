@@ -46,6 +46,8 @@ public sealed class CadDocumentChangeSet
     /// Valid only for immediate publication against the document that produced this set.
     /// </summary>
     public bool HasResolvedBlockReferenceChanges { get; init; }
+    /// <summary>Runtime geometry derived from unchanged document content; not a user edit.</summary>
+    public bool IsDerivedGeometry { get; init; }
     public bool AffectsDocumentStructure { get; init; }
     public bool AffectsLayouts { get; init; }
     public bool AffectsLayoutStructure { get; init; }
@@ -92,11 +94,15 @@ public sealed class CadDocumentChangeSet
         var affectsViewSettings = false;
         var tableChanges = CadDocumentTableChangeKind.None;
         var resolvedBlockReferences = true;
+        var onlyDerivedGeometry = true;
 
         foreach (var changeSet in changeSets)
         {
             if (changeSet.DocumentChanged)
+            {
                 resolvedBlockReferences &= changeSet.HasResolvedBlockReferenceChanges;
+                onlyDerivedGeometry &= changeSet.IsDerivedGeometry;
+            }
             foreach (var change in changeSet.EntityChanges)
             {
                 entityChanges[change.EntityId] =
@@ -128,7 +134,8 @@ public sealed class CadDocumentChangeSet
             AffectsLayoutStructure = affectsLayoutStructure,
             AffectsViewSettings = affectsViewSettings,
             TableChanges = tableChanges,
-            HasResolvedBlockReferenceChanges = resolvedBlockReferences
+            HasResolvedBlockReferenceChanges = resolvedBlockReferences,
+            IsDerivedGeometry = onlyDerivedGeometry
         };
     }
 

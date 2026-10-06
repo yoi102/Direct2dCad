@@ -561,7 +561,7 @@ public sealed class Direct2DRenderHostIntegrationTests
             [1, 2, 3, 4]);
         document.MoveEntityToBlock(ole.Id, layout.PaperSpaceBlockId);
         document.AddLine(new CadPointD(-10, 0), new CadPointD(10, 0));
-        var oleRequests = new List<Direct2DOleDrawRequest>();
+        var oleRequests = new List<CadOleRenderRequest>();
         var request = new CadPrintRequest(
             "Embedded raster printing",
             document,
@@ -570,7 +570,7 @@ public sealed class Direct2DRenderHostIntegrationTests
             oleRequest =>
             {
                 oleRequests.Add(oleRequest);
-                return new Direct2DOleDrawData(
+                return new CadOleRenderData(
                     oleRequest.PixelWidth,
                     oleRequest.PixelHeight,
                     checked(oleRequest.PixelWidth * 4),
@@ -1862,7 +1862,9 @@ public sealed class Direct2DRenderHostIntegrationTests
         host.SetHandleScene(handleScene);
         host.RebuildAll(document);
 
-        var textChanges = host.UpdateTextMeasurements(document);
+        var measurements = host.MeasurePendingTextBounds(document);
+        Assert.True(text.RequiresBoundsMeasurement); // Measuring does not mutate the document.
+        var textChanges = new Direct2dCad.Editor.CadEditor(document).ApplyDerivedTextBounds(measurements);
         Assert.False(text.RequiresBoundsMeasurement);
         Assert.Contains(textChanges.EntityChanges, change => change.EntityId == text.Id);
 
@@ -1965,11 +1967,11 @@ public sealed class Direct2DRenderHostIntegrationTests
         host.AttachImageSource(imageSource);
         host.SetSize(420, 320);
 
-        var oleDrawRequests = new List<Direct2DOleDrawRequest>();
+        var oleDrawRequests = new List<CadOleRenderRequest>();
         host.SetOleDrawCallback(request =>
         {
             oleDrawRequests.Add(request);
-            return new Direct2DOleDrawData(
+            return new CadOleRenderData(
                 request.PixelWidth,
                 request.PixelHeight,
                 checked(request.PixelWidth * 4),

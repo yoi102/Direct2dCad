@@ -16,7 +16,7 @@ public sealed class CadDxfUnitRequiredException(int declaredCode) : IOException(
 public sealed record CadDxfLimits(long MaximumBytes=64*1024*1024,int MaximumGroups=3_000_000,int MaximumEntities=500_000,int MaximumBlockDepth=32);
 
 /// <summary>Bounded ASCII DXF exchange, exported as R2004. Unsupported objects are reported; invalid structure is rejected.</summary>
-public sealed class CadDxfStorage
+public sealed partial class CadDxfStorage
 {
     public CadDxfLimits Limits {get;init;}=new();
     private static readonly CultureInfo Culture=CultureInfo.InvariantCulture;
@@ -232,6 +232,11 @@ public sealed class CadDxfStorage
             token.ThrowIfCancellationRequested();
             if(doc.GetBlock(e.OwnerBlockId).Kind==CadBlockKind.SystemSpace && e.OwnerBlockId!=BlockId.ModelSpace){Count(report,"Paper space");continue;}
             if(e is CadDimension)Count(report,"Dimension association flattened to strokes");
+            else if(e is CadRegion region)
+            {
+                Count(report,"Region converted to boundary polylines");
+                if(region.FillStyleId is not null && !TryRegionSolidFill(doc,region,out _))Count(report,"Fill omitted");
+            }
             else if(e is not (CadLine or CadCircle or CadArc or CadPolyline or CadText or CadBlockReference or CadCompositePath) || e is CadCompositePath p && p.Segments.Any(s=>s is CadCompositeSplineSegment))Count(report,e.GetType().Name);
             if(e is CadText t)Count(report,t.IsInverted?"TEXT font/effects":"TEXT font substituted");
             if(e.IsLocked)Count(report,"Entity lock omitted");
@@ -282,17 +287,37 @@ public sealed class CadDxfStorage
                 Pair(0,"ENDTAB");var styleTable=Table("STYLE",1);TableRecord("STYLE","AcDbTextStyleTableRecord",styleTable);Pair(2,"STANDARD");Pair(70,0);Pair(40,0);Pair(41,1);Pair(50,0);Pair(71,0);Pair(42,2.5);Pair(3,"txt");Pair(4,"");Pair(0,"ENDTAB");
                 var blockTable=Table("BLOCK_RECORD",blockHandles.Count);foreach(var block in doc.Blocks.Values){TableRecord("BLOCK_RECORD","AcDbBlockTableRecord",blockTable,blockHandles[block.Id]);Pair(2,BlockName(block));Pair(70,UnitCode(unit));Pair(280,0);Pair(281,1);}Pair(0,"ENDTAB");Pair(0,"ENDSEC");
                 var entityOwner=blockHandles[BlockId.ModelSpace];
-                void Common(CadEntity e,string type)
+                void Common(CadEntity e,string type,CadColor? fillColor=null)
                 {
                     Pair(0,type);Pair(5,Handle());Pair(330,entityOwner);Pair(100,"AcDbEntity");Pair(8,LayerName(e.LayerId));Pair(60,e.IsVisible?0:1);
-                    if(e.ColorSource==CadColorSource.Explicit){var style=GraphicStyle(e);var color=style is { } id && doc.TryGetStyle(id,out var s) && s is CadGraphicStyle g?g.StrokeColor:doc.GetLayer(e.LayerId).Color;Pair(420,(color.R<<16)|(color.G<<8)|color.B);}
+                    if(fillColor is { } fill){Pair(420,(fill.R<<16)|(fill.G<<8)|fill.B);if(fill.A!=255)Pair(440,0x02000000|(255-fill.A));}
+                    else if(e.ColorSource==CadColorSource.Explicit){var style=GraphicStyle(e);var color=style is { } id && doc.TryGetStyle(id,out var s) && s is CadGraphicStyle g?g.StrokeColor:doc.GetLayer(e.LayerId).Color;Pair(420,(color.R<<16)|(color.G<<8)|color.B);}
                     else Pair(62,e.ColorSource==CadColorSource.ByBlock?0:256);
                     Pair(370,e.UseLayerLineWeight?-1:(int)Math.Round((e.LineWeight?.Value??.18)*100));
                     Pair(6,e.StrokeStyle.DashStyle switch {CadStrokeDashStyle.Dash=>"DASHED",CadStrokeDashStyle.Dot=>"DOTTED",CadStrokeDashStyle.DashDot=>"DASHDOT",_=>"CONTINUOUS"});
-                    Pair(100,type switch {"LINE"=>"AcDbLine","CIRCLE" or "ARC"=>"AcDbCircle","LWPOLYLINE"=>"AcDbPolyline","TEXT"=>"AcDbText","INSERT"=>"AcDbBlockReference",_=>throw new InvalidOperationException("Unsupported DXF class.")});
+                    Pair(100,type switch {"LINE"=>"AcDbLine","CIRCLE" or "ARC"=>"AcDbCircle","LWPOLYLINE"=>"AcDbPolyline","TEXT"=>"AcDbText","INSERT"=>"AcDbBlockReference","HATCH"=>"AcDbHatch",_=>throw new InvalidOperationException("Unsupported DXF class.")});
                 }
                 void Polyline(CadEntity e,IReadOnlyList<(CadPointD Point,double Bulge)> points,bool closed)
                 {Common(e,"LWPOLYLINE");Pair(90,points.Count);Pair(70,closed?1:0);foreach(var v in points){Pair(10,v.Point.X*factor);Pair(20,v.Point.Y*factor);if(v.Bulge!=0)Pair(42,v.Bulge);}}
+                void Region(CadRegion region)
+                {
+                    var boundaries=region.Contours.Select(c=>RegionVertices(c,token)).ToArray();
+                    if(TryRegionSolidFill(doc,region,out var color))
+                    {
+                        // Standard non-associative SOLID HATCH; style 0 evaluates all loops by even-odd nesting.
+                        // Write the fill first so the independent stroked boundaries remain above it.
+                        Common(region,"HATCH",color);Point(default);Pair(210,0);Pair(220,0);Pair(230,1);
+                        Pair(2,"SOLID");Pair(70,1);Pair(71,0);Pair(91,boundaries.Length);
+                        foreach(var boundary in boundaries)
+                        {
+                            Pair(92,2);Pair(72,boundary.Any(v=>v.Bulge!=0)?1:0);Pair(73,1);Pair(93,boundary.Count);
+                            foreach(var v in boundary){Pair(10,v.Point.X*factor);Pair(20,v.Point.Y*factor);Pair(42,v.Bulge);}
+                            Pair(97,0);
+                        }
+                        Pair(75,0);Pair(76,1);Pair(98,0);
+                    }
+                    foreach(var boundary in boundaries)Polyline(region,boundary,true);
+                }
                 void Write(CadEntity e)
                 {
                     token.ThrowIfCancellationRequested();if(e.IsErased)return;
@@ -316,6 +341,7 @@ public sealed class CadDxfStorage
                         case CadText t:Common(e,"TEXT");Point(t.Position);Pair(40,t.Height*factor);Pair(1,Encode(t.Text));Pair(50,t.RotationRadians*180/Math.PI);Pair(7,"STANDARD");Pair(100,"AcDbText");break;
                         case CadBlockReference b:Common(e,"INSERT");Pair(2,BlockName(doc.GetBlock(b.DefinitionBlockId)));Point(b.Position);Pair(41,b.ScaleX);Pair(42,b.ScaleY);Pair(43,1);Pair(50,b.RotationRadians*180/Math.PI);break;
                         case CadDimension d:foreach(var s in d.Strokes){Common(e,"LINE");Point(s.Start);Point(s.End,11);}break;
+                        case CadRegion region:Region(region);break;
                     }
                 }
                 Section("BLOCKS");foreach(var block in doc.Blocks.Values)
@@ -327,7 +353,7 @@ public sealed class CadDxfStorage
         finally{if(File.Exists(temp))File.Delete(temp);}
     }
     private static StyleId? GraphicStyle(CadEntity e)=>e switch
-    {CadLine v=>v.GraphicStyleId,CadCircle v=>v.GraphicStyleId,CadArc v=>v.GraphicStyleId,CadPolyline v=>v.GraphicStyleId,CadCompositePath v=>v.GraphicStyleId,CadText v=>v.GraphicStyleId,CadBlockReference v=>v.GraphicStyleId,_=>null};
+    {CadLine v=>v.GraphicStyleId,CadCircle v=>v.GraphicStyleId,CadArc v=>v.GraphicStyleId,CadPolyline v=>v.GraphicStyleId,CadCompositePath v=>v.GraphicStyleId,CadText v=>v.GraphicStyleId,CadBlockReference v=>v.GraphicStyleId,CadRegion v=>v.GraphicStyleId,_=>null};
     private static void SetGraphicStyle(CadEntity e,StyleId id)
     {
         switch(e)

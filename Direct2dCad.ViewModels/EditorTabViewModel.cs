@@ -50,6 +50,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private bool _isSyncingUserSettings;
     private bool _isRestoringWorkspaceSettings;
     private bool _disposed;
+    private IDisposable? _documentScope;
     private CadEditor? _trackedEditor;
     private readonly IDisposable _viewSettingsChangedSubscription;
     private readonly IDisposable _selectionFilterChangedSubscription;
@@ -84,19 +85,35 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         _saveSession = new(CadDocumentViewModel.CadEditor, documentWriter);
         LayoutWorkspace = new LayoutWorkspaceViewModel(CadDocumentViewModel);
         CadDocumentViewModel.ApplyUserSettings(_userSettings);
-        CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
-        _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
-        _selectionFilterChangedSubscription = selectionFilterChangedSubscriber.Subscribe(OnSelectionFilterChanged);
-        _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
-        AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
-        CadDocumentViewModel.DrawingDefaults.Text = TextInput;
-        ApplyDocumentViewSettingsToToolbar();
-        ApplyUserSettingsToToolbar();
-        CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
-        ContentId = Id = cadDocumentViewModel.CadEditor.Document.Id.ToString();
-        Title = cadDocumentViewModel.CadEditor.Document.Name;
-        ToolTip = $"id: {cadDocumentViewModel.CadEditor.Document.Id}";
-        RefreshModifiedState();
+        try
+        {
+            CadDocumentViewModel.PropertyChanged += OnCadDocumentViewModelPropertyChanged;
+            _viewSettingsChangedSubscription = viewSettingsChangedSubscriber.Subscribe(OnCadDocumentViewSettingsChanged);
+            _selectionFilterChangedSubscription = selectionFilterChangedSubscriber.Subscribe(OnSelectionFilterChanged);
+            _interactionStateChangedSubscription = interactionStateChangedSubscriber.Subscribe(OnInteractionStateChanged);
+            AttachDocumentChangeTracking(CadDocumentViewModel.CadEditor);
+            CadDocumentViewModel.DrawingDefaults.Text = TextInput;
+            ApplyDocumentViewSettingsToToolbar();
+            ApplyUserSettingsToToolbar();
+            CadCanvasToolMode = CadDocumentViewModel.CadCanvasToolMode;
+            ContentId = Id = cadDocumentViewModel.CadEditor.Document.Id.ToString();
+            Title = cadDocumentViewModel.CadEditor.Document.Name;
+            ToolTip = $"id: {cadDocumentViewModel.CadEditor.Document.Id}";
+            RefreshModifiedState();
+        }
+        catch
+        {
+            // DI cannot dispose an object whose constructor never returned.
+            DetachDocumentChangeTracking();
+            CadDocumentViewModel.PropertyChanged -= OnCadDocumentViewModelPropertyChanged;
+            _viewSettingsChangedSubscription?.Dispose();
+            _selectionFilterChangedSubscription?.Dispose();
+            _interactionStateChangedSubscription?.Dispose();
+            _saveSession.Dispose();
+            _recoveryLifetime.Dispose();
+            Operation.Dispose();
+            throw;
+        }
 
     }
 
@@ -1102,24 +1119,47 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         return !double.IsNaN(value) && !double.IsInfinity(value);
     }
 
+    internal void OwnDocumentScope(IDisposable scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_documentScope is not null)
+            throw new InvalidOperationException("The document already owns a service scope.");
+        _documentScope = scope;
+    }
+
     public void Dispose()
     {
         if (_disposed)
             return;
         _disposed = true;
-        Operation.Dispose();
-        _recoveryLifetime.Cancel();
-        if (!IsModified || _discardRecoveryOnClose) _ = RemoveRecoveryCopiesAsync();
-        _recoveryLifetime.Dispose();
-        _saveSession.Dispose();
-        SaveWorkspaceSettings();
-        SaveUserSettings();
-        DetachDocumentChangeTracking();
-        CadDocumentViewModel.PropertyChanged -= OnCadDocumentViewModelPropertyChanged;
-        _viewSettingsChangedSubscription.Dispose();
-        _selectionFilterChangedSubscription.Dispose();
-        _interactionStateChangedSubscription.Dispose();
-        CadDocumentViewModel.Dispose();
+        try
+        {
+            Operation.Dispose();
+            _recoveryLifetime.Cancel();
+            if (!IsModified || _discardRecoveryOnClose) _ = RemoveRecoveryCopiesAsync();
+            _recoveryLifetime.Dispose();
+            _saveSession.Dispose();
+            SaveWorkspaceSettings();
+            SaveUserSettings();
+        }
+        finally
+        {
+            try
+            {
+                DetachDocumentChangeTracking();
+                CadDocumentViewModel.PropertyChanged -= OnCadDocumentViewModelPropertyChanged;
+                _viewSettingsChangedSubscription.Dispose();
+                _selectionFilterChangedSubscription.Dispose();
+                _interactionStateChangedSubscription.Dispose();
+                CadDocumentViewModel.Dispose();
+            }
+            finally
+            {
+                // Scope disposal calls Dispose on this tab again; _disposed makes that safe.
+                Interlocked.Exchange(ref _documentScope, null)?.Dispose();
+            }
+        }
     }
 
     private void OnCadDocumentViewSettingsChanged(CadDocumentViewSettingsChangedMessage message)

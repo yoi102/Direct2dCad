@@ -41,7 +41,7 @@ public sealed class CommandCoverageTests
     public async Task CancelDuringBooleanPreparationLeavesSourcesAndHistoryUntouched()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Cancel Boolean").DocumentViewModel;
+        var vm = workspace.CreateDocument("Cancel Boolean").GetViewModel();
         var sources = Enumerable.Range(0, 100).Select(i => vm.CadEditor.Document.AddCircle(new(i % 10 * 15, i / 10 * 15), 10)).ToArray();
         var history = vm.CadEditor.CreateDocumentHistorySnapshot();
         using var cancellation = new CancellationTokenSource();
@@ -61,7 +61,7 @@ public sealed class CommandCoverageTests
     public async Task BooleanToolsReturnExactRegionAndRestoreSourcesOnUndo(string operation, double area)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Boolean").DocumentViewModel;
+        var vm = workspace.CreateDocument("Boolean").GetViewModel();
         var doc = vm.CadEditor.Document;
         var a = doc.AddRectangle(CadRectD.FromLTRB(0, 0, 10, 10));
         var b = doc.AddRectangle(CadRectD.FromLTRB(5, 0, 15, 10));
@@ -86,7 +86,7 @@ public sealed class CommandCoverageTests
     public async Task BooleanFailureAndCancellationNeverEraseOperandsOrAddHistory()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Protected").DocumentViewModel;
+        var vm = workspace.CreateDocument("Protected").GetViewModel();
         var doc = vm.CadEditor.Document;
         var a = doc.AddCircle(default, 1); var b = doc.AddCircle(new(10, 0), 1);
         var executor = new CadWorkspaceToolExecutor(workspace);
@@ -107,7 +107,7 @@ public sealed class CommandCoverageTests
     public async Task DimensionCreationAndEditingKeepAssociationAndUndoAllStyleFieldsTogether()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Dimensions").DocumentViewModel;
+        var vm = workspace.CreateDocument("Dimensions").GetViewModel();
         var line = vm.CadEditor.AddLine(default, new(100, 0));
         var executor = new CadWorkspaceToolExecutor(workspace);
         await ToolExecutionWorkspace.Execute(executor, "add_dimension", new { kind = "Aligned", source_entity_id = line.Value,
@@ -152,7 +152,7 @@ public sealed class CommandCoverageTests
     public async Task InvalidDimensionEditsLeaveGeometryAndHistoryUntouched(string properties)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Validation").DocumentViewModel;
+        var vm = workspace.CreateDocument("Validation").GetViewModel();
         var d = vm.CadEditor.Document.AddDimension(new(CadDimensionKind.Aligned, [new(default), new(new(100, 0))], new(50, 20), new()));
         var original = d.Definition;
         var history = vm.CadEditor.CreateDocumentHistorySnapshot();
@@ -171,7 +171,7 @@ public sealed class CommandCoverageTests
     public async Task HumanTransformsUseDisplayUnitsAndReuseUndoableTools(string command, double x, double y)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Inches").DocumentViewModel;
+        var vm = workspace.CreateDocument("Inches").GetViewModel();
         vm.CadEditor.Document.DocumentSettings.SetUnit(CadUnit.Inch);
         var id = vm.CadEditor.AddLine(new(25.4, 0), new(50.8, 0));
         vm.SelectEntities([id]);
@@ -187,7 +187,7 @@ public sealed class CommandCoverageTests
     public async Task HumanBooleanAndDuplicateCommandsAreDiscoverableAndKeepClipboardAliases()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Shortcuts").DocumentViewModel;
+        var vm = workspace.CreateDocument("Shortcuts").GetViewModel();
         var a = vm.CadEditor.AddCircle(default, 10); var b = vm.CadEditor.AddCircle(new(10, 0), 10);
         vm.SelectEntities([a, b]);
         var service = new CadToolCommandLineService(workspace);
@@ -238,8 +238,8 @@ public sealed class CommandCoverageTests
         await agent.ExecuteAsync(new("json", "get_document_summary", "[]"), default);
         using var canceled = new CancellationTokenSource(); canceled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => agent.ExecuteAsync(new("cancel", "list_entities", "{}"), canceled.Token));
-        await bus.GetService<IAsyncPublisher<CadInteractionActivityMessage>>().PublishAsync(new(other.DocumentViewModel, "Other", "Select"));
-        await bus.GetService<IAsyncPublisher<CadCommandActivityMessage>>().PublishAsync(new(other.DocumentViewModel, "Other",
+        await bus.GetService<IAsyncPublisher<CadInteractionActivityMessage>>().PublishAsync(new(other.GetViewModel(), "Other", "Select"));
+        await bus.GetService<IAsyncPublisher<CadCommandActivityMessage>>().PublishAsync(new(other.GetViewModel(), "Other",
             new("Move Entities", Direct2dCad.Editor.Commands.CadCommandActivityKind.Execute, Direct2dCad.Editor.Commands.CadCommandActivityScope.Document, 1, true)));
         terminal.FlushPendingEntries();
         Assert.Contains(terminal.Entries, e => e.Text.Contains("[AI] [Other] get_document_summary Completed"));

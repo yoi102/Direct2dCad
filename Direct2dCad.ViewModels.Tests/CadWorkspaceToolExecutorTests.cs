@@ -700,6 +700,6 @@ public sealed class CadWorkspaceToolExecutorTests
             string.Empty,
             IsModified: false,
             IsActive: documentId == _activeDocumentId,
-            EditorTab: null!);
+            Host: null!);
     }
 }

@@ -31,9 +31,9 @@ internal sealed class ToolExecutionWorkspace : ICadToolWorkspace, IDisposable
         _active = GetRequiredDocument(documentId).DocumentId;
         return true;
     }
-    public bool RenameDocument(string documentId, string name) => GetRequiredDocument(documentId).EditorTab.TryRenameDocument(name);
+    public bool RenameDocument(string documentId, string name) => ((EditorTabViewModel)GetRequiredDocument(documentId).Host).TryRenameDocument(name);
     public Task<bool> SaveDocumentAsync(string documentId, string? filePath, CancellationToken cancellationToken) =>
-        GetRequiredDocument(documentId).EditorTab.SaveToFileForWorkspaceToolAsync(filePath ?? "test.d2cad", cancellationToken);
+        ((EditorTabViewModel)GetRequiredDocument(documentId).Host).SaveToFileForWorkspaceToolAsync(filePath ?? "test.d2cad", cancellationToken);
     public Task<bool> CloseDocumentAsync(string documentId)
     {
         if (!AllowClose) return Task.FromResult(false);

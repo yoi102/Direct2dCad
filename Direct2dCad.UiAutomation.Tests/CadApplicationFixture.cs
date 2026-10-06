@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
-using Application = FlaUI.Core.Application;
+using FlaUiApplication = FlaUI.Core.Application;
 
 namespace Direct2dCad.UiAutomation.Tests;
 
@@ -12,7 +12,7 @@ public sealed class CadApplicationFixture : IDisposable
     private readonly string _settingsDirectory;
     private readonly ProcessStartInfo _startInfo;
 
-    public Application Application { get; private set; }
+    public FlaUiApplication Application { get; private set; }
     public UIA3Automation Automation { get; }
     public Window MainWindow { get; private set; }
     public string SettingsDirectory => _settingsDirectory;
@@ -46,7 +46,7 @@ public sealed class CadApplicationFixture : IDisposable
             startInfo.Environment["DIRECT2DCAD_BINDING_TRACE_PATH"] = BindingTracePath;
         _startInfo = startInfo;
 
-        Application = Application.Launch(startInfo);
+        Application = FlaUiApplication.Launch(startInfo);
         Automation = new UIA3Automation();
         MainWindow = Application.GetMainWindow(
                          Automation,
@@ -60,7 +60,7 @@ public sealed class CadApplicationFixture : IDisposable
     {
         if (!Application.HasExited) throw new InvalidOperationException("The previous test process is still running.");
         Application.Dispose();
-        Application = Application.Launch(_startInfo);
+        Application = FlaUiApplication.Launch(_startInfo);
         MainWindow = Application.GetMainWindow(Automation, TimeSpan.FromSeconds(30)) ??
             throw new InvalidOperationException("Direct2dCad did not create its main window after restarting.");
         MainWindow.Focus();

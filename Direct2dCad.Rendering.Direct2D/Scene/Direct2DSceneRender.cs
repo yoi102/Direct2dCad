@@ -21,6 +21,9 @@ namespace Direct2dCad.Rendering.Direct2D.Scene;
 public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager, IDisposable
 {
     private const int MaximumPreparedLayoutViewports = 4;
+    private readonly CadRenderResourceBudget.DocumentLease _resourceDocument;
+    private readonly CadRenderResourceBudget.DocumentLease.RendererLease _resourceAllowance;
+    private readonly bool _ownsResourceDocument;
     private readonly Direct2DStyleResourceCache _styleResources = new();
     private readonly Direct2DTextFormatResourceCache _textFormatResources = new();
     private readonly Direct2DResourceCache _resourceCache;
@@ -43,12 +46,19 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     private readonly List<CadEntity> _parallelVisibleEntities = new(256);
     private readonly Dictionary<EntityId, InlineMovePreview> _inlineMovePreviews = [];
     private bool _disposed;
+    private long _cachePressureBudget;
+    private (CadDocument Document, CadRectD Bounds, double Zoom, BlockId Owner, LayoutId? Layout)? _cachePressureView;
     private double? _lastFrameZoom;
 
     public CadRenderStatistics RenderStatistics { get; private set; } = CadRenderStatistics.Empty;
 
-    public Direct2DSceneRender()
+    public Direct2DSceneRender() : this(null) { }
+
+    internal Direct2DSceneRender(CadRenderResourceBudget.DocumentLease? resourceDocument)
     {
+        _ownsResourceDocument = resourceDocument is null;
+        _resourceDocument = resourceDocument ?? CadRenderResourceBudget.Shared.RegisterDocument();
+        _resourceAllowance = _resourceDocument.RegisterRenderer();
         _resourceCache = new Direct2DResourceCache(
             _styleResources,
             _textFormatResources,
@@ -112,13 +122,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _statistics);
     }
 
-    public Direct2DOleDrawCallback? OleDrawCallback
+    public CadOleRenderCallback? OleDrawCallback
     {
         get => _oleRenderer.DrawCallback;
         set => _oleRenderer.DrawCallback = value;
     }
 
-    public Direct2DOleReleaseCallback? OleReleaseCallback
+    public CadOleReleaseCallback? OleReleaseCallback
     {
         get => _oleRenderer.ReleaseCallback;
         set => _oleRenderer.ReleaseCallback = value;
@@ -129,6 +139,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(changes);
         ThrowIfDisposed();
+        if (changes.DocumentChanged) _cachePressureBudget = 0;
         _tileCache.ApplyChanges(document, changes);
         _commandListCache.ApplyChanges(document, changes);
         _blockReferenceRenderer.ApplyChanges(document, changes);
@@ -164,10 +175,15 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             deviceContext,
             prepareBackgroundResources ? document : null);
         _lastFrameZoom = null;
+        _cachePressureBudget = 0;
+        _cachePressureView = null;
+        _resourceAllowance.Report(0);
         _commandListCache.ResetBackgroundResources(factory, device);
 
         if (!prepareBackgroundResources && document is not null)
             _resourceCache.RebuildAll(document);
+        _cachePressureBudget = 0;
+        _cachePressureView = null;
     }
 
     internal void SuspendBackgroundChunkRecording()
@@ -185,6 +201,8 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _blockReferenceRenderer.ClearCache();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildAll(document);
+        _cachePressureBudget = 0;
+        _cachePressureView = null;
     }
 
     public void RebuildEntity(CadDocument document, EntityId entityId)
@@ -233,7 +251,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                                      viewportZoom.Value == _lastFrameZoom.Value;
         if (viewportZoom is not null)
             _lastFrameZoom = viewportZoom;
-        _resourceCache.BeginFrame(allowRealizations);
+        _resourceCache.BeginFrame(allowRealizations && _cachePressureBudget == 0);
         _styleResources.BeginFrame();
         _textFormatResources.BeginFrame();
     }
@@ -283,6 +301,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
         finally
         {
+            EnforceResourceBudget();
             _statistics.RecordGpuCacheEviction(
                 _resourceCache.EnforceGeometryRealizationBudget());
             _statistics.RecordGeometryRealizations(
@@ -294,17 +313,49 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 _blockReferenceRenderer.EstimatedCacheBytes,
                 _resourceCache.GeometryRealizationEstimatedBytes,
                 _resourceCache.HatchTileEstimatedBytes,
-                _resourceCache.ImageBitmapEstimatedBytes,
+                _resourceCache.ImageBitmapEstimatedBytes + _transientSceneRenderer.EstimatedImageBytes,
                 _oleRenderer.EstimatedCacheBytes,
-                Direct2DSceneTileCache.CacheBudgetBytes +
-                Direct2DCommandListChunkCache.CacheBudgetBytes +
-                Direct2DBlockReferenceRenderer.CacheBudgetBytes +
-                Direct2DResourceCache.GeometryRealizationCacheBudgetBytes +
-                Direct2DResourceCache.HatchTileCacheBudgetBytes +
-                Direct2DOleRenderer.CacheBudgetBytes);
+                _resourceAllowance.LimitBytes,
+                _backgroundRenderer.EstimatedCacheBytes,
+                _transientSceneRenderer.EstimatedCommandListBytes);
             RenderStatistics = _statistics.Snapshot();
             _statistics.EndFrame();
         }
+    }
+
+    internal long EstimatedRetainedCacheBytes => _tileCache.EstimatedBytes +
+        _commandListCache.EstimatedBytes + _blockReferenceRenderer.EstimatedCacheBytes +
+        _resourceCache.GeometryRealizationEstimatedBytes + _resourceCache.HatchTileEstimatedBytes +
+        _resourceCache.ImageBitmapEstimatedBytes + _oleRenderer.EstimatedCacheBytes +
+        _transientSceneRenderer.EstimatedImageBytes + _transientSceneRenderer.EstimatedCommandListBytes +
+        _backgroundRenderer.EstimatedCacheBytes;
+
+    internal void EnforceResourceBudget()
+    {
+        var budget = _resourceAllowance.LimitBytes;
+        if (budget > _cachePressureBudget) _cachePressureBudget = 0;
+        if (EstimatedRetainedCacheBytes > budget)
+        {
+            _cachePressureBudget = Math.Max(1, budget);
+            // First release caches which can own references to entity/OLE/image resources.
+            // Drawing remains correct: every cache has an immediate rendering fallback.
+            _tileCache.Clear();
+            _commandListCache.Clear();
+            _blockReferenceRenderer.ClearCache();
+            _transientSceneRenderer.Clear();
+            _backgroundRenderer.Clear();
+            _statistics.RecordGpuCacheEviction();
+            if (EstimatedRetainedCacheBytes > budget)
+                _statistics.RecordGpuCacheEviction(_resourceCache.EnforceGeometryRealizationBudget(0));
+            if (EstimatedRetainedCacheBytes > budget)
+                _resourceCache.HatchTiles.Clear();
+            if (EstimatedRetainedCacheBytes > budget)
+                _oleRenderer.Clear();
+            if (EstimatedRetainedCacheBytes > budget)
+                _statistics.RecordGpuCacheEviction(_resourceCache.EvictImageResources(
+                    Math.Max(0, budget - (EstimatedRetainedCacheBytes - _resourceCache.ImageBitmapEstimatedBytes))));
+        }
+        _resourceAllowance.Report(EstimatedRetainedCacheBytes);
     }
 
     public void PrepareOleTiles(
@@ -395,6 +446,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             return false;
 
         options ??= new CadRenderOptions();
+        var budgetView = (document, viewport.VisibleWorldBounds, viewport.Zoom,
+            options.ActiveOwnerBlockId, options.ActiveLayoutId);
+        if (_cachePressureView != budgetView)
+        {
+            _cachePressureBudget = 0;
+            _cachePressureView = budgetView;
+        }
         var backgroundGeometryBuildPending =
             _resourceCache.ApplyBackgroundGeometryPreparation(
                 document,
@@ -403,6 +461,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 options);
         if (backgroundGeometryBuildPending)
             return true;
+        // Do not repeatedly rebuild and evict the same retained caches while the
+        // document share is exhausted. Retry after edits or an increased quota.
+        if (_cachePressureBudget > 0 && _resourceAllowance.LimitBytes <= _cachePressureBudget)
+            return false;
 
         var lodPending = _resourceCache.PrepareLevelOfDetailGeometries(
             document, options.IsLevelOfDetailEnabled, buildStep, out var lodChanged);
@@ -1711,17 +1773,14 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         if (_disposed)
             return;
 
-        _tileCache.Dispose();
-        _commandListCache.Dispose();
-        _backgroundRenderer.Dispose();
-        _blockReferenceRenderer.Dispose();
-        _entityOrderCache.Dispose();
-        _resourceCache.Dispose();
-        _transientSceneRenderer.Dispose();
-        _oleRenderer.Dispose();
-        _textFormatResources.Dispose();
-        _styleResources.Dispose();
         _disposed = true;
+        Direct2DResourceCleanup.Run(
+            _tileCache.Dispose, _commandListCache.Dispose, _backgroundRenderer.Dispose,
+            _blockReferenceRenderer.Dispose, _entityOrderCache.Dispose, _resourceCache.Dispose,
+            _transientSceneRenderer.Dispose, _oleRenderer.Dispose,
+            _textFormatResources.Dispose, _styleResources.Dispose,
+            _resourceAllowance.Dispose,
+            () => { if (_ownsResourceDocument) _resourceDocument.Dispose(); });
     }
 
     private void ThrowIfDisposed()

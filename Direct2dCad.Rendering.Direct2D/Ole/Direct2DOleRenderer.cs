@@ -26,9 +26,9 @@ internal sealed class Direct2DOleRenderer(
     private const int MaxLogicalPixelSide = 1_048_576;
     private readonly Direct2DOleBitmapCache _cache = new(statistics);
     private readonly Dictionary<EntityId, ReadOnlyMemory<byte>> _entityOleBytes = [];
-    private readonly HashSet<Direct2DOleRenderKey> _activeTransientKeys = [];
-    private readonly HashSet<Direct2DOleRenderKey> _cachedTransientKeys = [];
-    private readonly List<Direct2DOleRenderKey> _staleTransientKeys = [];
+    private readonly HashSet<CadOleRenderKey> _activeTransientKeys = [];
+    private readonly HashSet<CadOleRenderKey> _cachedTransientKeys = [];
+    private readonly List<CadOleRenderKey> _staleTransientKeys = [];
     private readonly HashSet<Direct2DOleBitmapCache.TileKey> _visibleTileKeys = [];
     private CadTransientScene? _reconciledTransientScene;
     private long _reconciledTransientVersion = -1;
@@ -37,9 +37,9 @@ internal sealed class Direct2DOleRenderer(
     public long EstimatedCacheBytes => _cache.EstimatedBytes;
     public static long CacheBudgetBytes => Direct2DOleBitmapCache.CacheBudgetBytes;
 
-    public Direct2DOleDrawCallback? DrawCallback { get; set; }
+    public CadOleRenderCallback? DrawCallback { get; set; }
 
-    public Direct2DOleReleaseCallback? ReleaseCallback { get; set; }
+    public CadOleReleaseCallback? ReleaseCallback { get; set; }
 
     public void PrepareTiles(
         CadDocument document,
@@ -75,7 +75,7 @@ internal sealed class Direct2DOleRenderer(
 
                 PrepareTiles(
                     context,
-                    Direct2DOleRenderKey.ForEntity(ole.Id),
+                    CadOleRenderKey.ForEntity(ole.Id),
                     ole.Bounds,
                     GetEntityBytes(ole),
                     viewport,
@@ -125,7 +125,7 @@ internal sealed class Direct2DOleRenderer(
 
         Draw(
             context,
-            Direct2DOleRenderKey.ForEntity(ole.Id),
+            CadOleRenderKey.ForEntity(ole.Id),
             ole.Bounds,
             GetEntityBytes(ole),
             ole.Opacity,
@@ -150,7 +150,7 @@ internal sealed class Direct2DOleRenderer(
 
         PrepareTiles(
             context,
-            Direct2DOleRenderKey.ForEntity(ole.Id),
+            CadOleRenderKey.ForEntity(ole.Id),
             ole.Bounds,
             GetEntityBytes(ole),
             viewport,
@@ -175,8 +175,8 @@ internal sealed class Direct2DOleRenderer(
         PrepareTiles(
             context,
             ole.SourceEntityId is { } sourceId
-                ? Direct2DOleRenderKey.ForEntity(sourceId)
-                : Direct2DOleRenderKey.ForTransient(ole.RenderId),
+                ? CadOleRenderKey.ForEntity(sourceId)
+                : CadOleRenderKey.ForTransient(ole.RenderId),
             ole.Bounds,
             ole.OleBytes,
             viewport,
@@ -223,8 +223,8 @@ internal sealed class Direct2DOleRenderer(
         Draw(
             context,
             ole.SourceEntityId is { } sourceId
-                ? Direct2DOleRenderKey.ForEntity(sourceId)
-                : Direct2DOleRenderKey.ForTransient(ole.RenderId),
+                ? CadOleRenderKey.ForEntity(sourceId)
+                : CadOleRenderKey.ForTransient(ole.RenderId),
             ole.Bounds,
             ole.OleBytes,
             ole.Opacity,
@@ -313,8 +313,8 @@ internal sealed class Direct2DOleRenderer(
                     PrepareTiles(
                         context,
                         transient.SourceEntityId is { } sourceId
-                            ? Direct2DOleRenderKey.ForEntity(sourceId)
-                            : Direct2DOleRenderKey.ForTransient(transient.RenderId),
+                            ? CadOleRenderKey.ForEntity(sourceId)
+                            : CadOleRenderKey.ForTransient(transient.RenderId),
                         transient.Bounds,
                         transient.OleBytes,
                         viewport,
@@ -334,7 +334,7 @@ internal sealed class Direct2DOleRenderer(
 
                     PrepareTiles(
                         context,
-                        Direct2DOleRenderKey.ForEntity(ole.Id),
+                        CadOleRenderKey.ForEntity(ole.Id),
                         translatedBounds,
                         GetEntityBytes(ole),
                         viewport,
@@ -352,7 +352,7 @@ internal sealed class Direct2DOleRenderer(
             {
                 case CadTransientOleObject { SourceEntityId: null } ole:
                     _activeTransientKeys.Add(
-                        Direct2DOleRenderKey.ForTransient(ole.RenderId));
+                        CadOleRenderKey.ForTransient(ole.RenderId));
                     break;
                 case CadTransientGroup group:
                     CollectTransientKeys(group.Items);
@@ -392,7 +392,7 @@ internal sealed class Direct2DOleRenderer(
     public void RemoveEntity(EntityId entityId)
     {
         _entityOleBytes.Remove(entityId);
-        _cache.Remove(Direct2DOleRenderKey.ForEntity(entityId));
+        _cache.Remove(CadOleRenderKey.ForEntity(entityId));
     }
 
     public void CompleteFrame()
@@ -417,7 +417,7 @@ internal sealed class Direct2DOleRenderer(
 
     private void PrepareTiles(
         ID2D1DeviceContext context,
-        Direct2DOleRenderKey key,
+        CadOleRenderKey key,
         CadRectD bounds,
         ReadOnlyMemory<byte> bytes,
         CadViewport viewport,
@@ -449,7 +449,7 @@ internal sealed class Direct2DOleRenderer(
 
     private void Draw(
         ID2D1DeviceContext context,
-        Direct2DOleRenderKey key,
+        CadOleRenderKey key,
         CadRectD bounds,
         ReadOnlyMemory<byte> bytes,
         double opacity,
@@ -532,7 +532,7 @@ internal sealed class Direct2DOleRenderer(
 
     private bool TryPopulateTiles(
         ID2D1DeviceContext context,
-        Direct2DOleRenderKey key,
+        CadOleRenderKey key,
         ReadOnlyMemory<byte> bytes,
         Direct2DOleBitmapCache.Entry entry,
         IReadOnlySet<Direct2DOleBitmapCache.TileKey> visibleTiles)
@@ -561,7 +561,7 @@ internal sealed class Direct2DOleRenderer(
 
     private ID2D1Bitmap? CreateTileBitmap(
         ID2D1DeviceContext context,
-        Direct2DOleRenderKey key,
+        CadOleRenderKey key,
         ReadOnlyMemory<byte> bytes,
         Direct2DOleBitmapCache.Entry entry,
         Direct2DOleBitmapCache.TileKey tileKey)
@@ -570,12 +570,12 @@ internal sealed class Direct2DOleRenderer(
         var y = tileKey.Row * TilePixelSide;
         var width = Math.Min(TilePixelSide, entry.PixelWidth - x);
         var height = Math.Min(TilePixelSide, entry.PixelHeight - y);
-        Direct2DOleDrawData? data = null;
+        CadOleRenderData? data = null;
         if (DrawCallback is not null)
         {
             try
             {
-                data = DrawCallback(new Direct2DOleDrawRequest(
+                data = DrawCallback(new CadOleRenderRequest(
                     key,
                     bytes,
                     entry.PixelWidth,
@@ -685,7 +685,7 @@ internal sealed class Direct2DOleRenderer(
     }
 
     private void SetCacheEntry(
-        Direct2DOleRenderKey key,
+        CadOleRenderKey key,
         Direct2DOleBitmapCache.Entry entry)
     {
         _cache.Set(key, entry);
@@ -762,13 +762,13 @@ internal sealed class Direct2DOleRenderer(
             MathF.Min(left.Bottom, right.Bottom));
     }
 
-    private static bool IsValidDrawData(Direct2DOleDrawData? data)
+    private static bool IsValidDrawData(CadOleRenderData? data)
     {
         return data is not null && data.PixelWidth > 0 && data.PixelHeight > 0 &&
                data.Stride >= data.PixelWidth * 4 && data.Pixels.Length >= data.Stride * data.PixelHeight;
     }
 
-    private static ID2D1Bitmap CreateBitmap(ID2D1DeviceContext context, Direct2DOleDrawData data)
+    private static ID2D1Bitmap CreateBitmap(ID2D1DeviceContext context, CadOleRenderData data)
     {
         var handle = GCHandle.Alloc(data.Pixels, GCHandleType.Pinned);
         try

@@ -11,7 +11,7 @@ public static class Direct2DOffscreenRenderer
         CadRenderOptions options,
         int pixelWidth,
         int pixelHeight,
-        Direct2DOleDrawCallback? oleDrawCallback = null)
+        CadOleRenderCallback? oleDrawCallback = null)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(viewport);

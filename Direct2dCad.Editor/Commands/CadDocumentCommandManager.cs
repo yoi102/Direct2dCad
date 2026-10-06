@@ -44,14 +44,12 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet Execute(ICadCommand command)
     {
-        EnsureEditable();
         ArgumentNullException.ThrowIfNull(command);
-        EnsureOutsideAtomicBatch();
-        EnsureHistoryHealthy();
+        EnsureCanExecute();
 
         var result = command.Execute(_document);
-        _history.PushExecuted(command,estimatedBytes:CadCommandPayloadEstimate.Estimate(command));
-        _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
+        RecordExecuted(command);
+        TrimHistory();
         _changes.Publish(result);
         PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.DocumentChanged);
         return result;
@@ -59,18 +57,13 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet ExecuteInBatch(ICadCommand command, Guid batchId)
     {
-        EnsureEditable();
         ArgumentNullException.ThrowIfNull(command);
-        EnsureHistoryHealthy();
-        if (batchId == Guid.Empty)
-            throw new ArgumentException("Batch id cannot be empty.", nameof(batchId));
-        if (_atomicBatchId is { } activeBatchId && activeBatchId != batchId)
-            throw new InvalidOperationException("An atomic operation cannot execute a different command batch.");
+        EnsureCanExecute(batchId);
 
         var result = command.Execute(_document);
-        _history.PushExecuted(command, batchId,CadCommandPayloadEstimate.Estimate(command));
+        RecordExecuted(command, batchId);
         if (_atomicBatchId is null)
-            _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
+            TrimHistory();
         _changes.Publish(result);
         PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.DocumentChanged);
         return result;
@@ -83,6 +76,7 @@ public sealed class CadDocumentCommandManager
     public T ExecuteAtomicBatch<T>(Guid batchId, Func<T> operation)
     {
         ArgumentNullException.ThrowIfNull(operation);
+        // The operation may be a query; each actual edit is guarded by ExecuteInBatch.
         EnsureHistoryHealthy();
         EnsureOutsideAtomicBatch();
         if (batchId == Guid.Empty)
@@ -96,7 +90,7 @@ public sealed class CadDocumentCommandManager
         {
             var result = operation();
             if (_history.UndoCount > undoCount)
-                _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
+                TrimHistory();
             return result;
         }
         catch
@@ -131,10 +125,11 @@ public sealed class CadDocumentCommandManager
     public CadDocumentChangeSet ExecuteRange(IEnumerable<ICadCommand> commands, string name = "Command Batch")
     {
         ArgumentNullException.ThrowIfNull(commands);
-        EnsureOutsideAtomicBatch();
-        EnsureHistoryHealthy();
+        EnsureCanExecute();
 
         var commandArray = commands.ToArray();
+        foreach (var command in commandArray)
+            ArgumentNullException.ThrowIfNull(command);
         if (commandArray.Length == 0)
             return CadDocumentChangeSet.Empty;
 
@@ -174,10 +169,10 @@ public sealed class CadDocumentCommandManager
 
         foreach (var command in commandArray)
         {
-            _history.PushExecuted(command, batchId);
+            RecordExecuted(command, batchId);
         }
 
-        _history.TrimUndo(_settings.MaximumUndoCommands,_settings.MaximumUndoBytes);
+        TrimHistory();
         var combined = CadDocumentChangeSet.Combine(results);
         _changes.Publish(combined);
         PublishActivity(name, CadCommandActivityKind.Execute, commandArray.Length, combined.DocumentChanged);
@@ -209,8 +204,7 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet Undo()
     {
-        EnsureOutsideAtomicBatch();
-        EnsureHistoryHealthy();
+        EnsureCanExecute();
         var entries = _history.PeekUndo(_settings.UndoMode);
         if (entries.Count == 0)
         {
@@ -229,8 +223,7 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet UndoBatch(Guid batchId)
     {
-        EnsureOutsideAtomicBatch();
-        EnsureHistoryHealthy();
+        EnsureCanExecute();
         var entries = _history.PeekUndoBatch(batchId);
         if (entries.Count == 0)
             return CadDocumentChangeSet.Empty;
@@ -246,8 +239,7 @@ public sealed class CadDocumentCommandManager
 
     public CadDocumentChangeSet Redo()
     {
-        EnsureOutsideAtomicBatch();
-        EnsureHistoryHealthy();
+        EnsureCanExecute();
         var entries = _history.PeekRedo(_settings.RedoMode);
         if (entries.Count == 0)
         {
@@ -364,6 +356,27 @@ public sealed class CadDocumentCommandManager
             MarkHistoryUnhealthy(failure);
             throw failure;
         }
+    }
+
+    private void RecordExecuted(ICadCommand command, Guid? batchId = null) =>
+        _history.PushExecuted(command, batchId, CadCommandPayloadEstimate.Estimate(command));
+
+    private void TrimHistory() =>
+        _history.TrimUndo(_settings.MaximumUndoCommands, _settings.MaximumUndoBytes);
+
+    private void EnsureCanExecute(Guid? batchId = null)
+    {
+        EnsureEditable();
+        EnsureHistoryHealthy();
+        if (batchId is null)
+        {
+            EnsureOutsideAtomicBatch();
+            return;
+        }
+        if (batchId == Guid.Empty)
+            throw new ArgumentException("Batch id cannot be empty.", nameof(batchId));
+        if (_atomicBatchId is { } activeBatchId && activeBatchId != batchId)
+            throw new InvalidOperationException("An atomic operation cannot execute a different command batch.");
     }
 
     private void EnsureHistoryHealthy()

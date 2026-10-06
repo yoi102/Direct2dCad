@@ -58,6 +58,8 @@ public sealed record CadRenderStatistics(
     double SurfaceDrawMilliseconds,
     double RenderDurationMilliseconds)
 {
+    public long GridTileCacheBytes { get; init; }
+    public long TransientGroupCacheBytes { get; init; }
     public int BackgroundCommandListBuildCount { get; init; }
     public double BackgroundCommandListBuildMilliseconds { get; init; }
     public int ParallelFrameCount { get; init; }

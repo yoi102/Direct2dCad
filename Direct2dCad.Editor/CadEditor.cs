@@ -222,6 +222,22 @@ public sealed class CadEditor
     public CadDocumentChangeSet SetLayoutPaperColor(LayoutId layoutId, CadColor color) =>
         DocumentCommands.Execute(new SetLayoutPaperColorCommand(layoutId, color));
 
+    /// <summary>Applies derived text metrics without creating an edit/history entry.</summary>
+    public CadDocumentChangeSet ApplyDerivedTextBounds(IReadOnlyList<CadTextBoundsMeasurement> measurements)
+    {
+        ArgumentNullException.ThrowIfNull(measurements);
+        var changes = new List<CadEntityChange>();
+        foreach (var measurement in measurements)
+        {
+            if (Document.TryGetEntity(measurement.EntityId, out var entity) &&
+                entity is CadText { IsErased: false } text && measurement.Matches(text) &&
+                text.SetLocalBounds(measurement.LocalBounds))
+                changes.Add(new(text.Id, CadEntityChangeKind.Geometry));
+        }
+        if (changes.Count == 0) return CadDocumentChangeSet.Empty;
+        return PublishDocumentChanges(new CadDocumentChangeSet(changes) { IsDerivedGeometry = true });
+    }
+
     public CadDocumentChangeSet PublishDocumentChanges(CadDocumentChangeSet changes)
     {
         _documentChanges.Publish(changes);

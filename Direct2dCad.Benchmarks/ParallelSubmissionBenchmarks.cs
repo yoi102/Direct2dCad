@@ -11,6 +11,7 @@ namespace Direct2dCad.Benchmarks;
 public class ParallelSubmissionBenchmarks
 {
     private ImageSourceDirect2DResource _target = null!;
+    private CadRenderResourceBudget.DocumentLease _resourceDocument = null!;
     private Direct2DSceneRender _single = null!;
     private Direct2DSharedDeviceSceneRenderer _shared = null!;
     private Direct2DMultiDeviceSceneRenderer _multiple = null!;
@@ -35,11 +36,12 @@ public class ParallelSubmissionBenchmarks
         _viewport.SetView(_viewport.Zoom * Math.Sqrt(OccupiedAreaPercent / 100.0), _viewport.Offset);
         _target = new ImageSourceDirect2DResource();
         _target.SetTarget(new BenchmarkImageSource(Width, height));
-        _single = new Direct2DSceneRender();
+        _resourceDocument = CadRenderResourceBudget.Shared.RegisterDocument();
+        _single = new Direct2DSceneRender(_resourceDocument);
         _single.ResetDeviceResources(_target.Factory, _target.DwriteFactory, _target.Device,
             _target.Context, _data.Document, prepareBackgroundResources: false);
-        _shared = new Direct2DSharedDeviceSceneRenderer();
-        _multiple = new Direct2DMultiDeviceSceneRenderer();
+        _shared = new Direct2DSharedDeviceSceneRenderer(_resourceDocument);
+        _multiple = new Direct2DMultiDeviceSceneRenderer(_resourceDocument);
         _options = new CadRenderOptions
         {
             IsParallelRenderingEnabled = Mode != ParallelRenderingBenchmarkMode.Disabled,
@@ -99,5 +101,6 @@ public class ParallelSubmissionBenchmarks
         _shared?.Dispose();
         _single?.Dispose();
         _target?.Dispose();
+        _resourceDocument?.Dispose();
     }
 }

@@ -18,6 +18,18 @@
         "dependencies": {
           "StronglyTypedId": "[1.0.0-beta08, )"
         }
+      },
+      "direct2dcad.rendering.handles": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[1.0.0, )"
+        }
+      },
+      "direct2dcad.rendering.transient": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[1.0.0, )"
+        }
       }
     }
   }

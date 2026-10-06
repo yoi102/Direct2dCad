@@ -7,6 +7,21 @@ namespace Direct2dCad.ViewModels.Tests;
 public sealed class MainViewModelLifecycleTests
 {
     [Fact]
+    public void NewAndTemplateDocumentsUseTheInjectedFactoryWithoutGlobalServiceLocation()
+    {
+        using var context = new MainWindowTestContext();
+        context.ViewModel.NewCommand.Execute(null);
+        var first = Assert.IsType<EditorTabViewModel>(context.ViewModel.CurrentEditorTabViewModel);
+        context.ViewModel.NewTemplateCommand.Execute("A3-100");
+        var template = Assert.IsType<EditorTabViewModel>(context.ViewModel.CurrentEditorTabViewModel);
+        Assert.NotSame(first, template);
+        Assert.Equal(2, context.Layout.Documents.Count());
+        Assert.Equal("A3-100", template.DocumentName);
+        Assert.Equal(100, template.CadDocumentViewModel.DimensionAnnotationScale);
+        Assert.False(first.CadDocumentViewModel.IsDisposed);
+    }
+
+    [Fact]
     public void WelcomeToolboxAndEditorActivationKeepCorrectPrintAndDocumentContext()
     {
         using var context = new MainWindowTestContext();

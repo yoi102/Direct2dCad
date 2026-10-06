@@ -15,6 +15,8 @@ internal sealed class Direct2DBackgroundRenderer(
 {
     private readonly Direct2DGridTileCache _gridTileCache = new();
 
+    public long EstimatedCacheBytes => _gridTileCache.EstimatedBytes;
+
     public void DrawGrid(
         ID2D1DeviceContext deviceContext,
         CadDocument document,

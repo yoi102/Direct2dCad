@@ -6,33 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Direct2dCad.ViewModels.Tools;
 
-public sealed record CadToolWorkspaceDocument(
-    string DocumentId,
-    Guid CadDocumentId,
-    string Name,
-    string FilePath,
-    bool IsModified,
-    bool IsActive,
-    EditorTabViewModel EditorTab)
-{
-    public CadDocumentViewModel DocumentViewModel => EditorTab.CadDocumentViewModel;
-}
-
-public interface ICadToolWorkspace
-{
-    IReadOnlyList<CadToolWorkspaceDocument> GetDocuments();
-    CadToolWorkspaceDocument? GetActiveDocument();
-    CadToolWorkspaceDocument GetRequiredDocument(string documentId);
-    CadToolWorkspaceDocument CreateDocument(string? name);
-    Task<CadToolWorkspaceDocument> OpenDocumentAsync(string filePath, CancellationToken cancellationToken);
-    bool ActivateDocument(string documentId);
-    bool RenameDocument(string documentId, string name);
-    Task<bool> SaveDocumentAsync(string documentId, string? filePath, CancellationToken cancellationToken);
-    Task<bool> CloseDocumentAsync(string documentId);
-}
-
 internal sealed class CadToolWorkspace(
     IServiceProvider serviceProvider,
+    IEditorTabFactory editorTabFactory,
     IDialogService dialogService,
     IActiveEditorContext activeEditorContext) : ICadToolWorkspace
 {
@@ -76,9 +52,11 @@ internal sealed class CadToolWorkspace(
         var dockLayoutService = DockLayoutService;
         var tab = dockLayoutService.OpenOrActivateDocument(
             _ => false,
-            () => serviceProvider.GetRequiredService<EditorTabViewModel>());
-        if (!string.IsNullOrWhiteSpace(name) && !tab.TryRenameDocument(name))
-            throw new ArgumentException("Document name cannot be empty.", nameof(name));
+            () => editorTabFactory.Create(created =>
+            {
+                if (!string.IsNullOrWhiteSpace(name) && !created.TryRenameDocument(name))
+                    throw new ArgumentException("Document name cannot be empty.", nameof(name));
+            }));
 
         dockLayoutService.ActiveDockable = tab;
         activeEditorContext.SetCurrent(tab);
@@ -109,12 +87,7 @@ internal sealed class CadToolWorkspace(
 
         var tab = dockLayoutService.OpenOrActivateDocument(
             candidate => string.Equals(candidate.CurrentFilePath, fullPath, StringComparison.OrdinalIgnoreCase),
-            () =>
-            {
-                var created = serviceProvider.GetRequiredService<EditorTabViewModel>();
-                created.Load(document, fullPath);
-                return created;
-            });
+            () => editorTabFactory.Create(created => created.Load(document, fullPath)));
         dockLayoutService.ActiveDockable = tab;
         activeEditorContext.SetCurrent(tab);
         RefreshDocumentExplorer();
@@ -123,16 +96,16 @@ internal sealed class CadToolWorkspace(
 
     public bool ActivateDocument(string documentId)
     {
-        var document = GetRequiredDocument(documentId);
-        DockLayoutService.ActiveDockable = document.EditorTab;
-        activeEditorContext.SetCurrent(document.EditorTab);
+        var tab = (EditorTabViewModel)GetRequiredDocument(documentId).Host;
+        DockLayoutService.ActiveDockable = tab;
+        activeEditorContext.SetCurrent(tab);
         return true;
     }
 
     public bool RenameDocument(string documentId, string name)
     {
-        var document = GetRequiredDocument(documentId);
-        var renamed = document.EditorTab.TryRenameDocument(name);
+        var tab = (EditorTabViewModel)GetRequiredDocument(documentId).Host;
+        var renamed = tab.TryRenameDocument(name);
         if (renamed)
             RefreshDocumentExplorer();
         return renamed;
@@ -143,31 +116,37 @@ internal sealed class CadToolWorkspace(
         string? filePath,
         CancellationToken cancellationToken)
     {
-        var document = GetRequiredDocument(documentId);
+        var tab = (EditorTabViewModel)GetRequiredDocument(documentId).Host;
         return string.IsNullOrWhiteSpace(filePath)
-            ? await document.EditorTab.SaveForWorkspaceToolAsync(cancellationToken)
-            : await document.EditorTab.SaveToFileForWorkspaceToolAsync(Path.GetFullPath(filePath), cancellationToken);
+            ? await tab.SaveForWorkspaceToolAsync(cancellationToken)
+            : await tab.SaveToFileForWorkspaceToolAsync(Path.GetFullPath(filePath), cancellationToken);
     }
 
     public async Task<bool> CloseDocumentAsync(string documentId)
     {
-        var document = GetRequiredDocument(documentId);
-        if (!await document.EditorTab.ConfirmCloseAsync())
+        var tab = (EditorTabViewModel)GetRequiredDocument(documentId).Host;
+        if (!await tab.ConfirmCloseAsync())
             return false;
 
         var dockLayoutService = DockLayoutService;
-        var wasCurrent = ReferenceEquals(activeEditorContext.Current, document.EditorTab);
-        dockLayoutService.CloseDocument(document.EditorTab);
-        if (wasCurrent)
+        var wasCurrent = ReferenceEquals(activeEditorContext.Current, tab);
+        dockLayoutService.CloseDocument(tab);
+        try
         {
-            var next = dockLayoutService.ActiveDockable as EditorTabViewModel ??
-                       dockLayoutService.Documents
-                           .OfType<EditorTabViewModel>()
-                           .LastOrDefault();
-            activeEditorContext.SetCurrent(next);
+            tab.Dispose();
         }
-
-        RefreshDocumentExplorer();
+        finally
+        {
+            if (wasCurrent)
+            {
+                var next = dockLayoutService.ActiveDockable as EditorTabViewModel ??
+                           dockLayoutService.Documents
+                               .OfType<EditorTabViewModel>()
+                               .LastOrDefault();
+                activeEditorContext.SetCurrent(next);
+            }
+            RefreshDocumentExplorer();
+        }
         return true;
     }
 

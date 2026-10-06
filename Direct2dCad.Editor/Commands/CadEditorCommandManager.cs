@@ -12,6 +12,8 @@ public sealed class CadEditorCommandManager
     private readonly CadDocumentChangeDispatcher _documentChanges;
     private readonly CommandHistory<ICadEditorCommand> _history;
     private readonly CommandHistorySettings _settings;
+    private Guid? _coalescingGesture;
+    private ICadCoalescibleEditorCommand? _coalescingCommand;
 
     public event EventHandler<CadEditorCommandResult>? Changed;
     public event EventHandler<CadDocumentChangeSet>? DocumentChanged;
@@ -20,6 +22,7 @@ public sealed class CadEditorCommandManager
     public bool CanUndo => _history.CanUndo;
     public bool CanRedo => _history.CanRedo;
     public CommandHistorySettings Settings => _settings;
+    public long EstimatedHistoryBytes => _history.EstimatedRetainedBytes;
 
     public CadEditorCommandManager(
         CadDocument document,
@@ -44,9 +47,37 @@ public sealed class CadEditorCommandManager
     public CadEditorCommandResult Execute(ICadEditorCommand command)
     {
         ArgumentNullException.ThrowIfNull(command);
+        EndCoalescing();
 
         var result = command.Execute(_context);
-        _history.PushExecuted(command);
+        RecordExecuted(command);
+        TrimHistory();
+        Publish(result);
+        PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.HasChanges);
+        return result;
+    }
+
+    /// <summary>
+    /// Publishes each live gesture update while retaining a single undo entry.
+    /// A different command, history operation, or document change ends coalescing.
+    /// </summary>
+    public CadEditorCommandResult ExecuteCoalesced(ICadCoalescibleEditorCommand command, Guid gestureId)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        if (gestureId == Guid.Empty)
+            throw new ArgumentException("Gesture id cannot be empty.", nameof(gestureId));
+
+        var previous = _coalescingGesture == gestureId ? _coalescingCommand : null;
+        var result = command.Execute(_context);
+        if (previous is not null && _history.IsLatestExecuted(previous) && previous.TryMergeExecuted(command))
+            _history.RefreshLatestExecuted(previous, CadCommandPayloadEstimate.Estimate(previous));
+        else
+        {
+            RecordExecuted(command);
+            _coalescingCommand = command;
+        }
+        _coalescingGesture = gestureId;
+        TrimHistory();
         Publish(result);
         PublishActivity(command.Name, CadCommandActivityKind.Execute, 1, result.HasChanges);
         return result;
@@ -57,8 +88,11 @@ public sealed class CadEditorCommandManager
         string name = "Command Batch")
     {
         ArgumentNullException.ThrowIfNull(commands);
+        EndCoalescing();
 
         var commandArray = commands.ToArray();
+        foreach (var command in commandArray)
+            ArgumentNullException.ThrowIfNull(command);
         if (commandArray.Length == 0)
             return CadEditorCommandResult.Empty;
 
@@ -70,17 +104,19 @@ public sealed class CadEditorCommandManager
             try
             {
                 var result = command.Execute(_context);
-                _history.PushExecuted(command, batchId);
+                RecordExecuted(command, batchId);
                 results.Add(result);
             }
             catch
             {
+                TrimHistory();
                 Publish(CadEditorCommandResult.Combine(results));
                 throw;
             }
         }
 
         var combined = CadEditorCommandResult.Combine(results);
+        TrimHistory();
         Publish(combined);
         PublishActivity(name, CadCommandActivityKind.Execute, commandArray.Length, combined.HasChanges);
         return combined;
@@ -90,6 +126,7 @@ public sealed class CadEditorCommandManager
 
     public CadEditorCommandResult Undo()
     {
+        EndCoalescing();
         var entries = _history.PopUndo(_settings.UndoMode);
         if (entries.Count == 0)
         {
@@ -121,6 +158,7 @@ public sealed class CadEditorCommandManager
 
     public CadEditorCommandResult Redo()
     {
+        EndCoalescing();
         var entries = _history.PopRedo(_settings.RedoMode);
         if (entries.Count == 0)
         {
@@ -148,6 +186,18 @@ public sealed class CadEditorCommandManager
         Publish(combined);
         PublishActivity(GetActivityName(entries), CadCommandActivityKind.Redo, entries.Count, combined.HasChanges);
         return combined;
+    }
+
+    private void RecordExecuted(ICadEditorCommand command, Guid? batchId = null) =>
+        _history.PushExecuted(command, batchId, CadCommandPayloadEstimate.Estimate(command));
+
+    private void TrimHistory() =>
+        _history.TrimUndo(_settings.MaximumUndoCommands, _settings.MaximumUndoBytes);
+
+    private void EndCoalescing()
+    {
+        _coalescingGesture = null;
+        _coalescingCommand = null;
     }
 
     private void PublishActivity(
@@ -180,6 +230,7 @@ public sealed class CadEditorCommandManager
 
     private void OnDocumentChanged(object? sender, CadDocumentChangeSet result)
     {
+        if (!result.IsDerivedGeometry) EndCoalescing();
         if (MayAffectHitTestStrokePadding(result))
             _context.HitTesting.InvalidateCaches();
         DocumentChanged?.Invoke(this, result);

@@ -14,6 +14,9 @@ internal sealed class Direct2DTransientSceneRenderer(
     Direct2DTransientPathCache pathCache,
     Direct2DTransientGroupCommandListCache groupCommandListCache) : IDisposable
 {
+    public long EstimatedImageBytes => imageCache.EstimatedBytes;
+    public long EstimatedCommandListBytes => groupCommandListCache.EstimatedBytes;
+
     public bool PrepareCache(
         ID2D1DeviceContext context,
         CadDocument document,

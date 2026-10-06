@@ -10,6 +10,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+& (Join-Path $PSScriptRoot 'Test-Architecture.ps1') -RepositoryRoot $root
+& (Join-Path $PSScriptRoot 'Test-ArchitectureGuard.ps1')
 & (Join-Path $PSScriptRoot 'Test-CoverageSummary.ps1')
 if (!$ResultsDirectory) {
     $ResultsDirectory = Join-Path $root "TestResults/regression-$(Get-Date -Format 'yyyyMMdd-HHmmss')"

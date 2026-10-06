@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Lang;
 using Direct2dCad.ViewModels.Services.Documents;
@@ -96,13 +95,11 @@ public partial class MainViewModel
             var document = await OpenOperation.RunAsync(CadUiText.Get(LangKeys.OpeningDrawing), token => _recoveryStore.LoadAsync(entry, token));
             document.AssignIndependentIdentity();
             document.Rename($"{entry.Name} · {CadUiText.Get(LangKeys.RecoveredSuffix)}");
-            var tab = _dockLayoutService.OpenOrActivateDocument<EditorTabViewModel>(_ => false, () =>
+            var tab = _dockLayoutService.OpenOrActivateDocument<EditorTabViewModel>(_ => false, () => _editorTabFactory.Create(result =>
             {
-                var result = Ioc.Default.GetRequiredService<EditorTabViewModel>();
                 result.Load(document, "");
                 result.AttachRecoverySource(_recoveryStore, entry, RefreshRecoveryEntries);
-                return result;
-            });
+            }));
             CurrentEditorTabViewModel = tab;
             DocumentExplorer.RefreshDocuments();
         }

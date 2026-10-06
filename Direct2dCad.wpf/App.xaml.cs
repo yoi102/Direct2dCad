@@ -8,7 +8,8 @@ using Direct2dCad.Agent.Codex;
 using Direct2dCad.CommandLine;
 using Direct2dCad.AI.Contracts;
 using Direct2dCad.AI.LmStudio;
-using Direct2dCad.Editor;
+using Direct2dCad.Rendering;
+using Direct2dCad.Rendering.Direct2D.Hosting;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
@@ -45,7 +46,7 @@ public partial class App : System.Windows.Application
         var services = new ServiceCollection();
         ConfigureServices(services);
 
-        _serviceProvider = services.BuildServiceProvider();
+        _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         Ioc.Default.ConfigureServices(_serviceProvider);
 
 
@@ -62,8 +63,9 @@ public partial class App : System.Windows.Application
     }
     private static void ConfigureServices(IServiceCollection services)
     {
-        services.AddDirect2dCadEditor()
-                .AddViewModels();
+        services.AddViewModels();
+        services.AddSingleton(CadRenderResourceBudget.Shared);
+        services.AddSingleton<ICadRenderSessionFactory, Direct2DRenderSessionFactory>();
         services.AddSingleton<IApplicationCultureService, ApplicationCultureService>()
                 .AddSingleton<IApplicationThemeService, ApplicationThemeService>();
         services.AddMessagePipe();

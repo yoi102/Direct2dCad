@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Direct2dCad.ChangeTracking\Direct2dCad.ChangeTracking.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering.Handles\Direct2dCad.Rendering.Handles.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering.Transient\Direct2dCad.Rendering.Transient.csproj" />
     <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
   </ItemGroup>
 

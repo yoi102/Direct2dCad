@@ -16,15 +16,17 @@ using Vortice.Mathematics;
 
 namespace Direct2dCad.Rendering.Direct2D.Hosting;
 
-public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisposable
+public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, ICadRenderSession
 {
     private const double DirtyRegionPassPenalty = 96.0;
     private const double InteractionPreviewMaxExposedAreaRatio = 0.55;
     private const int InteractionPreviewSeamOverlapPixels = 2;
     private readonly ImageSourceDirect2DResource _target;
-    private readonly Direct2DSceneRender _renderer = new();
-    private readonly Direct2DMultiDeviceSceneRenderer _multiDeviceRenderer = new();
-    private readonly Direct2DSharedDeviceSceneRenderer _sharedDeviceRenderer = new();
+    private readonly CadRenderResourceBudget _resourceBudget;
+    private readonly CadRenderResourceBudget.DocumentLease _resourceDocument;
+    private readonly Direct2DSceneRender _renderer;
+    private readonly Direct2DMultiDeviceSceneRenderer _multiDeviceRenderer;
+    private readonly Direct2DSharedDeviceSceneRenderer _sharedDeviceRenderer;
     private readonly Direct2DDirtyRegionPlanner _dirtyRegionPlanner = new();
     private readonly Direct2DFrameRateTracker _frameRateTracker = new();
     private readonly HashSet<EntityId> _pendingTextMeasurementIds = [];
@@ -55,12 +57,33 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     }
 
     internal Direct2DImageRenderHost(
-        Func<ID2D1DeviceContext, Result>? endDrawOverride)
+        Func<ID2D1DeviceContext, Result>? endDrawOverride,
+        CadRenderResourceBudget? resourceBudget = null)
     {
-        _target = new ImageSourceDirect2DResource(
-            endDrawOverride,
-            BeforeDeviceResourcesReleased);
+        _resourceBudget = resourceBudget ?? CadRenderResourceBudget.Shared;
+        _resourceDocument = _resourceBudget.RegisterDocument();
+        try
+        {
+            _renderer = new Direct2DSceneRender(_resourceDocument);
+            _multiDeviceRenderer = new Direct2DMultiDeviceSceneRenderer(_resourceDocument);
+            _sharedDeviceRenderer = new Direct2DSharedDeviceSceneRenderer(_resourceDocument);
+            _resourceDocument.BudgetChanged += OnResourceBudgetChanged;
+            _target = new ImageSourceDirect2DResource(
+                endDrawOverride,
+                BeforeDeviceResourcesReleased);
+        }
+        catch
+        {
+            _resourceDocument.BudgetChanged -= OnResourceBudgetChanged;
+            try { _sharedDeviceRenderer?.Dispose(); _multiDeviceRenderer?.Dispose(); _renderer?.Dispose(); }
+            finally { _resourceDocument.Dispose(); }
+            throw;
+        }
     }
+
+    public CadRenderResourceStatistics ResourceStatistics => _resourceDocument.Statistics;
+    public CadRenderResourceStatistics ProcessResourceStatistics => _resourceBudget.Statistics;
+    private void OnResourceBudgetChanged(object? sender, EventArgs e) => RenderCacheBuildRequested?.Invoke(this, EventArgs.Empty);
 
     public ICadGeometryResourceManager GeometryResourceManager => this;
 
@@ -91,15 +114,15 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
 
     public Color4 FallbackBackgroundColor { get; set; } = new(0.08f, 0.09f, 0.10f, 1.0f);
 
-    public CadDocumentChangeSet UpdateTextMeasurements(CadDocument document)
+    public IReadOnlyList<CadTextBoundsMeasurement> MeasurePendingTextBounds(CadDocument document)
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(document);
 
         if (_pendingTextMeasurementIds.Count == 0)
-            return CadDocumentChangeSet.Empty;
+            return [];
 
-        var changedIds = new List<EntityId>(_pendingTextMeasurementIds.Count);
+        var measurements = new List<CadTextBoundsMeasurement>(_pendingTextMeasurementIds.Count);
         foreach (var entityId in _pendingTextMeasurementIds.ToArray())
         {
             if (!document.TryGetEntity(entityId, out var entity) ||
@@ -115,17 +138,14 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
                     _target.DwriteFactory,
                     document,
                     text,
-                    out var localBounds) &&
-                text.SetLocalBounds(localBounds))
+                    out var localBounds))
             {
-                changedIds.Add(text.Id);
+                measurements.Add(new(text.Id, text.Text, text.Height, text.TextStyleId, localBounds));
                 _pendingTextMeasurementIds.Remove(entityId);
             }
         }
 
-        return changedIds.Count == 0
-            ? CadDocumentChangeSet.Empty
-            : CadDocumentChangeSet.ForEntities(changedIds, CadEntityChangeKind.Geometry);
+        return measurements;
     }
 
     public bool TryMeasureTextBounds(
@@ -271,13 +291,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         ResetRendererDeviceResources();
     }
 
-    public void SetOleDrawCallback(Direct2DOleDrawCallback? callback)
+    public void SetOleDrawCallback(CadOleRenderCallback? callback)
     {
         ThrowIfDisposed();
         _renderer.OleDrawCallback = callback;
     }
 
-    public void SetOleReleaseCallback(Direct2DOleReleaseCallback? callback)
+    public void SetOleReleaseCallback(CadOleReleaseCallback? callback)
     {
         ThrowIfDisposed();
         _renderer.OleReleaseCallback = callback;
@@ -614,16 +634,18 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
     public bool PrepareRenderCacheStep()
     {
         ThrowIfDisposed();
-        return _document is not null &&
-               _viewport is not null &&
-               _target.IsTargetReady &&
-               _renderer.PrepareRenderCaches(
-                   _document,
-                   _viewport,
-                   _renderOptions,
-                   buildStep: true,
-                   handleScene: _handleScene,
-                   transientScene: _transientScene);
+        try
+        {
+            return _document is not null && _viewport is not null && _target.IsTargetReady &&
+                _renderer.PrepareRenderCaches(_document, _viewport, _renderOptions,
+                    buildStep: true, handleScene: _handleScene, transientScene: _transientScene);
+        }
+        finally
+        {
+            _renderer.EnforceResourceBudget();
+            _sharedDeviceRenderer.EnforceResourceBudget();
+            _multiDeviceRenderer.EnforceResourceBudget();
+        }
     }
     public bool IsInitialViewReady
     {
@@ -1352,20 +1374,24 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, IDisp
         if (_disposed)
             return;
 
-        ReleaseClearBrush();
-        EndViewportInteraction();
-        _multiDeviceRenderer.Dispose();
-        _sharedDeviceRenderer.Dispose();
-        _renderer.Dispose();
-        _target.Dispose();
-        _imageSource = null;
-        _document = null;
-        _viewport = null;
-        _transientScene = null;
-        _handleScene = null;
-        _pendingTextMeasurementIds.Clear();
-        _frameRateTracker.Reset();
-        _disposed = true;
+        _resourceDocument.BudgetChanged -= OnResourceBudgetChanged;
+        try
+        {
+            Direct2DResourceCleanup.Run(ReleaseClearBrush, EndViewportInteraction,
+                _multiDeviceRenderer.Dispose, _sharedDeviceRenderer.Dispose, _renderer.Dispose,
+                _target.Dispose, _resourceDocument.Dispose);
+        }
+        finally
+        {
+            _imageSource = null;
+            _document = null;
+            _viewport = null;
+            _transientScene = null;
+            _handleScene = null;
+            _pendingTextMeasurementIds.Clear();
+            _frameRateTracker.Reset();
+            _disposed = true;
+        }
     }
 
     private readonly record struct ViewportInteractionSnapshot(

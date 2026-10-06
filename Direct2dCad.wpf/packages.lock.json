@@ -338,6 +338,17 @@
           "Direct2dCad.AI.Contracts": "[1.0.0, )"
         }
       },
+      "direct2dcad.application": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.Contracts": "[1.0.0, )",
+          "Direct2dCad.CommandLine": "[1.0.0, )",
+          "Direct2dCad.Editor": "[1.0.0, )",
+          "Direct2dCad.IO": "[1.0.0, )",
+          "Direct2dCad.Lang": "[1.0.0, )",
+          "MessagePipe": "[1.8.2, )"
+        }
+      },
       "direct2dcad.changetracking": {
         "type": "Project",
         "dependencies": {
@@ -421,7 +432,9 @@
         "type": "Project",
         "dependencies": {
           "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[1.0.0, )",
+          "Direct2dCad.Rendering.Handles": "[1.0.0, )",
+          "Direct2dCad.Rendering.Transient": "[1.0.0, )"
         }
       },
       "direct2dcad.rendering.direct2d": {
@@ -456,6 +469,7 @@
           "Direct2dCad.AI.Contracts": "[1.0.0, )",
           "Direct2dCad.Agent": "[1.0.0, )",
           "Direct2dCad.Agent.Codex": "[1.0.0, )",
+          "Direct2dCad.Application": "[1.0.0, )",
           "Direct2dCad.ChangeTracking": "[1.0.0, )",
           "Direct2dCad.Client.Common": "[1.0.0, )",
           "Direct2dCad.CommandLine": "[1.0.0, )",
@@ -463,7 +477,7 @@
           "Direct2dCad.Editor": "[1.0.0, )",
           "Direct2dCad.IO": "[1.0.0, )",
           "Direct2dCad.Lang": "[1.0.0, )",
-          "Direct2dCad.Rendering.Direct2D": "[1.0.0, )",
+          "Direct2dCad.Rendering": "[1.0.0, )",
           "Direct2dCad.Rendering.Handles": "[1.0.0, )",
           "Direct2dCad.Rendering.Transient": "[1.0.0, )",
           "Direct2dCad.ViewModels.Abstractions": "[1.0.0, )",
@@ -487,6 +501,7 @@
         "dependencies": {
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "Direct2dCad.AI.Contracts": "[1.0.0, )",
+          "Direct2dCad.Application": "[1.0.0, )",
           "Direct2dCad.ChangeTracking": "[1.0.0, )",
           "Direct2dCad.Client.Common": "[1.0.0, )",
           "Direct2dCad.Commands": "[1.0.0, )",
@@ -494,7 +509,6 @@
           "Direct2dCad.Editor": "[1.0.0, )",
           "Direct2dCad.IO": "[1.0.0, )",
           "Direct2dCad.Rendering": "[1.0.0, )",
-          "Direct2dCad.Rendering.Direct2D": "[1.0.0, )",
           "Direct2dCad.Rendering.Handles": "[1.0.0, )",
           "Direct2dCad.Rendering.Transient": "[1.0.0, )",
           "Direct2dCad.ViewModels.Abstractions": "[1.0.0, )",

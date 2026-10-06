@@ -12,7 +12,7 @@ public sealed class CommandHistorySettings
     /// <summary>
     /// Maximum retained undo commands. Zero is unlimited. The newest batch is
     /// always retained in full, even when it alone exceeds this soft limit.
-    /// Changes take effect on the next successful document command.
+    /// Changes take effect on the next successful command in the owning manager.
     /// </summary>
     public int MaximumUndoCommands
     {

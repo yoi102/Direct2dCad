@@ -24,6 +24,7 @@ internal sealed class CadToolboxTestContext : IDisposable
     {
         var services = new ServiceCollection();
         services.AddMessagePipe();
+        services.AddSingleton<Direct2dCad.Rendering.ICadRenderSessionFactory, TestRenderSessionFactory>();
         var platform = Platform;
         services.AddSingleton<IImageImportService>(platform);
         services.AddSingleton<IClipboardTextService>(platform);

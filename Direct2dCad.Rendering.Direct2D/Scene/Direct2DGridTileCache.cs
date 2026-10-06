@@ -20,6 +20,8 @@ internal sealed class Direct2DGridTileCache : IDisposable
     private long _usageStamp;
     private bool _disposed;
 
+    public long EstimatedBytes => _entries.Keys.Sum(key => (long)key.PixelWidth * key.PixelHeight * 4);
+
     public bool TryDraw(
         ID2D1DeviceContext context,
         CadGridType gridType,

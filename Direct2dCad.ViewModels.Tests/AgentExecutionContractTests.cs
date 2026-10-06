@@ -33,7 +33,7 @@ public sealed class AgentExecutionContractTests
     {
         using var workspace = new ToolExecutionWorkspace();
         var tab = workspace.CreateDocument("Creation");
-        var editor = tab.DocumentViewModel.CadEditor;
+        var editor = tab.GetViewModel().CadEditor;
         var history = editor.CreateDocumentHistorySnapshot();
         var executor = new CadWorkspaceToolExecutor(workspace);
         var input = JsonNode.Parse(geometry)!.AsObject();
@@ -63,7 +63,7 @@ public sealed class AgentExecutionContractTests
     {
         using var workspace = new ToolExecutionWorkspace();
         var tab = workspace.CreateDocument("Modify");
-        var editor = tab.DocumentViewModel.CadEditor;
+        var editor = tab.GetViewModel().CadEditor;
         var entity = CadEntityTestCases.Add(editor.Document, kind);
         var name = entity.Name;
         var bounds = entity.Bounds;
@@ -91,7 +91,7 @@ public sealed class AgentExecutionContractTests
     public async Task BulkMixedCreationIsAtomicAndOneUndoGroup()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Batch").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Batch").GetViewModel().CadEditor;
         var history = editor.CreateDocumentHistorySnapshot();
         var executor = new CadWorkspaceToolExecutor(workspace);
         var items = new JsonArray(Creations.Select(row =>
@@ -116,7 +116,7 @@ public sealed class AgentExecutionContractTests
     public async Task FailedSpecificEditRollsBackEarlierPropertiesAndPreservesRedo()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Rollback").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Rollback").GetViewModel().CadEditor;
         var text = editor.Document.AddText("Original", new(0, 0), 10);
         editor.SetEntityZIndex(text.Id, 7);
         editor.Undo();
@@ -138,15 +138,15 @@ public sealed class AgentExecutionContractTests
         var two = workspace.CreateDocument("Two");
         var line = "{\"x1\":0,\"y1\":0,\"x2\":10,\"y2\":10}";
         await Execute(executor, "add_line", line);
-        Assert.Single(one.DocumentViewModel.CadEditor.Document.Entities);
-        Assert.Empty(two.DocumentViewModel.CadEditor.Document.Entities);
+        Assert.Single(one.GetViewModel().CadEditor.Document.Entities);
+        Assert.Empty(two.GetViewModel().CadEditor.Document.Entities);
         await Execute(executor, "activate_document", new { document_id = two.DocumentId });
         await Execute(executor, "add_line", line);
-        Assert.Single(two.DocumentViewModel.CadEditor.Document.Entities);
+        Assert.Single(two.GetViewModel().CadEditor.Document.Entities);
         await Execute(executor, "rename_document", new { name = "Renamed" });
-        Assert.Equal("Renamed", two.EditorTab.DocumentName);
+        Assert.Equal("Renamed", ((EditorTabViewModel)two.Host).DocumentName);
         await Execute(executor, "save_document", new { file_path = "saved.d2cad" });
-        Assert.False(two.EditorTab.IsModified);
+        Assert.False(((EditorTabViewModel)two.Host).IsModified);
         workspace.AllowClose = false;
         await Execute(executor, "close_document", new { });
         Assert.Equal(2, workspace.GetDocuments().Count);
@@ -155,7 +155,7 @@ public sealed class AgentExecutionContractTests
         Assert.Single(workspace.GetDocuments());
         await Execute(executor, "get_document_summary", new { document_id = two.DocumentId }, success: false);
         await Execute(executor, "add_line", line);
-        Assert.Equal(2, one.DocumentViewModel.CadEditor.Document.Entities.Count);
+        Assert.Equal(2, one.GetViewModel().CadEditor.Document.Entities.Count);
     }
 
     [Theory]

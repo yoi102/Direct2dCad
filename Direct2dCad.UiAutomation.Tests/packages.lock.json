@@ -130,19 +130,6 @@
         "resolved": "5.0.0-next.10",
         "contentHash": "bFtga7serPecDcuH/KpKGMKPLFjNeLMzKwecuYPIL4pLNU9vGeCEbJQ2CfvQwXqF3VtHcIy9eyWbkYdoupgnpA=="
       },
-      "SharpGen.Runtime": {
-        "type": "Transitive",
-        "resolved": "2.4.2-beta",
-        "contentHash": "niTtWAUov1F7wZGAlVeEvW+Tnqvg5yTmhI7rxmYu2Utoyu2TbC9tWWpUpMs0PQg5lu5svoYpCAztNjxCqMFP/w=="
-      },
-      "SharpGen.Runtime.COM": {
-        "type": "Transitive",
-        "resolved": "2.4.2-beta",
-        "contentHash": "9lxDFMiepqo3lJQzMSjECCIONeCc2f3Drokgj6HtrTLZcJSftNgcLbD6/iXYj2iphkwgrZb1oLsDOZxoFZkawQ==",
-        "dependencies": {
-          "SharpGen.Runtime": "2.4.2-beta"
-        }
-      },
       "StronglyTypedId": {
         "type": "Transitive",
         "resolved": "1.0.0-beta08",
@@ -152,58 +139,6 @@
         "type": "Transitive",
         "resolved": "8.0.0",
         "contentHash": "jrK22i5LRzxZCfGb+tGmke2VH7oE0DvcDlJ1HAKYU8cPmD8XnpUT0bYn2Gy98GEhGjtfbR/sxKTVb+dE770pfA=="
-      },
-      "Vortice.Direct2D1": {
-        "type": "Transitive",
-        "resolved": "3.8.3",
-        "contentHash": "SDHEmNUT3A4P8yj+g7q3AnRZ9fvqOOe/EoWjsgkHlQ3C9Tkc51rTeZXC9bQPySli+/lFTui8vMs9tpWZqf+AwQ==",
-        "dependencies": {
-          "SharpGen.Runtime": "2.4.2-beta",
-          "Vortice.DXGI": "3.8.3"
-        }
-      },
-      "Vortice.Direct3D11": {
-        "type": "Transitive",
-        "resolved": "3.8.3",
-        "contentHash": "JgFUswu2mgrSwcd0KRF2AnfeE5VbMEgcicmxPD1g2yXyomPIHbnX3wldBNHPOzzD0URC1WJ/pO1ymfi3imZwvg==",
-        "dependencies": {
-          "SharpGen.Runtime": "2.4.2-beta",
-          "Vortice.DXGI": "3.8.3"
-        }
-      },
-      "Vortice.Direct3D9": {
-        "type": "Transitive",
-        "resolved": "3.8.3",
-        "contentHash": "QiSL2YqOaeJl4BW1H6WZUY8udoXhsCvVxnxuF4EnPiJcl4mQm6NdrJxvauue+MfcFxuiX/9dLCsbakvfCKOCNg==",
-        "dependencies": {
-          "SharpGen.Runtime": "2.4.2-beta",
-          "SharpGen.Runtime.COM": "2.4.2-beta",
-          "Vortice.Mathematics": "2.1.0"
-        }
-      },
-      "Vortice.DirectX": {
-        "type": "Transitive",
-        "resolved": "3.8.3",
-        "contentHash": "nKwSavv0w5rDF7prSefqAVPDcTyqrfZxKFMVfttiXPfm62VdA/1d+b3PhCZpW4xO7jXczXDwjQdWgD1zGsvM8w==",
-        "dependencies": {
-          "SharpGen.Runtime": "2.4.2-beta",
-          "SharpGen.Runtime.COM": "2.4.2-beta",
-          "Vortice.Mathematics": "2.1.0"
-        }
-      },
-      "Vortice.DXGI": {
-        "type": "Transitive",
-        "resolved": "3.8.3",
-        "contentHash": "MbAUnTeQ6WD99ctAdrj5CQO2I7oaax0Kt2eVdWSUj0bYP9Ed0726+s7dIHe4+tqhpmINW/dcPt0mNtc72o+E0w==",
-        "dependencies": {
-          "SharpGen.Runtime": "2.4.2-beta",
-          "Vortice.DirectX": "3.8.3"
-        }
-      },
-      "Vortice.Mathematics": {
-        "type": "Transitive",
-        "resolved": "2.1.0",
-        "contentHash": "KK+SjNSuKdP+zbavekubi+vaeb1Jo4k87ZF6CMkVWjr6RjJwc8peVtmgzXXDIMy4ZC3ZISyk3llY3q65ISOkBQ=="
       },
       "xunit.abstractions": {
         "type": "Transitive",
@@ -248,6 +183,17 @@
       "direct2dcad.ai.contracts": {
         "type": "Project"
       },
+      "direct2dcad.application": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.Contracts": "[1.0.0, )",
+          "Direct2dCad.CommandLine": "[1.0.0, )",
+          "Direct2dCad.Editor": "[1.0.0, )",
+          "Direct2dCad.IO": "[1.0.0, )",
+          "Direct2dCad.Lang": "[1.0.0, )",
+          "MessagePipe": "[1.8.2, )"
+        }
+      },
       "direct2dcad.changetracking": {
         "type": "Project",
         "dependencies": {
@@ -259,6 +205,13 @@
         "dependencies": {
           "Direct2dCad.Db": "[1.0.0, )",
           "Direct2dCad.Rendering": "[1.0.0, )"
+        }
+      },
+      "direct2dcad.commandline": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[1.0.0, )",
+          "Direct2dCad.Lang": "[1.0.0, )"
         }
       },
       "direct2dcad.commands": {
@@ -316,20 +269,9 @@
         "type": "Project",
         "dependencies": {
           "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )"
-        }
-      },
-      "direct2dcad.rendering.direct2d": {
-        "type": "Project",
-        "dependencies": {
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
           "Direct2dCad.Db": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )",
           "Direct2dCad.Rendering.Handles": "[1.0.0, )",
-          "Direct2dCad.Rendering.Transient": "[1.0.0, )",
-          "Vortice.Direct2D1": "[3.8.3, )",
-          "Vortice.Direct3D11": "[3.8.3, )",
-          "Vortice.Direct3D9": "[3.8.3, )"
+          "Direct2dCad.Rendering.Transient": "[1.0.0, )"
         }
       },
       "direct2dcad.rendering.handles": {
@@ -356,6 +298,7 @@
         "dependencies": {
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "Direct2dCad.AI.Contracts": "[1.0.0, )",
+          "Direct2dCad.Application": "[1.0.0, )",
           "Direct2dCad.ChangeTracking": "[1.0.0, )",
           "Direct2dCad.Client.Common": "[1.0.0, )",
           "Direct2dCad.Commands": "[1.0.0, )",
@@ -363,7 +306,6 @@
           "Direct2dCad.Editor": "[1.0.0, )",
           "Direct2dCad.IO": "[1.0.0, )",
           "Direct2dCad.Rendering": "[1.0.0, )",
-          "Direct2dCad.Rendering.Direct2D": "[1.0.0, )",
           "Direct2dCad.Rendering.Handles": "[1.0.0, )",
           "Direct2dCad.Rendering.Transient": "[1.0.0, )",
           "Direct2dCad.ViewModels.Abstractions": "[1.0.0, )",

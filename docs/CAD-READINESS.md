@@ -50,7 +50,7 @@ Direct2dCad 已经具备可用的二维编辑器基础：实体模型、图层/�
 | 渲染与性能 | Direct2D 资源缓存、局部刷新、后台 geometry/LOD、设备失效重建、布局投影、基准程序 | 原生准备已有有界队列和消费预算；渐进首屏和某些后台录制线程边界仍待完善 |
 | Terminal/AI | `HELP`、别名、历史、补全、工具 JSON；LM Studio/Codex 共用文档与实体工具 | 更多变换可通过 `TOOL` 调用，但没有完整 CAD 命令工作流；文件写入不属于图形 undo |
 
-主要依据：[绘图模式](../Direct2dCad.ViewModels.Abstractions/Enums/CadCanvasToolMode.cs)、[实体模型](../Direct2dCad.Db/Data/Entities/)、[变换能力契约](../Direct2dCad.Commands/CadEntityTransformRules.cs)、[几何工具](../Direct2dCad.ViewModels/Tools/CadGeometryTools.cs)、[几何测量](../Direct2dCad.ViewModels/Tools/CadDocumentToolExecutor.cs)、[矢量打印](../Direct2dCad.wpf/Services/Printing/Vector/CadVectorPrintRenderer.cs)。
+主要依据：[绘图模式](../Direct2dCad.ViewModels.Abstractions/Enums/CadCanvasToolMode.cs)、[实体模型](../Direct2dCad.Db/Data/Entities/)、[变换能力契约](../Direct2dCad.Commands/CadEntityTransformRules.cs)、[几何工具](../Direct2dCad.Application/Tools/CadGeometryTools.cs)、[几何测量](../Direct2dCad.Application/Tools/CadDocumentToolExecutor.cs)、[矢量打印](../Direct2dCad.wpf/Services/Printing/Vector/CadVectorPrintRenderer.cs)。
 
 ## 已确认的代码问题
 
@@ -74,7 +74,7 @@ Direct2dCad 已经具备可用的二维编辑器基础：实体模型、图层/�
 
 建议改为显式检查候选存在性，再读取结果；验收覆盖原点、端点、在线上、线外以及真正没有可测线段的实体。
 
-源码：[ExecuteNearestPoint](../Direct2dCad.ViewModels/Tools/CadDocumentToolExecutor.cs#L592)，错误判定在 604–606 行。
+源码：[ExecuteNearestPoint](../Direct2dCad.Application/Tools/CadDocumentToolExecutor.cs#L592)，错误判定在 604–606 行。
 
 ### F3 · P2：选择过滤“全关”仍允许 CompositePath
 
@@ -99,13 +99,13 @@ Direct2dCad 已经具备可用的二维编辑器基础：实体模型、图层/�
 | 编号 / 优先级 | 当前差距与依据 | 建议先完成的范围 | 可验证的完成标准 |
 | --- | --- | --- | --- |
 | G1 / P1：对象捕捉与精确输入 | [SnapWorld](../Direct2dCad.ViewModels.Services/Snapping/CadSnapInteractionService.cs#L13)只查询原点与网格，不查询实体；未找到端点、中点、圆心、交点、垂足、相切捕捉和正交/极轴跟踪 | 先修 F1，再建立捕捉开关、屏幕容差、候选优先级及提示；第一批做端点/中点/圆心/交点 | 缩放、单位切换、嵌套块变换和近邻候选下仍落到正确模型坐标 |
-| G2 / P1：工程编辑命令 | [实体命令](../Direct2dCad.Commands/)、[Terminal 目录](../Direct2dCad.CommandLine/CadCommandLineService.cs#L45)和[工具目录](../Direct2dCad.ViewModels/Tools/CadGeometryTools.cs)有绘制和基础变换，未找到完整 Trim/Extend/Offset/Fillet/Chamfer/Join/Break/Array 工作流 | 按直线/圆弧/多段线逐步建设偏移、修剪、延伸，再补圆角/倒角和拓扑编辑；与预览、撤销、属性、存储同步接入 | 多交点选择、闭合方向、零长段、极小半径、取消/失败回滚及重做保持几何一致 |
+| G2 / P1：工程编辑命令 | [实体命令](../Direct2dCad.Commands/)、[Terminal 目录](../Direct2dCad.CommandLine/CadCommandLineService.cs#L45)和[工具目录](../Direct2dCad.Application/Tools/CadGeometryTools.cs)有绘制和基础变换，未找到完整 Trim/Extend/Offset/Fillet/Chamfer/Join/Break/Array 工作流 | 按直线/圆弧/多段线逐步建设偏移、修剪、延伸，再补圆角/倒角和拓扑编辑；与预览、撤销、属性、存储同步接入 | 多交点选择、闭合方向、零长段、极小半径、取消/失败回滚及重做保持几何一致 |
 | G3 / P1：尺寸标注与工程注释 | [实体模型](../Direct2dCad.Db/Data/Entities/)有普通文字和测量工具，未找到 Dimension/Leader/DimStyle 或几何关联更新 | 先做线性、对齐、角度、半径/直径标注和引线；建立尺寸样式、单位、精度与纸空间比例规则 | 改动被标注图形后标注跟随更新，复制/块/保存重开/打印后不失关联 |
 | G4 / P1：实际尺寸及指定比例打印 | [ResolvePageMetrics](../Direct2dCad.wpf/Services/Printing/CadPrintService.cs#L383)始终 fit 到可打印矩形，[矢量输出](../Direct2dCad.wpf/Services/Printing/Vector/CadVectorPrintRenderer.cs#L34)再缩放整纸；[打印选择](../Direct2dCad.wpf/Views/Dialogs/CadPrintPreviewDialog.xaml.cs#L93)没有实际尺寸/指定比例。Layout 视口虽有 Scale，整纸会再次缩放 | 明确“实际尺寸 / 指定比例 / 适合纸张”；按 mm 与 WPF DIP 换算，保留纸张物理尺寸和裁剪提示 | 输出 100 mm 校准线和 1:100 图样，用 PDF/实体打印测量验证；检查可选择文字、线宽及边距 |
 | G5 / P1：文件交换 | [文件对话框](../Direct2dCad.wpf/Services/Importing/FileDialogService.cs#L12)只打开/保存 `.d2cad`；未找到 DXF/DWG 实体交换实现。PDF 驱动、AI SVG 附件不等于 CAD 格式转换 | 优先做 DXF 读写，声明支持实体、图层、块、文字、单位、线型与未知对象策略；DWG 另评估 SDK/许可 | 用固定外部 CAD 样本双向往返，检查几何、单位、图层/块与文字；明确报告未支持内容 |
 | G6 / P2：曲线模型与变换覆盖 | [变换契约](../Direct2dCad.Commands/CadEntityTransformRules.cs#L30)限制椭圆/矩形为 90°旋转、45°倍数镜像轴；椭圆弧拒绝旋转/缩放/镜像。[样条](../Direct2dCad.Db/Data/Entities/CadSpline.cs)是拟合点插值，不是完整 NURBS 数据模型 | 为实体建立方向或受控转为混合路径；工程曲线运算制定模型容差和误差报告，随后考虑弧段多段线/NURBS | 任意支持角度下 bounds、命中、grip、复制、存储、打印一致；不能只放宽入口 guard |
 | G7 / P3：约束、模板和用户工作流 | 未找到完整几何/尺寸约束求解、关联设计或工程模板体系；[Terminal 帮助](../Direct2dCad.CommandLine/CadCommandLineService.cs#L47)及提示仍大量硬编码英文，圆弧子命令缺完整输入示例 | 先补用户命令参考、模板和工程样式；是否做参数约束根据机械草图或一般二维制图定位决定 | 常用任务能按文档独立完成；命令提示与中/日/英 UI 一致；约束变更能明确报告冲突 |
-| G8 / P2：工程测量误差预算 | [样条测长](../Direct2dCad.Db/Data/Entities/CadSpline.cs#L7)和[曲线离散](../Direct2dCad.ViewModels/Tools/CadDocumentToolExecutor.cs#L682)使用固定采样；高级结果有近似标记，普通长度/面积没有统一误差说明 | 直线、圆、圆弧尽量解析计算；复杂曲线用可配置公差的自适应算法，并返回近似/误差元数据 | 小尺寸、高曲率、大坐标和相切样本有可核查误差，避免将采样结果当成工程精确值 |
+| G8 / P2：工程测量误差预算 | [样条测长](../Direct2dCad.Db/Data/Entities/CadSpline.cs#L7)和[曲线离散](../Direct2dCad.Application/Tools/CadDocumentToolExecutor.cs#L682)使用固定采样；高级结果有近似标记，普通长度/面积没有统一误差说明 | 直线、圆、圆弧尽量解析计算；复杂曲线用可配置公差的自适应算法，并返回近似/误差元数据 | 小尺寸、高曲率、大坐标和相切样本有可核查误差，避免将采样结果当成工程精确值 |
 
 二维 CAD 的近期重点是准确绘图、标注和交付；3D 建模、装配等属于另外的产品范围，不因缺少它们就否定当前二维路线。
 
@@ -159,7 +159,7 @@ Direct2dCad 已经具备可用的二维编辑器基础：实体模型、图层/�
 
 建议继续以固定真实图纸测峰值内存、物理输入 P95 延迟及取消响应，再做 section 流式解码和版本化查询索引/游标分页。已有可见优先首屏、原生准备队列上限、约 2 ms 消费预算和增量索引，不能把这些已完成措施重新列为缺失。2026-10-04 两份真实图纸的原生首屏及绘制对照见[验证记录](validation/2026-10-04/render-optimization/README.md)，尚未测量物理输入和 WPF 合成延迟。
 
-依据：[加载](../Direct2dCad.IO/CadDocumentStorage.cs#L157)、[打开入口](../Direct2dCad.ViewModels/MainViewModel.cs#L227)、[首次 Present](../Direct2dCad.Rendering.Direct2D/Hosting/Direct2DImageRenderHost.cs#L742)、[查询遍历](../Direct2dCad.ViewModels/Tools/CadEntityQuery.cs#L72)、[分页](../Direct2dCad.ViewModels/Tools/CadEntityQuery.Paging.cs#L17)、[UI 工具分发](../Direct2dCad.Agent.Codex/CodexAppServerClient.cs#L572)。
+依据：[加载](../Direct2dCad.IO/CadDocumentStorage.cs#L157)、[打开入口](../Direct2dCad.ViewModels/MainViewModel.cs#L227)、[首次 Present](../Direct2dCad.Rendering.Direct2D/Hosting/Direct2DImageRenderHost.cs#L742)、[查询遍历](../Direct2dCad.Application/Tools/CadEntityQuery.cs#L72)、[分页](../Direct2dCad.Application/Tools/CadEntityQuery.Paging.cs#L17)、[UI 工具分发](../Direct2dCad.Agent.Codex/CodexAppServerClient.cs#L572)。
 
 <a id="background-recording"></a>
 

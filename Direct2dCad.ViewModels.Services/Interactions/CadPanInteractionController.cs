@@ -8,6 +8,7 @@ internal sealed class CadPanInteractionController
 {
     private CadPointD? _lastPanPoint;
     private bool _hasMoved;
+    private Guid _gestureId;
 
     public bool IsPanning { get; private set; }
 
@@ -16,6 +17,7 @@ internal sealed class CadPanInteractionController
         IsPanning = true;
         _lastPanPoint = screen;
         _hasMoved = false;
+        _gestureId = Guid.NewGuid();
     }
 
     public bool End()
@@ -37,7 +39,7 @@ internal sealed class CadPanInteractionController
         if (delta.LengthSquared <= double.Epsilon)
             return false;
 
-        editor.Execute(new PanViewportCommand(delta));
+        editor.EditorCommands.ExecuteCoalesced(new PanViewportCommand(delta), _gestureId);
         _hasMoved = true;
         return true;
     }

@@ -41,7 +41,7 @@ internal sealed class BenchmarkRenderSession : IDisposable
         RenderHost.SetSize(surfaceWidth, surfaceHeight);
         RenderHost.SetScene(data.Document, Viewport);
 
-        RenderHost.UpdateTextMeasurements(data.Document);
+        new Direct2dCad.Editor.CadEditor(data.Document).ApplyDerivedTextBounds(RenderHost.MeasurePendingTextBounds(data.Document));
         SpatialIndex.Rebuild(data.Document);
         RenderHost.SetRenderOptions(new CadRenderOptions
         {

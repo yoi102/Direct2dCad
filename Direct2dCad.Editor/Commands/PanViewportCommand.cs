@@ -2,9 +2,9 @@ using Direct2dCad.Db.Geometry;
 
 namespace Direct2dCad.Editor.Commands;
 
-public sealed class PanViewportCommand : ICadEditorCommand
+public sealed class PanViewportCommand : ICadCoalescibleEditorCommand
 {
-    private readonly CadVectorD _screenDelta;
+    private CadVectorD _screenDelta;
     private double? _previousZoom;
     private CadPointD _previousOffset;
 
@@ -34,5 +34,13 @@ public sealed class PanViewportCommand : ICadEditorCommand
 
         context.Viewport.SetView(_previousZoom.Value, _previousOffset);
         return CadEditorCommandResult.View();
+    }
+
+    public bool TryMergeExecuted(ICadEditorCommand subsequent)
+    {
+        if (subsequent is not PanViewportCommand pan || pan._previousZoom is null)
+            return false;
+        _screenDelta += pan._screenDelta;
+        return true;
     }
 }

@@ -16,7 +16,7 @@ public sealed class AgentResourceMutationTests
     public async Task BulkTextContentAndInversionAreOneUndoGroup(bool shapeText)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Text").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Text").GetViewModel().CadEditor;
         var kind = shapeText ? TestEntityKind.ShapeText : TestEntityKind.Text;
         var first = CadEntityTestCases.Add(editor.Document, kind);
         var second = CadEntityTestCases.Add(editor.Document, kind);
@@ -39,7 +39,7 @@ public sealed class AgentResourceMutationTests
     public async Task FontStyleIsReusedAndCreationIsRolledBackWithEntityChanges()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Font").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Font").GetViewModel().CadEditor;
         var one = editor.Document.AddText("One", new(0, 0), 10);
         var two = editor.Document.AddText("Two", new(20, 0), 10);
         var count = editor.Document.Styles.Count;
@@ -64,7 +64,7 @@ public sealed class AgentResourceMutationTests
     public async Task ImportedImagePreservesBytesRotationOpacityAndHistory()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Image").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Image").GetViewModel().CadEditor;
         var images = new RecordingImageImport();
         await Execute(new(workspace, images), "insert_image_from_file", new { file_path = "fixture.png",
             bounds = new { min_x = 0, min_y = 0, max_x = 40, max_y = 30 },
@@ -89,7 +89,7 @@ public sealed class AgentResourceMutationTests
     public async Task OleStorageAndOpacityUpdatesRestorePreviousPayloadOnUndo()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("OLE").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("OLE").GetViewModel().CadEditor;
         await Execute(new(workspace), "add_ole_object", new { ole_base64 = "AQID",
             bounds = new { min_x = 0, min_y = 0, max_x = 40, max_y = 30 }, opacity = 0.4 });
         var ole = Assert.IsType<CadOleObject>(Assert.Single(editor.Document.Entities.Values));
@@ -112,7 +112,7 @@ public sealed class AgentResourceMutationTests
     public async Task OleStorageCannotBeChangedFromAnotherEditingSpace()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Owner").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Owner").GetViewModel().CadEditor;
         var ole = (CadOleObject)CadEntityTestCases.Add(editor.Document, TestEntityKind.Ole);
         editor.Document.MoveEntityToBlock(ole.Id, BlockId.PaperSpace);
         var history = editor.CreateDocumentHistorySnapshot();

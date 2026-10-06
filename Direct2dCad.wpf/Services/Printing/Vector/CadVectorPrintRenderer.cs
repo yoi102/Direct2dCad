@@ -1,3 +1,4 @@
+using Direct2dCad.Rendering;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
@@ -403,7 +404,7 @@ internal static class CadVectorPrintRenderer
 
     private static void DrawOle(
         DrawingContext context,
-        Direct2DOleDrawCallback? drawCallback,
+        CadOleRenderCallback? drawCallback,
         CadOleObject ole,
         CadMatrixD ownerToPaper,
         double paperScale,
@@ -429,8 +430,8 @@ internal static class CadVectorPrintRenderer
                 for (var regionX = 0; regionX < pixelWidth; regionX += OleTilePixelSide)
                 {
                     var tileWidth = Math.Min(OleTilePixelSide, pixelWidth - regionX);
-                    var data = drawCallback(new Direct2DOleDrawRequest(
-                        Direct2DOleRenderKey.ForEntity(ole.Id),
+                    var data = drawCallback(new CadOleRenderRequest(
+                        CadOleRenderKey.ForEntity(ole.Id),
                         ole.OleMemory,
                         pixelWidth,
                         pixelHeight,
@@ -472,7 +473,7 @@ internal static class CadVectorPrintRenderer
     }
 
     private static bool IsValidOleTile(
-        Direct2DOleDrawData? data,
+        CadOleRenderData? data,
         int expectedWidth,
         int expectedHeight) =>
         data is not null &&

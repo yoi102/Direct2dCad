@@ -62,6 +62,18 @@ public sealed class CommandHistory<TCommand>
             _redoStack = new(e=>e.EstimatedBytes);
     }
 
+    internal bool IsLatestExecuted(TCommand command) =>
+        !_redoStack.TryPeek(out _) && _undoStack.TryPeek(out var entry) &&
+        ReferenceEquals(entry.Command, command);
+
+    internal void RefreshLatestExecuted(TCommand command, long estimatedBytes)
+    {
+        if (!IsLatestExecuted(command))
+            throw new InvalidOperationException("Only the latest executed command can be coalesced.");
+        var entry = _undoStack.Pop();
+        _undoStack.Push(entry with { EstimatedBytes = Math.Max(0, estimatedBytes), State = new object() });
+    }
+
     public IReadOnlyList<CommandHistoryEntry<TCommand>> PopUndo(CadCommandBatchUndoMode mode)
     {
         return Pop(_undoStack, mode);

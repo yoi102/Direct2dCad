@@ -1,9 +1,9 @@
+using Direct2dCad.Rendering;
 using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Editor;
-using Direct2dCad.Rendering.Direct2D.Ole;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using MessagePipe;
@@ -106,7 +106,7 @@ public sealed class CadOleSessionController : IDisposable
         }
     }
 
-    public Direct2DOleDrawData? Draw(Direct2DOleDrawRequest request)
+    public CadOleRenderData? Draw(CadOleRenderRequest request)
     {
         if (_disposed)
             return null;
@@ -125,7 +125,7 @@ public sealed class CadOleSessionController : IDisposable
 
         return drawData is null
             ? null
-            : new Direct2DOleDrawData(
+            : new CadOleRenderData(
                 drawData.PixelWidth,
                 drawData.PixelHeight,
                 drawData.Stride,
@@ -139,7 +139,7 @@ public sealed class CadOleSessionController : IDisposable
                !string.Equals(oleObject.SourceName, updated.SourceName, StringComparison.Ordinal);
     }
 
-    public void Release(Direct2DOleRenderKey renderKey)
+    public void Release(CadOleRenderKey renderKey)
     {
         if (_disposed)
             return;
@@ -227,7 +227,7 @@ public sealed class CadOleSessionController : IDisposable
             return;
         _disposed = true;
         _editor.DocumentCommands.DocumentChanged -= OnDocumentChanged;
-        _subscription.Dispose();
-        ClearSessions();
+        try { _subscription.Dispose(); }
+        finally { ClearSessions(); }
     }
 }

@@ -33,8 +33,10 @@ public sealed class DeleteLayerCommand : ICadCommand
             _previousEntityErasedStates[entityId] = document.GetEntity(entityId).IsErased;
 
         _snapshot ??= LayerSnapshot.From(document, layer);
-        document.DocumentSettings.LayerDrawingPriority.RemovePriority(_layerId);
+        // The document validates protected layers before making any changes.
+        // Do not remove settings until that validation has succeeded.
         document.RemoveLayerAndDeleteEntities(_layerId);
+        document.DocumentSettings.LayerDrawingPriority.RemovePriority(_layerId);
 
         return CreateEntityChangeSet(
             entityIdsOnLayer,

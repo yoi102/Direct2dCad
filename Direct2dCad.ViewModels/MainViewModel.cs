@@ -2,7 +2,6 @@ using System.ComponentModel;
 using AvalonDock.Core;
 using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.DependencyInjection;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
@@ -18,7 +17,7 @@ using Direct2dCad.ViewModels.Tools;
 
 namespace Direct2dCad.ViewModels;
 
-public partial class MainViewModel : ObservableObject
+public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IFileDialogService _fileDialogService;
     private readonly IImageImportService _imageImportService;
@@ -31,6 +30,9 @@ public partial class MainViewModel : ObservableObject
     private readonly IUserSettingsStore _userSettingsStore;
     private readonly CadUserSettings _userSettings;
     private readonly IActiveEditorContext _activeEditorContext;
+    private readonly IEditorTabFactory _editorTabFactory;
+    private readonly bool _ownsRecoveryStore;
+    private bool _disposed;
     private readonly CadDocumentStorage _storage = new();
     private CadDocumentViewModel? _printAvailabilityDocument;
     private bool _isDocumentContextActive;
@@ -44,6 +46,7 @@ public partial class MainViewModel : ObservableObject
         IUserSettingsStore userSettingsStore,
         ISnackbarService snackbarService,
         IActiveEditorContext activeEditorContext,
+        IEditorTabFactory editorTabFactory,
         CadRecoveryStore? recoveryStore = null,
         IFileLocationService? fileLocationService = null
         )
@@ -61,6 +64,8 @@ public partial class MainViewModel : ObservableObject
         _userSettings = userSettingsStore.Load();
         _snackbarService = snackbarService;
         _activeEditorContext = activeEditorContext;
+        _editorTabFactory = editorTabFactory;
+        _ownsRecoveryStore = recoveryStore is null;
         _recoveryStore = recoveryStore ?? new(trackSession: true);
         _fileLocationService = fileLocationService;
         DocumentExplorer = _dockLayoutService.GetAnchorable<DocumentExplorerToolboxViewModel>() ?? throw new ArgumentNullException(nameof(DocumentExplorerToolboxViewModel));
@@ -209,12 +214,7 @@ public partial class MainViewModel : ObservableObject
     {
         var tab = _dockLayoutService.OpenOrActivateDocument(
            e => false,
-           () =>
-           {
-               var newTab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
-               _snackbarService.Enqueue("New document created.");
-               return newTab;
-           });
+           () => _editorTabFactory.Create(_ => _snackbarService.Enqueue("New document created.")));
 
         CurrentEditorTabViewModel = tab;
         DocumentExplorer.RefreshDocuments();
@@ -224,15 +224,13 @@ public partial class MainViewModel : ObservableObject
     private void NewTemplate(string key)
     {
         var document=Direct2dCad.Db.Cad.CadEngineeringTemplates.Create(key);
-        var tab=_dockLayoutService.OpenOrActivateDocument(e=>false,()=>
+        var tab=_dockLayoutService.OpenOrActivateDocument(e=>false,()=>_editorTabFactory.Create(newTab =>
         {
-            var newTab=Ioc.Default.GetRequiredService<EditorTabViewModel>();
             newTab.Load(document,string.Empty);
             var viewport=document.Layouts.Values.Single().Viewports.Single();
             newTab.CadDocumentViewModel.DimensionAnnotationScale=1/viewport.Scale;
             newTab.CadDocumentViewModel.DimensionUnit=document.DocumentSettings.Unit;
-            return newTab;
-        });
+        }));
         CurrentEditorTabViewModel=tab;
         DocumentExplorer.RefreshDocuments();
     }
@@ -269,12 +267,7 @@ public partial class MainViewModel : ObservableObject
 
             var tab = _dockLayoutService.OpenOrActivateDocument(
             e => e.CurrentFilePath == fileName,
-            () =>
-            {
-                var newTab = Ioc.Default.GetRequiredService<EditorTabViewModel>();
-                newTab.Load(document, fileName);
-                return newTab;
-            });
+            () => _editorTabFactory.Create(newTab => newTab.Load(document, fileName)));
 
             if (!focusChanged) CurrentEditorTabViewModel = tab;
             else _dockLayoutService.ActiveDockable = activeAfterOpen;
@@ -304,7 +297,7 @@ public partial class MainViewModel : ObservableObject
         if (CurrentEditorTabViewModel is not null)
         {
             actualGraphicsDeviceMode = CurrentEditorTabViewModel
-                .CadDocumentViewModel.Direct2DImageRenderHost.UsingWarp
+                .CadDocumentViewModel.RenderSession.UsingWarp
                 ? CadGraphicsDeviceMode.Warp
                 : CadGraphicsDeviceMode.Hardware;
         }

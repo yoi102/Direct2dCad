@@ -13,8 +13,9 @@ public static class ServiceCollectionExtension
     {
         services.AddTransient<MainViewModel>();
         services.TryAddSingleton<ICadDocumentWriter, CadDocumentStorage>();
-        services.AddTransient<EditorTabViewModel>();
-        services.AddTransient<CadDocumentViewModel>();
+        services.AddSingleton<IEditorTabFactory, EditorTabFactory>();
+        services.AddScoped<EditorTabViewModel>();
+        services.AddScoped<CadDocumentViewModel>();
         services.AddSingleton<ICadClipboardStore, CadClipboardStore>();
         services.AddSingleton<IActiveEditorContext, ActiveEditorContext>();
         services.AddSingleton<ICadToolWorkspace, CadToolWorkspace>();

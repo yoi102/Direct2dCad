@@ -41,6 +41,20 @@
         "type": "Project",
         "dependencies": {
           "Direct2dCad.ChangeTracking": "[1.0.0, )",
+          "Direct2dCad.Db": "[1.0.0, )",
+          "Direct2dCad.Rendering.Handles": "[1.0.0, )",
+          "Direct2dCad.Rendering.Transient": "[1.0.0, )"
+        }
+      },
+      "direct2dcad.rendering.handles": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[1.0.0, )"
+        }
+      },
+      "direct2dcad.rendering.transient": {
+        "type": "Project",
+        "dependencies": {
           "Direct2dCad.Db": "[1.0.0, )"
         }
       }

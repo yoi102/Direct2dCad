@@ -91,7 +91,8 @@ public sealed class CadDocumentChangeDispatcher
         }
         var annotationChanges = affected.Select(id => _document.TryGetEntity(id, out var e) ? e as CadDimension : null)
             .Where(d => d is not null && !d.IsErased && d.RefreshAssociation(_document))
-            .Select(d => CadDocumentChangeSet.ForEntity(d!.Id, CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance)).ToArray();
+            .Select(d => new CadDocumentChangeSet([new(d!.Id, CadEntityChangeKind.Geometry | CadEntityChangeKind.Appearance)])
+            { IsDerivedGeometry = result.IsDerivedGeometry }).ToArray();
         if (annotationChanges.Length > 0)
             result = CadDocumentChangeSet.Combine(new[] { result }.Concat(annotationChanges));
         result = ExpandBlockReferenceChanges(result);
@@ -151,6 +152,7 @@ public sealed class CadDocumentChangeDispatcher
                 (alive ? CadEntityChangeKind.Created : CadEntityChangeKind.Deleted) };
         }))
         {
+            IsDerivedGeometry = pending.IsDerivedGeometry,
             TableChanges = pending.TableChanges,
             AffectsDocumentStructure = pending.AffectsDocumentStructure,
             AffectsLayouts = pending.AffectsLayouts,
@@ -199,6 +201,7 @@ public sealed class CadDocumentChangeDispatcher
         return new CadDocumentChangeSet(
             changes.Select(change => new CadEntityChange(change.Key, change.Value)))
         {
+            IsDerivedGeometry = result.IsDerivedGeometry,
             AffectsDocumentStructure = result.AffectsDocumentStructure,
             TableChanges = result.TableChanges,
             AffectsLayouts = result.AffectsLayouts,

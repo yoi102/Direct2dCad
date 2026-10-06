@@ -6,6 +6,8 @@
 
 ## 页面和入口
 
+实现位于 `Direct2dCad.Application.Tools`。终端、AI 和无界面宿主共用工具执行器，通过 `ICadToolWorkspace` / `ICadToolDocumentSession` 操作图纸；桌面 Dock 与文档生命周期适配保留在 ViewModels。详见[当前架构](ARCHITECTURE.md)与[本轮优化](ARCHITECTURE-OPTIMIZATION.md)。
+
 “绘制”“修改”“标注”三个 Ribbon 页签只在 CAD 图纸上下文中显示。欢迎页等静态页面隐藏它们，并回到文件页；切回图纸恢复三个页签。点击图纸的属性或 Terminal 工具箱会保留当前图纸上下文，避免正常输入时隐藏工具。图纸恢复工具箱只提供恢复稿列表；绘制和标注的精确输入位于画布。
 
 ## Terminal 使用

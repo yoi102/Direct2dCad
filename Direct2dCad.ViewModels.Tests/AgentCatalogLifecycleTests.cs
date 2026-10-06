@@ -18,7 +18,7 @@ public sealed class AgentCatalogLifecycleTests
     public async Task SharedStylesCanBeCreatedListedRenamedDeletedAndRestored(string tool, string arguments)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Styles").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Styles").GetViewModel().CadEditor;
         var initial = editor.Document.Styles.Count;
         await Execute(new(workspace), tool, arguments);
         var style = editor.Document.Styles.Values.Single(style => style.Name == "Fixture");
@@ -45,7 +45,7 @@ public sealed class AgentCatalogLifecycleTests
     public async Task ReferencedLineTypesAndHatchPatternsCannotBeDeleted()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Catalog").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Catalog").GetViewModel().CadEditor;
         await Execute(new(workspace), "create_line_type", new { name = "Dashes", dash_pattern = new[] { 3, -2, 1, -2 } });
         var line = editor.Document.LineTypes.Values.Single(item => item.Name == "Dashes");
         await Execute(new(workspace), "rename_line_type", new { line_type = "Dashes", new_name = "Pattern" });
@@ -76,7 +76,7 @@ public sealed class AgentCatalogLifecycleTests
     public async Task BlockCreationInsertionEditingRenameAndDeletionPreserveReferences()
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Blocks").DocumentViewModel;
+        var vm = workspace.CreateDocument("Blocks").GetViewModel();
         var editor = vm.CadEditor;
         var line = editor.AddLine(new(0, 0), new(10, 10));
         var created = Payload(await Execute(new(workspace), "create_block", new { entity_ids = new[] { line.Value }, name = "Part", base_x = 0, base_y = 0 }));

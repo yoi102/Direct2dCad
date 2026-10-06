@@ -47,7 +47,7 @@ internal sealed class MainWindowTestContext : IDisposable
         ];
         Layout = new DockLayoutService(_toolboxes);
         ViewModel = new MainViewModel(Layout, new SideToggleManager(Layout), Appearance, Appearance,
-            Files, p, Dialogs, Settings, p, ActiveEditor, _recoveryStore, fileLocationService);
+            Files, p, Dialogs, Settings, p, ActiveEditor, new TestEditorTabFactory(this), _recoveryStore, fileLocationService);
     }
 
     public (EditorTabViewModel Tab, RecordingDocumentWriter Writer) AddDocument(string name, bool saved = false)
@@ -67,6 +67,7 @@ internal sealed class MainWindowTestContext : IDisposable
 
     public void Dispose()
     {
+        ViewModel.Dispose();
         foreach (var (context, tab) in _tabs)
         {
             tab.Dispose();
@@ -80,6 +81,27 @@ internal sealed class MainWindowTestContext : IDisposable
         {
             _recoveryStore.Dispose();
             if (Directory.Exists(_recoveryStore.DirectoryPath)) Directory.Delete(_recoveryStore.DirectoryPath, true);
+        }
+    }
+
+    private sealed class TestEditorTabFactory(MainWindowTestContext owner) : IEditorTabFactory
+    {
+        public EditorTabViewModel Create(Action<EditorTabViewModel>? initialize = null)
+        {
+            var context = new CadToolboxTestContext();
+            var tab = context.CreateEditorTab(owner.Dialogs, owner.Files, new RecordingDocumentWriter());
+            try
+            {
+                initialize?.Invoke(tab);
+                owner._tabs.Add((context, tab));
+                return tab;
+            }
+            catch
+            {
+                tab.Dispose();
+                context.Dispose();
+                throw;
+            }
         }
     }
 }

@@ -245,7 +245,14 @@ public sealed class CadCommandLineService : ICadCommandLineService
             $"  realizations {FormatBytes(statistics.GeometryRealizationCacheBytes)} | " +
             $"hatch tiles {FormatBytes(statistics.HatchTileCacheBytes)} | " +
             $"images {FormatBytes(statistics.ImageBitmapCacheBytes)} | " +
-            $"OLE tiles {FormatBytes(statistics.OleTileCacheBytes)}"));
+            $"OLE tiles {FormatBytes(statistics.OleTileCacheBytes)} | " +
+            $"grid tiles {FormatBytes(statistics.GridTileCacheBytes)} | " +
+            $"transient CL {FormatBytes(statistics.TransientGroupCacheBytes)}",
+            $"Retained estimates: document {FormatBytes(statistics.DocumentRetainedCacheBytes)}/" +
+            $"{FormatBytes(statistics.DocumentRetainedCacheLimitBytes)} ({statistics.DocumentRendererCount} renderers) | " +
+            $"process {FormatBytes(statistics.ProcessRetainedCacheBytes)}/" +
+            $"{FormatBytes(statistics.ProcessRetainedCacheLimitBytes)} ({statistics.RenderSessionCount} documents) | " +
+            "excludes active frame resources and presentation surfaces"));
     }
 
     private static string FormatBytes(long bytes)

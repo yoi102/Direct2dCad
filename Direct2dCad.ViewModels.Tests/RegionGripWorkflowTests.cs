@@ -47,7 +47,7 @@ public sealed class RegionGripWorkflowTests
                 out _, out var scale, out expected));
             Assert.Equal(1.25, scale, 8);
         }
-        var previews = new List<CadTransientItem>(); var measurement = new CadTextMeasurementService(editor.Document, vm.Direct2DImageRenderHost, editor.Viewport);
+        var previews = new List<CadTransientItem>(); var measurement = new CadTextMeasurementService(editor.Document, vm.RenderSession, editor.Viewport);
         new CadGripDragPreviewBuilder(editor, new CadPreviewStyleService(editor.Document, vm.UserSettings), measurement).AddPreview(previews, drag);
         var preview = Assert.IsType<CadTransientGroup>(Assert.Single(previews)); Assert.Equal(expected, preview.Transform);
         Assert.Equal(region.Id, Assert.IsType<CadTransientEntityReference>(Assert.Single(preview.Items)).EntityId);
@@ -106,7 +106,7 @@ public sealed class RegionGripWorkflowTests
         using var context = new CadToolboxTestContext(); var editor = context.Document.CadEditor; var region = AddRegion(editor);
         var builder = new CadHandleSceneBuilder(); var scene = new CadHandleScene(); scene.Replace(builder.BuildSelectionHandles(editor.Document, [region.Id]));
         var grip = scene.Items.OfType<CadGripHandle>().First(); var controller = new CadGripDragController(new CadHandleHitTester());
-        var committer = new CadGripDragCommitter(editor, new CadTextMeasurementService(editor.Document, context.Document.Direct2DImageRenderHost, editor.Viewport));
+        var committer = new CadGripDragCommitter(editor, new CadTextMeasurementService(editor.Document, context.Document.RenderSession, editor.Viewport));
         var history = editor.CreateDocumentHistorySnapshot();
         Assert.True(controller.TryBegin(editor, scene, p => p, p => p, grip.Position));
         controller.UpdatePointer(p => p, grip.Position + new CadVectorD(3, 4)); controller.Clear();
@@ -132,7 +132,7 @@ public sealed class RegionGripWorkflowTests
         Assert.Equal(2, controller.HiddenEntityIds.Count);
         var delta = new CadVectorD(7, 9);
         Assert.True(controller.Commit(editor, new CadGripDragCommitter(editor,
-            new CadTextMeasurementService(editor.Document, vm.Direct2DImageRenderHost, editor.Viewport)), p => p, grip.Position + delta));
+            new CadTextMeasurementService(editor.Document, vm.RenderSession, editor.Viewport)), p => p, grip.Position + delta));
         Assert.Equal(before.Translate(delta), region.Bounds); Assert.Equal(new(57, 9), Assert.IsType<CadLine>(editor.Document.GetEntity(line)).Start);
         editor.Undo(); Assert.Equal(before, region.Bounds); Assert.Equal(new(50, 0), Assert.IsType<CadLine>(editor.Document.GetEntity(line)).Start);
     }

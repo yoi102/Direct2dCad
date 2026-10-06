@@ -1,7 +1,7 @@
+using Direct2dCad.Rendering;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
-using Direct2dCad.Rendering.Direct2D.Ole;
 
 namespace Direct2dCad.ViewModels.Services.Platform.Printing;
 
@@ -32,7 +32,7 @@ public sealed record CadPrintRequest(
     CadDocument Document,
     CadRectD PaperBounds,
     LayoutId ActiveLayoutId,
-    Direct2DOleDrawCallback? OleDrawCallback = null)
+    CadOleRenderCallback? OleDrawCallback = null)
 {
     public bool IsModelSpace { get; init; }
     public CadRectD? CurrentViewBounds { get; init; }

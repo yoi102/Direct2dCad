@@ -48,7 +48,7 @@ public sealed class InputReliabilityTests
     public async Task PublicMeasurementAcceptsZeroDistanceAtOrigin(string tool, string? operation)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var model = workspace.CreateDocument("Origin").DocumentViewModel;
+        var model = workspace.CreateDocument("Origin").GetViewModel();
         var line = model.CadEditor.Document.AddLine(new(-10, 0), new(10, 0));
         var input = JsonSerializer.Serialize(new { operation, entity_ids = new[] { line.Id.Value }, point = new { x = 0, y = 0 } });
         var output = await new CadWorkspaceToolExecutor(workspace).ExecuteAsync(new AiToolCall("origin", tool, input), CancellationToken.None);

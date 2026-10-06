@@ -9,6 +9,28 @@ namespace Direct2dCad.Commands.Tests;
 
 public sealed class LayerAndBlockCommandTests
 {
+    [Theory]
+    [InlineData(0)]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    public void InvalidBlockScaleDoesNotPartiallyChangeTransform(double invalidScale)
+    {
+        var document = CadDocument.Create("Transform validation");
+        var blockId = document.CreateBlockDefinition("Symbol", CadPointD.Origin);
+        var reference = document.AddBlockReference(blockId, new CadPointD(10, 20),
+            rotationRadians: 0.3, scaleX: 2, scaleY: 3);
+        var bounds = reference.Bounds;
+        var command = new SetBlockReferenceTransformCommand(reference.Id, new CadPointD(50, 60), 1, 4, invalidScale);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => command.Execute(document));
+
+        Assert.Equal(new CadPointD(10, 20), reference.Position);
+        Assert.Equal(0.3, reference.RotationRadians);
+        Assert.Equal(2, reference.ScaleX);
+        Assert.Equal(3, reference.ScaleY);
+        Assert.Equal(bounds, reference.Bounds);
+    }
+
     [Fact]
     public void DeleteLayerCommand_UndoRestoresLayerEntitiesAndPriority()
     {

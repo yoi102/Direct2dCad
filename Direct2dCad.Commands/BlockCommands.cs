@@ -318,6 +318,16 @@ public sealed class SetBlockReferenceTransformCommand : ICadCommand
         double scaleX,
         double scaleY)
     {
+        // SetScale validates each axis separately, so all values must be checked
+        // before changing the position, rotation, or either scale component.
+        if (!double.IsFinite(position.X) || !double.IsFinite(position.Y))
+            throw new ArgumentOutOfRangeException(nameof(position));
+        if (!double.IsFinite(rotationRadians))
+            throw new ArgumentOutOfRangeException(nameof(rotationRadians));
+        if (!double.IsFinite(scaleX) || Math.Abs(scaleX) <= 1e-9)
+            throw new ArgumentOutOfRangeException(nameof(scaleX));
+        if (!double.IsFinite(scaleY) || Math.Abs(scaleY) <= 1e-9)
+            throw new ArgumentOutOfRangeException(nameof(scaleY));
         reference.SetPosition(position);
         reference.SetRotation(rotationRadians);
         reference.SetScale(scaleX, scaleY);

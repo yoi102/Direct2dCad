@@ -10,7 +10,7 @@ public sealed class PathCornerToolTests
     [Theory] [InlineData("fillet",false)] [InlineData("chamfer",false)] [InlineData("fillet",true)] [InlineData("chamfer",true)]
     public async Task ToolCanModifyOnePathAndNativeStoragePreservesTheResult(string operation,bool whole)
     {
-        using var workspace=new ToolExecutionWorkspace(); var vm=workspace.CreateDocument("path").DocumentViewModel;
+        using var workspace=new ToolExecutionWorkspace(); var vm=workspace.CreateDocument("path").GetViewModel();
         var entity=vm.CadEditor.Document.AddPolyline([new(0,0),new(40,0),new(40,40),new(0,40)],true);
         var args=JsonSerializer.Serialize(new {operation,entity_ids=new[]{entity.Id.Value},x=20,y=0,x2=40,y2=20,distance=3,second_distance=5,all_corners=whole});
         var response=await new CadWorkspaceToolExecutor(workspace).ExecuteAsync(new AiToolCall("corner","edit_curves",args),CancellationToken.None);

@@ -26,7 +26,9 @@ public sealed class RegionRoundTripTests
             r.ReplaceGeometry(r.Contours.Select(c => c.Transform(p => p + new CadVectorD(20, 0))));
             Assert.False(((CadRegion)snapshot.GetEntity(r.Id)).Contains(default));
             Assert.True(((CadRegion)snapshot.GetEntity(r.Id)).Contains(new(5, 0)));
-            Assert.True(new CadDxfStorage().AnalyzeExport(loaded).ContainsKey(nameof(CadRegion)));
+            var losses = new CadDxfStorage().AnalyzeExport(loaded);
+            Assert.DoesNotContain(nameof(CadRegion), losses.Keys);
+            Assert.Equal(1, losses["Region converted to boundary polylines"]);
         }
         finally { File.Delete(path); }
     }

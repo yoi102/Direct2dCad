@@ -89,4 +89,14 @@ public sealed record CadCommandLineRenderStatistics(
     int ParallelWorkerCount,
     int ParallelEntityCount,
     double ParallelRenderMilliseconds,
-    long ParallelGpuCacheBytes);
+    long ParallelGpuCacheBytes)
+{
+    public long GridTileCacheBytes { get; init; }
+    public long TransientGroupCacheBytes { get; init; }
+    public long DocumentRetainedCacheBytes { get; init; }
+    public long DocumentRetainedCacheLimitBytes { get; init; }
+    public long ProcessRetainedCacheBytes { get; init; }
+    public long ProcessRetainedCacheLimitBytes { get; init; }
+    public int RenderSessionCount { get; init; }
+    public int DocumentRendererCount { get; init; }
+}

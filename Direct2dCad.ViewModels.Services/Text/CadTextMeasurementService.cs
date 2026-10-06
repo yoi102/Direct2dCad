@@ -4,13 +4,12 @@ using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering;
-using Direct2dCad.Rendering.Direct2D.Hosting;
 
 namespace Direct2dCad.ViewModels.Services.Text;
 
 internal readonly struct CadTextMeasurementService(
     CadDocument document,
-    Direct2DImageRenderHost renderHost,
+    ICadTextMetrics renderHost,
     CadViewport viewport)
 {
     public CadRectD CreateTextBounds(

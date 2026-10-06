@@ -14,9 +14,14 @@ namespace Direct2dCad.Rendering.Direct2D.Hosting;
 /// Draws ordered entity chunks with independent contexts and caches on one D2D device.
 /// Worker targets are detached before the main context reads their textures.
 /// </summary>
-internal sealed class Direct2DSharedDeviceSceneRenderer : IDisposable
+internal sealed class Direct2DSharedDeviceSceneRenderer(CadRenderResourceBudget.DocumentLease resourceDocument) : IDisposable
 {
     private WorkerSlot[]? _slots;
+    public void EnforceResourceBudget()
+    {
+        if (_slots is not null)
+            foreach (var slot in _slots) slot.EnforceResourceBudget();
+    }
     private CadDocument? _document;
     private nint _devicePointer;
     private int _width;
@@ -152,6 +157,7 @@ internal sealed class Direct2DSharedDeviceSceneRenderer : IDisposable
                     d2dDevice,
                     mainContext,
                     dwriteFactory,
+                    resourceDocument,
                     width,
                     height);
             }
@@ -281,6 +287,10 @@ internal sealed class Direct2DSharedDeviceSceneRenderer : IDisposable
 
         public ID2D1Bitmap1 MainReadableBitmap => _target.MainReadableBitmap;
         public int PreparedEntityResourceCount => _renderer.PreparedEntityResourceCount;
+        public void EnforceResourceBudget()
+        {
+            lock (_useGate) _renderer.EnforceResourceBudget();
+        }
 
         public void ApplyChanges(CadDocument document, CadDocumentChangeSet changes)
         {
@@ -306,6 +316,7 @@ internal sealed class Direct2DSharedDeviceSceneRenderer : IDisposable
             ID2D1Device d2dDevice,
             ID2D1DeviceContext mainContext,
             IDWriteFactory dwriteFactory,
+            CadRenderResourceBudget.DocumentLease resourceDocument,
             int width,
             int height)
         {
@@ -319,7 +330,7 @@ internal sealed class Direct2DSharedDeviceSceneRenderer : IDisposable
                 target = Direct2DWorkerRenderTarget.Create(d3dDevice, context,
                     d3dDevice, mainContext, width, height, crossDevice: false);
 
-                renderer = new Direct2DSceneRender();
+                renderer = new Direct2DSceneRender(resourceDocument);
                 renderer.ResetDeviceResources(
                     d2dFactory,
                     dwriteFactory,

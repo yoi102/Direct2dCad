@@ -37,6 +37,7 @@ internal sealed class Direct2DResourceCache : IDisposable
     private float _maximumStrokeWidth;
     private bool _maximumStrokeWidthDirty;
     private bool _disposed;
+    private long _imageUsageStamp;
 
     public Direct2DResourceCache(
         Direct2DStyleResourceCache styleResources,
@@ -75,11 +76,11 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
     }
 
-    public int EnforceGeometryRealizationBudget()
+    public int EnforceGeometryRealizationBudget(long budgetBytes = GeometryRealizationCacheBudgetBytes)
     {
         ThrowIfDisposed();
         var estimatedBytes = GeometryRealizationEstimatedBytes;
-        if (estimatedBytes <= GeometryRealizationCacheBudgetBytes)
+        if (estimatedBytes <= budgetBytes)
             return 0;
 
         var evictionCount = 0;
@@ -94,7 +95,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 candidates.Enqueue((cache, profile), profile.LastUsed);
         }
 
-        while (estimatedBytes > GeometryRealizationCacheBudgetBytes &&
+        while (estimatedBytes > budgetBytes &&
                candidates.TryDequeue(out var candidate, out _))
         {
             if (!candidate.Cache.EvictProfile(candidate.Profile))
@@ -295,7 +296,18 @@ internal sealed class Direct2DResourceCache : IDisposable
     public bool TryGetEntityResources(EntityId entityId, out EntityResourceBucket? bucket)
     {
         ThrowIfDisposed();
-        return _entityResources.TryGetValue(entityId, out bucket);
+        if (!_entityResources.TryGetValue(entityId, out bucket)) return false;
+        if (bucket.ImageSource is { } image)
+        {
+            bucket.ImageLastUsed = ++_imageUsageStamp;
+            if (bucket.BitmapLease is null)
+            {
+                bucket.BitmapLease = _imageBitmapResources.Acquire(image);
+                if (bucket.Bitmap is not null)
+                    bucket.BitmapBrush = CreateBitmapBrush(image.FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
+            }
+        }
+        return true;
     }
 
     public void BeginFrame(bool allowRealizations = true)
@@ -530,6 +542,25 @@ internal sealed class Direct2DResourceCache : IDisposable
         }
     }
 
+    // Called after all retained command lists have been released, so no hidden COM
+    // references keep an evicted bitmap alive. Image leases reload on next use.
+    internal int EvictImageResources(long targetBytes)
+    {
+        var removed = 0;
+        foreach (var pair in _entityResources.Where(pair => pair.Value.BitmapLease is not null)
+                     .OrderBy(pair => pair.Value.ImageLastUsed).ToArray())
+        {
+            if (ImageBitmapEstimatedBytes <= targetBytes) break;
+            if (pair.Value.BitmapLease is null) continue;
+            pair.Value.BitmapBrush?.Dispose();
+            pair.Value.BitmapBrush = null;
+            pair.Value.BitmapLease.Dispose();
+            pair.Value.BitmapLease = null;
+            removed++;
+        }
+        return removed;
+    }
+
     public void ClearCache()
     {
         ClearEntityResources();
@@ -627,6 +658,8 @@ internal sealed class Direct2DResourceCache : IDisposable
 
             if (entity is CadImage image)
             {
+                bucket.ImageSource = image;
+                bucket.ImageLastUsed = ++_imageUsageStamp;
                 bucket.BitmapLease = _imageBitmapResources.Acquire(image);
                 if (bucket.Bitmap is not null)
                     bucket.BitmapBrush = CreateBitmapBrush(image.FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
@@ -1285,6 +1318,8 @@ internal sealed class Direct2DResourceCache : IDisposable
     internal sealed class EntityResourceBucket : IDisposable
     {
         public EntityId EntityId { get; }
+        internal CadImage? ImageSource { get; set; }
+        internal long ImageLastUsed { get; set; }
         public ID2D1Geometry? Geometry { get; set; }
         public ID2D1Geometry? MediumDetailGeometry { get; set; }
         public ID2D1Geometry? LowDetailGeometry { get; set; }
@@ -1370,6 +1405,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             TextFormatLease = null;
             BitmapBrush = null;
             BitmapLease = null;
+            ImageSource = null;
         }
     }
 }

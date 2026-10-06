@@ -1,6 +1,6 @@
 using Direct2dCad.ChangeTracking;
 using Direct2dCad.Editor;
-using Direct2dCad.Rendering.Direct2D.Hosting;
+using Direct2dCad.Rendering;
 using Direct2dCad.Rendering.Handles;
 using Direct2dCad.Rendering.Transient;
 
@@ -14,7 +14,7 @@ internal sealed class CadRenderResourceCoordinator
 
     public void Attach(
         CadEditor editor,
-        Direct2DImageRenderHost renderHost,
+        ICadRenderSession renderHost,
         CadTransientScene transientScene,
         CadHandleScene handleScene,
         EventHandler<CadDocumentChangeSet> documentChangedHandler)
@@ -37,7 +37,7 @@ internal sealed class CadRenderResourceCoordinator
 
     public void Detach(
         CadEditor editor,
-        Direct2DImageRenderHost renderHost,
+        ICadRenderSession renderHost,
         EventHandler<CadDocumentChangeSet> documentChangedHandler)
     {
         if (!IsAttached)
@@ -48,19 +48,19 @@ internal sealed class CadRenderResourceCoordinator
         IsAttached = false;
     }
 
-    public void UpdateTextMeasurements(CadEditor editor, Direct2DImageRenderHost renderHost)
+    public void UpdateTextMeasurements(CadEditor editor, ICadRenderSession renderHost)
     {
         if (!IsAttached || IsApplyingTextMeasurementChanges)
             return;
 
-        var changes = renderHost.UpdateTextMeasurements(editor.Document);
-        if (!changes.DocumentChanged)
+        var measurements = renderHost.MeasurePendingTextBounds(editor.Document);
+        if (measurements.Count == 0)
             return;
 
         try
         {
             IsApplyingTextMeasurementChanges = true;
-            editor.PublishDocumentChanges(changes);
+            editor.ApplyDerivedTextBounds(measurements);
         }
         finally
         {

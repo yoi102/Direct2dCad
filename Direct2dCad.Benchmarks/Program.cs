@@ -20,6 +20,8 @@ public static class Program
         { MilestoneBaselineRunner.Run(args[1]);return; }
         if(args.Length==2 && args[0]=="--m4-m6-evidence")
         { MilestoneDeliveryRunner.Run(args[1]);return; }
+        if(args.Length==2 && args[0]=="--region-dxf-evidence")
+        { RegionDxfExportRunner.Run(args[1]);return; }
         var effectiveArgs = new List<string>(args.Length);
         var smoke = false;
         for (var index = 0; index < args.Length; index++)

@@ -14,7 +14,7 @@ public sealed class AgentEntityMutationTests
     public async Task ExactGeometryCanBeReadRestoredAndUndoneForEveryEntity(TestEntityKind kind)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Geometry").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Geometry").GetViewModel().CadEditor;
         var entity = CadEntityTestCases.Add(editor.Document, kind);
         var original = entity.Bounds;
         var read = await Execute(new(workspace), "get_entity_geometry", new { entity_id = entity.Id.Value });
@@ -42,7 +42,7 @@ public sealed class AgentEntityMutationTests
     public async Task DuplicateKeepsSourceTypeAppearanceAndUndoDoesNotEraseSource(TestEntityKind kind)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var vm = workspace.CreateDocument("Duplicate").DocumentViewModel;
+        var vm = workspace.CreateDocument("Duplicate").GetViewModel();
         var editor = vm.CadEditor;
         var entity = CadEntityTestCases.Add(editor.Document, kind);
         var original = entity.Bounds;
@@ -72,7 +72,7 @@ public sealed class AgentEntityMutationTests
     public async Task WrongTypePropertiesAreRejectedWithoutCreatingHistory(TestEntityKind kind)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Validation").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Validation").GetViewModel().CadEditor;
         var entity = CadEntityTestCases.Add(editor.Document, kind);
         var history = editor.CreateDocumentHistorySnapshot();
         var input = new JsonObject { ["entity_ids"] = new JsonArray(entity.Id.Value) };
@@ -95,7 +95,7 @@ public sealed class AgentEntityMutationTests
     public async Task ClosedEntitiesSupportAllFillModesAndResourceRollback(TestEntityKind kind)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Fill").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Fill").GetViewModel().CadEditor;
         var entity = CadEntityTestCases.Add(editor.Document, kind);
         if (entity is CadSpline spline) spline.SetClosed(true);
         if (entity is CadCompositePath path) path.ReplaceGeometry(path.StartPoint, path.Segments, true);
@@ -138,7 +138,7 @@ public sealed class AgentEntityMutationTests
     public async Task StrokeStyleAcceptsOnlySupportedEntityTypes(TestEntityKind kind)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Stroke").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Stroke").GetViewModel().CadEditor;
         var entity = CadEntityTestCases.Add(editor.Document, kind);
         var supportsStroke = kind is not (TestEntityKind.Text or TestEntityKind.ShapeText or TestEntityKind.Image or TestEntityKind.Ole or TestEntityKind.Block);
         var before = entity.StrokeStyle;
@@ -165,7 +165,7 @@ public sealed class AgentEntityMutationTests
     public async Task UneditableTargetsRejectMutationsWithoutSideEffects(string restriction)
     {
         using var workspace = new ToolExecutionWorkspace();
-        var editor = workspace.CreateDocument("Access").DocumentViewModel.CadEditor;
+        var editor = workspace.CreateDocument("Access").GetViewModel().CadEditor;
         var entity = editor.Document.AddCircle(new(0, 0), 5);
         var layer = editor.Document.GetLayer(entity.LayerId);
         switch (restriction)

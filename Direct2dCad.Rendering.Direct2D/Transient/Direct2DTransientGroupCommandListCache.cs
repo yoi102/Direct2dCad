@@ -28,6 +28,8 @@ internal sealed class Direct2DTransientGroupCommandListCache(
     private bool _buildFailed;
     private bool _disposed;
 
+    public long EstimatedBytes => _commandList is null ? 0 : 4096L + (long)_itemCount * 256;
+
     public bool Prepare(
         ID2D1DeviceContext context,
         CadDocument document,

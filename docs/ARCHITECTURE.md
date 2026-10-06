@@ -4,7 +4,9 @@
 
 当前实现以 `CadDocument` 为图纸数据源，以文档命令管理修改和历史，由 Editor 分发变更，再更新空间查询与 Direct2D 资源。下面先列分层和职责，再列实际项目依赖。
 
-模型、命令、文件格式、命令行协议有独立边界；当前 ViewModel 和业务服务仍直接使用 Direct2D 宿主、文本测量等能力。迁移到其他 UI 或渲染后端需要继续抽取这些接口，不能仅替换窗口。
+模型、命令、文件格式、命令行协议和 CAD 工具应用层具有独立边界。ViewModel 与交互服务通过 `ICadRenderSession` / `ICadTextMetrics` 使用渲染能力；WPF 启动入口装配 Direct2D 后端。每张图纸由 `IEditorTabFactory` 建立独立 DI scope，关闭标签时释放。
+
+2026-10-06 的问题、实现范围和实际验证见[架构优化实施与验收](ARCHITECTURE-OPTIMIZATION.md)。
 
 2026-10-03 的 M1–M3 增加了以下协作路径，完整范围见[实施状态](M1-M3-STATUS.md)：
 
@@ -21,6 +23,7 @@
 | 分层 | 项目 |
 |---|---|
 | 核心编辑 | `Direct2dCad.Db`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor` |
+| CAD 应用用例 | `Direct2dCad.Application` |
 | AI 与 Agent | `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex` |
 | 查询与存储 | `Direct2dCad.HitTesting`, `Direct2dCad.Indexing`, `Direct2dCad.IO` |
 | 渲染 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
@@ -36,73 +39,26 @@
 
 ```mermaid
 flowchart TD
-    UI["WPF UI<br/>Direct2dCad.wpf<br/>Direct2dCad.wpf.Controls"]
-    VMAbs["VM Abstractions<br/>Direct2dCad.ViewModels.Abstractions"]
-    VMServices["VM Services<br/>Direct2dCad.ViewModels.Services"]
-    VM["ViewModels<br/>Direct2dCad.ViewModels"]
-    Client["Client Common / Lang<br/>Direct2dCad.Client.Common<br/>Direct2dCad.Lang"]
-    Editor["Editor<br/>Direct2dCad.Editor"]
-    Commands["Commands<br/>Direct2dCad.Commands"]
-    CommandLine["Command Line<br/>Direct2dCad.CommandLine"]
-    AIContracts["AI Contracts<br/>Direct2dCad.AI.Contracts"]
-    LmStudio["LM Studio Adapter<br/>Direct2dCad.AI.LmStudio"]
-    Agent["Agent Orchestration<br/>Direct2dCad.Agent"]
-    Codex["Codex App Server Adapter<br/>Direct2dCad.Agent.Codex"]
-    ChangeTracking["Change Tracking<br/>Direct2dCad.ChangeTracking"]
-    Db["CAD Data Model<br/>Direct2dCad.Db"]
-    Query["HitTesting / Indexing<br/>Direct2dCad.HitTesting<br/>Direct2dCad.Indexing"]
-    Rendering["Rendering Abstractions<br/>Direct2dCad.Rendering"]
-    Transient["Transient Scene<br/>Direct2dCad.Rendering.Transient"]
-    Handles["Handle Scene<br/>Direct2dCad.Rendering.Handles"]
-    Direct2D["Direct2D Backend<br/>Direct2dCad.Rendering.Direct2D"]
-    IO["Persistence<br/>Direct2dCad.IO"]
-
-    UI --> VM
-    UI --> VMAbs
-    UI --> CommandLine
-    UI --> AIContracts
-    UI --> LmStudio
-    UI --> Codex
-    VM --> VMAbs
-    VM --> CommandLine
-    VM --> AIContracts
-    VM --> Agent
-    VM --> Codex
-    VM --> VMServices
-    VM --> Client
-    VM --> Editor
-    VM --> IO
-    VM --> Direct2D
-    VMServices --> Editor
-    VMServices --> IO
-    VMServices --> Rendering
-    VMServices --> Direct2D
-    VMServices --> Handles
-    VMServices --> Transient
-    Editor --> Commands
-    Editor --> ChangeTracking
-    Editor --> Query
-    Editor --> Rendering
-    Commands --> ChangeTracking
-    CommandLine --> Db
-    Commands --> Db
-    ChangeTracking --> Db
-    Query --> Db
-    Rendering --> ChangeTracking
-    Rendering --> Db
-    Transient --> Db
-    Handles --> Db
-    Direct2D --> Rendering
-    Direct2D --> Handles
-    Direct2D --> Transient
-    Direct2D --> ChangeTracking
-    Direct2D --> Db
-    IO --> Db
-    Client --> Db
-    Agent --> AIContracts
-    Codex --> Agent
-    Codex --> AIContracts
+    WPF[WPF composition and presentation] --> VM[ViewModels / interaction services]
+    WPF --> D2D[Rendering.Direct2D]
+    VM --> APP[Application: tools / queries / workspace contracts]
+    AI[Agent / provider adapters] --> CONTRACT[AI.Contracts]
+    APP --> CONTRACT
+    APP --> EDITOR[Editor]
+    APP --> IO[IO]
+    APP --> CLI[CommandLine]
+    VM --> R[Rendering contracts]
+    EDITOR --> R
+    EDITOR --> C[Commands]
+    EDITOR --> Q[Indexing / HitTesting]
+    C --> CH[ChangeTracking]
+    CH --> DB[Db]
+    Q --> DB
+    IO --> DB
+    R --> CH
+    D2D --> R
 ```
+
 
 ## 项目职责
 
@@ -138,9 +94,20 @@ Codex app-server 适配层，复用 Codex CLI 的本机认证和模型配置。
 - 将 CAD 工具执行切回 UI 同步上下文，编辑结果继续进入 `ICadCommand`、undo / redo 和渲染更新链路。
 - 支持取消当前 turn；切换提供商、模型或工具配置后会重建 Codex 会话。
 
-CAD 工具目录、查询及执行器位于 `Direct2dCad.ViewModels.Tools` 适配层，并由 AI Agent 和终端共同使用；实体编辑仍通过 `ICadCommand` 进入 undo / redo 和渲染更新链路。
+CAD 工具目录、查询及执行器位于 `Direct2dCad.Application.Tools` 应用层，并由 AI Agent 和终端共同使用；实体编辑仍通过 `ICadCommand` 进入 undo / redo 和渲染更新链路。
 
 AI Toolbox 的连接配置位于齿轮按钮打开的 MaterialDesign 对话框中。LM Studio 默认连接 `http://localhost:1234/v1`，需先启动 Local Server 并加载支持 tool calling 的模型；Codex 通过本机 `codex app-server` 工作，沿用 Codex CLI 的登录状态，可使用配置默认模型或在对话框中选择模型。AI 可通过稳定的 `document_id` 查询、创建、打开、激活、重命名、保存和关闭工作区图纸，也可在创建实体时设置颜色、线宽、填充与描边样式；同一次用户请求中，每个目标文档分别使用独立的 undo / redo batch。
+
+### Direct2dCad.Application
+
+CAD 应用用例与宿主无关的工具层，不引用 ViewModels、WPF、AvalonDock 或 Direct2D。
+
+- `CadWorkspaceToolExecutor`、`CadDocumentToolExecutor`、实体查询、几何/样式/图层工具和工具命令行路由在这里实现。
+- `ICadToolWorkspace` 返回包含 `ICadWorkspaceDocument` / `ICadToolDocumentSession` 的描述，不暴露标签或 ViewModel。
+- `CadToolDocumentSession` 支持无界面模型空间编辑；桌面宿主的 ViewModel 实现相同会话契约。布局、块编辑与交互显示由宿主会话报告和处理。
+- `IImageImportService`、图片数据、工具活动消息使用应用契约；具体系统导入和窗口操作由 WPF 实现。
+- 修改继续经过 Editor/Commands；每文档独立 undo batch、操作取消、快照版本及关闭检查继续保留。
+- `ViewModels/Tools` 只保留 Dock 工作区和当前编辑器适配器。`EditorTabViewModel.ToolSession` 把长操作转接到文档的可取消操作控制器。
 
 ### Direct2dCad.Db
 
@@ -203,10 +170,12 @@ WPF Terminal 的日志、输入历史和当前文档适配仍由 ViewModel 层�
 主要职责：
 
 - 提供 `CadEditor` 作为编辑入口。
-- 管理文档命令执行、undo、redo。
+- 管理文档命令执行、undo、redo；执行入口共享可编辑检查和负载估算。
+- 文档历史与编辑器历史分别执行条数/字节预算，一次连续平移手势合并为一条历史。
 - 维护选择集。
 - 连接 hit testing 和 spatial index。
 - 发布 `CadDocumentChangeSet`。
+- 文字度量只返回独立测量值；`ApplyDerivedTextBounds` 验证输入仍匹配后应用边界，统一更新空间索引、依赖块及渲染。`IsDerivedGeometry` 区分测量更新与真实编辑，避免打断当前绘图工具或平移历史合并。
 - 根据实体变更通知 `ICadGeometryResourceManager` 更新或释放 geometry / brush / text 等资源。
 - 提供 pan、zoom、fit 等视口命令。
 
@@ -238,7 +207,8 @@ WPF Terminal 的日志、输入历史和当前文档适配仍由 ViewModel 层�
 
 主要职责：
 
-- 定义 `ICadRenderer`。
+- 定义 `ICadRenderer`，以及应用实际使用的 `ICadRenderSession`、`ICadRenderSessionFactory`、`ICadTextMetrics`。
+- 定义文档/worker 租约式 `CadRenderResourceBudget` 和汇总统计。预算限定估算的常驻缓存，不等于驱动显存或单帧峰值上限。
 - 定义 `ICadGeometryResourceManager`。
 - 定义 `CadViewport`、`CadRenderOptions`。
 - 定义 `CadRenderInvalidation`、`CadScreenRect` 和多 dirty rect 局部刷新模型。
@@ -335,7 +305,7 @@ WPF / ViewModel 共享的轻量抽象层。
 
 ### Direct2dCad.ViewModels.Services
 
-ViewModel 业务服务与平台边界层。当前仍引用 Direct2D，并非完全与渲染后端无关。它用于把 `CadDocumentViewModel` 中的绘制、交互、几何、渲染协调等职责拆出来。
+ViewModel 交互服务与平台边界层。通过 Rendering 中性契约访问渲染会话、文字度量和 OLE 回调，不引用 Direct2D 后端。绘制、交互、几何、渲染协调按职责协作。
 
 主要职责：
 
@@ -358,7 +328,7 @@ WPF ViewModel 层。
 - 定义 `MainViewModel`、`EditorTabViewModel`、`CadDocumentViewModel`。
 - 定义文档、图层、属性、搜索、选择过滤和命令行等 Toolbox ViewModel。
 - 绑定绘制模式、选择状态、图层、实体属性、用户设置和文档设置。
-- 协调 transient scene、handle scene 和 `Direct2DImageRenderHost`。
+- 协调 transient scene、handle scene 和注入的 `ICadRenderSession`。
 - 使用 `Direct2dCad.ViewModels.Services` 中定义的服务接口和 MessagePipe 消息。
 
 `CadDocumentViewModel` 的方向：只保留画布输入协调、命令入口和状态聚合。绘制预览、grip drag、snapping、render invalidation、文本测量等细分逻辑应继续放到 `Direct2dCad.ViewModels.Services`。
@@ -378,7 +348,8 @@ WPF 应用层。
 
 主要职责：
 
-- 提供 WPF 启动入口、`MainWindow`、`CadCanvas`。
+- 提供 WPF 启动入口、`MainWindow`、`CadCanvas`，注册 Direct2D 会话工厂和共享资源预算。
+- 使用 `IEditorTabFactory` 创建文档 scope；新建、打开、模板、DXF、恢复和工具工作区走同一工厂。启用 `ValidateScopes` 防止重新从根容器解析文档。
 - 提供 Ribbon、StatusBar、文档、图层、属性、搜索、选择过滤和 Terminal 等 View。
 - 实现 `Direct2dCad.ViewModels.Services/Platform` 中定义的平台能力，并在 `Services/Application`、`Dialogs`、`Importing`、`Ole`、`Notifications`、`Toolboxes` 中按职责组织。
 - 承载 `D3D11ImageSource` / `D3DImage`。
@@ -386,10 +357,11 @@ WPF 应用层。
 
 ## 项目引用表
 
-以下依赖于 2026-10-02 从解决方案内的项目文件核对；新增或调整依赖时以 `.csproj` 为准。测试项目另见[测试说明](../scripts/testing/README.md)。
+以下为 2026-10-06 从当前解决方案项目文件核对的生产项目直接引用；测试和 benchmark 单独验证。
 
-| 项目 | 当前项目引用 |
+| 项目 | 直接项目引用 |
 | --- | --- |
+| [Direct2dCad.Application](../Direct2dCad.Application/Direct2dCad.Application.csproj) | `Direct2dCad.AI.Contracts`, `Direct2dCad.CommandLine`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang` |
 | [Direct2dCad.Agent](../Direct2dCad.Agent/Direct2dCad.Agent.csproj) | `Direct2dCad.AI.Contracts` |
 | [Direct2dCad.Agent.Codex](../Direct2dCad.Agent.Codex/Direct2dCad.Agent.Codex.csproj) | `Direct2dCad.Agent`, `Direct2dCad.AI.Contracts` |
 | [Direct2dCad.AI.Contracts](../Direct2dCad.AI.Contracts/Direct2dCad.AI.Contracts.csproj) | 无 |
@@ -397,11 +369,10 @@ WPF 应用层。
 | [Direct2dCad.Client.Common](../Direct2dCad.Client.Common/Direct2dCad.Client.Common.csproj) | `Direct2dCad.Db`, `Direct2dCad.Rendering` |
 | [Direct2dCad.Lang](../Direct2dCad.Lang/Direct2dCad.Lang.csproj) | 无 |
 | [Direct2dCad.ViewModels.Abstractions](../Direct2dCad.ViewModels.Abstractions/Direct2dCad.ViewModels.Abstractions.csproj) | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
-| [Direct2dCad.ViewModels.Services](../Direct2dCad.ViewModels.Services/Direct2dCad.ViewModels.Services.csproj) | `Direct2dCad.IO`, `Direct2dCad.AI.Contracts`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering`, `Direct2dCad.ViewModels.Abstractions` |
-| [Direct2dCad.ViewModels](../Direct2dCad.ViewModels/Direct2dCad.ViewModels.csproj) | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services` |
+| [Direct2dCad.ViewModels.Services](../Direct2dCad.ViewModels.Services/Direct2dCad.ViewModels.Services.csproj) | `Direct2dCad.IO`, `Direct2dCad.AI.Contracts`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.Application` |
+| [Direct2dCad.ViewModels](../Direct2dCad.ViewModels/Direct2dCad.ViewModels.csproj) | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services`, `Direct2dCad.Application` |
 | [Direct2dCad.wpf.Controls](../Direct2dCad.wpf.Controls/Direct2dCad.wpf.Controls.csproj) | 无 |
-| [Direct2dCad.wpf](../Direct2dCad.wpf/Direct2dCad.wpf.csproj) | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.Ole.Windows`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
-| [Direct2dCad.Benchmarks](../Direct2dCad.Benchmarks/Direct2dCad.Benchmarks.csproj) | `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Indexing`, `Direct2dCad.IO`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.Rendering.Handles` |
+| [Direct2dCad.wpf](../Direct2dCad.wpf/Direct2dCad.wpf.csproj) | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.Ole.Windows`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
 | [Direct2dCad.Commands](../Direct2dCad.Commands/Direct2dCad.Commands.csproj) | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
 | [Direct2dCad.CommandLine](../Direct2dCad.CommandLine/Direct2dCad.CommandLine.csproj) | `Direct2dCad.Db`, `Direct2dCad.Lang` |
 | [Direct2dCad.ChangeTracking](../Direct2dCad.ChangeTracking/Direct2dCad.ChangeTracking.csproj) | `Direct2dCad.Db` |
@@ -412,7 +383,7 @@ WPF 应用层。
 | [Direct2dCad.Indexing](../Direct2dCad.Indexing/Direct2dCad.Indexing.csproj) | `Direct2dCad.Db` |
 | [Direct2dCad.IO](../Direct2dCad.IO/Direct2dCad.IO.csproj) | `Direct2dCad.Db` |
 | [Direct2dCad.Ole.Windows](../Direct2dCad.Ole.Windows/Direct2dCad.Ole.Windows.csproj) | 无 |
-| [Direct2dCad.Rendering](../Direct2dCad.Rendering/Direct2dCad.Rendering.csproj) | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
+| [Direct2dCad.Rendering](../Direct2dCad.Rendering/Direct2dCad.Rendering.csproj) | `Direct2dCad.ChangeTracking`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Db` |
 | [Direct2dCad.Rendering.Handles](../Direct2dCad.Rendering.Handles/Direct2dCad.Rendering.Handles.csproj) | `Direct2dCad.Db` |
 | [Direct2dCad.Rendering.Transient](../Direct2dCad.Rendering.Transient/Direct2dCad.Rendering.Transient.csproj) | `Direct2dCad.Db` |
 

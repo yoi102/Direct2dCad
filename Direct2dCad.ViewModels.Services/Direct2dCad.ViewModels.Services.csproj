@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -20,11 +20,13 @@
     <ProjectReference Include="..\Direct2dCad.Client.Common\Direct2dCad.Client.Common.csproj" />
     <ProjectReference Include="..\Direct2dCad.Db\Direct2dCad.Db.csproj" />
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
-    <ProjectReference Include="..\Direct2dCad.Rendering.Direct2D\Direct2dCad.Rendering.Direct2D.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Handles\Direct2dCad.Rendering.Handles.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering.Transient\Direct2dCad.Rendering.Transient.csproj" />
     <ProjectReference Include="..\Direct2dCad.Rendering\Direct2dCad.Rendering.csproj" />
     <ProjectReference Include="..\Direct2dCad.ViewModels.Abstractions\Direct2dCad.ViewModels.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Application\Direct2dCad.Application.csproj" />
+  </ItemGroup>
 </Project>

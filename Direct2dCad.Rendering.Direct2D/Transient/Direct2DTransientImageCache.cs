@@ -19,6 +19,9 @@ internal sealed class Direct2DTransientImageCache : IDisposable
     private CadTransientScene? _reconciledScene;
     private long _reconciledVersion = -1;
 
+    public long EstimatedBytes => _entityBitmaps.Values.Sum(e => (long)e.PixelSource.Length) +
+        _pixelBitmaps.Keys.Sum(pixels => (long)pixels.Length);
+
     public ID2D1Bitmap? GetOrCreate(ID2D1DeviceContext? deviceContext, CadTransientImage image)
     {
         if (image.SourceEntityId is { } sourceEntityId &&

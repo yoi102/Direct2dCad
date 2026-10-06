@@ -6,6 +6,7 @@ public sealed class DirtySet
 {
     private readonly Dictionary<EntityId, CadEntityChangeKind> _entityChanges = [];
     private bool _documentStructureChanged;
+    private bool _onlyDerivedGeometry = true;
     private bool _layoutsChanged;
     private bool _layoutStructureChanged;
     private bool _viewSettingsChanged;
@@ -25,6 +26,7 @@ public sealed class DirtySet
     {
         ArgumentNullException.ThrowIfNull(result);
 
+        if (result.DocumentChanged) _onlyDerivedGeometry &= result.IsDerivedGeometry;
         _documentStructureChanged |= result.AffectsDocumentStructure;
         _layoutsChanged |= result.AffectsLayouts;
         _layoutStructureChanged |= result.AffectsLayoutStructure;
@@ -40,6 +42,7 @@ public sealed class DirtySet
 
     public void Add(EntityId entityId, CadEntityChangeKind kind)
     {
+        _onlyDerivedGeometry = false;
         _entityChanges.TryGetValue(entityId, out var existing);
         _entityChanges[entityId] = existing | kind;
     }
@@ -47,6 +50,7 @@ public sealed class DirtySet
     public CadDocumentChangeSet Snapshot() => new(
         _entityChanges.Select(x => new CadEntityChange(x.Key, x.Value)))
     {
+        IsDerivedGeometry = HasChanges && _onlyDerivedGeometry,
         AffectsDocumentStructure = _documentStructureChanged,
         AffectsLayouts = _layoutsChanged || _layoutStructureChanged,
         AffectsLayoutStructure = _layoutStructureChanged,
@@ -64,6 +68,7 @@ public sealed class DirtySet
     public void Clear()
     {
         _entityChanges.Clear();
+        _onlyDerivedGeometry = true;
         _documentStructureChanged = false;
         _layoutsChanged = false;
         _layoutStructureChanged = false;
