@@ -67,7 +67,10 @@ dotnet publish .\Direct2dCad.wpf\Direct2dCad.wpf.csproj -c Release -r win-x64 --
 
 ## Demos and design
 
-- [Basic editing 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b), [Basic editing 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [Basic editing 1](https://github.com/user-attachments/assets/53180795-5870-42c7-9148-5586ca1bfd6b)
+- [Basic editing 2](https://github.com/user-attachments/assets/5515d18a-1d88-4851-a8d9-54f10bdee5ed)
+- [Basic editing 3](https://github.com/user-attachments/assets/bc4d198b-6fc4-41e9-8b05-926b85c0c560)
+- [Basic editing 4](https://github.com/user-attachments/assets/f5e29d71-08de-4a61-8dda-ee3dab1f81be)
 - [Blocks](https://github.com/user-attachments/assets/45c5e49e-c59a-4f80-aaf3-de8ec7680310)
 - [Layouts](https://github.com/user-attachments/assets/847600ec-c82e-4ed0-82d9-443d59339906)
 - [OLE objects](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
