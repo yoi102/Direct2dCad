@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using Direct2dCad.ViewModels.Toolboxes;
+using Direct2dCad.wpf.Services.Input;
 
 namespace Direct2dCad.wpf.Views.Toolboxes;
 
@@ -50,24 +51,34 @@ public partial class AiAssistantToolboxView : UserControl
     }
 
     private void OnPromptPreviewKeyDown(object sender, KeyEventArgs e)
+        => HandlePromptKey(e.Key, Keyboard.Modifiers, e);
+
+    internal void HandlePromptKey(Key key, ModifierKeys modifiers, KeyEventArgs e)
+        => HandlePromptKey(DataContext as AiAssistantToolboxViewModel, key, modifiers, e);
+
+    internal static void HandlePromptKey(AiAssistantToolboxViewModel? viewModel,
+        Key key, ModifierKeys modifiers, KeyEventArgs e)
     {
-        if (e.Key == Key.V &&
-            Keyboard.Modifiers.HasFlag(ModifierKeys.Control) &&
-            DataContext is AiAssistantToolboxViewModel viewModel &&
+        // IME confirmation belongs to the text editor; never reinterpret ImeProcessedKey as Enter.
+        if (e.Handled || key is Key.ImeProcessed or Key.DeadCharProcessed) return;
+
+        var shortcut = CadShortcutCatalog.Find(CadShortcutScope.AiPrompt, key, modifiers);
+        if (shortcut?.Action == CadShortcutAction.PasteAttachment &&
+            viewModel is not null &&
             TryPasteAttachment(viewModel))
         {
             e.Handled = true;
             return;
         }
 
-        if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        if (shortcut?.Action != CadShortcutAction.SendPrompt)
             return;
 
-        if (DataContext is AiAssistantToolboxViewModel sendViewModel &&
-            sendViewModel.SendCommand.CanExecute(null))
+        // A disabled send still owns this gesture, so it cannot confirm a drawing underneath.
+        e.Handled = true;
+        if (!CadEnterKeyGuard.ShouldIgnoreRepeat(e, modifiers) && viewModel?.SendCommand.CanExecute(null) == true)
         {
-            e.Handled = true;
-            sendViewModel.SendCommand.Execute(null);
+            viewModel.SendCommand.Execute(null);
         }
     }
 

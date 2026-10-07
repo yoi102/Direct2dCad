@@ -10,6 +10,8 @@
 
 ## 运行
 
+2026-10-07 的快捷键作用范围、属性提交、浮动窗口归属、Terminal 导航与 AI 换行规则见 [快捷键与焦点](../../docs/SHORTCUTS-AND-FOCUS.md)，Enter 补充后的计数与证据见 [验证记录](../../docs/shortcuts/enter-validation-2026-10-07/README.md)。聚焦测试分别使用 `FullyQualifiedName~ShortcutRoutingTests` 和 `FullyQualifiedName~MainWindowUiTests.Shortcut`；仅运行新 Enter UI 用例可用 `FullyQualifiedName~ShortcutEnter`。UI 自动化应串行运行；不要同时运行另一组桌面输入测试。
+
 命令行与 AI Agent 整改的定向回归、完整回归、真实渲染及真实 provider 证据见[整改说明](../../docs/COMMANDLINE-AND-AI-IMPLEMENTATION.md)。schema 兼容性测试保留原 API 的有效枚举写法；离线故障测试与真实模型测试分别记录。
 
 在 Windows 和解决方案所需的 .NET SDK 环境中运行。脚本先验证架构引用图、架构检查器的隔离样例和覆盖率汇总器，再构建整个解决方案，随后逐个运行测试项目，避免并发构建和原生资源竞争。
@@ -125,3 +127,5 @@ scripts/delivery/Test-LocalPackage.ps1 -PackageDirectory TestResults/local-packa
 - 真实打印机、PDF 驱动、DPI 和可选择文字；多 GPU 驱动、设备移除、多屏与混合 DPI。
 - 完整 UI 的焦点、布局、拖放和各实体专属属性组合。
 - 固定大图纸上的性能基准；测试通过或行覆盖率提高不能证明 FPS 提升。
+
+2026-10-07 绘制修复验收见 [DRAWING-FIXES](../../docs/DRAWING-FIXES-2026-10-07.md)：斜轴椭圆构造、预览/提交像素一致性、大坐标、缓存兼容和隔离窗口交互；新增用例进入现有回归脚本。

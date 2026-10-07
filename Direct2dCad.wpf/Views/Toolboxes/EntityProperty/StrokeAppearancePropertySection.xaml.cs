@@ -6,6 +6,15 @@ namespace Direct2dCad.wpf.Views.Toolboxes.EntityProperty;
 
 public partial class StrokeAppearancePropertySection : UserControl
 {
+    public static readonly DependencyProperty AdditionalContentProperty = DependencyProperty.Register(
+        nameof(AdditionalContent), typeof(object), typeof(StrokeAppearancePropertySection));
+
+    public object? AdditionalContent
+    {
+        get => GetValue(AdditionalContentProperty);
+        set => SetValue(AdditionalContentProperty, value);
+    }
+
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
         nameof(ViewModel),
         typeof(IStrokeAppearancePropertySectionViewModel),

@@ -47,7 +47,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
         IReadOnlyList<CadEntity> orderedEntities,
         bool buildStep)
     {
-        if (options.HiddenEntityIds.Count > 0)
+        if (options.HiddenEntityIds.Count > 0 || resourceCache.RequiresPrecision(viewport))
             return false;
 
         var profileKey = Direct2DBlockCacheRequestProfileKey.Create(
@@ -220,16 +220,15 @@ internal sealed class Direct2DBlockReferenceRenderer(
             return;
         }
 
-        var previousTransform = context.Transform;
-        context.Transform = CreateTransform(
+        using var coordinates = Direct2DCoordinateSystem.Push(context, CreateWorldTransform(
             definition.BasePoint,
             reference.Position,
             reference.RotationRadians,
             reference.ScaleX,
-            reference.ScaleY) * previousTransform;
+            reference.ScaleY));
         try
         {
-            if (options.HiddenEntityIds.Count == 0 &&
+            if (options.HiddenEntityIds.Count == 0 && !resourceCache.RequiresPrecision(viewport) &&
                 _definitionCache.TryDraw(
                     context,
                     Direct2DBlockCacheKeyFactory.Create(
@@ -254,7 +253,8 @@ internal sealed class Direct2DBlockReferenceRenderer(
                          visibilityBuffers.Candidates,
                          visibilityBuffers.OrderedCandidates,
                          visibilityBuffers.CandidateSet,
-                         visibilityBuffers.RankedEntities))
+                         visibilityBuffers.RankedEntities,
+                         Direct2DCoordinateSystem.Current(context)))
             {
                 if (!Direct2DBlockReferenceStyleResolver.IsVisible(
                         document,
@@ -366,7 +366,6 @@ internal sealed class Direct2DBlockReferenceRenderer(
         }
         finally
         {
-            context.Transform = previousTransform;
             visited.Remove(reference.DefinitionBlockId);
         }
     }
@@ -415,6 +414,10 @@ internal sealed class Direct2DBlockReferenceRenderer(
                Matrix3x2.CreateRotation((float)rotationRadians) *
                Matrix3x2.CreateTranslation((float)position.X, (float)position.Y);
     }
+
+    internal static CadMatrixD CreateWorldTransform(CadPointD basePoint, CadPointD position, double rotation, double scaleX, double scaleY) =>
+        CadMatrixD.CreateTranslation(-basePoint.X, -basePoint.Y) * CadMatrixD.CreateScale(scaleX, scaleY) *
+        CadMatrixD.CreateRotation(rotation) * CadMatrixD.CreateTranslation(position.X, position.Y);
 
     private bool PrepareRequestPlan(
         CadDocument document,

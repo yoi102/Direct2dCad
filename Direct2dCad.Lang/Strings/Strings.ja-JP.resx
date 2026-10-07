@@ -1629,7 +1629,11 @@
   <data name="DimensionTextAndArrows" xml:space="preserve"><value>文字と矢印</value></data>
   <data name="DimensionDetails" xml:space="preserve"><value>尺度と寸法線</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>寸法線幅（mm）</value></data>
-  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切替 · Enter 確定 · Esc 中止</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切替 · Enter 確定 · Esc 数値入力を破棄してキャンバスへ · F4 スナップ候補切替</value></data>
+  <data name="ShortcutApplicationScope" xml:space="preserve"><value>メインウィンドウと CAD フローティングパネルで有効です。Esc はポップアップ、入力、描画の順に一段階ずつ中止します。モーダルダイアログでは専用のキー操作が優先されます。</value></data>
+  <data name="ShortcutCanvasScope" xml:space="preserve"><value>描画キャンバスにキーボードフォーカスがあるときに有効です。テキスト欄では文字を編集します。</value></data>
+  <data name="ShortcutTerminalScope" xml:space="preserve"><value>Enter 送信 · 上下キー 候補または履歴 · Tab 候補補完 · Shift+Tab 前のコントロール · Esc 候補を閉じる、中止、またはキャンバスへ。下書きは保持</value></data>
+  <data name="ShortcutAiPromptScope" xml:space="preserve"><value>Enter または Ctrl+Enter 送信 · Shift+Enter 改行 · Ctrl+V テキストまたは添付を貼り付け · Esc 描画を中止してキャンバスへ。下書きは保持</value></data>
   <data name="InvalidDynamicInput" xml:space="preserve"><value>図形に有効な数値を入力してください。</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>ブール演算</value></data>
   <data name="BooleanSelectionMinimum" xml:space="preserve"><value>ブール演算を行うオブジェクトを2つ以上選択してください。</value></data>

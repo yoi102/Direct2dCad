@@ -26,8 +26,8 @@ public partial class EntityPropertiesToolboxView : UserControl
             if (source is not ScrollViewer inner)
                 continue;
 
-            // Entity views have their own scroll viewers. In this panel they expand
-            // to their full height, so pass their wheel input to the shared viewer.
+            // Inline editors may expose a non-scrollable inner viewer. Pass their
+            // wheel input to the shared property viewer in that case.
             if (!ReferenceEquals(inner, outer) && inner.ScrollableHeight <= 0)
             {
                 var distance = SystemParameters.WheelScrollLines < 0

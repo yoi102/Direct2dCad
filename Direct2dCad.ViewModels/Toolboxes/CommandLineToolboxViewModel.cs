@@ -95,6 +95,9 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
     public bool IsCommandExecuting => _execution is not null;
     public bool HasSuggestions => Suggestions.Count > 0;
     public string? InputHint { get; private set; }
+    public string KeyboardHelp => string.Join(Environment.NewLine,
+        new[] { CadUiText.Get(LangKeys.ShortcutTerminalScope), InputHint }.Where(text => !string.IsNullOrWhiteSpace(text)));
+    public void RefreshKeyboardHelp() => OnPropertyChanged(nameof(KeyboardHelp));
     public bool HasPendingEntries
     {
         get
@@ -279,10 +282,10 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         OnPropertyChanged(nameof(HasSuggestions));
     }
 
-    public void CancelCurrentCommand()
+    public void CancelCurrentCommand(bool preserveDraft = false)
     {
         if (_disposed) return;
-        CommandText = string.Empty;
+        if (!preserveDraft) CommandText = string.Empty;
         DismissSuggestions();
         if (_execution is { } execution)
         {
@@ -307,6 +310,7 @@ public partial class CommandLineToolboxViewModel : CadToolboxViewModelBase, IDis
         if (!_recallingHistory) IsNavigatingHistory = false;
         InputHint = _commandLineService.GetInputHint(value) ?? _toolCommandLineService.GetInputHint(value);
         OnPropertyChanged(nameof(InputHint));
+        OnPropertyChanged(nameof(KeyboardHelp));
         var prefix = value.TrimStart();
         if (prefix.Length > 0 && !_recallingHistory)
         {

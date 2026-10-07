@@ -1,38 +1,22 @@
-<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.CommonEntityPropertyView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty"
-             xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
-             d:DataContext="{d:DesignInstance Type=vm:CommonEntityPropertyViewModel}"
-             d:DesignHeight="520"
-             d:DesignWidth="320"
-             mc:Ignorable="d">
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty" xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels" x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.CommonEntityPropertyView" d:DataContext="{d:DesignInstance Type=vm:CommonEntityPropertyViewModel}" d:DesignHeight="520" d:DesignWidth="320" mc:Ignorable="d" AutomationProperties.AutomationId="CommonEntityProperties">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Direct2dCad;component/Views/Toolboxes/EntityProperty/PropertyInspectorCommonStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
-
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                  AutomationProperties.AutomationId="CommonEntityPropertiesScrollViewer"
-                  VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="12" IsEnabled="{Binding IsEditable, Mode=OneWay}">
-            <TextBlock Margin="0,0,0,10"
-                       FontSize="16"
-                       FontWeight="SemiBold"
-                       Text="{Binding Title, Mode=OneWay}" />
-            <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
-            <ep:EntitySettingsPropertySection ViewModel="{Binding}" />
-            <TextBlock Margin="0,0,0,8" TextWrapping="Wrap" Text="{Binding RegionSummary}"
-                       Visibility="{Binding IsRegion, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ep:FillPropertySection ViewModel="{Binding}"
-                Visibility="{Binding IsRegion, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ep:StrokeAppearancePropertySection
-                ViewModel="{Binding}"
-                Visibility="{Binding SupportsStrokeAppearance, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <ep:StrokeStylePropertySection
-                ViewModel="{Binding}"
-                Visibility="{Binding SupportsStrokeStyle, Converter={StaticResource BooleanToVisibilityConverter}}" />
-        </StackPanel>
-    </ScrollViewer>
+    <StackPanel Margin="12,10" IsEnabled="{Binding IsEditable, Mode=OneWay}">
+        <TextBlock Style="{StaticResource PropertyTitle}" Margin="0,0,0,8" FontWeight="SemiBold" Text="{Binding Title, Mode=OneWay}" />
+        <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
+        <TextBlock Margin="0,0,0,4" TextWrapping="Wrap" Text="{Binding RegionSummary}" Visibility="{Binding IsRegion, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <ep:EntitySettingsPropertySection ViewModel="{Binding}" EntityIdText="{Binding EntityIdText, Mode=OneWay}" />
+        <ep:StrokeAppearancePropertySection ViewModel="{Binding}" Visibility="{Binding SupportsStrokeAppearance, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ep:StrokeAppearancePropertySection.AdditionalContent>
+                <ep:StrokeStylePropertySection ViewModel="{Binding}" Visibility="{Binding SupportsStrokeStyle, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </ep:StrokeAppearancePropertySection.AdditionalContent>
+        </ep:StrokeAppearancePropertySection>
+        <ep:FillPropertySection ViewModel="{Binding}" Visibility="{Binding IsRegion, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    </StackPanel>
 </UserControl>

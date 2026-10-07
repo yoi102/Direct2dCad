@@ -16,6 +16,7 @@
                  xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
                  xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
                  xmlns:svc="clr-namespace:Direct2dCad.ViewModels.Services.Platform;assembly=Direct2dCad.ViewModels.Services"
+                 xmlns:keys="clr-namespace:Direct2dCad.wpf.Services.Input"
                  xmlns:vm_tb="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
                  xmlns:v_tb="clr-namespace:Direct2dCad.wpf.Views.Toolboxes"
                  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
@@ -31,14 +32,6 @@
                  WindowStartupLocation="CenterScreen"
                  Height="900"
                  Width="1300">
-    <mah:MetroWindow.InputBindings>
-        <KeyBinding Key="S"
-                    Modifiers="Control"
-                    Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}" />
-        <KeyBinding Key="P"
-                    Modifiers="Control"
-                    Command="{Binding CurrentEditorTabViewModel.PrintCommand}" />
-    </mah:MetroWindow.InputBindings>
     <mah:MetroWindow.LeftWindowCommands>
         <mah:WindowCommands>
             <Button Margin="15 0 0 0"
@@ -57,6 +50,9 @@
                         </Style>
                     </MenuItem.Resources>
                     <MenuItem Command="{Binding NewCommand}"
+                              InputGestureText="{x:Static keys:CadShortcutCatalog.NewGesture}"
+                              ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                              AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                               Icon="{md:PackIcon Kind=FilePlus}"
                               AutomationProperties.AutomationId="FileMenuNewDocumentItem"
                               Header="{I18N {x:Static r:LangKeys.New}}" />
@@ -75,6 +71,9 @@
                     </MenuItem>
                     <Separator />
                     <MenuItem Command="{Binding OpenFileCommand}"
+                              InputGestureText="{x:Static keys:CadShortcutCatalog.OpenGesture}"
+                              ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                              AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                               Icon="{md:PackIcon Kind=FolderOpen}"
                               AutomationProperties.AutomationId="FileMenuOpenDocumentItem"
                               Header="{I18N {x:Static r:LangKeys.OpenFile}}" />
@@ -84,11 +83,17 @@
                               Header="{I18N {x:Static r:LangKeys.ImportDxf}}" />
                     <Separator Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}"
+                              InputGestureText="{x:Static keys:CadShortcutCatalog.SaveGesture}"
+                              ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                              AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                               Icon="{md:PackIcon Kind=ContentSave}"
                               AutomationProperties.AutomationId="FileMenuSaveDocumentItem"
                               Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.Save}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}"
+                              InputGestureText="{x:Static keys:CadShortcutCatalog.SaveAsGesture}"
+                              ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                              AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                               Icon="{md:PackIcon Kind=ContentSaveAdd}"
                               AutomationProperties.AutomationId="FileMenuSaveAsItem"
                               Visibility="{Binding CurrentEditorTabViewModel, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
@@ -106,7 +111,9 @@
                     <Separator Visibility="{Binding IsPrintAvailable, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}" />
                     <MenuItem Command="{Binding CurrentEditorTabViewModel.PrintCommand}"
                               Icon="{md:PackIcon Kind=Printer}"
-                              InputGestureText="Ctrl+P"
+                              InputGestureText="{x:Static keys:CadShortcutCatalog.PrintGesture}"
+                              ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                              AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                               AutomationProperties.AutomationId="FileMenuPrintItem"
                               Visibility="{Binding IsPrintAvailable, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}"
                               Header="{I18N {x:Static r:LangKeys.Print}}" />
@@ -156,7 +163,7 @@
     </mah:MetroWindow.RightWindowCommands>
 
     <Grid>
-        <md:DialogHost Style="{StaticResource MaterialDesignEmbeddedDialogHost}"
+        <md:DialogHost x:Name="RootDialogHost" Style="{StaticResource MaterialDesignEmbeddedDialogHost}"
                        Identifier="{x:Static svc:ViewServiceIdentifiers.RootDialogHost}"
                        Background="{DynamicResource MaterialDesign.Brush.Background}"
                        DialogTheme="Inherit">

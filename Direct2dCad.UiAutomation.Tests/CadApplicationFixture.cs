@@ -70,22 +70,32 @@ public sealed class CadApplicationFixture : IDisposable
     {
         var effectiveTimeout = timeout ?? TimeSpan.FromSeconds(15);
         var stopwatch = Stopwatch.StartNew();
+        COMException? lastAutomationError = null;
         while (stopwatch.Elapsed < effectiveTimeout)
         {
             EnsureApplicationIsRunning();
-            var element = MainWindow.FindFirstDescendant(
-                condition => condition.ByAutomationId(automationId));
-            if (element is null && includePopups)
-                element = Automation.GetDesktop().FindFirstDescendant(
-                    condition => condition.ByAutomationId(automationId).And(condition.ByProcessId(Application.ProcessId)));
-            if (element is not null)
-                return element;
+            try
+            {
+                var element = MainWindow.FindFirstDescendant(
+                    condition => condition.ByAutomationId(automationId));
+                if (element is null && includePopups)
+                    element = Automation.GetDesktop().FindFirstDescendant(
+                        condition => condition.ByAutomationId(automationId).And(condition.ByProcessId(Application.ProcessId)));
+                if (element is not null)
+                    return element;
+            }
+            catch (COMException exception)
+            {
+                // Popups can transiently reject UIA reads while being attached.
+                // Retry observation within the original deadline, never the input.
+                lastAutomationError = exception;
+            }
 
             Thread.Sleep(50);
         }
 
         throw new TimeoutException(
-            $"Automation element '{automationId}' was not found within {effectiveTimeout}.");
+            $"Automation element '{automationId}' was not found within {effectiveTimeout}.", lastAutomationError);
     }
 
     public Window WaitForWindow(string automationId, TimeSpan? timeout = null)

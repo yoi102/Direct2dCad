@@ -39,7 +39,7 @@ public sealed partial class MainWindowUiTests
             "Subject pick did not produce the difference preview.");
         CaptureScreenshot("boolean-difference-preview.png"); canvas.Focus(); Keyboard.Type(VirtualKeyShort.RETURN);
         ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 1");
-        fixture.WaitUntil(() => fixture.MainWindow.FindFirstDescendant(c => c.ByAutomationId("CommonEntityPropertiesScrollViewer")) is not null,
+        fixture.WaitUntil(() => fixture.MainWindow.FindFirstDescendant(c => c.ByAutomationId("CommonEntityProperties")) is not null,
             "Region properties did not appear after confirmation.");
         Assert.False(union.IsEnabled); CaptureScreenshot("boolean-region-properties.png");
         foreach (var direction in new[] { 1, 1, -1, -1 }) { Mouse.MoveTo(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2); Mouse.Scroll(direction); }

@@ -30,6 +30,10 @@ internal sealed class Direct2DTransientRenderer(
         CadPointD end,
         CadTransientStyle style)
     {
+        var origin = Direct2DCoordinateSystem.NeedsOrigin(start) ? start : default;
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        start -= origin - CadPointD.Origin;
+        end -= origin - CadPointD.Origin;
         var brush = styleResources.GetBrush(context, style.StrokeColor);
         var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
         context.DrawLine(
@@ -51,10 +55,14 @@ internal sealed class Direct2DTransientRenderer(
         if (points.Count < 2)
             return;
 
+        var origin = LocalOrigin(BoundsFromPoints(points).Center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        if (origin != default) points = points.Select(p => p - (origin - CadPointD.Origin)).ToArray();
+
         var brush = styleResources.GetBrush(context, style.StrokeColor);
         var strokeStyle = styleResources.GetStrokeStyle(resourceCache.Factory, style);
         var strokeWidth = styleResources.ResolveStrokeWidth(style, viewport);
-        if (resourceCache.Factory is not { } factory || !closed || !HasFill(style))
+        if (resourceCache.Factory is not { } factory)
         {
             for (var index = 1; index < points.Count; index++)
                 context.DrawLine(ToVector2(points[index - 1]), ToVector2(points[index]), brush, strokeWidth, strokeStyle);
@@ -64,7 +72,7 @@ internal sealed class Direct2DTransientRenderer(
         }
 
         using var geometry = geometryFactory.CreatePolyline(factory, points, closed);
-        DrawFill(
+        if (closed && HasFill(style)) DrawFill(
             context,
             geometry,
             BoundsFromPoints(points),
@@ -85,6 +93,10 @@ internal sealed class Direct2DTransientRenderer(
         if (resourceCache.Factory is not { } factory || fitPoints.Count < 2)
             return;
 
+        var origin = LocalOrigin(BoundsFromPoints(fitPoints).Center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        if (origin != default) fitPoints = fitPoints.Select(p => p - (origin - CadPointD.Origin)).ToArray();
+
         using var geometry = geometryFactory.CreateSpline(factory, fitPoints, closed);
         var brush = styleResources.GetBrush(context, style.StrokeColor);
         var strokeStyle = styleResources.GetStrokeStyle(factory, style);
@@ -92,7 +104,7 @@ internal sealed class Direct2DTransientRenderer(
             DrawFill(
                 context,
                 geometry,
-                BoundsFromPoints(fitPoints),
+                CadSpline.CalculateBounds(fitPoints, CadSpline.CreateBezierSegments(fitPoints, closed)),
                 style,
                 viewport,
                 isLevelOfDetailEnabled);
@@ -102,8 +114,10 @@ internal sealed class Direct2DTransientRenderer(
     public void DrawCompositePath(ID2D1DeviceContext context, CadViewport viewport,
         CadTransientCompositePath path, ID2D1PathGeometry geometry, bool isLevelOfDetailEnabled)
     {
+        var origin = LocalOrigin(path.Bounds.Center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
         if (path.Closed && HasFill(path.Style))
-            DrawFill(context, geometry, path.Bounds, path.Style, viewport, isLevelOfDetailEnabled);
+            DrawFill(context, geometry, path.Bounds.Translate(new(-origin.X, -origin.Y)), path.Style, viewport, isLevelOfDetailEnabled);
         DrawGeometry(context, viewport, geometry, path.Style);
     }
 
@@ -118,21 +132,12 @@ internal sealed class Direct2DTransientRenderer(
         if (resourceCache.Factory is not { } factory)
             return;
 
+        region = (CadRegion)Direct2DLocalGeometry.Resolve(region, out var origin);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin + offset);
         using var geometry = geometryFactory.CreateRegion(factory, region.Contours);
-        var previousTransform = context.Transform;
-        if (offset != CadVectorD.Zero)
-            context.Transform = Matrix3x2.CreateTranslation((float)offset.X, (float)offset.Y) * previousTransform;
-        try
-        {
-            if (HasFill(style))
-                DrawFill(context, geometry, region.Bounds, style, viewport, isLevelOfDetailEnabled);
-            DrawGeometry(context, viewport, geometry, style);
-        }
-        finally
-        {
-            if (offset != CadVectorD.Zero)
-                context.Transform = previousTransform;
-        }
+        if (HasFill(style))
+            DrawFill(context, geometry, region.Bounds, style, viewport, isLevelOfDetailEnabled);
+        DrawGeometry(context, viewport, geometry, style);
     }
 
     public void DrawArc(
@@ -147,6 +152,9 @@ internal sealed class Direct2DTransientRenderer(
         if (resourceCache.Factory is not { } factory || radius <= 0 || Math.Abs(sweepAngleRadians) <= double.Epsilon)
             return;
 
+        var origin = LocalOrigin(center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        center -= origin - CadPointD.Origin;
         using var geometry = geometryFactory.CreateArc(factory, center, radius, startAngleRadians, sweepAngleRadians);
         DrawGeometry(context, viewport, geometry, style);
     }
@@ -168,6 +176,10 @@ internal sealed class Direct2DTransientRenderer(
             return;
         }
 
+        var origin = LocalOrigin(center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        center -= origin - CadPointD.Origin;
+        using var rotation = Direct2DCoordinateSystem.Push(context, CadMatrixD.CreateRotation(rotationRadians, center));
         using var geometry = geometryFactory.CreateEllipseArc(
             factory,
             center,
@@ -175,22 +187,7 @@ internal sealed class Direct2DTransientRenderer(
             radiusY,
             startAngleRadians,
             sweepAngleRadians);
-        if (Math.Abs(rotationRadians) <= 1e-12)
-        {
-            DrawGeometry(context, viewport, geometry, style);
-            return;
-        }
-
-        var previousTransform = context.Transform;
-        context.Transform = Matrix3x2.CreateRotation((float)rotationRadians, ToVector2(center)) * previousTransform;
-        try
-        {
-            DrawGeometry(context, viewport, geometry, style);
-        }
-        finally
-        {
-            context.Transform = previousTransform;
-        }
+        DrawGeometry(context, viewport, geometry, style);
     }
 
     public void DrawCircle(
@@ -218,7 +215,18 @@ internal sealed class Direct2DTransientRenderer(
         double radiusX,
         double radiusY,
         CadTransientStyle style,
-        bool isLevelOfDetailEnabled)
+        bool isLevelOfDetailEnabled,
+        double rotationRadians = 0)
+    {
+        var origin = LocalOrigin(center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        center -= origin - CadPointD.Origin;
+        using var rotation = Direct2DCoordinateSystem.Push(context, CadMatrixD.CreateRotation(rotationRadians, center));
+        DrawEllipseCore(context, viewport, center, radiusX, radiusY, style, isLevelOfDetailEnabled);
+    }
+
+    private void DrawEllipseCore(ID2D1DeviceContext context, CadViewport viewport, CadPointD center,
+        double radiusX, double radiusY, CadTransientStyle style, bool isLevelOfDetailEnabled)
     {
         var ellipse = new Ellipse(ToVector2(center), (float)radiusX, (float)radiusY);
         if (HasHatchFill(style) && resourceCache.Factory is { } factory)
@@ -252,6 +260,9 @@ internal sealed class Direct2DTransientRenderer(
         double cornerRadiusY = 0,
         bool isLevelOfDetailEnabled = false)
     {
+        var origin = LocalOrigin(bounds.Center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        bounds = bounds.Translate(new(-origin.X, -origin.Y));
         var radiusX = geometryFactory.ClampCornerRadius(cornerRadiusX, bounds.Width);
         var radiusY = geometryFactory.ClampCornerRadius(cornerRadiusY, bounds.Height);
         if (radiusX > 0 && radiusY > 0)
@@ -318,6 +329,10 @@ internal sealed class Direct2DTransientRenderer(
         if (resourceCache.WriteFactory is null || bounds.IsEmpty)
             return;
 
+        var origin = LocalOrigin(position);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        position -= origin - CadPointD.Origin;
+        bounds = bounds.Translate(new(-origin.X, -origin.Y));
         var previousTransform = context.Transform;
         context.Transform = CreateWorldRotationTransform(rotationRadians, position, previousTransform);
         try
@@ -357,6 +372,9 @@ internal sealed class Direct2DTransientRenderer(
         double invertedMarginFactor = CadShapeText.DefaultInvertedMarginFactor,
         CadShapeFontId shapeFontId = default)
     {
+        var origin = LocalOrigin(position);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        position -= origin - CadPointD.Origin;
         var shapeFont = CadShapeFontRegistry.GetOrDefault(shapeFontId);
         if (isInverted)
         {
@@ -459,6 +477,8 @@ internal sealed class Direct2DTransientRenderer(
             bounds = bounds.ExpandToInclude(point);
         return bounds;
     }
+
+    internal static CadPointD LocalOrigin(CadPointD point) => Direct2DCoordinateSystem.NeedsOrigin(point) ? point : default;
 
     private static CadRectD CreateInvertedBounds(CadRectD bounds, double height, double marginFactor)
     {

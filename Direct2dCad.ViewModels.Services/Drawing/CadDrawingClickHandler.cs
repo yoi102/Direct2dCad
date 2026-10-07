@@ -299,7 +299,8 @@ internal sealed class CadDrawingClickHandler(
                     creator.AddEllipseIfValid(
                         centerGeometry.Center,
                         centerGeometry.RadiusX,
-                        centerGeometry.RadiusY);
+                        centerGeometry.RadiusY,
+                        centerGeometry.RotationRadians);
                 }
 
                 state.PendingEllipsePoints.Clear();
@@ -315,7 +316,8 @@ internal sealed class CadDrawingClickHandler(
                     creator.AddEllipseIfValid(
                         axisGeometry.Center,
                         axisGeometry.RadiusX,
-                        axisGeometry.RadiusY);
+                        axisGeometry.RadiusY,
+                        axisGeometry.RotationRadians);
                 }
 
                 state.PendingEllipsePoints.Clear();

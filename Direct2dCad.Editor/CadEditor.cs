@@ -384,7 +384,8 @@ public sealed class CadEditor
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
         bool isVisible = true,
-        CadStrokeStyle? strokeStyle = null)
+        CadStrokeStyle? strokeStyle = null,
+        double rotationRadians = 0)
     {
         var command = new AddEllipseCommand(
             center,
@@ -397,7 +398,8 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible,
-            strokeStyle);
+            strokeStyle,
+            rotationRadians);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }
@@ -414,7 +416,8 @@ public sealed class CadEditor
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
         bool isVisible = true,
-        CadStrokeStyle? strokeStyle = null)
+        CadStrokeStyle? strokeStyle = null,
+        double rotationRadians = 0)
     {
         var command = new AddEllipseArcCommand(
             center,
@@ -428,7 +431,8 @@ public sealed class CadEditor
             lineWeight,
             zIndex,
             isVisible,
-            strokeStyle);
+            strokeStyle,
+            rotationRadians);
         ExecuteCreation(command);
         return GetCreatedEntityId(command.CreatedEntityId, command.Name);
     }

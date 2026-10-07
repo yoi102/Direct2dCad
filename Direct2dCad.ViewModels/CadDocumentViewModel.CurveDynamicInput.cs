@@ -49,9 +49,9 @@ public partial class CadDocumentViewModel
             var ellipse = GetDynamicEllipse(state, pointer);
             double[] axes = [Display(ellipse.RadiusX), Display(ellipse.RadiusY)];
             if (state.PendingEllipsePoints.Count == 2) return axes;
-            var angle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, pointer);
+            var angle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, pointer, ellipse.RotationRadians);
             if (state.PendingEllipsePoints.Count == 4)
-                angle = ResolveSweepAngle(EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, state.PendingEllipsePoints[3]), angle, true);
+                angle = ResolveSweepAngle(EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, state.PendingEllipsePoints[3], ellipse.RotationRadians), angle, true);
             return [.. axes, NormalizePositive(angle) * 180 / Math.PI];
         }
         if (CadCanvasToolMode == CadCanvasToolMode.CircleThreePoint)
@@ -84,9 +84,10 @@ public partial class CadDocumentViewModel
         var axis = points[1] - points[0];
         var other = points.Count == 2 ? pointer : points[2];
         var factor = centered ? 1 : .5;
-        return Math.Abs(axis.X) >= Math.Abs(axis.Y)
-            ? new(center, Math.Abs(axis.X) * factor, Math.Abs(other.Y - center.Y))
-            : new(center, Math.Abs(other.X - center.X), Math.Abs(axis.Y) * factor);
+        var frame = EllipseAxisFrame(axis);
+        return frame.PrimaryIsX
+            ? new(center, axis.Length * factor, Math.Abs((other - center).Dot(frame.Y)), frame.Rotation)
+            : new(center, Math.Abs((other - center).Dot(frame.X)), axis.Length * factor, frame.Rotation);
     }
 
     private bool TryGetDynamicArc(CadDrawingSessionState state, CadPointD pointer, out ArcDrawingGeometry geometry)
@@ -213,29 +214,30 @@ public partial class CadDocumentViewModel
         var copy = _drawingState.Clone();
         var points = copy.PendingEllipsePoints;
         var axis = points[1] - points[0];
-        var horizontal = Math.Abs(axis.X) >= Math.Abs(axis.Y);
+        var frame = EllipseAxisFrame(axis);
         var factor = CadCanvasToolMode == CadCanvasToolMode.EllipseCenter ? 1 : 2;
-        var axisRadius = horizontal ? radiusX : radiusY;
-        var component = horizontal ? Math.Abs(axis.X) : Math.Abs(axis.Y);
+        var axisRadius = frame.PrimaryIsX ? radiusX : radiusY;
+        var component = axis.Length;
         if (component <= 1e-9) return false;
         points[1] = points[0] + axis * (axisRadius * factor / component);
         var center = CadCanvasToolMode == CadCanvasToolMode.EllipseCenter ? points[0] : Midpoint(points[0], points[1]);
         var originalOther = points.Count == 2 ? point : points[2];
-        var other = horizontal ? new CadPointD(center.X, center.Y + (originalOther.Y < raw.Center.Y ? -radiusY : radiusY))
-            : new CadPointD(center.X + (originalOther.X < raw.Center.X ? -radiusX : radiusX), center.Y);
+        var perpendicular = frame.PrimaryIsX ? frame.Y : frame.X;
+        var otherRadius = frame.PrimaryIsX ? radiusY : radiusX;
+        var other = center + perpendicular * ((originalOther - raw.Center).Dot(perpendicular) < 0 ? -otherRadius : otherRadius);
         if (points.Count == 2) point = other;
         else
         {
             points[2] = other;
-            var startAngle = points.Count == 4 ? EllipseAngleFrom(raw.Center, raw.RadiusX, raw.RadiusY, points[3]) : 0;
-            if (points.Count == 4) points[3] = GetEllipsePoint(center, radiusX, radiusY, startAngle);
+            var startAngle = points.Count == 4 ? EllipseAngleFrom(raw.Center, raw.RadiusX, raw.RadiusY, points[3], raw.RotationRadians) : 0;
+            if (points.Count == 4) points[3] = GetEllipsePoint(center, radiusX, radiusY, startAngle, frame.Rotation);
             var angle = values[2] * Math.PI / 180;
             if (points.Count == 4)
             {
                 if (!IsInputSweep(values[2])) return false;
                 angle += startAngle;
             }
-            point = GetEllipsePoint(center, radiusX, radiusY, angle);
+            point = GetEllipsePoint(center, radiusX, radiusY, angle, frame.Rotation);
         }
         resolvedState = copy;
         return double.IsFinite(point.X) && double.IsFinite(point.Y);
@@ -266,8 +268,8 @@ public partial class CadDocumentViewModel
                 if (IsEllipseDrawing)
                 {
                     var ellipse = GetDynamicEllipse(state, point);
-                    Add("AxisX", ellipse.Center, new(ellipse.Center.X + ellipse.RadiusX, ellipse.Center.Y));
-                    Add("AxisY", ellipse.Center, new(ellipse.Center.X, ellipse.Center.Y + ellipse.RadiusY));
+                    Add("AxisX", ellipse.Center, GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, 0, ellipse.RotationRadians));
+                    Add("AxisY", ellipse.Center, GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, Math.PI / 2, ellipse.RotationRadians));
                     if (state.PendingEllipsePoints.Count > 2) Add(state.PendingEllipsePoints.Count == 3 ? "StartAngle" : "Angle", ellipse.Center, point, 1);
                 }
                 else if (CadCanvasToolMode == CadCanvasToolMode.CircleThreePoint &&

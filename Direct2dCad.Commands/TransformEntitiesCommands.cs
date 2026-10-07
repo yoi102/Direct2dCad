@@ -62,7 +62,7 @@ public sealed class RotateEntitiesCommand : ICadCommand
 public sealed class ScaleEntitiesCommand : ICadCommand
 {
     private readonly EntityId[] _entityIds;
-    private readonly DimensionTransformState _dimensions = new();
+    private CadScaleGeometryPlan? _geometry;
     private readonly CadPointD _pivot;
     private readonly double _factor;
 
@@ -82,18 +82,16 @@ public sealed class ScaleEntitiesCommand : ICadCommand
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         Validate(document, _factor);
-        _dimensions.Capture(document, _entityIds);
-        foreach (var id in _entityIds)
-            CadEntityTransform.UniformScale(document.GetEntity(id), _pivot, _factor);
+        // Preparation validates every target without touching the live database.
+        var geometry = _geometry ?? CadScaleGeometryPlan.Create(document, _entityIds, _pivot, _factor);
+        geometry.Apply(document, undo: false);
+        _geometry = geometry;
         return ChangeSet(document);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
-        var inverse = 1.0 / _factor;
-        foreach (var id in _entityIds)
-            CadEntityTransform.UniformScale(document.GetEntity(id), _pivot, inverse);
-        _dimensions.Restore(document);
+        _geometry?.Apply(document, undo: true);
         return ChangeSet(document);
     }
 

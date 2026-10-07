@@ -1,0 +1,111 @@
+using System.Text.Json;
+using Direct2dCad.AI.Contracts;
+using Direct2dCad.Agent;
+using Direct2dCad.Application.Tools;
+using Direct2dCad.Commands;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Geometry;
+using Direct2dCad.Editor;
+
+var doc = CadDocument.Create("scale probe");
+var line = doc.AddLine(new(100, 100), new(200, 100));
+var block = doc.CreateBlockDefinition("tiny block", CadPointD.Origin);
+var reference = doc.AddBlockReference(block, new(100, 100), scaleX: 1e-8, scaleY: 1e-8);
+using var session = new CadToolDocumentSession(doc);
+var executor = new CadWorkspaceToolExecutor(new ProbeWorkspace(session));
+var scaleArgs = JsonSerializer.Serialize(new { entity_ids = new[] {line.Id.Value, reference.Id.Value}, operation = "scale", pivot_x = 0, pivot_y = 0, factor = 0.01 });
+var scaleResult = await executor.ExecuteAsync(new("scale", "transform_entities", scaleArgs), default);
+Console.WriteLine(JsonSerializer.Serialize(new { probe = "failed_scale", scaleResult, lineStart = line.Start.ToString(), blockPosition = reference.Position.ToString(), reference.ScaleX, canUndo = session.CadEditor.DocumentCommands.CanUndo, version = session.CadEditor.DocumentChangeVersion }));
+Require(!JsonDocument.Parse(scaleResult).RootElement.GetProperty("success").GetBoolean() && line.Start == new CadPointD(1,1) && reference.Position == new CadPointD(1,1) && !session.CadEditor.DocumentCommands.CanUndo && session.CadEditor.DocumentChangeVersion == 0, "failed_scale");
+
+var layoutDoc = CadDocument.Create("layout probe");
+var layoutId = layoutDoc.CreateLayout("extra sheet");
+var erasedLine = layoutDoc.AddLine(new(0, 0), new(10, 0));
+layoutDoc.MoveEntityToBlock(erasedLine.Id, layoutDoc.GetLayout(layoutId).PaperSpaceBlockId);
+var layoutEditor = new CadEditor(layoutDoc);
+layoutEditor.Execute(new DeleteEntitiesCommand([erasedLine.Id]));
+var erasedBefore = erasedLine.IsErased;
+var beforeLayoutDeleteHistory = layoutEditor.CreateDocumentHistorySnapshot();
+layoutEditor.Execute(new DeleteLayoutCommand(layoutId));
+layoutEditor.UndoDocument();
+Console.WriteLine(JsonSerializer.Serialize(new { probe = "undo_layout", erasedBefore, erasedAfter = erasedLine.IsErased, sameHistory = layoutEditor.DocumentHistoryEquals(beforeLayoutDeleteHistory) }));
+Require(erasedBefore && !erasedLine.IsErased && layoutEditor.DocumentHistoryEquals(beforeLayoutDeleteHistory), "undo_layout");
+
+using var presentationSession = new CadToolDocumentSession(CadDocument.Create("presentation probe"));
+var presentation = new CadWorkspaceToolExecutor(new ProbeWorkspace(presentationSession));
+var sheet = presentationSession.CadEditor.Document.Layouts.Values.Single();
+var initialViewportCount = sheet.Viewports.Count;
+var addViewport = await presentation.ExecuteAsync(new("v1", "add_layout_viewport", JsonSerializer.Serialize(new { layout_id = sheet.Id.Value, x = 20, y = 30, width = 200, height = 120, model_center_x = 0, model_center_y = 0, scale = 1 })), default);
+var view = sheet.Viewports.Last();
+var firstSize = new {view.Bounds.Width,view.Bounds.Height};
+var updateViewport = await presentation.ExecuteAsync(new("v2", "set_layout_viewport", JsonSerializer.Serialize(new { layout_id = sheet.Id.Value, viewport_id = view.Id.Value, locked = true })), default);
+Console.WriteLine(JsonSerializer.Serialize(new { probe = "viewport_dimensions", addViewport, firstSize, afterLockSize = new {view.Bounds.Width,view.Bounds.Height}, view.IsLocked, added = sheet.Viewports.Count - initialViewportCount, updateSuccess = JsonDocument.Parse(updateViewport).RootElement.GetProperty("success").GetBoolean() }));
+Require(firstSize.Width == 180 && firstSize.Height == 90 && view.Bounds.Width == 160 && view.Bounds.Height == 60 && view.IsLocked, "viewport_dimensions");
+
+using var invalidLayoutSession = new CadToolDocumentSession(CadDocument.Create("invalid layout probe"));
+var invalidLayout = new CadWorkspaceToolExecutor(new ProbeWorkspace(invalidLayoutSession));
+var blocksBefore = invalidLayoutSession.CadEditor.Document.Blocks.Count;
+var createResult = await invalidLayout.ExecuteAsync(new("small", "create_layout", "{\"name\":\"Small\",\"width\":10,\"height\":10}"), default);
+Console.WriteLine(JsonSerializer.Serialize(new { probe = "failed_layout",createResult, blocksBefore, blocksAfter = invalidLayoutSession.CadEditor.Document.Blocks.Count, canUndo = invalidLayoutSession.CadEditor.DocumentCommands.CanUndo, version = invalidLayoutSession.CadEditor.DocumentChangeVersion }));
+Require(!JsonDocument.Parse(createResult).RootElement.GetProperty("success").GetBoolean() && invalidLayoutSession.CadEditor.Document.Blocks.Count == blocksBefore + 1 && !invalidLayoutSession.CadEditor.DocumentCommands.CanUndo && invalidLayoutSession.CadEditor.DocumentChangeVersion == 0, "failed_layout");
+
+using var stop = new CancellationTokenSource();
+var chat = new ProbeChat();
+using var agentSession = new CadToolDocumentSession(CadDocument.Create("agent probe"));
+var toolset = new ProbeTools(new CadWorkspaceToolExecutor(new ProbeWorkspace(agentSession)));
+var conversation = new AgentConversation();
+conversation.AddUser("Create two lines");
+var runner = new AgentRunner(chat);
+var request = new AgentRunRequest("http://localhost/v1", "fake", "Use tools", "Create two lines", conversation, 32768, 0.2, toolset);
+try
+{
+    await runner.RunAsync(request, ev => { if(ev.Kind == AgentRunEventKind.ToolResult) stop.Cancel(); return ValueTask.CompletedTask; }, stop.Token);
+}
+catch(OperationCanceledException) { }
+conversation.AddUser("Continue");
+await runner.RunAsync(request with { UserPrompt = "Continue" });
+Console.WriteLine(JsonSerializer.Serialize(new { probe = "agent_cancel_context", toolset.SuccessfulEdits, liveEntities = agentSession.CadEditor.Document.Entities.Values.Count(e => !e.IsErased), localResults = conversation.Messages.Count(m => m.Role == AiChatRole.Tool), sentResults = chat.LastRequest!.Messages.Count(m => m.Role == AiChatRole.Tool), sentMessages = chat.LastRequest.Messages.Select(m => new { role=m.Role.ToString(),m.Content }) }));
+Require(toolset.SuccessfulEdits == 1 && agentSession.CadEditor.Document.Entities.Values.Count(e => !e.IsErased) == 1 && conversation.Messages.Count(m => m.Role == AiChatRole.Tool) == 1 && chat.LastRequest.Messages.All(m => m.Role != AiChatRole.Tool), "agent_cancel_context");
+Console.WriteLine("Confirmed 5 defect reproductions. This is not a product acceptance pass.");
+
+static void Require(bool condition, string name) { if(!condition) throw new InvalidOperationException("Defect reproduction did not match: " + name); }
+
+sealed class ProbeChat : IAiChatClient
+{
+    int calls;
+    public AiChatRequest? LastRequest;
+    public Task<IReadOnlyList<string>> GetModelsAsync(string endpoint, CancellationToken cancellationToken=default) => Task.FromResult<IReadOnlyList<string>>(["fake"]);
+    public Task<AiChatCompletion> CompleteAsync(AiChatRequest request, CancellationToken cancellationToken=default)
+    {
+        LastRequest = request;
+        const string args = "{\"x1\":0,\"y1\":0,\"x2\":10,\"y2\":0}";
+        return Task.FromResult(++calls == 1 ? new AiChatCompletion(null, [new("1", "add_line", args),new("2", "add_line", args)], "fake") : new AiChatCompletion("done", [], "fake"));
+    }
+}
+sealed class ProbeTools(CadWorkspaceToolExecutor executor) : IAgentToolset
+{
+    public int SuccessfulEdits;
+    public IReadOnlyList<AiToolDefinition> ToolDefinitions {get;} = [new("add_line", "Create line", JsonSerializer.SerializeToElement(new { type="object", properties=new {} }))];
+    public IReadOnlyList<AiToolDefinition> SelectTools(string prompt,bool aggressive=false) => ToolDefinitions;
+    public async Task<string> ExecuteAsync(AiToolCall toolCall,CancellationToken cancellationToken) { var result = await executor.ExecuteAsync(toolCall, cancellationToken); if(JsonDocument.Parse(result).RootElement.GetProperty("success").GetBoolean()) SuccessfulEdits++; return result; }
+}
+
+sealed class ProbeWorkspace(CadToolDocumentSession session) : ICadToolWorkspace
+{
+    private CadToolWorkspaceDocument Document {get;} = new("doc", session.CadEditor.Document.Id.Value, "Probe", "", false, true, new ProbeHost(session));
+    public IReadOnlyList<CadToolWorkspaceDocument> GetDocuments() => [Document];
+    public CadToolWorkspaceDocument GetActiveDocument() => Document;
+    public CadToolWorkspaceDocument GetRequiredDocument(string id) => id == Document.DocumentId ? Document : throw new KeyNotFoundException();
+    public CadToolWorkspaceDocument CreateDocument(string? name) => throw new NotSupportedException();
+    public Task<CadToolWorkspaceDocument> OpenDocumentAsync(string path,CancellationToken token) => throw new NotSupportedException();
+    public bool ActivateDocument(string id) => true;
+    public bool RenameDocument(string id,string name) => throw new NotSupportedException();
+    public Task<bool> SaveDocumentAsync(string id,string? path,CancellationToken token) => throw new NotSupportedException();
+    public Task<bool> CloseDocumentAsync(string id) => throw new NotSupportedException();
+}
+sealed class ProbeHost(CadToolDocumentSession session) : ICadWorkspaceDocument
+{
+    public ICadToolDocumentSession Session => session;
+    public void Load(CadDocument document,string path) => throw new NotSupportedException();
+    public Task<T> RunAsync<T>(string message,Func<CancellationToken,Task<T>> operation,CancellationToken token=default) => operation(token);
+}

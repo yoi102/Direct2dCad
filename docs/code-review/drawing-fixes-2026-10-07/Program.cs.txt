@@ -1,0 +1,202 @@
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Text.Json;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using Direct2dCad.Db;
+using Direct2dCad.Db.Cad;
+using Direct2dCad.Db.Cad.Settings;
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Data.Styles.FillStyles;
+using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering;
+using Direct2dCad.Rendering.Direct2D.Hosting;
+using Direct2dCad.Rendering.Transient;
+using Direct2dCad.ViewModels;
+using Direct2dCad.ViewModels.Enums;
+
+internal static class Program
+{
+    private const int Width = 640, Height = 480;
+    [STAThread]
+    private static void Main()
+    {
+        foreach (var mode in new[] { CadCanvasToolMode.EllipseCenter, CadCanvasToolMode.EllipseAxisEnd, CadCanvasToolMode.EllipseArc })
+            EllipseAxis(mode);
+        PolylinePreview();
+        SplineHatchPreview();
+        LargeCoordinates(100_000_000, .5, 100, "far");
+        LargeCoordinates(1_000_000, .01, 1000, "million");
+        CircleTriples();
+        Console.WriteLine("Passed original drawing defect acceptance through current production code.");
+    }
+
+    private static void EllipseAxis(CadCanvasToolMode mode)
+    {
+        var type = Assembly.Load("Direct2dCad.ViewModels.Tests").GetType("Direct2dCad.ViewModels.Tests.CadToolboxTestContext", true)!;
+        using var context = (IDisposable)Activator.CreateInstance(type)!;
+        var vm = (CadDocumentViewModel)type.GetProperty("Document")!.GetValue(context)!;
+        vm.SetViewportSize(Width, Height);
+        vm.CadEditor.Viewport.SetView(4, new(320, 240));
+        vm.SetSnapping(new CadSnapSettings { GridEnabled = false, ObjectsEnabled = false });
+        vm.SetToolMode(mode);
+        var points = mode == CadCanvasToolMode.EllipseCenter
+            ? new CadPointD[] { new(0, 0), new(40, 40), new(-10, 10) }
+            : mode == CadCanvasToolMode.EllipseAxisEnd
+                ? new CadPointD[] { new(-40, -40), new(40, 40), new(-10, 10) }
+                : new CadPointD[] { new(-40, -40), new(40, 40), new(-10, 10), new(40, 40), new(-10, 10) };
+        foreach (var point in points)
+        {
+            var screen = vm.CadEditor.Viewport.WorldToScreen(point);
+            vm.PointerMove(screen);
+            vm.PointerDown(screen, CadCanvasPointerButton.Left, false);
+            vm.PointerUp(screen, CadCanvasPointerButton.Left);
+        }
+        var entity = vm.CadEditor.Document.Entities.Values.Single(e => !e.IsErased);
+        var center = entity is CadEllipse ellipse ? ellipse.Center : ((CadEllipseArc)entity).Center;
+        var radiusX = entity is CadEllipse ell ? ell.RadiusX : ((CadEllipseArc)entity).RadiusX;
+        var radiusY = entity is CadEllipse ell2 ? ell2.RadiusY : ((CadEllipseArc)entity).RadiusY;
+        var rotation = entity is CadEllipse ell3 ? ell3.RotationRadians : ((CadEllipseArc)entity).RotationRadians;
+        var end = new CadPointD(40, 40);
+        var local = CadMatrixD.CreateRotation(-rotation).TransformVector(end - center);
+        var normalizedEndpoint = Math.Pow(local.X / radiusX, 2) + Math.Pow(local.Y / radiusY, 2);
+        Require(Math.Abs(rotation - Math.PI / 4) < 1e-9 && Math.Abs(normalizedEndpoint - 1) < 1e-9, "Tilted-axis fix failed.");
+        Log(new { probe = "ellipse_axis", mode = mode.ToString(), center, radiusX, radiusY, rotation, normalizedEndpoint, expectedEndpointOnEllipse = 1.0 });
+    }
+
+    private static void CircleTriples()
+    {
+        foreach (var coordinate in new[] { 0.0, 1_000_000.0 })
+        foreach (var mode in new[] { CadCanvasToolMode.CircleThreePoint, CadCanvasToolMode.ArcThreePoint })
+        {
+            var type = Assembly.Load("Direct2dCad.ViewModels.Tests").GetType("Direct2dCad.ViewModels.Tests.CadToolboxTestContext", true)!;
+            using var context = (IDisposable)Activator.CreateInstance(type)!;
+            var vm = (CadDocumentViewModel)type.GetProperty("Document")!.GetValue(context)!;
+            vm.SetViewportSize(Width, Height);
+            var center = new CadPointD(coordinate + .1, coordinate + .2);
+            vm.CadEditor.Viewport.SetView(4, new(320 - center.X * 4, 240 + center.Y * 4));
+            vm.SetSnapping(new CadSnapSettings { GridEnabled = false, ObjectsEnabled = false });
+            vm.SetToolMode(mode);
+            foreach (var point in new CadPointD[] { new(center.X + 10, center.Y), new(center.X, center.Y + 10), new(center.X - 10, center.Y) })
+            {
+                var screen = vm.CadEditor.Viewport.WorldToScreen(point);
+                vm.PointerMove(screen); vm.PointerDown(screen, CadCanvasPointerButton.Left, false); vm.PointerUp(screen, CadCanvasPointerButton.Left);
+            }
+            Log(new { probe = "three_point_curve_translation", coordinate, mode = mode.ToString(), createdEntities = vm.CadEditor.Document.Entities.Values.Count(e => !e.IsErased), vm.StepInputError });
+        }
+    }
+
+    private static void PolylinePreview()
+    {
+        var points = new CadPointD[] { new(-100, -60), new(-53, -60), new(-53, 60) };
+        var style = CadStrokeStyle.Default with { DashStyle = CadStrokeDashStyle.Dash, LineJoin = CadStrokeLineJoin.Bevel };
+        var transientStyle = new CadTransientStyle(CadColor.Red, StrokeWidth: CadLineWeightDisplay.ToDips(3), StrokeStyle: style);
+        var committed = Document();
+        var polyline = committed.AddPolyline(points, false); polyline.SetLineWeight(new(3)); polyline.SetStrokeStyle(style);
+        var empty = Document();
+        var viewport = Viewport(2);
+        var preview = Render(empty, viewport, new CadTransientPolyline(points, false, transientStyle));
+        var final = Render(committed, viewport);
+        var differences = Differences(preview, final);
+        Require(differences == 0, "Polyline preview fix failed.");
+        Save(preview, "polyline-preview"); Save(final, "polyline-committed");
+        // A straight, solid path is a control for matching color, width and transform.
+        var controlPoints = new CadPointD[] { new(-100, 0), new(-53, 0), new(40, 0) };
+        var control = Document(); control.AddPolyline(controlPoints, false).SetLineWeight(new(3));
+        var solidPreview = Render(empty, viewport, new CadTransientPolyline(controlPoints, false, transientStyle with { StrokeStyle = CadStrokeStyle.Default }));
+        var solidFinal = Render(control, viewport);
+        Require(Differences(solidPreview, solidFinal) == 0, "Polyline comparison setup does not match.");
+        Log(new { probe = "polyline_preview", differentPixels = differences, controlDifferentPixels = 0 });
+    }
+
+    private static void SplineHatchPreview()
+    {
+        var points = new CadPointD[] { new(-50, -50), new(50, -50), new(50, 50), new(-50, 50) };
+        var line = new CadHatchLineDefinition(0, default, new(0, 6));
+        var hatch = new CadTransientHatchFill(CadColor.Green, 1, 0, default, [line]);
+        var committed = Document(); committed.GetLayer(LayerId.Default).SetColor(CadColor.Transparent);
+        var pattern = committed.CreateHatchPattern("Audit hatch", [line]);
+        var fill = committed.CreateHatchFillStyle("Audit fill", pattern, CadColor.Green);
+        var spline = committed.AddSpline(points, true, fillStyleId: fill); spline.SetLineWeight(new(1));
+        var viewport = Viewport(3);
+        var empty = Document();
+        var preview = Render(empty, viewport, new CadTransientSpline(points, true, new(CadColor.Transparent, HatchFill: hatch)));
+        var final = Render(committed, viewport);
+        var differences = Differences(preview, final);
+        Require(differences == 0, "Spline hatch preview fix failed.");
+        Save(preview, "spline-hatch-preview"); Save(final, "spline-hatch-committed");
+        var solid = Document(); solid.GetLayer(LayerId.Default).SetColor(CadColor.Transparent);
+        solid.AddSpline(points, true, fillStyleId: solid.CreateSolidFillStyle("Solid", CadColor.Green)).SetLineWeight(new(1));
+        var solidPreview = Render(empty, viewport, new CadTransientSpline(points, true, new(CadColor.Transparent, FillColor: CadColor.Green)));
+        var solidFinal = Render(solid, viewport);
+        Require(Differences(solidPreview, solidFinal) == 0, "Spline comparison setup does not match.");
+        Log(new { probe = "spline_hatch_preview", differentPixels = differences, controlDifferentPixels = 0, actualBounds = spline.Bounds, fitPointBounds = CadRectD.FromLTRB(-50, -50, 50, 50) });
+    }
+
+    private static void LargeCoordinates(double coordinate, double length, double zoom, string suffix)
+    {
+        var near = Document(); near.AddLine(default, new(length, 0)).SetLineWeight(new(2));
+        var far = Document(); far.AddLine(new(coordinate, coordinate), new(coordinate + length, coordinate)).SetLineWeight(new(2));
+        var nearViewport = Viewport(zoom);
+        var farViewport = Viewport(zoom); farViewport.SetView(zoom, new(320 - coordinate * zoom, 240 + coordinate * zoom));
+        var nearPixels = Render(near, nearViewport); var farPixels = Render(far, farViewport);
+        var nearCount = RedCount(nearPixels); var farCount = RedCount(farPixels);
+        Require(nearCount > 10 && farCount == nearCount, "Large coordinate fix failed.");
+        Save(nearPixels, "near-origin-" + suffix); Save(farPixels, "far-from-origin-" + suffix);
+        Log(new { probe = "large_coordinate_render", coordinate, length, zoom, expectedScreenLength = length * zoom, nearRedPixels = nearCount, farRedPixels = farCount });
+    }
+
+    private static CadDocument Document()
+    {
+        var document = CadDocument.Create("Drawing audit");
+        document.GetLayer(LayerId.Default).SetColor(CadColor.Red);
+        return document;
+    }
+
+    private static CadViewport Viewport(double zoom)
+    {
+        var viewport = new CadViewport(); viewport.SetSize(Width, Height); viewport.SetView(zoom, new(320, 240)); return viewport;
+    }
+
+    private static byte[] Render(CadDocument doc, CadViewport viewport, CadTransientItem? item = null)
+    {
+        using var host = new Direct2DImageRenderHost();
+        host.AttachImageSource(new ImageSource()); host.SetSize(Width, Height); host.SetScene(doc, viewport);
+        host.SetRenderOptions(new() { DrawGrid = false, DrawOrigin = false, DrawGripHandles = false, IsLevelOfDetailEnabled = false, EnableGeometryRealizations = false, IsAntialiasingEnabled = false });
+        if (item is not null) { var scene = new CadTransientScene(); scene.Replace([item]); host.SetTransientScene(scene); }
+        var timer = Stopwatch.StartNew();
+        while (host.PrepareRenderCacheStep()) { Require(timer.Elapsed < TimeSpan.FromSeconds(15), "Cache preparation timed out."); Thread.Yield(); }
+        host.Render(CadRenderInvalidation.Full);
+        return (byte[])typeof(Direct2DImageRenderHost).GetMethod("CaptureBackBufferPixels", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(host, null)!;
+    }
+    private static int Differences(byte[] first, byte[] second)
+    {
+        var result = 0;
+        for (var i = 0; i < first.Length; i += 4) if (!first.AsSpan(i, 4).SequenceEqual(second.AsSpan(i, 4))) result++;
+        return result;
+    }
+    private static int RedCount(byte[] bytes)
+    {
+        var result = 0; for (var i = 0; i < bytes.Length; i += 4) if (bytes[i + 2] > 150 && bytes[i + 1] < 40 && bytes[i] < 40) result++; return result;
+    }
+    private static void Save(byte[] bytes, string name)
+    {
+        var bitmap = BitmapSource.Create(Width, Height, 96, 96, PixelFormats.Bgra32, null, bytes, Width * 4);
+        var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var stream = File.Create(Path.Combine("TestResults", "drawing-fixes-2026-10-07", name + ".png")); encoder.Save(stream);
+    }
+    private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+    private static void Log(object value) => Console.WriteLine(JsonSerializer.Serialize(value));
+    private sealed class ImageSource : ID3D11ImageSource
+    {
+        public int SurfaceWidth { get; private set; } = Width;
+        public int SurfaceHeight { get; private set; } = Height;
+        public void SetSize(int width, int height) => (SurfaceWidth, SurfaceHeight) = (width, height);
+        public void SetSurface(nint pointer) { }
+        public void Present(Action action, IReadOnlyList<IntRect>? rects = null) => action();
+        public void Invalidate() { }
+        public void Invalidate(IntRect rect) { }
+        public void Invalidate(IReadOnlyList<IntRect> rects) { }
+    }
+}

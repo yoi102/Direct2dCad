@@ -208,6 +208,9 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBox x:Name="PromptTextBox"
+                         AutomationProperties.AutomationId="AiPromptInput"
+                         AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutAiPromptScope}}"
+                         ToolTip="{I18N {x:Static r:LangKeys.ShortcutAiPromptScope}}"
                          Grid.Row="1"
                          MinHeight="54"
                          MaxHeight="120"

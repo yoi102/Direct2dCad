@@ -109,7 +109,7 @@ public sealed partial class CadWorkspaceToolExecutor
                 break;
             case "add_layout_viewport":
                 var add = new AddLayoutViewportCommand(layout.Id,
-                    new CadRectD(args.GetProperty("x").GetDouble(), args.GetProperty("y").GetDouble(), args.GetProperty("width").GetDouble(), args.GetProperty("height").GetDouble()),
+                    CadRectD.FromXYWH(args.GetProperty("x").GetDouble(), args.GetProperty("y").GetDouble(), args.GetProperty("width").GetDouble(), args.GetProperty("height").GetDouble()),
                     new(args.GetProperty("model_center_x").GetDouble(), args.GetProperty("model_center_y").GetDouble()),
                     args.GetProperty("scale").GetDouble(), PresentationNumber(args, "rotation_degrees", 0) * Math.PI / 180);
                 executor.ExecuteCommand(add);
@@ -126,7 +126,7 @@ public sealed partial class CadWorkspaceToolExecutor
                 if (viewport.IsLocked && changesView && OptionalBool(args, "locked", true))
                     throw new InvalidOperationException("Unlock the viewport before changing its view.");
                 var target = new CadLayoutViewportSnapshot(
-                    new(PresentationNumber(args, "x", viewport.Bounds.MinX), PresentationNumber(args, "y", viewport.Bounds.MinY),
+                    CadRectD.FromXYWH(PresentationNumber(args, "x", viewport.Bounds.MinX), PresentationNumber(args, "y", viewport.Bounds.MinY),
                         PresentationNumber(args, "width", viewport.Bounds.Width), PresentationNumber(args, "height", viewport.Bounds.Height)),
                     new(PresentationNumber(args, "model_center_x", viewport.ModelCenter.X), PresentationNumber(args, "model_center_y", viewport.ModelCenter.Y)),
                     PresentationNumber(args, "scale", viewport.Scale), PresentationNumber(args, "rotation_degrees", viewport.RotationRadians * 180 / Math.PI) * Math.PI / 180,

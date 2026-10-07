@@ -1864,7 +1864,11 @@
   <data name="DimensionTextAndArrows" xml:space="preserve"><value>Text and arrows</value></data>
   <data name="DimensionDetails" xml:space="preserve"><value>Scale and extension lines</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>Dimension line weight (mm)</value></data>
-  <data name="DynamicInputHint" xml:space="preserve"><value>Tab: next · Enter: confirm · Esc: cancel</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab: next · Enter: confirm · Esc: discard numeric input and return to canvas · F4: snap candidate</value></data>
+  <data name="ShortcutApplicationScope" xml:space="preserve"><value>Available in the main window and floating CAD panels. Esc cancels one layer at a time: popup, input, then drawing. Modal dialogs keep their own keyboard actions.</value></data>
+  <data name="ShortcutCanvasScope" xml:space="preserve"><value>Keyboard shortcut applies when the drawing canvas has focus. Text fields edit their own text.</value></data>
+  <data name="ShortcutTerminalScope" xml:space="preserve"><value>Enter: submit · Up/Down: suggestions or history · Tab: complete suggestions · Shift+Tab: previous control · Esc: dismiss suggestions, cancel, or return to canvas; draft retained</value></data>
+  <data name="ShortcutAiPromptScope" xml:space="preserve"><value>Enter or Ctrl+Enter: send · Shift+Enter: new line · Ctrl+V: paste text or attachments · Esc: cancel drawing and return to canvas; draft retained</value></data>
   <data name="InvalidDynamicInput" xml:space="preserve"><value>Enter a valid value for this geometry.</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>Boolean operations</value></data>
   <data name="BooleanSelectionMinimum" xml:space="preserve"><value>Select at least two objects for a Boolean operation.</value></data>

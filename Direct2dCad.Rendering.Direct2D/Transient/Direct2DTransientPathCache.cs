@@ -1,3 +1,5 @@
+using Direct2dCad.Db.Data.Entities;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Entities;
 using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Transient;
@@ -33,7 +35,18 @@ internal sealed class Direct2DTransientPathCache(Direct2DResourceCache resources
         }
         foreach (var path in _active)
             if (!_paths.ContainsKey(path))
-                _paths.Add(path, geometryFactory.CreateCompositePath(factory, path.StartPoint, path.Segments, path.Closed));
+            {
+                var origin = Direct2DTransientRenderer.LocalOrigin(path.Bounds.Center);
+                var offset = new CadVectorD(-origin.X, -origin.Y);
+                var segments = origin == default ? path.Segments : path.Segments.Select(s => s switch
+                {
+                    CadCompositeLineSegment line => (CadCompositePathSegment)new CadCompositeLineSegment(line.End + offset),
+                    CadCompositeArcSegment arc => new CadCompositeArcSegment(arc.Center + offset, arc.SweepAngleRadians),
+                    CadCompositeSplineSegment spline => new CadCompositeSplineSegment(spline.FitPoints.Select(p => p + offset).ToArray()),
+                    _ => throw new NotSupportedException()
+                }).ToArray();
+                _paths.Add(path, geometryFactory.CreateCompositePath(factory, path.StartPoint + offset, segments, path.Closed));
+            }
         _scene = scene;
         _version = scene?.Version ?? -1;
         _active.Clear();

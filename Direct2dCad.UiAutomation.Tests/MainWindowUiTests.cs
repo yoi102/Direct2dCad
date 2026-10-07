@@ -19,7 +19,17 @@ public sealed partial class MainWindowUiTests : IDisposable
     private static CadApplicationFixture CreateFixture()
     {
         SetThreadDpiAwarenessContext(new IntPtr(-4));
-        return new CadApplicationFixture(captureBindings: true);
+        var fixture = new CadApplicationFixture(captureBindings: true);
+        // Keep this desktop regression on its intended primary display. WPF's
+        // CenterScreen otherwise follows the pointer onto a differently scaled
+        // secondary display, changing UIA coordinates and pixel assertions.
+        var area = System.Windows.Forms.Screen.PrimaryScreen!.WorkingArea;
+        fixture.MainWindow.Patterns.Window.Pattern.SetWindowVisualState(WindowVisualState.Normal);
+        fixture.MainWindow.Patterns.Transform.Pattern.Move(area.Left + 40, area.Top + 40);
+        fixture.MainWindow.Patterns.Transform.Pattern.Resize(Math.Min(1300, area.Width - 80), Math.Min(900, area.Height - 80));
+        fixture.WaitUntil(() => area.Contains(fixture.MainWindow.BoundingRectangle), "The test window did not settle on the primary display.");
+        fixture.MainWindow.Focus();
+        return fixture;
     }
 
     [DllImport("user32.dll")]
@@ -46,6 +56,7 @@ public sealed partial class MainWindowUiTests : IDisposable
         var propertyScroll = fixture.WaitForElement("EntityPropertiesScrollViewer");
         Assert.True(propertyScroll.Patterns.Scroll.Pattern.VerticallyScrollable.Value);
         Assert.Null(fixture.MainWindow.FindFirstDescendant(c => c.ByAutomationId("ApplyDimensionButton")));
+        fixture.WaitForElement("DimensionTextAndArrowsSection").Patterns.ExpandCollapse.Pattern.Expand();
         var font = ScrollPropertyIntoView("DimensionShapeFontSelector").AsComboBox();
         font.Select("Simplex"); font.Collapse();
         var arrow = ScrollPropertyIntoView("DimensionArrowSelector").AsComboBox();
@@ -180,7 +191,7 @@ public sealed partial class MainWindowUiTests : IDisposable
         var input = GetOrOpenCommandLineInput();
         var output = fixture.WaitForElement("CommandLineOutput");
         fixture.WaitForElement("DrawRibbonTab").AsTabItem().Select();
-        fixture.WaitForElement("CircleCenterDiameterToolButton").AsToggleButton().Click();
+        ClickVisibleElement(fixture.WaitForElement("CircleCenterDiameterToolButton"));
         ShowDynamicInputOnCanvas();
         AssertAnnotationAssistantHidden();
         var canvas = fixture.WaitForElement("CadCanvas");
@@ -222,11 +233,15 @@ public sealed partial class MainWindowUiTests : IDisposable
             "Invalid diameter did not show an input error.");
         Assert.True(diameter.Properties.HasKeyboardFocus.Value);
         Keyboard.Type(VirtualKeyShort.ESC);
+        fixture.WaitUntil(() => canvas.Properties.HasKeyboardFocus.ValueOrDefault, "Esc did not return from numeric input to the canvas.");
+        Assert.NotEqual("Select", fixture.WaitForElement("CurrentToolStatusText").Name);
+        Assert.NotEqual("-1", diameter.Text);
+        Keyboard.Type(VirtualKeyShort.ESC);
         fixture.WaitUntil(() => fixture.WaitForElement("CurrentToolStatusText").Name == "Select", "Esc did not cancel dynamic input.");
         Assert.True(fixture.MainWindow.FindFirstDescendant(c => c.ByAutomationId("DynamicInputDiameter")) is null or { IsOffscreen: true });
         ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 1");
 
-        fixture.WaitForElement("CircleCenterRadiusToolButton").AsToggleButton().Click();
+        ClickVisibleElement(fixture.WaitForElement("CircleCenterRadiusToolButton"));
         ShowDynamicInputOnCanvas(); EnterDynamicCoordinates("50", "60");
         canvas.Focus(); Keyboard.Type("12.5");
         var radius = fixture.WaitForElement("DynamicInputRadius").AsTextBox();
@@ -617,10 +632,11 @@ public sealed partial class MainWindowUiTests : IDisposable
     private void SelectDocumentTab(string name)
     {
         fixture.MainWindow.Focus();
-        var matches = fixture.MainWindow.FindAllDescendants(c => c.ByName(name));
-        var tab = matches.FirstOrDefault(element => element.ControlType == ControlType.TabItem && !element.IsOffscreen)
-            ?? matches.First(element => !element.IsOffscreen);
-        tab.Click();
+        AutomationElement? tab = null;
+        fixture.WaitUntil(() => (tab = fixture.MainWindow.FindAllDescendants(c => c.ByControlType(ControlType.TabItem))
+            .FirstOrDefault(element => element.Name == name || element.FindFirstDescendant(c => c.ByName(name)) is not null)) is not null,
+            $"The document tab '{name}' did not become available.");
+        tab!.AsTabItem().Select();
     }
 
     [Fact]
@@ -1374,8 +1390,14 @@ public sealed partial class MainWindowUiTests : IDisposable
         fixture.WaitUntil(
             () => button.IsEnabled && !button.IsOffscreen,
             "The new-document button did not become interactive.");
+        // Unlike a routed WPF event test, SendInput targets the desktop's
+        // foreground window; a control's local focus alone is insufficient.
+        fixture.MainWindow.SetForeground();
+        fixture.MainWindow.Focus();
         button.Focus();
-        fixture.WaitUntil(()=>button.Properties.HasKeyboardFocus.ValueOrDefault,"The new-document button did not receive focus.");
+        fixture.WaitUntil(() => button.Properties.HasKeyboardFocus.ValueOrDefault &&
+            GetShortcutForegroundWindow() == fixture.MainWindow.Properties.NativeWindowHandle.Value,
+            "The new-document button did not receive foreground keyboard focus.");
         Keyboard.Type(VirtualKeyShort.DOWN);
         fixture.WaitForElement("NewBlankDocumentMenuItem", includePopups: true).AsMenuItem().Invoke();
         WaitForRibbonMenuClosed("NewDocumentMenu");
@@ -1439,6 +1461,19 @@ public sealed partial class MainWindowUiTests : IDisposable
         }
 
         return null;
+    }
+
+    private void ClickVisibleElement(AutomationElement element, MouseButton mouseButton = MouseButton.Left)
+    {
+        fixture.WaitUntil(() => element.IsEnabled && !element.IsOffscreen && element.BoundingRectangle.Width > 0 &&
+            element.BoundingRectangle.Height > 0, "The mouse target did not become visible and enabled.");
+        var bounds = element.BoundingRectangle;
+        // Some WPF peers report a DPI-virtualized clickable point outside their
+        // physical UIA bounds on a secondary monitor. Keep the actual mouse input
+        // inside the visible control and retain every behavioral assertion.
+        var point = element.TryGetClickablePoint(out var reported) && bounds.Contains(reported)
+            ? reported : new Point(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
+        Mouse.Click(point, mouseButton);
     }
 
     private void ClickWhenEnabled(string automationId)

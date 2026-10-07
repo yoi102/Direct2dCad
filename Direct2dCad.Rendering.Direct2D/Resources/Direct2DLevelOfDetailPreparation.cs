@@ -78,6 +78,7 @@ internal sealed class Direct2DLevelOfDetailPreparation : IDisposable
 
     private static Work? Capture(CadEntity entity, Bucket bucket)
     {
+        entity = bucket.LocalEntity ?? entity;
         var extent = Math.Max(entity.Bounds.Width, entity.Bounds.Height);
         if (!double.IsFinite(extent) || extent <= double.Epsilon)
             return null;

@@ -1,0 +1,13 @@
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.UiAutomation.Tests\bin\Release\net10.0-windows\Direct2dCad.UiAutomation.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+  Failed Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ArrayCursorFieldsStayCompactInANarrowCanvasAndCommitOnlyCorrectedParameters [15 s]
+  Error Message:
+   System.TimeoutException : The first source click did not immediately preview the rectangular array.
+  Stack Trace:
+     at Direct2dCad.UiAutomation.Tests.CadApplicationFixture.WaitUntil(Func`1 condition, String failureMessage, Nullable`1 timeout) in C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.UiAutomation.Tests\CadApplicationFixture.cs:line 156
+   at Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ArrayCursorFieldsStayCompactInANarrowCanvasAndCommitOnlyCorrectedParameters() in C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.UiAutomation.Tests\MainWindowUiTests.EditCanvas.cs:line 148
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\property-visual-2026-10-08\array-recheck\array.trx
+
+Failed!  - Failed:     1, Passed:     0, Skipped:     0, Total:     1, Duration: 15 s - Direct2dCad.UiAutomation.Tests.dll (net10.0)

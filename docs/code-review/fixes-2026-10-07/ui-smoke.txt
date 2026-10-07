@@ -1,0 +1,5 @@
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.UiAutomation.Tests\bin\Release\net10.0-windows\Direct2dCad.UiAutomation.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\code-review-fixes-2026-10-07\ui-smoke.trx
+
+Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: 29 s - Direct2dCad.UiAutomation.Tests.dll (net10.0)

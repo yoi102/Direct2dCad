@@ -37,7 +37,7 @@ public sealed class PropertySaveBindingTests
         {
             var model = new PropertyModel();
             var section = new EntitySettingsPropertySection { ViewModel = model };
-            var textBox = Descendants(section).OfType<TextBox>().Single();
+            var textBox = Descendants(section).OfType<TextBox>().Single(control => !control.IsReadOnly);
             FlushBindings();
             textBox.SetCurrentValue(TextBox.TextProperty, "invalid angle");
 

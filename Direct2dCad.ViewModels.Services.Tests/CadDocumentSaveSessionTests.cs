@@ -9,6 +9,32 @@ namespace Direct2dCad.ViewModels.Services.Tests;
 public sealed class CadDocumentSaveSessionTests
 {
     [Fact]
+    public async Task UndoLayoutDeletionRestoresSavedContentsWithoutRevivingErasedEntities()
+    {
+        var doc = CadDocument.Create("Saved layout");
+        var layoutId = doc.CreateLayout("Sheet");
+        var erased = doc.AddLine(default, new(10, 0));
+        var live = doc.AddCircle(new(30, 30), 5);
+        var owner = doc.GetLayout(layoutId).PaperSpaceBlockId;
+        doc.MoveEntityToBlock(erased.Id, owner);
+        doc.MoveEntityToBlock(live.Id, owner);
+        var editor = new CadEditor(doc);
+        editor.Execute(new Direct2dCad.Commands.DeleteEntitiesCommand([erased.Id]));
+        var writer = new ControlledWriter();
+        using var session = new CadDocumentSaveSession(editor, writer);
+        var save = session.SaveAsync(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".d2cad"));
+        writer.Complete();
+        Assert.True(await save);
+        Assert.False(session.IsModified);
+        editor.Execute(new Direct2dCad.Commands.DeleteLayoutCommand(layoutId));
+        Assert.True(session.IsModified);
+        editor.UndoDocument();
+        Assert.False(session.IsModified);
+        Assert.True(erased.IsErased);
+        Assert.False(live.IsErased);
+    }
+
+    [Fact]
     public async Task SaveKeepsLaterEditsDirtyAndUndoReturnsToSavedState()
     {
         var editor = CreateEditor();

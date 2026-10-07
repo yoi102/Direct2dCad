@@ -78,6 +78,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
+        if (_resourceCache.RequiresPrecision(viewport)) return false;
         PublishCompletedBackgroundRecordings();
         if (!options.IsBackgroundChunkRecordingEnabled &&
             _backgroundWorker.IsReady)
@@ -210,6 +211,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
+        if (_resourceCache.RequiresPrecision(viewport)) return false;
         if (options.ActiveLayoutId is not null || options.HiddenEntityIds.Count > 0 ||
             !_profiles.TryGetValue(RenderProfileKey.Create(options, viewport.Zoom), out var profile) ||
             options.IsLevelOfDetailEnabled && profile.EntityCount >= 1024 && profile.HasPendingBuilds)
@@ -234,6 +236,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         ThrowIfDisposed();
         EnsureDocument(document);
         var key = RenderProfileKey.Create(options, viewport.Zoom);
+        if (_resourceCache.RequiresPrecision(viewport)) return false;
         if (options.ActiveLayoutId is not null ||
             !_profiles.TryGetValue(key, out var profile))
         {

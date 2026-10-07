@@ -25,6 +25,7 @@ internal readonly record struct GeometryPreparationSnapshot(
 
     public static GeometryPreparationSnapshot Capture(CadDocument document, CadEntity entity)
     {
+        entity = Direct2DLocalGeometry.Resolve(entity, out _);
         var id = entity.Id;
         var fillId = entity switch
         {

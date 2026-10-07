@@ -1,42 +1,58 @@
-<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.EntitySettingsPropertySection"
-             x:Name="Root"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
-             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang">
-    <UserControl.Resources><BooleanToVisibilityConverter x:Key="Bool"/></UserControl.Resources>
-    <Expander Header="{I18N {x:Static r:LangKeys.EntitySettings}}"
-              IsExpanded="True"
-              Margin="0,0,0,8">
-        <Grid Margin="8,6,8,8">
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls" xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.EntitySettingsPropertySection" x:Name="Root">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Direct2dCad;component/Views/Toolboxes/EntityProperty/PropertyInspectorCommonStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="Bool" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel Margin="0,0,0,6">
+        <Grid Visibility="{Binding ViewModel.SupportsGeometryOrientation, ElementName=Root, Converter={StaticResource Bool}}" Margin="0,0,0,4">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="96" />
+                <ColumnDefinition Width="84" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Grid.Column="0"
-                       Text="{I18N {x:Static r:LangKeys.DrawOrder}}"
-                       VerticalAlignment="Center" />
-            <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.DrawOrder}}" Grid.Row="0" Grid.Column="1"
-                               Value="{Binding ViewModel.ZIndex, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                               StringFormat="F0"
-                               Interval="1"
-                               Margin="0,0,0,8" />
-            <CheckBox Grid.Row="1" Grid.ColumnSpan="2"
-                      Content="{I18N {x:Static r:LangKeys.Visible}}"
-                      IsChecked="{Binding ViewModel.IsVisible, ElementName=Root, Mode=TwoWay}" />
-            <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Visibility="{Binding ViewModel.SupportsGeometryOrientation, ElementName=Root, Converter={StaticResource Bool}}" Margin="0,6">
-                <TextBlock Text="{I18N {x:Static r:LangKeys.RotationDegrees}}" Width="96" VerticalAlignment="Center"/>
-                <TextBox AutomationProperties.Name="{I18N {x:Static r:LangKeys.RotationDegrees}}" Width="100" Text="{Binding ViewModel.GeometryRotationDegrees, ElementName=Root, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}"/>
-            </StackPanel>
-            <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Margin="0,6" Text="{Binding ViewModel.CurveMeasurementDisplay, ElementName=Root}"
-                ToolTip="{Binding ViewModel.CurveMeasurementDetail, ElementName=Root}" TextWrapping="Wrap"
-                Visibility="{Binding ViewModel.HasCurveMeasurement, ElementName=Root, Converter={StaticResource Bool}}"/>
+            <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.RotationDegrees}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <TextBox Style="{DynamicResource PropertyTextEditor}" AutomationProperties.AutomationId="EntityRotationInput" AutomationProperties.Name="{I18N {x:Static r:LangKeys.RotationDegrees}}" Text="{Binding ViewModel.GeometryRotationDegrees, ElementName=Root, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}" Grid.Column="1" />
         </Grid>
-    </Expander>
+        <Expander Style="{DynamicResource PropertySection}" Header="{I18N {x:Static r:LangKeys.Advanced}}" IsExpanded="False" Margin="0,0,0,4" AutomationProperties.AutomationId="EntityAdvancedSettings">
+            <StackPanel>
+                <Grid Margin="0,4,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="84" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.DrawOrder}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.DrawOrder}}" Grid.Row="2" Grid.Column="1" Value="{Binding ViewModel.ZIndex, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F0" Interval="1" Margin="0,0,0,4" />
+                    <CheckBox Style="{DynamicResource PropertyCheckBox}" FontSize="12" MinHeight="24" Grid.Row="1" Grid.ColumnSpan="2" Content="{I18N {x:Static r:LangKeys.Visible}}" IsChecked="{Binding ViewModel.IsVisible, ElementName=Root, Mode=TwoWay}" />
+                    <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Margin="0,6" Text="{Binding ViewModel.CurveMeasurementDisplay, ElementName=Root}" ToolTip="{Binding ViewModel.CurveMeasurementDetail, ElementName=Root}" TextWrapping="Wrap" Visibility="{Binding ViewModel.HasCurveMeasurement, ElementName=Root, Converter={StaticResource Bool}}" />
+                    <Grid Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EntityIdText, ElementName=Root}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="84" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.Id}}" VerticalAlignment="Center" TextWrapping="Wrap"></TextBlock>
+                        <TextBox Style="{DynamicResource PropertyTextEditor}" Grid.Column="1" IsReadOnly="True" AutomationProperties.AutomationId="EntityIdDisplay" Text="{Binding EntityIdText, ElementName=Root, Mode=OneWay}"></TextBox>
+                    </Grid>
+                </Grid>
+                <ContentPresenter Content="{Binding Details, ElementName=Root}" />
+            </StackPanel>
+        </Expander>
+    </StackPanel>
 </UserControl>

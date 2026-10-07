@@ -1,29 +1,41 @@
-<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.StrokeStylePropertySection"
-             x:Name="Root"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang">
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.StrokeStylePropertySection" x:Name="Root">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Direct2dCad;component/Views/Toolboxes/EntityProperty/PropertyInspectorCommonStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
-    <StackPanel Margin="0,8,0,0">
-        <Grid Margin="8,6">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="96"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-            <TextBlock Text="{I18N {x:Static r:LangKeys.DashStyle}}" VerticalAlignment="Center"/>
-            <ComboBox Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeDashStyleOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedDashStyleOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name"/>
+    <StackPanel Margin="0">
+        <Grid Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="84" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.DashStyle}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <ComboBox Style="{DynamicResource PropertyChoiceEditor}" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeDashStyleOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedDashStyleOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" />
         </Grid>
-        <Expander x:Name="AdvancedStroke" Header="{I18N {x:Static r:LangKeys.AdvancedStroke}}" Expanded="OnAdvancedStrokeChanged" Collapsed="OnAdvancedStrokeChanged">
-            <Grid Margin="8,6,8,8">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="96"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                <TextBlock Text="{I18N {x:Static r:LangKeys.StartCap}}" VerticalAlignment="Center" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <ComboBox Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedStartCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <TextBlock Grid.Row="1" Text="{I18N {x:Static r:LangKeys.EndCap}}" VerticalAlignment="Center" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedEndCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <TextBlock Grid.Row="2" Text="{I18N {x:Static r:LangKeys.DashCap}}" VerticalAlignment="Center"/>
-                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedDashCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4"/>
-                <TextBlock Grid.Row="3" Text="{I18N {x:Static r:LangKeys.LineJoin}}" VerticalAlignment="Center" Visibility="{Binding ViewModel.SupportsLineJoin, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeLineJoinOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedLineJoinOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Visibility="{Binding ViewModel.SupportsLineJoin, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <Expander Style="{DynamicResource PropertySection}" x:Name="AdvancedStroke" Header="{I18N {x:Static r:LangKeys.AdvancedStroke}}" Expanded="OnAdvancedStrokeChanged" Collapsed="OnAdvancedStrokeChanged">
+            <Grid Margin="0,4,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="84" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.StartCap}}" VerticalAlignment="Center" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" TextWrapping="Wrap" />
+                <ComboBox Style="{DynamicResource PropertyChoiceEditor}" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedStartCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="1" Text="{I18N {x:Static r:LangKeys.EndCap}}" VerticalAlignment="Center" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" TextWrapping="Wrap" />
+                <ComboBox Style="{DynamicResource PropertyChoiceEditor}" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedEndCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" Visibility="{Binding ViewModel.SupportsStartEndCaps, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="2" Text="{I18N {x:Static r:LangKeys.DashCap}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                <ComboBox Style="{DynamicResource PropertyChoiceEditor}" Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeCapOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedDashCapOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Margin="0,0,0,4" />
+                <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="3" Text="{I18N {x:Static r:LangKeys.LineJoin}}" VerticalAlignment="Center" Visibility="{Binding ViewModel.SupportsLineJoin, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" TextWrapping="Wrap" />
+                <ComboBox Style="{DynamicResource PropertyChoiceEditor}" Grid.Row="3" Grid.Column="1" ItemsSource="{Binding ViewModel.StrokeLineJoinOptions, ElementName=Root}" SelectedItem="{Binding ViewModel.SelectedLineJoinOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Visibility="{Binding ViewModel.SupportsLineJoin, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </Grid>
         </Expander>
     </StackPanel>

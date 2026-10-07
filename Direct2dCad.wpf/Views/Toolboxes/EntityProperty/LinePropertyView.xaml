@@ -1,47 +1,45 @@
-<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.LinePropertyView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
-             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
-             xmlns:vm_ep="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels"
-             xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty"
-             mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=vm_ep:LinePropertyViewModel}"
-             d:DesignHeight="600"
-             d:DesignWidth="320">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="12" IsEnabled="{Binding IsEditable, Mode=OneWay}">
-            <TextBlock Text="{I18N {x:Static r:LangKeys.Line}}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" />
-            <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
-            <ep:EntitySettingsPropertySection ViewModel="{Binding}" />
-            <ep:StrokeAppearancePropertySection ViewModel="{Binding}" />
-            <Expander Header="{I18N {x:Static r:LangKeys.Coordinates}}" IsExpanded="True" Margin="0,0,0,8">
-                <Grid Margin="8,6,8,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="96" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.StartX}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.StartX}}" Grid.Row="0" Grid.Column="1" Value="{Binding StartX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.StartY}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.StartY}}" Grid.Row="1" Grid.Column="1" Value="{Binding StartY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.EndX}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.EndX}}" Grid.Row="2" Grid.Column="1" Value="{Binding EndX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.EndY}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.EndY}}" Grid.Row="3" Grid.Column="1" Value="{Binding EndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Length}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Length}}" Grid.Row="4" Grid.Column="1" Value="{Binding Length, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,8" />
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Angle}}" VerticalAlignment="Center" />
-                    <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.Angle}}" Grid.Row="5" Grid.Column="1" Value="{Binding AngleDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F2" Interval="5" />
-                </Grid>
-            </Expander>
-            <ep:StrokeStylePropertySection ViewModel="{Binding}" />
-        </StackPanel>
-    </ScrollViewer>
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls" xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" xmlns:vm_ep="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels" xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty" x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.LinePropertyView" mc:Ignorable="d" d:DataContext="{d:DesignInstance Type=vm_ep:LinePropertyViewModel}" d:DesignHeight="600" d:DesignWidth="320">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Direct2dCad;component/Views/Toolboxes/EntityProperty/PropertyInspectorCommonStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel Margin="12,10" IsEnabled="{Binding IsEditable, Mode=OneWay}">
+        <TextBlock Style="{StaticResource PropertyTitle}" Text="{I18N {x:Static r:LangKeys.Line}}" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
+        <Grid Margin="0,4,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="84" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Length}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Length}}" Grid.Row="0" Grid.Column="1" Value="{Binding Length, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Minimum="{Binding MinimumPositiveLength}" StringFormat="F3" Interval="1" Margin="0,0,0,4" />
+            <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Angle}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Angle}}" Grid.Row="1" Grid.Column="1" Value="{Binding AngleDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F2" Interval="5" />
+            <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="2" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.StartX}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.StartX}}" Grid.Row="2" Grid.Column="1" Value="{Binding StartX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,4" />
+            <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="3" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.StartY}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.StartY}}" Grid.Row="3" Grid.Column="1" Value="{Binding StartY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,4" />
+            <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.EndX}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.EndX}}" Grid.Row="4" Grid.Column="1" Value="{Binding EndX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,4" />
+            <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="5" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.EndY}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.EndY}}" Grid.Row="5" Grid.Column="1" Value="{Binding EndY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,4" />
+        </Grid>
+        <ep:EntitySettingsPropertySection ViewModel="{Binding}" EntityIdText="{Binding EntityIdText, Mode=OneWay}" />
+        <ep:StrokeAppearancePropertySection ViewModel="{Binding}">
+            <ep:StrokeAppearancePropertySection.AdditionalContent>
+                <ep:StrokeStylePropertySection ViewModel="{Binding}" />
+            </ep:StrokeAppearancePropertySection.AdditionalContent>
+        </ep:StrokeAppearancePropertySection>
+    </StackPanel>
 </UserControl>

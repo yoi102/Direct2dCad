@@ -37,6 +37,9 @@ internal sealed class Direct2DEntityRenderer(
     {
         // Most primitives already use the current world transform. Reapplying
         // it for every entity splits Direct2D's drawing batches unnecessarily.
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context,
+            ReferenceEquals(entity, resources.LocalEntity) ? default : resources.GeometryOrigin);
+        entity = resources.LocalEntity ?? entity;
         if (!TryGetGeometryRotation(entity, CadVectorD.Zero, out var rotation))
         {
             DrawCore(context, document, entity, resources, viewport, options,
@@ -306,6 +309,9 @@ internal sealed class Direct2DEntityRenderer(
         if (bounds.IsEmpty)
             return;
 
+        var origin = Direct2DCoordinateSystem.NeedsOrigin(bounds.Center) ? bounds.Center : default;
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        bounds = bounds.Translate(new(-origin.X, -origin.Y));
         var screenScale = ResolveEffectiveScreenScale(
             context,
             transformScaleMultiplier);

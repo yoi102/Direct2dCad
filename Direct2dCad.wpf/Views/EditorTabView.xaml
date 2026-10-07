@@ -11,6 +11,7 @@
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters"
+             xmlns:keys="clr-namespace:Direct2dCad.wpf.Services.Input"
              xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" 
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=viewmodels:EditorTabViewModel}"
@@ -26,6 +27,11 @@
             <ContextMenu x:Key="CadCanvasContextMenu"
                          DataContext="{Binding Data, Source={StaticResource EditorTabCommandProxy}}">
             <ContextMenu.Resources>
+                <TextBlock x:Key="CanvasShortcutScopeText" Text="{I18N {x:Static r:LangKeys.ShortcutCanvasScope}}" />
+                <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                    <Setter Property="ToolTip" Value="{Binding Text, Source={StaticResource CanvasShortcutScopeText}}" />
+                    <Setter Property="AutomationProperties.HelpText" Value="{Binding Text, Source={StaticResource CanvasShortcutScopeText}}" />
+                </Style>
                 <Style TargetType="ContentControl">
                     <Setter Property="Width"
                             Value="18" />
@@ -49,6 +55,8 @@
             </ContextMenu.Resources>
                 <MenuItem Header="{I18N {x:Static r:LangKeys.CancelCurrentInteraction}}"
                           InputGestureText="Esc"
+                          ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                          AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                           Command="{Binding CancelCurrentInteractionCommand}">
                     <MenuItem.Icon>
                         <md:PackIcon Kind="Cancel" />
@@ -90,20 +98,27 @@
             </MenuItem>
             <Separator />
             <MenuItem Header="{I18N {x:Static r:LangKeys.Save}}"
-                      InputGestureText="Ctrl+S"
+                      InputGestureText="{x:Static keys:CadShortcutCatalog.SaveGesture}"
+                      ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                      AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                       Command="{Binding SaveFileCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="ContentSave" />
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.SaveAs}}"
+                      InputGestureText="{x:Static keys:CadShortcutCatalog.SaveAsGesture}"
+                      ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                      AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                       Command="{Binding SaveAsFileCommand}">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="ContentSaveAdd" />
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.Print}}"
-                      InputGestureText="Ctrl+P"
+                      InputGestureText="{x:Static keys:CadShortcutCatalog.PrintGesture}"
+                      ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
+                      AutomationProperties.HelpText="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                       Command="{Binding PrintCommand}"
                       Visibility="{Binding CadDocumentViewModel.ActiveLayoutId, Converter={x:Static cv:DefaultToVisibilityConverter.NotCollapsedInstance}}">
                 <MenuItem.Icon>

@@ -1,0 +1,88 @@
+Architecture validation passed: 41 projects, 123 project references; no cycles or forbidden dependencies.
+Architecture guard regression passed: 11 isolated graph fixtures.
+Executable line coverage; generated files excluded; external UI process not instrumented.
+
+Project             Covered Lines Percent
+-------             ------- ----- -------
+Direct2dCad.Fixture       2     3   66.67
+
+Coverage summary regression passed.
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:10.57
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Agent.Codex.Tests\bin\Release\net10.0\Direct2dCad.Agent.Codex.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Agent.Codex.Tests\yoiri_YOIRI_2026-10-07_23_29_45_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    27, Skipped:     0, Total:    27, Duration: 211 ms - Direct2dCad.Agent.Codex.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Agent.Tests\bin\Release\net10.0\Direct2dCad.Agent.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Agent.Tests\yoiri_YOIRI_2026-10-07_23_29_46_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    25, Skipped:     0, Total:    25, Duration: 61 ms - Direct2dCad.Agent.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.AI.Tests\bin\Release\net10.0\Direct2dCad.AI.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.AI.Tests\yoiri_YOIRI_2026-10-07_23_29_48_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    29, Skipped:     0, Total:    29, Duration: 70 ms - Direct2dCad.AI.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Application.Tests\bin\Release\net10.0\Direct2dCad.Application.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Application.Tests\yoiri_YOIRI_2026-10-07_23_29_49_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    60, Skipped:     0, Total:    60, Duration: 444 ms - Direct2dCad.Application.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Commands.Tests\bin\Release\net10.0\Direct2dCad.Commands.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Commands.Tests\yoiri_YOIRI_2026-10-07_23_29_50_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   113, Skipped:     0, Total:   113, Duration: 110 ms - Direct2dCad.Commands.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Db.Tests\bin\Release\net10.0\Direct2dCad.Db.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Db.Tests\yoiri_YOIRI_2026-10-07_23_29_52_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   153, Skipped:     0, Total:   153, Duration: 237 ms - Direct2dCad.Db.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Editor.Tests\bin\Release\net10.0\Direct2dCad.Editor.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Editor.Tests\yoiri_YOIRI_2026-10-07_23_29_53_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   100, Skipped:     0, Total:   100, Duration: 202 ms - Direct2dCad.Editor.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.HitTesting.Tests\bin\Release\net10.0\Direct2dCad.HitTesting.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.HitTesting.Tests\yoiri_YOIRI_2026-10-07_23_29_55_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    18, Skipped:     0, Total:    18, Duration: 75 ms - Direct2dCad.HitTesting.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Indexing.Tests\bin\Release\net10.0\Direct2dCad.Indexing.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Indexing.Tests\yoiri_YOIRI_2026-10-07_23_29_56_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    18, Skipped:     0, Total:    18, Duration: 75 ms - Direct2dCad.Indexing.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.IO.Tests\bin\Release\net10.0\Direct2dCad.IO.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.IO.Tests\yoiri_YOIRI_2026-10-07_23_29_57_net10.0.trx
+
+Passed!  - Failed:     0, Passed:    72, Skipped:     0, Total:    72, Duration: 1 s - Direct2dCad.IO.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Tests\bin\Release\net10.0\Direct2dCad.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Tests\yoiri_YOIRI_2026-10-07_23_29_59_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119, Duration: 120 ms - Direct2dCad.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.ViewModels.Services.Tests\bin\Release\net10.0\Direct2dCad.ViewModels.Services.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.ViewModels.Services.Tests\yoiri_YOIRI_2026-10-07_23_30_01_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   114, Skipped:     0, Total:   114, Duration: 722 ms - Direct2dCad.ViewModels.Services.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.ViewModels.Tests\bin\Release\net10.0\Direct2dCad.ViewModels.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.ViewModels.Tests\yoiri_YOIRI_2026-10-07_23_30_03_net10.0.trx
+
+Passed!  - Failed:     0, Passed:  1138, Skipped:     0, Total:  1138, Duration: 6 s - Direct2dCad.ViewModels.Tests.dll (net10.0)
+Test run for C:\Users\yoiri\source\repos\Direct2dCad\Direct2dCad.Windows.IntegrationTests\bin\Release\net10.0-windows\Direct2dCad.Windows.IntegrationTests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:21.12]     Direct2dCad.Windows.IntegrationTests.VisiblePolylineStrokeIntegrationTests.SuppliedDxfLongStrokesPreserveFullPathRasterCoverageAcrossZoomAndPan [SKIP]
+  Skipped Direct2dCad.Windows.IntegrationTests.VisiblePolylineStrokeIntegrationTests.SuppliedDxfLongStrokesPreserveFullPathRasterCoverageAcrossZoomAndPan [1 ms]
+Results File: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final\Direct2dCad.Windows.IntegrationTests\yoiri_YOIRI_2026-10-07_23_30_11_net10.0.trx
+
+Passed!  - Failed:     0, Passed:   537, Skipped:     1, Total:   538, Duration: 56 s - Direct2dCad.Windows.IntegrationTests.dll (net10.0)
+Results: C:\Users\yoiri\source\repos\Direct2dCad\TestResults\drawing-fixes-2026-10-07\regression-final

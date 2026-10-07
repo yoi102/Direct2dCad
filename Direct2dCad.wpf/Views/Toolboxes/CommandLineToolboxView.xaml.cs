@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Direct2dCad.ViewModels.Toolboxes;
+using Direct2dCad.wpf.Services.Input;
 
 namespace Direct2dCad.wpf.Views.Toolboxes;
 
@@ -32,6 +33,7 @@ public partial class CommandLineToolboxView : UserControl
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         CommandInput.PreviewKeyDown += OnCommandInputKeyDown;
+        CommandInput.KeyDown += OnCommandInputEscape;
         SuggestionList.PreviewMouseLeftButtonUp += OnSuggestionMouseLeftButtonUp;
         OutputList.KeyDown += OnOutputListKeyDown;
         OutputList.PreviewMouseWheel += (_, e) =>
@@ -203,52 +205,70 @@ public partial class CommandLineToolboxView : UserControl
 
     private void OnCommandInputKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key != Key.Escape) HandleCommandInputKey(e.Key, Keyboard.Modifiers, e);
+    }
+
+    private void OnCommandInputEscape(object sender, KeyEventArgs e)
+    {
+        if (!e.Handled && e.Key == Key.Escape) HandleCommandInputKey(e.Key, Keyboard.Modifiers, e);
+    }
+
+    internal void HandleCommandInputKey(Key key, ModifierKeys modifiers, KeyEventArgs e)
+    {
+        if (e.Handled || key is Key.ImeProcessed or Key.DeadCharProcessed) return;
         if (DataContext is not CommandLineToolboxViewModel viewModel)
             return;
+        if (HandleTerminalKey(viewModel, key, modifiers, MoveCaretToCommandEnd,
+            moveNext => MoveSuggestionSelection(viewModel, moveNext),
+            key == Key.Enter && modifiers == ModifierKeys.None
+                ? CadEnterKeyGuard.ShouldIgnoreRepeat(e, modifiers) : e.IsRepeat)) e.Handled = true;
+    }
 
-        switch (e.Key)
+    internal static bool HandleTerminalKey(CommandLineToolboxViewModel viewModel, Key key, ModifierKeys modifiers,
+        Action moveCaret, Action<bool> moveSuggestion, bool isRepeat = false)
+    {
+        var shortcut = CadShortcutCatalog.Find(CadShortcutScope.Terminal, key, modifiers);
+        if (shortcut is null) return false;
+        if (isRepeat && shortcut.Action is CadShortcutAction.Confirm or CadShortcutAction.Cancel) return true;
+        switch (shortcut.Action)
         {
-            case Key.Enter:
+            case CadShortcutAction.Confirm:
                 if (viewModel.SelectedSuggestion is not null && viewModel.AcceptSelectedSuggestion())
                 {
-                    MoveCaretToCommandEnd();
-                    e.Handled = true;
+                    moveCaret();
                     break;
                 }
                 viewModel.SubmitCommandInput();
-                e.Handled = true;
                 break;
-            case Key.Up:
+            case CadShortcutAction.SuggestionUp:
                 if (viewModel.HasSuggestions && !viewModel.IsNavigatingHistory)
-                    MoveSuggestionSelection(viewModel, moveNext: false);
+                    moveSuggestion(false);
                 else
                     viewModel.ShowPreviousCommand();
-                MoveCaretToCommandEnd();
-                e.Handled = true;
+                moveCaret();
                 break;
-            case Key.Down:
+            case CadShortcutAction.SuggestionDown:
                 if (viewModel.HasSuggestions && !viewModel.IsNavigatingHistory)
-                    MoveSuggestionSelection(viewModel, moveNext: true);
+                    moveSuggestion(true);
                 else
                     viewModel.ShowNextCommand();
-                MoveCaretToCommandEnd();
-                e.Handled = true;
+                moveCaret();
                 break;
-            case Key.Tab:
+            case CadShortcutAction.Complete:
+                if (!viewModel.HasSuggestions) return false; // Normal focus navigation when there is nothing to complete.
                 viewModel.CompleteCommand();
-                MoveCaretToCommandEnd();
-                e.Handled = true;
+                moveCaret();
                 break;
-            case Key.Escape:
-                if (viewModel.IsCommandExecuting)
-                    viewModel.CancelCurrentCommand();
-                else if (viewModel.HasSuggestions)
+            case CadShortcutAction.Cancel:
+                if (viewModel.HasSuggestions)
                     viewModel.DismissSuggestions();
+                else if (viewModel.IsCommandExecuting)
+                    viewModel.CancelCurrentCommand(preserveDraft: true);
                 else
-                    viewModel.CancelCurrentCommand();
-                e.Handled = true;
+                    return false; // The window cancels the CAD interaction and returns focus to its canvas.
                 break;
         }
+        return true;
     }
 
     private void OnSuggestionMouseLeftButtonUp(object sender, MouseButtonEventArgs e)

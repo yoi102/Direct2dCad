@@ -1,0 +1,420 @@
+{
+  "verified_at": "2026-10-07T19:56:02.8188720+09:00",
+  "repository": "C:\\Users\\yoiri\\source\\repos\\Direct2dCad",
+  "base_commit": "8766f612efb780c2df777ae38b3ef3b4b3a93a59",
+  "contains_uncommitted_changes": true,
+  "configuration": "Release",
+  "sdk": "10.0.401",
+  "build": {
+    "warnings": 0,
+    "evidence": "regression.txt",
+    "errors": 0,
+    "passed": true
+  },
+  "architecture": {
+    "projects": 41,
+    "references": 123,
+    "guard_fixtures": 11,
+    "passed": true
+  },
+  "managed": {
+    "projects": 13,
+    "failed": 0.0,
+    "passed": 1943.0
+  },
+  "windows": {
+    "shortcut_tests_included": 39,
+    "skipped": 1,
+    "failed": 0,
+    "passed": 351
+  },
+  "shortcut_focused": {
+    "skipped": 0,
+    "failed": 0,
+    "passed": 39
+  },
+  "shortcut_ui": {
+    "isolated_processes": true,
+    "skipped": 0,
+    "failed": 0,
+    "passed": 9
+  },
+  "localization": {
+    "scope_keys_per_culture": 4,
+    "empty_values": 0,
+    "cultures": [
+      "en",
+      "zh-CN",
+      "ja-JP"
+    ]
+  },
+  "gates_not_run": [
+    "All other UI automation",
+    "Manual IME and screen reader acceptance",
+    "Multiple monitors and DPI",
+    "Actual printer output",
+    "Real provider prompt sending",
+    "Every floating toolbox UI gesture"
+  ],
+  "skipped_test": "VisiblePolylineStrokeIntegrationTests.SuppliedDxfLongStrokesPreserveFullPathRasterCoverageAcrossZoomAndPan: DIRECT2DCAD_UI_DXF_SAMPLE absent",
+  "tests": [
+    {
+      "file": "focused/shortcut-routing.trx",
+      "sha256": "028E43A04BDB2A9D6E7957255DC0638CFAA5F77128BCD785EFF14F43B73ADC29",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:53:54.9932189+09:00",
+      "finished": "2026-10-07T19:54:04.9082537+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Agent.Codex.Tests.trx",
+      "sha256": "7604C4BB805F008862749DF1EC0DF815B718BA79373E14D63E63198D6C699F2B",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:24.6431090+09:00",
+      "finished": "2026-10-07T19:51:25.9528339+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Agent.Tests.trx",
+      "sha256": "C8FA5E7F7A2882BD3ABD34BF1B8541E81731719578C832C957685E20B54C9D57",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:26.6429567+09:00",
+      "finished": "2026-10-07T19:51:27.7760305+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.AI.Tests.trx",
+      "sha256": "9251C3ECDE44A17B4579ADA20E976E9F463FD4214E6C3101D489C0D9FF1E7C07",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:28.4810234+09:00",
+      "finished": "2026-10-07T19:51:29.6559467+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Application.Tests.trx",
+      "sha256": "D718243CB075A60035AAFAFA4280A8950F12C42C61F5697C716B281E8CC347DC",
+      "passed": 55,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:30.3572051+09:00",
+      "finished": "2026-10-07T19:51:32.3626924+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Commands.Tests.trx",
+      "sha256": "8B8A5D9F576B4E9C7F5FE9F136AD12BEB516CD720E16C7DC0C084C57D95D99CB",
+      "passed": 113,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:33.0457351+09:00",
+      "finished": "2026-10-07T19:51:34.2867916+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Db.Tests.trx",
+      "sha256": "588DEBDCFA1230A16D0821D5A6ED769DEB259CB9C50FE2835EEB82BB7F4E9899",
+      "passed": 153,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:34.9793352+09:00",
+      "finished": "2026-10-07T19:51:36.2377354+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Editor.Tests.trx",
+      "sha256": "61C24088C627752EA7A26F684ABC8F3EA0707F44BBAD095C03A6E81288316099",
+      "passed": 87,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:36.9242061+09:00",
+      "finished": "2026-10-07T19:51:38.2280035+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.HitTesting.Tests.trx",
+      "sha256": "4B5ECD35A14B554916097D3165F32D883B26236081EA6529D6D3E8329F15978C",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:38.8976742+09:00",
+      "finished": "2026-10-07T19:51:39.9680120+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Indexing.Tests.trx",
+      "sha256": "8DE0B93DA3336E8E4F141F4584125C1B4F974D8E3D11D35D8F382DAE525C88F7",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:40.6534362+09:00",
+      "finished": "2026-10-07T19:51:41.7427105+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.IO.Tests.trx",
+      "sha256": "6AE283F8C1385FB55D846133A1606E29A6E712EBA9F762185176C4584B340242",
+      "passed": 72,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:42.4346771+09:00",
+      "finished": "2026-10-07T19:51:44.0263453+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Tests.trx",
+      "sha256": "0E5FC2F98E4CF38DC399A3852133912FBCADA022A3F116BB28CBF6F68296E4FE",
+      "passed": 119,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:44.8116855+09:00",
+      "finished": "2026-10-07T19:51:46.3082734+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.ViewModels.Services.Tests.trx",
+      "sha256": "B5A58D6F270838C2E2A3BD033918B346DB39398E880B8B5EA9156CF81A12EC41",
+      "passed": 113,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:47.0249117+09:00",
+      "finished": "2026-10-07T19:51:49.2784000+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.ViewModels.Tests.trx",
+      "sha256": "3D7A8321609BE2BB18AEC61500CE845E0BE21BC227839A4D633DD0E143738534",
+      "passed": 1120,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:51:49.9734982+09:00",
+      "finished": "2026-10-07T19:51:59.9255664+09:00"
+    },
+    {
+      "file": "regression/Direct2dCad.Windows.IntegrationTests.trx",
+      "sha256": "47775162E5E6D2061CB5FB90CC31D90DFD95C8B3F7DD642B67D70A7086807B5B",
+      "passed": 351,
+      "failed": 0,
+      "skipped": 1,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:52:00.8621229+09:00",
+      "finished": "2026-10-07T19:52:25.0402605+09:00"
+    },
+    {
+      "file": "ui/shortcut-ui.trx",
+      "sha256": "466E0E85322BE25E8E8DCC46D4FD08BA6FE7E7416EE836B33546F074002B8FA4",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "outcome": "Completed",
+      "started": "2026-10-07T19:54:18.9692351+09:00",
+      "finished": "2026-10-07T19:55:07.1336815+09:00"
+    }
+  ],
+  "sources": [
+    {
+      "file": "Direct2dCad.Lang/Strings/Strings.ja-JP.resx",
+      "sha256": "A8C56B4357DAB0FBDD190B266F489A948A64722A6C43681D6BE5BC3F09B6BEFA"
+    },
+    {
+      "file": "Direct2dCad.Lang/Strings/Strings.resx",
+      "sha256": "059DAF3761735E72BB4BD2333B7ADDB56F6352F5FA2265D8EC28AD75D200FE55"
+    },
+    {
+      "file": "Direct2dCad.Lang/Strings/Strings.zh-CN.resx",
+      "sha256": "48328C0A6FFCEF4BA3515EFFC2FF0C404F8E6BFA40706652AEDFA971E0AF1669"
+    },
+    {
+      "file": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.Shortcuts.cs",
+      "sha256": "6169D3CBBB709A8C12AB3E880486F978A1477ED8C13BFC1E73D6D87E9A324793"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/MainViewModel.cs",
+      "sha256": "01586B2CC75C87204C7CE7607594E813A4FFE46239563979930A2C7488FEE9DF"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/Toolboxes/CommandLineToolboxViewModel.cs",
+      "sha256": "99720B3EE087E86870CCA2D2AF53D2E58CC40D718FD0DE4FA1C2C8EA53DBF4AC"
+    },
+    {
+      "file": "Direct2dCad.Windows.IntegrationTests/ShortcutRoutingTests.cs",
+      "sha256": "C85E115335CCDE3A8761F09823961948EEEC079215D171C2CEC5125555BE3E86"
+    },
+    {
+      "file": "Direct2dCad.wpf/Controls/CadCanvas.xaml.cs",
+      "sha256": "F8E6BE600249142796F41DB1996A504D3905EC297372717C8C87DCCA8584EAE3"
+    },
+    {
+      "file": "Direct2dCad.wpf/MainWindow.xaml",
+      "sha256": "E37B340CFE2299BCC30F8A9BEA007CAE05765835C2E35E7AE8CF5353CA0B4403"
+    },
+    {
+      "file": "Direct2dCad.wpf/MainWindow.xaml.cs",
+      "sha256": "ACEBC1F8B098204CD68C89F4754047C7E6036E2AF56601B95C03FF8DB4564D25"
+    },
+    {
+      "file": "Direct2dCad.wpf/Services/Input/CadShortcutCatalog.cs",
+      "sha256": "276CFC8D39CB2C5B32CCCA74AAE289674B0379C21F7D847011EF6D29DB6B3AAE"
+    },
+    {
+      "file": "Direct2dCad.wpf/Services/Input/CadWindowShortcutRouter.cs",
+      "sha256": "31936E30AD0BF500109358D8DF630E376D200FEBBF2FCE299A6D8A70EE1C6968"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/CadDocumentView.xaml.cs",
+      "sha256": "ABED8DBC70DF445AE0BF5C1D685B0D05C0EE3F39E0FA410445C8FF3F1C13BE06"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/EditorTabView.xaml",
+      "sha256": "9615B1AA83FCC3752E4BC09C8F668CA3A076EB975E237BD79267875641481A01"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/MainRibbonView.xaml",
+      "sha256": "5E6AB61652DE0537287DB9821B17FB71AFDBD2790D355D2AEB22F36DAD7BB3CD"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/AiAssistantToolboxView.xaml",
+      "sha256": "EA0D68040180E69C97E5B87A428F65BE5582616F4CFA553D825258C090F59281"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/AiAssistantToolboxView.xaml.cs",
+      "sha256": "CBDADC02AC0448D3209B14A8427D6AF6F5C30758091EC5DE3CF59CD811872C6F"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/CommandLineToolboxView.xaml",
+      "sha256": "5E0E8FA11949A9ECDB3B4351BD66617EBC3F0816764C58ADB50318B258B13C18"
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/CommandLineToolboxView.xaml.cs",
+      "sha256": "FEDB608E48847232188692144609306D6697B23A1EC84D85031F4EAB52B37B95"
+    }
+  ],
+  "binaries": [
+    {
+      "file": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.dll",
+      "sha256": "973367610259928F6D27DA9EDBB965BEB870E0709D0FC909445FC6B1DECF66B8"
+    },
+    {
+      "file": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.exe",
+      "sha256": "9AFC6734209AFC71DAD02F3C43E0FD6DF4980AD1F1B93C9FDAE3559283AD7D8C"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/bin/Release/net10.0/Direct2dCad.ViewModels.dll",
+      "sha256": "82A55FEDCE94E7EFB88E60E46B8FBB97038D718EF521C8B89C21ADA287A26F90"
+    },
+    {
+      "file": "Direct2dCad.Lang/bin/Release/net10.0/Direct2dCad.Lang.dll",
+      "sha256": "9067016AE4BDC507BB13F245867397E5A8243C8CECE15AB0F3C3625DDC8D22F8"
+    },
+    {
+      "file": "Direct2dCad.Windows.IntegrationTests/bin/Release/net10.0-windows/Direct2dCad.Windows.IntegrationTests.dll",
+      "sha256": "B01BEA45C8DCDFE9539338B6AF389EA17EDA3C24479217AFB008834D2685F631"
+    },
+    {
+      "file": "Direct2dCad.UiAutomation.Tests/bin/Release/net10.0-windows/Direct2dCad.UiAutomation.Tests.dll",
+      "sha256": "F3C008D4A4163F05036302841F72B086DD1E08ABD4CA194536B0B43D726745F3"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "focused.txt",
+      "sha256": "8470923518B516A5222CF13658087F4E8270F40327B925566E39F5C62247BF87"
+    },
+    {
+      "file": "README.md",
+      "sha256": "D8A90CC1C6F20A8B110CD1BB9B69A7BC5A3624FA82F32BC847A37BFE37281128"
+    },
+    {
+      "file": "regression.txt",
+      "sha256": "A6879F0318DEAAA73E4B3F88863F7F2C99E7848968105ABDFA29B610292747B3"
+    },
+    {
+      "file": "ui.txt",
+      "sha256": "9EE8A830458545EFC2BE4AD1F8C59BFECBE59A72FEB0EF5622474C614BDF3D09"
+    },
+    {
+      "file": "focused/shortcut-routing.trx",
+      "sha256": "028E43A04BDB2A9D6E7957255DC0638CFAA5F77128BCD785EFF14F43B73ADC29"
+    },
+    {
+      "file": "regression/Direct2dCad.Agent.Codex.Tests.trx",
+      "sha256": "7604C4BB805F008862749DF1EC0DF815B718BA79373E14D63E63198D6C699F2B"
+    },
+    {
+      "file": "regression/Direct2dCad.Agent.Tests.trx",
+      "sha256": "C8FA5E7F7A2882BD3ABD34BF1B8541E81731719578C832C957685E20B54C9D57"
+    },
+    {
+      "file": "regression/Direct2dCad.AI.Tests.trx",
+      "sha256": "9251C3ECDE44A17B4579ADA20E976E9F463FD4214E6C3101D489C0D9FF1E7C07"
+    },
+    {
+      "file": "regression/Direct2dCad.Application.Tests.trx",
+      "sha256": "D718243CB075A60035AAFAFA4280A8950F12C42C61F5697C716B281E8CC347DC"
+    },
+    {
+      "file": "regression/Direct2dCad.Commands.Tests.trx",
+      "sha256": "8B8A5D9F576B4E9C7F5FE9F136AD12BEB516CD720E16C7DC0C084C57D95D99CB"
+    },
+    {
+      "file": "regression/Direct2dCad.Db.Tests.trx",
+      "sha256": "588DEBDCFA1230A16D0821D5A6ED769DEB259CB9C50FE2835EEB82BB7F4E9899"
+    },
+    {
+      "file": "regression/Direct2dCad.Editor.Tests.trx",
+      "sha256": "61C24088C627752EA7A26F684ABC8F3EA0707F44BBAD095C03A6E81288316099"
+    },
+    {
+      "file": "regression/Direct2dCad.HitTesting.Tests.trx",
+      "sha256": "4B5ECD35A14B554916097D3165F32D883B26236081EA6529D6D3E8329F15978C"
+    },
+    {
+      "file": "regression/Direct2dCad.Indexing.Tests.trx",
+      "sha256": "8DE0B93DA3336E8E4F141F4584125C1B4F974D8E3D11D35D8F382DAE525C88F7"
+    },
+    {
+      "file": "regression/Direct2dCad.IO.Tests.trx",
+      "sha256": "6AE283F8C1385FB55D846133A1606E29A6E712EBA9F762185176C4584B340242"
+    },
+    {
+      "file": "regression/Direct2dCad.Tests.trx",
+      "sha256": "0E5FC2F98E4CF38DC399A3852133912FBCADA022A3F116BB28CBF6F68296E4FE"
+    },
+    {
+      "file": "regression/Direct2dCad.ViewModels.Services.Tests.trx",
+      "sha256": "B5A58D6F270838C2E2A3BD033918B346DB39398E880B8B5EA9156CF81A12EC41"
+    },
+    {
+      "file": "regression/Direct2dCad.ViewModels.Tests.trx",
+      "sha256": "3D7A8321609BE2BB18AEC61500CE845E0BE21BC227839A4D633DD0E143738534"
+    },
+    {
+      "file": "regression/Direct2dCad.Windows.IntegrationTests.trx",
+      "sha256": "47775162E5E6D2061CB5FB90CC31D90DFD95C8B3F7DD642B67D70A7086807B5B"
+    },
+    {
+      "file": "screenshots/shortcut-ai-new-and-newline.png",
+      "sha256": "B4AD47A3B0189552C2B2A344BEC2A7648C028F6D1FBF1EDA37F0C52F642FA5B0"
+    },
+    {
+      "file": "screenshots/shortcut-floating-document.png",
+      "sha256": "B053758E580C44BB98BAEE6762017198CC766F260240F591650CC17EF77B8DE9"
+    },
+    {
+      "file": "screenshots/shortcut-new-from-terminal.png",
+      "sha256": "69EF85CC04D2CA725C2BC840893776E43A2CE5A27668528DFE7B69FD74EEA2FD"
+    },
+    {
+      "file": "ui/shortcut-ui.trx",
+      "sha256": "466E0E85322BE25E8E8DCC46D4FD08BA6FE7E7416EE836B33546F074002B8FA4"
+    }
+  ]
+}

@@ -14,6 +14,8 @@ using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Events;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.wpf.Services.Application;
+using Direct2dCad.wpf.Services.Input;
+using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.wpf.Views.Toolboxes.EntityProperty;
 using MessagePipe;
 
@@ -23,6 +25,7 @@ public partial class MainWindow
 {
     private readonly MainViewModel _viewModel;
     private readonly ToolboxLayoutPersistenceService _toolboxLayoutPersistence;
+    private readonly CadWindowShortcutRouter _keyboardShortcuts;
     private readonly DispatcherTimer _toolboxLayoutSaveTimer;
     private readonly DispatcherTimer _recoveryTimer = new() { Interval = TimeSpan.FromSeconds(60) };
     private bool _windowClosed;
@@ -40,8 +43,12 @@ public partial class MainWindow
         dockManager.Theme = dockTheme;
         _viewModel = viewModel;
         _toolboxLayoutPersistence = toolboxLayoutPersistence;
+        ApplyToolboxShortcuts();
         DataContext = _viewModel;
-        PreviewKeyDown += OnSavePreviewKeyDown;
+        _keyboardShortcuts = new(this, ResolveShortcutCommand,
+            () => RootDialogHost.IsOpen || _isExitConfirmationRunning, TryCommitFocusedPropertyEdit,
+            focused => CadEscapeHandler.Process(this, _viewModel.CurrentEditorTabViewModel?.CadDocumentViewModel, focused),
+            focused => CadEnterHandler.Process(this, _viewModel.CurrentEditorTabViewModel?.CadDocumentViewModel, focused));
 
         _toolboxLayoutSaveTimer = new DispatcherTimer
         {
@@ -101,15 +108,37 @@ public partial class MainWindow
         _recoveryTimer.Start();
     }
 
-    private void OnSavePreviewKeyDown(object sender, KeyEventArgs e)
+    private void ApplyToolboxShortcuts()
     {
-        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control &&
-            !TryCommitFocusedPropertyEdit(Keyboard.FocusedElement as DependencyObject))
+        foreach (var toolbox in _viewModel.LayoutService.Anchorables.OfType<CadToolboxViewModelBase>())
         {
-            // Keep focus and the invalid text. The normal window key binding may
-            // save only after the active property editor has accepted its value.
-            e.Handled = true;
+            var shortcut = CadShortcutCatalog.All.FirstOrDefault(s => s.ToolboxId == toolbox.ContentId);
+            if (shortcut is not null)
+                toolbox.Shortcut = new KeyGesture(shortcut.Key, shortcut.Modifiers)
+                    .GetDisplayStringForCulture(System.Globalization.CultureInfo.InvariantCulture);
         }
+    }
+
+    private ICommand? ResolveShortcutCommand(CadShortcut shortcut)
+    {
+        if (shortcut.Action == CadShortcutAction.ToggleToolbox)
+        {
+            // Forward the framework's real toggle command, including auto-hide and
+            // floating state, instead of implementing a second toolbox lifecycle.
+            var primary = CadShortcutCatalog.All.First(s => s.ToolboxId == shortcut.ToolboxId);
+            return InputBindings.OfType<KeyBinding>().FirstOrDefault(b =>
+                b.Key == primary.Key && b.Modifiers == primary.Modifiers)?.Command;
+        }
+        var tab = _viewModel.CurrentEditorTabViewModel;
+        return shortcut.Action switch
+        {
+            CadShortcutAction.New => _viewModel.NewCommand,
+            CadShortcutAction.Open => _viewModel.OpenFileCommand,
+            CadShortcutAction.Save => tab?.SaveFileCommand,
+            CadShortcutAction.SaveAs => tab?.SaveAsFileCommand,
+            CadShortcutAction.Print => tab?.PrintCommand,
+            _ => null
+        };
     }
 
     internal static bool TryCommitFocusedPropertyEdit(DependencyObject? focusedElement)
@@ -168,6 +197,7 @@ public partial class MainWindow
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         _windowClosed=true;
+        _keyboardShortcuts.Dispose();
         _recoveryTimer.Stop();
         _recoveryTimer.Tick -= OnRecoveryTick;
         _viewModel.OpenOperation.Dispose();

@@ -38,6 +38,17 @@ internal sealed class Direct2DResourceCache : IDisposable
     private bool _maximumStrokeWidthDirty;
     private bool _disposed;
     private long _imageUsageStamp;
+    private int _localGeometryCount;
+    private int _localDefinitionGeometryCount;
+    internal bool HasLocalGeometry => _localGeometryCount > 0;
+    internal bool RequiresPrecision(CadViewport viewport)
+    {
+        if (_localDefinitionGeometryCount > 0 || Direct2DCoordinateSystem.RequiresPrecision(viewport)) return true;
+        var bounds = viewport.VisibleWorldBounds;
+        return _localGeometryCount > 0 && !bounds.IsEmpty &&
+            (Direct2DCoordinateSystem.NeedsOrigin(new(bounds.MinX, bounds.MinY)) ||
+             Direct2DCoordinateSystem.NeedsOrigin(new(bounds.MaxX, bounds.MaxY)));
+    }
 
     public Direct2DResourceCache(
         Direct2DStyleResourceCache styleResources,
@@ -341,6 +352,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         ID2D1Geometry geometry,
         ID2D1Brush brush)
     {
+        if (resources.LocalEntity is not null) return false;
         return _geometryRealizations.TryDrawFill(
             context,
             entity,
@@ -360,6 +372,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         Direct2DStrokeRealizationStyleKey strokeStyleKey,
         bool strokeWidthChangesWithScale)
     {
+        if (resources.LocalEntity is not null) return false;
         return _geometryRealizations.TryDrawStroke(
             context,
             entity,
@@ -392,6 +405,11 @@ internal sealed class Direct2DResourceCache : IDisposable
                 CadEntityChangeKind.Opacity |
                 CadEntityChangeKind.Rotation;
             var resourceChanges = change.Kind & ~resourceIndependentChanges;
+            // A rebased bucket owns a snapshot, so visual state changes must also
+            // refresh that snapshot. Normal world-coordinate buckets stay cheap.
+            if (_entityResources.TryGetValue(change.EntityId, out var localBucket) && localBucket.LocalEntity is not null &&
+                (change.Kind & ~CadEntityChangeKind.DrawOrder) != 0)
+                resourceChanges |= CadEntityChangeKind.Geometry;
             if (resourceChanges == CadEntityChangeKind.None)
             {
                 continue;
@@ -525,8 +543,14 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         _entityResources.Remove(entityId, out var oldBucket);
         if (oldBucket is not null)
+        {
             RemoveStrokeWidthContribution(oldBucket);
+            if (oldBucket.LocalEntity is not null) _localGeometryCount--;
+            if (oldBucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount--;
+        }
         _entityResources[entityId] = newBucket;
+        if (newBucket.LocalEntity is not null) _localGeometryCount++;
+        if (newBucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount++;
         AddStrokeWidthContribution(newBucket);
         oldBucket?.Dispose();
         QueueLevelOfDetail(entity);
@@ -537,6 +561,8 @@ internal sealed class Direct2DResourceCache : IDisposable
         _backgroundGeometryPreparation?.Invalidate(entityId);
         if (_entityResources.Remove(entityId, out var bucket))
         {
+            if (bucket.LocalEntity is not null) _localGeometryCount--;
+            if (bucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount--;
             RemoveStrokeWidthContribution(bucket);
             bucket.Dispose();
         }
@@ -574,6 +600,11 @@ internal sealed class Direct2DResourceCache : IDisposable
         Direct2DPreparedGeometry? preparedGeometry = null)
     {
         var bucket = new EntityResourceBucket(entity.Id);
+        var geometryEntity = Direct2DLocalGeometry.Resolve(entity, out var origin);
+        bucket.GeometryOrigin = origin;
+        bucket.LocalEntity = ReferenceEquals(entity, geometryEntity) ? null : geometryEntity;
+        bucket.IsLocalDefinitionGeometry = bucket.LocalEntity is not null &&
+            document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false };
         try
         {
             var graphic = ResolveGraphicStyle(document, entity, layer);
@@ -614,7 +645,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             else
             {
                 (bucket.Geometry, bucket.GeometryComplexity) = CreateGeometry(
-                    entity,
+                    geometryEntity,
                     fillStyle is CadHatchFillStyle);
             }
 
@@ -662,7 +693,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 bucket.ImageLastUsed = ++_imageUsageStamp;
                 bucket.BitmapLease = _imageBitmapResources.Acquire(image);
                 if (bucket.Bitmap is not null)
-                    bucket.BitmapBrush = CreateBitmapBrush(image.FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
+                    bucket.BitmapBrush = CreateBitmapBrush(((CadImage)geometryEntity).FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
             }
 
             return bucket;
@@ -808,6 +839,15 @@ internal sealed class Direct2DResourceCache : IDisposable
         CadEntity entity,
         EntityResourceBucket bucket)
     {
+        var geometryEntity = Direct2DLocalGeometry.Resolve(entity, out var origin);
+        if (bucket.LocalEntity is not null) _localGeometryCount--;
+        if (bucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount--;
+        bucket.GeometryOrigin = origin;
+        bucket.LocalEntity = ReferenceEquals(entity, geometryEntity) ? null : geometryEntity;
+        bucket.IsLocalDefinitionGeometry = bucket.LocalEntity is not null &&
+            document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false };
+        if (bucket.LocalEntity is not null) _localGeometryCount++;
+        if (bucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount++;
         if (entity is CadText text)
         {
             if (text.RequiresBoundsMeasurement)
@@ -820,7 +860,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             var bitmapBrush = bucket.Bitmap is null
                 ? null
                 : CreateBitmapBrush(
-                    image.FrameBounds,
+                    ((CadImage)geometryEntity).FrameBounds,
                     image.PixelWidth,
                     image.PixelHeight,
                     bucket.Bitmap);
@@ -834,7 +874,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         try
         {
             (geometry, geometryComplexity) = CreateGeometry(
-                entity,
+                geometryEntity,
                 bucket.HatchFillStyle is CadHatchFillStyle);
         }
         catch
@@ -1236,6 +1276,8 @@ internal sealed class Direct2DResourceCache : IDisposable
             bucket.Dispose();
 
         _entityResources.Clear();
+        _localGeometryCount = 0;
+        _localDefinitionGeometryCount = 0;
         _maximumStrokeWidth = 0;
         _maximumStrokeWidthDirty = false;
     }
@@ -1301,6 +1343,9 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     internal sealed class EntityResourceBucket : IDisposable
     {
+        public CadPointD GeometryOrigin { get; set; }
+        public CadEntity? LocalEntity { get; set; }
+        public bool IsLocalDefinitionGeometry { get; set; }
         public EntityId EntityId { get; }
         internal CadImage? ImageSource { get; set; }
         internal long ImageLastUsed { get; set; }

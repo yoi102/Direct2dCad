@@ -199,7 +199,7 @@ internal readonly partial struct CadRenderInvalidationCalculator(
                 circle.Style,
                 minimumPaddingPixels: 24.0),
             CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 => CreateTransientBoundsInvalidation(
-                CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2),
+                RotateBounds(CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2), ellipse.RotationRadians),
                 ellipse.Style,
                 minimumPaddingPixels: 24.0),
             CadTransientEllipseArc ellipseArc when ellipseArc.RadiusX > 0 && ellipseArc.RadiusY > 0 => CreateTransientBoundsInvalidation(
@@ -281,13 +281,13 @@ internal readonly partial struct CadRenderInvalidationCalculator(
             CadTransientCircle circle when circle.Radius > 0 =>
                 CadRectD.FromCenter(circle.Center, circle.Radius * 2, circle.Radius * 2),
             CadTransientEllipse ellipse when ellipse.RadiusX > 0 && ellipse.RadiusY > 0 =>
-                CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2),
+                RotateBounds(CadRectD.FromCenter(ellipse.Center, ellipse.RadiusX * 2, ellipse.RadiusY * 2), ellipse.RotationRadians),
             CadTransientEllipseArc ellipseArc when ellipseArc.RadiusX > 0 && ellipseArc.RadiusY > 0 =>
                 RotateBounds(CadRectD.FromCenter(ellipseArc.Center, ellipseArc.RadiusX * 2, ellipseArc.RadiusY * 2), ellipseArc.RotationRadians),
             CadTransientArc arc when arc.Radius > 0 =>
                 CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2),
             CadTransientPolyline polyline => BoundsFromPoints(polyline.Points),
-            CadTransientSpline spline => BoundsFromPoints(spline.FitPoints),
+            CadTransientSpline spline => CadSpline.CalculateBounds(spline.FitPoints, CadSpline.CreateBezierSegments(spline.FitPoints, spline.Closed)),
             CadTransientCompositePath path => path.Bounds,
             CadTransientRectangle rectangle => rectangle.Bounds,
             CadTransientImage image => RotateBounds(image.Bounds, image.RotationRadians),

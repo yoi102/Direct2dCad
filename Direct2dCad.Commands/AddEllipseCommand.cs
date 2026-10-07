@@ -18,6 +18,7 @@ public sealed class AddEllipseCommand : ICadCommand
     private readonly int _zIndex;
     private readonly bool _isVisible;
     private readonly CadStrokeStyle _strokeStyle;
+    private readonly double _rotationRadians;
     private EntityId? _createdEntityId;
 
     public string Name => "Add Ellipse";
@@ -34,7 +35,8 @@ public sealed class AddEllipseCommand : ICadCommand
         CadLineWeight? lineWeight = null,
         int zIndex = 0,
         bool isVisible = true,
-        CadStrokeStyle? strokeStyle = null)
+        CadStrokeStyle? strokeStyle = null,
+        double rotationRadians = 0)
     {
         _center = center;
         _radiusX = radiusX;
@@ -47,6 +49,7 @@ public sealed class AddEllipseCommand : ICadCommand
         _zIndex = zIndex;
         _isVisible = isVisible;
         _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
+        _rotationRadians = double.IsFinite(rotationRadians) ? rotationRadians : throw new ArgumentOutOfRangeException(nameof(rotationRadians));
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -67,6 +70,7 @@ public sealed class AddEllipseCommand : ICadCommand
         }
 
         var ellipse = document.AddEllipse(_center, _radiusX, _radiusY, _layerId, _graphicStyleId, _fillStyleId, _name);
+        ellipse.SetRotation(_rotationRadians);
         ellipse.SetLineWeight(_lineWeight);
         ellipse.SetZIndex(_zIndex);
         ellipse.SetVisible(_isVisible);

@@ -163,6 +163,24 @@ public sealed class CommandLineInteractionTests
     }
 
     [Fact]
+    public async Task EscapeCancellationPreservesTheNextDraftAndSuppressesLateSuccess()
+    {
+        using var context = new Context();
+        var pending = new TaskCompletionSource<CadToolCommandLineExecution?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        context.Tools.Handler = (_, _) => pending.Task;
+        var running = context.Run("long_operation");
+        context.View.CommandText = "next command draft";
+        context.View.CancelCurrentCommand(preserveDraft: true);
+        Assert.True(Assert.Single(context.Tools.Tokens).IsCancellationRequested);
+        Assert.Equal("next command draft", context.View.CommandText);
+        pending.SetResult(new(true, "late result"));
+        await running;
+        context.View.FlushPendingEntries();
+        Assert.Equal("next command draft", context.View.CommandText);
+        Assert.DoesNotContain(context.View.Entries, item => item.Text.Contains("late result"));
+    }
+
+    [Fact]
     public async Task TypedCancelUsesTheRunningTaskTokenInsteadOfStartingAnotherCommand()
     {
         using var context = new Context();

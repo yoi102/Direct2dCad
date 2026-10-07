@@ -41,6 +41,18 @@ public sealed class CadLayout
         double marginRight,
         double marginBottom)
     {
+        ValidatePaper(width, height, marginLeft, marginTop, marginRight, marginBottom);
+        PaperWidth = width;
+        PaperHeight = height;
+        MarginLeft = marginLeft;
+        MarginTop = marginTop;
+        MarginRight = marginRight;
+        MarginBottom = marginBottom;
+    }
+
+    internal static void ValidatePaper(double width, double height, double marginLeft,
+        double marginTop, double marginRight, double marginBottom)
+    {
         var validatedWidth = GuardPositive(width, nameof(width));
         var validatedHeight = GuardPositive(height, nameof(height));
         var validatedMarginLeft = GuardNonNegative(marginLeft, nameof(marginLeft));
@@ -52,13 +64,6 @@ public sealed class CadLayout
         {
             throw new ArgumentException("Paper margins must leave a positive printable area.");
         }
-
-        PaperWidth = validatedWidth;
-        PaperHeight = validatedHeight;
-        MarginLeft = validatedMarginLeft;
-        MarginTop = validatedMarginTop;
-        MarginRight = validatedMarginRight;
-        MarginBottom = validatedMarginBottom;
     }
 
     public void SetPaperColor(CadColor color) => PaperColor = color;

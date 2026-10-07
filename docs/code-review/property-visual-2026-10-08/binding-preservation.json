@@ -1,0 +1,216 @@
+{
+  "all_preserved": true,
+  "views": 33,
+  "original_bindings": 368,
+  "checks": [
+    {
+      "file": "Direct2dCad.wpf/App.xaml",
+      "original_bindings": 0,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/CadAnnotationParametersView.xaml",
+      "original_bindings": 20,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityPropertiesToolboxView.xaml",
+      "original_bindings": 10,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/ArcPropertyView.xaml",
+      "original_bindings": 14,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/BlockDefinitionPropertyView.xaml",
+      "original_bindings": 14,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/BlockReferencePropertyView.xaml",
+      "original_bindings": 23,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/CirclePropertyView.xaml",
+      "original_bindings": 12,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/CommonEntityPropertyView.xaml",
+      "original_bindings": 13,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/DrawingLayerPropertySection.xaml",
+      "original_bindings": 3,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/EllipsePropertyView.xaml",
+      "original_bindings": 15,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/EntityHeaderPropertySection.xaml",
+      "original_bindings": 3,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/EntitySettingsPropertySection.xaml",
+      "original_bindings": 9,
+      "missing": {},
+      "added": {
+        "{Binding Details, ElementName=Root}": 1
+      }
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/FillPropertySection.xaml",
+      "original_bindings": 5,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/ImagePropertyView.xaml",
+      "original_bindings": 20,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/LinePropertyView.xaml",
+      "original_bindings": 13,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/MultiEntityPropertyView.xaml",
+      "original_bindings": 31,
+      "missing": {},
+      "added": {
+        "{Binding LineWeightControlsEnabled, Converter={StaticResource BooleanToVisibilityConverter}": 1,
+        "{Binding LineWeight, Mode=OneWay, StringFormat=F3}": 1,
+        "{Binding LineWeightControlsEnabled, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}": 1
+      }
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/PolylinePropertyView.xaml",
+      "original_bindings": 17,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/RectanglePropertyView.xaml",
+      "original_bindings": 19,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/SplinePropertyView.xaml",
+      "original_bindings": 17,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/StrokeAppearancePropertySection.xaml",
+      "original_bindings": 12,
+      "missing": {},
+      "added": {
+        "{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}": 1,
+        "{Binding ViewModel.LineWeight, ElementName=Root, Mode=OneWay, StringFormat=F3}": 1,
+        "{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}": 1,
+        "{Binding AdditionalContent, ElementName=Root}": 1
+      }
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/StrokeStylePropertySection.xaml",
+      "original_bindings": 16,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TextPropertyView.xaml",
+      "original_bindings": 16,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientArcPropertyView.xaml",
+      "original_bindings": 4,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientBlockInsertionPropertyView.xaml",
+      "original_bindings": 6,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientCirclePropertyView.xaml",
+      "original_bindings": 5,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientEllipsePropertyView.xaml",
+      "original_bindings": 5,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientLinePropertyView.xaml",
+      "original_bindings": 4,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientPastePropertyView.xaml",
+      "original_bindings": 9,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientPolygonPropertyView.xaml",
+      "original_bindings": 5,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientPolylinePropertyView.xaml",
+      "original_bindings": 6,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientRectanglePropertyView.xaml",
+      "original_bindings": 7,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientSplinePropertyView.xaml",
+      "original_bindings": 6,
+      "missing": {},
+      "added": {}
+    },
+    {
+      "file": "Direct2dCad.wpf/Views/Toolboxes/EntityProperty/TransientTextPropertyView.xaml",
+      "original_bindings": 9,
+      "missing": {},
+      "added": {}
+    }
+  ]
+}

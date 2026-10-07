@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:toolboxes="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
              d:DataContext="{d:DesignInstance Type=toolboxes:CommandLineToolboxViewModel}"
              AutomationProperties.AutomationId="CommandLineToolbox"
              d:DesignHeight="240"
@@ -132,7 +133,8 @@
                            Text=">" />
                 <TextBox x:Name="CommandInput"
                          AutomationProperties.AutomationId="CommandLineInput"
-                         AutomationProperties.HelpText="{Binding InputHint}"
+                         AutomationProperties.HelpText="{Binding KeyboardHelp}"
+                         ToolTip="{I18N {x:Static r:LangKeys.ShortcutTerminalScope}}"
                          Grid.Column="1"
                          Padding="0"
                          VerticalContentAlignment="Center"

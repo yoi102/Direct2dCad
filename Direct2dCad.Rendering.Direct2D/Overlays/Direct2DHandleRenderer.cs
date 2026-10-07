@@ -19,11 +19,14 @@ internal sealed class Direct2DHandleRenderer(Direct2DStyleResourceCache styleRes
         if (halfSize <= 0)
             return;
 
+        var origin = Direct2DCoordinateSystem.NeedsOrigin(grip.Position) ? grip.Position : default;
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(deviceContext, origin);
+        var position = grip.Position - (origin - CadPointD.Origin);
         var bounds = CadRectD.FromLTRB(
-            grip.Position.X - halfSize,
-            grip.Position.Y - halfSize,
-            grip.Position.X + halfSize,
-            grip.Position.Y + halfSize);
+            position.X - halfSize,
+            position.Y - halfSize,
+            position.X + halfSize,
+            position.Y + halfSize);
         var strokeBrush = styleResources.GetBrush(deviceContext, grip.Style.StrokeColor);
         var fillBrush = factory is null || grip.Style.FillColor.IsTransparent
             ? null

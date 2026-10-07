@@ -109,7 +109,9 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         Lock();
         try
         {
-            AddDirtyRect(new Int32Rect(0, 0, _surfaceWidth, _surfaceHeight));
+            var dirtyRect = ClampDirtyRect(new Int32Rect(0, 0, _surfaceWidth, _surfaceHeight));
+            if (dirtyRect.Width > 0 && dirtyRect.Height > 0)
+                AddDirtyRect(dirtyRect);
         }
         finally
         {
@@ -148,7 +150,9 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
             }
             else if (_surfaceWidth > 0 && _surfaceHeight > 0)
             {
-                AddDirtyRect(new Int32Rect(0, 0, _surfaceWidth, _surfaceHeight));
+                var dirtyRect = ClampDirtyRect(new Int32Rect(0, 0, _surfaceWidth, _surfaceHeight));
+                if (dirtyRect.Width > 0 && dirtyRect.Height > 0)
+                    AddDirtyRect(dirtyRect);
             }
         }
         finally
@@ -171,14 +175,12 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         if (dirtyRect.Width <= 0 || dirtyRect.Height <= 0)
             return;
 
-        dirtyRect = ClampDirtyRect(dirtyRect);
-        if (dirtyRect.Width <= 0 || dirtyRect.Height <= 0)
-            return;
-
         Lock();
         try
         {
-            AddDirtyRect(dirtyRect);
+            dirtyRect = ClampDirtyRect(dirtyRect);
+            if (dirtyRect.Width > 0 && dirtyRect.Height > 0)
+                AddDirtyRect(dirtyRect);
         }
         finally
         {
@@ -200,25 +202,16 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
         if (dirtyRects.Count == 0)
             return;
 
-        var clampedRects = new List<Int32Rect>(dirtyRects.Count);
-        foreach (var dirtyRect in dirtyRects)
-        {
-            if (dirtyRect.Width <= 0 || dirtyRect.Height <= 0)
-                continue;
-
-            var clampedRect = ClampDirtyRect(dirtyRect);
-            if (clampedRect.Width > 0 && clampedRect.Height > 0)
-                clampedRects.Add(clampedRect);
-        }
-
-        if (clampedRects.Count == 0)
-            return;
-
         Lock();
         try
         {
-            foreach (var clampedRect in clampedRects)
-                AddDirtyRect(clampedRect);
+            foreach (var dirtyRect in dirtyRects)
+            {
+                if (dirtyRect.Width <= 0 || dirtyRect.Height <= 0) continue;
+                var clampedRect = ClampDirtyRect(dirtyRect);
+                if (clampedRect.Width > 0 && clampedRect.Height > 0)
+                    AddDirtyRect(clampedRect);
+            }
         }
         finally
         {
@@ -228,16 +221,20 @@ public sealed class D3D11ImageSource : D3DImage, IDisposable, ID3D11ImageSource
 
     private Int32Rect ClampDirtyRect(Int32Rect dirtyRect)
     {
-        var x = Math.Clamp(dirtyRect.X, 0, _surfaceWidth);
-        var y = Math.Clamp(dirtyRect.Y, 0, _surfaceHeight);
+        // A resize/front-buffer callback can arrive after SetSize but before WPF
+        // binds the replacement surface. D3DImage validates against its actual pixels.
+        var width = Math.Max(0, Math.Min(_surfaceWidth, PixelWidth));
+        var height = Math.Max(0, Math.Min(_surfaceHeight, PixelHeight));
+        var x = Math.Clamp(dirtyRect.X, 0, width);
+        var y = Math.Clamp(dirtyRect.Y, 0, height);
         var right = (int)Math.Clamp(
             (long)dirtyRect.X + dirtyRect.Width,
             0L,
-            _surfaceWidth);
+            width);
         var bottom = (int)Math.Clamp(
             (long)dirtyRect.Y + dirtyRect.Height,
             0L,
-            _surfaceHeight);
+            height);
         return new Int32Rect(x, y, right - x, bottom - y);
     }
 

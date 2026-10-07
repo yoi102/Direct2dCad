@@ -1,0 +1,185 @@
+{
+  "head": "8766f612efb780c2df777ae38b3ef3b4b3a93a59",
+  "date": "2026-10-07",
+  "scope": "Drawing and rendering audit of current working tree; no product implementation edits.",
+  "confirmed_defects": 4,
+  "reproduced_defect_cases": 7,
+  "tests": [
+    {
+      "file": "drawing-existing.trx",
+      "total": 202,
+      "passed": 202,
+      "failed": 0,
+      "skipped": 0,
+      "sha256": "90FD5B880587C223BE913D0344C68101177C8A8874F3D44FCBAB3C66C273509A"
+    },
+    {
+      "file": "render-existing.trx",
+      "total": 188,
+      "passed": 187,
+      "failed": 0,
+      "skipped": 1,
+      "sha256": "315122FB8996DAB2252D75E95CADE66A214B3952481AF356123740652043532C"
+    }
+  ],
+  "binary_checks": [
+    {
+      "production": "Direct2dCad.Rendering.Direct2D/bin/Release/net10.0/Direct2dCad.Rendering.Direct2D.dll",
+      "test_copy": "Direct2dCad.Windows.IntegrationTests/bin/Release/net10.0-windows/Direct2dCad.Rendering.Direct2D.dll",
+      "test_copy_matches": true,
+      "probe_copy_matches": true,
+      "sha256": "DAAB12B35215A679E2497F0CD20BA501F5587E44B908BF0DDBE56DEEF61B6713"
+    },
+    {
+      "production": "Direct2dCad.ViewModels/bin/Release/net10.0/Direct2dCad.ViewModels.dll",
+      "test_copy": "Direct2dCad.ViewModels.Tests/bin/Release/net10.0/Direct2dCad.ViewModels.dll",
+      "test_copy_matches": true,
+      "probe_copy_matches": true,
+      "sha256": "42F71D280E1C560059B7F7257C293AC3A13923B216030AF87D6A73873931C777"
+    }
+  ],
+  "sources": [
+    {
+      "file": "Direct2dCad.ViewModels.Services/Geometry/CadDrawingGeometryFactory.cs",
+      "sha256": "024503E9176CF4685FE5C9F075E58BADD05D03777B622DF1784D8F15A6645C56"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Drawing/CadDrawingEntityCreator.cs",
+      "sha256": "4A632C94D9C3EE3114490DE0AE086D1F1C4029D0DBD4D2E6C897E90B5C4DAB5F"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Drawing/CadDrawingClickHandler.cs",
+      "sha256": "AB3DDEFB2E0A251890DF4E0D9E3CEE0B970D30FB35D7689F43EFD096F965DBC4"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Drawing/CadEllipseDrawingPreviewBuilder.cs",
+      "sha256": "64AFCAC1BAC90809A91F5B35F8FBDC93DA5E28B0DC2ABE0B785C708B33FBB421"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Drawing/CadMultiPointDrawingPreviewBuilder.cs",
+      "sha256": "773D04DC57D2C529280776DB7F69EB8B0AD594F4E295016B37F8A4235F897997"
+    },
+    {
+      "file": "Direct2dCad.ViewModels/CadDocumentViewModel.cs",
+      "sha256": "15C67D25638988F63C849510943BB085945DA38CC4C2480FD1F8BC26C739595B"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Tests/CadToolboxTestContext.cs",
+      "sha256": "2A5D9D51486757940CCA293F4DE3B0779E25686F4D9EC2819BCFFC726E8DBC39"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Direct2D/Transient/Direct2DTransientRenderer.cs",
+      "sha256": "E6CBAF24C097108E911A57B620521BBED9DA2CD7B814E0A8350DA9BEBE9DA32D"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Direct2D/Entities/Direct2DEntityRenderer.cs",
+      "sha256": "F4263DC9E7A10B74B2666C868F907B8FA4D32620A246FE7EA5F3C622BE03A585"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Direct2D/Entities/Direct2DGeometryFactory.cs",
+      "sha256": "E58952A4913A1B7C13FEE90FDAB2D4A378082E0934946D73190634564DBF442A"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Direct2D/Entities/Direct2DHatchRenderer.cs",
+      "sha256": "64C85DE9695F3E20045B94FB39F47814788715A739C4B65B3977A6B93E59EBF0"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Direct2D/Scene/Direct2DSceneRender.cs",
+      "sha256": "1237A9C8C4CAF23664BB725F28CDF4673437C5E8A0774C7895D178BF20F51E3E"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Direct2D/Hosting/ImageSourceDirect2DResource.cs",
+      "sha256": "F029BC9C4CC460C01DF1B49EF8F889FBE34B15C6EA6981423CE762F4E8446BA3"
+    },
+    {
+      "file": "Direct2dCad.Rendering.Direct2D/Hosting/Direct2DImageRenderHost.cs",
+      "sha256": "FD6FF7609D1327101896AA649161D2FE0829D713186F54AEC8294675DD954032"
+    },
+    {
+      "file": "Direct2dCad.Db/Data/Entities/CadSpline.cs",
+      "sha256": "5A98C3D41E73D1F5B3A9F79F744B513F00D02559A08D322F2E2E0F4FA6135BC4"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "drawing-existing.trx",
+      "sha256": "90FD5B880587C223BE913D0344C68101177C8A8874F3D44FCBAB3C66C273509A"
+    },
+    {
+      "file": "far-from-origin-far.png",
+      "sha256": "EF9BE94F295A43CA63F8978D4127A478DE2F39A939B764BDFD5D2A757F9A08B5"
+    },
+    {
+      "file": "far-from-origin-million.png",
+      "sha256": "EF9BE94F295A43CA63F8978D4127A478DE2F39A939B764BDFD5D2A757F9A08B5"
+    },
+    {
+      "file": "near-origin-far.png",
+      "sha256": "573F28E3288649B098BDFDAC8361872CB977560F2F976E2387E1E7D22582314A"
+    },
+    {
+      "file": "near-origin-million.png",
+      "sha256": "CFC42C41370998078FB01C82C2C0F2F706A86BCEF04E1494FD4963C0E3849515"
+    },
+    {
+      "file": "polyline-committed.png",
+      "sha256": "092DE98DD79D3124CF4A340993E99E6BB1785B0BD83AAAC7DAB1545177B6B981"
+    },
+    {
+      "file": "polyline-preview.png",
+      "sha256": "FEAA5871593590631FC5EA7B5A0561C0D3F7A112501E2D5D9322D4CDFE83D781"
+    },
+    {
+      "file": "probe-output.txt",
+      "sha256": "B018440FD6B9B4CCFE21571F91934AA4040EA902AAFAA2E1540DD75D2A67579B"
+    },
+    {
+      "file": "Probe.csproj.txt",
+      "sha256": "1BB6291FA8F3A2B374003A9161432A0C26F550F4B47AE292781DE89366994098"
+    },
+    {
+      "file": "Program.cs.txt",
+      "sha256": "B57DA137E9B7BF772BEF62A8C5E6511EB8690A39CB1250716B4C56AF0EDDA8EF"
+    },
+    {
+      "file": "render-existing.trx",
+      "sha256": "315122FB8996DAB2252D75E95CADE66A214B3952481AF356123740652043532C"
+    },
+    {
+      "file": "spline-hatch-committed.png",
+      "sha256": "392EBD04318D0BEE8B20B200D4409A34ED8C6473593B456C64731E34B9176D2E"
+    },
+    {
+      "file": "spline-hatch-preview.png",
+      "sha256": "0A4E5085170E2738072C9180E3EC67E1B630803C49271A18174F632A8ADB7BEC"
+    }
+  ],
+  "commands": [
+    "dotnet test Direct2dCad.ViewModels.Tests/Direct2dCad.ViewModels.Tests.csproj -c Release --no-build --no-restore --filter 'FullyQualifiedName~Drawing|FullyQualifiedName~DynamicInput|FullyQualifiedName~InvalidDrawingInput|FullyQualifiedName~ToolSessionRecovery'",
+    "dotnet test Direct2dCad.Windows.IntegrationTests/Direct2dCad.Windows.IntegrationTests.csproj -c Release --no-build --no-restore --filter 'FullyQualifiedName~Direct2DRenderHost|FullyQualifiedName~RenderOptimization|FullyQualifiedName~EllipticalRegionRendering|FullyQualifiedName~RenderResourceBudget|FullyQualifiedName~VisiblePolylineStroke|FullyQualifiedName~Direct2DGeometryPreparation'",
+    "dotnet run --project TestResults/drawing-audit-2026-10-07/Probe.csproj -c Release --no-restore"
+  ],
+  "probe_exit_code": 0,
+  "probe_exit_meaning": "Bug reproduction assertions passed; this is not product acceptance.",
+  "pixels": {
+    "width": 640,
+    "height": 480,
+    "polyline_difference": 423,
+    "spline_hatch_difference": 27366,
+    "solid_polyline_control_difference": 0,
+    "solid_spline_control_difference": 0,
+    "origin_line_red_pixels": 400,
+    "far_line_red_pixels": 0,
+    "million_origin_line_red_pixels": 80,
+    "million_line_red_pixels": 0
+  },
+  "skipped": [
+    "SuppliedDxfLongStrokesPreserveFullPathRasterCoverageAcrossZoomAndPan: external DIRECT2DCAD_UI_DXF_SAMPLE absent."
+  ],
+  "not_run": [
+    "Real-window mouse replay",
+    "Physical display latency",
+    "GPU performance benchmark",
+    "External CAD round trip"
+  ]
+}

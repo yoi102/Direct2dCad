@@ -1,0 +1,6 @@
+{"probe":"failed_scale","scaleResult":"{\u0022success\u0022:false,\u0022error\u0022:\u0022Specified argument was out of the range of valid values. (Parameter \\u0027scaleX\\u0027)\u0022}","lineStart":"(1, 1)","blockPosition":"(1, 1)","ScaleX":1E-08,"canUndo":false,"version":0}
+{"probe":"undo_layout","erasedBefore":true,"erasedAfter":false,"sameHistory":true}
+{"probe":"viewport_dimensions","addViewport":"{\u0022success\u0022:true,\u0022result\u0022:{\u0022document_id\u0022:\u0022doc\u0022,\u0022result\u0022:{\u0022layout_id\u0022:1,\u0022viewport_id\u0022:2}}}","firstSize":{"Width":180,"Height":90},"afterLockSize":{"Width":160,"Height":60},"IsLocked":true,"added":1,"updateSuccess":true}
+{"probe":"failed_layout","createResult":"{\u0022success\u0022:false,\u0022error\u0022:\u0022Paper margins must leave a positive printable area.\u0022}","blocksBefore":2,"blocksAfter":3,"canUndo":false,"version":0}
+{"probe":"agent_cancel_context","SuccessfulEdits":1,"liveEntities":1,"localResults":1,"sentResults":0,"sentMessages":[{"role":"System","Content":"Use tools"},{"role":"User","Content":"Create two lines"},{"role":"User","Content":"Continue"}]}
+Confirmed 5 defect reproductions. This is not a product acceptance pass.

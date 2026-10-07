@@ -49,6 +49,11 @@ internal sealed class Direct2DBackgroundRenderer(
         var majorX = ResolveMajorGridSpacing(grid.SpacingX, grid.GetMinorSpacingX(), spacingX);
         var majorY = ResolveMajorGridSpacing(grid.SpacingY, grid.GetMinorSpacingY(), spacingY);
         var origin = document.ViewSettings.Origin.Position;
+        var localOrigin = Direct2DCoordinateSystem.NeedsOrigin(bounds.Center) ? bounds.Center : default;
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(deviceContext, localOrigin);
+        bounds = bounds.Translate(new(-localOrigin.X, -localOrigin.Y));
+        origin -= localOrigin - CadPointD.Origin;
+        viewport = Direct2DCoordinateSystem.LocalViewport(viewport, localOrigin);
         var palette = CreateGridPalette(grid);
         var rasterization = GridRasterization.Create(
             viewport,
@@ -139,6 +144,16 @@ internal sealed class Direct2DBackgroundRenderer(
         if (bounds.IsEmpty)
             return;
 
+        var localOrigin = Direct2DCoordinateSystem.NeedsOrigin(bounds.Center) ? bounds.Center : default;
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(deviceContext, localOrigin);
+        bounds = bounds.Translate(new(-localOrigin.X, -localOrigin.Y));
+        viewport = Direct2DCoordinateSystem.LocalViewport(viewport, localOrigin);
+        if (localOrigin != default) origin = new CadOriginSettings
+        {
+            Position = origin.Position - (localOrigin - CadPointD.Origin), DisplayType = origin.DisplayType,
+            MarkerType = origin.MarkerType, LinePattern = origin.LinePattern, Color = origin.Color,
+            Size = origin.Size, StrokeWidth = origin.StrokeWidth
+        };
         var rasterization = OriginRasterization.Create(
             viewport,
             deviceContext.AntialiasMode == AntialiasMode.Aliased,

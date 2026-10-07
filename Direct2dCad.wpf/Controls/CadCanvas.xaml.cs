@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels;
+using Direct2dCad.wpf.Services.Input;
 
 namespace Direct2dCad.wpf.Controls;
 
@@ -448,104 +449,131 @@ public partial class CadCanvas : IDisposable
         });
     }
 
-    private void CadCanvas_KeyDown(object sender, KeyEventArgs e)
+    internal void CancelInteraction()
     {
+        if (_isRadialMenuActive)
+        {
+            CloseRadialMenu();
+            return;
+        }
+        if (DocumentViewModel is null) return;
+        EndCapturedPointerGesture();
+        ApplyInteractionResult(DocumentViewModel.Escape());
+    }
+
+    private void CadCanvas_KeyDown(object sender, KeyEventArgs e)
+        => HandleCanvasKey(e.Key == Key.System ? e.SystemKey : e.Key, Keyboard.Modifiers, e);
+
+    internal bool ConfirmInteraction()
+    {
+        if (_isRadialMenuActive || DocumentViewModel is not { CanEditDocument: true } document) return false;
+        if (!document.HasActiveDrawingTool && !document.IsGripEditing && !document.IsPastePreviewActive) return false;
+        ApplyInteractionResult(document.CompleteCurrentDrawing());
+        // Invalid/incomplete input still owns the confirmation and displays its prompt.
+        return true;
+    }
+
+    internal void HandleCanvasKey(Key key, ModifierKeys modifiers, KeyEventArgs e)
+    {
+        if (e.Handled) return;
         if (DocumentViewModel is null)
             return;
-
-        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key == Key.Escape && modifiers == ModifierKeys.None && e.IsRepeat)
+        {
+            e.Handled = true;
+            return;
+        }
 
         if (_isRadialMenuActive)
         {
-            if (key == Key.Escape)
+            if (key == Key.Escape && modifiers == ModifierKeys.None)
             {
                 CloseRadialMenu();
                 e.Handled = true;
                 return;
             }
 
-            UpdateRadialMenuProfile(Keyboard.Modifiers);
+            UpdateRadialMenuProfile(modifiers);
             e.Handled = true;
             return;
         }
 
-        if (key == Key.Escape)
+        var shortcut = CadShortcutCatalog.Find(CadShortcutScope.Canvas, key, modifiers);
+        if (shortcut is null) return;
+
+        if (shortcut.Action == CadShortcutAction.Cancel)
         {
-            EndCapturedPointerGesture();
-            ApplyInteractionResult(DocumentViewModel.Escape(), e);
+            CancelInteraction();
+            e.Handled = true;
             return;
         }
 
-        if (key == Key.Enter)
+        if (shortcut.Action == CadShortcutAction.Confirm)
         {
-            ApplyInteractionResult(DocumentViewModel.CompleteCurrentDrawing(), e);
+            if (!CadEnterKeyGuard.ShouldIgnoreRepeat(e, modifiers)) ConfirmInteraction();
+            e.Handled = true;
             return;
         }
 
-        if (key == Key.Back && Keyboard.Modifiers == ModifierKeys.None)
+        if (shortcut.Action == CadShortcutAction.PreviousPoint)
         {
             ApplyInteractionResult(DocumentViewModel.UndoCurrentDrawingStep(), e);
             return;
         }
 
-        if (key == Key.R && Keyboard.Modifiers == ModifierKeys.None && DocumentViewModel.IsCurveEditTool)
+        if (shortcut.Action == CadShortcutAction.Reselect && DocumentViewModel.IsCurveEditTool)
         {
             DocumentViewModel.ReselectEditObjectsCommand.Execute(null);
             e.Handled = true;
             return;
         }
 
-        if (key == Key.Delete)
+        if (shortcut.Action == CadShortcutAction.Delete)
         {
             ApplyInteractionResult(DocumentViewModel.DeleteSelection(), e);
             return;
         }
 
-        if (key == Key.Tab &&
-            (Keyboard.Modifiers & ~ModifierKeys.Shift) == ModifierKeys.None)
+        if (shortcut.Action is CadShortcutAction.NextSelection or CadShortcutAction.PreviousSelection)
         {
             ApplyInteractionResult(
                 DocumentViewModel.CycleSelection(
-                    (Keyboard.Modifiers & ModifierKeys.Shift) != 0),
+                    shortcut.Action == CadShortcutAction.PreviousSelection),
                 e);
             return;
         }
 
-        if (key == Key.A &&
-            Keyboard.Modifiers is ModifierKeys.Control or ModifierKeys.Alt)
+        if (shortcut.Action == CadShortcutAction.SelectAll)
         {
             ApplyInteractionResult(DocumentViewModel.SelectAllEntities(), e);
             return;
         }
 
-        if ((Keyboard.Modifiers & ModifierKeys.Control) != ModifierKeys.Control)
-            return;
-
-        switch (key)
+        switch (shortcut.Action)
         {
-            case Key.Z:
+            case CadShortcutAction.Undo:
                 DocumentViewModel.Undo();
                 e.Handled = true;
                 break;
 
-            case Key.Y:
+            case CadShortcutAction.Redo:
                 DocumentViewModel.Redo();
                 e.Handled = true;
                 break;
 
-            case Key.C:
+            case CadShortcutAction.Copy:
                 DocumentViewModel.CopySelection();
                 e.Handled = true;
                 break;
 
-            case Key.X:
+            case CadShortcutAction.Cut:
                 if (DocumentViewModel.CopySelection() is not null)
                     DocumentViewModel.DeleteSelection();
 
                 e.Handled = true;
                 break;
 
-            case Key.V:
+            case CadShortcutAction.Paste:
                 ApplyInteractionResult(DocumentViewModel.BeginClipboardPastePreview(), e);
                 break;
         }

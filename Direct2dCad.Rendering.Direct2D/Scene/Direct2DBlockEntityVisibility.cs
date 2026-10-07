@@ -3,6 +3,7 @@ using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Resources;
 
 namespace Direct2dCad.Rendering.Direct2D.Scene;
 
@@ -23,12 +24,13 @@ internal static class Direct2DBlockEntityVisibility
         List<CadEntity> candidatesBuffer,
         List<CadEntity> orderedCandidatesBuffer,
         HashSet<EntityId> candidateSetBuffer,
-        List<Direct2DEntityOrderCache.RankedEntity> rankedEntityBuffer)
+        List<Direct2DEntityOrderCache.RankedEntity> rankedEntityBuffer,
+        CadMatrixD? preciseTransform = null)
     {
         var orderedEntities = entityOrderCache.GetOrderedEntities(document, ownerBlockId);
         if (orderedEntities.Count < MinimumIndexedEntityCount ||
             options.EntityBoundsQueryInto is null && options.EntityBoundsQuery is null ||
-            !TryResolveVisibleLocalBounds(localToScreen, viewport, out var visibleBounds))
+            !TryResolveVisibleLocalBounds(preciseTransform ?? Direct2DCoordinateSystem.FromNative(localToScreen), viewport, out var visibleBounds))
         {
             return orderedEntities;
         }
@@ -98,35 +100,35 @@ internal static class Direct2DBlockEntityVisibility
     }
 
     private static bool TryResolveVisibleLocalBounds(
-        Matrix3x2 localToScreen,
+        CadMatrixD localToScreen,
         CadViewport viewport,
         out CadRectD bounds)
     {
         bounds = CadRectD.Empty;
         if (viewport.ViewWidth <= 0.0 ||
             viewport.ViewHeight <= 0.0 ||
-            !Matrix3x2.Invert(localToScreen, out var screenToLocal))
+            !localToScreen.TryInvert(out var screenToLocal))
         {
             return false;
         }
 
-        Span<Vector2> screenCorners =
+        Span<CadPointD> screenCorners =
         [
-            Vector2.Zero,
-            new Vector2((float)viewport.ViewWidth, 0.0f),
-            new Vector2((float)viewport.ViewWidth, (float)viewport.ViewHeight),
-            new Vector2(0.0f, (float)viewport.ViewHeight)
+            default,
+            new(viewport.ViewWidth, 0),
+            new(viewport.ViewWidth, viewport.ViewHeight),
+            new(0, viewport.ViewHeight)
         ];
         foreach (var screenCorner in screenCorners)
         {
-            var localPoint = Vector2.Transform(screenCorner, screenToLocal);
-            if (!float.IsFinite(localPoint.X) || !float.IsFinite(localPoint.Y))
+            var localPoint = screenToLocal.TransformPoint(screenCorner);
+            if (!double.IsFinite(localPoint.X) || !double.IsFinite(localPoint.Y))
             {
                 bounds = CadRectD.Empty;
                 return false;
             }
 
-            bounds = bounds.ExpandToInclude(new CadPointD(localPoint.X, localPoint.Y));
+            bounds = bounds.ExpandToInclude(localPoint);
         }
 
         return !bounds.IsEmpty;

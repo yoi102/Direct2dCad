@@ -52,7 +52,7 @@ internal readonly struct CadEllipseDrawingPreviewBuilder(
         if (!TryCreateEllipseFromCenter(center, pendingEllipsePoints[1], mouseWorld, out var geometry))
             return;
 
-        items.Add(new CadTransientEllipse(geometry.Center, geometry.RadiusX, geometry.RadiusY, style));
+        items.Add(new CadTransientEllipse(geometry.Center, geometry.RadiusX, geometry.RadiusY, style, geometry.RotationRadians));
         AddEllipseRadiusMeasurements(items, geometry, auxiliaryStyle);
     }
 
@@ -74,7 +74,7 @@ internal readonly struct CadEllipseDrawingPreviewBuilder(
         if (!TryCreateEllipseFromAxisEnd(pendingEllipsePoints[0], pendingEllipsePoints[1], mouseWorld, out var geometry))
             return;
 
-        items.Add(new CadTransientEllipse(geometry.Center, geometry.RadiusX, geometry.RadiusY, style));
+        items.Add(new CadTransientEllipse(geometry.Center, geometry.RadiusX, geometry.RadiusY, style, geometry.RotationRadians));
         AddEllipseRadiusMeasurements(items, geometry, auxiliaryStyle);
     }
 
@@ -99,13 +99,13 @@ internal readonly struct CadEllipseDrawingPreviewBuilder(
             return;
         }
 
-        items.Add(new CadTransientEllipse(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, auxiliaryStyle));
+        items.Add(new CadTransientEllipse(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, auxiliaryStyle, ellipse.RotationRadians));
         AddEllipseRadiusMeasurements(items, ellipse, auxiliaryStyle);
 
         if (previewPoints.Length >= 4)
         {
-            var startAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, previewPoints[3]);
-            var startPoint = GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, startAngle);
+            var startAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, previewPoints[3], ellipse.RotationRadians);
+            var startPoint = GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, startAngle, ellipse.RotationRadians);
             items.Add(new CadTransientLine(ellipse.Center, startPoint, auxiliaryStyle));
         }
 
@@ -129,8 +129,9 @@ internal readonly struct CadEllipseDrawingPreviewBuilder(
             arc.RadiusY,
             arc.StartAngleRadians,
             arc.SweepAngleRadians,
-            style));
-        var endPoint = GetEllipsePoint(arc.Center, arc.RadiusX, arc.RadiusY, arc.StartAngleRadians + arc.SweepAngleRadians);
+            style,
+            arc.RotationRadians));
+        var endPoint = GetEllipsePoint(arc.Center, arc.RadiusX, arc.RadiusY, arc.StartAngleRadians + arc.SweepAngleRadians, arc.RotationRadians);
         items.Add(new CadTransientLine(arc.Center, endPoint, auxiliaryStyle));
         AddMeasurementPreview(
             items,
@@ -148,13 +149,13 @@ internal readonly struct CadEllipseDrawingPreviewBuilder(
         AddMeasurementPreview(
             items,
             geometry.Center,
-            new CadPointD(geometry.Center.X + geometry.RadiusX, geometry.Center.Y),
+            GetEllipsePoint(geometry.Center, geometry.RadiusX, geometry.RadiusY, 0, geometry.RotationRadians),
             $"X {measurementBuilder.FormatLengthLabel(geometry.RadiusX)}",
             style);
         AddMeasurementPreview(
             items,
             geometry.Center,
-            new CadPointD(geometry.Center.X, geometry.Center.Y + geometry.RadiusY),
+            GetEllipsePoint(geometry.Center, geometry.RadiusX, geometry.RadiusY, Math.PI / 2, geometry.RotationRadians),
             $"Y {measurementBuilder.FormatLengthLabel(geometry.RadiusY)}",
             style);
     }

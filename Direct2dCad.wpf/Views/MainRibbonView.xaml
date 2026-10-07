@@ -10,6 +10,7 @@
              xmlns:vm_en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels.Abstractions"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Direct2dCad.wpf.Views"
+             xmlns:keys="clr-namespace:Direct2dCad.wpf.Services.Input"
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
              AutomationProperties.AutomationId="MainRibbon"
              mc:Ignorable="d"
@@ -279,6 +280,8 @@
                                 <MenuItem Header="{I18N {x:Static r:LangKeys.BlankDrawing}}"
                                           Icon="{md:PackIcon Kind=FilePlus, Size=22}"
                                           Command="{Binding NewCommand}"
+                                          InputGestureText="{x:Static keys:CadShortcutCatalog.NewGesture}"
+                                          ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                                           AutomationProperties.AutomationId="NewBlankDocumentMenuItem" />
                                 <Separator />
                                 <MenuItem Header="A4 · mm · 1:1"
@@ -328,6 +331,8 @@
                                 <MenuItem Header="{I18N {x:Static r:LangKeys.OpenFile}}"
                                           Icon="{md:PackIcon Kind=FolderOpen, Size=22}"
                                           Command="{Binding OpenFileCommand}"
+                                          InputGestureText="{x:Static keys:CadShortcutCatalog.OpenGesture}"
+                                          ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                                           AutomationProperties.AutomationId="OpenNativeDocumentMenuItem" />
                                 <MenuItem Header="{I18N {x:Static r:LangKeys.ImportDxf}}"
                                           Icon="{md:PackIcon Kind=FileImportOutline, Size=22}"
@@ -359,10 +364,14 @@
                                 <MenuItem Header="{I18N {x:Static r:LangKeys.Save}}"
                                           Icon="{md:PackIcon Kind=ContentSave, Size=22}"
                                           Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}"
+                                          InputGestureText="{x:Static keys:CadShortcutCatalog.SaveGesture}"
+                                          ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                                           AutomationProperties.AutomationId="SaveDocumentMenuItem" />
                                 <MenuItem Header="{I18N {x:Static r:LangKeys.SaveAs}}"
                                           Icon="{md:PackIcon Kind=ContentSaveAdd, Size=22}"
                                           Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}"
+                                          InputGestureText="{x:Static keys:CadShortcutCatalog.SaveAsGesture}"
+                                          ToolTip="{I18N {x:Static r:LangKeys.ShortcutApplicationScope}}"
                                           AutomationProperties.AutomationId="SaveAsDocumentMenuItem" />
                                 <Separator />
                                 <MenuItem Header="{I18N {x:Static r:LangKeys.SaveCompressedCopy}}"

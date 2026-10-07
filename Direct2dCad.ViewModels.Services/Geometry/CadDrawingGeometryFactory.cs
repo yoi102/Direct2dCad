@@ -12,14 +12,16 @@ internal readonly record struct ArcDrawingGeometry(
 internal readonly record struct EllipseDrawingGeometry(
     CadPointD Center,
     double RadiusX,
-    double RadiusY);
+    double RadiusY,
+    double RotationRadians = 0);
 
 internal readonly record struct EllipseArcDrawingGeometry(
     CadPointD Center,
     double RadiusX,
     double RadiusY,
     double StartAngleRadians,
-    double SweepAngleRadians);
+    double SweepAngleRadians,
+    double RotationRadians = 0);
 
 internal static class CadDrawingGeometryFactory
 {
@@ -347,24 +349,7 @@ internal static class CadDrawingGeometryFactory
         if (axisVector.Length <= double.Epsilon)
             return false;
 
-        double radiusX;
-        double radiusY;
-        if (Math.Abs(axisVector.X) >= Math.Abs(axisVector.Y))
-        {
-            radiusX = Math.Abs(axisVector.X);
-            radiusY = Math.Abs(otherAxisPoint.Y - center.Y);
-        }
-        else
-        {
-            radiusX = Math.Abs(otherAxisPoint.X - center.X);
-            radiusY = Math.Abs(axisVector.Y);
-        }
-
-        if (!IsValidEllipseGeometry(radiusX, radiusY))
-            return false;
-
-        geometry = new EllipseDrawingGeometry(center, radiusX, radiusY);
-        return true;
+        return TryCreateEllipseInAxisFrame(center, axisVector, otherAxisPoint, out geometry);
     }
 
     public static bool TryCreateEllipseFromAxisEnd(
@@ -379,23 +364,29 @@ internal static class CadDrawingGeometryFactory
         if (axisVector.Length <= double.Epsilon)
             return false;
 
-        double radiusX;
-        double radiusY;
-        if (Math.Abs(axisVector.X) >= Math.Abs(axisVector.Y))
-        {
-            radiusX = Math.Abs(axisVector.X) * 0.5;
-            radiusY = Math.Abs(otherAxisPoint.Y - center.Y);
-        }
-        else
-        {
-            radiusX = Math.Abs(otherAxisPoint.X - center.X);
-            radiusY = Math.Abs(axisVector.Y) * 0.5;
-        }
+        return TryCreateEllipseInAxisFrame(center, axisVector * .5, otherAxisPoint, out geometry);
+    }
 
-        if (!IsValidEllipseGeometry(radiusX, radiusY))
-            return false;
+    public static (bool PrimaryIsX, CadVectorD X, CadVectorD Y, double Rotation) EllipseAxisFrame(CadVectorD axis)
+    {
+        var primaryIsX = Math.Abs(axis.X) >= Math.Abs(axis.Y);
+        var direction = axis.Normalize();
+        // Keep the existing X/Y field meaning for horizontal and vertical axes.
+        // Choosing the positive local axis also makes reversing its endpoints stable.
+        if ((primaryIsX ? direction.X : direction.Y) < 0) direction = -direction;
+        var x = primaryIsX ? direction : new CadVectorD(direction.Y, -direction.X);
+        return (primaryIsX, x, x.Perpendicular(), Math.Atan2(x.Y, x.X));
+    }
 
-        geometry = new EllipseDrawingGeometry(center, radiusX, radiusY);
+    private static bool TryCreateEllipseInAxisFrame(CadPointD center, CadVectorD axis, CadPointD other,
+        out EllipseDrawingGeometry geometry)
+    {
+        geometry = default;
+        var frame = EllipseAxisFrame(axis);
+        var radiusX = frame.PrimaryIsX ? axis.Length : Math.Abs((other - center).Dot(frame.X));
+        var radiusY = frame.PrimaryIsX ? Math.Abs((other - center).Dot(frame.Y)) : axis.Length;
+        if (!IsValidEllipseGeometry(radiusX, radiusY)) return false;
+        geometry = new(center, radiusX, radiusY, frame.Rotation);
         return true;
     }
 
@@ -411,8 +402,8 @@ internal static class CadDrawingGeometryFactory
         if (!TryCreateEllipseFromAxisEnd(axisStart, axisEnd, otherAxisPoint, out var ellipse))
             return false;
 
-        var startAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, startAnglePoint);
-        var endAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, endAnglePoint);
+        var startAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, startAnglePoint, ellipse.RotationRadians);
+        var endAngle = EllipseAngleFrom(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, endAnglePoint, ellipse.RotationRadians);
         var sweepAngle = ResolveSweepAngle(startAngle, endAngle, counterClockwise: true);
         if (!IsValidArcGeometry(1.0, sweepAngle))
             return false;
@@ -422,22 +413,23 @@ internal static class CadDrawingGeometryFactory
             ellipse.RadiusX,
             ellipse.RadiusY,
             startAngle,
-            sweepAngle);
+            sweepAngle,
+            ellipse.RotationRadians);
         return true;
     }
 
-    public static double EllipseAngleFrom(CadPointD center, double radiusX, double radiusY, CadPointD point)
+    public static double EllipseAngleFrom(CadPointD center, double radiusX, double radiusY, CadPointD point, double rotationRadians = 0)
     {
+        var local = CadMatrixD.CreateRotation(-rotationRadians).TransformVector(point - center);
         return Math.Atan2(
-            (point.Y - center.Y) / Math.Max(radiusY, double.Epsilon),
-            (point.X - center.X) / Math.Max(radiusX, double.Epsilon));
+            local.Y / Math.Max(radiusY, double.Epsilon),
+            local.X / Math.Max(radiusX, double.Epsilon));
     }
 
-    public static CadPointD GetEllipsePoint(CadPointD center, double radiusX, double radiusY, double angleRadians)
+    public static CadPointD GetEllipsePoint(CadPointD center, double radiusX, double radiusY, double angleRadians, double rotationRadians = 0)
     {
-        return new CadPointD(
-            center.X + Math.Cos(angleRadians) * radiusX,
-            center.Y + Math.Sin(angleRadians) * radiusY);
+        return center + CadMatrixD.CreateRotation(rotationRadians).TransformVector(
+            new CadVectorD(Math.Cos(angleRadians) * radiusX, Math.Sin(angleRadians) * radiusY));
     }
 
     public static bool IsValidEllipseGeometry(double radiusX, double radiusY)

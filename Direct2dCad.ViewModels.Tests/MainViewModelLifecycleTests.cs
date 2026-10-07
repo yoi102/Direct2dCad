@@ -73,6 +73,109 @@ public sealed class MainViewModelLifecycleTests
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ToolboxHideAndReopenPreserveEditorContextAcrossTransientNullActivation(bool paperSpace)
+    {
+        using var context = new MainWindowTestContext();
+        var vm = context.ViewModel;
+        var (tab, _) = context.AddDocument("Terminal context", saved: true);
+        if (paperSpace) tab.LayoutWorkspace.SelectedTab = tab.LayoutWorkspace.Tabs[1];
+        vm.TabControlSelectedIndex = 3;
+        vm.CommandLine.CommandText = "LINE draft";
+        vm.AiAssistant.UserInput = "Unsent AI draft";
+        var terminalContextChanges = 0;
+        var aiContextChanges = 0;
+        vm.CommandLine.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(vm.CommandLine.HasDocument)) terminalContextChanges++;
+        };
+        vm.AiAssistant.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(vm.AiAssistant.HasDocument)) aiContextChanges++;
+        };
+
+        AssertDocumentContext(context, tab);
+        vm.ActiveDockContent = vm.CommandLine;
+        AssertDocumentContext(context, tab);
+        // AvalonDock temporarily reports null when hiding, floating, or reopening an anchorable.
+        vm.ActiveDockContent = null;
+        AssertDocumentContext(context, tab);
+        vm.ActiveDockContent = vm.CommandLine;
+        AssertDocumentContext(context, tab);
+        vm.ActiveDockContent = null;
+        vm.ActiveDockContent = vm.AiAssistant;
+        AssertDocumentContext(context, tab);
+
+        Assert.Equal(3, vm.TabControlSelectedIndex);
+        Assert.Equal("LINE draft", vm.CommandLine.CommandText);
+        Assert.Equal("Unsent AI draft", vm.AiAssistant.UserInput);
+        Assert.Equal(0, terminalContextChanges);
+        Assert.Equal(0, aiContextChanges);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void WelcomePageThenNullAndToolboxActivationDoNotRestoreDocumentContext(bool previouslyHadDocument)
+    {
+        using var context = new MainWindowTestContext();
+        var vm = context.ViewModel;
+        if (previouslyHadDocument) context.AddDocument("Still open behind welcome", saved: true);
+
+        vm.ActiveDockContent = new object(); // A non-CAD static document, such as the welcome page.
+        AssertDocumentContext(context, null);
+        vm.ActiveDockContent = null;
+        AssertDocumentContext(context, null);
+        vm.ActiveDockContent = vm.CommandLine;
+        AssertDocumentContext(context, null);
+        vm.ActiveDockContent = null;
+        vm.ActiveDockContent = vm.AiAssistant;
+        AssertDocumentContext(context, null);
+        Assert.Equal(0, vm.TabControlSelectedIndex);
+    }
+
+    [Fact]
+    public void ClosingDocumentWhileToolboxActivePreventsTransientNullFromRevivingDisposedContext()
+    {
+        using var context = new MainWindowTestContext();
+        var vm = context.ViewModel;
+        var (tab, _) = context.AddDocument("Closed document", saved: true);
+        vm.ActiveDockContent = vm.CommandLine;
+        AssertDocumentContext(context, tab);
+
+        vm.DocumentClosedCommand.Execute(tab);
+        Assert.True(tab.CadDocumentViewModel.IsDisposed);
+        AssertDocumentContext(context, null);
+        foreach (var toolbox in new object[] { vm.CommandLine, vm.AiAssistant, vm.EntityProperties, vm.Layers })
+        {
+            vm.ActiveDockContent = null;
+            AssertDocumentContext(context, null);
+            vm.ActiveDockContent = toolbox;
+            AssertDocumentContext(context, null);
+            Assert.True(tab.CadDocumentViewModel.IsDisposed);
+        }
+        Assert.Equal(0, vm.TabControlSelectedIndex);
+    }
+
+    private static void AssertDocumentContext(MainWindowTestContext context, EditorTabViewModel? expected)
+    {
+        var vm = context.ViewModel;
+        Assert.Same(expected, vm.CurrentEditorTabViewModel);
+        Assert.Same(expected, context.ActiveEditor.Current);
+        Assert.Same(expected?.CadDocumentViewModel, vm.EntityProperties.DocumentViewModel);
+        Assert.Equal(expected is not null, vm.IsPrintAvailable);
+        Assert.Equal(expected is not null, vm.CommandLine.HasDocument);
+        Assert.Equal(expected is not null, vm.AiAssistant.HasDocument);
+        Assert.Equal(expected is not null, vm.Layers.HasDocument);
+        Assert.Equal(expected is not null, vm.Blocks.HasDocument);
+        Assert.Equal(expected is not null, vm.EntitySearch.HasDocument);
+        Assert.Equal(expected is not null, vm.SelectionFilter.HasDocument);
+        if (expected is null) Assert.Null(vm.EntityProperties.Entity);
+        else Assert.False(expected.CadDocumentViewModel.IsDisposed);
+    }
+
+    [Theory]
     [InlineData(UnsavedDocumentDialogResult.Cancel, false, 0)]
     [InlineData(UnsavedDocumentDialogResult.Discard, true, 0)]
     [InlineData(UnsavedDocumentDialogResult.Save, true, 1)]

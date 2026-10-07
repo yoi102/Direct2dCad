@@ -1,4 +1,3 @@
-using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -16,17 +15,18 @@ public sealed class StatusBarLayoutTests
     [Fact]
     public void ActiveDrawingStepAndStatusControlsReceiveVisibleLayoutSpace()
     {
-        Exception? failure = null;
-        var thread = new Thread(() =>
+        WpfTestDispatcher.Run(() =>
         {
-            System.Windows.Application? application = null;
+            var application = System.Windows.Application.Current!;
+            const string buttonStyleKey = "MaterialDesignFlatButton";
+            var hadButtonStyle = application.Resources.Contains(buttonStyleKey);
+            var previousButtonStyle = application.Resources[buttonStyleKey];
             try
             {
                 // The complete view resolves its base button style at construction.
-                // Supply only that resource in an isolated, non-running Application;
+                // Supply only that resource for this test in the shared Application;
                 // no window, keyboard focus or native input is created.
-                application = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-                application.Resources["MaterialDesignFlatButton"] = new Style(typeof(Button));
+                application.Resources[buttonStyleKey] = new Style(typeof(Button));
                 var status = new MainStatusBarView
                 {
                     DataContext = new
@@ -77,19 +77,12 @@ public sealed class StatusBarLayoutTests
                 Assert.True(tool.ActualHeight > 0);
                 Assert.Equal("Polyline", tool.Text);
             }
-            catch (Exception exception) { failure = exception; }
             finally
             {
-                application?.Resources.Clear();
-                application?.Shutdown();
-                if (!Dispatcher.CurrentDispatcher.HasShutdownStarted)
-                    Dispatcher.CurrentDispatcher.InvokeShutdown();
+                if (hadButtonStyle) application.Resources[buttonStyleKey] = previousButtonStyle;
+                else application.Resources.Remove(buttonStyleKey);
             }
         });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "Status bar layout test timed out.");
-        if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
     }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject parent)

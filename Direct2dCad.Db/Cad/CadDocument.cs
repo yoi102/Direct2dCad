@@ -486,6 +486,7 @@ public sealed partial class CadDocument : IEquatable<CadDocument>
         bool createDefaultViewport = true)
     {
         ValidateUniqueLayoutName(name);
+        CadLayout.ValidatePaper(paperWidth, paperHeight, 10, 10, 10, 10);
         var layoutId = _ids.NewLayoutId();
         var paperSpaceBlockId = CreateBlockDefinition(
             $"*PaperSpace_{layoutId.Value}",

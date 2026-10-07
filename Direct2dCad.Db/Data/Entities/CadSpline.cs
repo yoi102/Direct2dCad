@@ -132,11 +132,16 @@ public sealed class CadSpline : Curve
         _length = null;
         _bezierSegments = CreateBezierSegments(_fitPoints, Closed);
 
+        _bounds = CalculateBounds(_fitPoints, _bezierSegments);
+    }
+
+    public static CadRectD CalculateBounds(IReadOnlyList<CadPointD> fitPoints, IReadOnlyList<CadBezierSegmentD> segments)
+    {
         var bounds = CadRectD.Empty;
-        foreach (var point in _fitPoints)
+        foreach (var point in fitPoints)
             bounds = bounds.ExpandToInclude(point);
 
-        foreach (var segment in _bezierSegments)
+        foreach (var segment in segments)
         {
             bounds = bounds
                 .ExpandToInclude(segment.Control1)
@@ -144,7 +149,7 @@ public sealed class CadSpline : Curve
                 .ExpandToInclude(segment.End);
         }
 
-        _bounds = bounds;
+        return bounds;
     }
 
     private static CadPointD GetPoint(IReadOnlyList<CadPointD> points, int index, bool closed)

@@ -1629,7 +1629,11 @@
   <data name="DimensionTextAndArrows" xml:space="preserve"><value>文字与箭头</value></data>
   <data name="DimensionDetails" xml:space="preserve"><value>比例与尺寸线</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>标注线宽（mm）</value></data>
-  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切换 · Enter 确认 · Esc 取消</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切换 · Enter 确认 · Esc 放弃数值输入并回画布 · F4 切换捕捉候选</value></data>
+  <data name="ShortcutApplicationScope" xml:space="preserve"><value>在主窗口和浮动 CAD 面板中生效。Esc 按弹出层、输入、绘图逐层取消；模态对话框保留自己的键盘操作。</value></data>
+  <data name="ShortcutCanvasScope" xml:space="preserve"><value>画布获得键盘焦点时生效；文字输入框操作自己的文字。</value></data>
+  <data name="ShortcutTerminalScope" xml:space="preserve"><value>Enter 提交 · 上下箭头选择建议或历史 · Tab 补全建议 · Shift+Tab 返回上一控件 · Esc 关闭建议、取消或回画布，保留草稿</value></data>
+  <data name="ShortcutAiPromptScope" xml:space="preserve"><value>Enter 或 Ctrl+Enter 发送 · Shift+Enter 换行 · Ctrl+V 粘贴文字或附件 · Esc 取消绘图并回画布，保留草稿</value></data>
   <data name="InvalidDynamicInput" xml:space="preserve"><value>请输入符合当前图形的有效数值。</value></data>
   <data name="BooleanOperations" xml:space="preserve"><value>布尔运算</value></data>
   <data name="BooleanSelectionMinimum" xml:space="preserve"><value>请至少选择两个对象进行布尔运算。</value></data>

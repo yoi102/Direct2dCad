@@ -1,0 +1,349 @@
+{
+  "verified_at": "2026-10-07T21:58:21.1600535+09:00",
+  "repository": "C:\\Users\\yoiri\\source\\repos\\Direct2dCad",
+  "base_commit": "8766f612efb780c2df777ae38b3ef3b4b3a93a59",
+  "contains_uncommitted_changes": true,
+  "configuration": "Release",
+  "sdk": "10.0.401",
+  "scope": "Enter contextual confirmation, docked document context, ViewModels, shortcut UI, welcome UI and Windows integration regression",
+  "build": {
+    "errors": 0,
+    "warnings": 0,
+    "passed": true,
+    "evidence": "solution-build.txt"
+  },
+  "architecture": {
+    "projects": 41,
+    "references": 123,
+    "guard_fixtures": 11,
+    "passed": true
+  },
+  "windows": {
+    "total": 394,
+    "passed": 393,
+    "failed": 0,
+    "skipped": 1
+  },
+  "viewmodels": {
+    "total": 1126,
+    "passed": 1126,
+    "failed": 0,
+    "skipped": 0
+  },
+  "shortcut_ui": {
+    "total": 27,
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0
+  },
+  "welcome_ui": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "not_run": [
+    "Managed projects outside ViewModels in this Enter round",
+    "UI automation beyond shortcuts and welcome context",
+    "Manual Chinese/Japanese IME candidates",
+    "Screen reader and multi-monitor DPI manual acceptance",
+    "Real AI provider sending",
+    "Physical long-hold keyboard acceptance"
+  ],
+  "source_and_binary_hashes": [
+    {
+      "sha256": "3165BA313FC857F70E788DD437E96453F6327142C582F85AD0099906DA89E365",
+      "path": "Direct2dCad.wpf/Services/Input/CadShortcutCatalog.cs"
+    },
+    {
+      "sha256": "519A80ABBFE14A2FFD97667AAF13C61A31917A5DD8EC47E90C116E6218C595C5",
+      "path": "Direct2dCad.wpf/Services/Input/CadWindowShortcutRouter.cs"
+    },
+    {
+      "sha256": "995E28CE81C5BF985CF08D18DA762AC7DB052F37B4F106954D46BD11D27E55A7",
+      "path": "Direct2dCad.wpf/Services/Input/CadEscapeHandler.cs"
+    },
+    {
+      "sha256": "6DDFE26050093A6009C15ECA06A71D790F9707E1D27AF9C86282196E7805D493",
+      "path": "Direct2dCad.wpf/Services/Input/CadEnterHandler.cs"
+    },
+    {
+      "sha256": "73D3C1368A194A53CD2E7E8659D2094A29CC05D9C917BE63AE3BAB1CA005EF8A",
+      "path": "Direct2dCad.wpf/Services/Input/CadEnterKeyGuard.cs"
+    },
+    {
+      "sha256": "85E4C7AFE4565DB8994CC5ACB3DF8A216475545AC3C2E978DE33D81D0A5610D0",
+      "path": "Direct2dCad.wpf/MainWindow.xaml.cs"
+    },
+    {
+      "sha256": "53920A2B36C40B137119BB787B3D1CC9D2111F0AA1486F0E88B5E66957457F78",
+      "path": "Direct2dCad.wpf/Controls/CadCanvas.xaml.cs"
+    },
+    {
+      "sha256": "9AD9D451C889CCDEB353EA30BD9331034A1E6E4F3FAEBB0D94D01157DB466AC7",
+      "path": "Direct2dCad.wpf/Views/CadDocumentView.xaml.cs"
+    },
+    {
+      "sha256": "2EE375431BE7E5D35EA8FFD495E2836AA90F0322E1734F170E858F937DDA9C91",
+      "path": "Direct2dCad.wpf/Views/Toolboxes/CommandLineToolboxView.xaml.cs"
+    },
+    {
+      "sha256": "90F36C0C4E888C208FD7D9229BBA3193A0E8DCC05915FE7D92700E72B55CA59D",
+      "path": "Direct2dCad.wpf/Views/Toolboxes/AiAssistantToolboxView.xaml.cs"
+    },
+    {
+      "sha256": "FB236D1DB061DB2729F580912CD9E5BA5E9815086315BB0E2E05BD133687B7A0",
+      "path": "Direct2dCad.ViewModels/MainViewModel.cs"
+    },
+    {
+      "sha256": "ADEAF52A9ECE921FC8D176D3F3E9A545BE061A386B40E2CD44E3C9B1A5C12AD9",
+      "path": "Direct2dCad.ViewModels.Tests/MainViewModelLifecycleTests.cs"
+    },
+    {
+      "sha256": "81B2632EA58AC4430D6027C7C2265FBE4C12614693A3A850E2EDBABF3F669B63",
+      "path": "Direct2dCad.Windows.IntegrationTests/ShortcutRoutingTests.cs"
+    },
+    {
+      "sha256": "5CB89F3A41FDADDB918AFEB5A40C687A2E206A3D7BD240D5B2BDCE8683228013",
+      "path": "Direct2dCad.Windows.IntegrationTests/ShortcutRoutingTests.Escape.cs"
+    },
+    {
+      "sha256": "36B45F27DC9F1B9EE72069015A99EDC5E6B93E94BD7A1ED9F8FF8F7B0D1836BA",
+      "path": "Direct2dCad.Windows.IntegrationTests/ShortcutRoutingTests.Enter.cs"
+    },
+    {
+      "sha256": "C72CA9DDA902D99BD85E676BDD6E699445CBFD633936F5EE09725AB2FC6F45E3",
+      "path": "Direct2dCad.Windows.IntegrationTests/ShortcutRoutingTests.EnterForwarding.cs"
+    },
+    {
+      "sha256": "6B2E28275F1B84AC0A163A2024DE95C502B402C4155A86456325B6AAA1B8FACA",
+      "path": "Direct2dCad.Windows.IntegrationTests/StatusBarLayoutTests.cs"
+    },
+    {
+      "sha256": "15B7B55E45FE64DF06E9EA38679F0C8EB0891CC53DB9D4A08C73926DABF13A1C",
+      "path": "Direct2dCad.Windows.IntegrationTests/WpfTestDispatcher.cs"
+    },
+    {
+      "sha256": "E7D27D1FEB689EBDDBB37F593C2E738C7683FB24976BDF1D2BDB8A6BDE735A88",
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.cs"
+    },
+    {
+      "sha256": "3C3CF7A5D64645FABE798CA14718232AAFC5B2C810BCF40E237A0C620CAABA44",
+      "path": "Direct2dCad.UiAutomation.Tests/CadApplicationFixture.cs"
+    },
+    {
+      "sha256": "2D711463417417D2ADD2722B972315A83EB29F08CB69AB345FC7DFE760D2404A",
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.Shortcuts.cs"
+    },
+    {
+      "sha256": "16DB754F368012465948D8E9E5CD77E27E7580490FEC337DFB80EF2493AA79C0",
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.Escape.cs"
+    },
+    {
+      "sha256": "08077E302E3284B975945EA6B3F4C9E4DBA9106EC099176C5EB28D5C219930A1",
+      "path": "Direct2dCad.UiAutomation.Tests/MainWindowUiTests.Enter.cs"
+    },
+    {
+      "sha256": "47A3AE46076DAF05285C33C6B624E82A8733CE2F91C43F309EC36FEB7AB57397",
+      "path": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.dll"
+    },
+    {
+      "sha256": "9AFC6734209AFC71DAD02F3C43E0FD6DF4980AD1F1B93C9FDAE3559283AD7D8C",
+      "path": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.exe"
+    },
+    {
+      "sha256": "B04F2AE119CD5EE42D9ABF8FCE09D8978BCE5AA17FEDBB89FB7859AB0C46DB9D",
+      "path": "Direct2dCad.Windows.IntegrationTests/bin/Release/net10.0-windows/Direct2dCad.Windows.IntegrationTests.dll"
+    },
+    {
+      "sha256": "2361E645AA5ED466EBA1A5B5E01F8E339FADCB19E04A63CDC32FD618C4F2616D",
+      "path": "Direct2dCad.UiAutomation.Tests/bin/Release/net10.0-windows/Direct2dCad.UiAutomation.Tests.dll"
+    },
+    {
+      "sha256": "E7A0D9833F0FB3E1EDCE29A2CACD2D230BF914CD5A7EBB0568AD96C2F5478932",
+      "path": "Direct2dCad.wpf/bin/Release/net10.0-windows/win-x64/Direct2dCad.ViewModels.dll"
+    },
+    {
+      "sha256": "3D7B40218C0D78BEDCB1BD85527D54A8383BC65AE1C865E9D312458B63D33F04",
+      "path": "Direct2dCad.ViewModels.Tests/bin/Release/net10.0/Direct2dCad.ViewModels.Tests.dll"
+    },
+    {
+      "sha256": "E7A0D9833F0FB3E1EDCE29A2CACD2D230BF914CD5A7EBB0568AD96C2F5478932",
+      "path": "Direct2dCad.ViewModels.Tests/bin/Release/net10.0/Direct2dCad.ViewModels.dll"
+    },
+    {
+      "sha256": "9493C7FF0F05B363DFA64A1F5174592D068EF5509984C426DCCF0F233564CB6D",
+      "path": "docs/SHORTCUTS-AND-FOCUS.md"
+    }
+  ],
+  "evidence_hashes": [
+    {
+      "sha256": "E68FB5E7CBE6B9A71679C2E2BE39DE209FC3E4D6FD5B1DFB81A2224A2D642E2C",
+      "path": "architecture-guard.txt"
+    },
+    {
+      "sha256": "F07F927CD0A65F10506E0FC6F45737B49085322D60BB5D6E7F592EECF62129C3",
+      "path": "architecture.txt"
+    },
+    {
+      "sha256": "59D9CBE095E2C854433BA02D45C7609369CA0116312ACD722D195D658905E463",
+      "path": "context-diagnostics.txt"
+    },
+    {
+      "sha256": "E0B1AC7BB03B993F014012F20EFE13CC6E0314F059944FB2C05A9053B65D9C21",
+      "path": "floating-dispatch-after.txt"
+    },
+    {
+      "sha256": "4020D07F0394FACC7DA9667C8F48E6E3978277215AC00DFA53A607E2C188AFD5",
+      "path": "floating-dispatch-before.txt"
+    },
+    {
+      "sha256": "72BA1A60ADF5BAA95EB726B1BC05CE073AE28AE350584CF187CEB204BEF62E34",
+      "path": "README.md"
+    },
+    {
+      "sha256": "AA57F3E064FEAE155BDECF25D1A121200F8C01A3910ED3226EA385E8DA159CB6",
+      "path": "solution-build.txt"
+    },
+    {
+      "sha256": "BE97A7F4E43329E6F0F54458583D026272CA9CD60FFBEDCC2B0C3E620195658E",
+      "path": "ui.txt"
+    },
+    {
+      "sha256": "FEA53E5B74FC20CF563216CDD930A1C2CD610675BC4D290066180B76EFD2AE68",
+      "path": "viewmodels.txt"
+    },
+    {
+      "sha256": "15D6E3DAC6FF983DC499C43C74F8AFABD5EAFCBDD567C29A9D77DEFF3C7306E9",
+      "path": "welcome-ui.txt"
+    },
+    {
+      "sha256": "9BEA93AEAE6F6C17D03B14D257B281EEBFD26AD6B8FB2D55CC0AB8E6347D701B",
+      "path": "windows.txt"
+    },
+    {
+      "sha256": "E5E34D5DDDABF07AC24803F95F30FE066F997AC42180D061624701663D7D531E",
+      "path": "screenshots/enter-ai-disabled-send.png"
+    },
+    {
+      "sha256": "4F06047E92B75852B9B73823CE6EBF6654C1973845504C2B8215AB8F993CBFC1",
+      "path": "screenshots/enter-drawing-property-preserves-points.png"
+    },
+    {
+      "sha256": "826743F8941C26F7321BB75CE2E7555F39390D4CEB41AC87850CDEE73974E6AC",
+      "path": "screenshots/enter-dynamic-input-invalid.png"
+    },
+    {
+      "sha256": "23114BF1216656001555904B72538D89E4C54A646714B50645E8C873024C7F7D",
+      "path": "screenshots/enter-dynamic-input-one-point.png"
+    },
+    {
+      "sha256": "D312BD08D6643780C857D5D325F5AD5B4441DCBBCD8AA253A64D98894D730397",
+      "path": "screenshots/enter-floating-before-confirm.png"
+    },
+    {
+      "sha256": "CA47CB15809BA3B19FD10E7C92DEF8320F9CDC3F262F841B64BEFD1189A98E0F",
+      "path": "screenshots/enter-floating-canvas.png"
+    },
+    {
+      "sha256": "92263117A2EF76F297B8598C90376421590683C511504EB38CE18647CC179F54",
+      "path": "screenshots/enter-floating-focus.txt"
+    },
+    {
+      "sha256": "AAEF859A392504205F64D38265A7A3C979173CCE9BCF9A9F2420CCAEAF3AD8E5",
+      "path": "screenshots/enter-main-canvas.png"
+    },
+    {
+      "sha256": "7628F32E3113F2DB9ADA5930307D311BA9FC2A21843176BF65335C8C64092112",
+      "path": "screenshots/enter-native-repeat-floating.png"
+    },
+    {
+      "sha256": "568FC4F142A5E8144CFE71EC326D62B6FDF94C7378F56147234CA5A65C2A13B0",
+      "path": "screenshots/enter-native-repeat-main.png"
+    },
+    {
+      "sha256": "9D9BB8831DBF7D480ADD6D18FC7FC65AE01F53B0AEA700268BF5D028FD6F3FF1",
+      "path": "screenshots/enter-passive-panel-floating.png"
+    },
+    {
+      "sha256": "7D62B0CF1E7036680E2AB3C4C25CBF1F29D7D00B139A435EF2A05187EBCBC7DB",
+      "path": "screenshots/enter-passive-panel-main.png"
+    },
+    {
+      "sha256": "34A2C189D3BD62B4E6DA8F1AB7131898B4DA4A9A817120B80CF5FD4CD98F4D87",
+      "path": "screenshots/enter-property-committed.png"
+    },
+    {
+      "sha256": "0B8128435173EA3F6DA7DE9B9D9067CD92F5EBAA30C9C912C454581EABAF603E",
+      "path": "screenshots/enter-property-invalid.png"
+    },
+    {
+      "sha256": "476631864F86435F40B1EEAA29A9C918477CB921C0776F5DC30C3DC6D471EB92",
+      "path": "screenshots/enter-terminal-completion.png"
+    },
+    {
+      "sha256": "8EF8BBB86B0C90EC7A85D2DE4675F535F2A015E52F2E00C79EBCFD7C4650773F",
+      "path": "screenshots/escape-ai-before.png"
+    },
+    {
+      "sha256": "F775F5DECB8CB4E73F33826B3E7EC1ADCED6203E45D7E79E4647DF9C6E5B6C1F",
+      "path": "screenshots/escape-ai.png"
+    },
+    {
+      "sha256": "8C62A18860AF2C45086E2CBE10BE4FFB3ECA057A679E6F11A03CB96DD6D2B741",
+      "path": "screenshots/escape-layers-before.png"
+    },
+    {
+      "sha256": "05B9AC81E36215207C24D53D0FD8F1232228A550CF0A1E84A6F4C34E928DDEE7",
+      "path": "screenshots/escape-layers.png"
+    },
+    {
+      "sha256": "96005549F5A276D94A9CB072D72407B7482FAE3894B8EE8C19D14ED687A9FB01",
+      "path": "screenshots/escape-terminal-before.png"
+    },
+    {
+      "sha256": "C67F1AC607E196CEA5F4AF478269D879CCCF7CB180CCA45164F655866C70ECC6",
+      "path": "screenshots/escape-terminal.png"
+    },
+    {
+      "sha256": "73BE74848A9F4393CABFFB2F7C8A746856827489BCAE34219AEFA493CBC59319",
+      "path": "screenshots/shortcut-ai-new-and-newline.png"
+    },
+    {
+      "sha256": "C1E912DB09F831E3758B6EE11746E1AE60E918817A87176EA4D399EABE83B10F",
+      "path": "screenshots/shortcut-floating-document.png"
+    },
+    {
+      "sha256": "D9574DCB2BE2C95792FFE2537A646D7056496CB711B413A55BF6FA3B3D28C7CD",
+      "path": "screenshots/shortcut-new-from-terminal.png"
+    },
+    {
+      "sha256": "1A7D7DA4A70D1C2DCACEC6A233439046EDDFF9BABCD1F2D604936C5C6676D3D8",
+      "path": "screenshots/welcome-after-drawing.png"
+    },
+    {
+      "sha256": "F0048F394092ADD2AD41602AB117E22096F725AFB16D2AA70A3FB49104AEDC53",
+      "path": "screenshots/welcome-after-switch.png"
+    },
+    {
+      "sha256": "957B3BA319D33D79F98D92282B2B904323287AB6902378CC36C2E48064D11FF7",
+      "path": "screenshots/welcome-toolboxes.png"
+    },
+    {
+      "sha256": "82C88BB8124B4348BCEC8699C38D0B7F53B793FA79920A72CF97D8611224EDE9",
+      "path": "ui/shortcuts-ui.trx"
+    },
+    {
+      "sha256": "FD9FE61802EEC9CF3DDA429BE2A7E69F57AB80837D0E96133CB1400B44FDE7B5",
+      "path": "viewmodels/viewmodels.trx"
+    },
+    {
+      "sha256": "33F96C8D6EB402FF9190557C80D842DC1589733F59DF85E0A1A54E3EBF3675F2",
+      "path": "welcome-ui/welcome-ui.trx"
+    },
+    {
+      "sha256": "D0DA2B0DFA0A60A376D7B2CFCC745E760E40180ECE473D0B629E0F9A414EEF20",
+      "path": "windows/windows.trx"
+    }
+  ]
+}

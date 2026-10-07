@@ -1,0 +1,112 @@
+{
+  "head": "8766f612efb780c2df777ae38b3ef3b4b3a93a59",
+  "date": "2026-10-07",
+  "scope": "Current working tree audit; no product fixes",
+  "evidence": [
+    {
+      "file": "Program.cs.txt",
+      "sha256": "34D13F585B198F93D2D884A2021BF2CD8CD6759ABD5DB9E7BCEC39C4A9EAC379"
+    },
+    {
+      "file": "Probe.csproj.txt",
+      "sha256": "9B932D3B796AC3B93677B031E93F5C60046616E76458107557420E79D481B332"
+    },
+    {
+      "file": "probe-output.txt",
+      "sha256": "9220B280FC933EA45E02236932D0402DB123E7B4EE36B3981EA95F99F3A4DB50"
+    }
+  ],
+  "confirmed_reproductions": 5,
+  "binary_checks": [
+    {
+      "project": "Direct2dCad.Commands",
+      "test_copy_matches": true,
+      "sha256": "9D8D680EC3AD4DBE1F6B2AA7B1E1B77C841803BC851056AA2F974DFF065F2FFC"
+    },
+    {
+      "project": "Direct2dCad.Agent",
+      "test_copy_matches": true,
+      "sha256": "AA563D57D10013FF20AA346E5196F58B4DC814F9E3C5C820E04FB0D394E9CFDC"
+    },
+    {
+      "project": "Direct2dCad.Application",
+      "test_copy_matches": true,
+      "sha256": "4B07A86D34DADF28591728EF4BF699FCCBA6FE3B3041E0BAA30F43E356D9BE5F"
+    }
+  ],
+  "existing_tests_passed": 102,
+  "tests": [
+    {
+      "failed": 0,
+      "passed": 28,
+      "file": "commands.trx",
+      "sha256": "9DB3238E60173C1FBB80208B3DAC786B2208240F5F4041FCCF2AC609D80DBD77"
+    },
+    {
+      "failed": 0,
+      "passed": 19,
+      "file": "agent.trx",
+      "sha256": "413B8A693BC0D1F9668DAF8A7E3F03F1C75E10F2A9BDE6659C6D1645130ABE83"
+    },
+    {
+      "failed": 0,
+      "passed": 55,
+      "file": "application.trx",
+      "sha256": "9104C6CE5BCD94860E0EF0F3E1479A248B8E7E08BEDB8D11656F7627AE693ECD"
+    }
+  ],
+  "sources": [
+    {
+      "file": "Direct2dCad.Commands/TransformEntitiesCommands.cs",
+      "sha256": "7A2BA6E14107635AB767F37678C9A9EC90EFBB58DFA270756035DC681F58085F"
+    },
+    {
+      "file": "Direct2dCad.Commands/CadEntityTransform.cs",
+      "sha256": "69B682F8745AE00855DFA6D8543DC147937E43A39E570E7F3EE29CB0DD49EA90"
+    },
+    {
+      "file": "Direct2dCad.Commands/LayoutCommands.cs",
+      "sha256": "535FDC85CD5CC59632D6C48C4159887360941CF2BAF56660177BEA1DB27882EF"
+    },
+    {
+      "file": "Direct2dCad.Db/Data/Entities/CadBlockReference.cs",
+      "sha256": "EFCE096CD7E3B47B2548F94E18232907903BB0C1C72E11CD9BDAE1F7AE92F170"
+    },
+    {
+      "file": "Direct2dCad.Db/Cad/CadDocument.cs",
+      "sha256": "586DE05B0B4FA73FC21B6F6A11CB407D1BFF14C85106CB7DBDE20F015BA107D5"
+    },
+    {
+      "file": "Direct2dCad.Db/Cad/CadLayout.cs",
+      "sha256": "BC58587588AE4A90571E33D3EE39A493A888C0087AD0A84124885FEAEDE58007"
+    },
+    {
+      "file": "Direct2dCad.Db/Geometry/RectD.cs",
+      "sha256": "5B642D7FC572BB7A8B1044B71B7764863FC7C7ED23E46CA56026CE8B3DCD0159"
+    },
+    {
+      "file": "Direct2dCad.Application/Tools/CadWorkspaceToolExecutor.Presentation.cs",
+      "sha256": "33F06708BDD09EF9A96614D979A58C445D58FB1860EC27738298A26E0A9AC34D"
+    },
+    {
+      "file": "Direct2dCad.Agent/AgentRunner.cs",
+      "sha256": "135CD57F5048B56D3B772DC5C5D792CFBD6A8FB18A9CD46CADBC45A295E2F75C"
+    },
+    {
+      "file": "Direct2dCad.Agent/AgentRequestContextBuilder.cs",
+      "sha256": "44260E300F7B8E85AD447634776B52E715825F11309A966477B94A1E987E0380"
+    },
+    {
+      "file": "Direct2dCad.Editor/Commands/CadDocumentCommandManager.cs",
+      "sha256": "79A0A22CE89B67494E541047DB227CFC330346EBA358F6BAE9EE578ADB243E97"
+    },
+    {
+      "file": "Direct2dCad.ViewModels.Services/Documents/CadDocumentSaveSession.cs",
+      "sha256": "17E8DBA5D8B5265EBA0A27163C0B58C8F629B97F79EE18CFAD39ABDAD361C9FC"
+    },
+    {
+      "file": "Direct2dCad.IO/Dxf/CadDxfStorage.cs",
+      "sha256": "67A86475741C42231DAED8DA82D4F56016A12A707C3D9CAEF9FB6E0F3C2BE94F"
+    }
+  ]
+}

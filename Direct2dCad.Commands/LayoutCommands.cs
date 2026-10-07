@@ -41,12 +41,17 @@ public sealed class CreateLayoutCommand(
 public sealed class DeleteLayoutCommand(LayoutId layoutId) : ICadCommand
 {
     private CadLayout? _layout;
+    private Dictionary<EntityId, bool>? _erasedStates;
     public string Name => "Delete Layout";
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
+        var layout = document.GetLayout(layoutId);
+        var erasedStates = document.GetBlock(layout.PaperSpaceBlockId).EntityIds
+            .ToDictionary(id => id, id => document.GetEntity(id).IsErased);
         _layout = document.DetachLayout(layoutId);
-        var entityIds = document.GetBlock(_layout.PaperSpaceBlockId).EntityIds;
+        _erasedStates = erasedStates;
+        var entityIds = erasedStates.Where(p => !p.Value).Select(p => p.Key).ToArray();
         foreach (var entityId in entityIds)
             document.GetEntity(entityId).Erase();
         return CadDocumentChangeSet.ForEntities(
@@ -57,12 +62,15 @@ public sealed class DeleteLayoutCommand(LayoutId layoutId) : ICadCommand
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
-        if (_layout is null)
+        if (_layout is null || _erasedStates is null)
             return CadDocumentChangeSet.Empty;
         document.RestoreLayout(_layout);
-        var entityIds = document.GetBlock(_layout.PaperSpaceBlockId).EntityIds;
-        foreach (var entityId in entityIds)
-            document.GetEntity(entityId).Restore();
+        var entityIds = _erasedStates.Where(p => !p.Value).Select(p => p.Key).ToArray();
+        foreach (var (entityId, erased) in _erasedStates)
+        {
+            if (erased) document.GetEntity(entityId).Erase();
+            else document.GetEntity(entityId).Restore();
+        }
         return CadDocumentChangeSet.ForEntities(
                 entityIds,
                 CadEntityChangeKind.Created | CadEntityChangeKind.Visibility)

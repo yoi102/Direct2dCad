@@ -42,6 +42,7 @@ internal sealed class Direct2DTransientGroupCommandListCache(
     {
         ThrowIfDisposed();
         var profileKey = TransientGroupProfileKey.Create(options, viewport.Zoom);
+        if (resourceCache.HasLocalGeometry || resourceCache.RequiresPrecision(viewport)) { Clear(); return false; }
         if (ReferenceEquals(_document, document) &&
             _items is not null &&
             _items.Count == _itemCount &&
@@ -93,6 +94,7 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         CadRenderOptions options)
     {
         ThrowIfDisposed();
+        if (resourceCache.HasLocalGeometry || resourceCache.RequiresPrecision(viewport)) return false;
         if (_commandList is null ||
             !ReferenceEquals(_document, document) ||
             !ReferenceEquals(_items, group.Items) ||
@@ -101,22 +103,13 @@ internal sealed class Direct2DTransientGroupCommandListCache(
             return false;
         }
 
-        var previousTransform = context.Transform;
-        context.Transform = ToMatrix3x2(group.Transform) * previousTransform;
-        try
-        {
-            context.DrawImage(
-                _commandList,
-                null,
-                null,
-                InterpolationMode.Linear,
-                CompositeMode.SourceOver);
-        }
-        finally
-        {
-            context.Transform = previousTransform;
-        }
-
+        using var coordinates = Direct2DCoordinateSystem.Push(context, group.Transform);
+        context.DrawImage(
+            _commandList,
+            null,
+            null,
+            InterpolationMode.Linear,
+            CompositeMode.SourceOver);
         return true;
     }
 
@@ -355,13 +348,6 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         _profileKey = profileKey;
     }
 
-    private static Matrix3x2 ToMatrix3x2(CadMatrixD transform) => new(
-        (float)transform.M11,
-        (float)transform.M12,
-        (float)transform.M21,
-        (float)transform.M22,
-        (float)transform.OffsetX,
-        (float)transform.OffsetY);
 
     private void ThrowIfDisposed()
     {

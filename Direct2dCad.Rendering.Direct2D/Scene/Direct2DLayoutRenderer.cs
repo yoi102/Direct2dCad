@@ -70,8 +70,7 @@ internal sealed class Direct2DLayoutRenderer(
             context.PushAxisAlignedClip(ToRawRect(layoutViewport.Bounds), AntialiasMode.PerPrimitive);
             try
             {
-                var modelToPaper = CreateModelToPaperTransform(layoutViewport);
-                context.Transform = modelToPaper * paperTransform;
+                using var modelCoordinates = Direct2DCoordinateSystem.Push(context, CreateModelToPaperWorldTransform(layoutViewport));
 
                 var modelViewport = CreateModelViewport(paperViewport, layoutViewport);
                 var isActiveViewport = options.ActiveLayoutViewportId == layoutViewport.Id;
@@ -135,8 +134,7 @@ internal sealed class Direct2DLayoutRenderer(
         context.PushAxisAlignedClip(ToRawRect(layoutViewport.Bounds), AntialiasMode.PerPrimitive);
         try
         {
-            context.Transform =
-                CreateModelToPaperTransform(layoutViewport) * paperTransform;
+            using var modelCoordinates = Direct2DCoordinateSystem.Push(context, CreateModelToPaperWorldTransform(layoutViewport));
             var modelViewport = CreateModelViewport(paperViewport, layoutViewport);
             var activeModelOptions = CreateModelViewportOptions(
                 options,
@@ -191,6 +189,11 @@ internal sealed class Direct2DLayoutRenderer(
         System.Numerics.Matrix3x2.CreateTranslation(
             (float)viewport.Bounds.Center.X,
             (float)viewport.Bounds.Center.Y);
+
+    internal static CadMatrixD CreateModelToPaperWorldTransform(CadLayoutViewport viewport) =>
+        CadMatrixD.CreateTranslation(-viewport.ModelCenter.X, -viewport.ModelCenter.Y) *
+        CadMatrixD.CreateRotation(viewport.RotationRadians) * CadMatrixD.CreateScale(viewport.Scale) *
+        CadMatrixD.CreateTranslation(viewport.Bounds.Center.X, viewport.Bounds.Center.Y);
 
     internal static CadViewport CreateModelViewport(
         CadViewport paperViewport,

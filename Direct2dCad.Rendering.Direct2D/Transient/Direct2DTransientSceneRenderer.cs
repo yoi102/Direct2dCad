@@ -1,7 +1,7 @@
-using System.Numerics;
 using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering.Direct2D.Resources;
 using Direct2dCad.Rendering.Transient;
 using Vortice;
 using Vortice.Direct2D1;
@@ -127,7 +127,8 @@ internal sealed class Direct2DTransientSceneRenderer(
                         ellipse.RadiusX,
                         ellipse.RadiusY,
                         ellipse.Style,
-                        options.IsLevelOfDetailEnabled);
+                        options.IsLevelOfDetailEnabled,
+                        ellipse.RotationRadians);
                     break;
                 case CadTransientEllipseArc arc when arc.RadiusX > 0 && arc.RadiusY > 0 &&
                                                      Math.Abs(arc.SweepAngleRadians) > double.Epsilon:
@@ -263,25 +264,17 @@ internal sealed class Direct2DTransientSceneRenderer(
         if (groupCommandListCache.TryDraw(context, document, viewport, group, options))
             return;
 
-        var previousTransform = context.Transform;
-        context.Transform = ToMatrix3x2(group.Transform) * previousTransform;
-        try
-        {
-            DrawItems(
-                context,
-                document,
-                viewport,
-                group.Items,
-                options,
-                drawOle,
-                drawEntityReference,
-                drawBlockReference,
-                skipGroup);
-        }
-        finally
-        {
-            context.Transform = previousTransform;
-        }
+        using var coordinates = Direct2DCoordinateSystem.Push(context, group.Transform);
+        DrawItems(
+            context,
+            document,
+            viewport,
+            group.Items,
+            options,
+            drawOle,
+            drawEntityReference,
+            drawBlockReference,
+            skipGroup);
     }
 
     public void Clear()
@@ -304,50 +297,22 @@ internal sealed class Direct2DTransientSceneRenderer(
         if (bitmap is null)
             return;
 
-        var previousTransform = context.Transform;
-        context.Transform = CreateWorldRotationTransform(
-            image.RotationRadians,
-            image.Bounds.Center,
-            previousTransform);
-        try
-        {
-            context.DrawBitmap(
-                bitmap,
-                new RawRectF(
-                    (float)image.Bounds.MinX,
-                    (float)image.Bounds.MinY,
-                    (float)image.Bounds.MaxX,
-                    (float)image.Bounds.MaxY),
-                ToOpacity(image.Opacity),
-                InterpolationMode.Linear,
-                null,
-                null);
-        }
-        finally
-        {
-            context.Transform = previousTransform;
-        }
+        var origin = Direct2DTransientRenderer.LocalOrigin(image.Bounds.Center);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
+        var bounds = image.Bounds.Translate(new(-origin.X, -origin.Y));
+        using var rotation = Direct2DCoordinateSystem.Push(context, CadMatrixD.CreateRotation(image.RotationRadians, bounds.Center));
+        context.DrawBitmap(
+            bitmap,
+            new RawRectF(
+                (float)bounds.MinX,
+                (float)bounds.MinY,
+                (float)bounds.MaxX,
+                (float)bounds.MaxY),
+            ToOpacity(image.Opacity),
+            InterpolationMode.Linear,
+            null,
+            null);
     }
-
-    private static Matrix3x2 CreateWorldRotationTransform(
-        double rotation,
-        CadPointD center,
-        Matrix3x2 transform)
-    {
-        return Math.Abs(rotation) <= 1e-12
-            ? transform
-            : Matrix3x2.CreateRotation(
-                (float)rotation,
-                new Vector2((float)center.X, (float)center.Y)) * transform;
-    }
-
-    private static Matrix3x2 ToMatrix3x2(CadMatrixD transform) => new(
-        (float)transform.M11,
-        (float)transform.M12,
-        (float)transform.M21,
-        (float)transform.M22,
-        (float)transform.OffsetX,
-        (float)transform.OffsetY);
 
     private static float ToOpacity(double opacity)
     {

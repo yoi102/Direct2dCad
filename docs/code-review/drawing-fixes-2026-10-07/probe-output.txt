@@ -1,0 +1,12 @@
+{"probe":"ellipse_axis","mode":"EllipseCenter","center":{"X":0,"Y":0},"radiusX":56.568542494923804,"radiusY":14.14213562373095,"rotation":0.7853981633974483,"normalizedEndpoint":1,"expectedEndpointOnEllipse":1}
+{"probe":"ellipse_axis","mode":"EllipseAxisEnd","center":{"X":0,"Y":0},"radiusX":56.568542494923804,"radiusY":14.14213562373095,"rotation":0.7853981633974483,"normalizedEndpoint":1,"expectedEndpointOnEllipse":1}
+{"probe":"ellipse_axis","mode":"EllipseArc","center":{"X":0,"Y":0},"radiusX":56.568542494923804,"radiusY":14.14213562373095,"rotation":0.7853981633974483,"normalizedEndpoint":1,"expectedEndpointOnEllipse":1}
+{"probe":"polyline_preview","differentPixels":0,"controlDifferentPixels":0}
+{"probe":"spline_hatch_preview","differentPixels":0,"controlDifferentPixels":0,"actualBounds":{"MinX":-66.66666666666667,"MinY":-66.66666666666667,"MaxX":66.66666666666667,"MaxY":66.66666666666667,"Left":-66.66666666666667,"Bottom":-66.66666666666667,"Right":66.66666666666667,"Top":66.66666666666667,"Width":133.33333333333334,"Height":133.33333333333334,"Center":{"X":0,"Y":0},"Size":{"Width":133.33333333333334,"Height":133.33333333333334,"IsEmpty":false},"IsEmpty":false},"fitPointBounds":{"MinX":-50,"MinY":-50,"MaxX":50,"MaxY":50,"Left":-50,"Bottom":-50,"Right":50,"Top":50,"Width":100,"Height":100,"Center":{"X":0,"Y":0},"Size":{"Width":100,"Height":100,"IsEmpty":false},"IsEmpty":false}}
+{"probe":"large_coordinate_render","coordinate":100000000,"length":0.5,"zoom":100,"expectedScreenLength":50,"nearRedPixels":400,"farRedPixels":400}
+{"probe":"large_coordinate_render","coordinate":1000000,"length":0.01,"zoom":1000,"expectedScreenLength":10,"nearRedPixels":80,"farRedPixels":80}
+{"probe":"three_point_curve_translation","coordinate":0,"mode":"CircleThreePoint","createdEntities":1,"StepInputError":""}
+{"probe":"three_point_curve_translation","coordinate":0,"mode":"ArcThreePoint","createdEntities":1,"StepInputError":""}
+{"probe":"three_point_curve_translation","coordinate":1000000,"mode":"CircleThreePoint","createdEntities":1,"StepInputError":""}
+{"probe":"three_point_curve_translation","coordinate":1000000,"mode":"ArcThreePoint","createdEntities":1,"StepInputError":""}
+Passed original drawing defect acceptance through current production code.

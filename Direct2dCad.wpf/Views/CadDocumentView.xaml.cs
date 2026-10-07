@@ -17,6 +17,7 @@ using System.Windows.Threading;
 using Direct2dCad.ViewModels;
 using Direct2dCad.wpf.Controls;
 using Direct2dCad.ViewModels.Enums;
+using Direct2dCad.wpf.Services.Input;
 
 namespace Direct2dCad.wpf.Views;
 /// <summary>
@@ -49,6 +50,7 @@ public partial class CadDocumentView : IDisposable
     public CadDocumentView()
     {
         InitializeComponent();
+        KeyDown += DynamicInput_OnKeyDown;
         Loaded += (_, _) => AttachDynamicInput();
         Unloaded += (_, _) => DetachDynamicInput();
         DataContextChanged += (_, _) => { if (IsLoaded) AttachDynamicInput(); };
@@ -256,41 +258,66 @@ public partial class CadDocumentView : IDisposable
     }
     private void DynamicInput_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (_dynamicInputDocument is { IsCurveEditTool: true } editDocument)
+        if (e.Key != Key.Escape) HandleDynamicInputKey(e.Key, Keyboard.Modifiers, e);
+    }
+
+    private void DynamicInput_OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (!e.Handled && e.Key == Key.Escape) HandleDynamicInputKey(e.Key, Keyboard.Modifiers, e);
+    }
+
+    internal void HandleDynamicInputKey(Key key, ModifierKeys modifiers, KeyEventArgs e)
+    {
+        if (e.Handled || key is Key.ImeProcessed or Key.DeadCharProcessed) return;
+        var shortcut = CadShortcutCatalog.Find(CadShortcutScope.DynamicInput, key, modifiers);
+        if (shortcut is null) return;
+        if (_dynamicInputDocument is not { } document) return;
+        if (HandleSnapCandidateKey(document, key, modifiers))
         {
-            if (e.Key==Key.Escape) { editDocument.Escape(); cadCanvas.Focus(); e.Handled=true; return; }
-        }
-        if (_dynamicInputDocument is not { HasDynamicInput: true } document || dynamicInputSurface.Visibility != Visibility.Visible) return;
-        if (e.Key == Key.Tab && Keyboard.Modifiers == ModifierKeys.Control && document.HasSnapCandidates)
-        {
-            document.CycleSnapCandidateCommand.Execute(null);
             e.Handled = true;
             return;
         }
-        if (e.Key == Key.Tab && (Keyboard.Modifiers & ~ModifierKeys.Shift) == ModifierKeys.None)
+        if (!document.HasDynamicInput || dynamicInputSurface.Visibility != Visibility.Visible) return;
+        if (shortcut.Action is CadShortcutAction.NextField or CadShortcutAction.PreviousField)
         {
             var boxes = DynamicInputBoxes();
             if (boxes.Length == 0) return;
             var current = Array.FindIndex(boxes, b => b.IsKeyboardFocusWithin);
-            var next = (current + ((Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? -1 : 1) + boxes.Length) % boxes.Length;
-            if (current < 0) next = (Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? boxes.Length - 1 : 0;
+            var backwards = shortcut.Action == CadShortcutAction.PreviousField;
+            var next = (current + (backwards ? -1 : 1) + boxes.Length) % boxes.Length;
+            if (current < 0) next = backwards ? boxes.Length - 1 : 0;
             boxes[next].Focus(); boxes[next].SelectAll();
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && dynamicInputSurface.IsKeyboardFocusWithin)
+        else if (shortcut.Action == CadShortcutAction.Confirm && dynamicInputSurface.IsKeyboardFocusWithin)
         {
-            if (document.SubmitDynamicInput()) cadCanvas.Focus();
+            if (!CadEnterKeyGuard.ShouldIgnoreRepeat(e, modifiers) && document.SubmitDynamicInput()) cadCanvas.Focus();
             e.Handled = true;
         }
-        else if (e.Key == Key.Escape && dynamicInputSurface.IsKeyboardFocusWithin)
+        else if (shortcut.Action == CadShortcutAction.Cancel && dynamicInputSurface.IsKeyboardFocusWithin)
         {
-            document.Escape(); cadCanvas.Focus(); e.Handled = true;
+            if (!e.IsRepeat)
+            {
+                document.ClearDynamicInputLocks();
+                document.RequestRender();
+                cadCanvas.Focus();
+            }
+            e.Handled = true;
         }
-        else if (e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.Control)
+        else if (shortcut.Action == CadShortcutAction.ClearFixedValues)
         {
             document.ClearDynamicInputLocks(); document.RequestRender(); e.Handled = true;
         }
     }
+
+    internal static bool HandleSnapCandidateKey(CadDocumentViewModel document, Key key, ModifierKeys modifiers)
+    {
+        if (CadShortcutCatalog.Find(CadShortcutScope.DynamicInput, key, modifiers)?.Action !=
+            CadShortcutAction.NextSnapCandidate || !document.HasSnapCandidates) return false;
+        document.CycleSnapCandidateCommand.Execute(null);
+        return true;
+    }
+
     private void DynamicInput_OnPreviewTextInput(object sender, TextCompositionEventArgs e)
     {
         if (_dynamicInputDocument is not { HasDynamicInput: true } || dynamicInputSurface.Visibility != Visibility.Visible) return;

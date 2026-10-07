@@ -35,9 +35,11 @@ Direct2dCad 是面向 Windows 的二维 CAD 编辑器，基于 WPF、Direct2D �
 常用操作：
 
 - `Tab` / `Shift+Tab` 切换数值字段；`Enter` 确认当前输入，多点绘制接受最后一点后再按 `Enter` 完成。
-- `Esc` 取消当前操作并返回选择模式。
+- `Esc` 逐层取消当前输入或操作，并恢复画布焦点。
 - 滚轮缩放，右键或中键平移；控制点编辑先预览，再次左键确认。
 - 在 Terminal 输入 `HELP` 查看命令，输入 `TOOLS` / `TOOLHELP` 查看 AI 工具。
+- `Ctrl+N/O/S` 新建、打开、保存；`Ctrl+J` 切换 Terminal，`Ctrl+Tab` 导航图纸，`F4` 切换捕捉候选。完整范围见 [快捷键与焦点](docs/SHORTCUTS-AND-FOCUS.md)。
+- `Enter` 按当前焦点确认：输入框保留自身提交或换行，单行实体属性校验后回画布，普通面板可确认活动绘图；长按不会连续提交 CAD 步骤。
 
 ## AI 连接
 
@@ -51,6 +53,10 @@ AI 可查询实体、图层和块，创建或修改图形，并打开、保存�
 ## 从源码运行
 
 开发者文档：[架构与项目职责](docs/ARCHITECTURE.md) · [架构优化实施与验收](docs/ARCHITECTURE-OPTIMIZATION.md) · [交互优化实施与验收](docs/INTERACTION-OPTIMIZATION.md) · [命令行与 AI Agent 整改](docs/COMMANDLINE-AND-AI-IMPLEMENTATION.md) · [椭圆布尔与旋转选择修复](docs/SELECTION-AND-BOOLEAN-FIXES.md)。
+
+最近代码审查：[缺陷修复与验收](docs/CODE-REVIEW-FIXES-2026-10-07.md)记录缩放失败原子性、布局撤销、工具视口尺寸、Agent 取消回执和画布尺寸切换的修复及回归证据。
+
+绘制模块：[四项绘制修复与验收](docs/DRAWING-FIXES-2026-10-07.md)记录斜轴椭圆、大坐标短线、多段线预览及样条填充图案的修复。
 
 需要 Windows x64 和 .NET 10 SDK。仓库的 `global.json` 指定 SDK 10.0.401，并允许同特性带的补丁升级。
 

@@ -1,0 +1,70 @@
+{
+  "runs": [
+    {
+      "path": "ui-final/final.trx",
+      "passed": 12,
+      "failed": 1,
+      "total": 13
+    },
+    {
+      "path": "ui-themes/themes.trx",
+      "passed": 2,
+      "failed": 0,
+      "total": 2
+    }
+  ],
+  "latest": {
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ShortcutEscapeClosesPropertyDropDownWithoutClearingSelection": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ShortcutEnterCommitsSingleLinePropertyAndReturnsToCanvas": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.AnnotationRibbonPreviewPlacementPropertiesAndTemplateAreUsable": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ShortcutEscapeDiscardsPropertyTextBeforeClearingSelection(id: \"EntityNameInput\", draft: \"discarded name\")": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CompactPropertiesKeepGeometryVisibleAndMetadataReachable(tool: \"RECTANGLE\", fieldName: \"Width\", secondPoint: \"80,40\")": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CompactPropertiesKeepGeometryVisibleAndMetadataReachable(tool: \"ELLIPSE CENTER\", fieldName: \"Radius X\", secondPoint: \"40,40\")": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.BooleanRibbonAndContextMenuPreviewCommitCancelAndHistory": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ShortcutEscapeDiscardsPropertyTextBeforeClearingSelection(id: \"EntityRotationInput\", draft: \"invalid angle\")": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CompactInspectorUpdatesThemeAndChineseLabelsWithoutBreakingEditors(dark: False)": {
+      "outcome": "Passed",
+      "run": "ui-themes/themes.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CompactInspectorUpdatesThemeAndChineseLabelsWithoutBreakingEditors(dark: True)": {
+      "outcome": "Passed",
+      "run": "ui-themes/themes.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.MultiSelectionPropertiesAndLockedFrozenLayersStayInSync": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.ShortcutEnterKeepsInvalidPropertyFocusedAndAllowsCorrection": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    },
+    "Direct2dCad.UiAutomation.Tests.MainWindowUiTests.CompactPropertiesKeepGeometryVisibleAndMetadataReachable(tool: \"CIRCLE\", fieldName: \"Radius\", secondPoint: \"40\")": {
+      "outcome": "Passed",
+      "run": "ui-final/final.trx"
+    }
+  }
+}

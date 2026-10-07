@@ -724,7 +724,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
         var previousTransform = context.Transform;
         var previousAntialiasMode = context.AntialiasMode;
-        context.Transform = CreateViewportTransform(viewport);
+        using var coordinateFrame = Direct2DCoordinateSystem.PushAbsolute(context, Direct2DCoordinateSystem.ViewportTransform(viewport));
         context.AntialiasMode = options.IsAntialiasingEnabled
             ? AntialiasMode.PerPrimitive
             : AntialiasMode.Aliased;
@@ -793,7 +793,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         var previousAntialiasMode = context.AntialiasMode;
         var previousTextAntialiasMode = context.TextAntialiasMode;
         var previousPrimitiveBlend = context.PrimitiveBlend;
-        context.Transform = CreateViewportTransform(viewport);
+        using var coordinateFrame = Direct2DCoordinateSystem.PushAbsolute(context, Direct2DCoordinateSystem.ViewportTransform(viewport));
         context.AntialiasMode = options.IsAntialiasingEnabled
             ? AntialiasMode.PerPrimitive
             : AntialiasMode.Aliased;
@@ -873,7 +873,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         var previousAntialiasMode = deviceContext.AntialiasMode;
         var previousTextAntialiasMode = deviceContext.TextAntialiasMode;
         var previousPrimitiveBlend = deviceContext.PrimitiveBlend;
-        deviceContext.Transform = CreateViewportTransform(viewport);
+        using var coordinateFrame = Direct2DCoordinateSystem.PushAbsolute(deviceContext, Direct2DCoordinateSystem.ViewportTransform(viewport));
         deviceContext.AntialiasMode = options.IsAntialiasingEnabled
             ? AntialiasMode.PerPrimitive
             : AntialiasMode.Aliased;
@@ -1438,42 +1438,33 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         InlineMovePreview preview,
         CadRenderOptions options)
     {
-        var previousTransform = context.Transform;
-        context.Transform = ToMatrix3x2(preview.Transform) * previousTransform;
-        try
+        using var coordinates = Direct2DCoordinateSystem.Push(context, preview.Transform);
+        switch (preview.Item)
         {
-            switch (preview.Item)
-            {
-                case CadTransientEntityReference reference:
-                    _entityReferenceRenderer.Draw(
-                        context,
-                        document,
-                        viewport,
-                        reference,
-                        options);
-                    break;
-                case CadTransientBlockReference reference:
-                    _blockReferenceRenderer.Draw(
-                        context,
-                        document,
-                        viewport,
-                        reference.DefinitionBlockId,
-                        reference.Position,
-                        reference.RotationRadians,
-                        reference.ScaleX,
-                        reference.ScaleY,
-                        reference.LayerId,
-                        reference.ColorSource,
-                        reference.GraphicStyleId,
-                        options);
-                    break;
-            }
+            case CadTransientEntityReference reference:
+                _entityReferenceRenderer.Draw(
+                    context,
+                    document,
+                    viewport,
+                    reference,
+                    options);
+                break;
+            case CadTransientBlockReference reference:
+                _blockReferenceRenderer.Draw(
+                    context,
+                    document,
+                    viewport,
+                    reference.DefinitionBlockId,
+                    reference.Position,
+                    reference.RotationRadians,
+                    reference.ScaleX,
+                    reference.ScaleY,
+                    reference.LayerId,
+                    reference.ColorSource,
+                    reference.GraphicStyleId,
+                    options);
+                break;
         }
-        finally
-        {
-            context.Transform = previousTransform;
-        }
-
         _statistics.RecordVisibleEntity();
         _statistics.RecordEntitySubmission();
     }

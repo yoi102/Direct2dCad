@@ -89,6 +89,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CurrentCultureLCID = _userSettings.General.CultureLcid;
         cultureSettingService.ChangeCulture(CurrentCultureLCID);
         DrawingRecovery.RefreshTitle();
+        CommandLine.RefreshKeyboardHelp();
     }
 
     /// <summary>The MVVM layout tree — bind to DockLayout on the DockingManager.</summary>
@@ -182,13 +183,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
             _isDocumentContextActive = true;
             CurrentEditorTabViewModel = editorTabViewModel;
         }
-        else if (value is not CadToolboxViewModelBase)
+        else if (value is not null and not CadToolboxViewModelBase)
         {
             // Static documents such as the welcome page are not CAD contexts.
             _isDocumentContextActive = false;
             CurrentEditorTabViewModel = null;
             TabControlSelectedIndex = 0;
         }
+
+        // AvalonDock reports null while hiding/reopening panels and transferring
+        // activation. Keep the last CAD context until another document activates
+        // or DocumentClosed explicitly clears it.
 
         UpdatePrintAvailability();
     }
@@ -323,6 +328,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             CurrentCultureLCID = _userSettings.General.CultureLcid;
             _cultureSettingService.ChangeCulture(CurrentCultureLCID);
+            DrawingRecovery.RefreshTitle();
+            CommandLine.RefreshKeyboardHelp();
         }
 
         foreach (var editorTab in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
@@ -522,6 +529,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         CurrentCultureLCID = lcid;
         _cultureSettingService.ChangeCulture(lcid);
         DrawingRecovery.RefreshTitle();
+        CommandLine.RefreshKeyboardHelp();
         foreach (var editorTab in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
             editorTab.RefreshBooleanAvailability();
         _userSettings.General.CultureLcid = lcid;

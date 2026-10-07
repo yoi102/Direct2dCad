@@ -1,76 +1,50 @@
-<UserControl x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.StrokeAppearancePropertySection"
-             x:Name="Root"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
-             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang"
-             xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters">
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls" xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" xmlns:cv="clr-namespace:Direct2dCad.wpf.Converters" x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.StrokeAppearancePropertySection" x:Name="Root">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Direct2dCad;component/Views/Toolboxes/EntityProperty/PropertyInspectorCommonStyles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
-    <Expander Header="{I18N {x:Static r:LangKeys.Appearance}}"
-              IsExpanded="True"
-              Margin="0,0,0,8">
-        <Grid Margin="8,6,8,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="96" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Grid.Column="0"
-                       Text="{I18N {x:Static r:LangKeys.Color}}"
-                       VerticalAlignment="Center" />
-            <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,8">
-                <mah:ColorPicker mah:TextBoxHelper.AutoWatermark="True"
-                                 mah:TextBoxHelper.ClearTextButton="True"
-                                 AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}"
-                                 ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}"
-                                 AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}"
-                                 RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}"
-                                 StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}"
-                                 AddToRecentColorsTrigger="SelectedColorChanged"
-                                 SelectedColor="{Binding ViewModel.StrokeColor, ElementName=Root, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}">
-                    <mah:ColorPicker.Style>
-                        <Style TargetType="mah:ColorPicker">
-                            <Setter Property="IsEnabled"
-                                    Value="{Binding ViewModel.ColorControlsEnabled, ElementName=Root, Mode=OneWay}" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root}"
-                                             Value="True">
-                                    <Setter Property="IsEnabled"
-                                            Value="{Binding ViewModel.IsExplicitColorSource, ElementName=Root, Mode=OneWay}" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </mah:ColorPicker.Style>
-                </mah:ColorPicker>
-                <ComboBox Margin="0,4,0,0"
-                          ItemsSource="{Binding ViewModel.ColorSourceOptions, ElementName=Root, Mode=OneWay}"
-                          SelectedItem="{Binding ViewModel.SelectedColorSourceOption, ElementName=Root, Mode=TwoWay}"
-                          DisplayMemberPath="Name"
-                          Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
-                          IsChecked="{Binding ViewModel.UseByLayerColor, ElementName=Root, Mode=TwoWay}"
-                          Margin="0,4,0,0" Style="{DynamicResource MaterialDesignCheckBox}"
-                          Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}}" />
-            </StackPanel>
-            <TextBlock Grid.Row="1" Grid.Column="0"
-                       Text="{I18N {x:Static r:LangKeys.LineWeight}}"
-                       VerticalAlignment="Center" />
-            <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Vertical">
-                <mah:NumericUpDown AutomationProperties.Name="{I18N {x:Static r:LangKeys.LineWeight}}" Width="112"
-                                   Value="{Binding ViewModel.LineWeight, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                   IsEnabled="{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Mode=OneWay}"
-                                   Minimum="0.01"
-                                   StringFormat="F3"
-                                   Interval="0.05" />
-                <CheckBox Content="{I18N {x:Static r:LangKeys.ByLayer}}"
-                          IsChecked="{Binding ViewModel.UseByLayerLineWeight, ElementName=Root, Mode=TwoWay}"
-                          VerticalAlignment="Center"/>
-            </StackPanel>
-        </Grid>
+    <Expander Style="{DynamicResource PropertySection}" Header="{I18N {x:Static r:LangKeys.Appearance}}" IsExpanded="True" Margin="0,0,0,4">
+        <StackPanel>
+            <Grid Margin="0,4,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="84" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Color}}" VerticalAlignment="Top" Margin="0,6,8,0" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,0,4">
+                    <mah:ColorPicker mah:TextBoxHelper.AutoWatermark="True" mah:TextBoxHelper.ClearTextButton="True" AdvancedTabHeader="{I18N {x:Static r:LangKeys.ColorPickerAdvanced}}" ColorPalettesTabHeader="{I18N {x:Static r:LangKeys.ColorPickerPalettes}}" AvailableColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerAvailableColors}}" RecentColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerRecentColors}}" StandardColorPaletteHeader="{I18N {x:Static r:LangKeys.ColorPickerStandardColors}}" AddToRecentColorsTrigger="SelectedColorChanged" SelectedColor="{Binding ViewModel.StrokeColor, ElementName=Root, Mode=TwoWay, Converter={x:Static cv:CadColorToMediaColorConverter.Instance}}">
+                        <mah:ColorPicker.Style>
+                            <Style TargetType="mah:ColorPicker" BasedOn="{StaticResource PropertyColorEditor}">
+                                <Setter Property="IsEnabled" Value="{Binding ViewModel.ColorControlsEnabled, ElementName=Root, Mode=OneWay}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root}" Value="True">
+                                        <Setter Property="IsEnabled" Value="{Binding ViewModel.IsExplicitColorSource, ElementName=Root, Mode=OneWay}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </mah:ColorPicker.Style>
+                    </mah:ColorPicker>
+                    <ComboBox Style="{DynamicResource PropertyChoiceEditor}" Margin="0,4,0,0" ItemsSource="{Binding ViewModel.ColorSourceOptions, ElementName=Root, Mode=OneWay}" SelectedItem="{Binding ViewModel.SelectedColorSourceOption, ElementName=Root, Mode=TwoWay}" DisplayMemberPath="Name" Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <CheckBox FontSize="12" MinHeight="24" Content="{I18N {x:Static r:LangKeys.ByLayer}}" IsChecked="{Binding ViewModel.UseByLayerColor, ElementName=Root, Mode=TwoWay}" Margin="0,4,0,0" Style="{DynamicResource PropertyCheckBox}" Visibility="{Binding ViewModel.SupportsColorSourceSelection, ElementName=Root, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}}" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.LineWeight}}" VerticalAlignment="Top" Margin="0,6,8,0" TextWrapping="Wrap" />
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Vertical">
+                    <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.LineWeight}}" Value="{Binding ViewModel.LineWeight, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Mode=OneWay}" Minimum="0.01" StringFormat="F3" Interval="0.05"  Visibility="{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBox Style="{DynamicResource PropertyTextEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.LineWeight}}" IsReadOnly="True"
+                         Text="{Binding ViewModel.LineWeight, ElementName=Root, Mode=OneWay, StringFormat=F3}"
+                         Visibility="{Binding ViewModel.LineWeightControlsEnabled, ElementName=Root, Converter={x:Static cv:DefaultToVisibilityConverter.CollapsedInstance}}" />
+                    <CheckBox Style="{DynamicResource PropertyCheckBox}" FontSize="12" MinHeight="24" Content="{I18N {x:Static r:LangKeys.ByLayer}}" IsChecked="{Binding ViewModel.UseByLayerLineWeight, ElementName=Root, Mode=TwoWay}" VerticalAlignment="Center" Margin="4,0,0,0" />
+                </StackPanel>
+            </Grid>
+            <ContentPresenter Content="{Binding AdditionalContent, ElementName=Root}" />
+        </StackPanel>
     </Expander>
 </UserControl>

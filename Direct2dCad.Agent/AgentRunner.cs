@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Direct2dCad.AI.Contracts;
 
 namespace Direct2dCad.Agent;
@@ -28,56 +29,93 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
             contextWindowTokens = completion.ContextWindowTokens;
 
             request.Conversation.AddAssistant(completion.Completion);
-            if (!string.IsNullOrWhiteSpace(completion.Completion.Content))
-            {
-                await ReportAsync(
-                    reportEvent,
-                    new AgentRunEvent(
-                        AgentRunEventKind.AssistantMessage,
-                        completion.Completion.Content.Trim()));
-            }
-
-            if (completion.Completion.ToolCalls.Count == 0)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return new AgentRunResult(
-                    completion.Completion.Model,
-                    contextWindowTokens,
-                    string.IsNullOrWhiteSpace(completion.Completion.Content));
-            }
-
-            if (request.Toolset is null)
-                throw new InvalidOperationException("The model requested tools, but no agent toolset is available.");
-
             var images = new List<(string ToolName, IReadOnlyList<AiChatContentPart> Parts)>();
-            foreach (var toolCall in completion.Completion.ToolCalls)
+            var replied = 0;
+            var executing = false;
+            Exception? failure = null;
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                string result;
-                if (toolCall.Name == AgentToolDiscovery.Name)
+                if (!string.IsNullOrWhiteSpace(completion.Completion.Content))
                 {
-                    var discovered = AgentToolDiscovery.Execute(request.Toolset, toolCall.ArgumentsJson);
-                    result = discovered.Result;
-                    selectedTools = new[] { AgentToolDiscovery.Definition }.Concat(discovered.Tools).Concat(selectedTools)
-                        .DistinctBy(tool => tool.Name).ToArray();
+                    await ReportAsync(reportEvent, new AgentRunEvent(
+                        AgentRunEventKind.AssistantMessage, completion.Completion.Content.Trim()));
                 }
-                else result = await request.Toolset.ExecuteAsync(toolCall, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
-                var content = request.Conversation.AddToolResult(toolCall, result);
-                if (content.Images.Count > 0) images.Add((toolCall.Name, content.Images));
-                await ReportAsync(
-                    reportEvent,
-                    new AgentRunEvent(
-                        AgentRunEventKind.ToolResult,
-                        content.Text,
-                        toolCall.Name));
+
+                if (completion.Completion.ToolCalls.Count == 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return new AgentRunResult(completion.Completion.Model, contextWindowTokens,
+                        string.IsNullOrWhiteSpace(completion.Completion.Content));
+                }
+
+                if (request.Toolset is null)
+                    throw new InvalidOperationException("The model requested tools, but no agent toolset is available.");
+
+                foreach (var toolCall in completion.Completion.ToolCalls)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    executing = true;
+                    string result;
+                    if (toolCall.Name == AgentToolDiscovery.Name)
+                    {
+                        var discovered = AgentToolDiscovery.Execute(request.Toolset, toolCall.ArgumentsJson);
+                        result = discovered.Result;
+                        selectedTools = new[] { AgentToolDiscovery.Definition }.Concat(discovered.Tools).Concat(selectedTools)
+                            .DistinctBy(tool => tool.Name).ToArray();
+                    }
+                    else result = await request.Toolset.ExecuteAsync(toolCall, cancellationToken);
+                    if (cancellationToken.IsCancellationRequested && !HasExecutionReceipt(result))
+                        cancellationToken.ThrowIfCancellationRequested();
+                    // A returned receipt is an execution fact even when cancellation raced with it.
+                    var content = request.Conversation.AddToolResult(toolCall, result);
+                    replied++;
+                    executing = false;
+                    if (content.Images.Count > 0) images.Add((toolCall.Name, content.Images));
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await ReportAsync(reportEvent, new AgentRunEvent(
+                        AgentRunEventKind.ToolResult, content.Text, toolCall.Name));
+                }
             }
-            // Finish every tool response in the assistant exchange before appending
-            // image-bearing user messages; providers require contiguous tool replies.
-            foreach (var item in images) request.Conversation.AddToolImages(item.ToolName, item.Parts);
+            catch (Exception exception) { failure = exception; throw; }
+            finally
+            {
+                // Keep completed receipts and finish the protocol exchange, without executing
+                // pending calls. An interrupted call can have committed before throwing.
+                for (var i = replied; i < completion.Completion.ToolCalls.Count; i++)
+                {
+                    var interrupted = executing && i == replied;
+                    request.Conversation.AddToolResult(completion.Completion.ToolCalls[i], JsonSerializer.Serialize(new
+                    {
+                        success = false,
+                        code = interrupted ? "execution_interrupted" : "not_executed",
+                        outcome = interrupted ? "unknown" : "not_executed",
+                        may_have_committed = interrupted,
+                        error = interrupted
+                            ? "Tool execution was interrupted. Inspect the document before retrying; its outcome is unknown."
+                            : "This tool call was not executed because the exchange ended early.",
+                        reason = failure is OperationCanceledException ? "cancelled" : "failed"
+                    }));
+                }
+                // Providers require contiguous tool replies before image-bearing user messages.
+                foreach (var item in images) request.Conversation.AddToolImages(item.ToolName, item.Parts);
+            }
         }
 
         throw new InvalidOperationException("The model exceeded the maximum number of agent tool rounds.");
+    }
+
+    private static bool HasExecutionReceipt(string result)
+    {
+        // Arbitrary late text cannot prove a committed operation. CAD tools return
+        // an explicit JSON success/failure receipt that must survive cancellation.
+        try
+        {
+            using var json = JsonDocument.Parse(result);
+            return json.RootElement.ValueKind == JsonValueKind.Object &&
+                json.RootElement.TryGetProperty("success", out var success) &&
+                success.ValueKind is JsonValueKind.True or JsonValueKind.False;
+        }
+        catch (JsonException) { return false; }
     }
 
     private async Task<CompletionAttempt> CompleteWithContextRetryAsync(

@@ -41,6 +41,10 @@ internal sealed class Direct2DEntityReferenceRenderer(
         if (TryDrawTranslated(context, document, entity, viewport, reference, options))
             return;
 
+        entity = Direct2DLocalGeometry.Resolve(entity, out var origin);
+        using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin + reference.Offset);
+        reference = reference with { Offset = CadVectorD.Zero };
+
         if (!Direct2DEntityRenderer.TryGetGeometryRotation(entity, reference.Offset, out var rotation))
         {
             DrawUncachedGeometry(context, document, entity, viewport, reference, options);
@@ -197,34 +201,23 @@ internal sealed class Direct2DEntityReferenceRenderer(
         CadTransientEntityReference reference,
         CadRenderOptions options)
     {
-        var previousTransform = context.Transform;
-        context.Transform = Matrix3x2.CreateTranslation(
-            (float)reference.Offset.X,
-            (float)reference.Offset.Y) * previousTransform;
-        try
+        using var translation = Direct2DCoordinateSystem.Push(context, CadMatrixD.CreateTranslation(reference.Offset));
+        if (entity is CadOleObject ole)
         {
-            if (entity is CadOleObject ole)
-            {
-                oleRenderer.DrawEntity(
-                    context,
-                    document,
-                    ole,
-                    viewport,
-                    options,
-                    proxyColorOverride: reference.Style.StrokeColor,
-                    allowDraw: false);
-                return true;
-            }
-
-            if (!resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
-                return false;
-            entityRenderer.Draw(context, document, entity, resources, viewport, options);
-        }
-        finally
-        {
-            context.Transform = previousTransform;
+            oleRenderer.DrawEntity(
+                context,
+                document,
+                ole,
+                viewport,
+                options,
+                proxyColorOverride: reference.Style.StrokeColor,
+                allowDraw: false);
+            return true;
         }
 
+        if (!resourceCache.TryGetEntityResources(entity.Id, out var resources) || resources is null)
+            return false;
+        entityRenderer.Draw(context, document, entity, resources, viewport, options);
         return true;
     }
 
@@ -236,24 +229,14 @@ internal sealed class Direct2DEntityReferenceRenderer(
         CadTransientStyle style,
         bool isLevelOfDetailEnabled)
     {
-        var previousTransform = context.Transform;
-        context.Transform = Matrix3x2.CreateTranslation(
-            (float)offset.X,
-            (float)offset.Y) * previousTransform;
-        try
-        {
-            transientRenderer.DrawPolyline(
-                context,
-                viewport,
-                polyline.Points,
-                polyline.Closed,
-                style,
-                isLevelOfDetailEnabled);
-        }
-        finally
-        {
-            context.Transform = previousTransform;
-        }
+        using var translation = Direct2DCoordinateSystem.Push(context, CadMatrixD.CreateTranslation(offset));
+        transientRenderer.DrawPolyline(
+            context,
+            viewport,
+            polyline.Points,
+            polyline.Closed,
+            style,
+            isLevelOfDetailEnabled);
     }
 
     private void DrawTranslatedSpline(
@@ -264,23 +247,13 @@ internal sealed class Direct2DEntityReferenceRenderer(
         CadTransientStyle style,
         bool isLevelOfDetailEnabled)
     {
-        var previousTransform = context.Transform;
-        context.Transform = Matrix3x2.CreateTranslation(
-            (float)offset.X,
-            (float)offset.Y) * previousTransform;
-        try
-        {
-            transientRenderer.DrawSpline(
-                context,
-                viewport,
-                spline.FitPoints,
-                spline.Closed,
-                style,
-                isLevelOfDetailEnabled);
-        }
-        finally
-        {
-            context.Transform = previousTransform;
-        }
+        using var translation = Direct2DCoordinateSystem.Push(context, CadMatrixD.CreateTranslation(offset));
+        transientRenderer.DrawSpline(
+            context,
+            viewport,
+            spline.FitPoints,
+            spline.Closed,
+            style,
+            isLevelOfDetailEnabled);
     }
 }

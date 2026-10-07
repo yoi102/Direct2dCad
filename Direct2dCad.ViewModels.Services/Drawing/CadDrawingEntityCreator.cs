@@ -89,7 +89,7 @@ internal sealed class CadDrawingEntityCreator(
         entityCreated();
     }
 
-    public void AddEllipseIfValid(CadPointD center, double radiusX, double radiusY)
+    public void AddEllipseIfValid(CadPointD center, double radiusX, double radiusY, double rotationRadians = 0)
     {
         if (!IsValidEllipseGeometry(radiusX, radiusY))
             return;
@@ -105,7 +105,8 @@ internal sealed class CadDrawingEntityCreator(
             lineWeight: styleResolver.ResolveEllipseLineWeight(),
             zIndex: defaults.EllipseZIndex,
             isVisible: defaults.EllipseIsVisible,
-            strokeStyle: defaults.EllipseStrokeStyle);
+            strokeStyle: defaults.EllipseStrokeStyle,
+            rotationRadians: rotationRadians);
         entityCreated();
     }
 
@@ -129,7 +130,8 @@ internal sealed class CadDrawingEntityCreator(
             lineWeight: styleResolver.ResolveEllipseLineWeight(),
             zIndex: defaults.EllipseZIndex,
             isVisible: defaults.EllipseIsVisible,
-            strokeStyle: defaults.EllipseStrokeStyle);
+            strokeStyle: defaults.EllipseStrokeStyle,
+            rotationRadians: geometry.RotationRadians);
         entityCreated();
     }
 
