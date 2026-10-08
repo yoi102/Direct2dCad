@@ -103,14 +103,21 @@ internal sealed class Direct2DBlockReferenceRenderer(
 
         var hasFillChange = changes.EntityChanges.Any(
             static change => (change.Kind & CadEntityChangeKind.Fill) != 0);
+        var hasGeometryChange = changes.EntityChanges.Any(
+            static change => (change.Kind & CadEntityChangeKind.Geometry) != 0);
         var affectedDefinitionMetadata = InvalidateAffectedDefinitionMetadata(
             changes.EntityChanges,
-            removeMetadata: hasFillChange);
+            removeMetadata: hasFillChange || hasGeometryChange);
 
         var changedBlockReference = changes.EntityChanges.Any(change =>
             document.TryGetEntity(change.EntityId, out var entity) &&
             entity is CadBlockReference);
-        if (changedBlockReference || hasFillChange && affectedDefinitionMetadata)
+        var changedDefinitionGeometry = hasGeometryChange && changes.EntityChanges.Any(change =>
+            (change.Kind & CadEntityChangeKind.Geometry) != 0 &&
+            document.TryGetEntity(change.EntityId, out var entity) && entity is not null &&
+            document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false });
+        if (changedBlockReference || changedDefinitionGeometry ||
+            (hasFillChange || hasGeometryChange) && affectedDefinitionMetadata)
             MarkRequestPlanDirty();
     }
 
@@ -229,6 +236,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
         try
         {
             if (options.HiddenEntityIds.Count == 0 && !resourceCache.RequiresPrecision(viewport) &&
+                !resourceCache.RequiresPrecision(document, reference.DefinitionBlockId) &&
                 _definitionCache.TryDraw(
                     context,
                     Direct2DBlockCacheKeyFactory.Create(
@@ -515,6 +523,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
 
     private bool IsDefinitionCacheable(CadDocument document, BlockId blockId)
     {
+        if (resourceCache.RequiresPrecision(document, blockId)) return false;
         if (_definitionCacheability.TryGetValue(blockId, out var cached))
             return cached;
         if (!_cacheabilityVisitedBlocks.Add(blockId) ||
@@ -606,6 +615,7 @@ internal sealed class Direct2DBlockReferenceRenderer(
         out int recordedEntityCount)
     {
         recordedEntityCount = 0;
+        if (resourceCache.RequiresPrecision(document, request.Key.DefinitionBlockId)) return null;
         var previousTarget = context.Target;
         var previousTransform = context.Transform;
         var previousAntialiasMode = context.AntialiasMode;

@@ -77,7 +77,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
-        if (_resourceCache.RequiresPrecision(viewport)) return false;
+        if (_resourceCache.RequiresPrecision(document, viewport, options)) return false;
         if (!CanUse(options, estimatedRenderWork, viewport.Zoom))
             return false;
 
@@ -131,7 +131,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     internal bool CanDrawCompletely(CadViewport viewport, CadRenderOptions options)
     {
         ThrowIfDisposed();
-        if (_resourceCache.RequiresPrecision(viewport)) return false;
+        if (_document is null || _resourceCache.RequiresPrecision(_document, viewport, options)) return false;
         if (options.ActiveLayoutId is not null || options.HiddenEntityIds.Count > 0 ||
             !IsStrokeExtentCacheSafe(options, viewport.Zoom))
             return false;
@@ -148,7 +148,7 @@ internal sealed class Direct2DSceneTileCache : IDisposable
     {
         ThrowIfDisposed();
         missingWorldBounds = [];
-        if (_resourceCache.RequiresPrecision(viewport)) return false;
+        if (_document is null || _resourceCache.RequiresPrecision(_document, viewport, options)) return false;
         if (options.ActiveLayoutId is not null ||
             options.HiddenEntityIds.Count > 0 ||
             !IsStrokeExtentCacheSafe(options, viewport.Zoom))

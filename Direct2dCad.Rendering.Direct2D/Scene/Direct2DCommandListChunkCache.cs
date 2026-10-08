@@ -56,6 +56,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
     public long EstimatedBytes => Math.Max(0, _estimatedBytes);
     internal int LastInvalidatedChunkCount { get; private set; }
+    internal bool IsBackgroundRecordingWaiting { get; private set; }
 
     public void ResetBackgroundResources(ID2D1Factory? factory, ID2D1Device? device)
     {
@@ -77,8 +78,9 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         bool buildStep)
     {
         ThrowIfDisposed();
+        IsBackgroundRecordingWaiting = false;
         EnsureDocument(document);
-        if (_resourceCache.RequiresPrecision(viewport)) return false;
+        if (_resourceCache.RequiresPrecision(document, viewport, options)) return false;
         PublishCompletedBackgroundRecordings();
         if (!options.IsBackgroundChunkRecordingEnabled &&
             _backgroundWorker.IsReady)
@@ -128,7 +130,13 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
 
         profile.LastUsed = ++_usageStamp;
         if (!buildStep)
+        {
+            IsBackgroundRecordingWaiting = profile.HasPendingBuilds && _backgroundWorker.IsWaitingForResults &&
+                !profile.Chunks.Any(chunk => chunk.IsCacheable && chunk.CommandList is null &&
+                    chunk.PendingRecordingId == 0 && !chunk.BuildFailed && !chunk.WasBudgetEvicted &&
+                    (!options.IsBackgroundChunkRecordingEnabled || !_backgroundWorker.IsReady || !CanRecordInBackground(chunk)));
             return profile.HasPendingBuilds;
+        }
 
         var buildOptions = CreateBuildOptions(options, viewport.Zoom);
         var started = Stopwatch.GetTimestamp();
@@ -158,7 +166,10 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                     CanRecordInBackground(chunk))
                 {
                     if (!_backgroundWorker.CanSchedule)
+                    {
+                        IsBackgroundRecordingWaiting = true;
                         return true;
+                    }
                     var backgroundOptions = CreateBuildOptions(
                         options,
                         viewport.Zoom,
@@ -172,6 +183,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
                     {
                         chunk.PendingRecordingId = requestId;
                         _backgroundChunks.Add(requestId, chunk);
+                        IsBackgroundRecordingWaiting = true;
                     }
 
                     // One worker owns one context. Keep foreground cache preparation responsive
@@ -204,6 +216,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
             }
         }
 
+        IsBackgroundRecordingWaiting = profile.HasPendingBuilds && _backgroundWorker.IsWaitingForResults;
         return profile.HasPendingBuilds;
     }
 
@@ -211,7 +224,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
     {
         ThrowIfDisposed();
         EnsureDocument(document);
-        if (_resourceCache.RequiresPrecision(viewport)) return false;
+        if (_resourceCache.RequiresPrecision(document, viewport, options)) return false;
         if (options.ActiveLayoutId is not null || options.HiddenEntityIds.Count > 0 ||
             !_profiles.TryGetValue(RenderProfileKey.Create(options, viewport.Zoom), out var profile) ||
             options.IsLevelOfDetailEnabled && profile.EntityCount >= 1024 && profile.HasPendingBuilds)
@@ -236,7 +249,7 @@ internal sealed class Direct2DCommandListChunkCache : IDisposable
         ThrowIfDisposed();
         EnsureDocument(document);
         var key = RenderProfileKey.Create(options, viewport.Zoom);
-        if (_resourceCache.RequiresPrecision(viewport)) return false;
+        if (_resourceCache.RequiresPrecision(document, viewport, options)) return false;
         if (options.ActiveLayoutId is not null ||
             !_profiles.TryGetValue(key, out var profile))
         {

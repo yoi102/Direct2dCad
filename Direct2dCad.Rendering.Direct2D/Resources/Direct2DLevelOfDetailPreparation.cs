@@ -17,6 +17,8 @@ internal sealed class Direct2DLevelOfDetailPreparation : IDisposable
     private readonly Queue<Prepared> _ready = new();
     private bool _disposed;
 
+    internal bool IsWaitingForResults => _worker is { IsCompleted: false } && _ready.Count == 0;
+
     public void Request(EntityId id)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

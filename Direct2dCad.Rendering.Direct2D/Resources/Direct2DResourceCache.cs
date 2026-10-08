@@ -39,15 +39,198 @@ internal sealed class Direct2DResourceCache : IDisposable
     private bool _disposed;
     private long _imageUsageStamp;
     private int _localGeometryCount;
-    private int _localDefinitionGeometryCount;
+    private CadDocument? _precisionDocument;
+    private readonly Dictionary<BlockId, bool> _definitionPrecision = [];
+    private readonly Dictionary<BlockId, HashSet<BlockId>> _precisionDefinitionParents = [];
+    private readonly Dictionary<EntityId, BlockId> _precisionEntityOwners = [];
+    private readonly Dictionary<BlockId, OwnerPrecisionCandidates> _ownerPrecisionCandidates = [];
+    private readonly HashSet<BlockId> _precisionVisitedBlocks = [];
+    private readonly List<EntityId> _precisionQueryIds = [];
     internal bool HasLocalGeometry => _localGeometryCount > 0;
-    internal bool RequiresPrecision(CadViewport viewport)
+    internal bool RequiresPrecision(CadViewport viewport) => Direct2DCoordinateSystem.RequiresPrecision(viewport);
+
+    // Metadata is prepared once per owner and updated from document changes. Frames examine only
+    // precision-sensitive entities in the current owner, never all document entities.
+    internal bool RequiresPrecision(CadDocument document, CadViewport viewport, CadRenderOptions options)
     {
-        if (_localDefinitionGeometryCount > 0 || Direct2DCoordinateSystem.RequiresPrecision(viewport)) return true;
-        var bounds = viewport.VisibleWorldBounds;
-        return _localGeometryCount > 0 && !bounds.IsEmpty &&
-            (Direct2DCoordinateSystem.NeedsOrigin(new(bounds.MinX, bounds.MinY)) ||
-             Direct2DCoordinateSystem.NeedsOrigin(new(bounds.MaxX, bounds.MaxY)));
+        if (RequiresPrecision(viewport)) return true;
+        EnsurePrecisionDocument(document);
+        if (!_ownerPrecisionCandidates.TryGetValue(options.ActiveOwnerBlockId, out var candidates))
+        {
+            candidates = new OwnerPrecisionCandidates();
+            foreach (var entity in document.GetEntitiesInBlock(options.ActiveOwnerBlockId))
+                UpdatePrecisionCandidate(document, candidates, entity);
+            _ownerPrecisionCandidates.Add(options.ActiveOwnerBlockId, candidates);
+        }
+        if (candidates.Entities.Count == 0) return false;
+        var bounds = (Direct2DEntityVisibility.ResolveRenderWorldBounds(viewport, options) ?? viewport.VisibleWorldBounds)
+            .Inflate(Direct2DEntityVisibility.ResolveBroadPhasePadding(this, viewport, options));
+        if (candidates.Entities.Count <= 256)
+            return candidates.Entities.Values.Any(IsVisible);
+        if (options.EntityBoundsQueryInto is { } queryInto)
+        {
+            _precisionQueryIds.Clear();
+            queryInto(options.ActiveOwnerBlockId, bounds, _precisionQueryIds);
+            return _precisionQueryIds.Any(id => candidates.Entities.TryGetValue(id, out var entity) && IsVisible(entity));
+        }
+        if (options.EntityBoundsQuery is { } query)
+            return query(options.ActiveOwnerBlockId, bounds)
+                .Any(id => candidates.Entities.TryGetValue(id, out var entity) && IsVisible(entity));
+        foreach (var entity in candidates.Entities.Values)
+            if (IsVisible(entity)) return true;
+        return false;
+
+        bool IsVisible(CadEntity entity) =>
+            !options.HiddenEntityIds.Contains(entity.Id) && entity.Bounds.Intersects(bounds) &&
+            document.TryGetLayer(entity.LayerId, out var layer) && layer is { IsVisible: true, IsFrozen: false };
+    }
+
+    internal bool RequiresPrecision(CadDocument document, CadEntity entity)
+    {
+        if (!entity.Bounds.IsEmpty && Direct2DCoordinateSystem.NeedsOrigin(entity.Bounds.Center)) return true;
+        return entity is CadBlockReference reference &&
+            (Direct2DCoordinateSystem.NeedsOrigin(reference.Position) || RequiresPrecision(document, reference.DefinitionBlockId));
+    }
+
+    internal bool RequiresPrecision(CadDocument document, BlockId definitionBlockId)
+    {
+        EnsurePrecisionDocument(document);
+        if (_definitionPrecision.TryGetValue(definitionBlockId, out var precision)) return precision;
+        if (!_precisionVisitedBlocks.Add(definitionBlockId)) return true;
+        try
+        {
+            precision = false;
+            foreach (var entity in document.GetEntitiesInBlock(definitionBlockId))
+            {
+                if (entity.IsErased || !entity.IsVisible) continue;
+                _precisionEntityOwners[entity.Id] = entity.OwnerBlockId;
+                if (entity is CadBlockReference reference)
+                {
+                    if (!_precisionDefinitionParents.TryGetValue(reference.DefinitionBlockId, out var parents))
+                        _precisionDefinitionParents[reference.DefinitionBlockId] = parents = [];
+                    parents.Add(definitionBlockId);
+                }
+                if (!RequiresPrecision(document, entity)) continue;
+                precision = true;
+                break;
+            }
+            _definitionPrecision[definitionBlockId] = precision;
+            return precision;
+        }
+        finally { _precisionVisitedBlocks.Remove(definitionBlockId); }
+    }
+
+    private void EnsurePrecisionDocument(CadDocument document)
+    {
+        if (ReferenceEquals(_precisionDocument, document)) return;
+        ClearPrecisionMetadata();
+        _precisionDocument = document;
+    }
+
+    private void ClearPrecisionMetadata()
+    {
+        _precisionDocument = null;
+        _precisionEntityOwners.Clear();
+        ClearPrecisionRequirements();
+    }
+
+    private void ClearPrecisionRequirements()
+    {
+        _definitionPrecision.Clear();
+        _precisionDefinitionParents.Clear();
+        _ownerPrecisionCandidates.Clear();
+        _precisionVisitedBlocks.Clear();
+        _precisionQueryIds.Clear();
+    }
+
+    private void ApplyPrecisionChanges(CadDocument document, CadDocumentChangeSet changes)
+    {
+        EnsurePrecisionDocument(document);
+        if (changes.AffectsDocumentStructure || (changes.TableChanges & CadDocumentTableChangeKind.BlockMetadata) != 0)
+        {
+            ClearPrecisionRequirements();
+            foreach (var change in changes.EntityChanges)
+                if (document.TryGetEntity(change.EntityId, out var entity) && entity is not null)
+                    _precisionEntityOwners[change.EntityId] = entity.OwnerBlockId;
+                else _precisionEntityOwners.Remove(change.EntityId);
+            return;
+        }
+        const CadEntityChangeKind precisionChanges = CadEntityChangeKind.Created | CadEntityChangeKind.Deleted |
+            CadEntityChangeKind.Geometry | CadEntityChangeKind.Visibility | CadEntityChangeKind.Rotation |
+            CadEntityChangeKind.Layer | CadEntityChangeKind.EmbeddedData;
+        var affectedDefinitions = new HashSet<BlockId>();
+        foreach (var change in changes.EntityChanges)
+        {
+            if ((change.Kind & precisionChanges) == 0) continue;
+            if (_precisionEntityOwners.TryGetValue(change.EntityId, out var previousOwner) &&
+                document.TryGetBlock(previousOwner, out var previousDefinition) && previousDefinition is { IsSystem: false })
+                affectedDefinitions.Add(previousOwner);
+            if (!document.TryGetEntity(change.EntityId, out var entity) || entity is null)
+            {
+                // A removed entity has no owner in the document. Re-evaluate the
+                // definitions already used by this renderer, without rescanning owners.
+                affectedDefinitions.UnionWith(_definitionPrecision.Keys);
+                affectedDefinitions.UnionWith(_precisionDefinitionParents.Keys);
+                _precisionEntityOwners.Remove(change.EntityId);
+            }
+            else if (document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false })
+            {
+                affectedDefinitions.Add(entity.OwnerBlockId);
+                _precisionEntityOwners[entity.Id] = entity.OwnerBlockId;
+            }
+            else if (_precisionEntityOwners.ContainsKey(change.EntityId))
+                _precisionEntityOwners[change.EntityId] = entity.OwnerBlockId;
+        }
+        var pendingDefinitions = new Queue<BlockId>(affectedDefinitions);
+        while (pendingDefinitions.TryDequeue(out var affected))
+            if (_precisionDefinitionParents.TryGetValue(affected, out var parents))
+                foreach (var parent in parents)
+                    if (affectedDefinitions.Add(parent)) pendingDefinitions.Enqueue(parent);
+        foreach (var affected in affectedDefinitions) _definitionPrecision.Remove(affected);
+        foreach (var change in changes.EntityChanges)
+        {
+            if ((change.Kind & precisionChanges) == 0) continue;
+            foreach (var owner in _ownerPrecisionCandidates.Values)
+            {
+                owner.Entities.Remove(change.EntityId);
+                if (owner.ReferenceDefinitions.Remove(change.EntityId, out var definitionId) &&
+                    owner.ReferencesByDefinition.TryGetValue(definitionId, out var references))
+                {
+                    references.Remove(change.EntityId);
+                    if (references.Count == 0) owner.ReferencesByDefinition.Remove(definitionId);
+                }
+            }
+            if (document.TryGetEntity(change.EntityId, out var entity) && entity is not null &&
+                _ownerPrecisionCandidates.TryGetValue(entity.OwnerBlockId, out var candidates))
+                UpdatePrecisionCandidate(document, candidates, entity);
+        }
+        if (affectedDefinitions.Count > 0)
+            foreach (var owner in _ownerPrecisionCandidates.Values)
+                foreach (var affected in affectedDefinitions)
+                    if (owner.ReferencesByDefinition.TryGetValue(affected, out var references))
+                        foreach (var reference in references.Values)
+                            if (RequiresPrecision(document, reference)) owner.Entities[reference.Id] = reference;
+                            else owner.Entities.Remove(reference.Id);
+    }
+
+    private void UpdatePrecisionCandidate(CadDocument document, OwnerPrecisionCandidates candidates, CadEntity entity)
+    {
+        if (entity.IsErased || !entity.IsVisible) return;
+        if (entity is CadBlockReference reference)
+        {
+            candidates.ReferenceDefinitions[entity.Id] = reference.DefinitionBlockId;
+            if (!candidates.ReferencesByDefinition.TryGetValue(reference.DefinitionBlockId, out var references))
+                candidates.ReferencesByDefinition[reference.DefinitionBlockId] = references = [];
+            references[entity.Id] = reference;
+        }
+        if (RequiresPrecision(document, entity)) candidates.Entities[entity.Id] = entity;
+    }
+
+    private sealed class OwnerPrecisionCandidates
+    {
+        public Dictionary<EntityId, CadEntity> Entities { get; } = [];
+        public Dictionary<EntityId, BlockId> ReferenceDefinitions { get; } = [];
+        public Dictionary<BlockId, Dictionary<EntityId, CadBlockReference>> ReferencesByDefinition { get; } = [];
     }
 
     public Direct2DResourceCache(
@@ -123,6 +306,8 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     public IReadOnlyDictionary<EntityId, EntityResourceBucket> EntityResources => _entityResources;
     internal bool HasVisiblePreparationPending=>_backgroundGeometryPreparation?.HasVisiblePending==true;
+    internal bool IsBackgroundGeometryPreparationWaiting => _backgroundGeometryPreparation?.IsWaitingForResults == true;
+    internal bool IsLevelOfDetailPreparationWaiting => _lodPreparation?.IsWaitingForResults == true;
 
     public void ResetDeviceResources(
         ID2D1Factory? d2D1Factory,
@@ -315,7 +500,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             {
                 bucket.BitmapLease = _imageBitmapResources.Acquire(image);
                 if (bucket.Bitmap is not null)
-                    bucket.BitmapBrush = CreateBitmapBrush(image.FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
+                    bucket.BitmapBrush = CreateImageBitmapBrush(image, bucket);
             }
         }
         return true;
@@ -390,6 +575,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(changes);
         ThrowIfDisposed();
+        if (changes.DocumentChanged) ApplyPrecisionChanges(document, changes);
 
         _backgroundGeometryPreparation?.Invalidate(changes.EntityChanges
             .Where(change => (change.Kind & (CadEntityChangeKind.Created | CadEntityChangeKind.Deleted |
@@ -484,6 +670,7 @@ internal sealed class Direct2DResourceCache : IDisposable
         _backgroundGeometryPreparation?.Dispose();
         _backgroundGeometryPreparation = null;
         ClearEntityResources();
+        EnsurePrecisionDocument(document);
 
         foreach (var entity in document.Entities.Values)
             RebuildEntityResources(document, entity.Id);
@@ -497,6 +684,10 @@ internal sealed class Direct2DResourceCache : IDisposable
         ArgumentNullException.ThrowIfNull(document);
         ThrowIfDisposed();
 
+        EnsurePrecisionDocument(document);
+        if (preparedGeometry is null && (_definitionPrecision.Count > 0 || _ownerPrecisionCandidates.Count > 0))
+            ApplyPrecisionChanges(document, CadDocumentChangeSet.ForEntity(entityId,
+                CadEntityChangeKind.Geometry | CadEntityChangeKind.Visibility));
         if (preparedGeometry is null)
             _backgroundGeometryPreparation?.Invalidate(entityId);
 
@@ -511,6 +702,7 @@ internal sealed class Direct2DResourceCache : IDisposable
             RemoveEntity(entityId);
             return;
         }
+        _precisionEntityOwners[entity.Id] = entity.OwnerBlockId;
 
         if (entity.IsErased || !entity.IsVisible)
         {
@@ -546,11 +738,9 @@ internal sealed class Direct2DResourceCache : IDisposable
         {
             RemoveStrokeWidthContribution(oldBucket);
             if (oldBucket.LocalEntity is not null) _localGeometryCount--;
-            if (oldBucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount--;
         }
         _entityResources[entityId] = newBucket;
         if (newBucket.LocalEntity is not null) _localGeometryCount++;
-        if (newBucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount++;
         AddStrokeWidthContribution(newBucket);
         oldBucket?.Dispose();
         QueueLevelOfDetail(entity);
@@ -558,11 +748,12 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     public void RemoveEntity(EntityId entityId)
     {
+        if (_precisionDocument is { } document)
+            ApplyPrecisionChanges(document, CadDocumentChangeSet.ForEntity(entityId, CadEntityChangeKind.Deleted));
         _backgroundGeometryPreparation?.Invalidate(entityId);
         if (_entityResources.Remove(entityId, out var bucket))
         {
             if (bucket.LocalEntity is not null) _localGeometryCount--;
-            if (bucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount--;
             RemoveStrokeWidthContribution(bucket);
             bucket.Dispose();
         }
@@ -603,8 +794,6 @@ internal sealed class Direct2DResourceCache : IDisposable
         var geometryEntity = Direct2DLocalGeometry.Resolve(entity, out var origin);
         bucket.GeometryOrigin = origin;
         bucket.LocalEntity = ReferenceEquals(entity, geometryEntity) ? null : geometryEntity;
-        bucket.IsLocalDefinitionGeometry = bucket.LocalEntity is not null &&
-            document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false };
         try
         {
             var graphic = ResolveGraphicStyle(document, entity, layer);
@@ -693,7 +882,7 @@ internal sealed class Direct2DResourceCache : IDisposable
                 bucket.ImageLastUsed = ++_imageUsageStamp;
                 bucket.BitmapLease = _imageBitmapResources.Acquire(image);
                 if (bucket.Bitmap is not null)
-                    bucket.BitmapBrush = CreateBitmapBrush(((CadImage)geometryEntity).FrameBounds, image.PixelWidth, image.PixelHeight, bucket.Bitmap);
+                    bucket.BitmapBrush = CreateImageBitmapBrush(image, bucket);
             }
 
             return bucket;
@@ -841,13 +1030,9 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         var geometryEntity = Direct2DLocalGeometry.Resolve(entity, out var origin);
         if (bucket.LocalEntity is not null) _localGeometryCount--;
-        if (bucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount--;
         bucket.GeometryOrigin = origin;
         bucket.LocalEntity = ReferenceEquals(entity, geometryEntity) ? null : geometryEntity;
-        bucket.IsLocalDefinitionGeometry = bucket.LocalEntity is not null &&
-            document.TryGetBlock(entity.OwnerBlockId, out var owner) && owner is { IsSystem: false };
         if (bucket.LocalEntity is not null) _localGeometryCount++;
-        if (bucket.IsLocalDefinitionGeometry) _localDefinitionGeometryCount++;
         if (entity is CadText text)
         {
             if (text.RequiresBoundsMeasurement)
@@ -857,13 +1042,7 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         if (entity is CadImage image)
         {
-            var bitmapBrush = bucket.Bitmap is null
-                ? null
-                : CreateBitmapBrush(
-                    ((CadImage)geometryEntity).FrameBounds,
-                    image.PixelWidth,
-                    image.PixelHeight,
-                    bucket.Bitmap);
+            var bitmapBrush = CreateImageBitmapBrush(image, bucket);
             bucket.BitmapBrush?.Dispose();
             bucket.BitmapBrush = bitmapBrush;
             return;
@@ -984,6 +1163,12 @@ internal sealed class Direct2DResourceCache : IDisposable
             _ => (null, 0)
         };
     }
+
+    private ID2D1BitmapBrush? CreateImageBitmapBrush(CadImage image, EntityResourceBucket bucket) =>
+        bucket.Bitmap is { } bitmap
+            ? CreateBitmapBrush((bucket.LocalEntity as CadImage ?? image).FrameBounds,
+                image.PixelWidth, image.PixelHeight, bitmap)
+            : null;
 
     private ID2D1BitmapBrush? CreateBitmapBrush(CadRectD bounds, int pixelWidth, int pixelHeight, ID2D1Bitmap bitmap)
     {
@@ -1270,6 +1455,7 @@ internal sealed class Direct2DResourceCache : IDisposable
 
     private void ClearEntityResources()
     {
+        ClearPrecisionMetadata();
         _lodPreparation?.Dispose();
         _lodPreparation = null;
         foreach (var bucket in _entityResources.Values)
@@ -1277,7 +1463,6 @@ internal sealed class Direct2DResourceCache : IDisposable
 
         _entityResources.Clear();
         _localGeometryCount = 0;
-        _localDefinitionGeometryCount = 0;
         _maximumStrokeWidth = 0;
         _maximumStrokeWidthDirty = false;
     }
@@ -1345,7 +1530,6 @@ internal sealed class Direct2DResourceCache : IDisposable
     {
         public CadPointD GeometryOrigin { get; set; }
         public CadEntity? LocalEntity { get; set; }
-        public bool IsLocalDefinitionGeometry { get; set; }
         public EntityId EntityId { get; }
         internal CadImage? ImageSource { get; set; }
         internal long ImageLastUsed { get; set; }

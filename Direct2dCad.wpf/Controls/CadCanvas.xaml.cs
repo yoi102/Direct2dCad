@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Db.Geometry;
+using Direct2dCad.Rendering;
 using Direct2dCad.ViewModels;
 using Direct2dCad.wpf.Services.Input;
 
@@ -13,6 +14,10 @@ namespace Direct2dCad.wpf.Controls;
 public partial class CadCanvas : IDisposable
 {
     private const double RenderCacheIdleBuildBudgetMilliseconds = 9.0;
+    private const double RenderCacheWaitRetryMilliseconds = 8.0;
+    private readonly DispatcherTimer _renderCacheRetryTimer;
+    private ICadRenderSession? _renderCacheRetrySession;
+    private int _renderCacheScheduleGeneration;
     private CadPointD _pendingPointerScreen;
     private bool _pointerMovePending;
     private bool _pointerRenderScheduled;
@@ -42,6 +47,10 @@ public partial class CadCanvas : IDisposable
             OnViewportInteractionCompletionTimer,
             Dispatcher);
         _viewportInteractionCompletionTimer.Stop();
+        _renderCacheRetryTimer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(RenderCacheWaitRetryMilliseconds),
+            DispatcherPriority.Background, OnRenderCacheRetry, Dispatcher);
+        _renderCacheRetryTimer.Stop();
 
         Focusable = true;
         Stretch = System.Windows.Media.Stretch.Fill;
@@ -120,8 +129,10 @@ public partial class CadCanvas : IDisposable
 
     private static void OnDocumentViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not CadCanvas canvas)
+        if (d is not CadCanvas canvas || canvas._disposed)
             return;
+
+        canvas.CancelRenderCachePreparation();
 
         if (e.OldValue is CadDocumentViewModel oldViewModel)
         {
@@ -132,6 +143,7 @@ public partial class CadCanvas : IDisposable
             oldViewModel.PropertyChanged -= canvas.OnDocumentViewModelPropertyChanged;
             oldViewModel.RenderSession.RenderCacheBuildRequested -=
                 canvas.OnRenderCacheBuildRequested;
+            ((Direct2dCad.Rendering.Direct2D.Hosting.Direct2DImageRenderHost)oldViewModel.RenderSession).DetachImageSource();
             oldViewModel.DetachRenderResources();
         }
 
@@ -156,6 +168,7 @@ public partial class CadCanvas : IDisposable
 
     private void OnDocumentViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (_disposed) return;
         if (DocumentViewModel is null)
             return;
 
@@ -169,6 +182,7 @@ public partial class CadCanvas : IDisposable
 
     private void CadCanvas_Loaded(object sender, RoutedEventArgs e)
     {
+        if (_disposed) return;
         SetOwnerWindow(Window.GetWindow(this));
         UpdateCursor(DocumentViewModel?.CanvasCursor ?? CadCanvasCursorKind.Arrow);
         UpdateViewportSize();
@@ -178,6 +192,7 @@ public partial class CadCanvas : IDisposable
 
     private void CadCanvas_Unloaded(object sender, RoutedEventArgs e)
     {
+        if (_disposed) return;
         EndCapturedPointerGesture();
         SetOwnerWindow(null);
         SetValue(IsCursorBadgeVisiblePropertyKey, false);
@@ -244,6 +259,7 @@ public partial class CadCanvas : IDisposable
 
     private void CadCanvas_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        if (_disposed) return;
         CancelPendingViewportInteraction();
         UpdateViewportSize();
         UpdateRenderSize();
@@ -400,6 +416,10 @@ public partial class CadCanvas : IDisposable
 
     private void OnRenderCacheBuildRequested(object? sender, EventArgs e)
     {
+        if (_disposed || DocumentViewModel is not { } current ||
+            !ReferenceEquals(sender, current.RenderSession)) return;
+        _renderCacheRetryTimer.Stop();
+        _renderCacheRetrySession = null;
         if (_viewportInteractionCompletionTimer.IsEnabled)
         {
             _renderCacheBuildDeferred = true;
@@ -410,8 +430,10 @@ public partial class CadCanvas : IDisposable
             return;
 
         _renderCacheBuildScheduled = true;
+        var generation = _renderCacheScheduleGeneration;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
         {
+            if (generation != _renderCacheScheduleGeneration) return;
             _renderCacheBuildScheduled = false;
             if (_disposed ||
                 DocumentViewModel is not { } viewModel ||
@@ -426,27 +448,55 @@ public partial class CadCanvas : IDisposable
                 return;
             }
 
-            var started = Stopwatch.GetTimestamp();
             var wasVisibleViewReady = viewModel.RenderSession.IsInitialViewReady;
-            var buildPending = false;
-            do
-            {
-                buildPending = viewModel.RenderSession.PrepareRenderCacheStep();
-            }
-            while (buildPending &&
-                   Stopwatch.GetElapsedTime(started).TotalMilliseconds <
-                   RenderCacheIdleBuildBudgetMilliseconds);
+            var buildPending = PrepareRenderCacheBatch(
+                viewModel.RenderSession.PrepareRenderCacheStep,
+                () => viewModel.RenderSession.IsRenderCachePreparationWaiting);
 
             if (buildPending)
             {
                 if ((!wasVisibleViewReady || !viewModel.RenderSession.HasPresentedScene) &&
                     viewModel.RenderSession.IsInitialViewReady)
                     viewModel.RequestRenderCacheRefresh();
-                OnRenderCacheBuildRequested(sender, EventArgs.Empty);
+                if (viewModel.RenderSession.IsRenderCachePreparationWaiting)
+                {
+                    _renderCacheRetrySession = viewModel.RenderSession;
+                    _renderCacheRetryTimer.Start();
+                }
+                else
+                    OnRenderCacheBuildRequested(sender, EventArgs.Empty);
             }
             else
                 viewModel.RequestRenderCacheRefresh();
         });
+    }
+
+    internal static bool PrepareRenderCacheBatch(Func<bool> prepareStep,
+        Func<bool> isWaitingForWorker, double budgetMilliseconds = RenderCacheIdleBuildBudgetMilliseconds)
+    {
+        var started = Stopwatch.GetTimestamp();
+        bool pending;
+        do { pending = prepareStep(); }
+        while (pending && !isWaitingForWorker() &&
+               Stopwatch.GetElapsedTime(started).TotalMilliseconds < budgetMilliseconds);
+        return pending;
+    }
+
+    private void OnRenderCacheRetry(object? sender, EventArgs e)
+    {
+        _renderCacheRetryTimer.Stop();
+        var session = _renderCacheRetrySession;
+        _renderCacheRetrySession = null;
+        if (session is not null) OnRenderCacheBuildRequested(session, EventArgs.Empty);
+    }
+
+    private void CancelRenderCachePreparation()
+    {
+        _renderCacheRetryTimer.Stop();
+        _renderCacheRetrySession = null;
+        _renderCacheBuildScheduled = false;
+        _renderCacheBuildDeferred = false;
+        _renderCacheScheduleGeneration++;
     }
 
     internal void CancelInteraction()
@@ -590,6 +640,7 @@ public partial class CadCanvas : IDisposable
 
     private void UpdateViewportSize()
     {
+        if (_disposed) return;
         DocumentViewModel?.SetViewportSize(ActualWidth, ActualHeight);
     }
 
@@ -627,6 +678,7 @@ public partial class CadCanvas : IDisposable
 
     private void UpdateRenderSize()
     {
+        if (_disposed) return;
         var width = Math.Max(1, (int)Math.Ceiling(ActualWidth));
         var height = Math.Max(1, (int)Math.Ceiling(ActualHeight));
         d3d11ImageSource.SetSize(width, height);
@@ -893,6 +945,10 @@ public partial class CadCanvas : IDisposable
             return;
 
         _disposed = true;
+        Loaded -= CadCanvas_Loaded;
+        Unloaded -= CadCanvas_Unloaded;
+        SizeChanged -= CadCanvas_SizeChanged;
+        CancelRenderCachePreparation();
         EndCapturedPointerGesture();
         SetOwnerWindow(null);
         if (DocumentViewModel is { } viewModel)
@@ -901,6 +957,7 @@ public partial class CadCanvas : IDisposable
             viewModel.PropertyChanged -= OnDocumentViewModelPropertyChanged;
             viewModel.RenderSession.RenderCacheBuildRequested -=
                 OnRenderCacheBuildRequested;
+            ((Direct2dCad.Rendering.Direct2D.Hosting.Direct2DImageRenderHost)viewModel.RenderSession).DetachImageSource();
             viewModel.DetachRenderResources();
         }
         CancelPendingViewportInteraction();

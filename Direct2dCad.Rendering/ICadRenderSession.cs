@@ -33,6 +33,8 @@ public interface ICadRenderSession : ICadTextMetrics, IDisposable
     void EndViewportInteraction();
     void Render(CadRenderInvalidation? invalidation = null, bool baseSceneChanged = true);
     bool PrepareRenderCacheStep();
+    /// <summary>The last pending preparation step is waiting for a worker rather than owner work.</summary>
+    bool IsRenderCachePreparationWaiting => false;
     void SetOleDrawCallback(CadOleRenderCallback? callback);
     void SetOleReleaseCallback(CadOleReleaseCallback? callback);
     void InvalidateOleBitmap(EntityId entityId);

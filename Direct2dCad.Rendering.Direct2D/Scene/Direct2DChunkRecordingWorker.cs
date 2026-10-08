@@ -34,6 +34,14 @@ internal sealed class Direct2DChunkRecordingWorker : IDisposable
     }
 
     public bool IsReady => _thread is { IsAlive: true };
+    internal bool IsWaitingForResults
+    {
+        get
+        {
+            lock (_gate)
+                return (_isRecording || _pending is not null) && _completed.IsEmpty;
+        }
+    }
     public bool CanSchedule
     {
         get

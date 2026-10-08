@@ -1,11 +1,9 @@
-using System.Numerics;
 using Direct2dCad.ChangeTracking;
 using Direct2dCad.Db;
 using Direct2dCad.Db.Cad;
 using Direct2dCad.Db.Data.Entities;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Rendering.Direct2D.Resources;
-using Direct2dCad.Rendering.Direct2D.Scene;
 using Direct2dCad.Rendering.Transient;
 using Vortice.Direct2D1;
 
@@ -23,7 +21,9 @@ internal sealed class Direct2DTransientGroupCommandListCache(
     private CadDocument? _document;
     private IReadOnlyList<CadTransientItem>? _items;
     private int _itemCount;
+    private bool _containsText;
     private TransientGroupProfileKey _profileKey;
+    private CadMatrixD _recordingTransformInverse = CadMatrixD.Identity;
     private ID2D1CommandList? _commandList;
     private bool _buildFailed;
     private bool _disposed;
@@ -36,18 +36,17 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         CadViewport viewport,
         CadTransientScene? scene,
         CadRenderOptions options,
-        Action<CadTransientEntityReference> drawEntityReference,
-        Action<CadTransientBlockReference> drawBlockReference,
+        Action<CadTransientEntityReference, CadRenderOptions> drawEntityReference,
+        Action<CadTransientBlockReference, CadRenderOptions> drawBlockReference,
         bool buildStep)
     {
         ThrowIfDisposed();
-        var profileKey = TransientGroupProfileKey.Create(options, viewport.Zoom);
-        if (resourceCache.HasLocalGeometry || resourceCache.RequiresPrecision(viewport)) { Clear(); return false; }
+        if (resourceCache.RequiresPrecision(viewport)) { Clear(); return false; }
         if (ReferenceEquals(_document, document) &&
             _items is not null &&
             _items.Count == _itemCount &&
-            _profileKey.Equals(profileKey) &&
-            TryFindGroupByItems(scene, _items, out var existingGroup))
+            TryFindGroupByItems(scene, _items, out var existingGroup) &&
+            _profileKey.Equals(TransientGroupProfileKey.Create(options, viewport, existingGroup.Transform, _containsText)))
         {
             if (_commandList is not null || _buildFailed || !buildStep)
                 return _commandList is null && !_buildFailed;
@@ -56,7 +55,7 @@ internal sealed class Direct2DTransientGroupCommandListCache(
                 context,
                 viewport,
                 options,
-                existingGroup.Items,
+                existingGroup,
                 drawEntityReference,
                 drawBlockReference);
             _buildFailed = _commandList is null;
@@ -69,7 +68,9 @@ internal sealed class Direct2DTransientGroupCommandListCache(
             return false;
         }
 
-        EnsureState(document, group.Items, profileKey);
+        var containsText = ContainsText(document, group.Items);
+        EnsureState(document, group, containsText,
+            TransientGroupProfileKey.Create(options, viewport, group.Transform, containsText));
         if (_commandList is not null || _buildFailed)
             return false;
         if (!buildStep)
@@ -79,7 +80,7 @@ internal sealed class Direct2DTransientGroupCommandListCache(
             context,
             viewport,
             options,
-            group.Items,
+            group,
             drawEntityReference,
             drawBlockReference);
         _buildFailed = _commandList is null;
@@ -94,16 +95,19 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         CadRenderOptions options)
     {
         ThrowIfDisposed();
-        if (resourceCache.HasLocalGeometry || resourceCache.RequiresPrecision(viewport)) return false;
+        if (resourceCache.RequiresPrecision(viewport)) return false;
         if (_commandList is null ||
             !ReferenceEquals(_document, document) ||
             !ReferenceEquals(_items, group.Items) ||
-            !_profileKey.Equals(TransientGroupProfileKey.Create(options, viewport.Zoom)))
+            !_profileKey.Equals(TransientGroupProfileKey.Create(options, viewport, group.Transform, _containsText)))
         {
             return false;
         }
 
-        using var coordinates = Direct2DCoordinateSystem.Push(context, group.Transform);
+        // Commands retain the original world-to-screen transform so DirectWrite
+        // records glyphs at their final pixel size. Cancel it before replaying at
+        // the current group position and viewport.
+        using var coordinates = Direct2DCoordinateSystem.Push(context, _recordingTransformInverse * group.Transform);
         context.DrawImage(
             _commandList,
             null,
@@ -128,7 +132,9 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         _document = null;
         _items = null;
         _itemCount = 0;
+        _containsText = false;
         _profileKey = default;
+        _recordingTransformInverse = CadMatrixD.Identity;
         _buildFailed = false;
     }
 
@@ -140,7 +146,7 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         _disposed = true;
     }
 
-    private static bool TryFindCacheableGroup(
+    private bool TryFindCacheableGroup(
         CadDocument document,
         CadTransientScene? scene,
         out CadTransientGroup group)
@@ -150,7 +156,7 @@ internal sealed class Direct2DTransientGroupCommandListCache(
             foreach (var item in scene.Items)
             {
                 if (item is CadTransientGroup candidate &&
-                    IsCacheable(document, candidate.Items))
+                    IsCacheable(document, candidate))
                 {
                     group = candidate;
                     return true;
@@ -184,11 +190,18 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         return false;
     }
 
-    private static bool IsCacheable(
+    private bool IsCacheable(
         CadDocument document,
-        IReadOnlyList<CadTransientItem> items)
+        CadTransientGroup group)
     {
+        var items = group.Items;
         if (items.Count < MinimumReferenceCount)
+            return false;
+
+        var recordingTransform = CreateGroupLinearTransform(group.Transform);
+        if (!recordingTransform.TryInvert(out _) ||
+            !double.IsFinite(recordingTransform.M11) || !double.IsFinite(recordingTransform.M12) ||
+            !double.IsFinite(recordingTransform.M21) || !double.IsFinite(recordingTransform.M22))
             return false;
 
         var blockCacheability = new Dictionary<BlockId, bool>();
@@ -200,13 +213,18 @@ internal sealed class Direct2DTransientGroupCommandListCache(
                     if (!document.TryGetEntity(reference.EntityId, out var entity) ||
                         entity is null ||
                         entity.IsErased ||
-                        entity is CadOleObject)
+                        entity is CadOleObject ||
+                        resourceCache.RequiresPrecision(document, entity) ||
+                        Direct2DCoordinateSystem.NeedsOrigin(recordingTransform.TransformPoint(
+                            entity.Bounds.Center + reference.Offset)))
                     {
                         return false;
                     }
                     break;
                 case CadTransientBlockReference blockReference:
-                    if (!IsBlockCacheable(
+                    if (resourceCache.RequiresPrecision(document, blockReference.DefinitionBlockId) ||
+                        Direct2DCoordinateSystem.NeedsOrigin(recordingTransform.TransformPoint(blockReference.Position)) ||
+                        !IsBlockCacheable(
                             document,
                             blockReference.DefinitionBlockId,
                             blockCacheability,
@@ -265,13 +283,42 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         return cacheable;
     }
 
+    private static bool ContainsText(CadDocument document, IReadOnlyList<CadTransientItem> items)
+    {
+        var blocksWithText = new Dictionary<BlockId, bool>();
+        var visitingBlocks = new HashSet<BlockId>();
+        foreach (var item in items)
+        {
+            if (item is CadTransientEntityReference reference &&
+                document.TryGetEntity(reference.EntityId, out var entity) && entity is not null &&
+                HasText(entity) ||
+                item is CadTransientBlockReference blockReference &&
+                BlockHasText(blockReference.DefinitionBlockId))
+                return true;
+        }
+        return false;
+
+        bool HasText(CadEntity entity) => entity is CadText ||
+            entity is CadBlockReference reference && BlockHasText(reference.DefinitionBlockId);
+
+        bool BlockHasText(BlockId blockId)
+        {
+            if (blocksWithText.TryGetValue(blockId, out var cached)) return cached;
+            if (!visitingBlocks.Add(blockId)) return false;
+            var containsText = document.GetEntitiesInBlock(blockId).Any(HasText);
+            visitingBlocks.Remove(blockId);
+            blocksWithText[blockId] = containsText;
+            return containsText;
+        }
+    }
+
     private ID2D1CommandList? Record(
         ID2D1DeviceContext context,
         CadViewport viewport,
         CadRenderOptions options,
-        IReadOnlyList<CadTransientItem> items,
-        Action<CadTransientEntityReference> drawEntityReference,
-        Action<CadTransientBlockReference> drawBlockReference)
+        CadTransientGroup group,
+        Action<CadTransientEntityReference, CadRenderOptions> drawEntityReference,
+        Action<CadTransientBlockReference, CadRenderOptions> drawBlockReference)
     {
         var previousTarget = context.Target;
         var previousTransform = context.Transform;
@@ -279,14 +326,17 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         var previousTextAntialiasMode = context.TextAntialiasMode;
         var previousPrimitiveBlend = context.PrimitiveBlend;
         var commandList = context.CreateCommandList();
+        var recordingTransform = CreateRecordingTransform(group.Transform, viewport);
+        var buildOptions = CreateBuildOptions(options);
         using var realizationScaleScope =
-            resourceCache.PushGeometryRealizationScale(viewport.Zoom);
+            resourceCache.PushGeometryRealizationScale(buildOptions.TransformScaleMultiplier);
         var isDrawing = false;
         var completed = false;
         try
         {
             context.Target = commandList;
-            context.Transform = Matrix3x2.Identity;
+            using var recordingCoordinates = Direct2DCoordinateSystem.PushAbsolute(
+                context, recordingTransform);
             context.AntialiasMode = options.IsAntialiasingEnabled
                 ? AntialiasMode.PerPrimitive
                 : AntialiasMode.Aliased;
@@ -297,12 +347,12 @@ internal sealed class Direct2DTransientGroupCommandListCache(
             context.BeginDraw();
             isDrawing = true;
 
-            foreach (var item in items)
+            foreach (var item in group.Items)
             {
                 if (item is CadTransientEntityReference entityReference)
-                    drawEntityReference(entityReference);
+                    drawEntityReference(entityReference, buildOptions);
                 else if (item is CadTransientBlockReference blockReference)
-                    drawBlockReference(blockReference);
+                    drawBlockReference(blockReference, buildOptions);
             }
 
             var result = context.EndDraw();
@@ -312,6 +362,7 @@ internal sealed class Direct2DTransientGroupCommandListCache(
 
             context.Target = previousTarget;
             commandList.Close();
+            _recordingTransformInverse = recordingTransform.Invert();
             completed = true;
             return commandList;
         }
@@ -331,9 +382,11 @@ internal sealed class Direct2DTransientGroupCommandListCache(
 
     private void EnsureState(
         CadDocument document,
-        IReadOnlyList<CadTransientItem> items,
+        CadTransientGroup group,
+        bool containsText,
         TransientGroupProfileKey profileKey)
     {
+        var items = group.Items;
         if (ReferenceEquals(_document, document) &&
             ReferenceEquals(_items, items) &&
             _profileKey.Equals(profileKey))
@@ -345,9 +398,38 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         _document = document;
         _items = items;
         _itemCount = items.Count;
+        _containsText = containsText;
         _profileKey = profileKey;
     }
 
+    private static CadMatrixD CreateGroupLinearTransform(CadMatrixD transform) =>
+        new(transform.M11, transform.M12, transform.M21, transform.M22, 0, 0);
+
+    private static CadMatrixD CreateRecordingTransform(CadMatrixD groupTransform, CadViewport viewport) =>
+        groupTransform * Direct2DCoordinateSystem.ViewportTransform(viewport);
+
+    private static CadRenderOptions CreateBuildOptions(CadRenderOptions source) => new()
+    {
+        ActiveOwnerBlockId = source.ActiveOwnerBlockId,
+        ActiveLayoutId = source.ActiveLayoutId,
+        ActiveLayoutViewportId = source.ActiveLayoutViewportId,
+        DrawGrid = false,
+        DrawOrigin = false,
+        DrawGripHandles = false,
+        IsAntialiasingEnabled = source.IsAntialiasingEnabled,
+        IsTextAntialiasingEnabled = source.IsTextAntialiasingEnabled,
+        IsLevelOfDetailEnabled = source.IsLevelOfDetailEnabled,
+        EnableGeometryRealizations = source.EnableGeometryRealizations,
+        // LOD, proxy sizes and glyph recording use the same context transform as
+        // the final draw, so only retain the caller-supplied scale multiplier.
+        TransformScaleMultiplier = source.TransformScaleMultiplier,
+        KeepStrokeWidthScreenConstant = source.KeepStrokeWidthScreenConstant,
+        MinimumScreenStrokeWidth = source.MinimumScreenStrokeWidth,
+        EntityLineWeightWorldScale = source.EntityLineWeightWorldScale
+    };
+
+    private static double ResolveTransformScaleMultiplier(double value) =>
+        double.IsFinite(value) && value > double.Epsilon ? value : 1.0;
 
     private void ThrowIfDisposed()
     {
@@ -364,24 +446,39 @@ internal sealed class Direct2DTransientGroupCommandListCache(
         bool IsLevelOfDetailEnabled,
         long TransformScaleMultiplierBits,
         bool KeepStrokeWidthScreenConstant,
-        long MinimumScreenStrokeWidthBits)
+        long MinimumScreenStrokeWidthBits,
+        long EntityLineWeightWorldScaleBits,
+        CadMatrixD RecordingTransform,
+        long TextPixelPhaseXBits,
+        long TextPixelPhaseYBits)
     {
         public static TransientGroupProfileKey Create(
             CadRenderOptions options,
-            double zoom) => new(
+            CadViewport viewport,
+            CadMatrixD groupTransform,
+            bool containsText)
+        {
+            var recordingTransform = CreateRecordingTransform(groupTransform, viewport);
+            return new(
                 options.ActiveOwnerBlockId,
-                BitConverter.DoubleToInt64Bits(Direct2DRenderScaleBucket.Quantize(zoom)),
+                BitConverter.DoubleToInt64Bits(viewport.Zoom),
                 options.IsAntialiasingEnabled,
                 options.IsTextAntialiasingEnabled,
                 options.EnableGeometryRealizations,
                 options.IsLevelOfDetailEnabled,
                 BitConverter.DoubleToInt64Bits(
-                    Direct2DRenderScaleBucket.Quantize(
-                        ResolveTransformScaleMultiplier(options.TransformScaleMultiplier))),
+                    ResolveTransformScaleMultiplier(options.TransformScaleMultiplier)),
                 options.KeepStrokeWidthScreenConstant,
-                BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth));
+                BitConverter.DoubleToInt64Bits(options.MinimumScreenStrokeWidth),
+                BitConverter.DoubleToInt64Bits(options.EntityLineWeightWorldScale),
+                CreateGroupLinearTransform(groupTransform),
+                containsText ? PixelPhaseBits(recordingTransform.OffsetX) : 0,
+                containsText ? PixelPhaseBits(recordingTransform.OffsetY) : 0);
+        }
 
-        private static double ResolveTransformScaleMultiplier(double value) =>
-            double.IsFinite(value) && value > double.Epsilon ? value : 1.0;
+        // DirectWrite snaps glyph baselines while recording. Reuse integer pixel
+        // translations, but re-record if their fractional screen phase changes.
+        private static long PixelPhaseBits(double value) =>
+            BitConverter.DoubleToInt64Bits(value - Math.Floor(value));
     }
 }

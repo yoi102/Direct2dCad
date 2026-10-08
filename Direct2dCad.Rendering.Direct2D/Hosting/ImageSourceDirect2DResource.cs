@@ -59,6 +59,8 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     private CadGraphicsDeviceMode _graphicsDeviceMode = CadGraphicsDeviceMode.Automatic;
     private bool _disposed;
     private bool _isDrawing;
+    private bool _surfaceBound;
+    private bool _surfaceBindingAttempted;
     private IReadOnlyList<CadScreenRect>? _pendingPresentDirtyRects;
 
     public int Width => _width;
@@ -105,8 +107,13 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         }
     }
 
-    public bool IsTargetReady =>
+    internal ID3D11ImageSource? ImageSource => _imageSource;
+
+    public bool IsTargetReady => _surfaceBound &&
         _imageSource != null &&
+        HasImageTargetResources;
+
+    private bool HasImageTargetResources =>
         _d3d11RenderTarget != null &&
         _d3d11BackBuffer != null &&
         _targetBitmap != null &&
@@ -131,9 +138,18 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
     public void SetTarget(ID3D11ImageSource imageSource)
     {
         ThrowIfDisposed();
-        if (_imageSource == imageSource)
+        ArgumentNullException.ThrowIfNull(imageSource);
+        if (ReferenceEquals(_imageSource, imageSource) && _surfaceBound)
             return;
-        _imageSource = imageSource ?? throw new ArgumentNullException(nameof(imageSource));
+        if (_isDrawing)
+            throw new InvalidOperationException("Cannot change target between BeginDraw and EndDraw.");
+
+        // A failed detach must leave the previous owner and its native surface alive.
+        if (!ReferenceEquals(_imageSource, imageSource))
+        {
+            DetachImageSurface();
+            _imageSource = imageSource;
+        }
 
         var width = Math.Max(1, imageSource.SurfaceWidth);
         var height = Math.Max(1, imageSource.SurfaceHeight);
@@ -155,6 +171,15 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         RecoverFromDeviceLoss();
     }
 
+    internal void DetachTarget()
+    {
+        ThrowIfDisposed();
+        if (_isDrawing)
+            throw new InvalidOperationException("Cannot detach target between BeginDraw and EndDraw.");
+        DetachImageSurface();
+        _imageSource = null;
+    }
+
     public void SetSize(int width, int height)
     {
         ThrowIfDisposed();
@@ -165,12 +190,16 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
         width = Math.Max(1, width);
         height = Math.Max(1, height);
 
-        if (_width == width && _height == height && IsTargetReady)
+        if (_width == width && _height == height && HasImageTargetResources)
+        {
+            if (!_surfaceBound) BindImageSurface();
             return;
+        }
 
         if (_isDrawing)
             throw new InvalidOperationException("Cannot resize target between BeginDraw and EndDraw.");
 
+        DetachImageSurface();
         _width = width;
         _height = height;
 
@@ -185,8 +214,24 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
         _d2dContext.Target = _targetBitmap;
 
-        _imageSource!.SetSurface(_sharedSurface9.NativePointer);
-        _imageSource!.Invalidate();
+        BindImageSurface();
+    }
+
+    private void DetachImageSurface()
+    {
+        if (_surfaceBindingAttempted && _imageSource is not null && _sharedSurface9 is not null)
+            _imageSource.SetSurface(nint.Zero);
+        _surfaceBound = false;
+        _surfaceBindingAttempted = false;
+    }
+
+    private void BindImageSurface()
+    {
+        _surfaceBound = false;
+        _surfaceBindingAttempted = true;
+        _imageSource!.SetSurface(_sharedSurface9!.NativePointer);
+        _surfaceBound = true;
+        _imageSource.Invalidate();
     }
 
     public void BeginDraw()
@@ -978,6 +1023,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             }
         }
 
+        _surfaceBound = false;
         _beforeDeviceResourcesReleased?.Invoke();
         ReleaseImageTarget();
         ReleaseDeviceResources();
@@ -1002,8 +1048,7 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
             throw new InvalidOperationException("Failed to recreate Direct2D device resources.");
 
         _d2dContext.Target = _targetBitmap;
-        _imageSource!.SetSurface(_sharedSurface9.NativePointer);
-        _imageSource!.Invalidate();
+        BindImageSurface();
     }
 
     private void ReleaseImageTarget()

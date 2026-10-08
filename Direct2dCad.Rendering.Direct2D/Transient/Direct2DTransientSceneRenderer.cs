@@ -23,8 +23,8 @@ internal sealed class Direct2DTransientSceneRenderer(
         CadViewport viewport,
         CadTransientScene? scene,
         CadRenderOptions options,
-        Action<CadTransientEntityReference> drawEntityReference,
-        Action<CadTransientBlockReference> drawBlockReference,
+        Action<CadTransientEntityReference, CadRenderOptions> drawEntityReference,
+        Action<CadTransientBlockReference, CadRenderOptions> drawBlockReference,
         bool buildStep)
     {
         pathCache.Prepare(scene);

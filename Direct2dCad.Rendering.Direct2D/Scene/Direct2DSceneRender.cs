@@ -199,6 +199,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _tileCache.Clear();
         _commandListCache.Clear();
         _blockReferenceRenderer.ClearCache();
+        _transientSceneRenderer.Clear();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildAll(document);
         _cachePressureBudget = 0;
@@ -212,6 +213,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _tileCache.InvalidateEntity(document, entityId);
         _commandListCache.InvalidateEntity(entityId);
         _blockReferenceRenderer.ClearCache();
+        _transientSceneRenderer.Clear();
         _entityOrderCache.Invalidate();
         _resourceCache.RebuildEntityResources(document, entityId);
     }
@@ -222,6 +224,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         _tileCache.RemoveEntity(entityId);
         _commandListCache.Clear();
         _blockReferenceRenderer.ClearCache();
+        _transientSceneRenderer.Clear();
         _entityOrderCache.Invalidate();
         _resourceCache.RemoveEntity(entityId);
         _oleRenderer.RemoveEntity(entityId);
@@ -429,6 +432,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
     }
 
     internal bool HasVisiblePreparationPending=>_resourceCache.HasVisiblePreparationPending;
+    internal bool IsRenderCachePreparationWaiting { get; private set; }
     internal void UpdateVisiblePreparationPriority(CadDocument document, CadViewport viewport, CadRenderOptions options) =>
         _resourceCache.UpdateVisiblePreparationPriority(document, viewport, options);
     public bool PrepareRenderCaches(
@@ -442,6 +446,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(viewport);
         ThrowIfDisposed();
+        IsRenderCachePreparationWaiting = false;
         if (_resourceCache.DeviceContext is not { } context)
             return false;
 
@@ -460,7 +465,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 viewport,
                 options);
         if (backgroundGeometryBuildPending)
+        {
+            IsRenderCachePreparationWaiting = _resourceCache.IsBackgroundGeometryPreparationWaiting;
             return true;
+        }
         // Do not repeatedly rebuild and evict the same retained caches while the
         // document share is exhausted. Retry after edits or an increased quota.
         if (_cachePressureBudget > 0 && _resourceAllowance.LimitBytes <= _cachePressureBudget)
@@ -475,7 +483,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             _blockReferenceRenderer.ClearCache();
         }
         if (lodPending)
+        {
+            IsRenderCachePreparationWaiting = _resourceCache.IsLevelOfDetailPreparationWaiting;
             return true;
+        }
 
         if (buildStep)
             _resourceCache.BeginGeometryRealizationBuildBatch();
@@ -540,6 +551,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 estimatedRenderWork,
                 DrawRetainedScene,
                 buildStep: false);
+            IsRenderCachePreparationWaiting = !transientBuildPending &&
+                                              !blockDefinitionBuildPending &&
+                                              commandListBuildPending &&
+                                              _commandListCache.IsBackgroundRecordingWaiting;
             return transientBuildPending ||
                    blockDefinitionBuildPending ||
                    commandListBuildPending ||
@@ -601,6 +616,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 estimatedRenderWork,
                 DrawEntityCore,
                 buildStep: true);
+            IsRenderCachePreparationWaiting = _commandListCache.IsBackgroundRecordingWaiting;
             return true;
         }
 
@@ -1161,6 +1177,10 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 estimatedRenderWork,
                 DrawEntityCore,
                 buildStep: false);
+            IsRenderCachePreparationWaiting = !transientBuildPending &&
+                                              !blockDefinitionBuildPending &&
+                                              commandListBuildPending &&
+                                              _commandListCache.IsBackgroundRecordingWaiting;
             return transientBuildPending ||
                    blockDefinitionBuildPending ||
                    commandListBuildPending;
@@ -1222,6 +1242,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 estimatedRenderWork,
                 DrawEntityCore,
                 buildStep: true);
+            IsRenderCachePreparationWaiting = _commandListCache.IsBackgroundRecordingWaiting;
             return true;
         }
 
@@ -1236,20 +1257,29 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadTransientScene? transientScene = null,
         CadHandleScene? handleScene = null)
     {
+        var submissionStarted = Stopwatch.GetTimestamp();
         BuildInlineMovePreviews(transientScene, options.HiddenEntityIds);
         if (_inlineMovePreviews.Count > 0)
         {
             _statistics.RecordRenderCacheMiss();
-            var movePacket = _entityOrderCache.GetRenderPacket(
-                document,
-                options.ActiveOwnerBlockId);
-            DrawImmediateWithInlineMovePreviews(
-                context,
-                document,
-                viewport,
-                options,
-                movePacket,
-                handleScene);
+            try
+            {
+                var movePacket = _entityOrderCache.GetRenderPacket(
+                    document,
+                    options.ActiveOwnerBlockId);
+                DrawImmediateWithInlineMovePreviews(
+                    context,
+                    document,
+                    viewport,
+                    options,
+                    movePacket,
+                    handleScene);
+            }
+            finally
+            {
+                _statistics.RecordCpuEntitySubmission(
+                    ElapsedMilliseconds(submissionStarted));
+            }
             return;
         }
 
@@ -1267,7 +1297,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         }
 
         _statistics.RecordRenderCacheMiss();
-        var submissionStarted = Stopwatch.GetTimestamp();
+        submissionStarted = Stopwatch.GetTimestamp();
         try
         {
             var renderPacket = _entityOrderCache.GetRenderPacket(
@@ -1339,8 +1369,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadHandleScene handleScene)
     {
         var renderBounds = Direct2DEntityVisibility.ResolveRenderWorldBounds(viewport, options);
-        foreach (var entry in renderPacket.Entries)
+        foreach (var index in CollectInlineCandidateIndices(viewport, options, renderPacket, handleScene))
         {
+            var entry = renderPacket.Entries[index];
             if (!entry.IsRenderable)
                 continue;
 
@@ -1384,8 +1415,9 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
         CadHandleScene? handleScene)
     {
         var renderBounds = Direct2DEntityVisibility.ResolveRenderWorldBounds(viewport, options);
-        foreach (var entry in renderPacket.Entries)
+        foreach (var index in CollectInlineCandidateIndices(viewport, options, renderPacket, handleScene))
         {
+            var entry = renderPacket.Entries[index];
             if (!entry.IsRenderable)
                 continue;
 
@@ -1428,6 +1460,73 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 viewport,
                 options,
                 visible.Resources);
+        }
+    }
+
+    private IEnumerable<int> CollectInlineCandidateIndices(
+        CadViewport viewport,
+        CadRenderOptions options,
+        Direct2DOwnerRenderPacket renderPacket,
+        CadHandleScene? handleScene)
+    {
+        _visiblePacketIndices.Clear();
+        var renderBounds = Direct2DEntityVisibility.ResolveRenderWorldBounds(viewport, options);
+        if (renderBounds is not { } bounds ||
+            options.EntityBoundsQueryInto is null && options.EntityBoundsQuery is null)
+        {
+            return Enumerable.Range(0, renderPacket.Entries.Count);
+        }
+
+        var queryBounds = bounds.Inflate(
+            Direct2DEntityVisibility.ResolveBroadPhasePadding(_resourceCache, viewport, options));
+        IReadOnlyList<EntityId> candidateIds;
+        var queryStarted = Stopwatch.GetTimestamp();
+        try
+        {
+            if (options.EntityBoundsQueryInto is { } bufferedQuery)
+            {
+                _visibleEntityIds.Clear();
+                bufferedQuery(options.ActiveOwnerBlockId, queryBounds, _visibleEntityIds);
+                candidateIds = _visibleEntityIds;
+            }
+            else
+            {
+                candidateIds = options.EntityBoundsQuery!(options.ActiveOwnerBlockId, queryBounds);
+            }
+        }
+        finally
+        {
+            _statistics.RecordVisibilityQuery(ElapsedMilliseconds(queryStarted));
+        }
+
+        _visibleEntityIdSet.Clear();
+        foreach (var entityId in candidateIds)
+            AddCandidate(entityId);
+        // A preview or translated selection can enter the view while its source is
+        // outside the spatial query. Merge these replacements by the source rank.
+        foreach (var entityId in _inlineMovePreviews.Keys)
+            AddCandidate(entityId);
+        if (handleScene is not null)
+        {
+            foreach (var reference in handleScene.SelectionReferences)
+                AddCandidate(reference.EntityId);
+        }
+
+        var sortingStarted = Stopwatch.GetTimestamp();
+        try
+        {
+            _visiblePacketIndices.Sort();
+        }
+        finally
+        {
+            _statistics.RecordCandidateSorting(ElapsedMilliseconds(sortingStarted));
+        }
+        return _visiblePacketIndices;
+
+        void AddCandidate(EntityId entityId)
+        {
+            if (_visibleEntityIdSet.Add(entityId) && renderPacket.TryGetIndex(entityId, out var index))
+                _visiblePacketIndices.Add(index);
         }
     }
 
@@ -1729,13 +1828,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
             viewport,
             scene,
             options,
-            reference => _entityReferenceRenderer.Draw(
+            (reference, buildOptions) => _entityReferenceRenderer.Draw(
                 deviceContext,
                 document,
                 viewport,
                 reference,
-                options),
-            reference => _blockReferenceRenderer.Draw(
+                buildOptions),
+            (reference, buildOptions) => _blockReferenceRenderer.Draw(
                 deviceContext,
                 document,
                 viewport,
@@ -1747,7 +1846,7 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
                 reference.LayerId,
                 reference.ColorSource,
                 reference.GraphicStyleId,
-                options),
+                buildOptions),
             buildStep);
     }
 

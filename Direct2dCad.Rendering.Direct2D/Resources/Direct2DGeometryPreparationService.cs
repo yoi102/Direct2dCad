@@ -26,6 +26,7 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
     private bool _priorityChosen;
     private bool _captureStarted;
     private bool _captureComplete;
+    private bool _captureStepMadeProgress;
     private readonly HashSet<EntityId> _visiblePending = [];
     public bool HasVisiblePending => !_priorityChosen && _awaitingIds.Count > 0 || _visiblePending.Count > 0;
     public void MarkApplied(EntityId id)
@@ -35,6 +36,9 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
     }
 
     public bool NeedsPriority => !_priorityChosen && _document is not null && !_captureStarted;
+
+    internal bool IsWaitingForResults => _worker is { IsCompleted: false } &&
+        !_captureStepMadeProgress && _ready?.Reader.TryPeek(out _) != true;
 
     public void Schedule(CadDocument document)
     {
@@ -95,6 +99,7 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
     {
         ThrowIfDisposed();
         ArgumentNullException.ThrowIfNull(budget);
+        _captureStepMadeProgress = false;
         if (_snapshots is null || _document is null || _captureComplete)
             return;
         _captureStarted = true;
@@ -105,12 +110,14 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
                 if (!_snapshots.Writer.TryWrite(waiting))
                     return;
                 _waitingSnapshot = null;
+                _captureStepMadeProgress = true;
                 continue;
             }
             if (_pendingIds.Count == 0)
             {
                 _snapshots.Writer.TryComplete();
                 _captureComplete = true;
+                _captureStepMadeProgress = true;
                 _entityIds = [];
                 _priority.Clear();
                 return;
@@ -122,10 +129,14 @@ internal sealed class Direct2DGeometryPreparationService(ID2D1Factory factory) :
                 {
                     _snapshots.Writer.TryComplete();
                     _captureComplete = true;
+                    _captureStepMadeProgress = true;
                     return;
                 }
                 id = _entityIds[_captureIndex++];
             }
+            // Advancing through IDs already captured by the priority queue is owner
+            // work too; it must not be throttled as an empty worker wait.
+            _captureStepMadeProgress = true;
             if (!_pendingIds.Remove(id))
                 continue;
             if (_invalidated.Contains(id) || !_document.TryGetEntity(id, out var entity) || entity is null || entity.IsErased)

@@ -178,16 +178,40 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, ICadR
     {
         ThrowIfDisposed();
 
-        _imageSource = imageSource ?? throw new ArgumentNullException(nameof(imageSource));
-        _target.SetTarget(_imageSource);
-        _hasRenderedFrame = false;
-        InvalidateBaseScene(releaseSnapshot: true);
-        EndViewportInteraction();
-        ResetRendererDeviceResources();
+        ArgumentNullException.ThrowIfNull(imageSource);
+        var attached = false;
+        try
+        {
+            _target.SetTarget(imageSource);
+            attached = true;
+        }
+        finally
+        {
+            // Detach failure leaves the old source untouched; attach failure after
+            // detachment adopts the new owner so subsequent size/retry calls agree.
+            if (attached || !ReferenceEquals(_imageSource, _target.ImageSource))
+            {
+                _imageSource = _target.ImageSource;
+                _hasRenderedFrame = false;
+                InvalidateBaseScene(releaseSnapshot: true);
+                EndViewportInteraction();
+                ResetRendererDeviceResources();
+            }
+        }
     }
 
     public void SetScene(CadDocument document, CadViewport viewport) =>
         SetScene(document, viewport, prepareResourcesInBackground: true);
+
+    public void DetachImageSource()
+    {
+        if (_disposed) return;
+        _target.DetachTarget();
+        _imageSource = null;
+        _hasRenderedFrame = false;
+        EndViewportInteraction();
+        InvalidateBaseScene(releaseSnapshot: true);
+    }
 
     internal void SetScene(
         CadDocument document,
@@ -256,15 +280,19 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, ICadR
     public void SetTransientScene(CadTransientScene? transientScene)
     {
         ThrowIfDisposed();
-
+        if (ReferenceEquals(_transientScene, transientScene)) return;
         _transientScene = transientScene;
+        InvalidateBaseScene(releaseSnapshot: false);
+        EndViewportInteraction();
     }
 
     public void SetHandleScene(CadHandleScene? handleScene)
     {
         ThrowIfDisposed();
-
+        if (ReferenceEquals(_handleScene, handleScene)) return;
         _handleScene = handleScene;
+        InvalidateBaseScene(releaseSnapshot: false);
+        EndViewportInteraction();
     }
 
     public void SetRenderOptions(CadRenderOptions? renderOptions)
@@ -647,6 +675,7 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, ICadR
             _multiDeviceRenderer.EnforceResourceBudget();
         }
     }
+    public bool IsRenderCachePreparationWaiting => _renderer.IsRenderCachePreparationWaiting;
     public bool IsInitialViewReady
     {
         get
