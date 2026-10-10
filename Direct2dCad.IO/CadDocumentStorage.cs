@@ -11,11 +11,13 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
     private const int MaxSectionCount = 4096;
     public CadDocumentLoadLimits LoadLimits { get; init; } = new();
     private static readonly MessagePackSerializerOptions Lz4Options =
-        MessagePackSerializerOptions.Standard
+        new MessagePackSerializerOptions(MessagePack.Resolvers.CompositeResolver.Create(
+            CadStorageResolver.Instance, MessagePack.Resolvers.BuiltinResolver.Instance))
             .WithCompression(MessagePackCompression.Lz4BlockArray);
 
     private static readonly MessagePackSerializerOptions NoCompressionOptions =
-        MessagePackSerializerOptions.Standard;
+        new(MessagePack.Resolvers.CompositeResolver.Create(
+            CadStorageResolver.Instance, MessagePack.Resolvers.BuiltinResolver.Instance));
 
     public void Save(CadDocument document, string filePath)
     {

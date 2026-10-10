@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+ xmlns:layout="clr-namespace:Direct2dCad.ViewModels.Layouts;assembly=Direct2dCad.ViewModels"
+ xmlns:local="clr-namespace:Direct2dCad.Avalonia" xmlns:controls="clr-namespace:Direct2dCad.Avalonia.Controls" x:Class="Direct2dCad.Avalonia.Views.EditorView" x:DataType="vm:EditorTabViewModel" x:CompileBindings="True">
+ <Grid RowDefinitions="Auto,*,Auto">
+  <WrapPanel>
+   <Border IsVisible="{Binding IsCompatibilityReadOnly}" Padding="8" BorderBrush="Orange" BorderThickness="1"><StackPanel Orientation="Horizontal" Spacing="8">
+    <TextBlock Text="{Binding CadDocumentViewModel.CadEditor.Document.CompatibilityNotice}" TextWrapping="Wrap" MaxWidth="420" />
+    <Button Content="{local:Loc SaveCompatibleCopy}" Command="{Binding SaveCompatibleCopyCommand}" />
+   </StackPanel></Border>
+  </WrapPanel>
+  <Grid Grid.Row="1" x:Name="CanvasSurface" ClipToBounds="True">
+   <Button HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Width="28" Height="28" Padding="5" Background="#80202429" BorderThickness="0" Command="{Binding FitToWindowCommand}" ToolTip.Tip="{local:Loc Fit}" ZIndex="2"><controls:CadIcon Kind="Fullscreen" Foreground="White" /></Button>
+   <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" Spacing="6" Panel.ZIndex="2">
+    <Border Background="#B0202429" Padding="8,4" IsHitTestVisible="False" IsVisible="{Binding CadDocumentViewModel.ShowFramesPerSecond}">
+     <TextBlock Foreground="White" FontFamily="Consolas" AutomationProperties.AutomationId="RenderPerformanceText">
+      <Run Text="{Binding CadDocumentViewModel.RenderFramesPerSecond, StringFormat='{}{0:F0} FPS'}" /><Run Text=" · " />
+      <Run Text="{Binding CadDocumentViewModel.RenderFrameTimeMilliseconds, StringFormat='{}{0:F1} ms'}" />
+     </TextBlock>
+    </Border>
+    <Border Background="#B0202429" Padding="8,4" IsVisible="{Binding CadDocumentViewModel.IsEditingBlock}"><StackPanel Orientation="Horizontal" Spacing="8">
+     <TextBlock Text="{Binding CadDocumentViewModel.EditingBlockName}" Foreground="White" VerticalAlignment="Center" />
+     <TextBlock Text="{local:Loc BlockEditing}" Foreground="White" VerticalAlignment="Center" />
+     <Button Content="×" ToolTip.Tip="{local:Loc ExitBlockEditor}" Command="{Binding CadDocumentViewModel.ExitBlockEditingCommand}" />
+    </StackPanel></Border>
+   </StackPanel>
+   <Canvas x:Name="Overlay" IsHitTestVisible="True" ClipToBounds="True">
+    <Canvas x:Name="DynamicPanel" IsVisible="{Binding CadDocumentViewModel.HasDynamicInput}">
+     <Path x:Name="DynamicGuides" IsHitTestVisible="False" Stroke="{DynamicResource CadRibbonAccentBrush}" StrokeThickness="1" StrokeDashArray="3,3" Opacity="0.75" />
+     <ItemsControl x:Name="DynamicFields" ItemsSource="{Binding CadDocumentViewModel.DynamicInputFields}">
+      <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:CadDynamicInputField">
+       <Border Background="{DynamicResource MaterialBackgroundBrush}" BorderBrush="{DynamicResource CadRibbonAccentBrush}" BorderThickness="1" CornerRadius="2" Padding="3,0">
+        <StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="{Binding Prefix}" VerticalAlignment="Center" />
+         <TextBox Width="70" MinHeight="24" Height="24" Padding="2,0" BorderThickness="0" Background="Transparent" FontSize="12" Text="{Binding Text, Mode=TwoWay}" AutomationProperties.AutomationId="{Binding AutomationId}" ToolTip.Tip="{Binding Label}" GotFocus="FieldFocused" LostFocus="FieldLostFocus" />
+         <controls:CadIcon Kind="Lock" Width="10" Height="10" IsVisible="{Binding IsLocked}" />
+        </StackPanel>
+       </Border>
+      </DataTemplate></ItemsControl.ItemTemplate>
+     </ItemsControl>
+     <TextBlock x:Name="DynamicError" Text="{Binding CadDocumentViewModel.DynamicInputError}" Foreground="OrangeRed" FontSize="12" MaxWidth="180" TextWrapping="Wrap" IsHitTestVisible="False" />
+    </Canvas>
+   </Canvas>
+  </Grid>
+  <DockPanel Grid.Row="2">
+   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><StackPanel Orientation="Horizontal" IsVisible="{Binding LayoutWorkspace.HasActiveLayout}"><Button Classes="toolIcon" Command="{Binding PrintCommand}" ToolTip.Tip="{local:Loc Print}" AutomationProperties.AutomationId="PrintLayoutButton"><controls:CadIcon Kind="PrinterOutline" /></Button><Button Classes="toolIcon" Command="{Binding CadDocumentViewModel.BeginLayoutViewportCreationCommand}" ToolTip.Tip="{local:Loc CreateViewportMode}" AutomationProperties.AutomationId="CreateLayoutViewportButton"><controls:CadIcon Kind="ViewDashboardOutline" /></Button><RadioButton Content="{local:Loc Paper}" GroupName="{Binding LayoutSpaceGroupName}" IsChecked="{Binding CadDocumentViewModel.ActiveLayoutSpaceMode, Mode=TwoWay, Converter={x:Static local:CadLayoutSpaceConverter.Instance}, ConverterParameter=Paper}" AutomationProperties.AutomationId="PaperSpaceButton" Margin="4,0" /><RadioButton Content="{local:Loc Model}" GroupName="{Binding LayoutSpaceGroupName}" IsChecked="{Binding CadDocumentViewModel.ActiveLayoutSpaceMode, Mode=TwoWay, Converter={x:Static local:CadLayoutSpaceConverter.Instance}, ConverterParameter=Model}" AutomationProperties.AutomationId="LayoutModelSpaceButton" Margin="4,0" /><ComboBox Width="100" ItemsSource="{Binding LayoutWorkspace.CurrentViewportOptions}" SelectedItem="{Binding LayoutWorkspace.CurrentViewport, Mode=TwoWay}" IsVisible="{Binding CadDocumentViewModel.IsLayoutViewportActive}" ToolTip.Tip="{local:Loc Viewport}"><ComboBox.ItemTemplate><DataTemplate x:DataType="layout:LayoutViewportItemViewModel"><TextBlock Text="{Binding Name}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel><Button Classes="toolIcon" Command="{Binding LayoutWorkspace.AddLayoutCommand}" ToolTip.Tip="{local:Loc AddLayout}"><controls:CadIcon Kind="Plus" /></Button><Button Classes="toolIcon" Command="{Binding LayoutWorkspace.DeleteLayoutCommand}" ToolTip.Tip="{local:Loc DeleteLayout}"><controls:CadIcon Kind="Delete" /></Button><Button Classes="toolIcon" Click="LayoutSettingsClicked" ToolTip.Tip="{local:Loc LayoutSettings}"><controls:CadIcon Kind="Cog" /></Button></StackPanel>
+   <ListBox Classes="cadList" ItemsSource="{Binding LayoutWorkspace.Tabs}" SelectedItem="{Binding LayoutWorkspace.SelectedTab, Mode=TwoWay}" BorderThickness="0">
+    <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+    <ListBox.ItemTemplate><DataTemplate x:DataType="layout:LayoutTabItemViewModel"><Grid MinWidth="62" MinHeight="26"><TextBlock IsVisible="{Binding IsModelSpace}" Text="{local:Loc Model}" VerticalAlignment="Center" /><controls:CadEditableText IsVisible="{Binding !IsModelSpace}" Text="{Binding Name, Mode=TwoWay}" MinHeight="26" /></Grid></DataTemplate></ListBox.ItemTemplate>
+   </ListBox>
+  </DockPanel>
+ </Grid>
+</UserControl>
+

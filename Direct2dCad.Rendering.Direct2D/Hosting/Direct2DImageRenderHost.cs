@@ -639,7 +639,11 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, ICadR
         return Math.Round(translation, MidpointRounding.AwayFromZero);
     }
 
-    internal byte[] CaptureBackBufferPixels() => _target.CaptureBackBufferPixels();
+    /// <summary>Reads the presented BGRA frame for clients without a shared GPU surface.</summary>
+    public long CpuReadbackCount { get; private set; }
+    public byte[] CaptureBackBufferPixels() { CpuReadbackCount++; return _target.CaptureBackBufferPixels(); }
+    public Direct2DSharedGpuFrame CreateSharedGpuFrame() => _target.CreateSharedGpuFrame();
+    public bool TryPublishSharedGpuFrame(Direct2DSharedGpuFrame frame) => _target.TryPublishSharedGpuFrame(frame);
 
     internal byte[] CapturePresentedPixels() => _target.CapturePresentedPixels();
 

@@ -1,0 +1,7 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels" xmlns:local="clr-namespace:Direct2dCad.Avalonia" x:Class="Direct2dCad.Avalonia.Views.RadialSettingsView" x:DataType="vm:RadialMenuSettingsViewModel" x:CompileBindings="True">
+ <StackPanel Spacing="8" Margin="12">
+  <CheckBox Content="{local:Loc RadialMenuEnabled}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" />
+  <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"><ComboBox.ItemTemplate><DataTemplate x:DataType="vm:RadialMenuProfileViewModel"><TextBlock Text="{Binding DisplayName}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+  <ItemsControl ItemsSource="{Binding SelectedProfile.Slots}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:RadialMenuSlotViewModel"><Grid ColumnDefinitions="90,*" Margin="0,3"><TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding $parent[UserControl].((vm:RadialMenuSettingsViewModel)DataContext).ActionOptions}" SelectedItem="{Binding SelectedAction, Mode=TwoWay}"><ComboBox.ItemTemplate><DataTemplate x:DataType="vm:CadRadialMenuActionOption"><TextBlock Text="{Binding DisplayName}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+ </StackPanel>
+</UserControl>

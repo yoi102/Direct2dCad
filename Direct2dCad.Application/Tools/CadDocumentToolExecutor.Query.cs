@@ -26,7 +26,7 @@ public sealed partial class CadDocumentToolExecutor
         token.ThrowIfCancellationRequested();
         if(!Current()) throw new CadSnapshotChangedException();
         _querySnapshot=snapshot;_queryEditor=editor;_queryVersion=version;
-        var node=JsonSerializer.SerializeToNode(result)!.AsObject();node["document_version"]=version;
+        var node=Direct2dCad.AI.Contracts.CadJson.SerializeToNode(result)!.AsObject();node["document_version"]=version;
         return Success(node);
     }
 }

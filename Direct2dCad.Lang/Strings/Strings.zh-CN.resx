@@ -1695,4 +1695,11 @@
   <data name="TerminalCommandBusy" xml:space="preserve"><value>终端命令仍在执行。按 Esc 取消，并等待它停止后再执行下一条命令。</value></data>
   <data name="TerminalDocumentUnavailable" xml:space="preserve"><value>原文档已关闭或替换，命令已取消。</value></data>
   <data name="PastePlacementPrompt" xml:space="preserve"><value>在画布中单击以放置复制的对象；Esc 取消。</value></data>
+  <data name="CloseOtherDocuments" xml:space="preserve"><value>关闭其他图纸</value></data>
+  <data name="CloseAllDocuments" xml:space="preserve"><value>关闭所有图纸</value></data>
+  <data name="GridSpacing" xml:space="preserve"><value>网格间距</value></data>
+  <data name="Layout" xml:space="preserve"><value>布局</value></data>
+  <data name="Loading" xml:space="preserve"><value>正在加载…</value></data>
+  <data name="Overwrite" xml:space="preserve"><value>覆盖</value></data>
+  <data name="Topmost" xml:space="preserve"><value>窗口置顶</value></data>
 </root>

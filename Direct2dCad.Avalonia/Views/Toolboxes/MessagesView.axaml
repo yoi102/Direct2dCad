@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Toolboxes;assembly=Direct2dCad.ViewModels" xmlns:log="clr-namespace:Direct2dCad.ViewModels.Services.Platform.Notifications;assembly=Direct2dCad.ViewModels.Services" xmlns:local="clr-namespace:Direct2dCad.Avalonia" xmlns:controls="clr-namespace:Direct2dCad.Avalonia.Controls" x:Class="Direct2dCad.Avalonia.Views.Toolboxes.MessagesView" x:DataType="vm:MessageToolboxViewModel" x:CompileBindings="True">
+ <Grid RowDefinitions="Auto,*" Margin="8">
+  <Grid ColumnDefinitions="*,120,Auto" Margin="0,0,0,4">
+   <TextBox MinWidth="120" Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="{local:Loc SearchMessages}" ToolTip.Tip="{local:Loc SearchMessages}" />
+   <ComboBox Grid.Column="1" Margin="6,0,0,0" ItemsSource="{x:Static local:CadMessageFilterConverter.Options}" SelectedItem="{Binding SelectedLevel, Mode=TwoWay, Converter={x:Static local:CadMessageFilterConverter.Instance}}" PlaceholderText="{local:Loc All}" ToolTip.Tip="{local:Loc MessageLevel}">
+    <ComboBox.ItemTemplate><DataTemplate x:DataType="local:CadMessageLevelOption"><TextBlock Text="{Binding Label}" /></DataTemplate></ComboBox.ItemTemplate>
+   </ComboBox>
+   <Button Grid.Column="2" Classes="toolIcon" Command="{Binding ClearMessagesCommand}" ToolTip.Tip="{local:Loc ClearMessages}"><controls:CadIcon Kind="Broom" /></Button>
+  </Grid>
+  <ListBox Grid.Row="1" Classes="cadList" ItemsSource="{Binding VisibleEntries}"><ListBox.ItemTemplate><DataTemplate x:DataType="log:CadMessageEntry">
+   <Grid ColumnDefinitions="64,76,*" Margin="0,2" ToolTip.Tip="{Binding Source}">
+    <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" FontSize="11" Opacity="0.55" />
+    <TextBlock Grid.Column="1" Text="{Binding Level, Converter={x:Static local:CadMessageLevelConverter.Instance}}" FontSize="11" FontWeight="SemiBold" />
+    <SelectableTextBlock Grid.Column="2" Text="{Binding Text}" TextWrapping="Wrap" Foreground="{DynamicResource MaterialBodyBrush}" />
+   </Grid>
+  </DataTemplate></ListBox.ItemTemplate></ListBox>
+ </Grid>
+</UserControl>

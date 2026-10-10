@@ -84,7 +84,7 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
                 for (var i = replied; i < completion.Completion.ToolCalls.Count; i++)
                 {
                     var interrupted = executing && i == replied;
-                    request.Conversation.AddToolResult(completion.Completion.ToolCalls[i], JsonSerializer.Serialize(new
+                    request.Conversation.AddToolResult(completion.Completion.ToolCalls[i], Direct2dCad.AI.Contracts.CadJson.Serialize(new
                     {
                         success = false,
                         code = interrupted ? "execution_interrupted" : "not_executed",

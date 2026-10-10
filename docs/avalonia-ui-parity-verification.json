@@ -1,0 +1,309 @@
+{
+  "TimestampUtc": "2026-10-10T17:15:54.9625052+00:00",
+  "ExecutableSha256": "979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240",
+  "NativeAot": true,
+  "Acceptance": "Windows only; NativeAOT; application compiled bindings; approximate WPF layout and equivalent operations. All third-party UI libraries may retain similar native styles.",
+  "Windowing": "Headless routed input and measured controls; separate Win32 runtime smoke",
+  "SourceFindingsFixed": [
+    "Generated ContextMenu derives its style key from the base ContextMenu; generator emits the same fix",
+    "Canvas receives handled Win32 right-button releases, releases capture and blocks duplicate synthesized gestures",
+    "Canvas uses standard pointer placement instead of centered anchor/gravity",
+    "Material menu templates retained; canvas menu rows are 32 DIP with 12 DIP text",
+    "Menu height is limited to the owner window and current monitor working area, up to 560 DIP, with scrolling",
+    "Global repeating-button theme is scoped to numeric steppers so library scroll buttons keep their own themes",
+    "ScrollBar uses the existing MaterialModernScrollBar template through BasedOn with a bounded 12 DIP cross-axis",
+    "Actual canvas and print option scrollbars remain narrow during delayed hover expansion and pressed thumb drag; both scroll offsets change",
+    "All 25 generated entity-property forms have compact 28 DIP editors, tighter rows and flat section headers; generator emits the same changes",
+    "Property headers retain the library expander template with reduced padding and fully visible 12 DIP captions",
+    "Numeric property steppers use an 18 DIP column of vertical increment/decrement arrows; command, precision, validation, keyboard and undo paths retained",
+    "Global ComboBox uses the library outlined theme with neutral transparent background, compact 28 DIP field and 32 DIP options; status controls use 24 DIP",
+    "ColorPicker retains its library template and flyout with a neutral outline button, selected-color swatch and text preview; compact field fills its available row width",
+    "Shared styles apply to property, status detail, settings and print fields; light/dark previews update when Color changes",
+    "Real headless color popup opening, visible color spectrum, Escape, list Alt+Down/Down/Enter and disabled-color behavior passed",
+    "All command menu items use 32 DIP rows and 12 DIP type; separators use a 1 DIP line with 4 DIP top/bottom spacing",
+    "Actual File and Layer command rows are measured; Layer captions remain fully visible, right click selects the target and Lock remains undoable",
+    "Reproduced actual docked Explicit choice returning to ByLayer; stable color-source option identities and guarded collection notifications prevent refresh writeback from undoing a user selection",
+    "Actual docked pointer and Alt+Down/Down/Enter source selection retain Explicit, enable compiled-bound color editing and undo color/source as separate commands",
+    "Windows font manager uses Microsoft YaHei UI with explicit YaHei UI and Yu Gothic UI fallbacks; shaped Chinese captions contain no missing-glyph indexes",
+    "Unsaved document dialog uses the existing DontSave key and retains its Discard result; five missing labels have English, Chinese and Japanese resources",
+    "Runtime culture change refreshes the status tool caption; model-space tab and Paper/Model controls are localized without renaming user drawing/layout data",
+    "Replace the custom C++ OLE and vector-print DLL with Microsoft.Windows.CsWin32 0.3.333 generated API/COM bindings and C# session/package-target implementations",
+    "OLE client-site and advise interfaces share ComWrappers identity; storage and bitmap budgets, same-thread ownership, exception boundaries and disposal callback guards retained",
+    "Preserve the WPF OLE envelope byte-for-byte through CAD save/reload; generated callbacks and actual static OLE native save/load/draw regression passed",
+    "Retain Direct2D/XPS vector paths and text glyphs; installed printer Unicode DEVMODE converts to PrintTicket XML with the requested copy count without submitting a print job",
+    "Remove C++ source/build scripts and DLL copying; publish in a fresh directory and reject packages containing the old bridge",
+    "Match WPF window exit ordering: always ask ShowExitConfirmation first, including an empty or unmodified shell, then resolve unsaved drawings",
+    "Repeated Close requests reuse one pending task/session; Escape or Cancel keeps the application open and allows another Close request",
+    "Unsaved cancellation retains modified geometry; DontSave leaves the saved drawing bytes unchanged; Save persists the new circle and closes the actual main window after dock-state persistence",
+    "Handle exit-flow errors inside the pending task and keep the window open instead of throwing from an async-void Closing handler",
+    "Floating Dock HostWindow uses WindowDecorations.None, no extended client caption, and Dock title grips for whole-window movement; main/settings/preview decoration choices are unchanged",
+    "Borderless floating panes retain library maximize/restore/close/docking actions and a 4 DIP client gutter for edge/corner resize drags with cached directional cursors",
+    "Single tools, multiple floated tabs and restored layouts keep borderless configuration; the title Close hides only its tool, removes the empty host, preserves the current drawing and allows reopening"
+  ],
+  "Screenshots": [
+    {
+      "File": "preview-light.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/preview-light.png",
+      "Sha256": "EE35659F636FEAB09B8804B36C9A12278F82A491A74A0D6A062317DDD4212861",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "preview-dark.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/preview-dark.png",
+      "Sha256": "1286C005E7277C034A38C964F2A08EEF3393BC99A84072D5BA7BB5275ABEAE06",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "canvas-context-menu.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/canvas-context-menu.png",
+      "Sha256": "16691C0CC1F62EE67792CD0C7DFFA768051C7139DC67F2F3EE5CCA1F8E7C6F06",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "canvas-scrollbar-pressed.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/canvas-scrollbar-pressed.png",
+      "Sha256": "5801E144C759E1AC8E86A626F2496A73D001A07EC5D5CBD7FCEEF49FBE9BDD75",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "print-scrollbar-pressed.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/print-scrollbar-pressed.png",
+      "Sha256": "930B947526A83F3A9E2515874883B6285456942AEEDF1A7223155DF162B6E9C9",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "property-compact.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/property-compact.png",
+      "Sha256": "5EAF663CE18D04B95CD6369B4BE3293F4840184ADB7A1C3ABFD6CE52B5B8E011",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "choices-light.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-light.png",
+      "Sha256": "29FA429088052733A98C54B4A2FA87AB61BC52B9A9133FE9AF7B125F0B0038BA",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "choices-dark.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-dark.png",
+      "Sha256": "D44A526D2440D01AA7A6681C2D9477CBB5167D41EA14A21F490CBE1848C638C2",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "choices-color-popup.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-color-popup.png",
+      "Sha256": "3FAD2911D19622EB1138F96945ED7DE4C994503BCE4C0E157722C4D9F0121CED",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "choices-list-popup.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-list-popup.png",
+      "Sha256": "7CF0A7A4AD07F229F5E10B5A4D6389F4F30FFDB3046F83948BADDE4225FB7DF3",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "file-menu-compact.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/file-menu-compact.png",
+      "Sha256": "40AA169EEFCE96DF790EA08DE28365D8062B5114D57DC5C0A218281B4C41B1A4",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "layer-menu-compact.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/layer-menu-compact.png",
+      "Sha256": "EAED9F15D6F55B7BED0DA1B8F515DF90647E27640923149A3847735E6E221C65",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "explicit-color-source.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/explicit-color-source.png",
+      "Sha256": "34E8CE1ABEAC43C17EC2CC35C62EFE9B27B64A92899732150F8EEB3947229585",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "chinese-menu.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/chinese-menu.png",
+      "Sha256": "C1C5881C53A2FDF9F55B18144CE908134DF2284863F32457755315B8C63D6E79",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "chinese-unsaved-dialog.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/chinese-unsaved-dialog.png",
+      "Sha256": "04900AC68E0A3BF02BDDCF6FC8A65375A33D8099C8B4B01CF15D3F98E3BA7C06",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+    },
+    {
+      "File": "exit-confirmation.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/exit-confirmation.png",
+      "Sha256": "30B946A7CB6C44BD72BB0A838DE53DE68578795E805A8997CD19F8BAD01ED142",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture; exit order/cancellation/save/discard and floating chrome/maximize/restore/close/reopen assertions passed; physical dragging not repeated"
+    },
+    {
+      "File": "exit-unsaved.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/exit-unsaved.png",
+      "Sha256": "D36BE1AB075A6431055667AC42E278E2884870A1AF971C9C4FE688399EFDBCB5",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture; exit order/cancellation/save/discard and floating chrome/maximize/restore/close/reopen assertions passed; physical dragging not repeated"
+    },
+    {
+      "File": "dock-floating-borderless.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/dock-floating-borderless.png",
+      "Sha256": "A2FE2C85995E9FDA5D7D59DA8DE6417399AF6308BF7008ECF8615529ADE9CE82",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT rendered capture; exit order/cancellation/save/discard and floating chrome/maximize/restore/close/reopen assertions passed; physical dragging not repeated"
+    }
+  ],
+  "NativeChecks": 83,
+  "Win32": {
+    "TimestampUtc": "2026-10-11T02:15:35.1759509+09:00",
+    "ExecutableSha256": "979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240",
+    "NativeAot": true,
+    "HeadlessWindowing": false,
+    "Passed": [
+      "NativeAOT runtime has no dynamic code",
+      "C# CsWin32 OLE and printing run without Direct2dCad.Ole.Native.dll",
+      "Window Close always shows WPF exit confirmation without drawings; repeated Close reuses the prompt and Cancel/Escape keeps the shell open",
+      "Cancelled exit can be retried and cancelled using the actual dialog button",
+      "Welcome startup creates no drawing; New activates a CAD document",
+      "Welcome and CAD tabs switch context without reentrant focus stealing",
+      "Material icons have rendered templates; Ribbon tabs are below tools and bottom dock spans the workspace",
+      "Pinned Material control templates load inside the NativeAOT shell",
+      "Inline rename commits, cancels, rejects blank names and respects read-only model tabs",
+      "Message severity and All roundtrip; settings category navigation and Apply persist a valid working copy",
+      "Full typed editor context menu resolves clipboard, file and drawing commands",
+      "Numeric circle, pointer leave, undo and redo",
+      "Drawing property views instantiate in light and dark themes",
+      "Native AI schemas, editing, querying and dimension creation",
+      "Official DataGrid compiled columns, vertex editing, sorting, invalid input and undo",
+      "Spline DataGrid fit point editing, undo and culture-aware numeric conversion",
+      "Native compressed file and generated dimension JSON roundtrip",
+      "Native DXF export and import",
+      "WPF OLE storage envelope, native save/load and rendering",
+      "CsWin32 callback interfaces share IUnknown identity, dispatch update/save events, map exceptions and ignore callbacks after disposal",
+      "C# OLE storage remains byte-identical after saving and reloading a CAD drawing",
+      "Formatted numeric properties preserve exact geometry on display, reject NaN, edit and undo",
+      "Property inspector keeps dimension common properties and association actions; no-document hint only appears without a drawing",
+      "WPF property titles, groups, F3 precision, stepper commands and undo, bounds, ByLayer fallback and color-source gating",
+      "View menu item hides and restores the same docked toolbox with synchronized state",
+      "Native Layers/Blocks tab switching renders each original business view without recycling another toolbox",
+      "Native command history retains 4 MiB payload accounting",
+      "White paper print rendering preserves document background",
+      "Native Direct2D/XPS vector printing retains geometry paths and text glyphs",
+      "Recovery snapshot and metadata",
+      "Generated user settings JSON",
+      "Typed settings forms and radial slot persistence",
+      "Live English and Chinese menu localization",
+      "Floating Dock hosts have no system frame or duplicate caption; native title maximize/restore and client-edge resize cursors remain available",
+      "Floating toolbox and docking back preserve the active page in other panels",
+      "Six independent dock zones and generated split-proportion settings",
+      "Dock.Avalonia floating, six groups and auto-hide reuse views; native layout persists and pins back after restart",
+      "Native close and business reopen retain the same toolbox and dock location",
+      "Dock as tabbed document exposes native navigation; redocking restores the compact CAD tabs",
+      "Repeated invalidated cross-window float/redock and layout reset retain content without stale layout managers; empty dock slots collapse",
+      "Floating a whole pane preserves the main destination; native Dock commands return its tools and close the empty floating window",
+      "Borderless floating title Close hides only its tool, removes the empty host, preserves the active drawing and allows reopening",
+      "Dock guides and execution share native split/tab validation; narrow targets hide unfit directions; global overlays are disabled; canvas remains unobstructed",
+      "LM Studio request serialization with a local stub",
+      "Direct2D rendered a real frame",
+      "Confirmed application exit asks about unsaved drawings next; cancelling that dialog retains the window and modified geometry",
+      "Exit confirmation followed by Don't save authorizes exit without changing the saved drawing",
+      "Exit confirmation followed by Save persists modified geometry, saves dock state and closes the actual main window"
+    ],
+    "Failure": null,
+    "ToolSchemas": 101,
+    "PropertyViews": 48,
+    "HardwareDirect2D": true
+  },
+  "WindowsInterop": {
+    "Language": "C#",
+    "NuGet": "Microsoft.Windows.CsWin32",
+    "Version": "0.3.333",
+    "RuntimeMarshalling": false,
+    "CustomCppSources": 0,
+    "CustomBridgeDllPresent": false,
+    "NativeApiDeclarations": "Generated by CsWin32",
+    "ComIdentity": "System.Runtime.InteropServices.ComWrappers",
+    "ManagedChecks": 82,
+    "ManagedReport": ".artifacts/avalonia-vsdock/managed-07731329459b41debf26eb02d36e3925/report.json",
+    "VectorTicket": "Actual installed-driver Unicode DEVMODE to PrintTicket XML; copies verified",
+    "PrintingJobSubmitted": false,
+    "RealOfficeDesktopAcceptance": "NOT RUN on current hash; historical evidence retained"
+  },
+  "HistoricalBaseline": {
+    "ExecutableSha256": "3A8AF1B86FC0B6DF08EF63FF38E17C6B71E8DBCFB67F4B2DC9D97A296A6F59BE",
+    "AppliesToCurrentExecutable": false,
+    "NativeEvidence": ".artifacts/avalonia-exit-confirmation/baseline-native.json",
+    "UiEvidence": ".artifacts/avalonia-exit-confirmation/baseline-ui.json",
+    "Desktop": null,
+    "HistoricalBaseline": {
+      "ExecutableSha256": "56A0D4E1B125F3C5068AAA4EE38CAC66B76551E3AD0BE0FDE8D2D2621E2CDEDD",
+      "AppliesToCurrentExecutable": false,
+      "NativeEvidence": ".artifacts/avalonia-csharp-interop/baseline-native.json",
+      "UiEvidence": ".artifacts/avalonia-csharp-interop/baseline-ui.json",
+      "Desktop": {
+        "TimestampUtc": "2026-10-11T01:10:43.9762008+09:00",
+        "AcceptanceDate": "2026-10-11",
+        "TimeZone": "Asia/Tokyo",
+        "ExecutableSha256": "56A0D4E1B125F3C5068AAA4EE38CAC66B76551E3AD0BE0FDE8D2D2621E2CDEDD",
+        "NativeAot": true,
+        "ProcessId": 43536,
+        "WindowTitle": "Direct2dCad · Color source and Chinese check",
+        "Method": "User manually operated the exact NativeAOT package",
+        "UserFeedback": "这几处都正常",
+        "Verified": [
+          "Color source can select Explicit and edit color",
+          "Chinese context menu captions display normally",
+          "Unsaved drawing dialog shows localized DontSave button"
+        ],
+        "Scope": "Current color source and Chinese display fixes only; other desktop gates retain historical hashes",
+        "TraceFile": "color-chinese-desktop-input.log",
+        "TraceSha256": "F4F0B2548B3831E2C3FF2CDFDBF80157F22295E3908953F1C3C8A08F3E76C358"
+      },
+      "HistoricalBaseline": {
+        "ExecutableSha256": "BA7D7323EE6F5581531ADC024A8750D1440C3EF396B203C7FE77CA9E9DEADBF0",
+        "AppliesToCurrentExecutable": false,
+        "NativeEvidence": ".artifacts/avalonia-colorfix/baseline-native.json",
+        "UiEvidence": ".artifacts/avalonia-colorfix/baseline-ui.json",
+        "Desktop": {
+          "ExecutableSha256": "BA7D7323EE6F5581531ADC024A8750D1440C3EF396B203C7FE77CA9E9DEADBF0",
+          "NativeAot": true,
+          "ProcessId": 6232,
+          "WindowTitle": "Direct2dCad · Choice and menu check",
+          "Method": "User manually operated the previous NativeAOT package",
+          "UserFeedback": "好了、但是Color source的选不到explicit",
+          "Verified": [
+            "Menu and choice field appearance accepted"
+          ],
+          "KnownIssues": [
+            "Color source cannot retain Explicit",
+            "Some Chinese text appears as missing glyph boxes",
+            "Unsaved dialog Discard is not translated"
+          ],
+          "Scope": "Appearance only; functional and localization fixes require a new executable"
+        }
+      }
+    }
+  },
+  "NotRun": [
+    "Physical floating-window dragging, edge/corner resizing and cross-monitor redocking on this executable",
+    "Physical desktop confirmation of exit buttons and native system menu/Snap Layouts on this executable",
+    "Real Office clipboard embedding, double-click editing and save-back on this executable",
+    "Physical printer/PDF job submission on this executable",
+    "Multi-DPI, multi-monitor and IME matrix"
+  ]
+}

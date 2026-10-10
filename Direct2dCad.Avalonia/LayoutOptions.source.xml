@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl DataContext="{d:DesignInstance Type=layout:LayoutWorkspaceViewModel}">
+  <CheckBox IsChecked="{Binding IsSettingsOpen}" />
+  <TextBox Text="{Binding PaperWidth}" />
+  <TextBox Text="{Binding PaperHeight}" />
+  <TextBox Text="{Binding MarginLeft}" />
+  <TextBox Text="{Binding MarginTop}" />
+  <TextBox Text="{Binding MarginRight}" />
+  <TextBox Text="{Binding MarginBottom}" />
+  <ColorPicker SelectedColor="{Binding PaperColor}" />
+  <TextBox Text="{Binding ViewportLeft}" />
+  <TextBox Text="{Binding ViewportBottom}" />
+  <TextBox Text="{Binding ViewportWidth}" />
+  <TextBox Text="{Binding ViewportHeight}" />
+  <TextBox Text="{Binding ModelCenterX}" />
+  <TextBox Text="{Binding ModelCenterY}" />
+  <TextBox Text="{Binding ViewportScale}" />
+  <TextBox Text="{Binding ViewportRotationDegrees}" />
+  <CheckBox IsChecked="{Binding IsViewportVisible}" />
+  <CheckBox IsChecked="{Binding IsViewportLocked}" />
+  <Button Command="{Binding AddLayoutCommand}" />
+  <Button Command="{Binding DeleteLayoutCommand}" />
+  <Button Command="{Binding ToggleSettingsCommand}" />
+  <Button Command="{Binding SwapPaperOrientationCommand}" />
+  <Button Command="{Binding AddViewportCommand}" />
+  <Button Command="{Binding RemoveViewportCommand}" />
+  <ComboBox ItemsSource="{Binding CurrentViewportOptions}" SelectedItem="{Binding CurrentViewport}" />
+  <ComboBox ItemsSource="{Binding Viewports}" SelectedItem="{Binding SelectedViewport}" />
+  <TextBlock Text="{Binding ValidationError}" />
+</UserControl>

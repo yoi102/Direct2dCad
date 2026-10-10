@@ -22,7 +22,7 @@ internal static class CadEntitySpecificPropertyTools
     internal static AiToolDefinition ToolDefinition { get; } = new(
         "set_entity_specific_properties",
         "Set undoable type-specific properties. Supports text content/font/inversion, shape font, image or OLE opacity, and BlockReference definition. Omitted properties are preserved.",
-        JsonSerializer.SerializeToElement(CreateSchema()));
+        Direct2dCad.AI.Contracts.CadJson.SerializeToElement(CreateSchema()));
 
     internal static object Execute(CadDocumentToolExecutor executor, JsonElement arguments)
     {

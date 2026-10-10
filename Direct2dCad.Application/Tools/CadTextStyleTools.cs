@@ -14,7 +14,7 @@ internal static class CadTextStyleTools
     internal static AiToolDefinition ToolDefinition { get; } = new(
         "set_text_style_properties",
         "Change an existing shared Text style as one undoable operation. All CadText entities using the style are remeasured.",
-        JsonSerializer.SerializeToElement(CreateSchema()));
+        Direct2dCad.AI.Contracts.CadJson.SerializeToElement(CreateSchema()));
 
     internal static object Execute(CadDocumentToolExecutor executor, JsonElement arguments)
     {

@@ -9,7 +9,7 @@ internal static class AgentToolDiscovery
     internal const string Name = "discover_tools";
     internal static readonly AiToolDefinition Definition = new(Name,
         "Find and load tools for a task before calling them. Supply names for exact tools, or a query describing the operation (any supported language). An empty query lists the complete tool-name catalog. Loaded tools are prioritized on the next request; narrow to one name if context is limited.",
-        JsonSerializer.SerializeToElement(new
+        Direct2dCad.AI.Contracts.CadJson.SerializeToElement(new
         {
             type = "object",
             properties = new
@@ -44,7 +44,7 @@ internal static class AgentToolDiscovery
                 return Loaded(loaded);
             }
             if (!root.TryGetProperty("query", out query) || string.IsNullOrWhiteSpace(query.GetString()))
-                return (JsonSerializer.Serialize(new { success = true, tool_names = tools.Select(tool => tool.Name).Order(StringComparer.Ordinal), next_step = "Call discover_tools with exact names to load their schemas." }), []);
+                return (Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = true, tool_names = tools.Select(tool => tool.Name).Order(StringComparer.Ordinal), next_step = "Call discover_tools with exact names to load their schemas." }), []);
             var text = query.GetString()!;
             var words = text.Split([' ', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var direct = tools.Select(tool => (Tool: tool, Score: words.Sum(word => tool.Name.Contains(word, StringComparison.OrdinalIgnoreCase) ? 10 :
@@ -55,11 +55,11 @@ internal static class AgentToolDiscovery
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
-            return (JsonSerializer.Serialize(new { success = false, error = exception.Message }), []);
+            return (Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = false, error = exception.Message }), []);
         }
     }
 
     private static (string, IReadOnlyList<AiToolDefinition>) Loaded(IReadOnlyList<AiToolDefinition> tools) =>
-        (JsonSerializer.Serialize(new { success = true, tools = tools.Select(tool => new { name = tool.Name, description = tool.Description }),
+        (Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = true, tools = tools.Select(tool => new { name = tool.Name, description = tool.Description }),
             next_step = "Use these tools on the next request. For a tool still unavailable in a small context, load its exact name alone." }), tools);
 }

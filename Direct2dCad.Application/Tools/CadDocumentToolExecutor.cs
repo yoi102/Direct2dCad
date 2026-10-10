@@ -1662,7 +1662,7 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
     }
 
     private static AiToolDefinition Tool(string name, string description, object schema) =>
-        new(name, description, JsonSerializer.SerializeToElement(schema));
+        new(name, description, Direct2dCad.AI.Contracts.CadJson.SerializeToElement(schema));
 
     private static object CoordinateSchema(IReadOnlyList<string> required, Dictionary<string, object> properties)
     {
@@ -2060,6 +2060,6 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
         ? "empty"
         : FormattableString.Invariant($"[{rect.MinX:0.###}, {rect.MinY:0.###}] to [{rect.MaxX:0.###}, {rect.MaxY:0.###}]");
 
-    private static string Success(object value) => JsonSerializer.Serialize(new { success = true, result = value });
-    private static string Error(string message) => JsonSerializer.Serialize(new { success = false, error = message });
+    private static string Success(object value) => Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = true, result = value });
+    private static string Error(string message) => Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = false, error = message });
 }

@@ -20,7 +20,7 @@ internal static class CadToolSchemaValidator
             ?? throw new ArgumentException($"Unknown CAD tool: {toolName}");
         EnsureUnambiguousProperties(arguments, "$");
         var node = Normalize(JsonNode.Parse(arguments.GetRawText()), definition.Parameters);
-        var normalized = JsonSerializer.SerializeToElement(node);
+        var normalized = Direct2dCad.AI.Contracts.CadJson.SerializeToElement(node);
         Validate(normalized, definition.Parameters);
         return normalized;
     }
@@ -60,7 +60,7 @@ internal static class CadToolSchemaValidator
                 // Legacy optional null means omitted, unless the published schema gives
                 // null an explicit meaning (for example clearing dimension text_override).
                 if (child is null && !required.Contains(property.Name) &&
-                    FindError(JsonSerializer.SerializeToElement<object?>(null), property.Value, "$", 0) is not null)
+                    FindError(Direct2dCad.AI.Contracts.CadJson.SerializeToElement<object?>(null), property.Value, "$", 0) is not null)
                 { obj.Remove(property.Name); continue; }
                 var normalized = Normalize(child, property.Value);
                 if (!ReferenceEquals(child, normalized)) obj[property.Name] = normalized;

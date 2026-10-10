@@ -1930,4 +1930,11 @@
   <data name="TerminalCommandBusy" xml:space="preserve"><value>A terminal command is still running. Press Esc to cancel it, then wait for it to stop.</value></data>
   <data name="TerminalDocumentUnavailable" xml:space="preserve"><value>The original document was closed or replaced. The command was canceled.</value></data>
   <data name="PastePlacementPrompt" xml:space="preserve"><value>Click in the drawing to place the copied objects; Esc cancels.</value></data>
+  <data name="CloseOtherDocuments" xml:space="preserve"><value>Close other drawings</value></data>
+  <data name="CloseAllDocuments" xml:space="preserve"><value>Close all drawings</value></data>
+  <data name="GridSpacing" xml:space="preserve"><value>Grid spacing</value></data>
+  <data name="Layout" xml:space="preserve"><value>Layout</value></data>
+  <data name="Loading" xml:space="preserve"><value>Loading…</value></data>
+  <data name="Overwrite" xml:space="preserve"><value>Overwrite</value></data>
+  <data name="Topmost" xml:space="preserve"><value>Always on top</value></data>
 </root>

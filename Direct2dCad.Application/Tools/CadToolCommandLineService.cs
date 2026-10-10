@@ -132,7 +132,7 @@ public sealed partial class CadToolCommandLineService(
         if (!Tools.TryGetValue(toolName, out var tool))
             return Failure($"Unknown CAD tool '{toolName}'. Type TOOLS to list available tools.");
 
-        var schema = JsonSerializer.Serialize(tool.Parameters, IndentedJson);
+        var schema = Direct2dCad.AI.Contracts.CadJson.Serialize(tool.Parameters, IndentedJson);
         return new CadToolCommandLineExecution(
             true,
             $"{tool.Name}{Environment.NewLine}" +
@@ -176,7 +176,7 @@ public sealed partial class CadToolCommandLineService(
             if (toolName == "save_document" && root.TryGetProperty("result", out var payload) &&
                 payload.TryGetProperty("saved", out var saved) && saved.ValueKind == JsonValueKind.False)
                 success = false;
-            var formatted = JsonSerializer.Serialize(root, IndentedJson);
+            var formatted = Direct2dCad.AI.Contracts.CadJson.Serialize(root, IndentedJson);
             return new CadToolCommandLineExecution(
                 success,
                 $"{toolName}:{Environment.NewLine}{formatted}" +

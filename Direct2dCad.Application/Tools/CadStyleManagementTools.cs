@@ -456,5 +456,5 @@ internal static class CadStyleManagementTools
     private static string ColorText(CadColor color) => $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
     private static object ObjectSchema(IReadOnlyDictionary<string, object> properties, IReadOnlyList<string>? required = null) => new { type = "object", properties, required = required ?? [], additionalProperties = false };
     private static object StringSchema(string description) => new { type = "string", description };
-    private static AiToolDefinition Tool(string name, string description, object schema) => new(name, description, JsonSerializer.SerializeToElement(schema));
+    private static AiToolDefinition Tool(string name, string description, object schema) => new(name, description, Direct2dCad.AI.Contracts.CadJson.SerializeToElement(schema));
 }

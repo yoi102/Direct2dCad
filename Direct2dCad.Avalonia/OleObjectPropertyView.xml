@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UserControl DataContext="{d:DesignInstance Type=vm:OleObjectPropertyViewModel}">
+  <EntityHeaderPropertySection />
+  <TextBox Text="{Binding SourceName}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.SourceName}}" />
+  <TextBox Text="{Binding ContentType}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.ContentType}}" />
+  <TextBox Text="{Binding Width}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Width}}" />
+  <TextBox Text="{Binding Height}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Height}}" />
+  <TextBox Text="{Binding CenterX}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterX}}" />
+  <TextBox Text="{Binding CenterY}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterY}}" />
+  <TextBox Text="{Binding Left}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Left}}" />
+  <TextBox Text="{Binding Bottom}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Bottom}}" />
+  <TextBox Text="{Binding Right}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Right}}" />
+  <TextBox Text="{Binding Top}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Top}}" />
+  <TextBox Text="{Binding ZIndex}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.ZIndex}}" />
+  <TextBox Text="{Binding IsVisible}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.IsVisible}}" />
+  <TextBox Text="{Binding Opacity}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Opacity}}" />
+</UserControl>

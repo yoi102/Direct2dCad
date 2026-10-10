@@ -244,7 +244,7 @@ public sealed partial class CadWorkspaceToolExecutor
             saved,
             document = DocumentDto(_workspace.GetRequiredDocument(document.DocumentId))
         };
-        return saved ? Success(result) : JsonSerializer.Serialize(new
+        return saved ? Success(result) : Direct2dCad.AI.Contracts.CadJson.Serialize(new
         {
             success = false, code = "save_not_completed", error = "Save did not complete; it was cancelled or failed.", result
         });
@@ -267,7 +267,7 @@ public sealed partial class CadWorkspaceToolExecutor
             document_id = document.DocumentId,
             default_document_id = _defaultDocumentId
         };
-        return closed ? Success(result) : JsonSerializer.Serialize(new
+        return closed ? Success(result) : Direct2dCad.AI.Contracts.CadJson.Serialize(new
         {
             success = false, code = "cancelled", error = "Close was cancelled; the document remains open.", result
         });
@@ -1896,45 +1896,45 @@ public sealed partial class CadWorkspaceToolExecutor
     {
         var schema = JsonNode.Parse(definition.Parameters.GetRawText())!.AsObject();
         var properties = schema["properties"]!.AsObject();
-        properties["document_id"] = JsonSerializer.SerializeToNode(DocumentIdSchema());
+        properties["document_id"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(DocumentIdSchema());
         if (CreationToolNames.Contains(definition.Name))
         {
             foreach (var (name, value) in CommonPropertySchema(includeEntityIds: false))
                 if (name is not ("layer" or "name"))
-                    properties[name] = JsonSerializer.SerializeToNode(value);
+                    properties[name] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(value);
             if (definition.Name is not ("add_text" or "add_shape_text"))
-                properties["stroke_style"] = JsonSerializer.SerializeToNode(
+                properties["stroke_style"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(
                     ObjectSchema(CreationStrokeSchema(definition.Name)));
             if (definition.Name is "add_circle" or "add_ellipse" or "add_rectangle" or "add_polygon" or "add_polyline" or "add_spline" or "add_composite_path")
-                properties["fill"] = JsonSerializer.SerializeToNode(ObjectSchema(
+                properties["fill"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(ObjectSchema(
                     FillSchema(false),
                     ["mode"],
                     allOf: FillRequirements()));
             if (definition.Name == "add_text")
             {
-                properties["text_style"] = JsonSerializer.SerializeToNode(StringSchema("Existing Text style name or ID; none selects the default"));
-                properties["font_family"] = JsonSerializer.SerializeToNode(StringSchema("Font family; creates or reuses a matching Text style"));
-                properties["inverted"] = JsonSerializer.SerializeToNode(new { type = "boolean" });
-                properties["inverted_margin_factor"] = JsonSerializer.SerializeToNode(new { type = "number", minimum = 0.0 });
+                properties["text_style"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(StringSchema("Existing Text style name or ID; none selects the default"));
+                properties["font_family"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(StringSchema("Font family; creates or reuses a matching Text style"));
+                properties["inverted"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(new { type = "boolean" });
+                properties["inverted_margin_factor"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(new { type = "number", minimum = 0.0 });
             }
             else if (definition.Name == "add_shape_text")
             {
-                properties["shape_font"] = JsonSerializer.SerializeToNode(StringSchema("Shape font ID or name"));
-                properties["inverted"] = JsonSerializer.SerializeToNode(new { type = "boolean" });
-                properties["inverted_margin_factor"] = JsonSerializer.SerializeToNode(new { type = "number", minimum = 0.0 });
+                properties["shape_font"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(StringSchema("Shape font ID or name"));
+                properties["inverted"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(new { type = "boolean" });
+                properties["inverted_margin_factor"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(new { type = "number", minimum = 0.0 });
             }
         }
 
         if (CreationToolNames.Contains(definition.Name))
         {
-            schema["not"] = JsonSerializer.SerializeToNode(MutuallyExclusive("color", "graphic_style"));
+            schema["not"] = Direct2dCad.AI.Contracts.CadJson.SerializeToNode(MutuallyExclusive("color", "graphic_style"));
             AddCreationSchemaRules(schema, definition.Name);
         }
 
         return new AiToolDefinition(
             definition.Name,
             definition.Description,
-            JsonSerializer.SerializeToElement(schema));
+            Direct2dCad.AI.Contracts.CadJson.SerializeToElement(schema));
     }
 
     private static Dictionary<string, object> CreationStrokeSchema(string toolName)
@@ -1956,7 +1956,7 @@ public sealed partial class CadWorkspaceToolExecutor
             return;
 
         var allOf = schema["allOf"] as JsonArray ?? [];
-        allOf.Add(JsonSerializer.SerializeToNode(new Dictionary<string, object>
+        allOf.Add(Direct2dCad.AI.Contracts.CadJson.SerializeToNode(new Dictionary<string, object>
         {
             ["if"] = new Dictionary<string, object>
             {
@@ -1984,7 +1984,7 @@ public sealed partial class CadWorkspaceToolExecutor
                 }
             }
         }));
-        allOf.Add(JsonSerializer.SerializeToNode(new Dictionary<string, object>
+        allOf.Add(Direct2dCad.AI.Contracts.CadJson.SerializeToNode(new Dictionary<string, object>
         {
             ["if"] = new Dictionary<string, object>
             {
@@ -2287,7 +2287,7 @@ public sealed partial class CadWorkspaceToolExecutor
     };
 
     private static AiToolDefinition Tool(string name, string description, object parameters) =>
-        new(name, description, JsonSerializer.SerializeToElement(parameters));
+        new(name, description, Direct2dCad.AI.Contracts.CadJson.SerializeToElement(parameters));
 
     private static readonly string[] CommonAppearanceFields =
     [
@@ -2300,6 +2300,6 @@ public sealed partial class CadWorkspaceToolExecutor
         "start_cap", "end_cap", "dash_cap", "dash_style", "line_join"
     ];
 
-    private static string Success(object value) => JsonSerializer.Serialize(new { success = true, result = value });
-    private static string Error(string message) => JsonSerializer.Serialize(new { success = false, error = message });
+    private static string Success(object value) => Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = true, result = value });
+    private static string Error(string message) => Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = false, error = message });
 }

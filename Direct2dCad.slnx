@@ -29,7 +29,9 @@
       <Platform Solution="*|x64" Project="x64" />
     </Project>
   </Folder>
-  <Folder Name="/clients/avalonia/" />
+  <Folder Name="/clients/avalonia/">
+    <Project Path="Direct2dCad.Avalonia/Direct2dCad.Avalonia.csproj" />
+  </Folder>
   <Folder Name="/clients/wpf/">
     <Project Path="Direct2dCad.wpf.Controls/Direct2dCad.wpf.Controls.csproj">
       <Platform Solution="*|x64" Project="x64" />
@@ -102,4 +104,5 @@
   <Project Path="Direct2dCad.Rendering.Transient/Direct2dCad.Rendering.Transient.csproj" Id="9e748601-eafc-466f-9bc4-e7ff2a91d0ea">
     <Platform Solution="*|x64" Project="x64" />
   </Project>
+  <Project Path="Direct2dCad.Windows.Interop/Direct2dCad.Windows.Interop.csproj" />
 </Solution>

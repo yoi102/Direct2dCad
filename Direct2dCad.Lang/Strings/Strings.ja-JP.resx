@@ -1695,4 +1695,11 @@
   <data name="TerminalCommandBusy" xml:space="preserve"><value>ターミナルコマンドが実行中です。Esc でキャンセルし、停止してから次のコマンドを実行してください。</value></data>
   <data name="TerminalDocumentUnavailable" xml:space="preserve"><value>元の図面が閉じられたか置き換えられたため、コマンドをキャンセルしました。</value></data>
   <data name="PastePlacementPrompt" xml:space="preserve"><value>図面上をクリックしてコピーしたオブジェクトを配置します。Esc でキャンセルします。</value></data>
+  <data name="CloseOtherDocuments" xml:space="preserve"><value>他の図面を閉じる</value></data>
+  <data name="CloseAllDocuments" xml:space="preserve"><value>すべての図面を閉じる</value></data>
+  <data name="GridSpacing" xml:space="preserve"><value>グリッド間隔</value></data>
+  <data name="Layout" xml:space="preserve"><value>レイアウト</value></data>
+  <data name="Loading" xml:space="preserve"><value>読み込み中…</value></data>
+  <data name="Overwrite" xml:space="preserve"><value>上書き</value></data>
+  <data name="Topmost" xml:space="preserve"><value>常に最前面</value></data>
 </root>

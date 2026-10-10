@@ -662,5 +662,5 @@ internal static class CadGeometryTools
     };
     private static object Number(string description) => new { type = "number", description };
     private static AiToolDefinition Tool(string name, string description, object schema) =>
-        new(name, description, JsonSerializer.SerializeToElement(schema));
+        new(name, description, Direct2dCad.AI.Contracts.CadJson.SerializeToElement(schema));
 }

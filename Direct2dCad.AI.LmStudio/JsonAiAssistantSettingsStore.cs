@@ -32,9 +32,9 @@ public sealed class JsonAiAssistantSettingsStore : IAiAssistantSettingsStore
         {
             if (File.Exists(_filePath))
             {
-                var settings = JsonSerializer.Deserialize<AiAssistantSettings>(
+                var settings = JsonSerializer.Deserialize(
                     File.ReadAllText(_filePath),
-                    SerializerOptions);
+                    AiSettingsJsonContext.Default.AiAssistantSettings);
                 if (settings is not null)
                 {
                     settings.Normalize();
@@ -65,6 +65,6 @@ public sealed class JsonAiAssistantSettingsStore : IAiAssistantSettingsStore
 
         File.WriteAllText(
             _filePath,
-            JsonSerializer.Serialize(settings, SerializerOptions));
+            JsonSerializer.Serialize(settings, AiSettingsJsonContext.Default.AiAssistantSettings));
     }
 }

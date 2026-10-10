@@ -55,10 +55,9 @@ public sealed class LmStudioChatClient(HttpClient httpClient) : IAiChatClient
             Math.Clamp(request.MaxOutputTokens, 1, 32768),
             Stream: false);
 
-        using var response = await httpClient.PostAsJsonAsync(
-            BuildEndpoint(request.Endpoint, "chat/completions"),
-            payload,
-            SerializerOptions,
+        using var contentPayload = new StringContent(CadJson.Serialize(payload, SerializerOptions), System.Text.Encoding.UTF8, "application/json");
+        using var response = await httpClient.PostAsync(
+            BuildEndpoint(request.Endpoint, "chat/completions"), contentPayload,
             cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
 

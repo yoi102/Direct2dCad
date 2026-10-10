@@ -250,7 +250,7 @@ public sealed partial class CadWorkspaceToolExecutor
         var submitted = await _workspace.PrintDocumentAsync(document.DocumentId, token);
         if (!submitted) token.ThrowIfCancellationRequested();
         return submitted ? Success(new { document_id = document.DocumentId, submitted = true, status = "submitted", completed = false }) :
-            JsonSerializer.Serialize(new { success = false, error = "Print preview was cancelled; no job was submitted.", code = "cancelled", document_id = document.DocumentId, submitted = false });
+            Direct2dCad.AI.Contracts.CadJson.Serialize(new { success = false, error = "Print preview was cancelled; no job was submitted.", code = "cancelled", document_id = document.DocumentId, submitted = false });
     }
 
     private static double PresentationNumber(JsonElement args, string key, double fallback) => args.TryGetProperty(key, out var value) ? value.GetDouble() : fallback;

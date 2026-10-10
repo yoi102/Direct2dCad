@@ -443,8 +443,18 @@ FodyWeavers.xsd
 !/docs/code-review/property-visual-2026-10-08/screenshots/panel-inspector-chinese-dark.png
 !/docs/code-review/property-visual-2026-10-08/screenshots/panel-inspector-chinese-light.png
 !/docs/code-review/property-visual-2026-10-08/screenshots/panel-inspector-circle.png
-/installer/
+# Installer build projects are ignored by default; keep the Avalonia MSI source.
+/installer/*
+!/installer/Direct2dCad.Avalonia.Msi/
+!/installer/Direct2dCad.Avalonia.Msi/**
+/installer/Direct2dCad.Avalonia.Msi/bin/
+/installer/Direct2dCad.Avalonia.Msi/obj/
 /erver/
 /scripts/
 /TestResults/
 /.artifacts
+!/docs/AVALONIA-WINDOWS.md
+!/docs/avalonia-native-verification.json
+!/docs/AVALONIA-UI-PARITY.md
+!/docs/AVALONIA-UI-LIBRARIES.md
+!/docs/avalonia-ui-parity-verification.json

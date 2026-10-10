@@ -9,6 +9,43 @@ namespace Direct2dCad.ViewModels.Tests;
 public sealed class ToolboxRefreshTests
 {
     [Fact]
+    public void ColorSourceRefreshKeepsOptionsAndGuardsSelectionWritebackWhenLabelsChange()
+    {
+        using var context = new CadToolboxTestContext();
+        AddSelectedLines(context, 1);
+        context.Properties.Attach(context.Document);
+        var model=Assert.IsType<LinePropertyViewModel>(context.Properties.Entity);
+        var entity=Assert.Single(context.Document.CadEditor.Document.Entities).Value;
+        var options=model.ColorSourceOptions;
+        model.SelectedColorSourceOption=options.Single(option=>option.Value==CadColorSource.Explicit);
+        context.Publish();
+        Assert.Same(options,model.ColorSourceOptions);
+        Assert.Equal(CadColorSource.Explicit,entity.ColorSource);
+        var previousCulture=System.Globalization.CultureInfo.CurrentUICulture;
+        var replacementCulture=previousCulture.Name=="zh-CN" ? "en-US" : "zh-CN";
+        var notifications=0;
+        model.PropertyChanged+=(_,e)=>
+        {
+            if(e.PropertyName!=nameof(model.ColorSourceOptions))return;
+            notifications++;
+            // Simulate a selector writing its default selection while replacing ItemsSource.
+            model.SelectedColorSourceOption=model.ColorSourceOptions[0];
+        };
+        try
+        {
+            System.Globalization.CultureInfo.CurrentUICulture=new(replacementCulture);
+            model.RefreshFromEntity();
+            Assert.Equal(1,notifications);
+            Assert.Equal(CadColorSource.Explicit,entity.ColorSource);
+            Assert.True(model.IsExplicitColorSource);
+            context.Document.Undo();context.Publish();
+            Assert.Equal(CadColorSource.ByLayer,entity.ColorSource);
+            Assert.False(model.IsExplicitColorSource);
+        }
+        finally {System.Globalization.CultureInfo.CurrentUICulture=previousCulture;}
+    }
+
+    [Fact]
     public void DrawingModeEscapeAndDocumentDetachChooseTheCorrectPropertyPanel()
     {
         using var context = new CadToolboxTestContext();

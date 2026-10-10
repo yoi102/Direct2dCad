@@ -329,7 +329,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
     private async Task EnsureThreadAsync(CodexAgentRunRequest request, Connection connection, CancellationToken cancellationToken)
     {
         var definitions = request.Toolset?.ToolDefinitions ?? [];
-        var key = JsonSerializer.Serialize(new
+        var key = Direct2dCad.AI.Contracts.CadJson.Serialize(new
         {
             request.Options.Model,
             effort = NormalizeReasoningEffort(request.Options.ReasoningEffort),
@@ -388,7 +388,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
     {
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, connection.Token);
         await _writeGate.WaitAsync(linked.Token);
-        try { await connection.Transport.WriteLineAsync(JsonSerializer.Serialize(message, JsonOptions), linked.Token); }
+        try { await connection.Transport.WriteLineAsync(Direct2dCad.AI.Contracts.CadJson.Serialize(message, JsonOptions), linked.Token); }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             FailConnection(connection, exception);
@@ -430,7 +430,7 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
             var detail = error.TryGetProperty("message", out var text) ? text.GetString() : error.GetRawText();
             completion.TrySetException(new InvalidOperationException($"Codex app-server: {detail}"));
         }
-        else completion.TrySetResult(message.TryGetProperty("result", out var result) ? result.Clone() : JsonSerializer.SerializeToElement(new { }));
+        else completion.TrySetResult(message.TryGetProperty("result", out var result) ? result.Clone() : Direct2dCad.AI.Contracts.CadJson.SerializeToElement(new { }));
     }
 
     private void DispatchServerRequest(Connection connection, long id, JsonElement message)

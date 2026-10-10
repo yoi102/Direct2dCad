@@ -71,6 +71,18 @@ internal sealed class ImageSourceDirect2DResource : IDisposable
 
     public IDWriteFactory? DwriteFactory => _dwriteFactory;
 
+    public Direct2DSharedGpuFrame CreateSharedGpuFrame()
+    {
+        ThrowIfDisposed(); EnsureTargetReady();
+        return new(_d3dDevice!, _width, _height);
+    }
+    public bool TryPublishSharedGpuFrame(Direct2DSharedGpuFrame frame)
+    {
+        ThrowIfDisposed(); EnsureTargetReady();
+        return frame.Width == _width && frame.Height == _height && frame.DevicePointer == _d3dDevice!.NativePointer &&
+            frame.TryPublish(_d3dContext!, _d3d11BackBuffer!);
+    }
+
     public ID3D11Device? D3DDevice
     {
         get

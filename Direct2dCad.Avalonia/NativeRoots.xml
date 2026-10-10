@@ -1,0 +1,20 @@
+<linker>
+  <!-- Dock ships ordinary internal bindings; keep its model metadata while our view factory is typed. -->
+  <assembly fullname="Dock.Model.Mvvm" preserve="all" />
+  <!-- Tool schemas/results contain heterogeneous anonymous objects. CadJson invokes
+       their preserved getters without emitting code or creating JSON converters. -->
+  <assembly fullname="Direct2dCad.Application" preserve="all" />
+  <assembly fullname="Direct2dCad.AI.Contracts" preserve="all" />
+  <assembly fullname="Direct2dCad.Agent" preserve="all" />
+  <assembly fullname="Direct2dCad.Agent.Codex" preserve="all" />
+  <assembly fullname="Direct2dCad.AI.LmStudio" preserve="all" />
+  <assembly fullname="Direct2dCad.Db" preserve="all" />
+  <assembly fullname="Direct2dCad.Commands" preserve="all" />
+  <assembly fullname="Direct2dCad.Editor" preserve="all" />
+  <assembly fullname="SharpGen.Runtime" preserve="all" />
+  <!-- Explicit compiled columns handle values. DataGrid additionally queries this
+       single row type's property metadata for read-only detection and sorting. -->
+  <assembly fullname="Direct2dCad.ViewModels">
+    <type fullname="Direct2dCad.ViewModels.Toolboxes.EntityProperty.PolylineVertexPropertyViewModel" preserve="all" />
+  </assembly>
+</linker>

@@ -9,6 +9,7 @@ namespace Direct2dCad.IO;
 internal static class CadDimensionStorage
 {
     private static readonly JsonSerializerOptions Options = CreateOptions();
+    private static readonly DimensionJsonContext Context = new(Options);
     private static JsonSerializerOptions CreateOptions()
     {
         var options=new JsonSerializerOptions { MaxDepth=16 };
@@ -17,7 +18,7 @@ internal static class CadDimensionStorage
     public static CadDimensionsSection Capture(IEnumerable<CadEntity> entities) => new()
     {
         Dimensions=entities.OfType<CadDimension>().Select(d=>new CadDimensionData
-        { Entity=CadDocumentMapper.ToEntityData(d), DefinitionJson=JsonSerializer.Serialize(d.Definition,Options) }).ToList()
+        { Entity=CadDocumentMapper.ToEntityData(d), DefinitionJson=JsonSerializer.Serialize(d.Definition,Context.CadDimensionDefinition) }).ToList()
     };
     public static void Restore(CadDocument document,CadDimensionsSection section,CancellationToken token)
     {
@@ -25,7 +26,7 @@ internal static class CadDimensionStorage
         {
             token.ThrowIfCancellationRequested();
             if(item.DefinitionJson.Length>65536)throw new InvalidDataException("Dimension definition exceeds its budget.");
-            var definition=JsonSerializer.Deserialize<CadDimensionDefinition>(item.DefinitionJson,Options)??throw new InvalidDataException("Missing dimension definition.");
+            var definition=JsonSerializer.Deserialize(item.DefinitionJson,Context.CadDimensionDefinition)??throw new InvalidDataException("Missing dimension definition.");
             definition.Validate();
             var e=item.Entity;var d=document.RestoreDimension(new(e.Id),new(e.LayerId),new(e.OwnerBlockId),definition,e.Name);
             CadDocumentMapper.ApplyEntityState(document,d,e);

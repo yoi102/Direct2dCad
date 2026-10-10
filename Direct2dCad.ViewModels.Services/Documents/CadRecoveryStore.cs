@@ -59,7 +59,7 @@ public sealed class CadRecoveryStore : IDisposable
             try
             {
                 if (new FileInfo(file).Length > 64 * 1024) continue;
-                var entry = JsonSerializer.Deserialize<CadRecoveryEntry>(File.ReadAllText(file));
+                var entry = JsonSerializer.Deserialize(File.ReadAllText(file), RecoveryJsonContext.Default.CadRecoveryEntry);
                 if (entry is not null && File.Exists(Resolve(entry.SnapshotName))) entries.Add(entry);
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { }
@@ -122,7 +122,7 @@ public sealed class CadRecoveryStore : IDisposable
                     async ct => await Task.Delay(1, ct)) { UpdateOrigin = false,
                     ExpectedDestination = CadFileRevision.Capture(target) }, token);
             token.ThrowIfCancellationRequested();
-            await File.WriteAllTextAsync(temporaryMetadata, JsonSerializer.Serialize(entry), token);
+            await File.WriteAllTextAsync(temporaryMetadata, JsonSerializer.Serialize(entry, RecoveryJsonContext.Default.CadRecoveryEntry), token);
             File.Move(temporaryMetadata, metadata);
         }
         catch
@@ -200,7 +200,7 @@ public sealed class CadRecoveryStore : IDisposable
             try
             {
                 if(new FileInfo(metadata).Length>64*1024) throw new InvalidDataException("Recovery metadata is too large.");
-                var entry=JsonSerializer.Deserialize<CadRecoveryEntry>(File.ReadAllText(metadata));
+                var entry=JsonSerializer.Deserialize(File.ReadAllText(metadata), RecoveryJsonContext.Default.CadRecoveryEntry);
                 if(entry is null || !File.Exists(Resolve(entry.SnapshotName))) throw new InvalidDataException("Recovery snapshot is missing.");
                 referenced.Add(entry.SnapshotName);
             }

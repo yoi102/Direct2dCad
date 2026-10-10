@@ -69,7 +69,7 @@ public sealed partial class CadToolCommandLineService
             payload["entity_ids"] = ids;
         }
         var executor = new CadWorkspaceToolExecutor(workspace, imageImportService);
-        var raw = await executor.ExecuteAsync(new AiToolCall(Guid.NewGuid().ToString("N"), "measure_geometry", JsonSerializer.Serialize(payload)), token);
+        var raw = await executor.ExecuteAsync(new AiToolCall(Guid.NewGuid().ToString("N"), "measure_geometry", Direct2dCad.AI.Contracts.CadJson.Serialize(payload)), token);
         var result = FormatExecutionResult("measure_geometry", raw);
         if (!result.Success) return result;
         using var json = JsonDocument.Parse(raw);
@@ -98,7 +98,7 @@ public sealed partial class CadToolCommandLineService
     private async Task<CadToolCommandLineExecution> ExecuteShortcutToolAsync(string tool, Dictionary<string, object> payload, CancellationToken token)
     {
         var executor = new CadWorkspaceToolExecutor(workspace, imageImportService);
-        var result = await executor.ExecuteAsync(new AiToolCall(Guid.NewGuid().ToString("N"), tool, JsonSerializer.Serialize(payload)), token);
+        var result = await executor.ExecuteAsync(new AiToolCall(Guid.NewGuid().ToString("N"), tool, Direct2dCad.AI.Contracts.CadJson.Serialize(payload)), token);
         return FormatExecutionResult(tool, result);
     }
 

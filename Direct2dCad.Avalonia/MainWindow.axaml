@@ -1,0 +1,140 @@
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels" xmlns:dialog="clr-namespace:DialogHostAvalonia;assembly=DialogHost.Avalonia"
+        xmlns:views="clr-namespace:Direct2dCad.Avalonia.Views.Generated" xmlns:ui="clr-namespace:Direct2dCad.Avalonia.Views" xmlns:local="clr-namespace:Direct2dCad.Avalonia" xmlns:controls="clr-namespace:Direct2dCad.Avalonia.Controls" xmlns:conv="using:Avalonia.Data.Converters" xmlns:chrome="using:Avalonia.Controls.Chrome"
+        x:Class="Direct2dCad.Avalonia.MainWindow" x:DataType="vm:MainViewModel" x:CompileBindings="True"
+        Title="Direct2dCad · Avalonia" Width="1300" Height="900" MinWidth="1000" MinHeight="640" WindowStartupLocation="CenterScreen" WindowDecorations="Full" ExtendClientAreaTitleBarHeightHint="32" Topmost="{Binding Topmost, Mode=TwoWay}"
+        AutomationProperties.AutomationId="Direct2dCad.Avalonia.MainWindow">
+  <Window.Resources>
+    <SolidColorBrush x:Key="CaptionButtonForeground" Color="White" />
+    <SolidColorBrush x:Key="CaptionButtonBackground" Color="#25FFFFFF" />
+    <SolidColorBrush x:Key="CaptionButtonBorderBrush" Color="#40FFFFFF" />
+    <ControlTheme x:Key="CadMainWindowDecorations" TargetType="chrome:WindowDrawnDecorations" BasedOn="{StaticResource {x:Type chrome:WindowDrawnDecorations}}">
+      <Setter Property="DefaultTitleBarHeight" Value="32" />
+      <Setter Property="Template">
+        <WindowDrawnDecorationsTemplate>
+          <chrome:WindowDrawnDecorationsContent>
+            <chrome:WindowDrawnDecorationsContent.Underlay>
+              <Panel x:Name="PART_UnderlayWrapper">
+                <Panel x:Name="PART_TitleBar" Height="{TemplateBinding TitleBarHeight}" VerticalAlignment="Top" Background="{DynamicResource CadTitleBarBrush}" IsVisible="{TemplateBinding HasTitleBar}" chrome:WindowDecorationProperties.ElementRole="TitleBar" />
+              </Panel>
+            </chrome:WindowDrawnDecorationsContent.Underlay>
+            <chrome:WindowDrawnDecorationsContent.Overlay>
+              <Panel x:Name="PART_OverlayWrapper">
+                <StackPanel x:Name="PART_OverlayPanel" HorizontalAlignment="Right" VerticalAlignment="Top" Height="{TemplateBinding TitleBarHeight}" IsVisible="{TemplateBinding HasTitleBar}" Orientation="Horizontal" Spacing="2">
+                  <Button x:Name="PART_MinimizeButton" Theme="{StaticResource FluentDrawnCaptionButton}" Height="32" chrome:WindowDecorationProperties.ElementRole="MinimizeButton"><Viewbox Width="11"><Path Fill="White" Data="M0,5 L10,5 L10,6 L0,6 Z" /></Viewbox></Button>
+                  <Button x:Name="PART_MaximizeButton" Theme="{StaticResource FluentDrawnCaptionButton}" Height="32" chrome:WindowDecorationProperties.ElementRole="MaximizeButton"><Viewbox Width="11"><Path x:Name="RestoreButtonPath" Fill="White" Data="M2048 2048v-2048h-2048v2048h2048zM1843 1843h-1638v-1638h1638v1638z" /></Viewbox></Button>
+                  <Button x:Name="PART_CloseButton" Theme="{StaticResource FluentDrawnCaptionButton}" Height="32" Background="#E81123" BorderBrush="#F1707A" chrome:WindowDecorationProperties.ElementRole="CloseButton"><Viewbox Width="11"><Path Fill="White" Data="M1169 1024l879 -879l-145 -145l-879 879l-879 -879l-145 145l879 879l-879 879l145 145l879 -879l879 879l145 -145z" /></Viewbox></Button>
+                </StackPanel>
+              </Panel>
+            </chrome:WindowDrawnDecorationsContent.Overlay>
+          </chrome:WindowDrawnDecorationsContent>
+        </WindowDrawnDecorationsTemplate>
+      </Setter>
+    </ControlTheme>
+  </Window.Resources>
+  <dialog:DialogHost x:Name="RootDialog" Identifier="Root" CloseOnClickAway="False">
+  <Grid RowDefinitions="32,Auto,*,Auto">
+    <Grid x:Name="CommandBar" ColumnDefinitions="Auto,*,Auto,141" Background="{DynamicResource CadTitleBarBrush}" chrome:WindowDecorationProperties.ElementRole="TitleBar">
+    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" chrome:WindowDecorationProperties.ElementRole="User">
+      <Button x:Name="ApplicationIconButton" Width="32" Height="32" Padding="8" Margin="0" Background="Transparent" BorderThickness="0" Click="ApplicationIconClicked" ContextRequested="ApplicationIconContextRequested" ToolTip.Tip="Direct2dCad" AutomationProperties.Name="Direct2dCad" AutomationProperties.AutomationId="ApplicationIconButton"><Image Source="/Assets/Direct2dCad.png" Width="16" Height="16" /></Button>
+    <Menu Classes="titleMenu" Background="Transparent">
+      <MenuItem Header="{local:Loc File}" Foreground="White">
+        <MenuItem Header="{local:Loc New}" Command="{Binding NewCommand}" InputGesture="Ctrl+N" />
+        <MenuItem Header="{local:Loc EngineeringTemplate}">
+          <MenuItem Header="A4 · mm · 1:1" Command="{Binding NewTemplateCommand}" CommandParameter="A4" />
+          <MenuItem Header="A3 · mm · 1:100" Command="{Binding NewTemplateCommand}" CommandParameter="A3-100" />
+          <MenuItem Header="Letter · in · 1:1" Command="{Binding NewTemplateCommand}" CommandParameter="Letter" />
+        </MenuItem>
+        <MenuItem Header="{local:Loc OpenFile}" Command="{Binding OpenFileCommand}" InputGesture="Ctrl+O" />
+        <MenuItem Header="{local:Loc ImportDxf}" Command="{Binding ImportDxfCommand}" />
+        <Separator />
+        <MenuItem Header="{local:Loc Save}" Command="{Binding CurrentEditorTabViewModel.SaveFileCommand}" InputGesture="Ctrl+S" />
+        <MenuItem Header="{local:Loc SaveAs}" Command="{Binding CurrentEditorTabViewModel.SaveAsFileCommand}" InputGesture="Ctrl+Shift+S" />
+        <MenuItem Header="{local:Loc SaveCompressedCopy}" Command="{Binding CurrentEditorTabViewModel.SaveCompressedCopyCommand}" />
+        <MenuItem Header="{local:Loc ExportDxf}" Command="{Binding CurrentEditorTabViewModel.ExportDxfCommand}" />
+        <MenuItem Header="{local:Loc Print}" Command="{Binding CurrentEditorTabViewModel.PrintCommand}" InputGesture="Ctrl+P" />
+        <Separator />
+      <MenuItem Header="{local:Loc EditTools}">
+        <MenuItem Header="{local:Loc Undo}" Command="{Binding CurrentEditorTabViewModel.UndoCommand}" InputGesture="Ctrl+Z" />
+        <MenuItem Header="{local:Loc Redo}" Command="{Binding CurrentEditorTabViewModel.RedoCommand}" InputGesture="Ctrl+Y" />
+      </MenuItem>
+      <MenuItem Header="{local:Loc Settings}" Command="{Binding OpenUserSettingsDialogCommand}" />
+      </MenuItem>
+      <MenuItem x:Name="PanelsMenu" Header="{local:Loc View}" Foreground="White" AutomationProperties.AutomationId="WindowViewMenu" />
+    </Menu>
+    </StackPanel>
+    <TextBlock Grid.Column="1" Text="Direct2dCad" Foreground="White" FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+    <StackPanel Grid.Column="2" Orientation="Horizontal" Classes="titleActions" chrome:WindowDecorationProperties.ElementRole="User">
+      <ToggleButton IsChecked="{Binding Topmost, Mode=TwoWay}" ToolTip.Tip="{local:Loc Topmost}"><controls:CadIcon Kind="PinOff" OnKind="Pin" IsOn="{Binding Topmost}" Foreground="White" /></ToggleButton>
+      <ToggleButton IsChecked="{Binding IsDarkTheme, Mode=TwoWay}" ToolTip.Tip="{local:Loc DarkTheme}"><controls:CadIcon Kind="WeatherSunny" OnKind="WeatherNight" IsOn="{Binding IsDarkTheme}" Foreground="White" /></ToggleButton>
+    <Menu Classes="titleMenu" Background="Transparent">
+      <MenuItem Header="{local:Loc Language}" Foreground="White">
+        <MenuItem Header="{local:Loc English}" Command="{Binding ChangeCultureCommand}" CommandParameter="1033" />
+        <MenuItem Header="{local:Loc Japanese}" Command="{Binding ChangeCultureCommand}" CommandParameter="1041" />
+        <MenuItem Header="{local:Loc Chinese}" Command="{Binding ChangeCultureCommand}" CommandParameter="2052" />
+      </MenuItem>
+    </Menu>
+    </StackPanel>
+    </Grid>
+    <Grid Grid.Row="1">
+      <views:MainRibbonView />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="8,2">
+        <Button Classes="toolIcon" Command="{Binding TogglePrimarySideBarCommand}" ToolTip.Tip="{local:Loc TogglePrimarySideBar}" AutomationProperties.AutomationId="TogglePrimarySideBarButton"><controls:CadIcon Kind="DockLeft" /></Button>
+        <Button Classes="toolIcon" Command="{Binding ToggleBottomPanelCommand}" ToolTip.Tip="{local:Loc TogglePanel}" AutomationProperties.AutomationId="ToggleBottomPanelButton"><controls:CadIcon Kind="DockBottom" /></Button>
+        <Button Classes="toolIcon" Command="{Binding ToggleSecondarySideBarCommand}" ToolTip.Tip="{local:Loc ToggleSecondarySideBar}" AutomationProperties.AutomationId="ToggleSecondarySideBarButton"><controls:CadIcon Kind="DockRight" /></Button>
+      </StackPanel>
+    </Grid>
+    <DockPanel Grid.Row="2">
+      <DockPanel DockPanel.Dock="Left" Width="32"><StackPanel x:Name="BottomPanelBar" DockPanel.Dock="Bottom" /><StackPanel x:Name="LeftPanelBar" /></DockPanel>
+      <DockPanel DockPanel.Dock="Right" Width="32"><StackPanel x:Name="BottomRightPanelBar" DockPanel.Dock="Bottom" /><StackPanel x:Name="RightPanelBar" /></DockPanel>
+    <Grid ColumnDefinitions="280,5,*,5,300" RowDefinitions="*,5,220" x:Name="Workspace">
+      <Grid x:Name="LeftDock" RowDefinitions="*,5,*">
+        <TabControl Classes="dockRegion" x:Name="LeftTools" />
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+        <TabControl Classes="dockRegion" x:Name="LeftBottomTools" Grid.Row="2" />
+      </Grid>
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+      <TabControl x:Name="Documents" Classes="documentTabs" Grid.Column="2" SelectionChanged="DocumentSelectionChanged">
+        <TabItem x:Name="WelcomeTab" Header="{local:Loc Welcome}">
+          <Border Background="{DynamicResource CadPanelBrush}" Padding="40"><StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"><controls:CadIcon Kind="HandWaveOutline" Width="80" Height="80" /><TextBlock Text="Direct2dCad" FontSize="28" FontWeight="Light" Margin="0,20,0,0" HorizontalAlignment="Center" /></StackPanel></Border>
+        </TabItem>
+      </TabControl>
+      <GridSplitter Grid.Column="3" ResizeDirection="Columns" />
+      <Grid x:Name="RightDock" Grid.Column="4" RowDefinitions="*,5,*">
+        <TabControl Classes="dockRegion" x:Name="RightTools" />
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" />
+        <TabControl Classes="dockRegion" x:Name="RightBottomTools" Grid.Row="2" />
+      </Grid>
+      <GridSplitter Grid.ColumnSpan="5" Grid.Row="1" ResizeDirection="Rows" />
+      <Grid x:Name="BottomDock" Grid.Row="2" Grid.ColumnSpan="5" ColumnDefinitions="*,5,*">
+        <TabControl Classes="dockRegion" x:Name="BottomLeftTools" />
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
+        <TabControl Classes="dockRegion" x:Name="BottomTools" Grid.Column="2" />
+      </Grid>
+    </Grid>
+    </DockPanel>
+    <Border Grid.Row="3" Background="{DynamicResource MaterialBackgroundBrush}" BorderBrush="{DynamicResource MaterialDividerBrush}" BorderThickness="0,1,0,0" Padding="8,2">
+      <DockPanel>
+        <ui:StatusDetails DockPanel.Dock="Right" DataContext="{Binding CurrentEditorTabViewModel}" />
+        <Button DockPanel.Dock="Right" Classes="toolIcon" Command="{Binding ShowDrawingRecoveryCommand}" ToolTip.Tip="{local:Loc DrawingRecovery}"><controls:CadIcon Kind="BackupRestore" /></Button>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding OpenOperation.IsVisible}">
+          <TextBlock Text="{Binding OpenOperation.Message}" MaxWidth="150" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <Button Content="{local:Loc Cancel}" Command="{Binding OpenOperation.CancelCommand}" />
+        </StackPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" IsVisible="{Binding CurrentEditorTabViewModel.Operation.IsVisible, FallbackValue=False, TargetNullValue=False}">
+          <TextBlock Text="{Binding CurrentEditorTabViewModel.Operation.Message}" MaxWidth="150" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <Button Content="{local:Loc Cancel}" Command="{Binding CurrentEditorTabViewModel.Operation.CancelCommand}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding CurrentEditorTabViewModel, Converter={x:Static conv:ObjectConverters.IsNotNull}}">
+          <TextBlock x:Name="Prompt" Width="50" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <TextBlock x:Name="Coordinates" Width="175" VerticalAlignment="Center" />
+          <ui:StatusControls DataContext="{Binding CurrentEditorTabViewModel}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+    <Border x:Name="NotificationToast" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="12" Padding="16,10" CornerRadius="3" MaxWidth="480" Background="{DynamicResource CadPanelBrush}" BorderBrush="{DynamicResource MaterialBodyLightBrush}" BorderThickness="1" IsVisible="False" ZIndex="20">
+      <TextBlock x:Name="Notification" TextWrapping="Wrap" VerticalAlignment="Center" />
+    </Border>
+  </Grid>
+  </dialog:DialogHost>
+</Window>

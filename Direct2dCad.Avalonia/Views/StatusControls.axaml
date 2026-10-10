@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels"
+ xmlns:en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels.Abstractions" xmlns:preset="clr-namespace:Direct2dCad.ViewModels.Settings;assembly=Direct2dCad.ViewModels"
+ xmlns:local="clr-namespace:Direct2dCad.Avalonia" xmlns:controls="clr-namespace:Direct2dCad.Avalonia.Controls" x:Class="Direct2dCad.Avalonia.Views.StatusControls"
+ x:DataType="vm:EditorTabViewModel" x:CompileBindings="True">
+ <StackPanel Orientation="Horizontal" Spacing="4" IsEnabled="{Binding CadDocumentViewModel.CanEditDocument}" Classes="statusControls">
+  <ComboBox Width="84" ItemsSource="{x:Static local:CadUiChoices.Units}" SelectedItem="{Binding ViewModelCadUnit, Mode=TwoWay}" ToolTip.Tip="{local:Loc Unit}" AutomationProperties.AutomationId="UnitSelector"><ComboBox.ItemTemplate><DataTemplate x:DataType="en:ViewModelCadUnit"><controls:CadEnumText Value="{Binding .}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+  <controls:CadIcon Kind="Grid" Margin="3,0,0,0" />
+  <ComboBox Width="68" ItemsSource="{x:Static local:EnumValues.ViewModelCadGridType}" SelectedItem="{Binding ViewModelCadGridType, Mode=TwoWay}" ToolTip.Tip="{local:Loc Grid}" AutomationProperties.AutomationId="GridTypeSelector"><ComboBox.ItemTemplate><DataTemplate x:DataType="en:ViewModelCadGridType"><controls:CadEnumText Value="{Binding .}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+  <controls:CadIcon Kind="Grid" />
+  <ComboBox Width="88" ItemsSource="{Binding GridSpacingPresets}" SelectedItem="{Binding SelectedMajorGridSpacingPreset, Mode=TwoWay}" ToolTip.Tip="{local:Loc MajorGridSpacing}" AutomationProperties.AutomationId="MajorGridSpacingSelector">
+   <ComboBox.ItemTemplate><DataTemplate x:DataType="preset:GridSpacingPresetItemViewModel"><TextBlock Text="{Binding DisplayName}" /></DataTemplate></ComboBox.ItemTemplate>
+  </ComboBox>
+  <controls:CadIcon Kind="Grid" Opacity="0.65" />
+  <ComboBox Width="88" ItemsSource="{Binding GridSpacingPresets}" SelectedItem="{Binding SelectedMinorGridSpacingPreset, Mode=TwoWay}" ToolTip.Tip="{local:Loc MinorGridSpacing}" AutomationProperties.AutomationId="MinorGridSpacingSelector">
+   <ComboBox.ItemTemplate><DataTemplate x:DataType="preset:GridSpacingPresetItemViewModel"><TextBlock Text="{Binding DisplayName}" /></DataTemplate></ComboBox.ItemTemplate>
+  </ComboBox>
+  <ToggleButton Classes="statusIcon" ToolTip.Tip="{local:Loc GridSnap}" IsChecked="{Binding CadDocumentViewModel.IsGridSnapEnabled, Mode=TwoWay}" AutomationProperties.AutomationId="GridSnapToggle" AutomationProperties.Name="{local:Loc GridSnap}"><controls:CadIcon Kind="Magnet" /></ToggleButton>
+  <ToggleButton Classes="statusIcon" ToolTip.Tip="{local:Loc ObjectSnap}" IsChecked="{Binding CadDocumentViewModel.IsObjectSnapEnabled, Mode=TwoWay}" AutomationProperties.AutomationId="ObjectSnapToggle" AutomationProperties.Name="{local:Loc ObjectSnap}"><controls:CadIcon Kind="Target" /></ToggleButton>
+  <ToggleButton Classes="statusIcon" ToolTip.Tip="{local:Loc Ortho}" IsChecked="{Binding CadDocumentViewModel.IsOrthoEnabled, Mode=TwoWay}" AutomationProperties.AutomationId="OrthoToggle" AutomationProperties.Name="{local:Loc Ortho}"><Path Width="18" Height="18" Stroke="{DynamicResource MaterialBodyBrush}" StrokeThickness="1.8" Data="M2,1 V16 H17 M2,11 H7 V16" /></ToggleButton>
+  <ToggleButton Classes="statusIcon" ToolTip.Tip="{local:Loc Polar}" IsChecked="{Binding CadDocumentViewModel.IsPolarEnabled, Mode=TwoWay}" AutomationProperties.AutomationId="PolarToggle" AutomationProperties.Name="{local:Loc Polar}"><Path Width="18" Height="18" Stroke="{DynamicResource MaterialBodyBrush}" StrokeThickness="1.6" Data="M1,16 H17 M1,16 L14,3 M8,16 A7,7 0 0 0 6,11" /></ToggleButton>
+ </StackPanel>
+</UserControl>

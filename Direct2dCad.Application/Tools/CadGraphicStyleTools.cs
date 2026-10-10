@@ -13,7 +13,7 @@ internal static class CadGraphicStyleTools
     internal static AiToolDefinition ToolDefinition { get; } = new(
         "set_graphic_style_properties",
         "Change an existing shared Graphic style as one undoable operation. All entities and layers using it are reported as affected.",
-        JsonSerializer.SerializeToElement(CreateSchema()));
+        Direct2dCad.AI.Contracts.CadJson.SerializeToElement(CreateSchema()));
 
     internal static object Execute(CadDocumentToolExecutor executor, JsonElement arguments)
     {

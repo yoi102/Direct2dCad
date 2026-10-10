@@ -16,7 +16,7 @@ internal static class CadBulkCreationTools
     internal static AiToolDefinition ToolDefinition { get; } = new(
         "add_entities",
         "Create up to 200 styled entities in one document undo batch. Prefer this for complete drawings with many parts.",
-        JsonSerializer.SerializeToElement(CreateSchema()));
+        Direct2dCad.AI.Contracts.CadJson.SerializeToElement(CreateSchema()));
 
     internal static IReadOnlyList<CadBulkCreationItem> Parse(JsonElement arguments)
     {

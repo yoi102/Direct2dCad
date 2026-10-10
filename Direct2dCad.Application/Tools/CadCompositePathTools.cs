@@ -13,7 +13,7 @@ internal static class CadCompositePathTools
     internal static AiToolDefinition ToolDefinition { get; } = new(
         "add_composite_path",
         "Create one continuous path mixing line, circular arc, and interpolating spline segments. A closed path supports one shared solid or hatch fill.",
-        JsonSerializer.SerializeToElement(CreateSchema()));
+        Direct2dCad.AI.Contracts.CadJson.SerializeToElement(CreateSchema()));
 
     internal static CadCompositePathGeometry Parse(JsonElement arguments)
     {

@@ -1,0 +1,1 @@
+namespace Direct2dCad.Avalonia.Views.Generated; public partial class RadialIconResources : global::Avalonia.Controls.UserControl { public RadialIconResources() => InitializeComponent(); }

@@ -289,7 +289,7 @@ internal sealed class CadLayerTools(
     private static object StringSchema(string description) => new { type = "string", description };
 
     private static AiToolDefinition Tool(string name, string description, object parameters) =>
-        new(name, description, JsonSerializer.SerializeToElement(parameters));
+        new(name, description, Direct2dCad.AI.Contracts.CadJson.SerializeToElement(parameters));
 
     private static object? LineWeightValue(CadLineWeight lineWeight) =>
         lineWeight.IsByLayer ? "by_layer" : lineWeight.Value;

@@ -1,0 +1,1 @@
+namespace Direct2dCad.Avalonia.Views.Generated; public partial class CursorIconResources : global::Avalonia.Controls.UserControl { public CursorIconResources() => InitializeComponent(); }

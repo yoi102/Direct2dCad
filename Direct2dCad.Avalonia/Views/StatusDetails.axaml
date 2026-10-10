@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:en="clr-namespace:Direct2dCad.ViewModels.Enums;assembly=Direct2dCad.ViewModels.Abstractions" xmlns:vm="clr-namespace:Direct2dCad.ViewModels;assembly=Direct2dCad.ViewModels" xmlns:local="clr-namespace:Direct2dCad.Avalonia" xmlns:controls="clr-namespace:Direct2dCad.Avalonia.Controls" x:Class="Direct2dCad.Avalonia.Views.StatusDetails" x:DataType="vm:EditorTabViewModel" x:CompileBindings="True">
+ <Button Classes="toolIcon" ToolTip.Tip="{local:Loc ViewDetails}" IsEnabled="{Binding CadDocumentViewModel.CanEditDocument, FallbackValue=False, TargetNullValue=False}" AutomationProperties.AutomationId="ViewSettingsButton">
+  <controls:CadIcon Kind="Tune" />
+  <Button.Flyout><Flyout Placement="TopEdgeAlignedRight"><StackPanel Width="280" Spacing="10">
+   <TextBlock Text="{local:Loc ViewDetails}" FontWeight="SemiBold" />
+   <Grid ColumnDefinitions="*,96"><TextBlock Text="{local:Loc PolarAngle}" VerticalAlignment="Center" /><controls:CadPropertyNumberBox Grid.Column="1" Value="{Binding CadDocumentViewModel.PolarIncrementDegrees, Mode=TwoWay}" Minimum="0.1" Maximum="180" /></Grid>
+   <WrapPanel><CheckBox Content="{local:Loc SnapPerpendicular}" IsChecked="{Binding CadDocumentViewModel.IsPerpendicularSnapEnabled, Mode=TwoWay}" Margin="0,0,12,0" /><CheckBox Content="{local:Loc SnapTangent}" IsChecked="{Binding CadDocumentViewModel.IsTangentSnapEnabled, Mode=TwoWay}" /></WrapPanel>
+   <TextBlock Text="{local:Loc OriginMarker}" /><ComboBox ItemsSource="{x:Static local:EnumValues.ViewModelCadOriginDisplayType}" SelectedItem="{Binding ViewModelCadOriginDisplayType, Mode=TwoWay}"><ComboBox.ItemTemplate><DataTemplate x:DataType="en:ViewModelCadOriginDisplayType"><controls:CadEnumText Value="{Binding .}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+   <TextBlock Text="{local:Loc SnapMarker}" /><ComboBox ItemsSource="{x:Static local:EnumValues.ViewModelCadSnapMarkerType}" SelectedItem="{Binding ViewModelCadSnapMarkerType, Mode=TwoWay}"><ComboBox.ItemTemplate><DataTemplate x:DataType="en:ViewModelCadSnapMarkerType"><controls:CadEnumText Value="{Binding .}" /></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+   <TextBlock Text="{local:Loc Background}" /><ColorPicker Color="{Binding ViewModelCadBackgroundColor, Mode=TwoWay, Converter={x:Static local:CadColorConverter.Instance}}" />
+  </StackPanel></Flyout></Button.Flyout>
+ </Button>
+</UserControl>

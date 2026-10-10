@@ -93,7 +93,7 @@ public sealed partial class CadToolCommandLineService
                     break;
             }
             var executor = new CadWorkspaceToolExecutor(workspace, imageImportService);
-            var result = await executor.ExecuteAsync(new AiToolCall(Guid.NewGuid().ToString("N"), tool, JsonSerializer.Serialize(payload)), token);
+            var result = await executor.ExecuteAsync(new AiToolCall(Guid.NewGuid().ToString("N"), tool, Direct2dCad.AI.Contracts.CadJson.Serialize(payload)), token);
             return FormatExecutionResult(tool, result);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or FormatException)

@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Blocks;assembly=Direct2dCad.ViewModels" xmlns:local="clr-namespace:Direct2dCad.Avalonia" xmlns:controls="clr-namespace:Direct2dCad.Avalonia.Controls" xmlns:t0="clr-namespace:Direct2dCad.Db.Cad.Settings;assembly=Direct2dCad.Db" xmlns:t1="clr-namespace:Direct2dCad.Db.Data.Text;assembly=Direct2dCad.Db" xmlns:t2="clr-namespace:Direct2dCad.Db.Data.Entities;assembly=Direct2dCad.Db" xmlns:t3="clr-namespace:Direct2dCad.AI.Contracts;assembly=Direct2dCad.AI.Contracts" x:Class="Direct2dCad.Avalonia.Views.Generated.CreateBlockDialog" x:DataType="vm:CreateBlockDialogViewModel" x:CompileBindings="True">
+<ScrollViewer><StackPanel Spacing="4" Margin="12,8"><TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+<Grid ColumnDefinitions="84,*" Margin="0,3"><TextBlock Text="{local:Loc Name}" Opacity="0.75" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" /><Border Grid.Column="1"><TextBox Text="{Binding Name, Mode=TwoWay}" IsReadOnly="False" /></Border></Grid>
+<TextBlock Text="{Binding SelectedEntityCount}" TextWrapping="Wrap" />
+<Grid ColumnDefinitions="84,*" Margin="0,3"><TextBlock Text="X" Opacity="0.75" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" /><Border Grid.Column="1"><controls:CadPropertyNumberBox Value="{Binding BasePointX, Mode=TwoWay}" FormatString="F3" ShowStepper="True" IsReadOnly="False" /></Border></Grid>
+<Grid ColumnDefinitions="84,*" Margin="0,3"><TextBlock Text="X" Opacity="0.75" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" /><Border Grid.Column="1"><controls:CadPropertyNumberBox Value="{Binding BasePointY, Mode=TwoWay}" FormatString="F3" ShowStepper="True" IsReadOnly="False" /></Border></Grid>
+<TextBlock Text="{Binding ValidationError}" TextWrapping="Wrap" />
+</StackPanel></ScrollViewer>
+</UserControl>

@@ -292,14 +292,22 @@ public abstract class EntityPropertyViewModel : ObservableObject,
                 Strings.ResourceManager.GetString("ByBlock") ?? "By block"));
         }
 
-        ColorSourceOptions = options;
-        SupportsColorSourceSelection = true;
-        OnPropertyChanged(nameof(ColorSourceOptions));
-        OnPropertyChanged(nameof(SupportsColorSourceSelection));
-
         _isRefreshingColorSource = true;
         try
         {
+            // Keep option identities stable during command-driven refresh. Replacing
+            // ItemsSource can synchronously write an old/default UI selection back.
+            // Guard the collection notification as well as the selected value.
+            if (!ColorSourceOptions.SequenceEqual(options))
+            {
+                ColorSourceOptions = options;
+                OnPropertyChanged(nameof(ColorSourceOptions));
+            }
+            if (!SupportsColorSourceSelection)
+            {
+                SupportsColorSourceSelection = true;
+                OnPropertyChanged(nameof(SupportsColorSourceSelection));
+            }
             SelectedColorSourceOption = ColorSourceOptions.First(option =>
                 option.Value == entity.ColorSource);
         }

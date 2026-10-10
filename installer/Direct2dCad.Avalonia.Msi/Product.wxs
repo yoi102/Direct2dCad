@@ -1,0 +1,65 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package Name="Direct2dCad Avalonia"
+           Manufacturer="Direct2dCad"
+           Version="$(var.Version)"
+           UpgradeCode="A95257F5-8F20-4F70-A27A-13538A809B51"
+           Scope="perMachine"
+           InstallerVersion="500"
+           Compressed="yes">
+    <SummaryInformation Description="Direct2dCad Avalonia $(var.ReleaseVersion) for Windows x64" Manufacturer="Direct2dCad" />
+    <MajorUpgrade DowngradeErrorMessage="A newer Direct2dCad Avalonia version is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+
+    <Icon Id="Direct2dCadAvaloniaIcon" SourceFile="$(var.IconFile)" />
+    <Property Id="ARPPRODUCTICON" Value="Direct2dCadAvaloniaIcon" />
+    <Property Id="ARPVERSION" Value="$(var.ReleaseVersion)" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Direct2dCad Avalonia" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Direct2dCad Avalonia" />
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder" />
+
+    <Feature Id="Application" Title="Direct2dCad Avalonia" Level="1">
+      <ComponentGroupRef Id="ApplicationFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcut" Guid="30C54E4E-31D3-41A7-9996-6374E8FB2E3B">
+        <Shortcut Id="StartMenuShortcutLink"
+                  Name="Direct2dCad Avalonia"
+                  Description="Direct2dCad Avalonia CAD application"
+                  Target="[INSTALLFOLDER]Direct2dCad.Avalonia.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="Direct2dCadAvaloniaIcon" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue Root="HKLM" Key="Software\Direct2dCad\Avalonia" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="9C22558F-2F4B-423D-9AF4-45DB20D6AE19">
+        <Shortcut Id="DesktopShortcutLink"
+                  Name="Direct2dCad Avalonia"
+                  Description="Direct2dCad Avalonia CAD application"
+                  Target="[INSTALLFOLDER]Direct2dCad.Avalonia.exe"
+                  WorkingDirectory="INSTALLFOLDER"
+                  Icon="Direct2dCadAvaloniaIcon" />
+        <RegistryValue Root="HKLM" Key="Software\Direct2dCad\Avalonia" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="ApplicationFiles">
+      <Files Include="!(bindpath.AppPayload)\**" Directory="INSTALLFOLDER" />
+    </ComponentGroup>
+  </Fragment>
+</Wix>
