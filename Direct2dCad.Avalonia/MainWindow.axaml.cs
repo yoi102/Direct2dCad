@@ -22,7 +22,6 @@ public partial class MainWindow : Window
     private readonly Dictionary<IToolbox, TabItem> _toolTabs = [];
     private bool _closing;
     private bool _closed;
-    private bool _enterHeld;
     private object? _retainedDocumentTab;
     private bool _documentHostReattaching;
     private int _documentHostGeneration;
@@ -86,11 +85,10 @@ public partial class MainWindow : Window
         RefreshLocalizedPanels();
         _notificationTimer.Tick += (_, _) => { _notificationTimer.Stop(); NotificationToast.IsVisible = false; };
         messages.Message += text => Dispatcher.UIThread.Post(() => ShowNotification(text));
+        CadConfirmationKeys.Attach(this);
         AddHandler(KeyDownEvent, HandleShortcut, RoutingStrategies.Tunnel);
         AddHandler(KeyDownEvent, ConfirmPanel, RoutingStrategies.Bubble);
         AddHandler(KeyDownEvent, CancelPanel, RoutingStrategies.Bubble);
-        AddHandler(KeyUpEvent, (_, e) => { if (e.Key == Key.Enter) _enterHeld = false; }, RoutingStrategies.Tunnel);
-        Deactivated += (_, _) => _enterHeld = false;
         Closing += OnClosing;
         Closed += (_, _) => {RootDialog.CurrentSession?.Close();_nativeDock?.Dispose();};
         
@@ -167,6 +165,7 @@ public partial class MainWindow : Window
     }
     private void HandleShortcut(object? sender, KeyEventArgs e)
     {
+        if (Documents.SelectedItem is TabItem { Content: Views.EditorView radialEditor } && radialEditor.Canvas.IsRadialMenuActive) return;
         if(e.Key==Key.Escape && e.KeyModifiers==KeyModifiers.None && _nativeDock?.CancelDockDrag()==true){e.Handled=true;return;}
         if (e.Handled || RootDialog.IsOpen) return;
         if ((e.Source is not TextBox || e.Source is Controls.CadPropertyNumberBox) &&
@@ -227,7 +226,7 @@ public partial class MainWindow : Window
         var control = e.Source as Control;
         var property = CadPanelKeyboard.IsPropertyEditor(control);
         if (!property && !CadPanelKeyboard.CanConfirm(control)) return;
-        e.Handled = true; if (_enterHeld) return; _enterHeld = true;
+        e.Handled = true;
         if (property && !CadPanelKeyboard.TryCommitProperty(control)) return;
         FocusCanvas();
         if (!property) _model.CurrentEditorTabViewModel?.CadDocumentViewModel.CompleteCurrentDrawing();

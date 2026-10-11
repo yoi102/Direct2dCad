@@ -37,7 +37,7 @@ internal sealed class CadRadialMenu(CadCanvas owner, CadDocumentViewModel docume
     public void SetModifiers(KeyModifiers modifiers)
     {
         var gesture = modifiers.HasFlag(KeyModifiers.Shift) ? CadRadialMenuGesture.ShiftMiddle : modifiers.HasFlag(KeyModifiers.Control) ? CadRadialMenuGesture.ControlMiddle : modifiers.HasFlag(KeyModifiers.Alt) ? CadRadialMenuGesture.AltMiddle : CadRadialMenuGesture.Middle;
-        if (gesture != Gesture) { _page = 0; _selected = -1; }
+        if (gesture != Gesture) _page = 0;
         Gesture = gesture;
         _actions = document.UserSettings.Interaction.RadialMenu.GetActions(gesture); Draw();
     }

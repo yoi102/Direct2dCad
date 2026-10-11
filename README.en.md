@@ -2,7 +2,7 @@
 
 [中文](README.md) | [日本語](README.ja.md) | [English](README.en.md)
 
-Direct2dCad is a 2D CAD editor for Windows, built with WPF, Direct2D, and DirectWrite. It brings drawing, precise numeric input, editing, dimensions, and drawing management into one desktop workspace, with a command line and AI assistance.
+Direct2dCad is a 2D CAD editor for Windows, with WPF and Avalonia desktop clients using Direct2D and DirectWrite. It brings drawing, precise numeric input, editing, dimensions, and drawing management into one desktop workspace, with a command line and AI assistance.
 
 ## Features
 
@@ -20,10 +20,10 @@ The interface supports Chinese, Japanese, and English, with light and dark theme
 
 Download the Windows x64 version from [GitHub Releases](https://github.com/yoi102/Direct2dCad/releases):
 
-- **MSI installer**: Installs the application and creates desktop and Start menu shortcuts.
-- **Portable ZIP**: Extract the archive and run `Direct2dCad.exe`.
+- **WPF edition**: Choose an MSI or ZIP with `Wpf` in its filename. Run `Direct2dCad.exe` from the portable package.
+- **Avalonia edition**: Choose an MSI or ZIP with `Avalonia` in its filename. Run `Direct2dCad.Avalonia.exe` from the portable package.
 
-Both packages include the required .NET Runtime; no separate runtime installation is needed.
+Neither edition requires a separately installed .NET Runtime: WPF bundles its runtime, while Avalonia uses NativeAOT. Both MSI installers offer an installation directory choice and desktop and Start menu shortcuts. The editions can be installed side by side.
 
 ## Quick start
 

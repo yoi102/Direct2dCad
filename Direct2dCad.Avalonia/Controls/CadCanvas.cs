@@ -36,6 +36,8 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
     private Point _pendingPointer, _rightStart;
     private bool _rightPending, _rightPan, _suppressPanMenu;
     private readonly CadRadialMenu _radial;
+    private TopLevel? _inputRoot;
+    private readonly HashSet<Key> _radialModifierKeys = [];
     private TopLevel? _traceRoot;
     public event Action<Point>? PointerPositionChanged;
     internal event Action<Point,bool>? CursorBadgeChanged;
@@ -76,7 +78,6 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
             // A completed right drag belongs to pan; a fresh click or keyboard menu still opens.
             if ((_rightPending || _suppressPanMenu) && e.TryGetPosition(this, out var contextPoint)) e.Handled = true;
         }, global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        KeyUp += (_, e) => { if (_radial.IsVisible) { _radial.SetModifiers(e.KeyModifiers); e.Handled = true; } };
         LostFocus += (_, _) => { Trace("focus-lost"); if (_pointer?.Captured == this) CancelGesture(); };
     }
     private void Trace(string stage)=>Services.CanvasInputTrace.Write($"canvas {stage} pending={_rightPending} pan={_rightPan} releasing={_release} capture={_pointer?.Captured?.GetType().Name} menu={ContextMenu?.IsOpen}");
@@ -106,6 +107,13 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
     private void Attach()
     {
         if (_disposed || _attached) return; _attached = true;
+        _inputRoot = TopLevel.GetTopLevel(this);
+        if (_inputRoot is { } inputRoot)
+        {
+            inputRoot.AddHandler(KeyDownEvent, RadialKeyDown, global::Avalonia.Interactivity.RoutingStrategies.Tunnel, true);
+            inputRoot.AddHandler(KeyUpEvent, RadialKeyUp, global::Avalonia.Interactivity.RoutingStrategies.Tunnel, true);
+            if (inputRoot is Window inputWindow) inputWindow.Deactivated += RadialWindowDeactivated;
+        }
         if(Services.CanvasInputTrace.Enabled && TopLevel.GetTopLevel(this) is {} root)
         {
             _traceRoot=root;
@@ -119,6 +127,14 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
     }
     private void Detach()
     {
+        if (_inputRoot is { } inputRoot)
+        {
+            inputRoot.RemoveHandler(KeyDownEvent, RadialKeyDown);
+            inputRoot.RemoveHandler(KeyUpEvent, RadialKeyUp);
+            if (inputRoot is Window inputWindow) inputWindow.Deactivated -= RadialWindowDeactivated;
+            _inputRoot = null;
+        }
+        _radialModifierKeys.Clear();
         if(_traceRoot is {} root)
         {
             root.RemoveHandler(PointerPressedEvent,TraceRootPressed);root.RemoveHandler(PointerReleasedEvent,TraceRootReleased);_traceRoot=null;
@@ -299,7 +315,7 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
     private void ReleaseCapture() { _release = true; try { if (_pointer?.Captured == this) _pointer.Capture(null); } finally { _release = false; } }
     private void Keys(object? sender, KeyEventArgs e)
     {
-        if (_radial.IsVisible) { if (e.Key == Key.Escape) _radial.Close(); else _radial.SetModifiers(e.KeyModifiers); e.Handled = true; return; }
+        if (_radial.IsVisible) { RadialKeyDown(sender, e); return; }
         if (e.KeyModifiers == KeyModifiers.None)
         {
             switch (e.Key) { case Key.Escape: Cancel(); break; case Key.Enter: Apply(_document.CompleteCurrentDrawing()); break; case Key.Back: Apply(_document.UndoCurrentDrawingStep()); break; case Key.Delete: Apply(_document.DeleteSelection()); break; case Key.R: _document.ReselectEditObjectsCommand.Execute(null); break; case Key.Tab: Apply(_document.CycleSelection(false)); break; default: return; }
@@ -311,6 +327,46 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
         {
             switch (e.Key) { case Key.A: Apply(_document.SelectAllEntities()); break; case Key.Z: _document.Undo(); break; case Key.Y: _document.Redo(); break; case Key.C: _document.CopySelection(); break; case Key.X: if (_document.CopySelection() != null) Apply(_document.DeleteSelection()); break; case Key.V: Apply(_document.BeginClipboardPastePreview()); break; default: return; } e.Handled = true;
         }
+    }
+    private static KeyModifiers RadialModifier(Key key) => key switch
+    {
+        Key.LeftShift or Key.RightShift => KeyModifiers.Shift,
+        Key.LeftCtrl or Key.RightCtrl => KeyModifiers.Control,
+        Key.LeftAlt or Key.RightAlt => KeyModifiers.Alt,
+        _ => KeyModifiers.None
+    };
+    private KeyModifiers UpdateRadialModifiers(KeyEventArgs e, bool pressed)
+    {
+        var modifier = RadialModifier(e.Key);
+        if (modifier == KeyModifiers.None) return e.KeyModifiers;
+        if (pressed) _radialModifierKeys.Add(e.Key);
+        else _radialModifierKeys.Remove(e.Key);
+        // KeyUp's snapshot can still include the released key. Clear that family
+        // explicitly, retaining it only while its opposite key is still held.
+        var held = _radialModifierKeys.Any(key => RadialModifier(key) == modifier);
+        return (e.KeyModifiers & ~modifier) | (held ? modifier : KeyModifiers.None);
+    }
+    private void RadialKeyDown(object? sender, KeyEventArgs e)
+    {
+        var modifiers = UpdateRadialModifiers(e, true);
+        if (!_radial.IsVisible) return;
+        if (e.Key == Key.Escape) CancelGesture();
+        else _radial.SetModifiers(modifiers);
+        Services.CanvasInputTrace.Write($"radial key-down key={e.Key} reported={e.KeyModifiers} effective={modifiers} gesture={_radial.Gesture}");
+        e.Handled = true;
+    }
+    private void RadialKeyUp(object? sender, KeyEventArgs e)
+    {
+        var modifiers = UpdateRadialModifiers(e, false);
+        if (!_radial.IsVisible) return;
+        _radial.SetModifiers(modifiers);
+        Services.CanvasInputTrace.Write($"radial key-up key={e.Key} reported={e.KeyModifiers} effective={modifiers} gesture={_radial.Gesture}");
+        e.Handled = true;
+    }
+    private void RadialWindowDeactivated(object? sender, EventArgs e)
+    {
+        _radialModifierKeys.Clear();
+        if (_radial.IsVisible) CancelGesture();
     }
     public void Dispose() { if (_disposed) return; Detach(); _disposed = true; _document.PropertyChanged -= BadgeChanged; _viewportTimer.Stop(); _cacheTimer.Stop(); _radial.Close(); }
 }

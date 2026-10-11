@@ -7,7 +7,6 @@ namespace Direct2dCad.Avalonia.Views.Toolboxes;
 public partial class TerminalView : UserControl
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(50) };
-    private bool _enterHeld;
     private ScrollViewer? _outputScroll;
     private bool _following = true, _programmaticScroll;
     public TerminalView()
@@ -47,13 +46,12 @@ public partial class TerminalView : UserControl
     {
         _following = true; NewOutput.IsVisible = false; _programmaticScroll = true; ScrollToLatest(); Input.Focus();
     }
-    private void TerminalKeyUp(object? sender, KeyEventArgs e) { if (e.Key == Key.Enter) _enterHeld = false; }
     private void TerminalKey(object? sender, KeyEventArgs e)
     {
         if (e.Handled || e.KeyModifiers != KeyModifiers.None || DataContext is not CommandLineToolboxViewModel vm) return;
         switch (e.Key)
         {
-            case Key.Enter when e.KeyModifiers == KeyModifiers.None: if (!_enterHeld) { _enterHeld = true; if (!vm.AcceptSelectedSuggestion()) vm.SubmitCommandInput(); } break;
+            case Key.Enter: if (!vm.AcceptSelectedSuggestion()) vm.SubmitCommandInput(); break;
             case Key.Up: if (vm.HasSuggestions && !vm.IsNavigatingHistory) vm.SelectPreviousSuggestion(); else vm.ShowPreviousCommand(); break;
             case Key.Down: if (vm.HasSuggestions && !vm.IsNavigatingHistory) vm.SelectNextSuggestion(); else vm.ShowNextCommand(); break;
             case Key.Tab: if (!vm.HasSuggestions) return; vm.CompleteCommand(); break;

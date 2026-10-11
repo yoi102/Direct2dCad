@@ -95,7 +95,7 @@ internal sealed class CadDockFactory : Factory
         base.CollapseDock(dock);
     }
 }
-internal sealed class NativeDockShell : IDisposable
+internal sealed partial class NativeDockShell : IDisposable
 {
     public Factory Factory { get; } = new CadDockFactory {HideToolsOnClose=true};
     public RootDock Root { get; private set; }
@@ -434,6 +434,7 @@ internal sealed class NativeDockShell : IDisposable
     private static NativeDockNode Node(IDockable model)=>new() {Kind=model switch {IRootDock=>"root",IToolDock=>"tools",IDocumentDock=>"documents",IProportionalDock=>"split",ISplitter=>"separator",CadDockTool=>"tool",CadDockDocument=>"document",_=>throw new InvalidOperationException("Unsupported dock type")},Id=model.Id,Proportion=double.IsFinite(model.Proportion)?model.Proportion:-1,Orientation=model is IProportionalDock split?(int)split.Orientation:0,Alignment=model is IToolDock tool?(int)tool.Alignment:0,Active=model is IDock dock?dock.ActiveDockable?.Id:null,Children=model is IDock children?children.VisibleDockables?.Select(Node).ToList()??[]:[]};
     public void Restore(NativeDockState saved)
     {
+        ValidateState(saved);
         var models=Tools.Values.Cast<IDockable>().ToDictionary(d=>d.Id);var document=Find(Root).OfType<CadDockDocument>().Single();models[document.Id]=document;
         var seen=new HashSet<string>();var nodes=0;
         IDockable Build(NativeDockNode node,int depth)

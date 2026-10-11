@@ -44,10 +44,9 @@ public partial class MainWindow
     internal void HideAutoTool(){_nativeDock?.HidePreview();_autoShownTool=null;}
     internal void ConfigureFloatingShortcuts(Window window)
     {
+        CadConfirmationKeys.Attach(window);
         window.AddHandler(KeyDownEvent,HandleShortcut,global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
         window.AddHandler(KeyDownEvent,ConfirmPanel,global::Avalonia.Interactivity.RoutingStrategies.Bubble);
         window.AddHandler(KeyDownEvent,CancelPanel,global::Avalonia.Interactivity.RoutingStrategies.Bubble);
-        window.AddHandler(KeyUpEvent,(_,e)=>{if(e.Key==global::Avalonia.Input.Key.Enter)_enterHeld=false;},global::Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        window.Deactivated+=(_,_)=>_enterHeld=false;
     }
 }

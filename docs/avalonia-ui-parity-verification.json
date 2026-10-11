@@ -1,9 +1,9 @@
 {
-  "TimestampUtc": "2026-10-10T17:15:54.9625052+00:00",
-  "ExecutableSha256": "979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240",
+  "TimestampUtc": "2026-10-11T11:32:52.6564453+09:00",
+  "ExecutableSha256": "F40E22F3F09ED09BA08EC95F267EE2CBA73588502347BE430BE54970B7C3CA28",
   "NativeAot": true,
   "Acceptance": "Windows only; NativeAOT; application compiled bindings; approximate WPF layout and equivalent operations. All third-party UI libraries may retain similar native styles.",
-  "Windowing": "Headless routed input and measured controls; separate Win32 runtime smoke",
+  "Windowing": "Headless routed input and rendered icon previews; separate Win32 startup",
   "SourceFindingsFixed": [
     "Generated ContextMenu derives its style key from the base ContextMenu; generator emits the same fix",
     "Canvas receives handled Win32 right-button releases, releases capture and blocks duplicate synthesized gestures",
@@ -38,140 +38,190 @@
     "Handle exit-flow errors inside the pending task and keep the window open instead of throwing from an async-void Closing handler",
     "Floating Dock HostWindow uses WindowDecorations.None, no extended client caption, and Dock title grips for whole-window movement; main/settings/preview decoration choices are unchanged",
     "Borderless floating panes retain library maximize/restore/close/docking actions and a 4 DIP client gutter for edge/corner resize drags with cached directional cursors",
-    "Single tools, multiple floated tabs and restored layouts keep borderless configuration; the title Close hides only its tool, removes the empty host, preserves the current drawing and allows reopening"
+    "Single tools, multiple floated tabs and restored layouts keep borderless configuration; the title Close hides only its tool, removes the empty host, preserves the current drawing and allows reopening",
+    "Reproduced handled/stale LeftCtrl KeyUp retaining the Ctrl profile until pointer movement; preserve the failing pre-fix report",
+    "Observe key-down/up on the actual canvas owner TopLevel in the tunnel with handledEventsToo, rather than only subscribing to canvas bubble events",
+    "Normalize the released modifier family from the key itself, retain a held opposite key, preserve Shift > Ctrl > Alt priority and clear state/unsubscribe on deactivation or canvas detach",
+    "Repaint the radial surface synchronously from modifier events and preserve the sector under the stationary pointer when profiles change",
+    "Suspend application shortcuts while the radial gesture is active; Escape closes the overlay and releases pointer capture",
+    "Assert all six left/right Ctrl/Shift/Alt profiles change actual cropped menu pixels on press and restore identical baseline pixels after release without sending any pointer movement",
+    "Dynamic/terminal/property Enter state follows the complete input route instead of each focused editor; handled release in another panel unlocks the next drawing/command",
+    "Track Escape at logical TopLevelHost/Popup elements as well as the native Window; holding Escape dismisses the menu once and preserves unfinished CAD until a distinct next press",
+    "Clear confirm/cancel key state on application/floating-window deactivation; retain multiline text Enter behavior",
+    "Validate persisted Dock nulls, containers, IDs, leaves, enums, bounds and budgets before reparenting live content; malformed startup uses the default layout",
+    "Normalize glyphs by actual geometry bounds onto a 24-unit design canvas instead of scaling empty 512-unit canvas margins",
+    "Use consistent rounded 1.65-unit primary strokes and readable subsidiary construction lines for circles, ellipses, arcs, lines, polygons and splines",
+    "Use the same outlined command glyphs for Select, Rectangle, Text, Origin, Undo, Redo, Copy, Cut, Paste, Delete, selection, Fit, Save, block creation, image insertion and settings",
+    "Share generated vectors across ribbon, radial menu, context menu and cursor badge; reduce the primary Select viewport from 50 to 32 pixels",
+    "Preserve arc and Bezier segments during development-time generation; no WPF, reflection or new C++ code at runtime; preserve 103 ribbon and 48 context-menu bindings"
   ],
   "Screenshots": [
     {
       "File": "preview-light.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/preview-light.png",
-      "Sha256": "EE35659F636FEAB09B8804B36C9A12278F82A491A74A0D6A062317DDD4212861",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/preview-light.png",
+      "Sha256": "D717580231A35D3320F844CE158984A699EE55E69094D7644A2364EC0894B863",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "preview-dark.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/preview-dark.png",
-      "Sha256": "1286C005E7277C034A38C964F2A08EEF3393BC99A84072D5BA7BB5275ABEAE06",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/preview-dark.png",
+      "Sha256": "C7A2BB41BE1DE85517E61168DEEE60A4CE14E0A797B9F371C4D6E03872D4669E",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "canvas-context-menu.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/canvas-context-menu.png",
-      "Sha256": "16691C0CC1F62EE67792CD0C7DFFA768051C7139DC67F2F3EE5CCA1F8E7C6F06",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/canvas-context-menu.png",
+      "Sha256": "54B16771D241170897E13B2FCBB8BA5D16AF455153E3254CBE7D864F6F64AD18",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "canvas-scrollbar-pressed.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/canvas-scrollbar-pressed.png",
-      "Sha256": "5801E144C759E1AC8E86A626F2496A73D001A07EC5D5CBD7FCEEF49FBE9BDD75",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/canvas-scrollbar-pressed.png",
+      "Sha256": "A7B0554572F892FB3B1DA8245A883557E9BC04BA97F3E48AA36B08E889F6B4FD",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "print-scrollbar-pressed.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/print-scrollbar-pressed.png",
-      "Sha256": "930B947526A83F3A9E2515874883B6285456942AEEDF1A7223155DF162B6E9C9",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/print-scrollbar-pressed.png",
+      "Sha256": "C8B1849AAE2CE0CD43AD863AA66022D5800EE46FD17597E342EE2CA00A090ED5",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "property-compact.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/property-compact.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/property-compact.png",
       "Sha256": "5EAF663CE18D04B95CD6369B4BE3293F4840184ADB7A1C3ABFD6CE52B5B8E011",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "choices-light.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-light.png",
-      "Sha256": "29FA429088052733A98C54B4A2FA87AB61BC52B9A9133FE9AF7B125F0B0038BA",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/choices-light.png",
+      "Sha256": "B490AA8940D850539F29F3C095BCA4960A0F7761BA1306C0520C3459859A911C",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "choices-dark.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-dark.png",
-      "Sha256": "D44A526D2440D01AA7A6681C2D9477CBB5167D41EA14A21F490CBE1848C638C2",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/choices-dark.png",
+      "Sha256": "F55720A0F588247F16B10A802BEFC10226670E4C987C5DB50E3E19CB5F2C3E18",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "choices-color-popup.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-color-popup.png",
-      "Sha256": "3FAD2911D19622EB1138F96945ED7DE4C994503BCE4C0E157722C4D9F0121CED",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/choices-color-popup.png",
+      "Sha256": "0FFB64943BE655198BCD92282EBD7259C9986E16044CBBDE92ABB6D980A8B175",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "choices-list-popup.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/choices-list-popup.png",
-      "Sha256": "7CF0A7A4AD07F229F5E10B5A4D6389F4F30FFDB3046F83948BADDE4225FB7DF3",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/choices-list-popup.png",
+      "Sha256": "7634765488C8B8D1127148D888A77AECCDF90E02255CB0852B5DE38DC00CD590",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "file-menu-compact.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/file-menu-compact.png",
-      "Sha256": "40AA169EEFCE96DF790EA08DE28365D8062B5114D57DC5C0A218281B4C41B1A4",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/file-menu-compact.png",
+      "Sha256": "334B3BBC3A4875D968454246D7EB44E888473262292AF801C8A9DD724F4F00C1",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "layer-menu-compact.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/layer-menu-compact.png",
-      "Sha256": "EAED9F15D6F55B7BED0DA1B8F515DF90647E27640923149A3847735E6E221C65",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/layer-menu-compact.png",
+      "Sha256": "7F845B748758619C736B7333C7E0A206B3DA2D34DC5DCD32A56615E6AFED6AE7",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "explicit-color-source.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/explicit-color-source.png",
-      "Sha256": "34E8CE1ABEAC43C17EC2CC35C62EFE9B27B64A92899732150F8EEB3947229585",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/explicit-color-source.png",
+      "Sha256": "D9ABB37305370C192544DD5A13DDE4C36DED65BAAB7EF1006C62837EF7DBD493",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "chinese-menu.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/chinese-menu.png",
-      "Sha256": "C1C5881C53A2FDF9F55B18144CE908134DF2284863F32457755315B8C63D6E79",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/chinese-menu.png",
+      "Sha256": "440FC58C553AA95D1FB0FFFFFFFEB85755136ED767E80344BBFC4A4849B0F466",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "chinese-unsaved-dialog.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/chinese-unsaved-dialog.png",
-      "Sha256": "04900AC68E0A3BF02BDDCF6FC8A65375A33D8099C8B4B01CF15D3F98E3BA7C06",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/chinese-unsaved-dialog.png",
+      "Sha256": "A9A337DE14A3D738B994D5DF3239C29C3B1B23361DFBAECB3480EE6AF117C8BB",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture and in-process UI assertions; historical physical review retains its original hash"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "exit-confirmation.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/exit-confirmation.png",
-      "Sha256": "30B946A7CB6C44BD72BB0A838DE53DE68578795E805A8997CD19F8BAD01ED142",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/exit-confirmation.png",
+      "Sha256": "B376A7E14204F0565F9F047BE8F455C0EC9E857CB653DFB02B0593E99EC67517",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture; exit order/cancellation/save/discard and floating chrome/maximize/restore/close/reopen assertions passed; physical dragging not repeated"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "exit-unsaved.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/exit-unsaved.png",
-      "Sha256": "D36BE1AB075A6431055667AC42E278E2884870A1AF971C9C4FE688399EFDBCB5",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/exit-unsaved.png",
+      "Sha256": "04DC5669A738DA07D18E82DD97B59177DA929DADC802B03992BB028679551192",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture; exit order/cancellation/save/discard and floating chrome/maximize/restore/close/reopen assertions passed; physical dragging not repeated"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     },
     {
       "File": "dock-floating-borderless.png",
-      "SourcePath": ".artifacts/avalonia-native-validation/runs/223aa73fc9b541d0871ee9cbd40f0925/dock-floating-borderless.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/dock-floating-borderless.png",
       "Sha256": "A2FE2C85995E9FDA5D7D59DA8DE6417399AF6308BF7008ECF8615529ADE9CE82",
       "Windowing": "Headless",
-      "Review": "Current NativeAOT rendered capture; exit order/cancellation/save/discard and floating chrome/maximize/restore/close/reopen assertions passed; physical dragging not repeated"
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
+    },
+    {
+      "File": "radial-control-stationary.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/radial-control-stationary.png",
+      "Sha256": "A585E8B6279AF2F48E0256C283DB040275F574F023417E09F3E780D44DCBD688",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
+    },
+    {
+      "File": "radial-released-stationary.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/radial-released-stationary.png",
+      "Sha256": "7A341E2623142DB6755FBB85F568E35660720D2D2310772B812D2030E392D4DB",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
+    },
+    {
+      "File": "drawing-icons-light.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/drawing-icons-light.png",
+      "Sha256": "08ED54684A11FB5C209242A8CEC13D572E4A8E6CE3A85B4969593EEA91217C15",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
+    },
+    {
+      "File": "drawing-icons-dark.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/drawing-icons-dark.png",
+      "Sha256": "FBA8331AEA71F88127686F6EF993AA40EFBE362382655267AC80D8A26F6BD527",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
+    },
+    {
+      "File": "radial-icon-atlas.png",
+      "SourcePath": ".artifacts/avalonia-native-validation/runs/bee5ddf4b0e74e60bdb44da1780fb793/radial-icon-atlas.png",
+      "Sha256": "639909395222BF397089CCE22E0A8D2F75ECB70867CF260F015DB8713C53882C",
+      "Windowing": "Headless",
+      "Review": "Current NativeAOT frame; drawing toolbars and complete radial icon atlas visually checked; physical feedback retains its original executable hash"
     }
   ],
-  "NativeChecks": 83,
+  "NativeChecks": 90,
   "Win32": {
-    "TimestampUtc": "2026-10-11T02:15:35.1759509+09:00",
-    "ExecutableSha256": "979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240",
+    "TimestampUtc": "2026-10-11T11:28:12.8459458+09:00",
+    "ExecutableSha256": "F40E22F3F09ED09BA08EC95F267EE2CBA73588502347BE430BE54970B7C3CA28",
     "NativeAot": true,
     "HeadlessWindowing": false,
     "Passed": [
@@ -238,72 +288,196 @@
     "CustomBridgeDllPresent": false,
     "NativeApiDeclarations": "Generated by CsWin32",
     "ComIdentity": "System.Runtime.InteropServices.ComWrappers",
-    "ManagedChecks": 82,
-    "ManagedReport": ".artifacts/avalonia-vsdock/managed-07731329459b41debf26eb02d36e3925/report.json",
+    "ManagedChecks": 89,
+    "ManagedReport": ".artifacts/avalonia-vsdock/managed-6113c770e2fa47debb8586840b996d55/report.json",
     "VectorTicket": "Actual installed-driver Unicode DEVMODE to PrintTicket XML; copies verified",
     "PrintingJobSubmitted": false,
     "RealOfficeDesktopAcceptance": "NOT RUN on current hash; historical evidence retained"
   },
-  "HistoricalBaseline": {
-    "ExecutableSha256": "3A8AF1B86FC0B6DF08EF63FF38E17C6B71E8DBCFB67F4B2DC9D97A296A6F59BE",
-    "AppliesToCurrentExecutable": false,
-    "NativeEvidence": ".artifacts/avalonia-exit-confirmation/baseline-native.json",
-    "UiEvidence": ".artifacts/avalonia-exit-confirmation/baseline-ui.json",
-    "Desktop": null,
-    "HistoricalBaseline": {
-      "ExecutableSha256": "56A0D4E1B125F3C5068AAA4EE38CAC66B76551E3AD0BE0FDE8D2D2621E2CDEDD",
-      "AppliesToCurrentExecutable": false,
-      "NativeEvidence": ".artifacts/avalonia-csharp-interop/baseline-native.json",
-      "UiEvidence": ".artifacts/avalonia-csharp-interop/baseline-ui.json",
-      "Desktop": {
-        "TimestampUtc": "2026-10-11T01:10:43.9762008+09:00",
-        "AcceptanceDate": "2026-10-11",
-        "TimeZone": "Asia/Tokyo",
-        "ExecutableSha256": "56A0D4E1B125F3C5068AAA4EE38CAC66B76551E3AD0BE0FDE8D2D2621E2CDEDD",
-        "NativeAot": true,
-        "ProcessId": 43536,
-        "WindowTitle": "Direct2dCad · Color source and Chinese check",
-        "Method": "User manually operated the exact NativeAOT package",
-        "UserFeedback": "这几处都正常",
-        "Verified": [
-          "Color source can select Explicit and edit color",
-          "Chinese context menu captions display normally",
-          "Unsaved drawing dialog shows localized DontSave button"
-        ],
-        "Scope": "Current color source and Chinese display fixes only; other desktop gates retain historical hashes",
-        "TraceFile": "color-chinese-desktop-input.log",
-        "TraceSha256": "F4F0B2548B3831E2C3FF2CDFDBF80157F22295E3908953F1C3C8A08F3E76C358"
+  "RadialModifierRegression": {
+    "PreFixReproduced": true,
+    "PreFixReport": ".artifacts/avalonia-radial-modifiers/reproduced-managed.json",
+    "PreFixReportSha256": "D8EE51852E64A13645510E89D6F2183BFA127F855470C9793CD9CF93581CE7CD",
+    "StationaryPointer": true,
+    "VisibleRadialRegionCompared": "248 DIP menu, actual captured pixel bytes",
+    "Keys": [
+      "LeftCtrl",
+      "RightCtrl",
+      "LeftShift",
+      "RightShift",
+      "LeftAlt",
+      "RightAlt"
+    ],
+    "StaleAndHandledKeyUp": true,
+    "PriorityAndOppositeShift": true,
+    "ApplicationShortcutAndEscapeChecks": true,
+    "PhysicalDesktop": "PENDING current hash"
+  },
+  "InteractionAuditRegression": {
+    "PreFixManagedReport": ".artifacts/avalonia-interaction-audit/reproduced-managed.json",
+    "PreFixNativeStartup": ".artifacts/avalonia-interaction-audit/startup-92cdf3f74ba14be7aecd397706123053/startup.json",
+    "PreFixNativeExecutableSha256": "473C14D8F93B592B61E01FD70F8FF7BB3FDF2DA7D61E2EA1F845DA86E3240999",
+    "ManagedReport": ".artifacts/avalonia-vsdock/managed-0c279d741dbc4aa284058e0633c95f28/report.json",
+    "ManagedChecks": 89,
+    "NativeChecks": 90,
+    "Win32Report": ".artifacts/avalonia-icon-consistency/startup-e45bf03fd1e24a47b05f41d69a3cb07b/report.json",
+    "InvalidLayoutStartup": {
+      "Input": "Version=2, Layout=null",
+      "ExitCode": 0,
+      "CrashLogs": 0,
+      "DefaultLayoutFallback": "PASS",
+      "NativeAot": true
+    },
+    "PhysicalDesktop": "Not operated this audit"
+  },
+  "IconConsistencyVerification": {
+    "Generator": "tools/Direct2dCad.Avalonia.Generate/CadDrawingIconNormalizer.cs",
+    "DesignCanvas": 24,
+    "VisibleGeometryMaximum": 20,
+    "PrimaryStroke": 1.65,
+    "LargeSelectViewport": 32,
+    "BindingEvidence": ".artifacts/avalonia-icon-consistency/binding-preservation.json",
+    "BindingsPreserved": [
+      {
+        "File": "MainRibbonView.axaml",
+        "BindingsPreserved": 103,
+        "Sha256": "0BFED259861108D9B7DE4FEF49BBDA4C2863A84548684AE4FBC2E81B71E71A4D"
       },
-      "HistoricalBaseline": {
-        "ExecutableSha256": "BA7D7323EE6F5581531ADC024A8750D1440C3EF396B203C7FE77CA9E9DEADBF0",
+      {
+        "File": "EditorContextMenu.axaml",
+        "BindingsPreserved": 48,
+        "Sha256": "41082B6DDE10E62F14BA7AA6CD98153058E2B4562903BAE9B7534DCE0FC0BC55"
+      },
+      {
+        "File": "RadialIconResources.axaml",
+        "BindingsPreserved": 0,
+        "Sha256": "ACA709043F092F227F37681330ADBF3944D8A2303B727CBCC3A7D95AF60251B0"
+      },
+      {
+        "File": "CursorIconResources.axaml",
+        "BindingsPreserved": 0,
+        "Sha256": "B41CDBE1B83EBB7F9F8AF0B4009138584C0AFFEBD68BFC78847B0E6FF8C0A25E"
+      }
+    ],
+    "ManagedReport": ".artifacts/avalonia-vsdock/managed-6113c770e2fa47debb8586840b996d55/report.json",
+    "ManagedChecks": 89,
+    "NativeChecks": 90,
+    "Win32Report": ".artifacts/avalonia-icon-consistency/startup-e45bf03fd1e24a47b05f41d69a3cb07b/report.json",
+    "PhysicalDesktop": "User accepted icon size, weight and style on current candidate: 已统一，合适",
+    "NativeFirstRun": {
+      "Report": ".artifacts/avalonia-icon-consistency/native-first-failure.json",
+      "ExecutableSha256": "F40E22F3F09ED09BA08EC95F267EE2CBA73588502347BE430BE54970B7C3CA28",
+      "Result": "Failed while locating the floating Dock close control",
+      "Rerun": "All 90 checks passed with the same executable; no source change, rebuild or relaxed check",
+      "Cause": "Not conclusively established"
+    },
+    "UserFeedback": {
+      "TimestampUtc": "2026-10-11T02:34:25.2241777+00:00",
+      "ExecutableSha256": "F40E22F3F09ED09BA08EC95F267EE2CBA73588502347BE430BE54970B7C3CA28",
+      "ProcessId": 19156,
+      "MainWindowTitle": "Direct2dCad · Icon consistency check",
+      "Responding": null,
+      "ProcessState": "Exited after user feedback; exit code not captured",
+      "CrashLogs": 0,
+      "Question": "新版窗口中绘制工具栏和中键菜单的图标大小、粗细和样式是否合适",
+      "Answer": "已统一，合适",
+      "Source": "Direct user reply in this conversation",
+      "Scope": "Icon size, weight and style only"
+    }
+  },
+  "HistoricalBaseline": {
+    "ExecutableSha256": "F73B7D6167CF208FDB3898ED221E19AC7098F0748B1E06FA2F48353B7F3FB0DB",
+    "AppliesToCurrentExecutable": false,
+    "NativeEvidence": ".artifacts/avalonia-icon-consistency/baseline-native.json",
+    "UiEvidence": ".artifacts/avalonia-icon-consistency/baseline-ui.json",
+    "PriorHistory": {
+      "ExecutableSha256": "473C14D8F93B592B61E01FD70F8FF7BB3FDF2DA7D61E2EA1F845DA86E3240999",
+      "AppliesToCurrentExecutable": false,
+      "NativeEvidence": ".artifacts/avalonia-interaction-audit/baseline-native.json",
+      "UiEvidence": ".artifacts/avalonia-interaction-audit/baseline-ui.json",
+      "PriorHistory": {
+        "ExecutableSha256": "F649893F0378502B6790C2618A8E51C5929A18FB9412C98805E8A7A8DC9B508A",
         "AppliesToCurrentExecutable": false,
-        "NativeEvidence": ".artifacts/avalonia-colorfix/baseline-native.json",
-        "UiEvidence": ".artifacts/avalonia-colorfix/baseline-ui.json",
+        "NativeEvidence": ".artifacts/avalonia-radial-modifiers/baseline-native.json",
+        "UiEvidence": ".artifacts/avalonia-radial-modifiers/baseline-ui.json",
+        "UiExecutableSha256": "979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240",
         "Desktop": {
-          "ExecutableSha256": "BA7D7323EE6F5581531ADC024A8750D1440C3EF396B203C7FE77CA9E9DEADBF0",
+          "AcceptanceDate": "2026-10-11",
+          "TimeZone": "Asia/Tokyo",
+          "ExecutableSha256": "979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240",
           "NativeAot": true,
-          "ProcessId": 6232,
-          "WindowTitle": "Direct2dCad · Choice and menu check",
-          "Method": "User manually operated the previous NativeAOT package",
-          "UserFeedback": "好了、但是Color source的选不到explicit",
+          "ProcessId": 60200,
+          "WindowTitle": "Direct2dCad · Exit and floating dock check",
+          "Method": "User manually operated the exact NativeAOT package",
+          "UserFeedback": "两处都正常",
           "Verified": [
-            "Menu and choice field appearance accepted"
+            "Main-window close shows exit confirmation; cancellation keeps the app usable",
+            "Floating Dock panels have no system title bar; dragging, edge/corner resizing and redocking work"
           ],
-          "KnownIssues": [
-            "Color source cannot retain Explicit",
-            "Some Chinese text appears as missing glyph boxes",
-            "Unsaved dialog Discard is not translated"
-          ],
-          "Scope": "Appearance only; functional and localization fixes require a new executable"
+          "Scope": "Exit and floating Dock only",
+          "KnownIssue": "User subsequently reports radial modifier release repaint waits for pointer movement"
+        },
+        "PriorRichEvidence": ".artifacts/avalonia-radial-modifiers/baseline-rich-native.json",
+        "HistoricalBaseline": {
+          "ExecutableSha256": "3A8AF1B86FC0B6DF08EF63FF38E17C6B71E8DBCFB67F4B2DC9D97A296A6F59BE",
+          "AppliesToCurrentExecutable": false,
+          "NativeEvidence": ".artifacts/avalonia-exit-confirmation/baseline-native.json",
+          "UiEvidence": ".artifacts/avalonia-exit-confirmation/baseline-ui.json",
+          "Desktop": null,
+          "HistoricalBaseline": {
+            "ExecutableSha256": "56A0D4E1B125F3C5068AAA4EE38CAC66B76551E3AD0BE0FDE8D2D2621E2CDEDD",
+            "AppliesToCurrentExecutable": false,
+            "NativeEvidence": ".artifacts/avalonia-csharp-interop/baseline-native.json",
+            "UiEvidence": ".artifacts/avalonia-csharp-interop/baseline-ui.json",
+            "Desktop": {
+              "TimestampUtc": "2026-10-11T01:10:43.9762008+09:00",
+              "AcceptanceDate": "2026-10-11",
+              "TimeZone": "Asia/Tokyo",
+              "ExecutableSha256": "56A0D4E1B125F3C5068AAA4EE38CAC66B76551E3AD0BE0FDE8D2D2621E2CDEDD",
+              "NativeAot": true,
+              "ProcessId": 43536,
+              "WindowTitle": "Direct2dCad · Color source and Chinese check",
+              "Method": "User manually operated the exact NativeAOT package",
+              "UserFeedback": "这几处都正常",
+              "Verified": [
+                "Color source can select Explicit and edit color",
+                "Chinese context menu captions display normally",
+                "Unsaved drawing dialog shows localized DontSave button"
+              ],
+              "Scope": "Current color source and Chinese display fixes only; other desktop gates retain historical hashes",
+              "TraceFile": "color-chinese-desktop-input.log",
+              "TraceSha256": "F4F0B2548B3831E2C3FF2CDFDBF80157F22295E3908953F1C3C8A08F3E76C358"
+            },
+            "HistoricalBaseline": {
+              "ExecutableSha256": "BA7D7323EE6F5581531ADC024A8750D1440C3EF396B203C7FE77CA9E9DEADBF0",
+              "AppliesToCurrentExecutable": false,
+              "NativeEvidence": ".artifacts/avalonia-colorfix/baseline-native.json",
+              "UiEvidence": ".artifacts/avalonia-colorfix/baseline-ui.json",
+              "Desktop": {
+                "ExecutableSha256": "BA7D7323EE6F5581531ADC024A8750D1440C3EF396B203C7FE77CA9E9DEADBF0",
+                "NativeAot": true,
+                "ProcessId": 6232,
+                "WindowTitle": "Direct2dCad · Choice and menu check",
+                "Method": "User manually operated the previous NativeAOT package",
+                "UserFeedback": "好了、但是Color source的选不到explicit",
+                "Verified": [
+                  "Menu and choice field appearance accepted"
+                ],
+                "KnownIssues": [
+                  "Color source cannot retain Explicit",
+                  "Some Chinese text appears as missing glyph boxes",
+                  "Unsaved dialog Discard is not translated"
+                ],
+                "Scope": "Appearance only; functional and localization fixes require a new executable"
+              }
+            }
+          }
         }
       }
     }
   },
   "NotRun": [
-    "Physical floating-window dragging, edge/corner resizing and cross-monitor redocking on this executable",
-    "Physical desktop confirmation of exit buttons and native system menu/Snap Layouts on this executable",
-    "Real Office clipboard embedding, double-click editing and save-back on this executable",
-    "Physical printer/PDF job submission on this executable",
-    "Multi-DPI, multi-monitor and IME matrix"
+    "Physical keyboard/IME/multi-DPI/multi-monitor matrix, Office edit/save-back and printer job submission",
+    "New MSI installation/uninstallation and signing; no commit, push or upload for this fix"
   ]
 }

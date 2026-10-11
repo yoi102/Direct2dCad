@@ -2,7 +2,7 @@
 
 [中文](README.md) | [日本語](README.ja.md) | [English](README.en.md)
 
-Direct2dCad 是面向 Windows 的二维 CAD 编辑器，基于 WPF、Direct2D 和 DirectWrite 构建。它将绘图、精确输入、图形编辑、标注与图纸管理放在同一个桌面工作区中，并提供命令行和 AI 辅助操作。
+Direct2dCad 是面向 Windows 的二维 CAD 编辑器，提供 WPF 和 Avalonia 两种桌面客户端，使用 Direct2D 和 DirectWrite 绘制。它将绘图、精确输入、图形编辑、标注与图纸管理放在同一个桌面工作区中，并提供命令行和 AI 辅助操作。
 
 ## 主要功能
 
@@ -20,10 +20,10 @@ Direct2dCad 是面向 Windows 的二维 CAD 编辑器，基于 WPF、Direct2D �
 
 从 [GitHub Releases](https://github.com/yoi102/Direct2dCad/releases) 下载 Windows x64 版本：
 
-- **MSI 安装包**：安装应用并创建桌面与开始菜单快捷方式。
-- **便携 ZIP**：解压后运行 `Direct2dCad.exe`。
+- **WPF 版**：选择文件名含 `Wpf` 的 MSI 或 ZIP；便携版运行 `Direct2dCad.exe`。
+- **Avalonia 版**：选择文件名含 `Avalonia` 的 MSI 或 ZIP；便携版运行 `Direct2dCad.Avalonia.exe`。
 
-两种方式均包含所需的 .NET Runtime，无需另外安装运行时。
+两版均无需另外安装 .NET Runtime：WPF 包自带运行时，Avalonia 包采用 NativeAOT。MSI 可选择安装位置，并创建桌面与开始菜单快捷方式；两版可同时安装。
 
 ## 快速开始
 
@@ -51,12 +51,6 @@ Direct2dCad 是面向 Windows 的二维 CAD 编辑器，基于 WPF、Direct2D �
 AI 可查询实体、图层和块，创建或修改图形，并打开、保存和切换图纸。编辑结果进入图纸的撤销历史，可继续手动调整。
 
 ## 从源码运行
-
-开发者文档：[架构与项目职责](docs/ARCHITECTURE.md) · [架构优化实施与验收](docs/ARCHITECTURE-OPTIMIZATION.md) · [交互优化实施与验收](docs/INTERACTION-OPTIMIZATION.md) · [命令行与 AI Agent 整改](docs/COMMANDLINE-AND-AI-IMPLEMENTATION.md) · [椭圆布尔与旋转选择修复](docs/SELECTION-AND-BOOLEAN-FIXES.md)。
-
-最近代码审查：[缺陷修复与验收](docs/CODE-REVIEW-FIXES-2026-10-07.md)记录缩放失败原子性、布局撤销、工具视口尺寸、Agent 取消回执和画布尺寸切换的修复及回归证据。
-
-绘制模块：[四项绘制修复与验收](docs/DRAWING-FIXES-2026-10-07.md)记录斜轴椭圆、大坐标短线、多段线预览及样条填充图案的修复。
 
 需要 Windows x64 和 .NET 10 SDK。仓库的 `global.json` 指定 SDK 10.0.401，并允许同特性带的补丁升级。
 

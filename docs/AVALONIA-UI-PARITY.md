@@ -154,3 +154,29 @@ WPF 主窗口先调用 ShowExitConfirmation，再检查未保存图纸；Avaloni
 当前包：`.artifacts/Direct2dCad-Avalonia-win-x64-53b8bf9d90ee`；EXE SHA256 `979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240`。Release 0 警告/0 错误，managed 82 项、NativeAOT 83 项、Win32 48 项通过。关闭空白窗口、重复关闭、取消/重试、确认后的未保存列表、取消保留几何、不保存不改磁盘、保存圆后实际关闭主窗口均通过。浮动标题最大化/还原、边缘光标、关闭只隐藏工具并去除空宿主、重开和原有回停靠/恢复回归通过。GPU 导入 20 帧、呈现 CPU 回读 0，ZIP 校验通过。
 
 新增截图 exit-confirmation.png、exit-unsaved.png、dock-floating-borderless.png 来自当前哈希自动渲染。当前包的物理拖动、边角缩放、跨屏回停靠和退出按钮人工反馈待确认；旧实机反馈保留历史哈希。CsWin32/C# OLE 和矢量打印迁移保持，真实 Office 编辑及提交打印任务未重新实机验证，NativeAOT 依赖分析警告仍保留于发布日志。
+
+## 2026-10-11 滚轮菜单修饰键松开立即刷新
+
+用户已在 `979AF9698509A9F0220E00F5942E936FC30B7DD957C2BCADCB41DF2FF856F240` 候选确认退出弹窗、无边框浮动窗的拖动/边角缩放/回停靠两处均正常，反馈“两处都正常”；此项验收保留旧哈希归属。随后报告 Ctrl/Shift/Alt 松开后，要移动光标才切回滚轮菜单。
+
+新增回归先复现 handled 且仍含 Control 标记的 LeftCtrl KeyUp 未切回默认配置，失败报告保存在 `.artifacts/avalonia-radial-modifiers/reproduced-managed.json`。画布现于实际所属 TopLevel 的隧道路由监听按下/松开，接收已处理事件；按松开键清除对应修饰标记，同时保留仍按住的另一侧键，维持 Shift > Ctrl > Alt 优先级。修饰键变化直接重画菜单并保留静止指针所在扇区；活动滚轮手势屏蔽主窗口快捷键，Escape 释放捕获；窗口失活和画布脱离清理状态与事件订阅。
+
+当前本地包：`.artifacts/Direct2dCad-Avalonia-win-x64-e33ea77fcd1b`；EXE SHA256 `473C14D8F93B592B61E01FD70F8FF7BB3FDF2DA7D61E2EA1F845DA86E3240999`。Release 0 警告/0 错误，managed 85 项、NativeAOT 86 项、Win32 48 项通过；锁定依赖恢复通过。左右 Ctrl/Shift/Alt 六个键的实际 248 DIP 菜单像素在按下后改变、松开后与基线完全相同，期间没有发送鼠标移动。组合键回退、另一侧 Shift 仍按住、快捷键隔离和 Escape 后重开通过。GPU 导入 20 帧、呈现 CPU 回读 0；新增 radial-control-stationary.png 和 radial-released-stationary.png 均来自当前哈希。
+
+当前包真实静止鼠标按键验收待反馈，多屏 DPI/IME/失焦矩阵未覆盖。NativeAOT 依赖分析警告仍保留于发布日志；Office 编辑、实际打印和新 MSI 安装未重新实机验证。本轮只生成本地候选，没有提交/推送或上传 GitHub。
+
+## 2026-10-11 输入与 Dock 补充检查
+
+确认并修复三类问题：动态输入在其他面板松开 Enter 后，下一次 Enter 被旧状态拦截；菜单关闭后持续按住 Escape，会继续取消未完成绘图；Dock 布局 JSON 空值造成启动 NullReferenceException。失败回归保存在 `.artifacts/avalonia-interaction-audit/reproduced-managed.json`，旧 NativeAOT `473C14D8F93B592B61E01FD70F8FF7BB3FDF2DA7D61E2EA1F845DA86E3240999` 在隔离 Layout=null 配置下退出码为 1，产生 1 份异常日志。
+
+确认/取消按键改为跟踪完整逻辑输入路由，包括 Avalonia 12 的 TopLevelHost/Popup，接收已处理的松键事件；控件切换焦点后仍正确抑制重复 Enter/Escape，窗口失活清理记录。普通多行输入保留换行重复。Dock 先验证全部持久化节点、空值、ID、枚举和窗口边界，再修改当前布局；无效数据回退默认布局。
+
+本地 NativeAOT 候选 EXE SHA256：`F73B7D6167CF208FDB3898ED221E19AC7098F0748B1E06FA2F48353B7F3FB0DB`。managed 89 项、NativeAOT 90 项、Win32 48 项通过；Release managed 编译 0 警告/0 错误，锁定依赖恢复和发布通过。新的 Win32 验证从相同 Layout=null 配置启动，回退默认布局并完成回归，退出码 0、无异常日志。GPU 导入 20 帧、呈现 CPU 回读 0。本次未操作桌面鼠标/键盘，未关闭旧窗口；真实键盘/IME/多屏 DPI 矩阵、Office 编辑、实际打印和 MSI 安装尚未重新实机验收。依赖 AOT/裁剪分析警告保留在发布日志；没有提交、推送或上传。
+
+## 2026-10-11 统一工具栏与滚轮菜单图标
+
+用户确认问题是大小、粗细和样式不统一。生成器现将实际图形边界归一化到 24 单位画布，最大图形尺寸 20 单位，主描边 1.65 单位并使用圆角；辅助构造线保持较细且可见。圆、椭圆、圆弧等不再随空白的 512 单位画布缩小。选择、矩形、文字、原点、撤销/重做、剪贴板、删除、保存、创建块、插入图片和设置等使用相近的描边图标；主选择按钮图标从 50 缩至 32 像素。工具栏、滚轮菜单、画布右键菜单和光标徽标共用生成结果。生成时保留圆弧/Bezier 曲线，运行时没有 WPF/反射依赖或新 C++ 代码；103 个工具栏和 48 个菜单绑定保持原样。
+
+当前本地 EXE SHA256：`F40E22F3F09ED09BA08EC95F267EE2CBA73588502347BE430BE54970B7C3CA28`。Release managed 编译 0 警告/0 错误；managed 89 项、NativeAOT 90 项、Win32 48 项通过，GPU 导入 20 帧、呈现 CPU 回读 0。drawing-icons-light.png、drawing-icons-dark.png 和 radial-icon-atlas.png 来自当前 NativeAOT，已检查实际工具栏与全部滚轮图标；静止鼠标修饰键切换和前轮 Enter/Escape/Dock 回归仍通过。依赖 AOT/裁剪分析警告保留；用户已在当前候选窗口确认图标大小、粗细和样式“已统一，合适”，多屏 DPI/IME、Office 和实际打印未重新实机覆盖。ZIP/MSI 仅本地更新，没有提交/推送/上传。
+
+同一 EXE 的首次 NativeAOT 回归未找到浮动 Dock 的关闭控件；没有修改代码、重新编译或放宽检查，重跑后全部通过。初次失败记录保存在 .artifacts/avalonia-icon-consistency/native-first-failure.json，原因尚未完全证实。

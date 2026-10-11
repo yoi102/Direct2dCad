@@ -1,6 +1,6 @@
 param(
-    [string]$ReleaseVersion = '0.1.6',
-    [string]$InstallerVersion = '1.0.6',
+    [string]$ReleaseVersion = '0.1.7',
+    [string]$InstallerVersion = '1.0.7',
     [switch]$SkipValidation,
     [switch]$HeadlessValidation)
 $ErrorActionPreference = 'Stop'
@@ -61,13 +61,18 @@ try {
         elseif ((Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $module.FullName -Algorithm SHA256).Hash) { throw "Portable module differs: $destination" }
     }
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.md') -Destination $portable
+    Copy-Item -LiteralPath (Join-Path $repo 'Direct2dCad.wpf/Direct2dCad.ico') -Destination $portable
     Copy-Item -LiteralPath (Join-Path $repo 'docs/AVALONIA-WINDOWS.md') -Destination $portable
     Copy-Item -LiteralPath (Join-Path $repo 'docs/AVALONIA-UI-PARITY.md') -Destination $portable
     Copy-Item -LiteralPath (Join-Path $repo 'docs/AVALONIA-UI-LIBRARIES.md') -Destination $portable
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'THIRD-PARTY-UI-LICENSES.txt') -Destination $portable
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'THIRD-PARTY-INTEROP-LICENSES.txt') -Destination $portable
     if (!$SkipValidation) {
-        foreach ($preview in @('preview-light.png', 'preview-dark.png', 'dialog-light.png', 'dialog-dark.png','dock-auto-hide.png','dock-split.png','dock-guides.png','dock-drag.png','dock-floating-borderless.png','exit-confirmation.png','exit-unsaved.png','print-light.png','print-dark.png','radial-overlay.png','canvas-context-menu.png','canvas-scrollbar-pressed.png','print-scrollbar-pressed.png','property-compact.png','choices-light.png','choices-dark.png','choices-color-popup.png','choices-list-popup.png','file-menu-compact.png','layer-menu-compact.png','explicit-color-source.png','chinese-menu.png','chinese-unsaved-dialog.png')) {
+        foreach ($preview in @('preview-light.png', 'preview-dark.png', 'dialog-light.png', 'dialog-dark.png','dock-auto-hide.png','dock-split.png','dock-guides.png','dock-drag.png','dock-floating-borderless.png','exit-confirmation.png','exit-unsaved.png','print-light.png','print-dark.png','radial-overlay.png','radial-control-stationary.png','radial-released-stationary.png','canvas-context-menu.png','canvas-scrollbar-pressed.png','print-scrollbar-pressed.png','property-compact.png','choices-light.png','choices-dark.png','choices-color-popup.png','choices-list-popup.png','file-menu-compact.png','layer-menu-compact.png','explicit-color-source.png','chinese-menu.png','chinese-unsaved-dialog.png')) {
+            $previewPath = Join-Path $run $preview
+            if (Test-Path -LiteralPath $previewPath) { Copy-Item -LiteralPath $previewPath -Destination $portable -Force }
+        }
+        foreach ($preview in @('drawing-icons-light.png','drawing-icons-dark.png','radial-icon-atlas.png')) {
             $previewPath = Join-Path $run $preview
             if (Test-Path -LiteralPath $previewPath) { Copy-Item -LiteralPath $previewPath -Destination $portable -Force }
         }

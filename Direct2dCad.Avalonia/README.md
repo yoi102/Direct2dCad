@@ -5,7 +5,7 @@ Windows x64 client using Avalonia 12.0.5, .NET 10 NativeAOT and typed compiled X
 Managed build prerequisites: .NET 10 SDK. NativeAOT publication additionally requires the Windows SDK and MSVC native linker through Visual Studio Build Tools, as required by .NET NativeAOT. There is no custom C++ compilation step. Run from PowerShell:
 
 ```powershell
-./Direct2dCad.Avalonia/publish-windows.ps1 -ReleaseVersion 0.1.6 -InstallerVersion 1.0.6
+./Direct2dCad.Avalonia/publish-windows.ps1 -ReleaseVersion 0.1.7 -InstallerVersion 1.0.7
 ```
 
 Use `-HeadlessValidation` to run the same in-process checks without any desktop windows, mouse or keyboard input. This uses Avalonia.Headless for test windowing while retaining the actual NativeAOT executable, Skia text/control rendering and hardware Direct2D CAD rendering. It does not certify Win32 input, focus, dialogs or physical display behavior.
@@ -39,6 +39,8 @@ Docking uses a local VS-style compass: center joins tabs and directional targets
 
 Ribbon file dropdowns use native menus with Down/Enter/Escape navigation and close after selection. Escape lets the focused control dismiss its popup first. Property Enter validates and returns to the canvas without finishing the drawing; invalid numeric values block Save/Save As/Print shortcuts, and Escape restores their current source value. The same rules apply in floating tools. File/panel menu shortcuts are displayed, and standalone vector paths retain their original Viewbox measurement.
 
+Drawing, radial-menu, context-menu and cursor glyphs are generated on a shared 24-unit canvas, normalized by visible geometry bounds with consistent rounded outline strokes. Arcs and Bezier curves remain vector curves; normalization runs in the development generator and adds no WPF or dynamic-code dependency to the NativeAOT application. The primary Select glyph uses a compact 32-pixel viewport; command bindings and radial action order remain intact.
+
 Drag a pane title to move its group, or a tab to move one tool. The floating pane menu offers Dock to return to its previous pane. Escape cancels an active dock drag without cancelling an unfinished CAD command.
 
 The main window integrates File, theme, language and topmost controls into one 32px title bar. Avalonia's decoration infrastructure owns its caption actions and exposes Windows non-client roles, including the maximize-button Snap Layouts flyout when enabled by the OS. Settings and previews use full system title bars. Floating Dock panes are borderless and use Dock's own title grip, maximize/restore and Close actions, with a 4 DIP gutter for edge/corner resizing. The same rules apply to single tools, multiple tabs and restored floating layouts. Drag the Dock title or a tool tab to move or dock a floating pane.
@@ -46,3 +48,5 @@ The main window integrates File, theme, language and topmost controls into one 3
 Closing the main window always asks for exit confirmation, matching WPF even without open or modified drawings. Confirming exit then checks unsaved drawings; Cancel or Escape keeps the application open. Save exits only after saving succeeds; Don't save exits without writing changes. Repeated Close requests reuse the pending confirmation.
 
 The original application icon opens the Windows system menu, and View is beside File. Docking context menus belong to pane titles and tool tabs. Layer content instead exposes layer actions using the existing command and undo paths. Documents and Recovery accept context clicks across row padding and blank list space, targeting the clicked row or current selection. Canvas right clicks open the compiled editor menu explicitly after capture is released; a right drag remains pan. The 248px radial menu uses a transparent vector overlay inside the owner window, with no separate opaque popup surface.
+
+While the radial menu is open, its owner window captures key-down/up events before control handling and application shortcuts. Releasing Ctrl, Shift or Alt immediately updates the visible profile, including handled events and modifier snapshots that still contain the released key. Left/right keys and Shift > Ctrl > Alt priority are preserved. Profile changes retain the sector under the stationary pointer; Escape releases capture, and window deactivation or canvas detachment clears the gesture's keyboard state.

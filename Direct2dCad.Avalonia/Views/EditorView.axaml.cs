@@ -14,7 +14,6 @@ public partial class EditorView : UserControl, IDisposable
 {
     public EditorTabViewModel Model { get; } = null!;
     public CadCanvas Canvas { get; } = null!;
-    private bool _enterHeld;
     private bool _disposed;
     private readonly Border _cursorBadge = new() { Width=28,Height=28,Padding=new Thickness(4),CornerRadius=new CornerRadius(4),BorderThickness=new Thickness(1),BorderBrush=global::Avalonia.Media.Brushes.Gray,Background=new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.Parse("#D0202429")),IsVisible=false,IsHitTestVisible=false };
     private readonly Generated.CursorIconResources _cursorIcons = new();
@@ -33,7 +32,6 @@ public partial class EditorView : UserControl, IDisposable
         model.CadDocumentViewModel.DynamicInputFields.CollectionChanged += DynamicFieldsChanged;
         CanvasSurface.AddHandler(PointerPressedEvent, (_, e) => { if (e.Source == Overlay) { Canvas.Focus(); e.Handled = true; } }, RoutingStrategies.Bubble);
         AddHandler(KeyDownEvent, DynamicKey, RoutingStrategies.Tunnel);
-        AddHandler(KeyUpEvent, (_, e) => { if (e.Key == Key.Enter) _enterHeld = false; }, RoutingStrategies.Tunnel);
         AddHandler(TextInputEvent, TextEntry, RoutingStrategies.Tunnel);
         model.CadDocumentViewModel.PropertyChanged += DocumentChanged;
         Canvas.ContextMenu = new Generated.EditorContextMenu { DataContext = model };
@@ -141,7 +139,6 @@ public partial class EditorView : UserControl, IDisposable
         if (e.Handled || e.Source != Canvas && (e.Source is not TextBox text || !DynamicPanel.IsVisualAncestorOf(text))) return;
         if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None)
         {
-            if (_enterHeld) { e.Handled = true; return; } _enterHeld = true;
             if (e.Source is TextBox && DynamicPanel.IsVisualAncestorOf((global::Avalonia.Visual)e.Source)) { if (Model.CadDocumentViewModel.SubmitDynamicInput()) Canvas.Focus(); e.Handled = true; }
         }
         if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None) { if (e.Source is TextBox) { Model.CadDocumentViewModel.ClearDynamicInputLocks(); Canvas.Focus(); } else Cancel(); e.Handled = true; return; }

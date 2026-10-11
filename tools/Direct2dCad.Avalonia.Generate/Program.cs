@@ -37,7 +37,9 @@ string Icon(XElement source)
     if (template.Success && cadIconTemplates.TryGetValue(template.Groups[1].Value, out var iconTemplate)) source = iconTemplate;
     var kind = source.Descendants().FirstOrDefault(n => n.Name.LocalName == "PackIcon")?.Attribute("Kind")?.Value
         ?? Regex.Match(source.Attribute("Content")?.Value ?? "", @"PackIcon\s+Kind=(\w+)").Groups[1].Value;
+    if (CadDrawingIconNormalizer.Material(kind) is { } outlined) return outlined;
     if (kind is not null && Enum.TryParse<MaterialDesignThemes.Wpf.PackIconKind>(kind, out var key) && iconData.Contains(key)) return $"<PathIcon Width=\"26\" Height=\"26\" Data=\"{SecurityElement.Escape((string?)iconData[key])}\" />";
+    if (CadDrawingIconNormalizer.GeometryIcon(source) is { } normalized) return normalized;
     var canvas = source.Descendants().FirstOrDefault(n => n.Name.LocalName == "Canvas");
     var shapes = (canvas?.Elements() ?? source.Descendants()).Where(n => n.Name.LocalName is "Path" or "Ellipse" or "Rectangle" or "Line" or "Polyline" or "Polygon" or "TextBlock").ToArray();
     if (shapes.Length == 0) return "";
@@ -307,7 +309,7 @@ string RibbonNode(XElement node)
         if (command.Length > 0 && Property(typeof(MainViewModel), command) is null) throw new InvalidOperationException("Unresolved ribbon command: " + command);
         var label = Label(node, command.Split('.').Last()); var icon = Icon(node);
         var size = node.Attribute("Width")?.Value == "80" || (node.Attribute("Style")?.Value.Contains("DropDown") ?? false) ? 80 : 34;
-        if (size == 80) icon = icon.Replace("Width=\"26\" Height=\"26\"", "Width=\"50\" Height=\"50\"");
+        if (size == 80) icon = icon.Replace("Width=\"26\" Height=\"26\"", node.Attribute("AutomationProperties.AutomationId")?.Value == "SelectToolButton" ? "Width=\"32\" Height=\"32\"" : "Width=\"50\" Height=\"50\"");
         icon = icon.Replace("MaterialBodyBrush", "CadRibbonAccentBrush");
         var attrs = command.Length == 0 ? "" : $" Command=\"{{Binding {command}}}\"{StaticParameter(node)}";
         var check = BindingPath(node.Attribute("IsChecked")?.Value);

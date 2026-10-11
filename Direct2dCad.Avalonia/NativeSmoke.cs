@@ -317,10 +317,12 @@ internal static partial class NativeSmoke
                 Assert(editorView.Canvas.RadialGesture == Direct2dCad.Client.Common.Settings.CadRadialMenuGesture.ShiftMiddle, "Shift did not switch the radial profile.");
                 global::Avalonia.Headless.HeadlessWindowExtensions.KeyRelease(window, global::Avalonia.Input.Key.LeftShift, input, global::Avalonia.Input.PhysicalKey.None, null);
                 Assert(editorView.Canvas.RadialGesture == Direct2dCad.Client.Common.Settings.CadRadialMenuGesture.Middle, "Releasing Shift left the radial profile stuck.");
+                await CheckRadialModifierReleaseAsync(window, editorView.Canvas, centerInWindow, report, Assert, output);
                 global::Avalonia.Headless.HeadlessWindowExtensions.MouseUp(window, centerInWindow, global::Avalonia.Input.MouseButton.Middle);
                 Assert(!editorView.Canvas.IsRadialMenuActive, "Middle release did not close the radial menu.");
                 vm.UserSettings.Interaction.RadialMenu.IsEnabled = radialEnabled;
                 report.Passed.Add("Routed radial menu restores the middle profile after modifier release");
+                await CheckInteractionAuditAsync(window, editorView, report, Assert);
             }
 
             var originalTheme = global::Avalonia.Application.Current!.RequestedThemeVariant;
@@ -809,6 +811,7 @@ internal static partial class NativeSmoke
                         using var frame = global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
                         Assert(frame is not null && frame.PixelSize.Width >= 1000 && frame.PixelSize.Height >= 640, "Headless Skia window did not render a complete frame.");
                         frame!.Save(Path.Combine(Path.GetDirectoryName(output)!, theme == ThemeVariant.Light ? "preview-light.png" : "preview-dark.png"));
+                        await CaptureDrawingIconsAsync(window, theme, output);
                     }
                 }
                 finally { global::Avalonia.Application.Current.RequestedThemeVariant = originalTheme; vm.ClearSelection(); }

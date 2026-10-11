@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$PackageDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.6',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.6')
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.7',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.7')
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
@@ -29,6 +29,7 @@ foreach ($module in $modules) { Copy-Item -LiteralPath $module.FullName -Destina
 
 $supportFiles = @(
     'README.md',
+    'validation.json',
     'AVALONIA-WINDOWS.md',
     'AVALONIA-UI-PARITY.md',
     'AVALONIA-UI-LIBRARIES.md',
@@ -43,7 +44,9 @@ Copy-Item -LiteralPath (Join-Path $repo 'Direct2dCad.wpf/Direct2dCad.ico') -Dest
 $project = Join-Path $repo 'installer/Direct2dCad.Avalonia.Msi/Direct2dCad.Avalonia.Msi.wixproj'
 & dotnet restore $project --locked-mode -p:ContinuousIntegrationBuild=true -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'Locked WiX restore failed.' }
-& dotnet build $project -c Release --no-restore -p:RestoreLockedMode=true `
+# PayloadDirectory changes on each invocation; WiX's incremental inputs can
+# otherwise reuse a cabinet containing an older executable.
+& dotnet build $project -t:Rebuild -c Release --no-restore -p:RestoreLockedMode=true `
     "-p:Version=$InstallerVersion" "-p:ReleaseVersion=$ReleaseVersion" `
     "-p:PayloadDirectory=$payload" "-p:ReleaseArtifactsDirectory=$output" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'Avalonia MSI build failed.' }

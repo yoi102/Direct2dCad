@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$ReleaseDirectory,
-    [string]$ExpectedReleaseVersion = '0.1.6',
-    [string]$ExpectedInstallerVersion = '1.0.6'
+    [string]$ExpectedReleaseVersion = '0.1.7',
+    [string]$ExpectedInstallerVersion = '1.0.7'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -93,6 +93,60 @@ foreach ($runtimeFile in @('hostfxr.dll','coreclr.dll')) {
     if ($match.Count -ne 1) { throw "The MSI does not contain bundled runtime file $runtimeFile." }
 }
 
+# Compare actual cabinet and ZIP bytes to every file in the fresh publish output.
+$repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+$project = Join-Path $repoRoot 'installer/Direct2dCad.Msi/Direct2dCad.Msi.wixproj'
+$wixBin = (& dotnet msbuild $project -getProperty:WixBinDir | Out-String).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Unable to locate WiX.' }
+$extracted = Join-Path $releaseRoot ('msi-verification-' + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $extracted | Out-Null
+& dotnet (Join-Path $wixBin 'wix.dll') msi decompile $msiPath -x $extracted -o (Join-Path $extracted 'package.wxs')
+if ($LASTEXITCODE -ne 0) { throw 'MSI payload extraction failed.' }
+$directories = @{}
+foreach ($row in (ReadMsiRows "SELECT ``Directory``,``Directory_Parent``,``DefaultDir`` FROM ``Directory``" 3)) {
+    $directories[$row.Values[0]] = $row.Values
+}
+function GetMsiRelativeDirectory([string]$id, [int]$depth = 0) {
+    if ($id -eq 'INSTALLFOLDER') { return '' }
+    if ($depth -gt 32 -or !$directories.ContainsKey($id)) { throw "Invalid MSI payload directory: $id" }
+    $row = $directories[$id]
+    $parent = GetMsiRelativeDirectory $row[1] ($depth + 1)
+    $name = $row[2].Split(':')[0].Split('|')[-1]
+    if ($name -eq '.') { return $parent }
+    return ($parent + $name + '/')
+}
+$components = @{}
+foreach ($row in (ReadMsiRows "SELECT ``Component``,``Directory_`` FROM ``Component``" 2)) {
+    $components[$row.Values[0]] = $row.Values[1]
+}
+$expectedHashes = @{}
+foreach ($file in (Get-ChildItem -LiteralPath $publishDirectory -File -Recurse)) {
+    $relative = [IO.Path]::GetRelativePath($publishDirectory, $file.FullName).Replace('\','/')
+    $expectedHashes[$relative] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+}
+$payloadRows = @(ReadMsiRows "SELECT ``File``,``FileName``,``Component_`` FROM ``File``" 3)
+if ($payloadRows.Count -ne $expectedHashes.Count) { throw 'MSI file count differs from the publish output.' }
+$verifiedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+foreach ($row in $payloadRows) {
+    $relative = (GetMsiRelativeDirectory $components[$row.Values[2]]) + $row.Values[1].Split('|')[-1]
+    if (!$expectedHashes.ContainsKey($relative) -or !$verifiedNames.Add($relative)) { throw "Unexpected MSI payload: $relative" }
+    $actual = (Get-FileHash -LiteralPath (Join-Path (Join-Path $extracted 'File') $row.Values[0]) -Algorithm SHA256).Hash
+    if ($actual -ne $expectedHashes[$relative]) { throw "MSI embedded payload differs: $relative" }
+}
+$zip = [IO.Compression.ZipFile]::OpenRead($zipPath)
+try {
+    $zipFiles = @($zip.Entries | Where-Object Name)
+    if ($zipFiles.Count -ne $expectedHashes.Count) { throw 'ZIP file count differs from the publish output.' }
+    $verifiedNames.Clear()
+    foreach ($entry in $zipFiles) {
+        $relative = $entry.FullName.Replace('\','/')
+        if (!$expectedHashes.ContainsKey($relative) -or !$verifiedNames.Add($relative)) { throw "Unexpected ZIP member: $relative" }
+        $stream = $entry.Open()
+        try { $actual = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream)) } finally { $stream.Dispose() }
+        if ($actual -ne $expectedHashes[$relative]) { throw "ZIP payload differs: $relative" }
+    }
+} finally { $zip.Dispose() }
+
 $checksums = @{}
 foreach ($line in Get-Content -LiteralPath (Join-Path $distDirectory 'SHA256SUMS.txt')) {
     if ($line -match '^([0-9a-f]{64})  (.+)$') { $checksums[$Matches[2]] = $Matches[1] }
@@ -102,7 +156,7 @@ foreach ($package in @(Get-Item -LiteralPath $msiPath,$zipPath)) {
     if ($checksums[$package.Name] -ne $actualHash) { throw "The checksum does not match $($package.Name)." }
 }
 
-[ordered]@{
+$result = [ordered]@{
     releaseVersion = $appVersion
     runtimeIncluded = $includedFrameworks
     installerProductVersion = ReadMsiProperty 'ProductVersion'
@@ -111,7 +165,12 @@ foreach ($package in @(Get-Item -LiteralPath $msiPath,$zipPath)) {
     productIcon = ReadMsiProperty 'ARPPRODUCTICON'
     installDirectoryDialog = $true
     installerSigned = $false
+    embeddedPayloadVerified = $true
+    payloadFiles = $payloadRows.Count
+    zipFiles = $zipFiles.Count
     packages = @(Get-Item -LiteralPath $msiPath,$zipPath | ForEach-Object {
         [ordered]@{name=$_.Name;bytes=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}
     })
-} | ConvertTo-Json -Depth 6
+}
+$result | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $releaseRoot 'validation.json') -Encoding utf8
+$result | ConvertTo-Json -Depth 6

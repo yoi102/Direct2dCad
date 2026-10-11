@@ -2,7 +2,7 @@
 
 [中文](README.md) | [日本語](README.ja.md) | [English](README.en.md)
 
-Direct2dCad は、WPF、Direct2D、DirectWrite を使用した Windows 向けの 2D CAD エディターです。作図、数値入力、図形編集、寸法記入、図面管理を一つのデスクトップ環境にまとめ、コマンドラインと AI による操作も提供します。
+Direct2dCad は、Direct2D と DirectWrite を使用した Windows 向けの 2D CAD エディターで、WPF 版と Avalonia 版を提供します。作図、数値入力、図形編集、寸法記入、図面管理を一つのデスクトップ環境にまとめ、コマンドラインと AI による操作も提供します。
 
 ## 主な機能
 
@@ -20,10 +20,10 @@ UI は中国語、日本語、英語に対応し、ライト・ダークテー�
 
 [GitHub Releases](https://github.com/yoi102/Direct2dCad/releases) から Windows x64 版をダウンロードしてください。
 
-- **MSI インストーラー**：アプリをインストールし、デスクトップとスタートメニューにショートカットを作成します。
-- **ポータブル ZIP**：展開して `Direct2dCad.exe` を実行します。
+- **WPF 版**：ファイル名に `Wpf` を含む MSI または ZIP を選びます。ポータブル版は `Direct2dCad.exe` を実行します。
+- **Avalonia 版**：ファイル名に `Avalonia` を含む MSI または ZIP を選びます。ポータブル版は `Direct2dCad.Avalonia.exe` を実行します。
 
-どちらも必要な .NET Runtime を含むため、ランタイムを別途インストールする必要はありません。
+WPF 版はランタイムを同梱し、Avalonia 版は NativeAOT を使用するため、どちらも .NET Runtime の別途インストールは不要です。MSI ではインストール先を選択でき、デスクトップとスタートメニューにショートカットを作成します。両方の版を同時にインストールできます。
 
 ## はじめに
 

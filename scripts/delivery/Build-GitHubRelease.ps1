@@ -1,6 +1,7 @@
 param(
-    [string]$OutputDirectory = 'TestResults/github-release-0.1.6',
-    [string]$ReleaseVersion = '0.1.6'
+    [string]$OutputDirectory = 'TestResults/github-release-0.1.7',
+    [string]$ReleaseVersion = '0.1.7',
+    [string]$InstallerVersion = '1.0.7'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,7 +14,7 @@ if (Test-Path -LiteralPath $releaseRoot) {
     throw "Release output already exists. Choose a fresh OutputDirectory: $releaseRoot"
 }
 
-$wixVersion = '1.0.6' # Keep the MSI upgrade version monotonic; ARPVERSION displays the app release version.
+$wixVersion = $InstallerVersion # Keep MSI upgrades monotonic; ARPVERSION displays the app release version.
 $publishDirectory = Join-Path $releaseRoot 'publish'
 $installerDirectory = Join-Path $releaseRoot 'installer'
 $distDirectory = Join-Path $releaseRoot 'dist'
@@ -26,6 +27,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Locked application package restore failed.' }
 dotnet publish (Join-Path $repoRoot 'Direct2dCad.wpf/Direct2dCad.wpf.csproj') `
     -c Release --no-restore --self-contained true `
     -p:RestoreLockedMode=true -p:ContinuousIntegrationBuild=true -p:DebugType=None -p:DebugSymbols=false `
+    -p:UseSharedCompilation=false -nodeReuse:false -m:1 `
     "-p:Version=$ReleaseVersion" "-p:InformationalVersion=$ReleaseVersion" `
     "-p:AssemblyVersion=$ReleaseVersion" "-p:FileVersion=$ReleaseVersion" `
     --output "$publishDirectory" -v minimal
@@ -45,8 +47,18 @@ if (-not $runtimeConfig.runtimeOptions.includedFrameworks) {
     throw 'The publish does not declare its bundled .NET runtime frameworks.'
 }
 
-dotnet build (Join-Path $repoRoot 'installer/Direct2dCad.Msi/Direct2dCad.Msi.wixproj') `
-    -c Release -p:RestoreLockedMode=false `
+@"
+Direct2dCad $ReleaseVersion (WPF)
+Windows x64. Extract this ZIP and run Direct2dCad.exe.
+This package contains its own .NET 10 runtime and does not require a separately installed .NET Desktop Runtime.
+"@ | Set-Content -LiteralPath (Join-Path $publishDirectory 'README.txt') -Encoding utf8
+
+$installerProject = Join-Path $repoRoot 'installer/Direct2dCad.Msi/Direct2dCad.Msi.wixproj'
+dotnet restore $installerProject --locked-mode -p:ContinuousIntegrationBuild=true -v minimal
+if ($LASTEXITCODE -ne 0) { throw 'Locked WiX restore failed.' }
+# Rebuild the cabinet even when filenames match an earlier release.
+dotnet build $installerProject -t:Rebuild `
+    -c Release --no-restore -p:RestoreLockedMode=true `
     "-p:Version=$wixVersion" "-p:ReleaseVersion=$ReleaseVersion" "-p:PublishDirectory=$publishDirectory" `
     "-p:ReleaseArtifactsDirectory=$installerDirectory" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'WiX installer build failed.' }
@@ -57,11 +69,6 @@ if (-not $builtMsi) { throw 'The WiX build completed without producing Direct2dC
 $releaseMsi = Join-Path $distDirectory 'Direct2dCad.msi'
 Copy-Item -LiteralPath $builtMsi.FullName -Destination $releaseMsi
 
-@"
-Direct2dCad $ReleaseVersion
-Windows x64. Extract this ZIP and run Direct2dCad.exe.
-This package contains its own .NET 10 runtime and does not require a separately installed .NET Desktop Runtime.
-"@ | Set-Content -LiteralPath (Join-Path $publishDirectory 'README.txt') -Encoding utf8
 $portableZip = Join-Path $distDirectory 'Direct2dCad.zip'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [IO.Compression.ZipFile]::CreateFromDirectory($publishDirectory,$portableZip,[IO.Compression.CompressionLevel]::Optimal,$false)

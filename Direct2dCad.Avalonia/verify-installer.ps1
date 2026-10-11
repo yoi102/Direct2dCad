@@ -1,12 +1,16 @@
 param(
     [Parameter(Mandatory)][string]$InstallerPath,
     [Parameter(Mandatory)][string]$PackageDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.6',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.6')
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.7',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.7')
 
 $ErrorActionPreference = 'Stop'
 $msiPath = [IO.Path]::GetFullPath($InstallerPath)
 $payload = [IO.Path]::GetFullPath($PackageDirectory)
+$appVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $payload 'Direct2dCad.Avalonia.exe'))
+if ($appVersion.FileVersion -notin @($ReleaseVersion, "$ReleaseVersion.0")) {
+    throw "Expected app version $ReleaseVersion, found $($appVersion.FileVersion)."
+}
 $expectedUpgradeCode = '{A95257F5-8F20-4F70-A27A-13538A809B51}'
 $installer = New-Object -ComObject WindowsInstaller.Installer
 $database = $installer.OpenDatabase($msiPath,0)
@@ -91,8 +95,30 @@ foreach ($required in @('Direct2dCad.Avalonia.exe','av_libglesv2.dll','libHarfBu
 }
 if ('Direct2dCad.Ole.Native.dll' -in $msiFiles) { throw 'The MSI contains the removed C++ bridge.' }
 
+# Check embedded bytes as well as names: the file table alone cannot detect
+# an incremental WiX build that reused a cabinet from an older payload.
+$repo = Split-Path $PSScriptRoot -Parent
+$project = Join-Path $repo 'installer/Direct2dCad.Avalonia.Msi/Direct2dCad.Avalonia.Msi.wixproj'
+$wixBin = (& dotnet msbuild $project -getProperty:WixBinDir | Out-String).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Unable to locate the project WiX SDK.' }
+$wixCli = Join-Path $wixBin 'wix.dll'
+if (!(Test-Path -LiteralPath $wixCli -PathType Leaf)) { throw 'The project WiX CLI is missing.' }
+$extracted = Join-Path $repo ('.artifacts/avalonia-msi-verify-' + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $extracted | Out-Null
+& dotnet $wixCli msi decompile $msiPath -x $extracted -o (Join-Path $extracted 'package.wxs')
+if ($LASTEXITCODE -ne 0) { throw 'Unable to extract the MSI payload for verification.' }
+$payloadHashes = @(foreach ($row in (ReadMsiRows "SELECT ``File``,``FileName`` FROM ``File``" 2)) {
+    $name = $row.Values[1].Split('|')[-1]
+    $installedFile = Join-Path (Join-Path $extracted 'File') $row.Values[0]
+    $expectedHash = (Get-FileHash -LiteralPath (Join-Path $payload $name) -Algorithm SHA256).Hash
+    $embeddedHash = (Get-FileHash -LiteralPath $installedFile -Algorithm SHA256).Hash
+    if ($embeddedHash -ne $expectedHash) { throw "MSI embedded payload differs from the validated package: $name." }
+    [ordered]@{ file = $name; sha256 = $embeddedHash }
+})
+
 $result = [ordered]@{
     releaseVersion = $ReleaseVersion
+    executableFileVersion = $appVersion.FileVersion
     installerProductVersion = ReadMsiProperty 'ProductVersion'
     displayVersion = ReadMsiProperty 'ARPVERSION'
     productName = ReadMsiProperty 'ProductName'
@@ -102,6 +128,8 @@ $result = [ordered]@{
     upgradeCode = $expectedUpgradeCode
     shortcuts = @($shortcuts | ForEach-Object { [ordered]@{directory=$_.Values[1];name=$_.Values[2].Split('|')[-1];target=$_.Values[3];icon=$_.Values[4]} })
     payloadFiles = $msiFiles.Count
+    embeddedPayloadVerified = $true
+    payloadHashes = $payloadHashes
     signed = $false
     msiSha256 = (Get-FileHash -LiteralPath $msiPath -Algorithm SHA256).Hash
 }
