@@ -27,6 +27,14 @@
 默认使用 Release。`-Configuration Debug` 切换配置，`-NoBuild` 只适用于已构建且源码未改变的同一配置。
 结果默认写入带时间戳的 `TestResults/regression-*`，可通过 `-ResultsDirectory` 指定。任何测试项目失败都会令脚本失败。
 
+如果其他程序注册了 `Ctrl+Shift+A`、`Ctrl+Shift+Z` 等全局热键，加入 `-IsolateUiAutomation` 可在单独的 Windows 输入桌面运行 UI 测试。这会在 UI 阶段临时切换桌面，结束或超时后恢复原桌面；不会关闭其他程序或修改它们的快捷键。测试仍使用真实键盘、鼠标和 UIA。也可在构建后单独运行：
+
+```powershell
+.\scripts\testing\Run-IsolatedUi.ps1 -ResultsDirectory .\TestResults\isolated-ui -Filter 'FullyQualifiedName~Shortcut'
+```
+
+隔离 UI 日志、TRX、超时截图保存到指定结果目录。默认超时为一小时，可用 `-TimeoutSeconds` 调整。
+
 UI 自动化需要可交互、未锁定的 Windows 桌面，并会启动测试应用。默认排除会改写系统剪贴板的图片/OLE 粘贴用例。
 只有在专用测试桌面上，才添加 `-IncludeClipboardTests`；该用例不会恢复任意第三方 OLE 剪贴板内容。
 

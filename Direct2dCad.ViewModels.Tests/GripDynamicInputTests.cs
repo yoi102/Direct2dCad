@@ -9,6 +9,60 @@ namespace Direct2dCad.ViewModels.Tests;
 
 public sealed class GripDynamicInputTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CvControlPolygonTracksGripPreviewCommitUndoAndCancel(bool closed)
+    {
+        using var context = new CadToolboxTestContext();
+        var vm = Prepare(context);
+        CadPointD[] points = [new(0, 0), new(0, 20), new(20, 20), new(20, 0)];
+        var id = vm.CadEditor.AddSpline(new CadSplineGeometry(CadNurbsCurve.CreateUniform(points, 3, closed: closed), closed));
+        Begin(vm, id, CadHandleType.Vertex, points[1]);
+        var history = vm.CadEditor.CreateDocumentHistorySnapshot();
+        Move(vm, new(5, 25));
+        var guide = Assert.Single(vm.CreateTransientItems().OfType<CadTransientPolyline>());
+        Assert.Equal(new CadPointD(5, 25), guide.Points[1]);
+        Assert.Equal(closed, guide.Closed);
+        Assert.Equal(CadTransientLinePattern.Dash, guide.Style.LinePattern);
+        Assert.Null(guide.Style.FillColor);
+        vm.PointerLeave();
+        Assert.Equal(guide.Points, Assert.Single(vm.CreateTransientItems().OfType<CadTransientPolyline>()).Points);
+        Assert.True(vm.CadEditor.DocumentHistoryEquals(history));
+        Click(vm, new(5, 25));
+        var spline = (CadSpline)vm.CadEditor.Document.GetEntity(id);
+        Assert.Equal(guide.Points, spline.EditPoints);
+        vm.Undo();
+        Assert.Equal(points, spline.EditPoints);
+        Begin(vm, id, CadHandleType.Vertex, points[1]);
+        Move(vm, new(8, 28));
+        vm.Escape();
+        Assert.False(vm.IsGripEditing);
+        Assert.Equal(points, spline.EditPoints);
+        Assert.Empty(vm.CreateTransientItems().OfType<CadTransientPolyline>());
+    }
+
+    [Fact]
+    public void MovingMixedSelectionTranslatesOnlyCvControlPolygonGuides()
+    {
+        using var context = new CadToolboxTestContext();
+        var vm = Prepare(context);
+        CadPointD[] points = [new(0, 0), new(0, 20), new(20, 20), new(20, 0)];
+        var cv = vm.CadEditor.AddSpline(new CadSplineGeometry(CadNurbsCurve.CreateUniform(points, 3)));
+        var fit = vm.CadEditor.AddSpline([new(25, 0), new(30, 20), new(40, 0)]);
+        vm.SelectEntities([cv, fit]);
+        var center = new CadHandleSceneBuilder().BuildSelectionHandles(vm.CadEditor.Document, [cv])
+            .OfType<CadGripHandle>().Single(g => g.Type == CadHandleType.Center).Position;
+        Click(vm, center);
+        Assert.True(vm.IsGripEditing);
+        var delta = new CadVectorD(5, 7);
+        Move(vm, center + delta);
+        var group = Assert.Single(vm.CreateTransientItems().OfType<CadTransientGroup>());
+        var guide = Assert.Single(group.Items.OfType<CadTransientPolyline>());
+        Assert.Equal(points.Select(p => p + delta), guide.Points.Select(group.Transform.TransformPoint));
+        Assert.Equal(2, group.Items.OfType<CadTransientEntityReference>().Count());
+    }
+
     [Theory] [InlineData(CadCanvasToolMode.Line)] [InlineData(CadCanvasToolMode.Rectangle)] [InlineData(CadCanvasToolMode.CircleCenterRadius)]
     public void UnlockedDrawingPreviewSurvivesLeavingAndResumesWhenReturning(CadCanvasToolMode mode)
     {

@@ -19,6 +19,14 @@ internal readonly struct CadDrawingStyleResolver(
         return CreatePreviewStyle(ResolveLineStrokeColor(), ResolveLineLineWeight(), strokeStyle: defaults.LineStrokeStyle);
     }
 
+    public CadSplineGeometry CreateSplineGeometry(IReadOnlyList<CadPointD> points, bool useControlPoints = false)
+    {
+        var closed = ResolveSplineClosed(points.Count);
+        return useControlPoints
+            ? new(CadNurbsCurve.CreateUniform(points, Math.Min(3, points.Count - 1), closed: closed), closed)
+            : CadSplineGeometry.FromFitPoints(points, closed);
+    }
+
     public CadTransientStyle CreateLineGuideStyle()
     {
         return previewStyleService.CreateDrawingAuxiliaryStyle(ResolveLineStrokeColor());

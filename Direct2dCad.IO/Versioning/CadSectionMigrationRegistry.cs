@@ -61,8 +61,10 @@ internal static class CadSectionMigrationRegistry
             Section<CadPolylinesSection>(CadSectionKind.Polylines, currentVersion: 1)
                 .ReadsVersion<CadPolylinesSection>(1),
 
-            Section<CadSplinesSection>(CadSectionKind.Splines, currentVersion: 1)
-                .ReadsVersion<CadSplinesSection>(1),
+            Section<CadSplinesSection>(CadSectionKind.Splines, currentVersion: 2)
+                .ReadsVersion<CadSplinesSection>(1)
+                .ReadsVersion<CadSplinesSection>(2)
+                .Migrates<CadSplinesSection, CadSplinesSection>(1, static old => old),
 
             Section<CadDimensionsSection>(CadSectionKind.Dimensions, currentVersion: 1)
                 .ReadsVersion<CadDimensionsSection>(1),

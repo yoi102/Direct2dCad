@@ -155,12 +155,11 @@ internal sealed class Direct2DTransientSceneRenderer(
                         polyline.Style,
                         options.IsLevelOfDetailEnabled);
                     break;
-                case CadTransientSpline spline when spline.FitPoints.Count >= 2:
+                case CadTransientSpline spline when spline.NurbsGeometry is not null || spline.FitPoints.Count >= 2:
                     primitives.DrawSpline(
                         context,
                         viewport,
-                        spline.FitPoints,
-                        spline.Closed,
+                        spline.Geometry,
                         spline.Style,
                         options.IsLevelOfDetailEnabled);
                     break;

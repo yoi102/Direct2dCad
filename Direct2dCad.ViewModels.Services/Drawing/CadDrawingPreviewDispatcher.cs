@@ -76,7 +76,8 @@ internal readonly struct CadDrawingPreviewDispatcher(
                 break;
 
             case CadCanvasToolMode.Spline:
-                multiPointPreviewBuilder.AddSplinePreview(items, state.PendingSplinePoints, mouseWorld);
+            case CadCanvasToolMode.SplineCv:
+                multiPointPreviewBuilder.AddSplinePreview(items, state.PendingSplinePoints, mouseWorld, toolMode == CadCanvasToolMode.SplineCv);
                 break;
 
             case CadCanvasToolMode.Text:

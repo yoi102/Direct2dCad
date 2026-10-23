@@ -24,7 +24,7 @@ internal static class CadEscapeHandler
         if (!cancelledProperty)
         {
             if (canvas is not null) canvas.CancelInteraction();
-            else document.Escape();
+            else if (!document.TryClearDynamicInputLocks()) document.Escape();
         }
 
         if (canvas is not null)

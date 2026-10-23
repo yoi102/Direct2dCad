@@ -1,7 +1,7 @@
 param(
-    [string]$OutputDirectory = 'TestResults/github-release-0.1.7',
-    [string]$ReleaseVersion = '0.1.7',
-    [string]$InstallerVersion = '1.0.7'
+    [string]$OutputDirectory = 'TestResults/github-release-0.1.8',
+    [string]$ReleaseVersion = '0.1.8',
+    [string]$InstallerVersion = '1.0.8'
 )
 
 $ErrorActionPreference = 'Stop'

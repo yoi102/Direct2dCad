@@ -13,6 +13,7 @@ public sealed class ToolSessionRecoveryTests
     [InlineData(CadCanvasToolMode.Polyline, "BACK")]
     [InlineData(CadCanvasToolMode.Polygon, "UNDOPOINT")]
     [InlineData(CadCanvasToolMode.Spline, "BACK")]
+    [InlineData(CadCanvasToolMode.SplineCv, "BACK")]
     public void PointUndoKeepsDocumentHistoryAndResetsRelativeCoordinateAnchor(CadCanvasToolMode mode, string command)
     {
         using var context = new CadToolboxTestContext();
@@ -31,7 +32,7 @@ public sealed class ToolSessionRecoveryTests
         Assert.True(commands.Execute("DONE", vm).Success);
 
         var created = Assert.Single(vm.CadEditor.Document.Entities.Values, item => item.Id != committed && !item.IsErased);
-        var points = created is CadSpline spline ? spline.FitPoints : Assert.IsType<CadPolyline>(created).Points;
+        var points = created is CadSpline spline ? spline.EditPoints : Assert.IsType<CadPolyline>(created).Points;
         Assert.Equal(new CadPointD[] { new(0, 0), new(20, 0), new(20, 30) }, points);
         vm.Undo();
         Assert.True(vm.CadEditor.DocumentHistoryEquals(history));
@@ -91,6 +92,7 @@ public sealed class ToolSessionRecoveryTests
     [InlineData(CadCanvasToolMode.Polyline, 2)]
     [InlineData(CadCanvasToolMode.Polygon, 3)]
     [InlineData(CadCanvasToolMode.Spline, 2)]
+    [InlineData(CadCanvasToolMode.SplineCv, 2)]
     public void CanvasAndTextCompletionReportMissingPointsAndOnlyAdvertiseValidCompletion(CadCanvasToolMode mode, int minimum)
     {
         using var context = new CadToolboxTestContext();

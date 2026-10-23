@@ -89,8 +89,8 @@ internal sealed class Direct2DLevelOfDetailPreparation : IDisposable
             CadPolyline line when line.Points.Count > 16 =>
                 new(entity.Id, bucket, bucket.LodRevision, line.Points.ToArray(), false, line.Closed, extent),
             CadSpline { Closed: true, FillStyleId: not null } => null,
-            CadSpline spline when spline.FitPoints.Count > 16 =>
-                new(entity.Id, bucket, bucket.LodRevision, spline.FitPoints.ToArray(), true, spline.Closed, extent),
+            CadSpline spline when spline.ControlPoints.Count > 16 =>
+                new(entity.Id, bucket, bucket.LodRevision, spline.ControlPoints.ToArray(), true, spline.Closed, extent, spline.Nurbs),
             _ => null
         };
     }
@@ -131,7 +131,7 @@ internal sealed class Direct2DLevelOfDetailPreparation : IDisposable
 
     private static CadPointD[] Flatten(Work work)
     {
-        var segments = CadSpline.CreateBezierSegments(work.Points, work.Closed);
+        var segments = work.Curve!.CreateDisplayBeziers();
         var points = new CadPointD[segments.Count * 6 + 1];
         points[0] = segments[0].Start;
         var index = 1;
@@ -170,7 +170,7 @@ internal sealed class Direct2DLevelOfDetailPreparation : IDisposable
 
     // The worker reads only copied values, never the bucket or live entity.
     private sealed record Work(EntityId Id, Bucket Bucket, int Revision, CadPointD[] Points,
-        bool IsSpline, bool Closed, double Extent);
+        bool IsSpline, bool Closed, double Extent, CadNurbsCurve? Curve = null);
 
     private sealed class Prepared(Work work) : IDisposable
     {

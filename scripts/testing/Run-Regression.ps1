@@ -3,6 +3,7 @@ param(
     [switch] $CollectCoverage,
     [switch] $IncludeWindowsIntegration,
     [switch] $IncludeUiAutomation,
+    [switch] $IsolateUiAutomation,
     [switch] $IncludeClipboardTests,
     [switch] $NoBuild,
     [string] $ResultsDirectory
@@ -36,6 +37,23 @@ foreach ($project in $projects) {
     if ($isUi -and !$IncludeClipboardTests) {
         Write-Warning 'Clipboard UI test excluded. Run it only in a dedicated test desktop with -IncludeClipboardTests.'
         $arguments += @('--filter', 'FullyQualifiedName!~CadImageAndOleClipboardContentEnterMovablePasteAndCanBePlaced')
+    }
+    if ($isUi -and $IsolateUiAutomation) {
+        $uiArguments = @{
+            Configuration = $Configuration
+            ResultsDirectory = (Join-Path $ResultsDirectory $project.BaseName)
+        }
+        if (!$IncludeClipboardTests) {
+            $uiArguments.Filter = 'FullyQualifiedName!~CadImageAndOleClipboardContentEnterMovablePasteAndCanBePlaced'
+        }
+        try {
+            & (Join-Path $PSScriptRoot 'Run-IsolatedUi.ps1') @uiArguments
+        }
+        catch {
+            Write-Warning $_
+            $failed += $project.BaseName
+        }
+        continue
     }
     dotnet @arguments
     if ($LASTEXITCODE -ne 0) { $failed += $project.BaseName }

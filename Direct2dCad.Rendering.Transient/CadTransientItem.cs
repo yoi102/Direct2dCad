@@ -67,8 +67,12 @@ public sealed record CadTransientPolyline(
 public sealed record CadTransientSpline(
     IReadOnlyList<CadPointD> FitPoints,
     bool Closed,
-    CadTransientStyle Style)
-    : CadTransientItem(Style);
+    CadTransientStyle Style,
+    CadSplineGeometry? NurbsGeometry = null)
+    : CadTransientItem(Style)
+{
+    public CadSplineGeometry Geometry => NurbsGeometry ?? CadSplineGeometry.FromFitPoints(FitPoints, Closed);
+}
 
 public sealed record CadTransientRectangle(
     CadRectD Bounds,

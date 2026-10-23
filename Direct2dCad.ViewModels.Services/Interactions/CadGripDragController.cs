@@ -169,7 +169,7 @@ internal sealed class CadGripDragController(CadHandleHitTester hitTester)
         return entity switch
         {
             CadPolyline polyline => FindNearestPointIndex(polyline.Points, grip.Position),
-            CadSpline spline => FindNearestPointIndex(spline.FitPoints, grip.Position),
+            CadSpline spline => FindNearestPointIndex(spline.EditPoints, grip.Position),
             _ => -1
         };
     }

@@ -239,7 +239,7 @@ public partial class EntityPropertiesToolboxViewModel : CadToolboxViewModelBase,
             return;
         }
 
-        if (_documentViewModel.CadCanvasToolMode == CadCanvasToolMode.Spline)
+        if (_documentViewModel.CadCanvasToolMode is CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv)
         {
             if (Entity is TransientSplinePropertyViewModel transient &&
                 ReferenceEquals(transient.DocumentViewModel, _documentViewModel))

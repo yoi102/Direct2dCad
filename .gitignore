@@ -461,10 +461,25 @@ FodyWeavers.xsd
 /scripts/delivery/*
 !/scripts/delivery/Build-GitHubRelease.ps1
 !/scripts/delivery/Validate-GitHubRelease.ps1
+# Keep the reusable isolated UI runner; local one-off test scripts stay ignored.
+!/scripts/testing/
+/scripts/testing/*
+!/scripts/testing/Run-IsolatedUi.ps1
 /TestResults/
-/.artifacts
+/.artifacts/
 !/docs/AVALONIA-WINDOWS.md
 !/docs/avalonia-native-verification.json
 !/docs/AVALONIA-UI-PARITY.md
 !/docs/AVALONIA-UI-LIBRARIES.md
 !/docs/avalonia-ui-parity-verification.json
+
+# WiX installer outputs
+*.msi
+*.cab
+*.wixobj
+*.wixpdb
+
+# Raw test and diagnostic captures belong in local evidence, not source control.
+*.trx
+*.dmp
+*.etl

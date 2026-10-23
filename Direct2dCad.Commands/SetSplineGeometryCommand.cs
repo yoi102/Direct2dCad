@@ -8,10 +8,8 @@ namespace Direct2dCad.Commands;
 public sealed class SetSplineGeometryCommand : ICadCommand
 {
     private readonly EntityId _entityId;
-    private readonly CadPointD[] _fitPoints;
-    private readonly bool _closed;
-    private CadPointD[]? _previousFitPoints;
-    private bool? _previousClosed;
+    private readonly CadSplineGeometry _geometry;
+    private CadSplineGeometry? _previousGeometry;
 
     public string Name => "Set Spline Geometry";
 
@@ -23,35 +21,28 @@ public sealed class SetSplineGeometryCommand : ICadCommand
         ArgumentNullException.ThrowIfNull(fitPoints);
 
         _entityId = entityId;
-        _fitPoints = fitPoints.ToArray();
-        if (_fitPoints.Length < 2)
-            throw new ArgumentException("Spline requires at least two fit points.", nameof(fitPoints));
-        if (closed && _fitPoints.Length < 3)
-            throw new ArgumentException("Closed spline requires at least three fit points.", nameof(fitPoints));
-
-        _closed = closed;
+        _geometry = CadSplineGeometry.FromFitPoints(fitPoints, closed);
     }
+
+    public SetSplineGeometryCommand(EntityId entityId, CadSplineGeometry geometry)
+    { _entityId = entityId; _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry)); }
 
     public CadDocumentChangeSet Execute(CadDocument document)
     {
         CadCommandEntityAccess.EnsureEditable(document, _entityId);
         var spline = GetSpline(document);
-        _previousFitPoints = spline.FitPoints.ToArray();
-        _previousClosed = spline.Closed;
-
-        spline.ReplaceFitPoints(_fitPoints);
-        spline.SetClosed(_closed);
+        _previousGeometry = spline.Geometry;
+        spline.SetGeometry(_geometry);
         return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
     }
 
     public CadDocumentChangeSet Undo(CadDocument document)
     {
-        if (_previousFitPoints is null || _previousClosed is null)
+        if (_previousGeometry is null)
             return CadDocumentChangeSet.Empty;
 
         var spline = GetSpline(document);
-        spline.ReplaceFitPoints(_previousFitPoints);
-        spline.SetClosed(_previousClosed.Value);
+        spline.SetGeometry(_previousGeometry);
         return CadDocumentChangeSet.ForEntity(_entityId, CadEntityChangeKind.Geometry);
     }
 

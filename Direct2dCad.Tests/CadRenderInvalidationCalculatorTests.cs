@@ -10,6 +10,25 @@ namespace Direct2dCad.Tests;
 
 public sealed class CadRenderInvalidationCalculatorTests
 {
+    [Theory]
+    [InlineData(1)]
+    [InlineData(513)]
+    public void ControlPolygonInvalidationCoversTheGuideAndHonorsHiddenGrips(int count)
+    {
+        var document = CadDocument.Create("CV guide invalidation");
+        var viewport = new CadViewport();
+        viewport.SetSize(1000, 1000);
+        viewport.SetView(1, new(400, 400));
+        var calculator = new CadRenderInvalidationCalculator(document, viewport, 1000, 1000,
+            _ => new CadTransientStyle(CadColor.White));
+        var scene = new CadHandleScene();
+        var guide = new CadControlPolygonGuide(default, [new(0, 0), new(0, 100), new(100, 100), new(100, 0)], false, CadHandleStyle.Grip);
+        scene.Replace(Enumerable.Repeat(guide, count));
+        var point = viewport.WorldToScreen(new(50, 100));
+        AssertCovered(calculator.CreateHandleSceneInvalidation(scene), (int)point.X, (int)point.Y);
+        Assert.True(calculator.CreateHandleSceneInvalidation(scene, includeGripHandles: false).IsEmpty);
+    }
+
     [Fact]
     public void GripAtFractionalScreenPoint_CoversRoundedRightAndBottomEdges()
     {

@@ -88,23 +88,28 @@ internal sealed class Direct2DTransientRenderer(
         IReadOnlyList<CadPointD> fitPoints,
         bool closed,
         CadTransientStyle style,
-        bool isLevelOfDetailEnabled)
+        bool isLevelOfDetailEnabled) => DrawSpline(context, viewport, CadSplineGeometry.FromFitPoints(fitPoints, closed), style, isLevelOfDetailEnabled);
+
+    public void DrawSpline(ID2D1DeviceContext context, CadViewport viewport, CadSplineGeometry spline,
+        CadTransientStyle style, bool isLevelOfDetailEnabled)
     {
-        if (resourceCache.Factory is not { } factory || fitPoints.Count < 2)
+        if (resourceCache.Factory is not { } factory)
             return;
 
-        var origin = LocalOrigin(BoundsFromPoints(fitPoints).Center);
+        var origin = LocalOrigin(spline.Curve.Bounds.Center);
         using var coordinates = Direct2DCoordinateSystem.PushOrigin(context, origin);
-        if (origin != default) fitPoints = fitPoints.Select(p => p - (origin - CadPointD.Origin)).ToArray();
+        if (origin != default) spline = spline.IsFitDefined
+            ? CadSplineGeometry.FromFitPoints(spline.FitPoints.Select(p => p - (origin - CadPointD.Origin)), spline.Closed)
+            : spline.Transform(p => p - (origin - CadPointD.Origin));
 
-        using var geometry = geometryFactory.CreateSpline(factory, fitPoints, closed);
+        using var geometry = geometryFactory.CreateSpline(factory, spline.Curve.CreateDisplayBeziers(), spline.Closed);
         var brush = styleResources.GetBrush(context, style.StrokeColor);
         var strokeStyle = styleResources.GetStrokeStyle(factory, style);
-        if (closed && HasFill(style))
+        if (spline.Closed && HasFill(style))
             DrawFill(
                 context,
                 geometry,
-                CadSpline.CalculateBounds(fitPoints, CadSpline.CreateBezierSegments(fitPoints, closed)),
+                spline.Curve.Bounds,
                 style,
                 viewport,
                 isLevelOfDetailEnabled);

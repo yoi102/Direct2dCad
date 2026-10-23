@@ -317,6 +317,11 @@ internal static class CadDocumentMapper
                 {
                     Entity = ToEntityData(x),
                     FitPoints = x.FitPoints.Select(ToData).ToList(),
+                    Nurbs = new CadNurbsData
+                    {
+                        Degree = x.Degree, ControlPoints = x.ControlPoints.Select(ToData).ToList(),
+                        Knots = x.Knots.ToList(), Weights = x.Weights.ToList(), Periodic = x.Nurbs.IsPeriodic
+                    },
                     Closed = x.Closed,
                     GraphicStyleId = x.GraphicStyleId?.Value,
                     FillStyleId = x.FillStyleId?.Value
@@ -913,8 +918,10 @@ internal static class CadDocumentMapper
                 new EntityId(splineData.Entity.Id),
                 new LayerId(splineData.Entity.LayerId),
                 new BlockId(splineData.Entity.OwnerBlockId),
-                splineData.FitPoints.Select(FromData),
-                splineData.Closed,
+                splineData.Nurbs is { } nurbs
+                    ? new CadSplineGeometry(new CadNurbsCurve(nurbs.Degree, nurbs.ControlPoints.Select(FromData), nurbs.Knots,
+                        nurbs.Weights, nurbs.Periodic), splineData.Closed, splineData.FitPoints.Select(FromData))
+                    : CadSplineGeometry.FromFitPoints(splineData.FitPoints.Select(FromData), splineData.Closed),
                 splineData.Entity.Name);
             spline.SetGraphicStyleInternal(ToStyleId(splineData.GraphicStyleId));
             spline.SetFillStyleInternal(ToStyleId(splineData.FillStyleId));

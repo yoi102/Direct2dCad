@@ -49,13 +49,35 @@ public enum CadRadialMenuAction
     FitToWindow,
     Save,
     SaveAs,
-    CreateBlock
+    CreateBlock,
+    // Append new actions so existing numeric settings retain their meaning.
+    SplineCv,
+    Offset,
+    Trim,
+    Extend,
+    Fillet,
+    Chamfer,
+    Join,
+    Break,
+    RectArray,
+    PolarArray,
+    DimLinearX,
+    DimLinearY,
+    DimAligned,
+    DimRadius,
+    DimDiameter,
+    DimAngular,
+    Leader,
+    BooleanUnion,
+    BooleanIntersection,
+    BooleanDifference
 }
 
 public static class CadRadialMenuActionCatalog
 {
     public static string GetResourceKey(CadRadialMenuAction action) => action switch
     {
+        CadRadialMenuAction.Spline => "SplineFit",
         CadRadialMenuAction.FitToWindow => "Fit",
         _ => action.ToString()
     };

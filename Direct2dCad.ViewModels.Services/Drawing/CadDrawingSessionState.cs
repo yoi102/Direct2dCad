@@ -28,7 +28,7 @@ internal sealed class CadDrawingSessionState
     {
         CadCanvasToolMode.Polyline => PendingPolylinePoints.Count,
         CadCanvasToolMode.Polygon => PendingPolygonPoints.Count,
-        CadCanvasToolMode.Spline => PendingSplinePoints.Count,
+        CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv => PendingSplinePoints.Count,
         CadCanvasToolMode.EllipseCenter or CadCanvasToolMode.EllipseAxisEnd or CadCanvasToolMode.EllipseArc => PendingEllipsePoints.Count,
         CadCanvasToolMode.CircleThreePoint => (PendingWorldPoint is null ? 0 : 1) + (PendingCircleSecondPoint is null ? 0 : 1),
         >= CadCanvasToolMode.ArcThreePoint and <= CadCanvasToolMode.ArcCenterStartLength =>
@@ -40,7 +40,7 @@ internal sealed class CadDrawingSessionState
 
     public static int GetMinimumCompletionPointCount(CadCanvasToolMode mode) => mode switch
     {
-        CadCanvasToolMode.Polyline or CadCanvasToolMode.Spline => 2,
+        CadCanvasToolMode.Polyline or CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv => 2,
         CadCanvasToolMode.Polygon => 3,
         _ => 0
     };
@@ -61,7 +61,7 @@ internal sealed class CadDrawingSessionState
         {
             CadCanvasToolMode.Polyline => PendingPolylinePoints,
             CadCanvasToolMode.Polygon => PendingPolygonPoints,
-            CadCanvasToolMode.Spline => PendingSplinePoints,
+            CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv => PendingSplinePoints,
             CadCanvasToolMode.EllipseCenter or CadCanvasToolMode.EllipseAxisEnd or CadCanvasToolMode.EllipseArc => PendingEllipsePoints,
             _ => null
         };

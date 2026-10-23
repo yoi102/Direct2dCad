@@ -1724,7 +1724,7 @@
   <data name="EditTools" xml:space="preserve"><value>Modify</value></data>
   <data name="EditChooseSource" xml:space="preserve"><value>Select the object to edit</value></data>
   <data name="EditChooseSide" xml:space="preserve"><value>Move to set D; click to create. Tab: type, Enter: finish</value></data>
-  <data name="EditChooseSideLocked" xml:space="preserve"><value>Distance locked; click to create. Ctrl+Delete: follow mouse, Enter: finish</value></data>
+  <data name="EditChooseSideLocked" xml:space="preserve"><value>Distance locked; click to create. Esc: unlock, Enter: finish</value></data>
   <data name="EditKeyboardHint" xml:space="preserve"><value>Enter: next / confirm · R: reselect · Esc: cancel</value></data>
   <data name="EditChooseBoundaries" xml:space="preserve"><value>Select boundaries, Enter: next; click again to deselect</value></data>
   <data name="EditChooseSegment" xml:space="preserve"><value>Hover over the segment; red is removed, green is added. Click to apply</value></data>
@@ -1864,7 +1864,7 @@
   <data name="DimensionTextAndArrows" xml:space="preserve"><value>Text and arrows</value></data>
   <data name="DimensionDetails" xml:space="preserve"><value>Scale and extension lines</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>Dimension line weight (mm)</value></data>
-  <data name="DynamicInputHint" xml:space="preserve"><value>Tab: next · Enter: confirm · Esc: discard numeric input and return to canvas · F4: snap candidate</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab: next · Enter: confirm · Esc: unlock values, or exit if unlocked · F4: snap candidate</value></data>
   <data name="ShortcutApplicationScope" xml:space="preserve"><value>Available in the main window and floating CAD panels. Esc cancels one layer at a time: popup, input, then drawing. Modal dialogs keep their own keyboard actions.</value></data>
   <data name="ShortcutCanvasScope" xml:space="preserve"><value>Keyboard shortcut applies when the drawing canvas has focus. Text fields edit their own text.</value></data>
   <data name="ShortcutTerminalScope" xml:space="preserve"><value>Enter: submit · Up/Down: suggestions or history · Tab: complete suggestions · Shift+Tab: previous control · Esc: dismiss suggestions, cancel, or return to canvas; draft retained</value></data>
@@ -1937,4 +1937,13 @@
   <data name="Loading" xml:space="preserve"><value>Loading…</value></data>
   <data name="Overwrite" xml:space="preserve"><value>Overwrite</value></data>
   <data name="Topmost" xml:space="preserve"><value>Always on top</value></data>
+  <data name="ControlPoints" xml:space="preserve"><value>Control points</value></data>
+  <data name="NurbsDegree" xml:space="preserve"><value>Degree</value></data>
+  <data name="NurbsKnots" xml:space="preserve"><value>Knot vector</value></data>
+  <data name="NurbsWeight" xml:space="preserve"><value>Weight</value></data>
+  <data name="NurbsApplyKnots" xml:space="preserve"><value>Apply degree / knots</value></data>
+  <data name="NurbsUniform" xml:space="preserve"><value>Rebuild uniform knots</value></data>
+  <data name="NurbsRebuildHint" xml:space="preserve"><value>Adding/removing controls or rebuilding knots changes the shape.</value></data>
+  <data name="SplineCv" xml:space="preserve"><value>CV Spline (Control Points)</value></data>
+  <data name="SplineFit" xml:space="preserve"><value>Spline (Fit Points)</value></data>
 </root>

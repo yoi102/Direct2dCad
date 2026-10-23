@@ -22,17 +22,17 @@ public sealed partial class MainWindowUiTests
         ExecuteCommandAndWaitForOutput(input, output, "SELECTALL", "Selected 2 entities.");
         fixture.WaitForElement("EditRibbonTab").AsTabItem().Select();
         fixture.WaitForElement("BooleanDifferenceToolButton").AsButton().Click();
-        var canvas = fixture.WaitForElement("CadCanvas"); var bounds = canvas.BoundingRectangle;
-        var cx = bounds.Left + bounds.Width / 2; var cy = bounds.Top + bounds.Height / 2;
-        Mouse.Click(new Point(cx + 100, cy - 50));
+        var canvas = fixture.WaitForElement("CadCanvas");
+        var point = CenterEditCanvas(canvas, input, output);
+        Mouse.Click(point(100, 50));
         fixture.WaitUntil(() => fixture.WaitForElement("CurrentToolStatusText").Properties.HelpText.ValueOrDefault?.Contains("Enter to confirm") == true,
             "Boolean preview did not become ready.");
         canvas.Focus(); Keyboard.Type(VirtualKeyShort.RETURN);
         ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 1");
         AssertBounds(-100, -50, 100, 150);
         CaptureScreenshot("region-selected-grips.png");
-        var start = new Point(cx + (corner ? 100 : 0), cy - (corner ? 150 : 50));
-        var target = new Point(cx + (corner ? 50 : 40), cy - (corner ? 100 : 80));
+        var start = point(corner ? 100 : 0, corner ? 150 : 50);
+        var target = point(corner ? 50 : 40, corner ? 100 : 80);
         Mouse.Click(start); WaitForCursor(32649, "Region grip did not start a drag."); Mouse.MoveTo(target);
         CaptureScreenshot(corner ? "region-scale-preview.png" : "region-move-preview.png");
         canvas.Focus(); Keyboard.Type(VirtualKeyShort.ESC); AssertBounds(-100, -50, 100, 150);

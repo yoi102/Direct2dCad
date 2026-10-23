@@ -26,6 +26,15 @@
         <Setter Property="TextAlignment" Value="Left" />
         <Setter Property="UpDownButtonsWidth" Value="18" />
     </Style>
+    <!-- Point editors need room for both the native numeric template and cell padding. -->
+    <Style x:Key="PropertyPointGrid" TargetType="DataGrid" BasedOn="{StaticResource MaterialDesignDataGrid}">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="RowHeight" Value="NaN" />
+        <Setter Property="MinRowHeight" Value="32" />
+        <Setter Property="ColumnHeaderHeight" Value="NaN" />
+        <Setter Property="md:DataGridAssist.CellPadding" Value="4,2" />
+        <Setter Property="md:DataGridAssist.ColumnHeaderPadding" Value="4,4" />
+    </Style>
     <Style x:Key="PropertyChoiceEditor" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />

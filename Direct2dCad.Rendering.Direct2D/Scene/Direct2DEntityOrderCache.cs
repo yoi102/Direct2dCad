@@ -369,7 +369,9 @@ internal sealed class Direct2DEntityOrderCache : IDisposable
         var work = entity switch
         {
             CadPolyline polyline => Math.Max(1, polyline.Points.Count / 8),
-            CadSpline spline => Math.Max(1, spline.FitPoints.Count / 2),
+            // Fit splines expand to several controls per Bezier span. Their
+            // representation must not inflate the estimate for the same curve.
+            CadSpline spline => Math.Max(1, (spline.Nurbs.ParameterSpanCount + 1) / 2),
             CadRegion region => Math.Max(1, region.Contours.Sum(c => c.Edges.Count) / 2),
             CadCompositePath path => Math.Max(1, path.Segments.Count / 2),
             CadShapeText shapeText => Math.Max(1, shapeText.Text.Length / 4),

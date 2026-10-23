@@ -11,7 +11,7 @@ public sealed class DrawingWorkflowContractTests
 {
     public static IEnumerable<object[]> Modes => Enum.GetValues<CadCanvasToolMode>()
         .Where(mode => mode is not (CadCanvasToolMode.Select or CadCanvasToolMode.InsertBlock or
-            CadCanvasToolMode.LayoutViewport or CadCanvasToolMode.SetOrigin) && mode < CadCanvasToolMode.DimLinearX && !CadDocumentViewModel.IsEditMode(mode))
+            CadCanvasToolMode.LayoutViewport or CadCanvasToolMode.SetOrigin) && (mode < CadCanvasToolMode.DimLinearX || mode == CadCanvasToolMode.SplineCv) && !CadDocumentViewModel.IsEditMode(mode))
         .Select(mode => new object[] { mode });
 
     [Theory]
@@ -69,7 +69,7 @@ public sealed class DrawingWorkflowContractTests
             vm.PointerDown(screen, CadCanvasPointerButton.Left, false);
             vm.PointerUp(screen, CadCanvasPointerButton.Left);
         }
-        if (mode is CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline)
+        if (mode is CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv)
             Assert.True(vm.CompleteCurrentDrawing().Handled);
         var entity = Assert.Single(editor.Document.Entities.Values, entity => !existing.Contains(entity.Id) && !entity.IsErased);
         Assert.Equal(ExpectedType(mode), entity.GetType());
@@ -161,7 +161,7 @@ public sealed class DrawingWorkflowContractTests
         CadCanvasToolMode.EllipseArc => typeof(CadEllipseArc),
         CadCanvasToolMode.Rectangle => typeof(CadRectangle),
         CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon => typeof(CadPolyline),
-        CadCanvasToolMode.Spline => typeof(CadSpline),
+        CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv => typeof(CadSpline),
         CadCanvasToolMode.Text => typeof(CadText),
         _ => typeof(CadArc)
     };

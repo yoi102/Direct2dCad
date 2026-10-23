@@ -76,7 +76,8 @@ internal sealed class CadDrawingClickHandler(
                 return true;
 
             case CadCanvasToolMode.Spline:
-                AddSplineFitPointOrComplete(world);
+            case CadCanvasToolMode.SplineCv:
+                AddSplinePointOrComplete(world);
                 return true;
 
             case CadCanvasToolMode.Text:
@@ -104,7 +105,7 @@ internal sealed class CadDrawingClickHandler(
         {
             CadCanvasToolMode.Polyline => CompletePolyline(),
             CadCanvasToolMode.Polygon => CompletePolygon(),
-            CadCanvasToolMode.Spline => CompleteSpline(),
+            CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv => CompleteSpline(),
             _ => false
         };
     }
@@ -368,7 +369,7 @@ internal sealed class CadDrawingClickHandler(
         return true;
     }
 
-    private void AddSplineFitPointOrComplete(CadPointD world)
+    private void AddSplinePointOrComplete(CadPointD world)
     {
         if (multiPointPreviewBuilder.ShouldCompleteSpline(state.PendingSplinePoints, world))
         {
@@ -381,10 +382,10 @@ internal sealed class CadDrawingClickHandler(
 
     private bool CompleteSpline()
     {
-        if (!state.CanComplete(CadCanvasToolMode.Spline))
+        if (!state.CanComplete(toolMode))
             return false;
 
-        creator.AddSpline(state.PendingSplinePoints);
+        creator.AddSpline(state.PendingSplinePoints, toolMode == CadCanvasToolMode.SplineCv);
         state.PendingSplinePoints.Clear();
         return true;
     }

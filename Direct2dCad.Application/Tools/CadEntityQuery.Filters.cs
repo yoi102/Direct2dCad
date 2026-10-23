@@ -243,7 +243,7 @@ internal static partial class CadEntityQuery
     private static int? PointCount(CadEntity entity) => entity switch
     {
         CadPolyline polyline => polyline.Points.Count,
-        CadSpline spline => spline.FitPoints.Count,
+        CadSpline spline => spline.EditPoints.Count,
         CadCompositePath path => path.Segments.Count,
         _ => null
     };

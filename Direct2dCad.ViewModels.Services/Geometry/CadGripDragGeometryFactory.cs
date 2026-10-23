@@ -304,7 +304,7 @@ internal static class CadGripDragGeometryFactory
         out CadPointD[] fitPoints,
         out bool closed)
     {
-        fitPoints = spline.FitPoints.ToArray();
+        fitPoints = spline.EditPoints.ToArray();
         closed = spline.Closed;
 
         if (drag.Handle.Type != CadHandleType.Vertex || fitPoints.Length < 2)

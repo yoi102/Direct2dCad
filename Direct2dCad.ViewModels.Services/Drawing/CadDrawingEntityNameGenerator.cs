@@ -56,7 +56,7 @@ public static class CadDrawingEntityNameGenerator
         CadCanvasToolMode.Rectangle => "Rectangle",
         CadCanvasToolMode.Polyline => "Polyline",
         CadCanvasToolMode.Polygon => "Polygon",
-        CadCanvasToolMode.Spline => "Spline",
+        CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv => "Spline",
         CadCanvasToolMode.Text => "Text",
         _ => null
     };

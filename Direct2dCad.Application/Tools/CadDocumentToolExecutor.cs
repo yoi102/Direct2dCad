@@ -136,7 +136,7 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
             })),
         Tool("add_polygon", "Add a closed polygon from three or more CAD world-coordinate vertices.", PointCollectionSchema(
             "points", minimumPoints: 3, includeClosed: false)),
-        Tool("add_spline", "Add a smooth interpolating spline from fit points.", PointCollectionSchema(
+        Tool("add_spline", "Add a NURBS from fit_points, or from control_points with optional degree, knots and weights. Do not supply both point definitions.", PointCollectionSchema(
             "fit_points", minimumPoints: 2, includeClosed: true)),
         Tool("select_entities", "Replace the current selection with the supplied entity IDs.", EntityIdsSchema(required: true)),
         Tool("select_by_bounds", "Select entities intersecting or contained by a world-coordinate rectangle.",
@@ -1489,13 +1489,9 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
 
     private AddSplineCommand CreateSplineCommand(JsonElement arguments)
     {
-        var fitPoints = RequiredPoints(arguments, "fit_points", minimumCount: 2);
-        var closed = OptionalBool(arguments, "closed");
-        if (closed && fitPoints.Length < 3)
-            throw new ArgumentException("A closed spline requires at least three fit_points.");
         return new AddSplineCommand(
-            fitPoints,
-            closed,
+            CadSplineTools.Parse(arguments),
+
             ResolveLayer(arguments),
             name: ResolveName(arguments, "Spline"));
     }
@@ -1690,6 +1686,12 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
             ["layer"] = String("Layer name; current drawing layer is used when omitted"),
             ["name"] = String("Optional entity name")
         };
+        if (propertyName == "fit_points")
+        {
+            foreach (var pair in CadSplineTools.Properties()) properties[pair.Key] = pair.Value;
+            return new { type = "object", properties = new Dictionary<string, object>(properties) { ["closed"] = new { type = "boolean" } },
+                oneOf = new[] { new { required = new[] { "fit_points" } }, new { required = new[] { "control_points" } } }, additionalProperties = false };
+        }
         if (includeClosed)
             properties["closed"] = new { type = "boolean" };
         return new

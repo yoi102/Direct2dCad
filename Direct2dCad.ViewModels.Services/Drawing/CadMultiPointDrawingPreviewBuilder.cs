@@ -35,7 +35,8 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
     public void AddSplinePreview(
         List<CadTransientItem> items,
         IReadOnlyList<CadPointD> pendingPoints,
-        CadPointD mouseWorld)
+        CadPointD mouseWorld,
+        bool useControlPoints = false)
     {
         if (pendingPoints.Count == 0)
             return;
@@ -45,10 +46,13 @@ internal readonly struct CadMultiPointDrawingPreviewBuilder(
             return;
 
         var closed = styleResolver.ResolveSplineClosed(previewPoints.Length);
+        var geometry = styleResolver.CreateSplineGeometry(previewPoints, useControlPoints);
         items.Add(new CadTransientSpline(
             previewPoints,
             closed,
-            styleResolver.CreateSplineTransientStyle(closed)));
+            styleResolver.CreateSplineTransientStyle(closed), geometry));
+        if (!geometry.IsFitDefined)
+            items.Add(new CadTransientPolyline(previewPoints, closed, styleResolver.CreateSplineGuideStyle()));
         measurementBuilder.AddSegmentMeasurements(
             items,
             previewPoints[^2],

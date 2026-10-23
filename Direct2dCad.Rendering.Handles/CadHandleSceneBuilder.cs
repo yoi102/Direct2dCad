@@ -435,7 +435,17 @@ public sealed class CadHandleSceneBuilder
         CadSpline spline,
         CadHandleStyle gripStyle)
     {
-        foreach (var point in spline.FitPoints)
+        if (!spline.Geometry.IsFitDefined)
+            items.Add(new CadControlPolygonGuide(spline.Id, spline.EditPoints, spline.Closed,
+                gripStyle with
+                {
+                    StrokeColor = gripStyle.StrokeColor with { A = (byte)Math.Min(160, (int)gripStyle.StrokeColor.A) },
+                    FillColor = CadColor.Transparent,
+                    StrokeWidth = 1,
+                    Size = 0
+                }));
+
+        foreach (var point in spline.EditPoints)
             AddGrip(items, spline.Id, point, CadHandleType.Vertex, gripStyle);
 
         if (!spline.Bounds.IsEmpty)

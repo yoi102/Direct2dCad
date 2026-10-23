@@ -310,7 +310,13 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
         var point = e.GetPosition(this); FlushPointer(point); var result = _document.MouseWheel(Cad(point), (int)(e.Delta.Y * 120)); Apply(result); e.Handled = result.Handled;
         _viewportTimer.Stop(); _viewportTimer.Start();
     }
-    public void Cancel() { _radial.Close(); CancelGesture(); Apply(_document.Escape()); }
+    public void Cancel()
+    {
+        if (_radial.IsVisible) { CancelGesture(); return; }
+        if (_document.TryClearDynamicInputLocks()) return;
+        CancelGesture();
+        Apply(_document.Escape());
+    }
     private void CancelGesture() { _rightPending = _rightPan = false; _pointerScheduled = false; _radial.Close(); Apply(_document.CancelCapturedPointerGesture()); _document.CancelViewportInteractionPreview(); ReleaseCapture(); }
     private void ReleaseCapture() { _release = true; try { if (_pointer?.Captured == this) _pointer.Capture(null); } finally { _release = false; } }
     private void Keys(object? sender, KeyEventArgs e)

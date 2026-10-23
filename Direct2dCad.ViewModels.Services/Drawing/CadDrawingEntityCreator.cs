@@ -155,15 +155,14 @@ internal sealed class CadDrawingEntityCreator(
         entityCreated();
     }
 
-    public void AddSpline(IReadOnlyList<CadPointD> fitPoints)
+    public void AddSpline(IReadOnlyList<CadPointD> fitPoints, bool useControlPoints = false)
     {
         if (fitPoints.Count < 2)
             return;
 
         var closed = styleResolver.ResolveSplineClosed(fitPoints.Count);
         editor.AddSpline(
-            fitPoints,
-            closed,
+            styleResolver.CreateSplineGeometry(fitPoints, useControlPoints),
             layerId: layerId,
             graphicStyleId: styleResolver.ResolveSplineGraphicStyleId(),
             fillStyleId: closed ? styleResolver.ResolveSplineFillStyleId() : null,

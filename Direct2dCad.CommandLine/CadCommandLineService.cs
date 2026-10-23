@@ -123,7 +123,8 @@ public sealed class CadCommandLineService : ICadCommandLineService
         RegisterMode("RECTANGLE", "REC", "RECTANGLE", "Enter rectangle drawing mode.", CadCommandLineDrawingMode.Rectangle);
         RegisterMode("POLYLINE", "PL", "POLYLINE", "Enter polyline drawing mode.", CadCommandLineDrawingMode.Polyline);
         RegisterMode("POLYGON", "POL", "POLYGON", "Enter polygon drawing mode.", CadCommandLineDrawingMode.Polygon);
-        RegisterMode("SPLINE", "SPL", "SPLINE", "Enter spline drawing mode.", CadCommandLineDrawingMode.Spline);
+        RegisterMode("SPLINE", "SPL", "SPLINE", "Enter fit-point spline drawing mode.", CadCommandLineDrawingMode.Spline);
+        RegisterMode("SPLINECV", "SPLCV", "SPLINECV", "Enter control-point spline drawing mode.", CadCommandLineDrawingMode.SplineCv);
         RegisterMode("TEXT", "T", "TEXT", "Enter text drawing mode.", CadCommandLineDrawingMode.Text);
         RegisterMode("ORIGIN", "OR", "ORIGIN", "Enter origin placement mode.", CadCommandLineDrawingMode.SetOrigin);
         RegisterMode("MVIEW", "MV", "MVIEW", "Create and adjust a paper-space model viewport.", CadCommandLineDrawingMode.LayoutViewport);

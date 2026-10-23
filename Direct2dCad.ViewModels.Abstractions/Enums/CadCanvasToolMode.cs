@@ -58,7 +58,7 @@ public enum CadCanvasToolMode
     Polyline,
     [LocalizedDescription("Polygon", typeof(Strings))]
     Polygon,
-    [LocalizedDescription("Spline", typeof(Strings))]
+    [LocalizedDescription("SplineFit", typeof(Strings))]
     Spline,
     [LocalizedDescription("Text", typeof(Strings))]
     Text,
@@ -78,5 +78,7 @@ public enum CadCanvasToolMode
     [LocalizedDescription("RectArray", typeof(Strings))] RectArray,
     [LocalizedDescription("PolarArray", typeof(Strings))] PolarArray,
     DimLinearX, DimLinearY, DimAligned, DimRadius, DimDiameter, DimAngular, Leader,
-    BooleanUnion, BooleanIntersection, BooleanDifference
+    BooleanUnion, BooleanIntersection, BooleanDifference,
+    [LocalizedDescription("SplineCv", typeof(Strings))]
+    SplineCv
 }

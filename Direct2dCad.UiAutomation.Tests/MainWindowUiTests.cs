@@ -1375,8 +1375,12 @@ public sealed partial class MainWindowUiTests : IDisposable
         if (existingInput is not null && !existingInput.IsOffscreen)
             return existingInput.AsTextBox();
 
+        fixture.MainWindow.SetForeground();
         fixture.MainWindow.Focus();
-        Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.OEM_3);
+        fixture.WaitUntil(() => GetShortcutForegroundWindow() == fixture.MainWindow.Properties.NativeWindowHandle.Value,
+            "The main window did not receive foreground focus before opening Terminal.");
+        // Use the layout-independent alias for setup; the OEM alias has its own test.
+        Keyboard.TypeSimultaneously(VirtualKeyShort.CONTROL, VirtualKeyShort.KEY_J);
         return fixture.WaitForElement("CommandLineInput").AsTextBox();
     }
 

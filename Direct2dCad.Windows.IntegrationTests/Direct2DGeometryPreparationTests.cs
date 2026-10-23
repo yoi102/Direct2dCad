@@ -8,6 +8,23 @@ namespace Direct2dCad.Windows.IntegrationTests;
 public sealed class Direct2DGeometryPreparationTests
 {
     [Fact]
+    public void NurbsBackgroundSnapshotPreservesWeightsAfterTheEntityChanges()
+    {
+        using var factory = D2D1.D2D1CreateFactory<ID2D1Factory>(FactoryType.MultiThreaded);
+        using var service = new Direct2DGeometryPreparationService(factory);
+        var document = CadDocument.Create("NURBS snapshot");
+        var curve = new CadNurbsCurve(2, [new(100,0),new(100,100),new(0,100)], [0,0,0,1,1,1], [1,Math.Sqrt(.5),1]);
+        var spline = document.AddSpline(new CadSplineGeometry(curve));
+        service.Schedule(document);
+        service.CaptureStep(new ResourcePreparationBudget(64, TimeSpan.FromSeconds(10)));
+        spline.SetGeometry(spline.Geometry.WithControlPoint(1,new(100,100),4));
+        using var prepared = WaitForNext(service);
+        Assert.NotNull(prepared.Geometry);
+        Assert.InRange(Math.Abs(prepared.Geometry.ComputeLength() - Math.PI * 50),0,.1);
+        Assert.True(Math.Abs(prepared.Geometry.ComputeLength()-spline.Length)>5);
+    }
+
+    [Fact]
     public void SchedulingDoesNotCapturePointArraysAndCaptureHonorsItsItemBudget()
     {
         using var factory = D2D1.D2D1CreateFactory<ID2D1Factory>(FactoryType.MultiThreaded);

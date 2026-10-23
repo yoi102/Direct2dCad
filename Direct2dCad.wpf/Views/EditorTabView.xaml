@@ -175,7 +175,7 @@
                 </MenuItem.Icon>
             </MenuItem>
             <Separator />
-            <MenuItem Header="{I18N {x:Static r:LangKeys.Draw}}">
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Draw}}" AutomationProperties.AutomationId="DrawContextMenu">
                 <MenuItem.Icon>
                     <md:PackIcon Kind="Drawing" />
                 </MenuItem.Icon>
@@ -356,11 +356,20 @@
                         </MenuItem.Icon>
                     </MenuItem>
                 </MenuItem>
-                <MenuItem Header="{I18N {x:Static r:LangKeys.Spline}}"
+                <MenuItem Header="{I18N {x:Static r:LangKeys.SplineFit}}"
+                          AutomationProperties.AutomationId="SplineContextMenuItem"
                           Command="{Binding SetCadCanvasToolModeCommand}"
                           CommandParameter="Spline">
                     <MenuItem.Icon>
                         <ContentControl ContentTemplate="{StaticResource CadSplineIconTemplate}" />
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.SplineCv}}"
+                          AutomationProperties.AutomationId="SplineCvContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}"
+                          CommandParameter="SplineCv">
+                    <MenuItem.Icon>
+                        <ContentControl ContentTemplate="{StaticResource CadSplineCvIconTemplate}" />
                     </MenuItem.Icon>
                 </MenuItem>
                 <MenuItem Header="{I18N {x:Static r:LangKeys.Text}}"
@@ -376,6 +385,90 @@
                     <MenuItem.Icon>
                         <md:PackIcon Kind="Target" />
                     </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="{I18N {x:Static r:LangKeys.EditTools}}" AutomationProperties.AutomationId="EditToolsContextMenu">
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Offset}}"
+                          AutomationProperties.AutomationId="OffsetContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Offset">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadOffsetIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Trim}}"
+                          AutomationProperties.AutomationId="TrimContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Trim">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadTrimIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Extend}}"
+                          AutomationProperties.AutomationId="ExtendContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Extend">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadExtendIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Fillet}}"
+                          AutomationProperties.AutomationId="FilletContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Fillet">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadFilletIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Chamfer}}"
+                          AutomationProperties.AutomationId="ChamferContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Chamfer">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadChamferIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Join}}"
+                          AutomationProperties.AutomationId="JoinContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Join">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadJoinIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Break}}"
+                          AutomationProperties.AutomationId="BreakContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Break">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadBreakIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.RectArray}}"
+                          AutomationProperties.AutomationId="RectArrayContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="RectArray">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadRectArrayIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.PolarArray}}"
+                          AutomationProperties.AutomationId="PolarArrayContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="PolarArray">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadPolarArrayIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+            <MenuItem Header="{I18N {x:Static r:LangKeys.Dimension}}" AutomationProperties.AutomationId="DimensionContextMenu">
+                <MenuItem Header="{I18N {x:Static r:LangKeys.DimLinearX}}"
+                          AutomationProperties.AutomationId="DimLinearXContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="DimLinearX">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadDimLinearXIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.DimLinearY}}"
+                          AutomationProperties.AutomationId="DimLinearYContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="DimLinearY">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadDimLinearYIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.DimAligned}}"
+                          AutomationProperties.AutomationId="DimAlignedContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="DimAligned">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadDimAlignedIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.DimRadius}}"
+                          AutomationProperties.AutomationId="DimRadiusContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="DimRadius">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadDimRadiusIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.DimDiameter}}"
+                          AutomationProperties.AutomationId="DimDiameterContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="DimDiameter">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadDimDiameterIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.DimAngular}}"
+                          AutomationProperties.AutomationId="DimAngularContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="DimAngular">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadDimAngularIconTemplate}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{I18N {x:Static r:LangKeys.Leader}}"
+                          AutomationProperties.AutomationId="LeaderContextMenuItem"
+                          Command="{Binding SetCadCanvasToolModeCommand}" CommandParameter="Leader">
+                    <MenuItem.Icon><ContentControl ContentTemplate="{StaticResource CadLeaderIconTemplate}" /></MenuItem.Icon>
                 </MenuItem>
             </MenuItem>
             <MenuItem Header="{I18N {x:Static r:LangKeys.CreateBlock}}"

@@ -54,7 +54,7 @@ internal readonly partial struct CadRenderInvalidationCalculator(
 
         foreach (var item in handleScene.Items)
         {
-            if (!includeGripHandles && item is CadGripHandle or CadRotationHandleGuide)
+            if (!includeGripHandles && item is CadGripHandle or CadRotationHandleGuide or CadControlPolygonGuide)
                 continue;
 
             var itemInvalidation = CreateHandleInvalidation(item);
@@ -90,6 +90,11 @@ internal readonly partial struct CadRenderInvalidationCalculator(
         {
             switch (item)
             {
+                case CadControlPolygonGuide guide when includeGripHandles:
+                    worldBounds = worldBounds.Union(BoundsFromPoints(guide.Points));
+                    paddingPixels = Math.Max(paddingPixels,
+                        ResolveHandleStyleInvalidationPadding(guide.Style, 16.0, 0.5));
+                    break;
                 case CadGripHandle grip when includeGripHandles:
                     worldBounds = worldBounds.ExpandToInclude(grip.Position);
                     paddingPixels = Math.Max(
@@ -287,7 +292,7 @@ internal readonly partial struct CadRenderInvalidationCalculator(
             CadTransientArc arc when arc.Radius > 0 =>
                 CadRectD.FromCenter(arc.Center, arc.Radius * 2, arc.Radius * 2),
             CadTransientPolyline polyline => BoundsFromPoints(polyline.Points),
-            CadTransientSpline spline => CadSpline.CalculateBounds(spline.FitPoints, CadSpline.CreateBezierSegments(spline.FitPoints, spline.Closed)),
+            CadTransientSpline spline => spline.Geometry.Curve.Bounds,
             CadTransientCompositePath path => path.Bounds,
             CadTransientRectangle rectangle => rectangle.Bounds,
             CadTransientImage image => RotateBounds(image.Bounds, image.RotationRadians),
@@ -433,7 +438,9 @@ internal readonly partial struct CadRenderInvalidationCalculator(
             spline.Style,
             16.0,
             Direct2DDefaultMiterLimit * 0.5);
-        return CreateSplinePathInvalidation(spline.FitPoints, spline.Closed, CadVectorD.Zero, padding);
+        return spline.NurbsGeometry is { IsFitDefined: false } geometry
+            ? CreateWorldBoundsInvalidation(geometry.Curve.Bounds, padding)
+            : CreateSplinePathInvalidation(spline.FitPoints, spline.Closed, CadVectorD.Zero, padding);
     }
 
     private double ResolveTransientInvalidationPadding(
@@ -474,6 +481,11 @@ internal readonly partial struct CadRenderInvalidationCalculator(
             CadGripHandle grip => CreateScreenPointInvalidation(
                 viewport.WorldToScreen(grip.Position),
                 Math.Max(grip.Style.Size, grip.Style.StrokeWidth) + 4.0),
+            CadControlPolygonGuide guide => CreateTransientBoundsInvalidation(
+                BoundsFromPoints(guide.Points),
+                new CadTransientStyle(guide.Style.StrokeColor, guide.Style.StrokeWidth,
+                    CadTransientLinePattern.Dash,
+                    KeepStrokeWidthScreenConstant: guide.Style.KeepSizeScreenConstant)),
             CadRotationHandleGuide guide => CreateTransientBoundsInvalidation(
                 BoundsFromPoints(guide.Start, guide.End),
                 new CadTransientStyle(
@@ -556,7 +568,9 @@ internal readonly partial struct CadRenderInvalidationCalculator(
         CadVectorD offset,
         double paddingPixels)
     {
-        return CreateSplinePathInvalidation(spline.FitPoints, spline.Closed, offset, paddingPixels);
+        return spline.Geometry.IsFitDefined
+            ? CreateSplinePathInvalidation(spline.FitPoints, spline.Closed, offset, paddingPixels)
+            : CreateWorldBoundsInvalidation(spline.Bounds.Translate(offset), paddingPixels);
     }
 
     private CadRenderInvalidation CreateSplinePathInvalidation(

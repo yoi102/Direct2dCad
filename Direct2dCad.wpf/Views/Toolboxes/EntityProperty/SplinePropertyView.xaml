@@ -4,13 +4,16 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Direct2dCad;component/Views/Toolboxes/EntityProperty/PropertyInspectorCommonStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="SplineVisibility" />
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel Margin="12,10" IsEnabled="{Binding IsEditable, Mode=OneWay}">
-        <TextBlock Style="{StaticResource PropertyTitle}" Text="{I18N {x:Static r:LangKeys.Spline}}" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Style="{StaticResource PropertyTitle}" Visibility="{Binding IsFitDefined, Converter={StaticResource SplineVisibility}}" Text="{I18N {x:Static r:LangKeys.SplineFit}}" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Style="{StaticResource PropertyTitle}" Visibility="{Binding IsControlDefined, Converter={StaticResource SplineVisibility}}" Text="{I18N {x:Static r:LangKeys.SplineCv}}" FontWeight="SemiBold" Margin="0,0,0,8" />
         <ep:EntityHeaderPropertySection ViewModel="{Binding}" />
         <CheckBox Style="{DynamicResource PropertyCheckBox}" FontSize="12" MinHeight="24" Content="{I18N {x:Static r:LangKeys.Closed}}" IsChecked="{Binding IsClosed}" Margin="0,2,0,8" />
-        <StackPanel>
+        <StackPanel Visibility="{Binding IsFitDefined, Converter={StaticResource SplineVisibility}}">
+            <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.FitPoints}}" />
             <Grid Margin="0,4,0,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="84" />
@@ -20,7 +23,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <DataGrid FontSize="12" RowHeight="30" ColumnHeaderHeight="26" BorderThickness="0" GridLinesVisibility="None" Grid.Row="0" ItemsSource="{Binding FitPoints, Mode=OneWay}" SelectedItem="{Binding SelectedFitPoint, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" MaxHeight="180" Margin="0,0,0,4" Grid.ColumnSpan="2">
+                <DataGrid AutomationProperties.AutomationId="SplineFitPoints" Style="{DynamicResource PropertyPointGrid}" BorderThickness="0" GridLinesVisibility="None" Grid.Row="0" ItemsSource="{Binding FitPoints, Mode=OneWay}" SelectedItem="{Binding SelectedFitPoint, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" MaxHeight="180" Margin="0,0,0,4" Grid.ColumnSpan="2">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#" Binding="{Binding Index, Mode=OneWay}" IsReadOnly="True" Width="36" />
                         <DataGridTemplateColumn Header="{I18N {x:Static r:LangKeys.X}}" Width="*">
@@ -45,6 +48,31 @@
                 </StackPanel>
             </Grid>
         </StackPanel>
+        <StackPanel Visibility="{Binding IsControlDefined, Converter={StaticResource SplineVisibility}}">
+            <TextBlock Style="{StaticResource PropertyTitle}" Text="{I18N {x:Static r:LangKeys.ControlPoints}}" Margin="0,8,0,4" />
+            <DataGrid Style="{DynamicResource PropertyPointGrid}" AutomationProperties.AutomationId="SplineControlPoints" ItemsSource="{Binding ControlPoints}" SelectedItem="{Binding SelectedControlPoint}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" MaxHeight="220">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="#" Binding="{Binding Index}" IsReadOnly="True" Width="28" />
+                    <DataGridTextColumn Header="X" Binding="{Binding X, Mode=TwoWay}" Width="*" />
+                    <DataGridTextColumn Header="Y" Binding="{Binding Y, Mode=TwoWay}" Width="*" />
+                    <DataGridTextColumn Header="{I18N {x:Static r:LangKeys.NurbsWeight}}" Binding="{Binding Weight, Mode=TwoWay}" Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button Style="{DynamicResource PropertyAction}" Content="{I18N {x:Static r:LangKeys.AddAfter}}" Command="{Binding AddControlPointCommand}" Margin="0,4,8,4" />
+                    <Button Style="{DynamicResource PropertyAction}" Content="{I18N {x:Static r:LangKeys.Remove}}" Command="{Binding RemoveControlPointCommand}" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.NurbsDegree}}" />
+                <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" Value="{Binding Degree}" Minimum="1" Maximum="16" Interval="1" StringFormat="F0" AutomationProperties.AutomationId="SplineDegree" />
+                <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.NurbsKnots}}" />
+                <TextBox Style="{DynamicResource PropertyTextEditor}" Text="{Binding KnotVector, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" MaxHeight="96" VerticalScrollBarVisibility="Auto" AutomationProperties.AutomationId="SplineKnots" />
+                <Button Style="{DynamicResource PropertyAction}" Content="{I18N {x:Static r:LangKeys.NurbsApplyKnots}}" Command="{Binding ApplyKnotVectorCommand}" Margin="0,4" />
+                <Button Style="{DynamicResource PropertyAction}" Content="{I18N {x:Static r:LangKeys.NurbsUniform}}" Command="{Binding ApplyUniformKnotsCommand}" Margin="0,4" />
+                <TextBlock Style="{StaticResource PropertyLabel}" Text="{I18N {x:Static r:LangKeys.NurbsRebuildHint}}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Text="{Binding GeometryError}" TextWrapping="Wrap" Foreground="{DynamicResource MaterialDesignValidationErrorBrush}" />
+        </StackPanel>
         <ep:EntitySettingsPropertySection ViewModel="{Binding}" EntityIdText="{Binding EntityIdText, Mode=OneWay}">
             <ep:EntitySettingsPropertySection.Details>
                 <StackPanel>
@@ -59,7 +87,7 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
                         <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="0" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.PointCount}}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                        <TextBox Style="{DynamicResource PropertyTextEditor}" Grid.Row="0" Grid.Column="1" Text="{Binding FitPointCount, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,4" />
+                        <TextBox Style="{DynamicResource PropertyTextEditor}" Grid.Row="0" Grid.Column="1" Text="{Binding EditPointCount, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,4" />
                         <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="1" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Length}}" VerticalAlignment="Center" TextWrapping="Wrap" />
                         <TextBox Style="{DynamicResource PropertyTextEditor}" Grid.Row="1" Grid.Column="1" Text="{Binding Length, Mode=OneWay, StringFormat=F3}" IsReadOnly="True" />
                     </Grid>

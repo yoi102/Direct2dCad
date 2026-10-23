@@ -33,6 +33,23 @@ public sealed class ParallelRenderPlanningTests
     }
 
     [Fact]
+    public void SplineWorkTracksCurveSpansIndependentOfFitMetadata()
+    {
+        var document = CadDocument.Create("Spline estimates");
+        var fit = document.AddSpline(Enumerable.Range(0, 32)
+            .Select(index => new CadPointD(index, index % 2)));
+        var controls = document.AddSpline(new CadSplineGeometry(fit.Nurbs));
+        var uniform = document.AddSpline(new CadSplineGeometry(CadNurbsCurve.CreateUniform(
+            Enumerable.Range(0, 32).Select(index => new CadPointD(index, index % 2)), 3)));
+        Assert.Equal(31, fit.Nurbs.ParameterSpanCount);
+        Assert.Equal(29, uniform.Nurbs.ParameterSpanCount);
+        Assert.Equal(16, Direct2DEntityOrderCache.EstimateEntityRenderWork(document, fit));
+        Assert.Equal(Direct2DEntityOrderCache.EstimateEntityRenderWork(document, fit),
+            Direct2DEntityOrderCache.EstimateEntityRenderWork(document, controls));
+        Assert.Equal(15, Direct2DEntityOrderCache.EstimateEntityRenderWork(document, uniform));
+    }
+
+    [Fact]
     public void ParallelVisibilityUsesBufferedQueryAndRestoresDrawingOrder()
     {
         var document = CadDocument.Create("Indexed visibility");

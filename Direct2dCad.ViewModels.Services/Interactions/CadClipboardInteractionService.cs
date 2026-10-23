@@ -148,9 +148,9 @@ internal readonly struct CadClipboardInteractionService(
 
             case CadSplineClipboardSnapshot spline:
                 items.Add(new CadTransientSpline(
-                    spline.FitPoints.Select(x => x + delta).ToArray(),
+                    spline.Geometry.EditPoints.Select(x => x + delta).ToArray(),
                     spline.Closed,
-                    style));
+                    style, spline.Geometry.Transform(x => x + delta)));
                 break;
 
             case CadRegionClipboardSnapshot region:

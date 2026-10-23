@@ -300,7 +300,7 @@ public partial class CadDocumentViewModel
                     if (CadCanvasToolMode == CadCanvasToolMode.CircleTwoPoint) Add("Diameter", anchor, point);
                     else Add("Diameter", anchor - delta * .5, anchor + delta * .5);
                 }
-                if (_dynamicInputKind == DynamicInputKind.Polar && CadCanvasToolMode != CadCanvasToolMode.Spline) Add("Length", anchor, point);
+                if (_dynamicInputKind == DynamicInputKind.Polar && CadCanvasToolMode is not (CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv)) Add("Length", anchor, point);
             }
             return spans;
         }

@@ -662,7 +662,7 @@ public static class CadEntityHitTester
     {
         result = default;
 
-        using var flattened = spline.EnumerateFlattenedPoints(24).GetEnumerator();
+        using var flattened = spline.Nurbs.Tessellate(Math.Max(1e-8, tolerance * .1)).Points.GetEnumerator();
         if (!flattened.MoveNext())
             return false;
 
@@ -701,7 +701,7 @@ public static class CadEntityHitTester
         if (!spline.IsClosed || spline.FillStyleId is null)
             return false;
 
-        var flattened = spline.EnumerateFlattenedPoints(24);
+        var flattened = spline.Nurbs.Tessellate().Points;
         if (!PointInPolygon(point, flattened))
             return false;
 

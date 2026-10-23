@@ -1,6 +1,6 @@
 param(
-    [string]$ReleaseVersion = '0.1.7',
-    [string]$InstallerVersion = '1.0.7',
+    [string]$ReleaseVersion = '0.1.8',
+    [string]$InstallerVersion = '1.0.8',
     [switch]$SkipValidation,
     [switch]$HeadlessValidation)
 $ErrorActionPreference = 'Stop'

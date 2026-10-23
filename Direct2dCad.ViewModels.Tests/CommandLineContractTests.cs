@@ -31,6 +31,8 @@ public sealed class CommandLineContractTests
     [InlineData("PL", CadCanvasToolMode.Polyline)]
     [InlineData("POL", CadCanvasToolMode.Polygon)]
     [InlineData("SPL", CadCanvasToolMode.Spline)]
+    [InlineData("SPLINECV", CadCanvasToolMode.SplineCv)]
+    [InlineData("SPLCV", CadCanvasToolMode.SplineCv)]
     [InlineData("T", CadCanvasToolMode.Text)]
     [InlineData("OR", CadCanvasToolMode.SetOrigin)]
     [InlineData("S", CadCanvasToolMode.Select)]

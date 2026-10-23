@@ -221,8 +221,7 @@ public sealed class PasteEntitiesCommand : ICadCommand
                 fillStyleId,
                 polyline.State.Name),
             CadSplineClipboardSnapshot spline => document.AddSpline(
-                spline.FitPoints.Select(x => x + delta),
-                spline.Closed,
+                spline.Geometry.Transform(x => x + delta),
                 layerId,
                 graphicStyleId,
                 fillStyleId,

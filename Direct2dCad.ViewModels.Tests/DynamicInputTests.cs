@@ -8,6 +8,41 @@ namespace Direct2dCad.ViewModels.Tests;
 
 public sealed class DynamicInputTests
 {
+    [Theory]
+    [InlineData(CadCanvasToolMode.Line, "75")]
+    [InlineData(CadCanvasToolMode.Spline, "75")]
+    [InlineData(CadCanvasToolMode.SplineCv, "75")]
+    [InlineData(CadCanvasToolMode.SplineCv, "-")]
+    [InlineData(CadCanvasToolMode.Polyline, "75")]
+    [InlineData(CadCanvasToolMode.Spline, "-")]
+    public void ReleasingLocksPreservesTheDrawingStepAndRestoresPointerPreview(CadCanvasToolMode mode, string length)
+    {
+        using var context = new CadToolboxTestContext();
+        var vm = context.Document;
+        vm.SetViewportSize(800, 600); vm.SetToolMode(mode);
+        Click(vm, new(10, 20)); Move(vm, new(40, 60));
+        var history = vm.CadEditor.CreateDocumentHistorySnapshot();
+        Assert.False(vm.TryClearDynamicInputLocks());
+        Field(vm, "Length").Text = length;
+        Field(vm, "Angle").Text = "15";
+
+        Assert.True(vm.TryClearDynamicInputLocks());
+
+        Assert.Equal(mode, vm.CadCanvasToolMode);
+        Assert.Equal(new CadPointD(10, 20), vm.DrawingAnchor);
+        Assert.All(vm.DynamicInputFields, field => Assert.False(field.IsLocked));
+        Assert.Empty(vm.DynamicInputError);
+        Move(vm, new(70, 100));
+        Assert.Equal("100", Field(vm, "Length").Text);
+        Assert.Equal(vm.CadEditor.Viewport.WorldToScreen(new(70, 100)), vm.DynamicInputScreenGeometry.Point);
+        Assert.True(vm.CadEditor.DocumentHistoryEquals(history));
+        Assert.False(vm.TryClearDynamicInputLocks());
+        vm.Escape();
+        Assert.Equal(CadCanvasToolMode.Select, vm.CadCanvasToolMode);
+        Assert.Empty(vm.DynamicInputFields);
+        Assert.True(vm.CadEditor.DocumentHistoryEquals(history));
+    }
+
     [Fact]
     public void CoordinateInputFollowsPointerKeepsTypedAxisAndCommitsExactPointWithoutSnappingAgain()
     {

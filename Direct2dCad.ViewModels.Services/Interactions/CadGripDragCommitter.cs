@@ -136,7 +136,7 @@ internal sealed class CadGripDragCommitter(
     private void CommitSplineGripDrag(CadSpline spline, GripDragState drag)
     {
         if (TryCreateSplineGripGeometry(spline, drag, out var fitPoints, out var closed))
-            editor.SetSplineGeometry(spline.Id, fitPoints, closed);
+            editor.SetSplineGeometry(spline.Id, spline.Geometry.WithEditPoints(fitPoints));
     }
 
     private void CommitTextGripDrag(CadText text, GripDragState drag)

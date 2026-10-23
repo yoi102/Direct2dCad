@@ -2,7 +2,7 @@
 
 日期：2026-10-11。Windows x64 Avalonia 客户端复用现有 WPF 的 CAD 文档、编辑器、命令和业务模型。UI 布局、工具分组、原图标、快捷键和操作路径尽量相近；不是像素级复刻。自动验证、真实桌面操作与未验证环境分别记录。
 
-本轮 UI 的逐项修改和仍存在的差异见 [AVALONIA-UI-PARITY.md](AVALONIA-UI-PARITY.md)。按用户最新要求保持大致布局和等效操作，允许所有 UI 库保留相近的原生外观。自动检查、离屏截图和 Windows 桌面检查绑定哈希；下文 Office/AI/PDF 的早期桌面结果保留原候选归属。0.1.7 发布包内的 `validation.json` 记录该包 EXE 的 SHA256、NativeAOT 自检与 GPU 共享帧结果。仓库中的验证 JSON 和下文记录保留各历史候选的哈希，不代表这些人工操作已经在 0.1.7 上重测。
+本轮 UI 的逐项修改和仍存在的差异见 [AVALONIA-UI-PARITY.md](AVALONIA-UI-PARITY.md)。按用户最新要求保持大致布局和等效操作，允许所有 UI 库保留相近的原生外观。自动检查、离屏截图和 Windows 桌面检查绑定哈希；下文 Office/AI/PDF 的早期桌面结果保留原候选归属。0.1.8 发布包内的 `validation.json` 记录该包 EXE 的 SHA256、NativeAOT 自检与 GPU 共享帧结果。仓库中的验证 JSON 和下文记录保留各历史候选的哈希，不代表这些人工操作已经在 0.1.8 上重测。
 
 ## 实现
 
@@ -13,7 +13,7 @@
 - Dock.Avalonia / Dock.Model.Mvvm / Dock.Avalonia.Themes.Fluent 12.0.0.2：默认左侧文档/图层页签、右侧通高属性、底部命令行；保留左上/左下、右上/右下、底左/底右目的区域，空区域自动收起，支持原生停靠、自动隐藏、浮动/关闭，关闭工具通过视图菜单或快捷键重开。生成 JSON 元数据保存完整原生布局、分割比例、活动页、自动隐藏的原归属和浮动窗口大小位置；重启创建真实 HostWindow。
 - 属性表单保留 WPF 标题、嵌套折叠分组、默认展开状态和内容插槽顺序；数字编辑保留 F3/F2 等格式、范围与步长，显示格式不回写几何值。“随图层”线宽有只读显示，颜色来源控制显式颜色编辑。侧边/底边按钮可隐藏和恢复原工具箱，属性数字框支持文档 Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y。
 - Ribbon 主图标为 50px，并使用适配明暗主题的可读强调色；图层卡片包含颜色、名称、可见/锁定/冻结、优先级、实体数和线宽，块卡片保留 ID/E/R 信息，命令行输出保留时间戳。
-- 动态输入支持 Tab / Shift+Tab、Enter、Escape、Ctrl+Delete、F4；离开画布保留预览。Canvas 支持选择循环、R、撤销/重做、复制/剪切/粘贴及原工具箱快捷键。中键轮盘保持 Shift > Ctrl > Alt 优先级，并在松键时更新。
+- 动态输入支持 Tab / Shift+Tab、Enter、Escape、F4；Escape 有数值锁定时先解锁，无锁定时退出绘制；离开画布保留预览。Canvas 支持选择循环、R、撤销/重做、复制/剪切/粘贴及原工具箱快捷键。中键轮盘保持 Shift > Ctrl > Alt 优先级，并在松键时更新。
 - Direct2D 通过 keyed mutex D3D11 BGRA 共享纹理与 Avalonia compositor 互操作；最多三个槽位，处理尺寸变化、设备丢失和背压。Direct2D 为顶端原点，导入明确指定 TopLeftOrigin=true。不支持互操作与 Headless 时提供 CPU 位图 fallback。
 - Windows 打印记录 ID2D1CommandList，用 ID2D1PrintControl 提交矢量页。预览内联真实打印机/纸张/方向/份数/DPI，支持视图/图纸范围、实际/适应/自定义比例、驱动设置、纸张与可打印边界；完整 DEVMODE 经驱动验证，DPI 传入 PrintControl；图片和 OLE 保留位图内容。
 - NativeAOT OLE 和矢量打印使用 C# 与 Microsoft.Windows.CsWin32 0.3.333；接口和回调 ABI 来自包，ComWrappers 管理 COM 身份与引用计数。沿用 WPF D2CAD-OLE1 封装，保留 Office 剪贴板嵌入、绘制、双击编辑和通知回写。自写 C++ 源码、构建步骤及 Direct2dCad.Ole.Native.dll 已移除；当前实机验收范围见最新验证记录。
@@ -21,7 +21,7 @@
 
 ## 自动验证
 
-历史候选的 EXE 哈希、时间、具体检查项和 GPU 测量在 [avalonia-native-verification.json](avalonia-native-verification.json)；以下结果按该证据所属候选记录。0.1.7 的实际发布检查以包内 `validation.json` 及 Release 附件中的验证报告为准。发布脚本校验报告与 EXE SHA256 相同；每次使用新目录。Headless 和 offscreen GPU 不创建应用桌面窗口、不操作鼠标键盘。
+历史候选的 EXE 哈希、时间、具体检查项和 GPU 测量在 [avalonia-native-verification.json](avalonia-native-verification.json)；以下结果按该证据所属候选记录。0.1.8 的实际发布检查以包内 `validation.json` 及 Release 附件中的验证报告为准。发布脚本校验报告与 EXE SHA256 相同；每次使用新目录。Headless 和 offscreen GPU 不创建应用桌面窗口、不操作鼠标键盘。
 
 - Release 构建：0 警告、0 错误。locked restore 通过，共享项目锁文件未改变。
 - NativeAOT 动态代码关闭；实际硬件 Direct2D 帧、101 个 AI schema、48 次绘图属性视图实例化通过。
@@ -54,7 +54,7 @@
 
 ## GitHub 安装包
 
-0.1.7 同时提供 WPF 与 Avalonia 的 Windows x64 MSI 和便携 ZIP。Avalonia 使用 NativeAOT，WPF 自带运行时。MSI 带安装目录选择页、应用图标、开始菜单和桌面快捷方式；便携包解压后可直接运行。两版采用独立安装身份，可同时安装，均不要求单独安装 .NET Runtime。安装包未签名，也未发布到 Microsoft Store。
+0.1.8 同时提供 WPF 与 Avalonia 的 Windows x64 MSI 和便携 ZIP。Avalonia 使用 NativeAOT，WPF 自带运行时。MSI 带安装目录选择页、应用图标、开始菜单和桌面快捷方式；便携包解压后可直接运行。两版采用独立安装身份，可同时安装，均不要求单独安装 .NET Runtime。安装包未签名，也未发布到 Microsoft Store。
 
 ## 使用
 

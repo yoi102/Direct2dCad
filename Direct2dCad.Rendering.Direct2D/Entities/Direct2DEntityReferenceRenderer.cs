@@ -251,8 +251,7 @@ internal sealed class Direct2DEntityReferenceRenderer(
         transientRenderer.DrawSpline(
             context,
             viewport,
-            spline.FitPoints,
-            spline.Closed,
+            spline.Geometry,
             style,
             isLevelOfDetailEnabled);
     }

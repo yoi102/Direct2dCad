@@ -8,6 +8,67 @@ namespace Direct2dCad.UiAutomation.Tests;
 public sealed partial class MainWindowUiTests
 {
     [Theory]
+    [InlineData("Field")]
+    [InlineData("Canvas")]
+    [InlineData("Panel")]
+    [Trait("Category", "UiAutomation")]
+    public void EscapeUnlocksTypedSplineValuesThenExitsDrawing(string focus)
+        => VerifySplineEscape(focus, controlPoints: false);
+
+    [Fact]
+    [Trait("Category", "UiAutomation")]
+    public void NurbsCvEscapeUnlocksTypedValuesThenExitsDrawing()
+        => VerifySplineEscape("Field", controlPoints: true);
+
+    private void VerifySplineEscape(string focus, bool controlPoints)
+    {
+        CreateNewDocument();
+        var input = GetOrOpenCommandLineInput(); var output = fixture.WaitForElement("CommandLineOutput");
+        ExecuteCommandAndWaitForOutput(input, output, controlPoints ? "SPLINECV" : "SPLINE", controlPoints ? "SplineCv mode active." : "Spline mode active.");
+        ExecuteCommandAndWaitForOutput(input, output, "0,0", "Point accepted:");
+        ExecuteCommandAndWaitForOutput(input, output, "30,20", "Point accepted:");
+        ShowDynamicInputOnCanvas();
+        var canvas = fixture.WaitForElement("CadCanvas");
+        canvas.Focus(); Keyboard.Type(VirtualKeyShort.TAB); Keyboard.Type("75");
+        Keyboard.Type(VirtualKeyShort.TAB); Keyboard.Type("15");
+        var length = fixture.WaitForElement("DynamicInputLength").AsTextBox();
+        var angle = fixture.WaitForElement("DynamicInputAngle").AsTextBox();
+        fixture.WaitUntil(() => length.Text == "75" && angle.Text == "15", "Tab input did not lock both spline values.");
+        if (focus == "Canvas") canvas.Focus();
+        else if (focus == "Panel") { input.Text = ""; input.Focus(); }
+
+        Keyboard.Type(VirtualKeyShort.ESC);
+
+        fixture.WaitUntil(() => canvas.Properties.HasKeyboardFocus.ValueOrDefault, "Unlock did not return canvas focus.");
+        Assert.Equal(controlPoints ? "CV Spline (Control Points)" : "Spline", fixture.WaitForElement("CurrentToolStatusText").Name);
+        Mouse.MoveTo(EditCanvasPoint(canvas, 100, 75));
+        fixture.WaitUntil(() => length.Text != "75" && angle.Text != "15", "Escape did not restore pointer-driven values.");
+        CaptureScreenshot((controlPoints ? "spline-cv" : "spline") + "-escape-unlocked-" + focus.ToLowerInvariant() + ".png");
+        Keyboard.Type(VirtualKeyShort.ESC);
+        fixture.WaitUntil(() => fixture.WaitForElement("CurrentToolStatusText").Name == "Select", "Second Escape did not exit spline drawing.");
+        ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 0");
+        AssertCurveBindingsClean((controlPoints ? "spline-cv" : "spline") + "-escape-" + focus.ToLowerInvariant());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "UiAutomation")]
+    public void EscapeWithoutLockedValuesExitsDrawingImmediately(bool fieldFocus)
+    {
+        CreateNewDocument();
+        var input = GetOrOpenCommandLineInput(); var output = fixture.WaitForElement("CommandLineOutput");
+        ExecuteCommandAndWaitForOutput(input, output, "SPLINE", "Spline mode active.");
+        ExecuteCommandAndWaitForOutput(input, output, "0,0", "Point accepted:");
+        ShowDynamicInputOnCanvas();
+        fixture.WaitForElement("CadCanvas").Focus();
+        if (fieldFocus) Keyboard.Type(VirtualKeyShort.TAB);
+        Keyboard.Type(VirtualKeyShort.ESC);
+        fixture.WaitUntil(() => fixture.WaitForElement("CurrentToolStatusText").Name == "Select", "Unlocked drawing required more than one Escape.");
+        ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 0");
+    }
+
+    [Theory]
     [InlineData("Terminal")]
     [InlineData("AI")]
     [InlineData("Layers")]

@@ -61,7 +61,7 @@ internal sealed class CadScaleGeometryPlan(CadEntity[] before, CadEntity[] after
             CadArc v => new CadArc(e.Id, e.LayerId, e.OwnerBlockId, v.Center, v.Radius, v.StartAngleRadians, v.SweepAngleRadians),
             CadRectangle v => new CadRectangle(e.Id, e.LayerId, e.OwnerBlockId, v.FrameBounds, v.CornerRadiusX, v.CornerRadiusY),
             CadPolyline v => new CadPolyline(e.Id, e.LayerId, e.OwnerBlockId, v.Points, v.Closed),
-            CadSpline v => new CadSpline(e.Id, e.LayerId, e.OwnerBlockId, v.FitPoints, v.Closed),
+            CadSpline v => new CadSpline(e.Id, e.LayerId, e.OwnerBlockId, v.Geometry),
             CadRegion v => new CadRegion(e.Id, e.LayerId, e.OwnerBlockId, v.Contours),
             CadCompositePath v => new CadCompositePath(e.Id, e.LayerId, e.OwnerBlockId, v.StartPoint, v.Segments, v.Closed),
             CadText v => new CadText(e.Id, e.LayerId, e.OwnerBlockId, v.Text, v.Position, v.Height, v.RotationRadians,
@@ -93,7 +93,7 @@ internal sealed class CadScaleGeometryPlan(CadEntity[] before, CadEntity[] after
             case (CadRectangle s, CadRectangle t):
                 t.SetBounds(s.FrameBounds); t.SetCornerRadius(s.CornerRadiusX, s.CornerRadiusY); t.SetRotation(s.RotationRadians); break;
             case (CadPolyline s, CadPolyline t): t.ReplacePoints(s.Points); t.SetClosed(s.Closed); break;
-            case (CadSpline s, CadSpline t): t.ReplaceFitPoints(s.FitPoints); t.SetClosed(s.Closed); break;
+            case (CadSpline s, CadSpline t): t.SetGeometry(s.Geometry); break;
             case (CadRegion s, CadRegion t): t.ReplaceGeometry(s.Contours); break;
             case (CadCompositePath s, CadCompositePath t): t.ReplaceGeometry(s.StartPoint, s.Segments, s.Closed); break;
             case (CadText s, CadText t):
@@ -129,7 +129,7 @@ internal sealed class CadScaleGeometryPlan(CadEntity[] before, CadEntity[] after
         {
             CadLine v => [v.Start, v.End],
             CadPolyline v => v.Points,
-            CadSpline v => v.FitPoints.Concat(v.GetBezierSegments().SelectMany(s => new[] { s.Start, s.Control1, s.Control2, s.End })),
+            CadSpline v => v.ControlPoints.Concat(v.FitPoints),
             CadDimension v => v.Strokes.SelectMany(s => new[] { s.Start, s.End }),
             _ => []
         };

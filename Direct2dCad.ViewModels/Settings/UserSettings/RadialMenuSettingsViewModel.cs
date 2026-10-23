@@ -17,6 +17,9 @@ public sealed partial class RadialMenuSettingsViewModel : ObservableObject
         settings.Normalize();
 
         ActionOptions = Enum.GetValues<CadRadialMenuAction>()
+            .OrderBy(action => action == CadRadialMenuAction.SplineCv
+                ? (double)CadRadialMenuAction.Spline + 0.5
+                : (double)action)
             .Select(action => new CadRadialMenuActionOption(
                 action,
                 Localized(CadRadialMenuActionCatalog.GetResourceKey(action))))

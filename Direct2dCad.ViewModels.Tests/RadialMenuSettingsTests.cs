@@ -70,6 +70,7 @@ public sealed class RadialMenuSettingsTests
     [InlineData(CadRadialMenuAction.Polyline, CadCanvasToolMode.Polyline)]
     [InlineData(CadRadialMenuAction.Polygon, CadCanvasToolMode.Polygon)]
     [InlineData(CadRadialMenuAction.Spline, CadCanvasToolMode.Spline)]
+    [InlineData(CadRadialMenuAction.SplineCv, CadCanvasToolMode.SplineCv)]
     [InlineData(CadRadialMenuAction.Text, CadCanvasToolMode.Text)]
     [InlineData(CadRadialMenuAction.SetOrigin, CadCanvasToolMode.SetOrigin)]
     public void ActionMapper_MapsEveryRepresentativeDrawingAction(
@@ -88,5 +89,27 @@ public sealed class RadialMenuSettingsTests
         Assert.False(CadRadialMenuActionMapper.TryGetToolMode(
             CadRadialMenuAction.Undo,
             out _));
+    }
+
+    [Fact]
+    public void SettingsViewModel_CvSplineIsAdjacentToFitAndSurvivesSaveReload()
+    {
+        var settings = CadUserSettings.CreateDefault();
+        var original = settings.Interaction.RadialMenu.ControlMiddleActions.ToArray();
+        var viewModel = new RadialMenuSettingsViewModel(settings.Interaction.RadialMenu);
+        var options = viewModel.ActionOptions.ToArray();
+        var fitIndex = Array.FindIndex(options, option => option.Action == CadRadialMenuAction.Spline);
+        Assert.Equal(CadRadialMenuAction.SplineCv, options[fitIndex + 1].Action);
+        Assert.NotEqual(options[fitIndex].DisplayName, options[fitIndex + 1].DisplayName);
+        viewModel.Profiles[0].Slots[0].SelectedAction = options[fitIndex + 1];
+        viewModel.ApplyTo(settings.Interaction.RadialMenu);
+
+        var reloaded = settings.Clone();
+        var restored = new RadialMenuSettingsViewModel(reloaded.Interaction.RadialMenu);
+        Assert.Equal(CadRadialMenuAction.SplineCv, restored.Profiles[0].Slots[0].SelectedAction.Action);
+        Assert.Equal(original, reloaded.Interaction.RadialMenu.ControlMiddleActions);
+        // Stored numeric identifiers from configurations predating these additions.
+        Assert.Equal(24, (int)CadRadialMenuAction.Spline);
+        Assert.Equal(39, (int)CadRadialMenuAction.CreateBlock);
     }
 }

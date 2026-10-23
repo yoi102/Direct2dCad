@@ -79,11 +79,12 @@ public sealed partial class MainWindowUiTests
             "Shift+Tab trapped terminal focus.");
         foreach (var key in new[] { VirtualKeyShort.KEY_J, VirtualKeyShort.OEM_3 })
         {
-            fixture.MainWindow.Focus();
-            input.Focus();
+            FocusEnterMainControl(input);
+            keyboardLayout.Activate();
             TypeTerminalToggle(key);
             fixture.WaitUntil(() => fixture.MainWindow.FindFirstDescendant(c => c.ByAutomationId("CommandLineInput"))
                 is null or { IsOffscreen: true }, $"The terminal toggle {key} did not hide the toolbox exactly once.");
+            keyboardLayout.Activate();
             TypeTerminalToggle(key);
             input = fixture.WaitForElement("CommandLineInput").AsTextBox();
             fixture.WaitUntil(() => !input.IsOffscreen, "The terminal toggle did not show the toolbox.");
@@ -174,13 +175,19 @@ public sealed partial class MainWindowUiTests
     {
         private readonly IntPtr _window;
         private readonly IntPtr _original;
+        private readonly IntPtr _requested;
         public ShortcutKeyboardLayout(Window window)
         {
             _window = window.Properties.NativeWindowHandle.Value;
             _original = GetKeyboardLayout(GetWindowThreadProcessId(_window, out _));
-            var us = LoadKeyboardLayout("00000409", 0);
-            Assert.NotEqual(IntPtr.Zero, us);
-            SendMessage(_window, 0x50, IntPtr.Zero, us);
+            _requested = LoadKeyboardLayout("00000409", 0);
+            Assert.NotEqual(IntPtr.Zero, _requested);
+            Activate();
+        }
+        public void Activate()
+        {
+            SendMessage(_window, 0x50, IntPtr.Zero, _requested);
+            Assert.Equal(_requested, GetKeyboardLayout(GetWindowThreadProcessId(_window, out _)));
         }
         public void Dispose() => SendMessage(_window, 0x50, IntPtr.Zero, _original);
         [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint threadId);

@@ -26,7 +26,10 @@ internal static class Direct2DLocalGeometry
             CadArc v => new CadArc(v.Id, v.LayerId, v.OwnerBlockId, Point(v.Center), v.Radius, v.StartAngleRadians, v.SweepAngleRadians),
             CadRectangle v => new CadRectangle(v.Id, v.LayerId, v.OwnerBlockId, Bounds(v.FrameBounds), v.CornerRadiusX, v.CornerRadiusY),
             CadPolyline v => new CadPolyline(v.Id, v.LayerId, v.OwnerBlockId, v.Points.Select(Point), v.Closed),
-            CadSpline v => new CadSpline(v.Id, v.LayerId, v.OwnerBlockId, v.FitPoints.Select(Point), v.Closed),
+            // Fit-defined controls contain fractional offsets: reconstruct them after rebasing
+            // to avoid retaining world-coordinate rounding in the float rasterizer.
+            CadSpline v => new CadSpline(v.Id, v.LayerId, v.OwnerBlockId, v.Geometry.IsFitDefined
+                ? CadSplineGeometry.FromFitPoints(v.FitPoints.Select(Point), v.Closed) : v.Geometry.Transform(Point)),
             CadRegion v => new CadRegion(v.Id, v.LayerId, v.OwnerBlockId, v.Contours.Select(c => c.Transform(Point))),
             CadCompositePath v => new CadCompositePath(v.Id, v.LayerId, v.OwnerBlockId, Point(v.StartPoint), v.Segments.Select(s => s switch
             {

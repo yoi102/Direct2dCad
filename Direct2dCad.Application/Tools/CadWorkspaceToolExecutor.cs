@@ -867,7 +867,7 @@ public sealed partial class CadWorkspaceToolExecutor
             "add_ellipse" => new[] { "center_x", "center_y", "radius_x", "radius_y" },
             "add_ellipse_arc" => new[] { "center_x", "center_y", "radius_x", "radius_y", "start_angle_degrees", "sweep_angle_degrees" },
             "add_polygon" => new[] { "points" },
-            "add_spline" => new[] { "fit_points", "closed" },
+            "add_spline" => new[] { "fit_points", "control_points", "degree", "knots", "weights", "periodic", "closed" },
             "add_composite_path" => new[] { "start", "segments", "closed" },
             _ => []
         };
@@ -896,7 +896,7 @@ public sealed partial class CadWorkspaceToolExecutor
         "corner_radius" or "corner_radius_x" or "corner_radius_y" or
         "text" or "x" or "y" or "height" or "rotation_degrees" or
         "width_factor" or "character_spacing_factor" or "oblique_angle_degrees" or
-        "points" or "fit_points" or "start" or "segments" or "closed" => true,
+        "points" or "fit_points" or "control_points" or "degree" or "knots" or "weights" or "periodic" or "start" or "segments" or "closed" => true,
         _ => false
     };
 

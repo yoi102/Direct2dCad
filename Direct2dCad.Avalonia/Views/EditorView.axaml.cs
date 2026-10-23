@@ -141,14 +141,13 @@ public partial class EditorView : UserControl, IDisposable
         {
             if (e.Source is TextBox && DynamicPanel.IsVisualAncestorOf((global::Avalonia.Visual)e.Source)) { if (Model.CadDocumentViewModel.SubmitDynamicInput()) Canvas.Focus(); e.Handled = true; }
         }
-        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None) { if (e.Source is TextBox) { Model.CadDocumentViewModel.ClearDynamicInputLocks(); Canvas.Focus(); } else Cancel(); e.Handled = true; return; }
+        if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None) { Cancel(); e.Handled = true; return; }
         if (e.Key == Key.F4 && e.KeyModifiers == KeyModifiers.None && Model.CadDocumentViewModel.HasDynamicInput) { Model.CadDocumentViewModel.CycleSnapCandidateCommand.Execute(null); e.Handled = true; return; }
         if (e.Key == Key.Tab && e.KeyModifiers is KeyModifiers.None or KeyModifiers.Shift && Model.CadDocumentViewModel.HasDynamicInput)
         {
             var fields = DynamicPanel.GetVisualDescendants().OfType<TextBox>().ToArray(); if (fields.Length == 0) return;
             var index = Array.FindIndex(fields, t => t.IsFocused); index = (index + (e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? fields.Length - 1 : 1)) % fields.Length; fields[index].Focus(); fields[index].SelectAll(); e.Handled = true;
         }
-        if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.Control && Model.CadDocumentViewModel.HasDynamicInput) { Model.CadDocumentViewModel.ClearDynamicInputLocks(); Canvas.Focus(); e.Handled = true; }
     }
     private void TextEntry(object? sender, TextInputEventArgs e)
     {

@@ -320,7 +320,7 @@ public partial class CadDocumentViewModel
         {
             return TrySubmitEditDistance(value);
         }
-        if(DrawingAnchor is not { } anchor || CadCanvasToolMode is not (CadCanvasToolMode.Line or CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline or CadCanvasToolMode.CircleCenterRadius or CadCanvasToolMode.CircleCenterDiameter)) return false;
+        if(DrawingAnchor is not { } anchor || CadCanvasToolMode is not (CadCanvasToolMode.Line or CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv or CadCanvasToolMode.CircleCenterRadius or CadCanvasToolMode.CircleCenterDiameter)) return false;
         var direction=_currentMousePoint is { } p ? (ScreenToWorld(p)-anchor).Normalize() : CadVectorD.UnitX;
         if(direction.Length==0) direction=CadVectorD.UnitX;
         if (DynamicInputFields.FirstOrDefault(field => field.Key == "Angle" && field.IsLocked) is { } angle)

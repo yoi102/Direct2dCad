@@ -44,6 +44,7 @@ internal static class CadBulkCreationTools
     private static object CreateSchema()
     {
         var itemProperties = GeometryProperties();
+        foreach (var pair in CadSplineTools.Properties()) itemProperties[pair.Key] = pair.Value;
         itemProperties["type"] = new { type = "string", @enum = SupportedTypes.Order().ToArray() };
         itemProperties["layer"] = String("Existing layer name or ID; current drawing layer is used when omitted");
         itemProperties["name"] = String("Optional entity name");
@@ -196,7 +197,7 @@ internal static class CadBulkCreationTools
         Requires("ellipse", "center_x", "center_y", "radius_x", "radius_y"),
         Requires("ellipse_arc", "center_x", "center_y", "radius_x", "radius_y", "start_angle_degrees", "sweep_angle_degrees"),
         Requires("polygon", "points"),
-        Requires("spline", "fit_points"),
+        new { @if = new { properties = new { type = new { @const = "spline" } } }, then = new { oneOf = new[] { new { required = new[] { "fit_points" } }, new { required = new[] { "control_points" } } } } },
         Requires("composite_path", "start", "segments", "closed")
     ];
 

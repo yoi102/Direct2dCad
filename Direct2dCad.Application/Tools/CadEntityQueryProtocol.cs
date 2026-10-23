@@ -144,8 +144,8 @@ internal static class CadEntityQueryProtocol
         properties["max_height"] = NonNegativeNumber("Maximum world-coordinate bounds height.");
         properties["min_radius"] = NonNegativeNumber("Minimum radius for Circle and Arc entities.");
         properties["max_radius"] = NonNegativeNumber("Maximum radius for Circle and Arc entities.");
-        properties["min_point_count"] = new { type = "integer", minimum = 0, description = "Minimum Polyline points, Spline fit points, or CompositePath segments." };
-        properties["max_point_count"] = new { type = "integer", minimum = 0, description = "Maximum Polyline points, Spline fit points, or CompositePath segments." };
+        properties["min_point_count"] = new { type = "integer", minimum = 0, description = "Minimum Polyline points, Spline editable points, or CompositePath segments." };
+        properties["max_point_count"] = new { type = "integer", minimum = 0, description = "Maximum Polyline points, Spline editable points, or CompositePath segments." };
         properties["min_opacity"] = UnitNumber("Minimum Image or OleObject opacity.");
         properties["max_opacity"] = UnitNumber("Maximum Image or OleObject opacity.");
         properties["bounds"] = BoundsSchema();

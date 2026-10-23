@@ -6,7 +6,7 @@ Direct2dCad is a 2D CAD editor for Windows, with WPF and Avalonia desktop client
 
 ## Features
 
-- **2D drawing**: Lines, polylines, polygons, rectangles, circles, arcs, ellipses, ellipse arcs, and splines, plus text, images, and OLE objects.
+- **2D drawing**: Lines, polylines, polygons, rectangles, circles, arcs, ellipses, ellipse arcs, splines, and NURBS curves, plus text, images, and OLE objects.
 - **Precise input**: Enter coordinates, lengths, radii, diameters, angles, and ellipse semiaxes directly on the canvas. Use object snaps, grid snaps, orthogonal constraints, and polar tracking.
 - **Editing**: Click, window, and crossing selection, selection filters, and grips; move, rotate, mirror, and scale. Compatible curves support offset, trim, extend, fillet, chamfer, join, break, and arrays. Closed contours support Boolean union, intersection, and difference.
 - **Appearance and dimensions**: Colors, line weights, dashes, caps, joins, fills, and patterns; horizontal, vertical, aligned, radius, diameter, and angular dimensions, plus leaders with configurable fonts and arrows.

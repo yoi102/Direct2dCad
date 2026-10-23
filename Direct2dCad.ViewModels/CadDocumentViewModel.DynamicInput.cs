@@ -124,7 +124,7 @@ public partial class CadDocumentViewModel
             CadCanvasToolMode.CircleCenterDiameter => DynamicInputKind.Diameter,
             CadCanvasToolMode.CircleTwoPoint => DynamicInputKind.Diameter,
             CadCanvasToolMode.Rectangle => DynamicInputKind.Rectangle,
-            CadCanvasToolMode.Line or CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline => DynamicInputKind.Polar,
+            CadCanvasToolMode.Line or CadCanvasToolMode.Polyline or CadCanvasToolMode.Polygon or CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv => DynamicInputKind.Polar,
             _ => DynamicInputKind.Coordinates
         };
     }
@@ -282,6 +282,14 @@ public partial class CadDocumentViewModel
         if (TryGetDynamicInputPoint(out var point)) _dynamicInputPreview = point;
         return _dynamicInputPreview ?? pointer;
     }
+    public bool TryClearDynamicInputLocks()
+    {
+        if (!HasDynamicInput || !HasLockedDynamicInput && !_offsetDistanceLockedByParameter) return false;
+        ClearDynamicInputLocks();
+        RequestOverlayRender();
+        return true;
+    }
+
     public void ClearDynamicInputLocks()
     {
         _dynamicInputPreview = null;

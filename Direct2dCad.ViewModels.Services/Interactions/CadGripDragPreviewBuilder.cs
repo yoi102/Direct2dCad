@@ -66,7 +66,7 @@ internal readonly struct CadGripDragPreviewBuilder(
                 break;
 
             case CadSpline spline:
-                AddSplineGripPreview(items, spline, drag, style);
+                AddSplineGripPreview(items, spline, drag, style, auxiliaryStyle);
                 break;
 
             case CadCompositePath:
@@ -137,6 +137,14 @@ internal readonly struct CadGripDragPreviewBuilder(
                             entityId,
                             CadVectorD.Zero,
                             style));
+                    }
+                    if (entity is CadSpline { Geometry.IsFitDefined: false } spline)
+                    {
+                        var guideStyle = styleService.CreateGripAuxiliaryStyle();
+                        createdItems.Add(new CadTransientPolyline(spline.EditPoints, spline.Closed, guideStyle));
+                        foreach (var point in spline.EditPoints)
+                            previewBounds = previewBounds.ExpandToInclude(point);
+                        maximumStyle = ResolveMaximumPaddingStyle(maximumStyle, guideStyle);
                     }
                 }
             }
@@ -260,10 +268,15 @@ internal readonly struct CadGripDragPreviewBuilder(
         List<CadTransientItem> items,
         CadSpline spline,
         GripDragState drag,
-        CadTransientStyle style)
+        CadTransientStyle style,
+        CadTransientStyle auxiliaryStyle)
     {
         if (TryCreateSplineGripGeometry(spline, drag, out var fitPoints, out var closed))
-            items.Add(new CadTransientSpline(fitPoints, closed, style));
+        {
+            if (!spline.Geometry.IsFitDefined)
+                items.Add(new CadTransientPolyline(fitPoints, closed, auxiliaryStyle));
+            items.Add(new CadTransientSpline(fitPoints, closed, style, spline.Geometry.WithEditPoints(fitPoints)));
+        }
     }
 
     private void AddTextGripPreview(

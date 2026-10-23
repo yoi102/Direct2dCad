@@ -200,7 +200,7 @@ internal static partial class CadEntityQuery
                 result["point_count"] = polyline.Points.Count;
                 break;
             case CadSpline spline:
-                result["point_count"] = spline.FitPoints.Count;
+                result["point_count"] = spline.EditPoints.Count;
                 break;
             case CadCompositePath path:
                 result["point_count"] = path.Segments.Count;

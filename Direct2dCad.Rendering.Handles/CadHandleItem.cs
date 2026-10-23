@@ -24,3 +24,10 @@ public sealed record CadRotationHandleGuide(
     CadPointD End,
     CadHandleStyle Style)
     : CadHandleItem(Style);
+
+public sealed record CadControlPolygonGuide(
+    EntityId EntityId,
+    IReadOnlyList<CadPointD> Points,
+    bool Closed,
+    CadHandleStyle Style)
+    : CadHandleItem(Style);

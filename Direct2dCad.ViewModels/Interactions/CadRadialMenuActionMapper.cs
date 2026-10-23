@@ -9,7 +9,7 @@ public static class CadRadialMenuActionMapper
         CadRadialMenuAction action,
         out CadCanvasToolMode toolMode)
     {
-        toolMode = action switch
+        CadCanvasToolMode? mappedMode = action switch
         {
             CadRadialMenuAction.Select => CadCanvasToolMode.Select,
             CadRadialMenuAction.Line => CadCanvasToolMode.Line,
@@ -35,11 +35,29 @@ public static class CadRadialMenuActionMapper
             CadRadialMenuAction.Polyline => CadCanvasToolMode.Polyline,
             CadRadialMenuAction.Polygon => CadCanvasToolMode.Polygon,
             CadRadialMenuAction.Spline => CadCanvasToolMode.Spline,
+            CadRadialMenuAction.SplineCv => CadCanvasToolMode.SplineCv,
+            CadRadialMenuAction.Offset => CadCanvasToolMode.Offset,
+            CadRadialMenuAction.Trim => CadCanvasToolMode.Trim,
+            CadRadialMenuAction.Extend => CadCanvasToolMode.Extend,
+            CadRadialMenuAction.Fillet => CadCanvasToolMode.Fillet,
+            CadRadialMenuAction.Chamfer => CadCanvasToolMode.Chamfer,
+            CadRadialMenuAction.Join => CadCanvasToolMode.Join,
+            CadRadialMenuAction.Break => CadCanvasToolMode.Break,
+            CadRadialMenuAction.RectArray => CadCanvasToolMode.RectArray,
+            CadRadialMenuAction.PolarArray => CadCanvasToolMode.PolarArray,
+            CadRadialMenuAction.DimLinearX => CadCanvasToolMode.DimLinearX,
+            CadRadialMenuAction.DimLinearY => CadCanvasToolMode.DimLinearY,
+            CadRadialMenuAction.DimAligned => CadCanvasToolMode.DimAligned,
+            CadRadialMenuAction.DimRadius => CadCanvasToolMode.DimRadius,
+            CadRadialMenuAction.DimDiameter => CadCanvasToolMode.DimDiameter,
+            CadRadialMenuAction.DimAngular => CadCanvasToolMode.DimAngular,
+            CadRadialMenuAction.Leader => CadCanvasToolMode.Leader,
             CadRadialMenuAction.Text => CadCanvasToolMode.Text,
             CadRadialMenuAction.SetOrigin => CadCanvasToolMode.SetOrigin,
-            _ => default
+            _ => null
         };
 
-        return action is >= CadRadialMenuAction.Select and <= CadRadialMenuAction.SetOrigin;
+        toolMode = mappedMode.GetValueOrDefault();
+        return mappedMode.HasValue;
     }
 }

@@ -63,10 +63,13 @@ internal readonly record struct GeometryPreparationSnapshot(
                 var polylineClosed = polyline.Closed;
                 return new(id, factory => (GeometryFactory.CreatePolyline(factory, points, polylineClosed), points.Length));
             case CadSpline spline:
-                var fitPoints = spline.FitPoints.ToArray();
+                var nurbs = spline.Nurbs;
                 var splineClosed = spline.Closed;
-                return new(id, factory => (GeometryFactory.CreateSpline(factory, fitPoints, splineClosed),
-                    splineClosed ? fitPoints.Length : fitPoints.Length - 1));
+                return new(id, factory =>
+                {
+                    var segments = nurbs.CreateDisplayBeziers();
+                    return (GeometryFactory.CreateSpline(factory, segments, splineClosed), segments.Count);
+                });
             case CadRegion region:
                 var contours = region.Contours.ToArray(); // immutable owned contours
                 return new(id, factory => (GeometryFactory.CreateRegion(factory, contours), contours.Sum(c => c.Edges.Count)));

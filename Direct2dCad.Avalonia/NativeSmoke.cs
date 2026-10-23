@@ -234,6 +234,24 @@ internal static partial class NativeSmoke
             var circleMenu = canvasMenu.Single(item => (string?)item.CommandParameter == "CircleCenterRadius"); circleMenu.Command!.Execute(circleMenu.CommandParameter);
             Assert(vm.CadCanvasToolMode == CadCanvasToolMode.CircleCenterRadius, "Context menu did not activate the circle tool."); vm.SetToolMode(CadCanvasToolMode.Select);
             report.Passed.Add("Full typed editor context menu resolves clipboard, file and drawing commands");
+            var radialIcons = new Views.Generated.RadialIconResources();
+            foreach (var action in Enum.GetValues<Direct2dCad.Client.Common.Settings.CadRadialMenuAction>())
+            {
+                if (action == Direct2dCad.Client.Common.Settings.CadRadialMenuAction.None) continue;
+                Assert(radialIcons.Resources.TryGetValue(action.ToString(), out var resource) &&
+                    resource is global::Avalonia.Controls.Templates.IDataTemplate template && template.Build(null) is Control,
+                    $"Radial icon is missing or cannot be built: {action}");
+                if (!Direct2dCad.ViewModels.Interactions.CadRadialMenuActionMapper.TryGetToolMode(action, out var mode)) continue;
+                var item = canvasMenu.Single(item => (string?)item.CommandParameter == mode.ToString());
+                Assert(item.Icon is Control, $"Context menu icon is missing: {mode}");
+                item.Command!.Execute(item.CommandParameter);
+                Assert(vm.CadCanvasToolMode == mode, $"Context menu did not activate {mode}.");
+                vm.SetToolMode(CadCanvasToolMode.Select);
+                tab.ExecuteRadialMenuActionCommand.Execute(action);
+                Assert(vm.CadCanvasToolMode == mode, $"Radial action did not activate {mode}.");
+                vm.SetToolMode(CadCanvasToolMode.Select);
+            }
+            report.Passed.Add("All drawing/editing/annotation menu actions and radial icons resolve, including separate fit and CV splines");
             vm.SetToolMode(CadCanvasToolMode.CircleCenterRadius);
             var center = vm.CadEditor.Viewport.WorldToScreen(new CadPointD(0, 0));
             vm.PointerDown(center, CadCanvasPointerButton.Left, false); vm.PointerUp(center, CadCanvasPointerButton.Left);
@@ -320,6 +338,17 @@ internal static partial class NativeSmoke
                 await CheckRadialModifierReleaseAsync(window, editorView.Canvas, centerInWindow, report, Assert, output);
                 global::Avalonia.Headless.HeadlessWindowExtensions.MouseUp(window, centerInWindow, global::Avalonia.Input.MouseButton.Middle);
                 Assert(!editorView.Canvas.IsRadialMenuActive, "Middle release did not close the radial menu.");
+                var previousTopAction = vm.UserSettings.Interaction.RadialMenu.MiddleActions[0];
+                vm.UserSettings.Interaction.RadialMenu.MiddleActions[0] = Direct2dCad.Client.Common.Settings.CadRadialMenuAction.SplineCv;
+                var cvSector = centerInWindow + new global::Avalonia.Vector(0, -76);
+                global::Avalonia.Headless.HeadlessWindowExtensions.MouseDown(window, centerInWindow, global::Avalonia.Input.MouseButton.Middle);
+                global::Avalonia.Headless.HeadlessWindowExtensions.MouseMove(window, cvSector, global::Avalonia.Input.RawInputModifiers.MiddleMouseButton);
+                await RadialPixelsAsync(window, centerInWindow, Path.Combine(Path.GetDirectoryName(output)!, "radial-cv-spline.png"));
+                global::Avalonia.Headless.HeadlessWindowExtensions.MouseUp(window, cvSector, global::Avalonia.Input.MouseButton.Middle);
+                Assert(vm.CadCanvasToolMode == CadCanvasToolMode.SplineCv, "Selecting the CV radial sector did not start CV spline drawing.");
+                vm.SetToolMode(CadCanvasToolMode.Select);
+                vm.UserSettings.Interaction.RadialMenu.MiddleActions[0] = previousTopAction;
+                report.Passed.Add("Middle-mouse CV spline sector renders and starts the control-point drawing mode");
                 vm.UserSettings.Interaction.RadialMenu.IsEnabled = radialEnabled;
                 report.Passed.Add("Routed radial menu restores the middle profile after modifier release");
                 await CheckInteractionAuditAsync(window, editorView, report, Assert);
@@ -400,18 +429,35 @@ internal static partial class NativeSmoke
                 splineWindow.Show(window);
                 await global::Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, global::Avalonia.Threading.DispatcherPriority.Background);
                 splineWindow.UpdateLayout();
-                var grid = splineWindow.GetVisualDescendants().OfType<DataGrid>().Single();
+                var grid = splineWindow.GetVisualDescendants().OfType<DataGrid>().Single(g => ReferenceEquals(g.ItemsSource, splineModel.FitPoints));
                 grid.SelectedItem = splineModel.FitPoints[1]; grid.CurrentColumn = grid.Columns[2];
                 grid.ScrollIntoView(grid.SelectedItem, grid.CurrentColumn); grid.UpdateLayout(); grid.Focus();
                 Assert(grid.BeginEdit(), "Native spline grid could not enter cell editing.");
                 grid.GetVisualDescendants().OfType<TextBox>().Single().Text = "-2.5";
                 Assert(grid.CommitEdit(DataGridEditingUnit.Row, true) && ((CadSpline)document.Entities[splineId]).FitPoints[1].Y == -2.5, "Spline grid did not commit the fit point.");
+                Assert(!splineWindow.GetVisualDescendants().OfType<DataGrid>().Single(g => ReferenceEquals(g.ItemsSource, splineModel.ControlPoints)).IsEffectivelyVisible, "Fit spline exposed control editors.");
+                vm.Undo(); Assert(((CadSpline)document.Entities[splineId]).FitPoints[1].Y == 5, "Spline grid editing is not undoable.");
+                splineId = vm.CadEditor.AddSpline(new CadSplineGeometry(CadNurbsCurve.CreateUniform([new(0, 0), new(10, 5), new(20, 0)], 2)));
+                vm.SelectEntities([splineId]);
+                splineModel = (Direct2dCad.ViewModels.Toolboxes.EntityProperty.SplinePropertyViewModel)main.EntityProperties.Entity!;
+                splineWindow.Content = KnownViews.Create(splineModel);
+                await global::Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, global::Avalonia.Threading.DispatcherPriority.Background);
+                splineWindow.UpdateLayout();
+                Assert(!splineWindow.GetVisualDescendants().OfType<DataGrid>().Single(g => ReferenceEquals(g.ItemsSource, splineModel.FitPoints)).IsEffectivelyVisible, "CV spline exposed fit editors.");
+                grid = splineWindow.GetVisualDescendants().OfType<DataGrid>().Single(g => ReferenceEquals(g.ItemsSource, splineModel.ControlPoints));
+                Assert(grid.IsEffectivelyVisible && grid.Columns.Count == 4 && grid.ItemsSource is System.Collections.IEnumerable controlRows && controlRows.Cast<object>().Count() == 3, "NURBS control-point grid did not finish loading.");
+                grid.SelectedItem = splineModel.ControlPoints[1]; grid.SelectedIndex = 1; grid.CurrentColumn = grid.Columns[3];
+                grid.ScrollIntoView(grid.SelectedItem, grid.CurrentColumn); grid.UpdateLayout(); grid.Focus();
+                Assert(grid.BeginEdit(), $"NURBS weight grid could not enter cell editing (selected={grid.SelectedIndex}, column={grid.CurrentColumn?.Header}, readOnly={grid.IsReadOnly}/{grid.CurrentColumn?.IsReadOnly}, visible={grid.IsEffectivelyVisible}, bounds={grid.Bounds}).");
+                grid.GetVisualDescendants().OfType<TextBox>().Single().Text = "2";
+                Assert(grid.CommitEdit(DataGridEditingUnit.Row, true) && ((CadSpline)document.Entities[splineId]).Weights[1] == 2, "NURBS weight did not commit.");
+                vm.Undo(); Assert(((CadSpline)document.Entities[splineId]).Weights[1] == 1, "NURBS weight edit is not undoable.");
             }
             finally { splineWindow.Close(); }
-            vm.Undo(); Assert(((CadSpline)document.Entities[splineId]).FitPoints[1].Y == 5, "Spline grid editing is not undoable."); vm.ClearSelection();
+            vm.ClearSelection();
             var numberConverter = CadGridNumberConverter.Instance;
             Assert(Equals(numberConverter.ConvertBack("1,5", typeof(double), null, System.Globalization.CultureInfo.GetCultureInfo("de-DE")), 1.5), "Grid numeric input ignored its culture.");
-            report.Passed.Add("Spline DataGrid fit point editing, undo and culture-aware numeric conversion");
+            report.Passed.Add("Separate fit/CV spline property grids, rational weights, undo and culture-aware numeric conversion");
 
             var storage = new CadDocumentStorage(); var path = Path.Combine(Path.GetDirectoryName(output)!, "smoke.d2cad");
             await storage.SaveAsync(document, path); var loaded = await storage.LoadAsync(path);
@@ -618,8 +664,8 @@ internal static partial class NativeSmoke
             var settingsVm = new Direct2dCad.ViewModels.Settings.UserSettings.UserSettingsViewModel(user, settings, _ => { });
             foreach (var section in settingsVm.Sections) { var settingsView = KnownViews.Create(section); Assert(settingsView is not null, "Missing typed settings view."); settingsView!.Measure(new global::Avalonia.Size(480, 800)); settingsView.Arrange(new global::Avalonia.Rect(0, 0, 480, 800)); }
             var radialSettings = settingsVm.Interaction.RadialMenu; var previousAction = radialSettings.SelectedProfile.Slots[0].SelectedAction;
-            radialSettings.SelectedProfile.Slots[0].SelectedAction = radialSettings.ActionOptions.First(o => o.Action == Direct2dCad.Client.Common.Settings.CadRadialMenuAction.Line);
-            Assert(settingsVm.TryApply() && settings.Load().Interaction.RadialMenu.MiddleActions[0] == Direct2dCad.Client.Common.Settings.CadRadialMenuAction.Line, "Radial slot settings did not persist."); settings.Save(user);
+            radialSettings.SelectedProfile.Slots[0].SelectedAction = radialSettings.ActionOptions.First(o => o.Action == Direct2dCad.Client.Common.Settings.CadRadialMenuAction.SplineCv);
+            Assert(settingsVm.TryApply() && settings.Load().Interaction.RadialMenu.MiddleActions[0] == Direct2dCad.Client.Common.Settings.CadRadialMenuAction.SplineCv, "CV spline radial slot settings did not persist."); settings.Save(user);
             report.Passed.Add("Typed settings forms and radial slot persistence");
             var culture = services.GetRequiredService<IApplicationCultureService>(); var oldCulture = culture.GetCurrentCultureLCID();
             var fileMenu = window.GetLogicalDescendants().OfType<Menu>().First().Items.OfType<MenuItem>().First();

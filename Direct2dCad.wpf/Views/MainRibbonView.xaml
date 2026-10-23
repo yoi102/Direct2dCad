@@ -1357,18 +1357,33 @@
                                             ContentTemplate="{StaticResource CadPolygonIconTemplate}" />
                         </ToggleButton>
 
-                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.Spline}}"
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.SplineFit}}"
                                       IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.Spline}}"
                                       Width="33"
                                       Height="33"
                                       Margin="5"
                                       Padding="0"
-                                      x:Name="SplineToggleButton"
+                                      x:Name="SplineToggleButton" AutomationProperties.AutomationId="SplineToolButton" AutomationProperties.Name="{I18N {x:Static r:LangKeys.SplineFit}}"
                                       Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
                                       CommandParameter="Spline">
                             <ContentControl Width="33"
                                             Height="33"
                                             ContentTemplate="{StaticResource CadSplineIconTemplate}" />
+
+                        </ToggleButton>
+
+                        <ToggleButton ToolTip="{I18N {x:Static r:LangKeys.SplineCv}}"
+                                      IsChecked="{Binding CurrentEditorTabViewModel.CadCanvasToolMode, Mode=OneWay, Converter={x:Static cv:EnumToBooleanConverter.Instance}, ConverterParameter={x:Static vm_en:CadCanvasToolMode.SplineCv}}"
+                                      Width="33"
+                                      Height="33"
+                                      Margin="5"
+                                      Padding="0"
+                                      x:Name="SplineCvToggleButton" AutomationProperties.AutomationId="SplineCvToolButton" AutomationProperties.Name="{I18N {x:Static r:LangKeys.SplineCv}}"
+                                      Command="{Binding CurrentEditorTabViewModel.SetCadCanvasToolModeCommand}"
+                                      CommandParameter="SplineCv">
+                            <ContentControl Width="33"
+                                            Height="33"
+                                            ContentTemplate="{StaticResource CadSplineCvIconTemplate}" />
 
                         </ToggleButton>
 

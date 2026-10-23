@@ -311,7 +311,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         var complexity = entity switch
         {
             CadPolyline polyline => polyline.Points.Count,
-            CadSpline spline => spline.FitPoints.Count * 4,
+            CadSpline => Math.Max(resources.GeometryComplexity, 1) * 4,
             CadRegion region => region.Contours.Sum(c => c.Edges.Count),
             CadCompositePath path => path.Segments.Sum(segment => segment is CadCompositeSplineSegment spline
                 ? spline.FitPoints.Count * 4
@@ -351,7 +351,7 @@ internal sealed class Direct2DGeometryRealizationCache : IDisposable
         return entity switch
         {
             CadPolyline polyline => polyline.Points.Count >= MinimumPolylinePointCount,
-            CadSpline spline => spline.FitPoints.Count >= MinimumSplineFitPointCount,
+            CadSpline spline => spline.EditPoints.Count >= MinimumSplineFitPointCount,
             CadRegion region => region.Contours.Sum(c => c.Edges.Count) >= 8,
             CadCompositePath path => path.Segments.Count >= 8,
             CadShapeText => resources.GeometryComplexity >= MinimumShapeTextSegmentCount,

@@ -84,6 +84,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
         {
             RefreshLayerOptions(_documentViewModel, spline);
             RebuildFitPoints(spline.FitPoints);
+            RefreshNurbs(spline);
             IsClosed = spline.Closed;
             RefreshFillStyleOptions(spline.FillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, spline.FillStyleId);
@@ -107,7 +108,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
         if (_isRefreshing)
             return;
 
-        if (value && FitPoints.Count < 3)
+        if (value && EditPointCount < 3)
         {
             _isRefreshing = true;
             try
@@ -121,7 +122,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
             return;
         }
 
-        CommitGeometryFromFitPoints();
+        if (TryGetSpline(out var spline)) ApplyGeometry(() => spline.Geometry.WithClosed(value));
         OnPropertyChanged(nameof(FillControlsEnabled));
         OnPropertyChanged(nameof(FillColorControlsEnabled));
     }
@@ -286,7 +287,7 @@ public partial class SplinePropertyViewModel : EntityPropertyViewModel,
             return;
 
         _documentViewModel.CadEditor.SetSplineGeometry(EntityId, fitPoints, IsClosed);
-        RaiseGeometrySummaryChanged();
+        RefreshFromEntity();
     }
 
     private void RebuildFitPoints(IReadOnlyList<CadPointD> fitPoints)
@@ -481,6 +482,8 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel,
     }
 
     public CadDocumentViewModel DocumentViewModel => _documentViewModel;
+    public bool IsControlDefined => _documentViewModel.CadCanvasToolMode == Direct2dCad.ViewModels.Enums.CadCanvasToolMode.SplineCv;
+    public bool IsFitDefined => !IsControlDefined;
 
     protected override CadStrokeStyle DrawingStrokeStyle
     {
@@ -533,6 +536,8 @@ public partial class TransientSplinePropertyViewModel : EntityPropertyViewModel,
         {
             RefreshDrawingLayerOptions(_documentViewModel);
             IsClosed = _documentViewModel.DrawingDefaults.SplineClosed;
+            OnPropertyChanged(nameof(IsControlDefined));
+            OnPropertyChanged(nameof(IsFitDefined));
             RefreshFillStyleOptions(_documentViewModel.DrawingDefaults.SplineFillStyleId);
             FillColor = CirclePropertyViewModel.ResolveFillColor(_documentViewModel.CadEditor.Document, _documentViewModel.DrawingDefaults.SplineFillStyleId);
             StrokeColor = _documentViewModel.DrawingDefaults.SplineStrokeColor;

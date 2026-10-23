@@ -507,6 +507,7 @@ public partial class CadCanvas : IDisposable
             return;
         }
         if (DocumentViewModel is null) return;
+        if (DocumentViewModel.TryClearDynamicInputLocks()) return;
         EndCapturedPointerGesture();
         ApplyInteractionResult(DocumentViewModel.Escape());
     }

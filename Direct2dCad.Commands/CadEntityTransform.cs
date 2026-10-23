@@ -36,7 +36,7 @@ internal static class CadEntityTransform
                 polyline.ReplacePoints(polyline.Points.Select(x => x + delta));
                 break;
             case CadSpline spline:
-                spline.ReplaceFitPoints(spline.FitPoints.Select(x => x + delta));
+                spline.SetGeometry(spline.Geometry.Transform(x => x + delta));
                 break;
             case CadRegion region:
                 region.ReplaceGeometry(region.Contours.Select(c => c.Transform(point => point + delta)));
@@ -107,7 +107,7 @@ internal static class CadEntityTransform
                 polyline.ReplacePoints(polyline.Points.Select(point => RotatePoint(point, pivot, angleRadians)));
                 break;
             case CadSpline spline:
-                spline.ReplaceFitPoints(spline.FitPoints.Select(point => RotatePoint(point, pivot, angleRadians)));
+                spline.SetGeometry(spline.Geometry.Transform(point => RotatePoint(point, pivot, angleRadians)));
                 break;
             case CadRegion region:
                 region.ReplaceGeometry(region.Contours.Select(c => c.Transform(point => RotatePoint(point, pivot, angleRadians))));
@@ -177,7 +177,7 @@ internal static class CadEntityTransform
                 polyline.ReplacePoints(polyline.Points.Select(point => ScalePoint(point, pivot, factor)));
                 break;
             case CadSpline spline:
-                spline.ReplaceFitPoints(spline.FitPoints.Select(point => ScalePoint(point, pivot, factor)));
+                spline.SetGeometry(spline.Geometry.Transform(point => ScalePoint(point, pivot, factor)));
                 break;
             case CadRegion region:
                 region.ReplaceGeometry(region.Contours.Select(c => c.Transform(point => ScalePoint(point, pivot, factor))));
@@ -267,7 +267,7 @@ internal static class CadEntityTransform
                 polyline.ReplacePoints(polyline.Points.Select(Transform));
                 break;
             case CadSpline spline:
-                spline.ReplaceFitPoints(spline.FitPoints.Select(Transform));
+                spline.SetGeometry(spline.Geometry.Transform(Transform));
                 break;
             case CadRegion region:
                 region.ReplaceGeometry(region.Contours.Select(c => c.Transform(Transform, mirrored: true)));

@@ -1489,7 +1489,7 @@
   <data name="EditTools" xml:space="preserve"><value>修正</value></data>
   <data name="EditChooseSource" xml:space="preserve"><value>編集するオブジェクトを選択</value></data>
   <data name="EditChooseSide" xml:space="preserve"><value>マウスで D を調整、クリックで作成。Tab: 入力、Enter: 終了</value></data>
-  <data name="EditChooseSideLocked" xml:space="preserve"><value>距離固定、クリックで作成。Ctrl+Delete: マウス追従、Enter: 終了</value></data>
+  <data name="EditChooseSideLocked" xml:space="preserve"><value>距離固定、クリックで作成。Esc: 固定解除、Enter: 終了</value></data>
   <data name="EditKeyboardHint" xml:space="preserve"><value>Enter: 次へ / 確定 · R: 選び直す · Esc: 取消</value></data>
   <data name="EditChooseBoundaries" xml:space="preserve"><value>境界を選び Enter で次へ。再クリックで選択解除</value></data>
   <data name="EditChooseSegment" xml:space="preserve"><value>対象に重ねて確認。赤は削除、緑は追加。クリックで適用</value></data>
@@ -1629,7 +1629,7 @@
   <data name="DimensionTextAndArrows" xml:space="preserve"><value>文字と矢印</value></data>
   <data name="DimensionDetails" xml:space="preserve"><value>尺度と寸法線</value></data>
   <data name="DimensionLineWeight" xml:space="preserve"><value>寸法線幅（mm）</value></data>
-  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切替 · Enter 確定 · Esc 数値入力を破棄してキャンバスへ · F4 スナップ候補切替</value></data>
+  <data name="DynamicInputHint" xml:space="preserve"><value>Tab 切替 · Enter 確定 · Esc 固定解除、固定がなければ終了 · F4 スナップ候補切替</value></data>
   <data name="ShortcutApplicationScope" xml:space="preserve"><value>メインウィンドウと CAD フローティングパネルで有効です。Esc はポップアップ、入力、描画の順に一段階ずつ中止します。モーダルダイアログでは専用のキー操作が優先されます。</value></data>
   <data name="ShortcutCanvasScope" xml:space="preserve"><value>描画キャンバスにキーボードフォーカスがあるときに有効です。テキスト欄では文字を編集します。</value></data>
   <data name="ShortcutTerminalScope" xml:space="preserve"><value>Enter 送信 · 上下キー 候補または履歴 · Tab 候補補完 · Shift+Tab 前のコントロール · Esc 候補を閉じる、中止、またはキャンバスへ。下書きは保持</value></data>
@@ -1702,4 +1702,13 @@
   <data name="Loading" xml:space="preserve"><value>読み込み中…</value></data>
   <data name="Overwrite" xml:space="preserve"><value>上書き</value></data>
   <data name="Topmost" xml:space="preserve"><value>常に最前面</value></data>
+  <data name="ControlPoints" xml:space="preserve"><value>制御点</value></data>
+  <data name="NurbsDegree" xml:space="preserve"><value>次数</value></data>
+  <data name="NurbsKnots" xml:space="preserve"><value>ノットベクトル</value></data>
+  <data name="NurbsWeight" xml:space="preserve"><value>重み</value></data>
+  <data name="NurbsApplyKnots" xml:space="preserve"><value>次数 / ノットを適用</value></data>
+  <data name="NurbsUniform" xml:space="preserve"><value>均等ノットを再構築</value></data>
+  <data name="NurbsRebuildHint" xml:space="preserve"><value>制御点の追加・削除やノットの再構築で形状が変わります。</value></data>
+  <data name="SplineCv" xml:space="preserve"><value>CV スプライン（制御点）</value></data>
+  <data name="SplineFit" xml:space="preserve"><value>スプライン（フィット点）</value></data>
 </root>

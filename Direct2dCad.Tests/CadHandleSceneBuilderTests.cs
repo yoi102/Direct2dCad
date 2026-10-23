@@ -7,6 +7,30 @@ namespace Direct2dCad.Tests;
 
 public sealed class CadHandleSceneBuilderTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CvSplineGuidesConnectOnlyEditableControlPointsAndRespectGripVisibility(bool closed)
+    {
+        var document = CadDocument.Create("CV guides");
+        CadPointD[] points = [new(0, 0), new(0, 100), new(100, 100), new(100, 0)];
+        var cv = document.AddSpline(new CadSplineGeometry(CadNurbsCurve.CreateUniform(points, 3, closed: closed), closed));
+        var fit = document.AddSpline(points, closed);
+        var builder = new CadHandleSceneBuilder();
+        var items = builder.BuildSelectionHandles(document, [cv.Id, fit.Id]);
+        var guide = Assert.Single(items.OfType<CadControlPolygonGuide>());
+        Assert.Equal(cv.Id, guide.EntityId);
+        Assert.Equal(points, guide.Points);
+        Assert.Equal(closed, guide.Closed);
+        Assert.Equal(4, items.OfType<CadGripHandle>().Count(g => g.EntityId == cv.Id && g.Type == CadHandleType.Vertex));
+        var scene = new CadHandleScene();
+        scene.Replace([guide]);
+        Assert.False(new CadHandleHitTester().TryHitGrip(scene, p => p, new(50, 100), out _));
+        Assert.Empty(builder.BuildSelectionHandles(document, [cv.Id], new(IncludeGripHandles: false)).OfType<CadControlPolygonGuide>());
+        document.GetLayer(cv.LayerId).SetLocked(true);
+        Assert.Empty(builder.BuildSelectionHandles(document, [cv.Id]).OfType<CadControlPolygonGuide>());
+    }
+
     [Fact]
     public void VersionedSelectionReuseRefreshesOrderVisibilitySelectionAndDocument()
     {

@@ -796,6 +796,18 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
 
         switch (action)
         {
+            case CadRadialMenuAction.BooleanUnion:
+                if (BooleanUnionCommand.CanExecute(null))
+                    BooleanUnionCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.BooleanIntersection:
+                if (BooleanIntersectionCommand.CanExecute(null))
+                    BooleanIntersectionCommand.Execute(null);
+                break;
+            case CadRadialMenuAction.BooleanDifference:
+                if (BooleanDifferenceCommand.CanExecute(null))
+                    BooleanDifferenceCommand.Execute(null);
+                break;
             case CadRadialMenuAction.Undo:
                 if (UndoCommand.CanExecute(null))
                     UndoCommand.Execute(null);

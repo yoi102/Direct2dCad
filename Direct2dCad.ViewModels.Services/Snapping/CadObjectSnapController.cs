@@ -55,8 +55,8 @@ internal sealed class CadObjectSnapController
                 }
                 if (entity is CadSpline spline)
                 {
-                    Add(transform.TransformPoint(spline.FitPoints[0]),CadObjectSnapModes.Endpoint,0);
-                    Add(transform.TransformPoint(spline.FitPoints[^1]),CadObjectSnapModes.Endpoint,0);
+                    Add(transform.TransformPoint(spline.Nurbs.Evaluate(spline.Nurbs.ParameterStart)),CadObjectSnapModes.Endpoint,0);
+                    Add(transform.TransformPoint(spline.Nurbs.Evaluate(spline.Nurbs.ParameterEnd)),CadObjectSnapModes.Endpoint,0);
                 }
                 IReadOnlyList<CadPlanarPrimitive> local;
                 try { local = CadPlanarCurves.Get(entity); } catch (NotSupportedException) { return; }

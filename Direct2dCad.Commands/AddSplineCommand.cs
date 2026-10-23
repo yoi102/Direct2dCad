@@ -7,8 +7,7 @@ namespace Direct2dCad.Commands;
 
 public sealed class AddSplineCommand : ICadCommand
 {
-    private readonly CadPointD[] _fitPoints;
-    private readonly bool _closed;
+    private readonly CadSplineGeometry _geometry;
     private readonly LayerId? _layerId;
     private readonly StyleId? _graphicStyleId;
     private readonly StyleId? _fillStyleId;
@@ -36,13 +35,7 @@ public sealed class AddSplineCommand : ICadCommand
     {
         ArgumentNullException.ThrowIfNull(fitPoints);
 
-        _fitPoints = fitPoints.ToArray();
-        if (_fitPoints.Length < 2)
-            throw new ArgumentException("Spline requires at least two fit points.", nameof(fitPoints));
-        if (closed && _fitPoints.Length < 3)
-            throw new ArgumentException("Closed spline requires at least three fit points.", nameof(fitPoints));
-
-        _closed = closed;
+        _geometry = CadSplineGeometry.FromFitPoints(fitPoints, closed);
         _layerId = layerId;
         _graphicStyleId = graphicStyleId;
         _fillStyleId = fillStyleId;
@@ -51,6 +44,15 @@ public sealed class AddSplineCommand : ICadCommand
         _zIndex = zIndex;
         _isVisible = isVisible;
         _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
+    }
+
+    public AddSplineCommand(CadSplineGeometry geometry, LayerId? layerId = null, StyleId? graphicStyleId = null,
+        StyleId? fillStyleId = null, string name = "", CadLineWeight? lineWeight = null, int zIndex = 0,
+        bool isVisible = true, CadStrokeStyle? strokeStyle = null)
+    {
+        _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
+        _layerId = layerId; _graphicStyleId = graphicStyleId; _fillStyleId = fillStyleId; _name = name;
+        _lineWeight = lineWeight; _zIndex = zIndex; _isVisible = isVisible; _strokeStyle = strokeStyle ?? CadStrokeStyle.Default;
     }
 
     public CadDocumentChangeSet Execute(CadDocument document)
@@ -73,8 +75,7 @@ public sealed class AddSplineCommand : ICadCommand
         }
 
         var spline = document.AddSpline(
-            _fitPoints,
-            _closed,
+            _geometry,
             _layerId,
             _graphicStyleId,
             _fillStyleId,

@@ -11,7 +11,7 @@ internal static partial class CadEntityQuery
     internal static readonly string[] EntityTypeNames =
     [
         "Line", "Circle", "Arc", "Ellipse", "EllipseArc", "Rectangle", "Polyline", "Spline",
-        "CompositePath", "Text", "ShapeText", "Image", "OleObject", "BlockReference", "Dimension"
+        "CompositePath", "Region", "Text", "ShapeText", "Image", "OleObject", "BlockReference", "Dimension"
     ];
     internal static readonly string[] CapabilityNames =
     [

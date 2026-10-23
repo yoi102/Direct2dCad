@@ -5,13 +5,20 @@ namespace Direct2dCad.Db.Data.Entities;
 public sealed class CadSpline : Curve
 {
     private const int DefaultFlattenStepsPerSegment = 20;
-    private readonly List<CadPointD> _fitPoints = [];
-    private IReadOnlyList<CadBezierSegmentD> _bezierSegments = [];
+    private CadSplineGeometry _geometry = null!;
+    private IReadOnlyList<CadBezierSegmentD>? _bezierSegments;
     private CadRectD _bounds = CadRectD.Empty;
     private double? _length;
 
-    public IReadOnlyList<CadPointD> FitPoints => _fitPoints;
-    public bool Closed { get; private set; }
+    public CadSplineGeometry Geometry => _geometry;
+    public CadNurbsCurve Nurbs => _geometry.Curve;
+    public IReadOnlyList<CadPointD> FitPoints => _geometry.FitPoints;
+    public IReadOnlyList<CadPointD> ControlPoints => Nurbs.ControlPoints;
+    public IReadOnlyList<double> Knots => Nurbs.Knots;
+    public IReadOnlyList<double> Weights => Nurbs.Weights;
+    public int Degree => Nurbs.Degree;
+    public IReadOnlyList<CadPointD> EditPoints => _geometry.EditPoints;
+    public bool Closed => _geometry.Closed;
 
     public override bool IsClosed => Closed;
 
@@ -40,8 +47,16 @@ public sealed class CadSpline : Curve
         string name = "")
         : base(id, layerId, ownerBlockId, name)
     {
-        ReplaceFitPoints(fitPoints);
-        SetClosed(closed);
+        SetGeometry(CadSplineGeometry.FromFitPoints(fitPoints, closed));
+    }
+
+    internal CadSpline(EntityId id, LayerId layerId, BlockId ownerBlockId, CadSplineGeometry geometry, string name = "")
+        : base(id, layerId, ownerBlockId, name) => SetGeometry(geometry);
+
+    public void SetGeometry(CadSplineGeometry geometry)
+    {
+        _geometry = geometry ?? throw new ArgumentNullException(nameof(geometry));
+        RebuildDerivedGeometry();
     }
 
     public void ReplaceFitPoints(IEnumerable<CadPointD> fitPoints)
@@ -52,43 +67,33 @@ public sealed class CadSpline : Curve
         if (list.Length < 2)
             throw new ArgumentException("Spline requires at least two fit points.", nameof(fitPoints));
 
-        _fitPoints.Clear();
-        _fitPoints.AddRange(list);
-
-        if (Closed && _fitPoints.Count < 3)
-            Closed = false;
-
-        RebuildDerivedGeometry();
+        SetGeometry(CadSplineGeometry.FromFitPoints(list, Closed && list.Length >= 3));
     }
 
     public void SetClosed(bool closed)
     {
-        if (closed && _fitPoints.Count < 3)
+        if (closed && EditPoints.Count < 3)
             throw new InvalidOperationException("Closed spline requires at least three fit points.");
 
         if (Closed == closed)
             return;
 
-        Closed = closed;
-        RebuildDerivedGeometry();
+        SetGeometry(_geometry.WithClosed(closed));
     }
 
     public IReadOnlyList<CadBezierSegmentD> GetBezierSegments()
     {
-        return _bezierSegments;
+        return _bezierSegments ??= Nurbs.CreateDisplayBeziers();
     }
 
     public IEnumerable<CadPointD> EnumerateFlattenedPoints(int stepsPerSegment = DefaultFlattenStepsPerSegment)
     {
         stepsPerSegment = Math.Max(1, stepsPerSegment);
-        if (_bezierSegments.Count == 0)
-            yield break;
-
-        yield return _bezierSegments[0].Start;
-        foreach (var segment in _bezierSegments)
+        yield return Nurbs.Evaluate(Nurbs.ParameterStart);
+        foreach (var span in Nurbs.ParameterSpans())
         {
             for (var step = 1; step <= stepsPerSegment; step++)
-                yield return segment.Evaluate((double)step / stepsPerSegment);
+                yield return Nurbs.Evaluate(span.Start + (span.End - span.Start) * step / stepsPerSegment);
         }
     }
 
@@ -130,9 +135,8 @@ public sealed class CadSpline : Curve
     private void RebuildDerivedGeometry()
     {
         _length = null;
-        _bezierSegments = CreateBezierSegments(_fitPoints, Closed);
-
-        _bounds = CalculateBounds(_fitPoints, _bezierSegments);
+        _bezierSegments = null;
+        _bounds = Nurbs.Bounds;
     }
 
     public static CadRectD CalculateBounds(IReadOnlyList<CadPointD> fitPoints, IReadOnlyList<CadBezierSegmentD> segments)

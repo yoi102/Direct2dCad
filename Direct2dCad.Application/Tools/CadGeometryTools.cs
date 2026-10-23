@@ -145,7 +145,7 @@ internal static class CadGeometryTools
         CadPolyline => [new SetPolylineGeometryCommand(entity.Id,
             CadDocumentToolExecutor.RequiredPoints(arguments, "points", 2), RequiredBool(arguments, "closed"))],
         CadSpline => [new SetSplineGeometryCommand(entity.Id,
-            CadDocumentToolExecutor.RequiredPoints(arguments, "fit_points", 2), RequiredBool(arguments, "closed"))],
+            CadSplineTools.Parse(arguments))],
         CadCompositePath => CreateCompositePathGeometryCommands(entity.Id, arguments),
         CadText => [new SetTextGeometryCommand(entity.Id,
             RequiredPoint(arguments, "position"),
@@ -230,6 +230,13 @@ internal static class CadGeometryTools
         CadPolyline polyline => new { points = polyline.Points.Select(PointDto).ToArray(), closed = polyline.Closed },
         CadSpline spline => new
         {
+            definition = spline.Geometry.IsFitDefined ? "fit_points" : "control_points",
+            degree = spline.Degree,
+            control_points = spline.ControlPoints.Select(PointDto).ToArray(),
+            knots = spline.Knots,
+            weights = spline.Weights,
+            periodic = spline.Nurbs.IsPeriodic,
+            bezier_segments_are_display_approximation = true,
             fit_points = spline.FitPoints.Select(PointDto).ToArray(),
             closed = spline.Closed,
             bezier_segments = spline.GetBezierSegments().Select(segment => new
@@ -325,6 +332,7 @@ internal static class CadGeometryTools
     private static object GeometryMutationSchema()
     {
         var properties = GeometryProperties();
+        foreach (var pair in CadSplineTools.Properties()) properties[pair.Key] = pair.Value;
         properties["document_id"] = DocumentIdSchema();
         properties["entity_id"] = EntityIdSchema();
         properties["entity_type"] = new
@@ -360,6 +368,7 @@ internal static class CadGeometryTools
                 new { required = new[] { "corner_radius_y" } },
                 new { required = new[] { "points" } },
                 new { required = new[] { "fit_points" } },
+                new { required = new[] { "control_points" } },
                 new { required = new[] { "segments" } },
                 new { required = new[] { "closed" } },
                 new { required = new[] { "position" } },
@@ -456,7 +465,7 @@ internal static class CadGeometryTools
         ConditionalRequiredForProperty("EllipseArc", "entity_type", "center", "radius_x", "radius_y", "start_angle_degrees", "sweep_angle_degrees"),
         ConditionalRequiredForProperty("Rectangle", "entity_type", "bounds"),
         ConditionalRequiredForProperty("Polyline", "entity_type", "points", "closed"),
-        ConditionalRequiredForProperty("Spline", "entity_type", "fit_points", "closed"),
+        ConditionalRequiredForProperty("Spline", "entity_type", "closed"),
         ConditionalRequiredForProperty("CompositePath", "entity_type", "start", "segments", "closed"),
         ConditionalRequiredForProperty("Text", "entity_type", "position", "height", "rotation_degrees"),
         ConditionalRequiredForProperty("ShapeText", "entity_type", "position", "height", "rotation_degrees"),

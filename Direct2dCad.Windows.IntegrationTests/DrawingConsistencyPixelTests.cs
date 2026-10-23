@@ -72,7 +72,7 @@ public sealed class DrawingConsistencyPixelTests
 
     public static IEnumerable<object[]> FarCases()
     {
-        foreach (var shape in new[] { "line", "circle", "ellipse", "ellipse-arc", "rectangle", "arc", "polyline", "spline", "region", "composite", "text", "shape-text", "image", "block", "nested-block" })
+        foreach (var shape in new[] { "line", "circle", "ellipse", "ellipse-arc", "rectangle", "arc", "polyline", "spline", "nurbs", "region", "composite", "text", "shape-text", "image", "block", "nested-block" })
         foreach (var path in new[] { "entity", "selection", "translated", "uncached" })
         foreach (var background in new[] { false, true })
             yield return [shape, path, background];
@@ -95,6 +95,7 @@ public sealed class DrawingConsistencyPixelTests
     [InlineData("ellipse-arc")]
     [InlineData("polyline")]
     [InlineData("spline")]
+    [InlineData("nurbs")]
     [InlineData("composite")]
     [InlineData("text")]
     [InlineData("image")]
@@ -259,6 +260,9 @@ public sealed class DrawingConsistencyPixelTests
             "rectangle" => document.AddRectangle(CadRectD.FromCenter(center, 32, 16), cornerRadiusX: 3, cornerRadiusY: 4),
             "polyline" => document.AddPolyline(points, false),
             "spline" => document.AddSpline(points, false),
+            "nurbs" => document.AddSpline(new CadSplineGeometry(new CadNurbsCurve(2,
+                [center + new CadVectorD(12,0),center + new CadVectorD(12,12),center + new CadVectorD(0,12)],
+                [0,0,0,1,1,1],[1,Math.Sqrt(.5),1]))),
             "region" => document.AddRegion([new CadRegionContour([CadPlanarPrimitive.Arc(center, 12, 0, Math.Tau)])]),
             "composite" => document.AddCompositePath(points[0], [new CadCompositeLineSegment(points[1]), new CadCompositeSplineSegment([points[1], center, points[2]])], false),
             "text" => document.AddText("CAD", center, 5),
@@ -297,7 +301,7 @@ public sealed class DrawingConsistencyPixelTests
         CadEllipse v => new CadTransientEllipse(v.Center, v.RadiusX, v.RadiusY, RedStyle, v.RotationRadians),
         CadEllipseArc v => new CadTransientEllipseArc(v.Center, v.RadiusX, v.RadiusY, v.StartAngleRadians, v.SweepAngleRadians, RedStyle, v.RotationRadians),
         CadPolyline v => new CadTransientPolyline(v.Points, v.Closed, RedStyle),
-        CadSpline v => new CadTransientSpline(v.FitPoints, v.Closed, RedStyle),
+        CadSpline v => new CadTransientSpline(v.EditPoints, v.Closed, RedStyle, v.Geometry),
         CadCompositePath v => new CadTransientCompositePath(v.StartPoint, v.Segments, v.Closed, v.Bounds, RedStyle),
         CadText v => new CadTransientText(v.Text, v.Position, v.Height, v.TextBounds, RedStyle),
         CadImage v => new CadTransientImage(v.FrameBounds, v.PixelWidth, v.PixelHeight, v.Stride, v.PixelMemory, RedStyle, RotationRadians: v.RotationRadians),

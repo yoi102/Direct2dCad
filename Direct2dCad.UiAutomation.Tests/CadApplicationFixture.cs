@@ -48,12 +48,19 @@ public sealed class CadApplicationFixture : IDisposable
 
         Application = FlaUiApplication.Launch(startInfo);
         Automation = new UIA3Automation();
-        MainWindow = Application.GetMainWindow(
-                         Automation,
-                         TimeSpan.FromSeconds(30)) ??
-                     throw new InvalidOperationException(
-                         "Direct2dCad did not create its main window within 30 seconds.");
-        MainWindow.Focus();
+        try
+        {
+            // The first visible process HWND can be an IME language indicator.
+            // Identify the actual application window before using UIA patterns.
+            MainWindow = WaitForWindow("Direct2dCad.MainWindow", TimeSpan.FromSeconds(30));
+            WaitForMainWindowPatterns();
+            MainWindow.Focus();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
     }
 
     public void RestartAfterExit()
@@ -61,9 +68,24 @@ public sealed class CadApplicationFixture : IDisposable
         if (!Application.HasExited) throw new InvalidOperationException("The previous test process is still running.");
         Application.Dispose();
         Application = FlaUiApplication.Launch(_startInfo);
-        MainWindow = Application.GetMainWindow(Automation, TimeSpan.FromSeconds(30)) ??
-            throw new InvalidOperationException("Direct2dCad did not create its main window after restarting.");
+        MainWindow = WaitForWindow("Direct2dCad.MainWindow", TimeSpan.FromSeconds(30));
+        WaitForMainWindowPatterns();
         MainWindow.Focus();
+    }
+
+    private void WaitForMainWindowPatterns()
+    {
+        var handle = MainWindow.Properties.NativeWindowHandle.Value;
+        WaitUntil(() =>
+        {
+            // An HWND can be discovered before WPF has attached its UIA provider.
+            // Reacquire the element so an initial native fallback is not retained.
+            var window = Automation.FromHandle(handle).AsWindow();
+            if (!window.Patterns.Window.IsSupported || !window.Patterns.Transform.IsSupported)
+                return false;
+            MainWindow = window;
+            return true;
+        }, "The main window did not expose its window and transform patterns.", TimeSpan.FromSeconds(30));
     }
 
     public AutomationElement WaitForElement(string automationId, TimeSpan? timeout = null, bool includePopups = false)
@@ -94,6 +116,7 @@ public sealed class CadApplicationFixture : IDisposable
             Thread.Sleep(50);
         }
 
+        CaptureTimeout($"Automation element '{automationId}' was not found.");
         throw new TimeoutException(
             $"Automation element '{automationId}' was not found within {effectiveTimeout}.", lastAutomationError);
     }
@@ -153,8 +176,37 @@ public sealed class CadApplicationFixture : IDisposable
             Thread.Sleep(50);
         }
 
+        CaptureTimeout(failureMessage);
         throw new TimeoutException(failureMessage, lastAutomationError);
     }
+
+    private void CaptureTimeout(string message)
+    {
+        if (Environment.GetEnvironmentVariable("DIRECT2DCAD_UI_SCREENSHOT_DIRECTORY") is not { Length: > 0 } directory)
+            return;
+
+        try
+        {
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, $"timeout-{Guid.NewGuid():N}");
+            var window = MainWindow.Properties.NativeWindowHandle.Value;
+            var foreground = GetForegroundWindow();
+            File.WriteAllText(path + ".txt", $"{message}\n" +
+                $"Main window: {window}; foreground: {foreground}\n" +
+                $"Main keyboard layout: {GetKeyboardLayout(GetWindowThreadProcessId(window, out _)):X}; " +
+                $"foreground keyboard layout: {GetKeyboardLayout(GetWindowThreadProcessId(foreground, out _)):X}\n");
+            MainWindow.CaptureToFile(path + ".png");
+        }
+        catch (Exception exception)
+        {
+            // Diagnostics must not replace the original assertion failure.
+            Trace.WriteLine($"Could not capture UI timeout: {exception}");
+        }
+    }
+
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll")] private static extern IntPtr GetKeyboardLayout(uint threadId);
 
     public void EnsureApplicationIsRunning()
     {

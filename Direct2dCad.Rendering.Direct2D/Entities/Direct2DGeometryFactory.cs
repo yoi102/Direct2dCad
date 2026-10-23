@@ -99,10 +99,11 @@ internal sealed class Direct2DGeometryFactory
     public ID2D1PathGeometry CreateSpline(
         ID2D1Factory factory,
         IReadOnlyList<CadPointD> fitPoints,
-        bool closed)
+        bool closed) => CreateSpline(factory, CadSpline.CreateBezierSegments(fitPoints, closed), closed);
+
+    public ID2D1PathGeometry CreateSpline(ID2D1Factory factory, IReadOnlyList<CadBezierSegmentD> segments, bool closed)
     {
         var geometry = factory.CreatePathGeometry();
-        var segments = CadSpline.CreateBezierSegments(fitPoints, closed);
         if (segments.Count == 0)
             return geometry;
 

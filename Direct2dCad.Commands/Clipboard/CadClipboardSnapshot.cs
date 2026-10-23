@@ -117,7 +117,11 @@ public sealed record CadPolylineClipboardSnapshot(
 public sealed record CadSplineClipboardSnapshot(
     CadEntityStateClipboardSnapshot State,
     IReadOnlyList<CadPointD> FitPoints,
-    bool Closed) : CadEntityClipboardSnapshot(State);
+    bool Closed,
+    CadSplineGeometry? NurbsGeometry = null) : CadEntityClipboardSnapshot(State)
+{
+    public CadSplineGeometry Geometry => NurbsGeometry ?? CadSplineGeometry.FromFitPoints(FitPoints, Closed);
+}
 
 public sealed record CadRegionClipboardSnapshot(CadEntityStateClipboardSnapshot State,
     IReadOnlyList<CadRegionContour> Contours, CadRectD Bounds) : CadEntityClipboardSnapshot(State);
@@ -414,7 +418,7 @@ public static class CadClipboardSnapshotFactory
             CadSpline spline => new CadSplineClipboardSnapshot(
                 state,
                 spline.FitPoints.ToArray(),
-                spline.Closed),
+                spline.Closed, spline.Geometry),
             CadRegion region => new CadRegionClipboardSnapshot(state, region.Contours.ToArray(), region.Bounds),
             CadCompositePath path => new CadCompositePathClipboardSnapshot(
                 state,

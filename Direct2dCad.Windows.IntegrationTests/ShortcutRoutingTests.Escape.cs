@@ -14,6 +14,37 @@ public sealed partial class ShortcutRoutingTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void EscapeReleasesLocksBeforeCancellingFromCanvasOrWindow(bool fromCanvas) => RunSta(() =>
+    {
+        using var context = new Context();
+        using var canvas = new CadCanvas { DocumentViewModel = context.Document };
+        var window = new Window();
+        try
+        {
+            var document = context.Document;
+            document.SetToolMode(CadCanvasToolMode.Spline);
+            document.DynamicInputFields.First().Text = "42";
+            var history = document.CadEditor.CreateDocumentHistorySnapshot();
+            void Escape()
+            {
+                if (fromCanvas) canvas.HandleCanvasKey(Key.Escape, ModifierKeys.None, KeyEvent(Key.Escape));
+                else Assert.True(CadEscapeHandler.Process(window, document, null));
+            }
+
+            Escape();
+            Assert.Equal(CadCanvasToolMode.Spline, document.CadCanvasToolMode);
+            Assert.All(document.DynamicInputFields, field => Assert.False(field.IsLocked));
+            Escape();
+            Assert.Equal(CadCanvasToolMode.Select, document.CadCanvasToolMode);
+            Assert.Empty(document.DynamicInputFields);
+            Assert.True(document.CadEditor.DocumentHistoryEquals(history));
+        }
+        finally { window.Close(); }
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void EscapeBubblesFromPanelsAndPreservesDrafts(bool textInput) => RunSta(() =>
     {
         using var context = new Context();

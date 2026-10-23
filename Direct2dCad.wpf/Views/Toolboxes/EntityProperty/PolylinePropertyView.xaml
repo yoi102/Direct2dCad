@@ -20,7 +20,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <DataGrid FontSize="12" RowHeight="30" ColumnHeaderHeight="26" BorderThickness="0" GridLinesVisibility="None" Grid.Row="0" ItemsSource="{Binding Vertices, Mode=OneWay}" SelectedItem="{Binding SelectedVertex, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" MaxHeight="180" Margin="0,0,0,4" Grid.ColumnSpan="2">
+                <DataGrid Style="{DynamicResource PropertyPointGrid}" BorderThickness="0" GridLinesVisibility="None" Grid.Row="0" ItemsSource="{Binding Vertices, Mode=OneWay}" SelectedItem="{Binding SelectedVertex, Mode=TwoWay}" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" MaxHeight="180" Margin="0,0,0,4" Grid.ColumnSpan="2">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#" Binding="{Binding Index, Mode=OneWay}" IsReadOnly="True" Width="36" />
                         <DataGridTemplateColumn Header="{I18N {x:Static r:LangKeys.X}}" Width="*">

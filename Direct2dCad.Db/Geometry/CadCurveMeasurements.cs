@@ -45,7 +45,7 @@ public static class CadCurveMeasurements
                 for(var i=0;i<polyline.Points.Count-(polyline.Closed ? 0 : 1);i++)
                 { token.ThrowIfCancellationRequested();var a=polyline.Points[i];var next=polyline.Points[(i+1)%polyline.Points.Count];length+=a.DistanceTo(next);area+=(a.X*next.Y-next.X*a.Y)/2; }
                 return new(length,0,polyline.Closed ? Math.Abs(area) : null,false);
-            case CadSpline spline: return Beziers(spline.GetBezierSegments(),spline.Closed,error,token);
+            case CadSpline spline: return Nurbs(spline.Nurbs,spline.Closed,error,token);
             case CadCompositePath path:
                 var current=path.StartPoint;var total=0.0;var estimate=0.0;var signedArea=0.0;var approximate=false;var budget=false;
                 foreach(var segment in path.Segments)
@@ -87,6 +87,45 @@ public static class CadCurveMeasurements
         foreach(var bezier in segments) { var l=Length(bezier,error/Math.Max(1,segments.Count),0);total+=l.Value;estimate+=l.Error;area+=BezierArea(bezier); }
         return new(total,estimate,closed ? Math.Abs(area) : null,true,budget);
     }
+    private static CadCurveMeasurement Nurbs(CadNurbsCurve curve, bool closed, double error, CancellationToken token)
+    {
+        var spans = curve.ParameterSpans().ToArray();
+        var length = 0.0; var estimate = 0.0; var area = 0.0; var budget = false; var visits = 0;
+        var origin = curve.ControlPoints[0];
+        foreach (var span in spans)
+        {
+            token.ThrowIfCancellationRequested();
+            var l = Integrate(t => curve.Derivative(t).Length, span.Start, span.End, error / spans.Length, 0);
+            length += l.Value; estimate += l.Error;
+            if (closed) area += Integrate(t =>
+            {
+                var p = curve.Evaluate(t) - origin; var d = curve.Derivative(t);
+                return (p.X * d.Y - p.Y * d.X) / 2;
+            }, span.Start, span.End, error / spans.Length, 0).Value;
+        }
+        return new(length, estimate, closed ? Math.Abs(area) : null, true, budget);
+        (double Value, double Error) Integrate(Func<double, double> f, double a, double b, double tolerance, int depth)
+        {
+            if ((++visits & 255) == 0) token.ThrowIfCancellationRequested();
+            // Interior quadrature nodes avoid choosing the wrong derivative at repeated knots.
+            double Rule(double start, double end)
+            {
+                ReadOnlySpan<double> nodes = [-.8611363115940526, -.3399810435848563, .3399810435848563, .8611363115940526];
+                ReadOnlySpan<double> weights = [.3478548451374538, .6521451548625461, .6521451548625461, .3478548451374538];
+                var middle = start + (end - start) / 2; var half = (end - start) / 2; var sum = 0.0;
+                for (var i = 0; i < 4; i++) sum += weights[i] * f(middle + half * nodes[i]);
+                return half * sum;
+            }
+            var middle = a + (b - a) / 2; var whole = Rule(a, b); var split = Rule(a, middle) + Rule(middle, b);
+            var difference = Math.Abs(split - whole);
+            if (difference <= tolerance || depth >= 24 || visits >= 1000000)
+            { budget |= difference > tolerance; return (split, difference); }
+            var left = Integrate(f, a, middle, tolerance / 2, depth + 1);
+            var right = Integrate(f, middle, b, tolerance / 2, depth + 1);
+            return (left.Value + right.Value, left.Error + right.Error);
+        }
+    }
+
     // Four-point Gauss quadrature integrates the degree-five polynomial x*y'-y*x' exactly.
     private static double BezierArea(CadBezierSegmentD b)
     {

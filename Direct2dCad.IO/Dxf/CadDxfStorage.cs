@@ -137,6 +137,25 @@ public sealed partial class CadDxfStorage
             var layer=Layer(r.Get(8,"0"));CadEntity? entity;
             switch(r.Type)
             {
+                case "SPLINE":
+                    if (r.Values.Any(v => v.Code is 30 or 31 && double.Parse(v.Value, Culture) != 0))
+                    { Count(report, "3D/extrusion"); return; }
+                    double[] Values(int code) => r.Values.Where(v => v.Code == code).Select(v => double.Parse(v.Value, Culture)).ToArray();
+                    var xs = Values(10); var ys = Values(20); var zs = Values(30);
+                    var knots = Values(40); var weights = Values(41);
+                    if (xs.Length != r.Integer(73) || ys.Length != xs.Length || zs.Length != 0 && zs.Length != xs.Length ||
+                        knots.Length != r.Integer(72) || weights.Length != 0 && weights.Length != xs.Length ||
+                        Values(11).Length != r.Integer(74) || Values(21).Length != r.Integer(74))
+                        throw new InvalidDataException("Invalid DXF SPLINE array counts.");
+                    var flags = r.Integer(70);
+                    try
+                    {
+                        var nurbs = new CadNurbsCurve(r.Integer(71), xs.Select((x, i) => new CadPointD(x * factor, ys[i] * factor)),
+                            knots, weights.Length == 0 ? null : weights, (flags & 2) != 0);
+                        entity = document.AddSpline(new CadSplineGeometry(nurbs, (flags & 3) != 0), layer);
+                    }
+                    catch (ArgumentException ex) { throw new InvalidDataException("Invalid DXF SPLINE definition.", ex); }
+                    break;
                 case "LINE":entity=document.AddLine(Point(r),Point(r,11),layer);break;
                 case "CIRCLE":entity=document.AddCircle(Point(r),r.Number(40)*factor,layer);break;
                 case "ELLIPSE":
@@ -257,12 +276,12 @@ public sealed partial class CadDxfStorage
                 Count(report,region.Contours.Any(c=>c.Edges.Any(p=>p.IsEllipse)) ? "Region converted to exact boundary curves" : "Region converted to boundary polylines");
                 if(region.FillStyleId is not null && !TryRegionSolidFill(doc,region,out _))Count(report,"Fill omitted");
             }
-            else if(e is not (CadLine or CadCircle or CadArc or CadPolyline or CadText or CadBlockReference or CadCompositePath) || e is CadCompositePath p && p.Segments.Any(s=>s is CadCompositeSplineSegment))Count(report,e.GetType().Name);
+            else if(e is not (CadLine or CadCircle or CadArc or CadPolyline or CadSpline or CadText or CadBlockReference or CadCompositePath) || e is CadCompositePath p && p.Segments.Any(s=>s is CadCompositeSplineSegment))Count(report,e.GetType().Name);
             if(e is CadText t)Count(report,t.IsInverted?"TEXT font/effects":"TEXT font substituted");
             if(e.IsLocked)Count(report,"Entity lock omitted");
             if(e.StrokeStyle.StartCap!=CadStrokeCap.Flat || e.StrokeStyle.EndCap!=CadStrokeCap.Flat || e.StrokeStyle.DashCap!=CadStrokeCap.Flat || e.StrokeStyle.LineJoin!=CadStrokeLineJoin.Miter)Count(report,"Stroke caps/joins omitted");
             if(e.StrokeStyle.DashStyle==CadStrokeDashStyle.DashDotDot)Count(report,"DashDotDot substituted");
-            if(e switch {CadCircle c=>c.FillStyleId,CadPolyline p=>p.FillStyleId,CadCompositePath p=>p.FillStyleId,_=>null} is not null)Count(report,"Fill omitted");
+            if(e switch {CadCircle c=>c.FillStyleId,CadSpline s=>s.FillStyleId,CadPolyline p=>p.FillStyleId,CadCompositePath p=>p.FillStyleId,_=>null} is not null)Count(report,"Fill omitted");
             var style=GraphicStyle(e)??doc.GetLayer(e.LayerId).DefaultGraphicStyleId;
             if(style is { } id && doc.TryGetStyle(id,out var value) && value is CadGraphicStyle g && g.LineTypeId!=LineTypeId.Continuous)Count(report,"Custom line type omitted");
         }
@@ -315,7 +334,7 @@ public sealed partial class CadDxfStorage
                     else Pair(62,e.ColorSource==CadColorSource.ByBlock?0:256);
                     Pair(370,e.UseLayerLineWeight?-1:(int)Math.Round((e.LineWeight?.Value??.18)*100));
                     Pair(6,e.StrokeStyle.DashStyle switch {CadStrokeDashStyle.Dash=>"DASHED",CadStrokeDashStyle.Dot=>"DOTTED",CadStrokeDashStyle.DashDot=>"DASHDOT",_=>"CONTINUOUS"});
-                    Pair(100,type switch {"LINE"=>"AcDbLine","CIRCLE" or "ARC"=>"AcDbCircle","ELLIPSE"=>"AcDbEllipse","LWPOLYLINE"=>"AcDbPolyline","TEXT"=>"AcDbText","INSERT"=>"AcDbBlockReference","HATCH"=>"AcDbHatch",_=>throw new InvalidOperationException("Unsupported DXF class.")});
+                    Pair(100,type switch {"SPLINE"=>"AcDbSpline","LINE"=>"AcDbLine","CIRCLE" or "ARC"=>"AcDbCircle","ELLIPSE"=>"AcDbEllipse","LWPOLYLINE"=>"AcDbPolyline","TEXT"=>"AcDbText","INSERT"=>"AcDbBlockReference","HATCH"=>"AcDbHatch",_=>throw new InvalidOperationException("Unsupported DXF class.")});
                 }
                 void Polyline(CadEntity e,IReadOnlyList<(CadPointD Point,double Bulge)> points,bool closed)
                 {Common(e,"LWPOLYLINE");Pair(90,points.Count);Pair(70,closed?1:0);foreach(var v in points){Pair(10,v.Point.X*factor);Pair(20,v.Point.Y*factor);if(v.Bulge!=0)Pair(42,v.Bulge);}}
@@ -348,6 +367,14 @@ public sealed partial class CadDxfStorage
                     token.ThrowIfCancellationRequested();if(e.IsErased)return;
                     switch(e)
                     {
+                        case CadSpline spline:
+                            Common(e,"SPLINE");Pair(210,0);Pair(220,0);Pair(230,1);
+                            Pair(70,8 | (spline.Closed?1:0) | (spline.Nurbs.IsPeriodic?2:0) | (spline.Nurbs.IsRational?4:0));
+                            Pair(71,spline.Degree);Pair(72,spline.Knots.Count);Pair(73,spline.ControlPoints.Count);Pair(74,0);
+                            foreach(var knot in spline.Knots)Pair(40,knot);
+                            foreach(var weight in spline.Weights)Pair(41,weight);
+                            foreach(var control in spline.ControlPoints)Point(control);
+                            break;
                         case CadLine l:Common(e,"LINE");Point(l.Start);Point(l.End,11);break;
                         case CadCircle c:Common(e,"CIRCLE");Point(c.Center);Pair(40,c.Radius*factor);break;
                         case CadArc a:
@@ -378,10 +405,10 @@ public sealed partial class CadDxfStorage
         finally{if(File.Exists(temp))File.Delete(temp);}
     }
     private static StyleId? GraphicStyle(CadEntity e)=>e switch
-    {CadLine v=>v.GraphicStyleId,CadCircle v=>v.GraphicStyleId,CadArc v=>v.GraphicStyleId,CadEllipse v=>v.GraphicStyleId,CadEllipseArc v=>v.GraphicStyleId,CadPolyline v=>v.GraphicStyleId,CadCompositePath v=>v.GraphicStyleId,CadText v=>v.GraphicStyleId,CadBlockReference v=>v.GraphicStyleId,CadRegion v=>v.GraphicStyleId,_=>null};
+    {CadSpline v=>v.GraphicStyleId,CadLine v=>v.GraphicStyleId,CadCircle v=>v.GraphicStyleId,CadArc v=>v.GraphicStyleId,CadEllipse v=>v.GraphicStyleId,CadEllipseArc v=>v.GraphicStyleId,CadPolyline v=>v.GraphicStyleId,CadCompositePath v=>v.GraphicStyleId,CadText v=>v.GraphicStyleId,CadBlockReference v=>v.GraphicStyleId,CadRegion v=>v.GraphicStyleId,_=>null};
     private static void SetGraphicStyle(CadEntity e,StyleId id)
     {
         switch(e)
-        {case CadLine v:v.SetGraphicStyleInternal(id);break;case CadCircle v:v.SetGraphicStyleInternal(id);break;case CadArc v:v.SetGraphicStyleInternal(id);break;case CadEllipse v:v.SetGraphicStyleInternal(id);break;case CadEllipseArc v:v.SetGraphicStyleInternal(id);break;case CadPolyline v:v.SetGraphicStyleInternal(id);break;case CadCompositePath v:v.SetGraphicStyleInternal(id);break;case CadText v:v.SetGraphicStyleInternal(id);break;case CadBlockReference v:v.SetGraphicStyleInternal(id);break;}
+        {case CadSpline v:v.SetGraphicStyleInternal(id);break;case CadLine v:v.SetGraphicStyleInternal(id);break;case CadCircle v:v.SetGraphicStyleInternal(id);break;case CadArc v:v.SetGraphicStyleInternal(id);break;case CadEllipse v:v.SetGraphicStyleInternal(id);break;case CadEllipseArc v:v.SetGraphicStyleInternal(id);break;case CadPolyline v:v.SetGraphicStyleInternal(id);break;case CadCompositePath v:v.SetGraphicStyleInternal(id);break;case CadText v:v.SetGraphicStyleInternal(id);break;case CadBlockReference v:v.SetGraphicStyleInternal(id);break;}
     }
 }

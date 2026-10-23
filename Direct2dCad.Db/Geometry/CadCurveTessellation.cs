@@ -11,6 +11,7 @@ public static class CadCurveTessellation
     public static CadCurveTessellationResult Create(Curve curve,double error=1e-4,CancellationToken token=default)
     {
         if(!double.IsFinite(error) || error<=0) throw new ArgumentOutOfRangeException(nameof(error));
+        if (curve is CadSpline nurbs) return nurbs.Nurbs.Tessellate(error, token);
         var points=new List<CadPointD>();var maximum=0.0;var exhausted=false;var nodes=0;
         void Point(CadPointD p) { if(points.Count==0 || points[^1]!=p) points.Add(p); }
         bool Stop(double bound,int depth)

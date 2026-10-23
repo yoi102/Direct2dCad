@@ -8,7 +8,7 @@ public enum CadShortcutAction
     New, Open, Save, SaveAs, Print, ToggleToolbox,
     Cancel, Confirm, PreviousPoint, Reselect, Delete, NextSelection, PreviousSelection,
     SelectAll, Undo, Redo, Copy, Cut, Paste, SuggestionUp, SuggestionDown, Complete,
-    NextField, PreviousField, ClearFixedValues, NextSnapCandidate, SendPrompt, PasteAttachment
+    NextField, PreviousField, NextSnapCandidate, SendPrompt, PasteAttachment
 }
 
 public sealed record CadShortcut(CadShortcutScope Scope, CadShortcutAction Action,
@@ -62,7 +62,6 @@ public static class CadShortcutCatalog
         new(CadShortcutScope.DynamicInput, CadShortcutAction.PreviousField, Key.Tab, ModifierKeys.Shift),
         new(CadShortcutScope.DynamicInput, CadShortcutAction.Confirm, Key.Enter),
         new(CadShortcutScope.DynamicInput, CadShortcutAction.Cancel, Key.Escape),
-        new(CadShortcutScope.DynamicInput, CadShortcutAction.ClearFixedValues, Key.Delete, ModifierKeys.Control),
         new(CadShortcutScope.DynamicInput, CadShortcutAction.NextSnapCandidate, Key.F4),
         new(CadShortcutScope.AiPrompt, CadShortcutAction.SendPrompt, Key.Enter),
         new(CadShortcutScope.AiPrompt, CadShortcutAction.SendPrompt, Key.Enter, ModifierKeys.Control),

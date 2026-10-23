@@ -69,6 +69,12 @@ internal sealed class Direct2DSelectionRenderer(
         {
             switch (item)
             {
+                case CadControlPolygonGuide guide when options.DrawGripHandles:
+                    transientRenderer.DrawPolyline(
+                        context, viewport, guide.Points, guide.Closed,
+                        ToTransientStyle(guide.Style) with { LinePattern = CadTransientLinePattern.Dash },
+                        options.IsLevelOfDetailEnabled);
+                    break;
                 case CadGripHandle grip when options.DrawGripHandles && IsGripVisible(viewport, grip):
                     handleRenderer.DrawGrip(context, resourceCache.Factory, viewport, grip);
                     break;
@@ -422,8 +428,7 @@ internal sealed class Direct2DSelectionRenderer(
         transientRenderer.DrawSpline(
             context,
             viewport,
-            spline.FitPoints,
-            spline.Closed,
+            spline.Geometry,
             style,
             isLevelOfDetailEnabled);
     }

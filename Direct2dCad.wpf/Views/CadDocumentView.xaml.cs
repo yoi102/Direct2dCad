@@ -192,7 +192,7 @@ public partial class CadDocumentView : IDisposable
                         positions["Width"] = Dimension(widthStart, widthEnd, Outward(widthStart, widthEnd), 28) - new Vector(widths["Width"] / 2, 12);
                         positions["Height"] = Dimension(heightStart, heightEnd, Outward(heightStart, heightEnd), 54) - new Vector(widths["Height"] / 2, 12);
                     }
-                    else if (positions.ContainsKey("Length") && document.CadCanvasToolMode == CadCanvasToolMode.Spline)
+                    else if (positions.ContainsKey("Length") && document.CadCanvasToolMode is CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv)
                         Line(start, endpoint);
                 }
                 foreach (var measurement in measurements)
@@ -298,15 +298,10 @@ public partial class CadDocumentView : IDisposable
         {
             if (!e.IsRepeat)
             {
-                document.ClearDynamicInputLocks();
-                document.RequestRender();
+                cadCanvas.CancelInteraction();
                 cadCanvas.Focus();
             }
             e.Handled = true;
-        }
-        else if (shortcut.Action == CadShortcutAction.ClearFixedValues)
-        {
-            document.ClearDynamicInputLocks(); document.RequestRender(); e.Handled = true;
         }
     }
 
