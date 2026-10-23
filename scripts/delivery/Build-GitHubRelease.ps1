@@ -15,17 +15,20 @@ if (Test-Path -LiteralPath $releaseRoot) {
 }
 
 $wixVersion = $InstallerVersion # Keep MSI upgrades monotonic; ARPVERSION displays the app release version.
+# Isolate all intermediates, including ReadyToRun images of upgraded packages.
+$buildDirectory = Join-Path $releaseRoot 'build'
 $publishDirectory = Join-Path $releaseRoot 'publish'
 $installerDirectory = Join-Path $releaseRoot 'installer'
 $distDirectory = Join-Path $releaseRoot 'dist'
 $null = New-Item -ItemType Directory -Path $installerDirectory,$distDirectory
 
 dotnet restore (Join-Path $repoRoot 'Direct2dCad.wpf/Direct2dCad.wpf.csproj') `
-    --locked-mode -p:ContinuousIntegrationBuild=true -v minimal
+    --locked-mode -p:ContinuousIntegrationBuild=true "-p:ArtifactsPath=$buildDirectory" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'Locked application package restore failed.' }
 
 dotnet publish (Join-Path $repoRoot 'Direct2dCad.wpf/Direct2dCad.wpf.csproj') `
     -c Release --no-restore --self-contained true `
+    "-p:ArtifactsPath=$buildDirectory" `
     -p:RestoreLockedMode=true -p:ContinuousIntegrationBuild=true -p:DebugType=None -p:DebugSymbols=false `
     -p:UseSharedCompilation=false -nodeReuse:false -m:1 `
     "-p:Version=$ReleaseVersion" "-p:InformationalVersion=$ReleaseVersion" `

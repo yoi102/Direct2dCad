@@ -28,6 +28,28 @@ $assemblyVersion = [Reflection.AssemblyName]::GetAssemblyName((Join-Path $publis
 $appVersion = if ($assemblyVersion.Revision -eq 0) { $assemblyVersion.ToString(3) } else { $assemblyVersion.ToString() }
 if ($appVersion -ne $ExpectedReleaseVersion) { throw "Expected app version $ExpectedReleaseVersion, found $appVersion." }
 
+# A fresh ZIP/MSI can still contain stale ReadyToRun dependencies from obj.
+# Check assembly identities against the dependency manifest before packaging
+# byte comparisons, which cannot detect an internally inconsistent publish.
+$dependencies = Get-Content -LiteralPath (Join-Path $publishDirectory 'Direct2dCad.deps.json') -Raw | ConvertFrom-Json
+$managedAssembliesVerified = 0
+foreach ($target in $dependencies.targets.PSObject.Properties) {
+    foreach ($library in $target.Value.PSObject.Properties) {
+        if (!$library.Value.runtime) { continue }
+        foreach ($asset in $library.Value.runtime.PSObject.Properties) {
+            if (!$asset.Value.assemblyVersion) { continue }
+            $name = [IO.Path]::GetFileName($asset.Name)
+            $path = Join-Path $publishDirectory $name
+            if (!(Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing managed dependency: $name" }
+            $actual = [Reflection.AssemblyName]::GetAssemblyName($path).Version
+            $expected = [Version]$asset.Value.assemblyVersion
+            if ($actual -ne $expected) { throw "Managed dependency version mismatch: $name expected $expected, found $actual." }
+            $managedAssembliesVerified++
+        }
+    }
+}
+if ($managedAssembliesVerified -eq 0) { throw 'The dependency manifest did not describe any managed runtime assemblies.' }
+
 $iconReader = [IO.BinaryReader]::new([IO.File]::OpenRead((Join-Path $publishDirectory 'Direct2dCad.ico')))
 try {
     if ($iconReader.ReadUInt16() -ne 0 -or $iconReader.ReadUInt16() -ne 1 -or $iconReader.ReadUInt16() -lt 1) {
@@ -166,6 +188,7 @@ $result = [ordered]@{
     installDirectoryDialog = $true
     installerSigned = $false
     embeddedPayloadVerified = $true
+    managedAssembliesVerified = $managedAssembliesVerified
     payloadFiles = $payloadRows.Count
     zipFiles = $zipFiles.Count
     packages = @(Get-Item -LiteralPath $msiPath,$zipPath | ForEach-Object {

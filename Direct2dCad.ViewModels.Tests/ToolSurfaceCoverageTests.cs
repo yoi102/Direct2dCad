@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Xml.Linq;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.CommandLine;
@@ -11,8 +10,15 @@ namespace Direct2dCad.ViewModels.Tests;
 
 public sealed class ToolSurfaceCoverageTests
 {
-    private static string Root([CallerFilePath] string file = "") =>
-        Path.GetDirectoryName(Path.GetDirectoryName(file))!;
+    private static string Root()
+    {
+        // CI maps source paths to /_/ for deterministic builds. Locate the
+        // checkout from the running test assembly instead of CallerFilePath.
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+            if (File.Exists(Path.Combine(directory.FullName, "Direct2dCad.slnx")))
+                return directory.FullName;
+        throw new DirectoryNotFoundException("Could not locate the Direct2dCad checkout for tool surface checks.");
+    }
 
     private static XElement Read(string path) => XElement.Load(Path.Combine(Root(), path));
 
