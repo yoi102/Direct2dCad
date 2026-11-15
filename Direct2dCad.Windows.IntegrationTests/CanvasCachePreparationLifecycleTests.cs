@@ -278,12 +278,18 @@ public sealed class CanvasCachePreparationLifecycleTests
     {
         var frame = new DispatcherFrame();
         var passes = 0;
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
         var progress = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = TimeSpan.FromMilliseconds(2)
         };
-        var end = new DispatcherTimer(DispatcherPriority.Send) { Interval = duration };
-        progress.Tick += (_, _) => passes++;
+        var end = new DispatcherTimer(DispatcherPriority.Send) { Interval = duration + TimeSpan.FromSeconds(5) };
+        progress.Tick += (_, _) =>
+        {
+            passes++;
+            if (passes >= 2 && elapsed.Elapsed >= duration)
+                frame.Continue = false;
+        };
         end.Tick += (_, _) => frame.Continue = false;
         progress.Start();
         end.Start();
