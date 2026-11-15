@@ -38,6 +38,7 @@
                 <Style TargetType="ListBoxItem">
                     <Setter Property="Padding" Value="2,1" />
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="VerticalContentAlignment" Value="Top" />
                     <Setter Property="AutomationProperties.Name" Value="{Binding Text}" />
                     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                     <Setter Property="Background" Value="Transparent" />
@@ -177,6 +178,7 @@
                         <Style TargetType="ListBoxItem">
                             <Setter Property="Padding" Value="0" />
                             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="VerticalContentAlignment" Value="Center" />
                             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                         </Style>
                     </ListBox.ItemContainerStyle>

@@ -15,12 +15,17 @@ public sealed partial class MainWindowUiTests
         CreateNewDocument(); var input=GetOrOpenCommandLineInput(); var output=fixture.WaitForElement("CommandLineOutput");
         ExecuteCommandAndWaitForOutput(input,output,"TOOL add_line {\"x1\":-120,\"y1\":0,\"x2\":120,\"y2\":0}","created_entity_id");
         fixture.WaitForElement("EditRibbonTab").AsTabItem().Select(); fixture.WaitForElement("OffsetToolButton").AsToggleButton().Click();
-        var canvas=fixture.WaitForElement("CadCanvas"); var point=CenterEditCanvas(canvas,input,output); Mouse.Click(point(80,0));
+        var canvas = fixture.WaitForElement("CadCanvas");
+        var point = CenterEditCanvas(canvas, input, output);
+        var zoom = ReadLatestJson(output).GetProperty("result").GetProperty("zoom").GetDouble();
+        var dpiScale = GetDpiForWindow(fixture.MainWindow.Properties.NativeWindowHandle.Value) / 96d;
+        var coordinateTolerance = 1 / (zoom * dpiScale) + 0.005;
+        Mouse.Click(point(80, 0));
         AssertNoEditActionButtons(); Mouse.MoveTo(point(0,50));
         var distance=fixture.WaitForElement("EditDistanceInput").AsTextBox();
         try
         {
-            fixture.WaitUntil(()=>double.TryParse(distance.Text,out var value) && Math.Abs(value-50)<=0.51 &&
+            fixture.WaitUntil(()=>double.TryParse(distance.Text,out var value) && Math.Abs(value-50)<=coordinateTolerance &&
                 CountEditPreviewPixels(point(0,50))>8,"Mouse movement did not set the offset distance and actual preview.");
         }
         catch(TimeoutException error)

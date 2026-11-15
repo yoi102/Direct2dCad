@@ -496,16 +496,24 @@ public sealed partial class MainWindowUiTests : IDisposable
         var viewer = fixture.WaitForElement("EntityPropertiesScrollViewer");
         var scroll = viewer.Patterns.Scroll.Pattern;
         var element = fixture.WaitForElement(automationId);
-        for (var percent = 0; percent <= 100; percent += 2)
+        element.Focus();
+        for (var attempt = 0; attempt < 20; attempt++)
         {
-            if (scroll.VerticallyScrollable.Value)
-                scroll.SetScrollPercent(-1, percent);
             Thread.Sleep(30); // Scroll offsets are laid out after the UI Automation call returns.
+            element = fixture.WaitForElement(automationId);
             var bounds = element.BoundingRectangle;
             var viewport = viewer.BoundingRectangle;
             if (!element.IsOffscreen && bounds.Top >= viewport.Top && bounds.Bottom <= viewport.Bottom)
                 return element;
+            if (!scroll.VerticallyScrollable.Value)
+                break;
+
+            var scrollableHeight = viewport.Height * (100 / scroll.VerticalViewSize.Value - 1);
+            var distanceToCenter = (bounds.Top + bounds.Bottom - viewport.Top - viewport.Bottom) / 2;
+            var percent = Math.Clamp(scroll.VerticalScrollPercent.Value + 100 * distanceToCenter / scrollableHeight, 0, 100);
+            scroll.SetScrollPercent(-1, percent);
         }
+        CaptureScreenshot($"property-scroll-{automationId}-failure.png");
         throw new TimeoutException($"Property '{automationId}' could not be scrolled fully into view.");
     }
 
