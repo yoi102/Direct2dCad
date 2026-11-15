@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "MessagePack": {
         "type": "Direct",
         "requested": "[3.1.12, )",
@@ -15,9 +15,9 @@
       },
       "Riok.Mapperly": {
         "type": "Direct",
-        "requested": "[5.0.0-next.10, )",
-        "resolved": "5.0.0-next.10",
-        "contentHash": "bFtga7serPecDcuH/KpKGMKPLFjNeLMzKwecuYPIL4pLNU9vGeCEbJQ2CfvQwXqF3VtHcIy9eyWbkYdoupgnpA=="
+        "requested": "[5.0.0-next.13, )",
+        "resolved": "5.0.0-next.13",
+        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
       },
       "MessagePack.Annotations": {
         "type": "Transitive",

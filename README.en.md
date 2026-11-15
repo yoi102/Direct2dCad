@@ -48,9 +48,25 @@ Open connection settings with the gear button in the AI toolbox:
 
 AI can query entities, layers, and blocks, create or modify geometry, and open, save, and switch drawings. Edits enter the drawing's undo history and remain available for manual adjustment.
 
+## MCP connection
+
+Both desktop clients expose the live workspace through MCP Streamable HTTP using the official `ModelContextProtocol.AspNetCore` NuGet package. Launch either executable with `--mcp` to listen at `http://127.0.0.1:5277/mcp`, or use `--mcp-port 5278` to select another loopback port. The Messages toolbox reports startup results.
+
+Application Settings → MCP provides an enable switch, port, live status, failure details, and a button to copy the running address. Apply starts, stops, or changes the listener immediately and saves the preferences for the next launch. MCP defaults to disabled with port 5277. Command-line options override the current launch and are persisted when application settings are saved. When a settings tool stops or changes its own listener, its response completes before the service switches. Reconnect using the new address after changing ports.
+
+The endpoint supports `2025-11-25` initialize sessions and the `2026-07-28` per-request protocol, including cancellation notifications and HTTP disconnect cancellation. Unknown tool names and invalid catalog cursors return the standard `-32602` protocol error. Tool annotations distinguish read-only queries, additive operations and destructive changes.
+
+MCP exposes the existing CAD tool schemas, editing operations, file operations and captured images. Start with `list_documents` and `get_agent_capabilities`. Use `document_id` to address a drawing. Calls execute serially on the UI thread with an independent undo batch for each call. Use `add_entities` to create multiple entities in one undo step.
+
+`transfer_entities` supports cross-document copy and move with clipboard resource import, rollback on failure and independent document undo. `list_document_templates` discovers engineering templates for `create_document(template=...)`. Recovery versions use `list_recovery_copies`, `open_recovery_copy` and `clear_recovery_copies`.
+
+For unattended saves, pass `interactive=false` and a `file_path` for new drawings. `close_document(on_unsaved=save/discard/cancel)` supplies the close decision. Replacement requires `overwrite=true`; `expected_sha256` can restrict it to a previously inspected version from `get_file_revision` or a conflict receipt. `save_compatible_copy` requires a separate path and `allow_loss=true` and switches the tab to the saved copy.
+
+`get_application_settings` and `set_application_settings` cover all general, rendering, interaction and radial-menu preferences. `insert_image_from_clipboard`, `set_block_base_point` and the update/reorder operations of `manage_grid_presets` expose the corresponding editing features with drawing undo.
+
 ## Run from source
 
-Requires Windows x64 and the .NET 10 SDK. The repository's `global.json` specifies SDK 10.0.401 and permits patch updates within the same feature band.
+Requires Windows x64 and the .NET 11 SDK. The repository's `global.json` specifies SDK 11.0.100 and permits patch updates within the same feature band.
 
 Run from the repository root:
 

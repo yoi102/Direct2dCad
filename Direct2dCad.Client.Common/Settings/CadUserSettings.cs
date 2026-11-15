@@ -11,6 +11,7 @@ public sealed class CadUserSettings
     public CadGeneralUserSettings General { get; set; } = new();
     public CadRenderingUserSettings Rendering { get; set; } = new();
     public CadInteractionUserSettings Interaction { get; set; } = new();
+    public CadMcpUserSettings Mcp { get; set; } = new();
 
     public static CadUserSettings CreateDefault() => new();
 
@@ -20,9 +21,11 @@ public sealed class CadUserSettings
         General ??= new CadGeneralUserSettings();
         Rendering ??= new CadRenderingUserSettings();
         Interaction ??= new CadInteractionUserSettings();
+        Mcp ??= new CadMcpUserSettings();
         General.Normalize();
         Rendering.Normalize();
         Interaction.Normalize();
+        Mcp.Normalize();
     }
 
     public CadUserSettings Clone()
@@ -38,6 +41,7 @@ public sealed class CadUserSettings
         source.Normalize();
 
         Version = CurrentVersion;
+        Mcp = new CadMcpUserSettings { IsEnabled = source.Mcp.IsEnabled, Port = source.Mcp.Port };
         General = new CadGeneralUserSettings
         {
             IsDarkTheme = source.General.IsDarkTheme,
@@ -93,6 +97,18 @@ public sealed class CadUserSettings
             }
         };
         Normalize();
+    }
+}
+
+public sealed class CadMcpUserSettings
+{
+    public bool IsEnabled { get; set; }
+    public int Port { get; set; } = 5277;
+
+    internal void Normalize()
+    {
+        if (Port is < 1 or > 65535)
+            Port = 5277;
     }
 }
 

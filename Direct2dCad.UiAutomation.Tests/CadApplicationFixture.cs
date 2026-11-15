@@ -268,7 +268,7 @@ public sealed class CadApplicationFixture : IDisposable
             "Direct2dCad.wpf",
             "bin",
             configuration,
-            "net10.0-windows",
+            "net11.0-windows",
             "win-x64",
             "Direct2dCad.exe");
         return File.Exists(executablePath)

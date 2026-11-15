@@ -43,12 +43,18 @@ internal static class CadToolSchemaValidator
     private static JsonNode? Normalize(JsonNode? value, JsonElement schema)
     {
         if (schema.ValueKind != JsonValueKind.Object) return value;
-        if (value is JsonValue scalar && scalar.TryGetValue<string>(out var text) && schema.TryGetProperty("enum", out var choices))
+        if (value is JsonValue scalar && scalar.TryGetValue<string>(out var text))
         {
             static string EnumKey(string text) => text.Replace("_", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
-            var matches = choices.EnumerateArray().Where(choice => choice.ValueKind == JsonValueKind.String &&
-                string.Equals(EnumKey(choice.GetString()!), EnumKey(text), StringComparison.OrdinalIgnoreCase)).ToArray();
-            if (matches.Length == 1) value = JsonValue.Create(matches[0].GetString());
+            if (schema.TryGetProperty("enum", out var choices))
+            {
+                var matches = choices.EnumerateArray().Where(choice => choice.ValueKind == JsonValueKind.String &&
+                    string.Equals(EnumKey(choice.GetString()!), EnumKey(text), StringComparison.OrdinalIgnoreCase)).ToArray();
+                if (matches.Length == 1) value = JsonValue.Create(matches[0].GetString());
+            }
+            else if (schema.TryGetProperty("const", out var constant) && constant.ValueKind == JsonValueKind.String &&
+                     string.Equals(EnumKey(constant.GetString()!), EnumKey(text), StringComparison.OrdinalIgnoreCase))
+                value = JsonValue.Create(constant.GetString());
         }
         if (value is JsonObject obj && schema.TryGetProperty("properties", out var properties))
         {

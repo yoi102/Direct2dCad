@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$ReleaseDirectory,
-    [string]$ExpectedReleaseVersion = '0.1.8',
-    [string]$ExpectedInstallerVersion = '1.0.8'
+    [string]$ExpectedReleaseVersion = '0.1.9',
+    [string]$ExpectedInstallerVersion = '1.0.9'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -122,7 +122,7 @@ $wixBin = (& dotnet msbuild $project -getProperty:WixBinDir | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Unable to locate WiX.' }
 $extracted = Join-Path $releaseRoot ('msi-verification-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $extracted | Out-Null
-& dotnet (Join-Path $wixBin 'wix.dll') msi decompile $msiPath -x $extracted -o (Join-Path $extracted 'package.wxs')
+& dotnet (Join-Path $wixBin 'wix.dll') --acceptEula wix7 msi decompile $msiPath -x $extracted -o (Join-Path $extracted 'package.wxs')
 if ($LASTEXITCODE -ne 0) { throw 'MSI payload extraction failed.' }
 $directories = @{}
 foreach ($row in (ReadMsiRows "SELECT ``Directory``,``Directory_Parent``,``DefaultDir`` FROM ``Directory``" 3)) {

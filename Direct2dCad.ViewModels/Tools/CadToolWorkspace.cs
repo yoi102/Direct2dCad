@@ -124,6 +124,39 @@ internal sealed class CadToolWorkspace(
         return Describe(tab, isActive: true);
     }
 
+    public CadToolWorkspaceDocument CreateDocument(string? name, string? template)
+    {
+        if (template is null) return CreateDocument(name);
+        var tab = serviceProvider.GetRequiredService<MainViewModel>().CreateTemplateDocument(template, name);
+        return Describe(tab, isActive: true);
+    }
+
+    public IReadOnlyList<CadToolRecoveryEntry> ListRecoveryCopies() =>
+        serviceProvider.GetRequiredService<MainViewModel>().GetRecoveryCopiesForTools()
+            .Select(entry => new CadToolRecoveryEntry(entry.SnapshotName, entry.DocumentId, entry.Name,
+                entry.SourcePath, entry.SavedAt, entry.DocumentVersion)).ToArray();
+
+    public async Task<CadToolWorkspaceDocument> OpenRecoveryCopyAsync(string recoveryId, CancellationToken cancellationToken)
+    {
+        var main = serviceProvider.GetRequiredService<MainViewModel>();
+        var entry = main.GetRecoveryCopiesForTools().FirstOrDefault(entry => entry.SnapshotName == recoveryId)
+            ?? throw new ArgumentException("Recovery copy was not found or belongs to a live session.");
+        var tab = await main.OpenRecoveryCopyForToolsAsync(entry, cancellationToken);
+        return Describe(tab, isActive: true);
+    }
+
+    public Task ClearRecoveryCopiesAsync(string? sourceDocumentId, CancellationToken cancellationToken) =>
+        serviceProvider.GetRequiredService<MainViewModel>().ClearRecoveryCopiesForToolsAsync(sourceDocumentId, cancellationToken);
+
+    public Task<bool> SaveCompatibleCopyAsync(string documentId, string filePath, CadToolSaveOptions options, CancellationToken cancellationToken) =>
+        ((EditorTabViewModel)GetRequiredDocument(documentId).Host).SaveCompatibleCopyForToolAsync(filePath, options, cancellationToken);
+
+    public System.Text.Json.JsonElement GetApplicationSettings() =>
+        serviceProvider.GetRequiredService<MainViewModel>().GetApplicationSettingsForTools();
+
+    public System.Text.Json.JsonElement SetApplicationSettings(System.Text.Json.JsonElement settings, bool reset) =>
+        serviceProvider.GetRequiredService<MainViewModel>().SetApplicationSettingsForTools(settings, reset);
+
     public async Task<CadToolWorkspaceDocument> OpenDocumentAsync(
         string filePath,
         CancellationToken cancellationToken)
@@ -183,9 +216,15 @@ internal sealed class CadToolWorkspace(
     }
 
     public async Task<bool> CloseDocumentAsync(string documentId)
+        => await CloseDocumentAsync(documentId, new(), CancellationToken.None);
+
+    public Task<bool> SaveDocumentAsync(string documentId, string? filePath, CadToolSaveOptions options, CancellationToken cancellationToken) =>
+        ((EditorTabViewModel)GetRequiredDocument(documentId).Host).SaveForToolAsync(filePath, options, cancellationToken);
+
+    public async Task<bool> CloseDocumentAsync(string documentId, CadToolCloseOptions options, CancellationToken cancellationToken)
     {
         var tab = (EditorTabViewModel)GetRequiredDocument(documentId).Host;
-        if (!await tab.ConfirmCloseAsync())
+        if (!await tab.ConfirmCloseForToolAsync(options, cancellationToken))
             return false;
 
         var dockLayoutService = DockLayoutService;

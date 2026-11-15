@@ -76,6 +76,37 @@ public sealed class StatusBarLayoutTests
                     AutomationProperties.GetAutomationId(element) == "CurrentToolStatusText");
                 Assert.True(tool.ActualHeight > 0);
                 Assert.Equal("Polyline", tool.Text);
+
+                var activeStatusHeight = status.ActualHeight;
+                var activeCanvasHeight = canvas.ActualHeight;
+                foreach (var context in new object?[]
+                {
+                    new
+                    {
+                        CurrentEditorTabViewModel = new
+                        {
+                            CadDocumentViewModel = new
+                            {
+                                HasActiveDrawingTool = false,
+                                IsGripEditing = false,
+                                IsPastePreviewActive = false,
+                                CurrentToolNameDisplay = "Select",
+                                CurrentStepPrompt = string.Empty,
+                                StepInputError = string.Empty
+                            }
+                        }
+                    },
+                    null
+                })
+                {
+                    status.DataContext = context;
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    layout.UpdateLayout();
+
+                    Assert.Equal(Visibility.Collapsed, step.Visibility);
+                    Assert.Equal(activeStatusHeight, status.ActualHeight);
+                    Assert.Equal(activeCanvasHeight, canvas.ActualHeight);
+                }
             }
             finally
             {

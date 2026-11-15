@@ -94,6 +94,8 @@ internal sealed class DialogService : IDialogService
     private static async Task ShowSettings(string title, System.ComponentModel.INotifyPropertyChanged model, Control view, Func<bool> apply, Action reset, Func<string?> validation, double width, double height)
     {
         var window = new Window { Title = title, Width = width, Height = height, MinWidth = width - 110, MinHeight = height - 120, ShowInTaskbar = false, WindowStartupLocation = WindowStartupLocation.CenterOwner };
+        if (model is UserSettingsViewModel)
+            global::Avalonia.Automation.AutomationProperties.SetAutomationId(window, "UserSettingsDialog");
         var root = new Grid { Margin = new global::Avalonia.Thickness(16), RowDefinitions = RowDefinitions.Parse("*,Auto,Auto") }; root.Children.Add(view);
         var error = new TextBlock { Text = validation(), TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Foreground = global::Avalonia.Media.Brushes.IndianRed, Margin = new global::Avalonia.Thickness(4,8,4,0) }; Grid.SetRow(error, 1); root.Children.Add(error);
         var actions = new Grid { ColumnDefinitions = ColumnDefinitions.Parse("*,Auto"), Margin = new global::Avalonia.Thickness(0,14,0,0) }; Grid.SetRow(actions, 2); root.Children.Add(actions);
@@ -103,12 +105,19 @@ internal sealed class DialogService : IDialogService
         var applyButton = new Button { Content = T("Apply"), MinWidth = 88 }; applyButton.Click += (_, _) => apply();
         var cancel = new Button { Content = T("Cancel"), MinWidth = 88, IsCancel = true }; cancel.Click += (_, _) => window.Close();
         right.Children.Add(confirm); right.Children.Add(applyButton); right.Children.Add(cancel);
+        if (model is UserSettingsViewModel)
+        {
+            global::Avalonia.Automation.AutomationProperties.SetAutomationId(resetButton, "ResetUserSettingsButton");
+            global::Avalonia.Automation.AutomationProperties.SetAutomationId(confirm, "ConfirmUserSettingsButton");
+            global::Avalonia.Automation.AutomationProperties.SetAutomationId(applyButton, "ApplyUserSettingsButton");
+            global::Avalonia.Automation.AutomationProperties.SetAutomationId(cancel, "CancelUserSettingsButton");
+        }
         System.ComponentModel.PropertyChangedEventHandler changed = (_, e) => { if (e.PropertyName == "ValidationError") error.Text = validation(); }; model.PropertyChanged += changed;
         var host = new DialogHost { Identifier = ViewServiceIdentifiers.DocumentSettingsDialogHost, Content = root, CloseOnClickAway = false };
         var previousHost = SettingsHost; SettingsHost = host;
         window.Closed += (_, _) => host.CurrentSession?.Close();
         window.AddHandler(Control.KeyDownEvent, (_, e) => { if (host.IsOpen && e.Key == Key.Escape) { host.CurrentSession?.Close(); e.Handled = true; } }, RoutingStrategies.Tunnel);
-        window.Content = Controls.CadWindowChrome.Wrap(window,host); try { await window.ShowDialog(App.Window!); } finally { SettingsHost = previousHost; model.PropertyChanged -= changed; }
+        window.Content = Controls.CadWindowChrome.Wrap(window,host); try { await window.ShowDialog(App.Window!); } finally { SettingsHost = previousHost; model.PropertyChanged -= changed; (model as UserSettingsViewModel)?.Dispose(); }
     }
 }
 

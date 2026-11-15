@@ -1,9 +1,10 @@
-<Project Sdk="WixToolset.Sdk/6.0.2">
+<Project Sdk="WixToolset.Sdk/7.0.1">
   <PropertyGroup>
+    <AcceptEula>wix7</AcceptEula>
     <OutputType>Package</OutputType>
     <InstallerPlatform>x64</InstallerPlatform>
-    <Version Condition="'$(Version)' == ''">1.0.8</Version>
-    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.1.8</ReleaseVersion>
+    <Version Condition="'$(Version)' == ''">1.0.9</Version>
+    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.1.9</ReleaseVersion>
     <PackageName>Direct2dCad</PackageName>
     <OutputName>Direct2dCad</OutputName>
     <DefineConstants>$(DefineConstants);PublishDirectory=$(PublishDirectory);ReleaseVersion=$(ReleaseVersion);Version=$(Version)</DefineConstants>
@@ -11,7 +12,7 @@
     <SuppressIces>ICE30;ICE38;ICE43;ICE57</SuppressIces>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="WixToolset.UI.wixext" Version="6.0.2" />
+    <PackageReference Include="WixToolset.UI.wixext" Version="7.0.1" />
     <BindPath Include="$(PublishDirectory)" BindName="AppPayload" />
   </ItemGroup>
 </Project>

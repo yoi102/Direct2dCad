@@ -50,9 +50,32 @@ Direct2dCad 是面向 Windows 的二维 CAD 编辑器，提供 WPF 和 Avalonia 
 
 AI 可查询实体、图层和块，创建或修改图形，并打开、保存和切换图纸。编辑结果进入图纸的撤销历史，可继续手动调整。
 
+## MCP 连接
+
+WPF 与 Avalonia 客户端通过官方 `ModelContextProtocol.AspNetCore` NuGet 包提供 MCP Streamable HTTP 服务。启动时添加 `--mcp`，即可通过 `http://127.0.0.1:5277/mcp` 连接当前桌面工作区。
+
+```powershell
+dotnet run -c Release --project .\Direct2dCad.wpf\Direct2dCad.wpf.csproj -- --mcp
+dotnet run -c Release --project .\Direct2dCad.Avalonia\Direct2dCad.Avalonia.csproj -- --mcp-port 5278
+```
+
+也可在“应用程序设置 → MCP”中启用服务、修改端口、查看运行状态和失败原因，并复制实际连接地址。点击“应用”立即生效，设置在下次启动时恢复。初始关闭，默认端口为 5277。
+
+发布后的程序也接受这两个参数。`--mcp-port` 可指定 1 至 65535 之间的端口。命令行参数覆盖本次启动的 MCP 设置，保存应用程序设置后才会持久化。服务监听本机回环地址，启动结果也显示在 Messages 工具箱中。通过 MCP 修改自身端口或停服时，配置响应返回后再切换服务，客户端需使用新地址重新连接。
+
+服务支持 `2025-11-25` 初始化会话和 `2026-07-28` 逐请求协议，处理取消通知及 HTTP 断线取消。未知工具名和无效目录游标返回标准 `-32602` 协议错误。只读查询与新增几何具有明确的非破坏性标记，删除、覆盖和已有内容修改具有破坏性标记。
+
+MCP 提供现有 CAD 工具的完整参数定义，支持查询、绘图、编辑、文件操作及画布图像返回。客户端可先调用 `list_documents` 和 `get_agent_capabilities` 获取当前状态与能力，再通过 `document_id` 指定目标图纸。工具调用在 UI 线程上串行执行，每次调用有独立的撤销批次，多实体绘图可用 `add_entities` 合为一个撤销步骤。
+
+- `transfer_entities` 支持跨图纸复制和剪切转移，导入图层、样式、嵌套块和嵌入数据。转移失败会回滚，源图纸与目标图纸各有独立撤销记录。
+- `list_document_templates` 列出全部工程模板，`create_document` 的 `template` 参数创建对应图纸。`list_recovery_copies`、`open_recovery_copy` 和 `clear_recovery_copies` 管理恢复版本。
+- 无弹窗保存使用 `save_document` 的 `interactive=false`，新图纸同时提供 `file_path`。关闭图纸使用 `close_document` 的 `on_unsaved=save/discard/cancel`。覆盖操作使用 `overwrite=true`，可通过 `expected_sha256` 限定文件版本。`get_file_revision` 查询版本，冲突结果也包含当前版本信息。
+- `save_compatible_copy` 保存到独立路径并切换到兼容副本，需要 `allow_loss=true`。`get_application_settings` 与 `set_application_settings` 查询和修改全部通用、渲染、交互及径向菜单偏好。
+- `insert_image_from_clipboard` 插入剪贴板图片，`set_block_base_point` 修改块基点，`manage_grid_presets` 支持更新预设数值及完整重排。绘图内容操作可撤销。
+
 ## 从源码运行
 
-需要 Windows x64 和 .NET 10 SDK。仓库的 `global.json` 指定 SDK 10.0.401，并允许同特性带的补丁升级。
+需要 Windows x64 和 .NET 11 SDK。仓库的 `global.json` 指定 SDK 11.0.100，并允许同特性带的补丁升级。
 
 在仓库根目录执行：
 

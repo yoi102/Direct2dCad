@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using global::Avalonia.Input.Platform;
 using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.Avalonia.Services;
@@ -38,6 +39,9 @@ internal sealed class FileDialogs : IFileDialogService
 }
 internal sealed class ClipboardTextService : IClipboardTextService
 {
+    public Task SetTextAsync(string text) => App.Window?.Clipboard?.SetTextAsync(text)
+        ?? throw new InvalidOperationException("Clipboard is unavailable.");
+
     internal static bool HasAttachment() => IsClipboardFormatAvailable(8) || IsClipboardFormatAvailable(15);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsClipboardFormatAvailable(uint format);
     public string? LoadFromClipboard()

@@ -22,13 +22,22 @@ internal sealed class MainWindowTestContext : IDisposable
     public IActiveEditorContext ActiveEditor { get; } = new ActiveEditorContext();
     public IDockLayoutService Layout { get; }
     public MainViewModel ViewModel { get; }
+    public ICadToolWorkspace CreateToolWorkspace() =>
+        new CadToolWorkspace(new WorkspaceServices(this), new TestEditorTabFactory(this), Dialogs, ActiveEditor);
+
+    private sealed class WorkspaceServices(MainWindowTestContext owner) : IServiceProvider
+    {
+        public object? GetService(Type serviceType) => serviceType == typeof(MainViewModel) ? owner.ViewModel :
+            serviceType == typeof(IDockLayoutService) ? owner.Layout : null;
+    }
     private readonly List<(CadToolboxTestContext Context, EditorTabViewModel Tab)> _tabs = [];
     private readonly IToolbox[] _toolboxes;
     private readonly ToolExecutionWorkspace _workspace = new();
     private readonly CadRecoveryStore _recoveryStore;
     private readonly bool _ownsRecoveryStore;
 
-    public MainWindowTestContext(CadRecoveryStore? recoveryStore = null, IFileLocationService? fileLocationService = null)
+    public MainWindowTestContext(CadRecoveryStore? recoveryStore = null, IFileLocationService? fileLocationService = null,
+        Direct2dCad.Application.Platform.ICadMcpService? mcpService = null)
     {
         _ownsRecoveryStore = recoveryStore is null;
         _recoveryStore = recoveryStore ?? new CadRecoveryStore(Path.Combine(Path.GetTempPath(), "CadMainRecovery-" + Guid.NewGuid()), trackSession: true);
@@ -47,7 +56,7 @@ internal sealed class MainWindowTestContext : IDisposable
         ];
         Layout = new DockLayoutService(_toolboxes);
         ViewModel = new MainViewModel(Layout, new SideToggleManager(Layout), Appearance, Appearance,
-            Files, p, Dialogs, Settings, p, ActiveEditor, new TestEditorTabFactory(this), _recoveryStore, fileLocationService);
+            Files, p, Dialogs, Settings, p, ActiveEditor, new TestEditorTabFactory(this), _recoveryStore, fileLocationService, mcpService);
     }
 
     public (EditorTabViewModel Tab, RecordingDocumentWriter Writer) AddDocument(string name, bool saved = false)

@@ -1711,4 +1711,40 @@
   <data name="NurbsRebuildHint" xml:space="preserve"><value>增删控制点或重建节点会改变曲线形状。</value></data>
   <data name="SplineCv" xml:space="preserve"><value>CV 样条（控制点）</value></data>
   <data name="SplineFit" xml:space="preserve"><value>样条（拟合点）</value></data>
+  <data name="McpEnable" xml:space="preserve">
+    <value>启用 MCP（Streamable HTTP）</value>
+  </data>
+  <data name="McpPort" xml:space="preserve">
+    <value>HTTP 端口（1–65535）</value>
+  </data>
+  <data name="McpStatus" xml:space="preserve">
+    <value>服务状态</value>
+  </data>
+  <data name="McpEndpoint" xml:space="preserve">
+    <value>连接地址</value>
+  </data>
+  <data name="McpCopyEndpoint" xml:space="preserve">
+    <value>复制地址</value>
+  </data>
+  <data name="McpAddressCopied" xml:space="preserve">
+    <value>地址已复制。</value>
+  </data>
+  <data name="McpStarting" xml:space="preserve">
+    <value>正在启动…</value>
+  </data>
+  <data name="McpRunning" xml:space="preserve">
+    <value>运行中</value>
+  </data>
+  <data name="McpStopping" xml:space="preserve">
+    <value>正在停止…</value>
+  </data>
+  <data name="McpStopped" xml:space="preserve">
+    <value>已停止</value>
+  </data>
+  <data name="McpFailed" xml:space="preserve">
+    <value>启动失败</value>
+  </data>
+  <data name="McpSettingsHelp" xml:space="preserve">
+    <value>点击“应用”后立即启停服务或更换端口。MCP 仅监听本机。使用此地址的 AI 客户端可通过已提供的工具读写图纸和访问文件。</value>
+  </data>
 </root>

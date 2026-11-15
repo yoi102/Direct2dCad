@@ -1946,4 +1946,40 @@
   <data name="NurbsRebuildHint" xml:space="preserve"><value>Adding/removing controls or rebuilding knots changes the shape.</value></data>
   <data name="SplineCv" xml:space="preserve"><value>CV Spline (Control Points)</value></data>
   <data name="SplineFit" xml:space="preserve"><value>Spline (Fit Points)</value></data>
+  <data name="McpEnable" xml:space="preserve">
+    <value>Enable MCP (Streamable HTTP)</value>
+  </data>
+  <data name="McpPort" xml:space="preserve">
+    <value>HTTP port (1–65535)</value>
+  </data>
+  <data name="McpStatus" xml:space="preserve">
+    <value>Service status</value>
+  </data>
+  <data name="McpEndpoint" xml:space="preserve">
+    <value>Connection address</value>
+  </data>
+  <data name="McpCopyEndpoint" xml:space="preserve">
+    <value>Copy address</value>
+  </data>
+  <data name="McpAddressCopied" xml:space="preserve">
+    <value>Address copied.</value>
+  </data>
+  <data name="McpStarting" xml:space="preserve">
+    <value>Starting…</value>
+  </data>
+  <data name="McpRunning" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="McpStopping" xml:space="preserve">
+    <value>Stopping…</value>
+  </data>
+  <data name="McpStopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="McpFailed" xml:space="preserve">
+    <value>Failed to start</value>
+  </data>
+  <data name="McpSettingsHelp" xml:space="preserve">
+    <value>Apply to start, stop, or change the port immediately. MCP listens on this computer only. AI clients using this address can read and edit drawings and access files through the available tools.</value>
+  </data>
 </root>

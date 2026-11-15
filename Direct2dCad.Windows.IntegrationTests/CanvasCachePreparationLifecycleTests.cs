@@ -80,6 +80,27 @@ public sealed class CanvasCachePreparationLifecycleTests
     }
 
     [Fact]
+    public void DisposingDocumentBeforeCanvasIgnoresQueuedCacheWorkAndRetry()
+    {
+        RunSta(() =>
+        {
+            using var services = CreateServices();
+            using var model = CreateModel(services, CadColor.Red);
+            using var canvas = CreateCanvas();
+            canvas.DocumentViewModel = model;
+            var host = Assert.IsType<Direct2DImageRenderHost>(model.RenderSession);
+            QueueOwnerCallbackAndArmRetry(canvas, host);
+
+            model.Dispose();
+            Assert.True(PumpDispatcher(TimeSpan.FromMilliseconds(80)) >= 2);
+
+            Assert.False(Field<DispatcherTimer>(canvas, "_renderCacheRetryTimer").IsEnabled);
+            Assert.Null(Field<object?>(canvas, "_renderCacheRetrySession"));
+            Assert.False(Field<bool>(canvas, "_renderCacheBuildScheduled"));
+        });
+    }
+
+    [Fact]
     public void DisposingCanvasAndNativeSessionCancelsQueuedWorkAndRetryOnTheActualDispatcher()
     {
         RunSta(() =>

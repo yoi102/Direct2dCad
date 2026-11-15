@@ -8,6 +8,7 @@ public partial class UserSettingsDialog
     public UserSettingsDialog()
     {
         InitializeComponent();
+        Closed += (_, _) => (DataContext as IDisposable)?.Dispose();
     }
 
     private void Ok_Click(object sender, RoutedEventArgs e)

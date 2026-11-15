@@ -19,6 +19,8 @@ using Direct2dCad.Avalonia.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http;
 using Direct2dCad.Application.Platform;
+using Direct2dCad.Application.Tools;
+using Direct2dCad.Mcp;
 
 namespace Direct2dCad.Avalonia;
 
@@ -48,6 +50,22 @@ public partial class App : global::Avalonia.Application
             services.AddSingleton<ICadViewCaptureService, ViewCaptureService>();
             services.AddSingleton<IAiFileImportService, AiFileImportService>();
             services.AddSingleton<IClipboardTextService, ClipboardTextService>();
+            services.AddSingleton<ICadMcpService>(sp =>
+            {
+                var service = new CadMcpService(new global::Avalonia.Threading.AvaloniaSynchronizationContext(
+                    global::Avalonia.Threading.Dispatcher.UIThread, global::Avalonia.Threading.DispatcherPriority.Normal),
+                    sp.GetRequiredService<ICadToolWorkspace>(), sp.GetService<IImageImportService>(),
+                    sp.GetService<MessagePipe.IAsyncPublisher<CadToolActivityMessage>>());
+                var log = sp.GetRequiredService<ICadMessageLog>();
+                service.StatusChanged += (_, _) =>
+                {
+                    if (service.Status is { State: CadMcpState.Running, Endpoint: { } endpoint })
+                        log.Add($"MCP listening at {endpoint}", source: "MCP");
+                    else if (service.Status is { State: CadMcpState.Failed, Error: { } error })
+                        log.Add(error, CadMessageLevel.Error, "MCP");
+                };
+                return service;
+            });
             services.AddSingleton<IOleHostService, OleHostService>();
             services.AddSingleton<ICadPrintService, WindowsPrintService>();
             services.AddSingleton<IDialogService, DialogService>();
@@ -77,14 +95,32 @@ public partial class App : global::Avalonia.Application
             Ioc.Default.ConfigureServices(_services);
             Window = new MainWindow(_services.GetRequiredService<MainViewModel>(), _services.GetRequiredService<SnackbarService>(), _services.GetRequiredService<IToolboxLayoutSettingsStore>(), _services.GetRequiredService<IDialogService>());
             desktop.MainWindow = Window;
+            Window.Opened += async (_, _) => await StartMcpAsync(desktop.Args ?? []);
             if (desktop.Args is { } args && Array.FindIndex(args, a => a is "--smoke-test" or "--smoke-test-headless") is var index && index >= 0)
             {
                 var output = Path.GetFullPath(args.Length > index + 1 ? args[index + 1] : Path.Combine(AppContext.BaseDirectory, "native-smoke.json"));
                 Window.Opened += (_, _) => global::Avalonia.Threading.Dispatcher.UIThread.Post(async () => await NativeSmoke.RunAsync(Window, _services, output));
             }
-            desktop.Exit += (_, _) => _services.Dispose();
+            desktop.Exit += (_, _) =>
+            {
+                (_services.GetService<ICadMcpService>() as IDisposable)?.Dispose();
+                _services.Dispose();
+            };
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task StartMcpAsync(string[] arguments)
+    {
+        try
+        {
+            await _services!.GetRequiredService<MainViewModel>()
+                .InitializeMcpAsync(CadMcpServer.GetRequestedPort(arguments));
+        }
+        catch (Exception exception)
+        {
+            _services!.GetRequiredService<ICadMessageLog>().Add(exception.Message, CadMessageLevel.Error, "MCP");
+        }
     }
 }
 

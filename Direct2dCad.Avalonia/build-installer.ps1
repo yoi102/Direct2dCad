@@ -1,11 +1,12 @@
 param(
     [Parameter(Mandatory)][string]$PackageDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.8',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.8')
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.9',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.9',
+    [string]$OutputDirectory = '.artifacts')
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
-$artifactRoot = Join-Path $repo '.artifacts'
+$artifactRoot = [IO.Path]::GetFullPath($OutputDirectory, $repo)
 $portable = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $validation = Get-Content -LiteralPath (Join-Path $portable 'validation.json') -Raw | ConvertFrom-Json
 $portableExe = Join-Path $portable 'Direct2dCad.Avalonia.exe'
@@ -42,11 +43,15 @@ foreach ($name in $supportFiles) {
 Copy-Item -LiteralPath (Join-Path $repo 'Direct2dCad.wpf/Direct2dCad.ico') -Destination $payload
 
 $project = Join-Path $repo 'installer/Direct2dCad.Avalonia.Msi/Direct2dCad.Avalonia.Msi.wixproj'
-& dotnet restore $project --locked-mode -p:ContinuousIntegrationBuild=true -v minimal
+$wixIntermediate = Join-Path $artifactRoot 'build/wix'
+& dotnet restore $project --locked-mode -p:ContinuousIntegrationBuild=true `
+    "-p:BaseIntermediateOutputPath=$wixIntermediate/" "-p:MSBuildProjectExtensionsPath=$wixIntermediate/" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'Locked WiX restore failed.' }
 # PayloadDirectory changes on each invocation; WiX's incremental inputs can
 # otherwise reuse a cabinet containing an older executable.
 & dotnet build $project -t:Rebuild -c Release --no-restore -p:RestoreLockedMode=true `
+    "-p:BaseIntermediateOutputPath=$wixIntermediate/" "-p:MSBuildProjectExtensionsPath=$wixIntermediate/" `
+    "-p:IntermediateOutputPath=$wixIntermediate/release/" `
     "-p:Version=$InstallerVersion" "-p:ReleaseVersion=$ReleaseVersion" `
     "-p:PayloadDirectory=$payload" "-p:ReleaseArtifactsDirectory=$output" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'Avalonia MSI build failed.' }

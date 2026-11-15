@@ -68,7 +68,22 @@ internal static class CadStyleManagementTools
                 ["document_id"] = StringSchema("Stable open-document ID"),
                 ["name"] = StringSchema("Unique pattern name"),
                 ["description"] = StringSchema("Optional description"),
-                ["lines"] = new { type = "array", minItems = 1 }
+                ["lines"] = new
+                {
+                    type = "array",
+                    minItems = 1,
+                    items = ObjectSchema(new Dictionary<string, object>
+                    {
+                        ["angle_degrees"] = new { type = "number", description = "Line direction in counter-clockwise degrees." },
+                        ["origin"] = PointSchema(),
+                        ["offset"] = PointSchema(),
+                        ["dash_pattern"] = new
+                        {
+                            type = "array", items = new { type = "number" },
+                            description = "Positive lengths draw, negative lengths leave gaps, and zero draws a dot. Omit for a solid line."
+                        }
+                    }, ["angle_degrees", "origin", "offset"])
+                }
             }, ["name", "lines"])),
         Tool("rename_style", "Rename a style while preserving all references.", ObjectSchema(
             new Dictionary<string, object>
@@ -141,6 +156,13 @@ internal static class CadStyleManagementTools
                 pattern.Name,
                 pattern.Description,
                 line_count = pattern.Lines.Count,
+                lines = pattern.Lines.Select(line => new
+                {
+                    angle_degrees = line.Angle,
+                    origin = new { x = line.Origin.X, y = line.Origin.Y },
+                    offset = new { x = line.Offset.X, y = line.Offset.Y },
+                    dash_pattern = line.DashPattern.ToArray()
+                }).ToArray(),
                 reference_count = document.GetHatchPatternReferenceCount(pattern.Id)
             }).ToArray(),
             line_types = document.LineTypes.Values.OrderBy(lineType => lineType.Name, StringComparer.OrdinalIgnoreCase).Select(lineType => new
@@ -326,8 +348,21 @@ internal static class CadStyleManagementTools
     {
         CadGraphicStyle graphic => new { color = ColorText(graphic.StrokeColor), line_weight = graphic.LineWeight.Value, line_type_id = graphic.LineTypeId.Value },
         CadTextStyle text => new { text.FontFamily, text.TextHeight, text.WidthFactor, oblique_angle_degrees = text.ObliqueAngle * 180 / Math.PI, text.IsBold, text.IsItalic },
-        CadHatchFillStyle hatch => new { fill_kind = "hatch", pattern_id = hatch.PatternId.Value, foreground_color = ColorText(hatch.ForegroundColor), hatch.HatchScale, angle_degrees = hatch.HatchAngle * 180 / Math.PI },
-        CadGradientFillStyle gradient => new { fill_kind = "gradient", gradient_kind = gradient.GradientKind.ToString(), gradient.Stops },
+        CadHatchFillStyle hatch => new
+        {
+            fill_kind = "hatch", pattern_id = hatch.PatternId.Value,
+            foreground_color = ColorText(hatch.ForegroundColor), hatch.HatchScale,
+            angle_degrees = hatch.HatchAngle * 180 / Math.PI,
+            origin_x = hatch.HatchOrigin.X, origin_y = hatch.HatchOrigin.Y,
+            annotative = hatch.IsAnnotative
+        },
+        CadGradientFillStyle gradient => new
+        {
+            fill_kind = "gradient", gradient_kind = gradient.GradientKind.ToString(), gradient.Stops,
+            angle_degrees = gradient.GradientAngle * 180 / Math.PI,
+            scale = gradient.GradientScale, origin_x = gradient.GradientOrigin.X, origin_y = gradient.GradientOrigin.Y,
+            centered = gradient.IsCentered
+        },
         _ => new { }
     };
 
@@ -388,12 +423,44 @@ internal static class CadStyleManagementTools
             ["origin_x"] = new { type = "number" }, ["origin_y"] = new { type = "number" },
             ["annotative"] = new { type = "boolean" },
             ["gradient_kind"] = new { type = "string", @enum = new[] { "linear", "radial" } },
-            ["stops"] = new { type = "array", minItems = 2 },
+            ["stops"] = new
+            {
+                type = "array", minItems = 2,
+                items = ObjectSchema(new Dictionary<string, object>
+                {
+                    ["offset"] = new { type = "number", minimum = 0, maximum = 1 },
+                    ["color"] = StringSchema("Stop color, #RRGGBB or #AARRGGBB")
+                }, ["offset", "color"])
+            },
             ["centered"] = new { type = "boolean" }
         },
         required = new[] { "name", "mode" },
+        allOf = new object[]
+        {
+            new
+            {
+                @if = new { properties = new { mode = new { @const = "solid" } } },
+                then = new { required = new[] { "color" } }
+            },
+            new
+            {
+                @if = new { properties = new { mode = new { @const = "hatch" } } },
+                then = new { required = new[] { "color", "pattern" } }
+            },
+            new
+            {
+                @if = new { properties = new { mode = new { @const = "gradient" } } },
+                then = new { required = new[] { "stops" } }
+            }
+        },
         additionalProperties = false
     };
+
+    private static object PointSchema() => ObjectSchema(new Dictionary<string, object>
+    {
+        ["x"] = new { type = "number", description = "X in millimetres." },
+        ["y"] = new { type = "number", description = "Y in millimetres." }
+    }, ["x", "y"]);
 
     private static JsonElement? OptionalArray(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Array ? value : null;

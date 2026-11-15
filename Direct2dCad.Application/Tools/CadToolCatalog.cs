@@ -16,11 +16,13 @@ internal static class CadToolCatalog
         if (name.Contains("dimension", StringComparison.Ordinal)) return "annotations";
         if (name.Contains("layout", StringComparison.Ordinal) || name is "activate_space" or "capture_view" or "print_document") return "presentation";
         if (name.Contains("dxf", StringComparison.Ordinal)) return "exchange";
+        if (name.Contains("recovery", StringComparison.Ordinal) || name is "list_document_templates" or "save_compatible_copy" or "transfer_entities" or "get_file_revision") return "workspace";
+        if (name.Contains("application_settings", StringComparison.Ordinal)) return "settings";
         if (name is "list_documents" or "create_document" or "open_document" or "activate_document" or "rename_document" or "save_document" or "close_document") return "workspace";
         if (name.StartsWith("select_", StringComparison.Ordinal) || name == "clear_selection") return "selection";
         if (name is "get_view_settings" or "set_view_settings" or "set_viewport" or "manage_grid_presets" or "set_drawing_layer") return "view";
         if (name is "get_agent_capabilities" or "get_document_summary" or "get_entity_statistics" or "list_entities" or "list_document_catalog" or "measure_geometry") return "inspect";
-        if (name.StartsWith("add_", StringComparison.Ordinal) || name == "insert_image_from_file") return "create";
+        if (name.StartsWith("add_", StringComparison.Ordinal) || name is "insert_image_from_file" or "insert_image_from_clipboard") return "create";
         if (name.Contains("layer", StringComparison.Ordinal) || name.Contains("block", StringComparison.Ordinal)) return "organization";
         if (name.Contains("style", StringComparison.Ordinal) || name.Contains("hatch", StringComparison.Ordinal) || name.Contains("line_type", StringComparison.Ordinal) ||
             name is "list_system_fonts" or "set_entity_common_properties" or "set_entity_fill" or "set_entity_specific_properties" or "set_ole_object_data") return "appearance";

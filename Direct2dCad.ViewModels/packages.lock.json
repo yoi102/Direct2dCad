@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "CommunityToolkit.Mvvm": {
         "type": "Direct",
         "requested": "[8.4.2, )",
@@ -10,43 +10,40 @@
       },
       "Dirkster.AvalonDock.Core": {
         "type": "Direct",
-        "requested": "[5.0.0, )",
-        "resolved": "5.0.0",
-        "contentHash": "PlIMOCpzU89vawS3/6IeeQnfaHz0Jy4exi3w8pQlhmmERT6Cgt5XxA9TjX+PU8jWcBgvpPX6g0EZrSRuuFE9gw=="
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "viL+5loMFdTIsnKW7833OK1y0FdlX5o7Kacl76ArRD9DYUD8BcmpV1IeLffrTX7vXv/cNLvGx6OHSKaYfDVe6g=="
       },
       "Dirkster.AvalonDock.Mvvm": {
         "type": "Direct",
-        "requested": "[5.0.0, )",
-        "resolved": "5.0.0",
-        "contentHash": "QGWPqe7jsO1sbRnBnL/3wqeyaHDMbk9Rt4aDoLZDtoepsecwaESMpesHPNjyN0imnxEY4631869dzgqeXcx/9g==",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "Ajxq5K92ykQWqU68qkUI6gmW1Gq51l1UGNbVOU9CgG0xFZPXW+ZY66cZitccWkF3zBJUeLVAgC2N7JFRQsrgnQ==",
         "dependencies": {
-          "Dirkster.AvalonDock.Core": "5.0.0"
+          "Dirkster.AvalonDock.Core": "5.0.2"
         }
       },
       "Dirkster.AvalonDock.Mvvm.CommunityToolkit": {
         "type": "Direct",
-        "requested": "[5.0.0, )",
-        "resolved": "5.0.0",
-        "contentHash": "1/wdRGzN2w82AV1C/M+lpl6oeGiyg1HPEMj30HaknVsEENbUAlAmQMYSssYu63GhYWw1JmIhoN3kPsDLEMvm/g==",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "dC0ZG2IB5ipcCu0Ls/RFhhEsvwjTsA/q6UGImyvh9sSBvJDHlFJxe+Qn2ziNKFRzr0d/zCG/iGldcC6hqxImvw==",
         "dependencies": {
           "CommunityToolkit.Mvvm": "8.4.0",
-          "Dirkster.AvalonDock.Core": "5.0.0"
+          "Dirkster.AvalonDock.Core": "5.0.2"
         }
       },
       "MessagePipe": {
         "type": "Direct",
         "requested": "[1.8.2, )",
         "resolved": "1.8.2",
-        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0"
-        }
+        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ=="
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "Direct",
-        "requested": "[11.0.0-preview.6.26359.118, )",
-        "resolved": "11.0.0-preview.6.26359.118",
-        "contentHash": "AOZE/D7WFJ/mGHq1sOy8HL3yIIBx0T5iPupTHh/Xrc77NcK5F9lmryffZsBQTjPh5FFPoMXRoVswEOrWIUD61w=="
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "a2c4Kp55miXT6G+DSb75pczXQJHgNMzPyZEyMxrrKxuQrgvctcDWJWD9fVe/uGbQdu4Z0c3B7AVKp1DXmD64nQ=="
       },
       "Antelcat.I18N.SourceGenerators": {
         "type": "Transitive",
@@ -80,8 +77,8 @@
       },
       "Riok.Mapperly": {
         "type": "Transitive",
-        "resolved": "5.0.0-next.10",
-        "contentHash": "bFtga7serPecDcuH/KpKGMKPLFjNeLMzKwecuYPIL4pLNU9vGeCEbJQ2CfvQwXqF3VtHcIy9eyWbkYdoupgnpA=="
+        "resolved": "5.0.0-next.13",
+        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
       },
       "StronglyTypedId": {
         "type": "Transitive",
@@ -156,8 +153,7 @@
           "Direct2dCad.Db": "[1.0.0, )",
           "Direct2dCad.HitTesting": "[1.0.0, )",
           "Direct2dCad.Indexing": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[11.0.0-preview.6.26359.118, )"
+          "Direct2dCad.Rendering": "[1.0.0, )"
         }
       },
       "direct2dcad.hittesting": {
@@ -177,7 +173,7 @@
         "dependencies": {
           "Direct2dCad.Db": "[1.0.0, )",
           "MessagePack": "[3.1.12, )",
-          "Riok.Mapperly": "[5.0.0-next.10, )"
+          "Riok.Mapperly": "[5.0.0-next.13, )"
         }
       },
       "direct2dcad.lang": {

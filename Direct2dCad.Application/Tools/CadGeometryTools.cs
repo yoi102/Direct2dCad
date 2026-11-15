@@ -512,7 +512,7 @@ internal static class CadGeometryTools
         ["corner_radius_y"] = new { type = "number", minimum = 0.0 },
         ["points"] = PointArraySchema(2),
         ["fit_points"] = PointArraySchema(2),
-        ["segments"] = new { type = "array", minItems = 1 },
+        ["segments"] = CadCompositePathTools.ToolDefinition.Parameters.GetProperty("properties").GetProperty("segments"),
         ["closed"] = new { type = "boolean" },
         ["height"] = new { type = "number", exclusiveMinimum = 0.0 },
         ["rotation_degrees"] = Number("Counter-clockwise rotation"),

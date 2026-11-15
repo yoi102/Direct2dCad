@@ -8,6 +8,26 @@ namespace Direct2dCad.ViewModels.Tests;
 public sealed class CadToolDiscoveryContractTests
 {
     [Theory]
+    [InlineData("开启MCP服务")]
+    [InlineData("把MCP端口改成5280")]
+    [InlineData("关闭 MCP HTTP 服务")]
+    [InlineData("Enable the MCP server on port 5280")]
+    [InlineData("Change the Streamable HTTP port to 5280")]
+    [InlineData("MCPポートを5280に変更して")]
+    [InlineData("MCP の稼働状態と接続URLを確認して")]
+    public void McpRequestsPrioritizeSettingsAndFitTheNormalContextBudget(string prompt)
+    {
+        var selected = CadAgentToolSelector.Select(prompt, CadWorkspaceToolExecutor.ToolDefinitions);
+        var expected = new[] { "get_application_settings", "set_application_settings" };
+        Assert.Equal(expected, selected.Take(2).Select(tool => tool.Name));
+        using var workspace = new ToolExecutionWorkspace();
+        workspace.CreateDocument("MCP settings audit");
+        var instructions = new CadWorkspaceToolExecutor(workspace).CreateToolUsageInstructions();
+        var context = AgentRequestContextBuilder.Build(instructions, [AiChatMessage.User(prompt)], selected, 8192);
+        Assert.All(expected, name => Assert.Contains(context.Tools, tool => tool.Name == name));
+    }
+
+    [Theory]
     [InlineData("画一个半径10毫米的圆", "add_circle")]
     [InlineData("draw a 10 millimeter circle", "add_circle")]
     [InlineData("将所选直线移动10毫米", "move_entities")]

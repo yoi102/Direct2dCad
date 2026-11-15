@@ -1,11 +1,11 @@
 # Direct2dCad Avalonia for Windows
 
-Windows x64 client using Avalonia 12.0.5, .NET 10 NativeAOT and typed compiled XAML bindings. Material.Avalonia and its DataGrid styles 3.19.0 provide the core control themes; DialogHost.Avalonia 0.12.3 provides in-window modal overlays. Dock.Avalonia / Dock.Model.Mvvm / Dock.Avalonia.Themes.Fluent 12.0.0.2 provide native docking with compact initial tool groups, six available destinations, floating, automatic hiding and layout persistence. The target is equivalent operations and approximate WPF layout; all third-party UI libraries may retain similar native control styles. Official ColorPicker retains its Fluent fallback theme. The executable is self-contained; keep its bundled graphics DLLs beside it. OLE and vector printing use C# with Microsoft.Windows.CsWin32 0.3.333; no custom C++ source or Direct2dCad.Ole.Native.dll is required.
+Windows x64 client using Avalonia 12.1.6, .NET 11 NativeAOT and typed compiled XAML bindings. Material.Avalonia and its DataGrid styles 3.21.0 provide the core control themes; DialogHost.Avalonia 0.12.3 provides in-window modal overlays. Dock.Avalonia / Dock.Model.Mvvm / Dock.Avalonia.Themes.Fluent 12.1.5 provide native docking with compact initial tool groups, six available destinations, floating, automatic hiding and layout persistence. The target is equivalent operations and approximate WPF layout; all third-party UI libraries may retain similar native control styles. Official ColorPicker retains its Fluent fallback theme. The executable is self-contained; keep its bundled graphics DLLs beside it. OLE and vector printing use C# with Microsoft.Windows.CsWin32 0.3.371.
 
-Managed build prerequisites: .NET 10 SDK. NativeAOT publication additionally requires the Windows SDK and MSVC native linker through Visual Studio Build Tools, as required by .NET NativeAOT. There is no custom C++ compilation step. Run from PowerShell:
+Managed build prerequisites: .NET 11 SDK. NativeAOT publication additionally requires the Windows SDK and MSVC native linker through Visual Studio Build Tools, as required by .NET NativeAOT. There is no custom C++ compilation step. Run from PowerShell:
 
 ```powershell
-./Direct2dCad.Avalonia/publish-windows.ps1 -ReleaseVersion 0.1.8 -InstallerVersion 1.0.8
+./Direct2dCad.Avalonia/publish-windows.ps1 -ReleaseVersion 0.1.9 -InstallerVersion 1.0.9
 ```
 
 Use `-HeadlessValidation` to run the same in-process checks without any desktop windows, mouse or keyboard input. This uses Avalonia.Headless for test windowing while retaining the actual NativeAOT executable, Skia text/control rendering and hardware Direct2D CAD rendering. It does not certify Win32 input, focus, dialogs or physical display behavior.

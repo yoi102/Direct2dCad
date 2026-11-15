@@ -1,15 +1,12 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "MessagePipe": {
         "type": "Direct",
         "requested": "[1.8.2, )",
         "resolved": "1.8.2",
-        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0"
-        }
+        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ=="
       },
       "Antelcat.I18N.SourceGenerators": {
         "type": "Transitive",
@@ -36,11 +33,6 @@
         "resolved": "3.1.12",
         "contentHash": "iNSNatPh6bafRUbkQKlClExjpPpd8hiZgfZsodGf7bheIlkizGbMzsJ2mPui8jOHRe4Ky9eg5ou/fFzI7CT3fg=="
       },
-      "Microsoft.Extensions.DependencyInjection.Abstractions": {
-        "type": "Transitive",
-        "resolved": "11.0.0-preview.6.26359.118",
-        "contentHash": "AOZE/D7WFJ/mGHq1sOy8HL3yIIBx0T5iPupTHh/Xrc77NcK5F9lmryffZsBQTjPh5FFPoMXRoVswEOrWIUD61w=="
-      },
       "Microsoft.NET.StringTools": {
         "type": "Transitive",
         "resolved": "17.11.4",
@@ -48,8 +40,8 @@
       },
       "Riok.Mapperly": {
         "type": "Transitive",
-        "resolved": "5.0.0-next.10",
-        "contentHash": "bFtga7serPecDcuH/KpKGMKPLFjNeLMzKwecuYPIL4pLNU9vGeCEbJQ2CfvQwXqF3VtHcIy9eyWbkYdoupgnpA=="
+        "resolved": "5.0.0-next.13",
+        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
       },
       "StronglyTypedId": {
         "type": "Transitive",
@@ -93,8 +85,7 @@
           "Direct2dCad.Db": "[1.0.0, )",
           "Direct2dCad.HitTesting": "[1.0.0, )",
           "Direct2dCad.Indexing": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[11.0.0-preview.6.26359.118, )"
+          "Direct2dCad.Rendering": "[1.0.0, )"
         }
       },
       "direct2dcad.hittesting": {
@@ -114,7 +105,7 @@
         "dependencies": {
           "Direct2dCad.Db": "[1.0.0, )",
           "MessagePack": "[3.1.12, )",
-          "Riok.Mapperly": "[5.0.0-next.10, )"
+          "Riok.Mapperly": "[5.0.0-next.13, )"
         }
       },
       "direct2dcad.lang": {

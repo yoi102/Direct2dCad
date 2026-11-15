@@ -65,12 +65,19 @@ public partial class MainViewModel
     private async Task ClearRecoveryAsync(string? documentId)
     {
         if (IsRecoveryActionRunning) return;
-        IsRecoveryActionRunning = true;
-        try { await _recoveryStore.RemoveRecoverableAsync(documentId); }
+        try { await ClearRecoveryCopiesForToolsAsync(documentId, CancellationToken.None); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _snackbarService.Enqueue($"{CadUiText.Get(LangKeys.RecoveryCleanupFailed)}: {ex.Message}");
         }
+    }
+
+    internal async Task ClearRecoveryCopiesForToolsAsync(string? documentId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsRecoveryActionRunning) throw new InvalidOperationException("A recovery operation is already running.");
+        IsRecoveryActionRunning = true;
+        try { await _recoveryStore.RemoveRecoverableAsync(documentId); }
         finally
         {
             RefreshRecoveryEntries();
@@ -82,6 +89,17 @@ public partial class MainViewModel
     private async Task OpenRecoveryCopyAsync(CadRecoveryEntry? entry)
     {
         if (entry is null || IsRecoveryActionRunning || OpenOperation.IsRunning) return;
+        try { await OpenRecoveryCopyForToolsAsync(entry, CancellationToken.None); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, CadUiText.Get(LangKeys.RecoveryDrawings)); }
+    }
+
+    internal IReadOnlyList<CadRecoveryEntry> GetRecoveryCopiesForTools() => _recoveryStore.ListRecoverable();
+
+    internal async Task<EditorTabViewModel> OpenRecoveryCopyForToolsAsync(CadRecoveryEntry entry, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsRecoveryActionRunning || OpenOperation.IsRunning) throw new InvalidOperationException("A recovery operation is already running.");
         IsRecoveryActionRunning = true;
         try
         {
@@ -90,9 +108,9 @@ public partial class MainViewModel
             if (existing is not null)
             {
                 ActivateEditorDocument(existing);
-                return;
+                return existing;
             }
-            var document = await OpenOperation.RunAsync(CadUiText.Get(LangKeys.OpeningDrawing), token => _recoveryStore.LoadAsync(entry, token));
+            var document = await OpenOperation.RunAsync(CadUiText.Get(LangKeys.OpeningDrawing), token => _recoveryStore.LoadAsync(entry, token), cancellationToken);
             document.AssignIndependentIdentity();
             document.Rename($"{entry.Name} · {CadUiText.Get(LangKeys.RecoveredSuffix)}");
             var tab = _dockLayoutService.OpenOrActivateDocument<EditorTabViewModel>(_ => false, () => _editorTabFactory.Create(result =>
@@ -102,9 +120,8 @@ public partial class MainViewModel
             }));
             CurrentEditorTabViewModel = tab;
             DocumentExplorer.RefreshDocuments();
+            return tab;
         }
-        catch (OperationCanceledException) { }
-        catch (Exception ex) { await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, CadUiText.Get(LangKeys.RecoveryDrawings)); }
         finally { IsRecoveryActionRunning = false; }
     }
 }

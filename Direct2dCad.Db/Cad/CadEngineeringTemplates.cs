@@ -4,6 +4,8 @@ namespace Direct2dCad.Db.Cad;
 
 public static class CadEngineeringTemplates
 {
+    public static IReadOnlyList<string> Keys { get; } = Array.AsReadOnly(new[] { "A4", "A3-100", "Letter" });
+
     public static CadDocument Create(string key)
     {
         var (width,height,denominator,unit) = key switch

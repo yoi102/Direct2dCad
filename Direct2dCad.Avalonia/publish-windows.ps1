@@ -1,21 +1,24 @@
 param(
-    [string]$ReleaseVersion = '0.1.8',
-    [string]$InstallerVersion = '1.0.8',
+    [string]$ReleaseVersion = '0.1.9',
+    [string]$InstallerVersion = '1.0.9',
     [switch]$SkipValidation,
-    [switch]$HeadlessValidation)
+    [switch]$HeadlessValidation,
+    [string]$OutputDirectory = '.artifacts')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
-$artifactRoot = Join-Path $repo '.artifacts'
+$artifactRoot = [IO.Path]::GetFullPath($OutputDirectory, $repo)
+$buildDirectory = Join-Path $artifactRoot 'build'
 $publish = Join-Path $artifactRoot ('avalonia-native-' + [Guid]::NewGuid().ToString('N'))
 $validation = Join-Path $artifactRoot 'avalonia-native-validation'
 $archive = Join-Path $artifactRoot 'Direct2dCad-Avalonia-win-x64.zip'
 New-Item -ItemType Directory -Force -Path $artifactRoot, $validation | Out-Null
 Push-Location $repo
 try {
-    & dotnet restore (Join-Path $PSScriptRoot 'Direct2dCad.Avalonia.csproj') --locked-mode -p:ContinuousIntegrationBuild=true -v minimal
+    & dotnet restore (Join-Path $PSScriptRoot 'Direct2dCad.Avalonia.csproj') --locked-mode -p:ContinuousIntegrationBuild=true "-p:ArtifactsPath=$buildDirectory" -v minimal
     if ($LASTEXITCODE -ne 0) { throw 'Locked Avalonia restore failed.' }
     # The client declares win-x64 itself. A global -r would also rewrite every shared project's lock file.
     & dotnet publish (Join-Path $PSScriptRoot 'Direct2dCad.Avalonia.csproj') -c Release --no-restore -p:ContinuousIntegrationBuild=true `
+        "-p:ArtifactsPath=$buildDirectory" `
         -p:Version=$ReleaseVersion -p:InformationalVersion=$ReleaseVersion -p:AssemblyVersion=$ReleaseVersion -p:FileVersion=$ReleaseVersion `
         -p:UseSharedCompilation=false -nodeReuse:false -m:1 -p:TrimmerSingleWarn=false -o $publish *> (Join-Path $artifactRoot 'avalonia-native-publish.log')
     if ($LASTEXITCODE -ne 0) { throw 'NativeAOT publication failed. See .artifacts/avalonia-native-publish.log.' }
@@ -105,7 +108,7 @@ try {
     if (!$SkipValidation) {
         $releaseZip = Join-Path $artifactRoot "Direct2dCad-Avalonia-$ReleaseVersion-win-x64.zip"
         Copy-Item -LiteralPath $archive -Destination $releaseZip -Force
-        & (Join-Path $PSScriptRoot 'build-installer.ps1') -PackageDirectory $portable -ReleaseVersion $ReleaseVersion -InstallerVersion $InstallerVersion
+        & (Join-Path $PSScriptRoot 'build-installer.ps1') -PackageDirectory $portable -ReleaseVersion $ReleaseVersion -InstallerVersion $InstallerVersion -OutputDirectory $artifactRoot
         if (!$?) { throw 'Avalonia MSI package was not created.' }
         $installer = Join-Path $artifactRoot "Direct2dCad-Avalonia-$ReleaseVersion-win-x64.msi"
         if (!(Test-Path -LiteralPath $installer -PathType Leaf)) { throw 'Avalonia MSI package was not created.' }

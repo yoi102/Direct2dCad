@@ -2,7 +2,8 @@ param([Parameter(Mandatory)][string]$PackageDirectory)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $portable = (Resolve-Path -LiteralPath $PackageDirectory).Path
-$archive = Join-Path $repo '.artifacts/Direct2dCad-Avalonia-win-x64.zip'
+$artifactRoot = Split-Path $portable -Parent
+$archive = Join-Path $artifactRoot 'Direct2dCad-Avalonia-win-x64.zip'
 $manifestPath = Join-Path $portable 'manifest.json'
 $manifest = @(Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json)
 if ($manifest.File -contains 'Direct2dCad.Ole.Native.dll') { throw 'Package contains the removed custom C++ bridge.' }
@@ -35,6 +36,6 @@ try {
 } finally { $zip.Dispose() }
 $zipHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
 $result = [ordered]@{ TimestampUtc = [DateTimeOffset]::UtcNow; PackageDirectory = $portable; ExecutableSha256 = $evidence.ExecutableSha256; ZipSha256 = $zipHash; PortableFilesChecked = $manifest.Count; ZipMembersChecked = $files.Count; NativeChecks = $evidence.Passed.Count; SharedGpuFrames = $evidence.Gpu.SharedFrames; Failure = $null }
-$result | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $repo '.artifacts/avalonia-package-verification.json') -Encoding utf8
-@("$zipHash  Direct2dCad-Avalonia-win-x64.zip", "$($evidence.ExecutableSha256)  $([IO.Path]::GetFileName($portable))/Direct2dCad.Avalonia.exe") | Set-Content -LiteralPath (Join-Path $repo '.artifacts/Direct2dCad-Avalonia-SHA256SUMS.txt') -Encoding utf8
+$result | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'avalonia-package-verification.json') -Encoding utf8
+@("$zipHash  Direct2dCad-Avalonia-win-x64.zip", "$($evidence.ExecutableSha256)  $([IO.Path]::GetFileName($portable))/Direct2dCad.Avalonia.exe") | Set-Content -LiteralPath (Join-Path $artifactRoot 'Direct2dCad-Avalonia-SHA256SUMS.txt') -Encoding utf8
 $result | ConvertTo-Json

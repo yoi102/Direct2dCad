@@ -17,6 +17,7 @@ internal static class KnownViews
         Direct2dCad.ViewModels.Settings.UserSettings.UserSettingsViewModel vm => Views.SettingsWorkspace.Create(vm),
         Direct2dCad.ViewModels.Settings.DocumentSettingsViewModel vm => Views.SettingsWorkspace.Create(vm),
         Direct2dCad.ViewModels.Settings.UserSettings.InteractionUserSettingsViewModel vm => new Views.InteractionSettingsView { DataContext = vm },
+        Direct2dCad.ViewModels.Settings.UserSettings.McpUserSettingsViewModel vm => new Views.McpSettingsView { DataContext = vm },
         _ => GeneratedViews.Create(model)
     };
 }

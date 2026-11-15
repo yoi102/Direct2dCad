@@ -126,12 +126,15 @@ public sealed partial class HeadlessToolExecutionTests
     {
         var result = await executor.ExecuteAsync(new(Guid.NewGuid().ToString(), tool, JsonSerializer.Serialize(args)), default);
         using var json = JsonDocument.Parse(result);
-        Assert.Equal(success, json.RootElement.GetProperty("success").GetBoolean());
+        Assert.True(success == json.RootElement.GetProperty("success").GetBoolean(), json.RootElement.GetRawText());
         return json.RootElement.Clone();
     }
 
     private sealed class HeadlessWorkspace : ICadToolWorkspace, IDisposable
     {
+        public Func<JsonElement, bool, JsonElement>? SettingsHandler { get; set; }
+        public JsonElement SetApplicationSettings(JsonElement settings, bool reset) =>
+            SettingsHandler?.Invoke(settings, reset) ?? throw new NotSupportedException();
         public Func<string, int, CancellationToken, Task<CadToolImage>>? CaptureHandler { get; set; }
         public Func<string, CancellationToken, Task<bool>>? PrintHandler { get; set; }
         public Task<CadToolImage> CaptureViewAsync(string id, int size, CancellationToken token) =>

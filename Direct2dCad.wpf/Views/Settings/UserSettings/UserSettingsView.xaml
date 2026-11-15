@@ -10,6 +10,9 @@
              xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels"
              d:DataContext="{d:DesignInstance Type=vm:UserSettingsViewModel}">
     <UserControl.Resources>
+        <DataTemplate DataType="{x:Type vm:McpUserSettingsViewModel}">
+            <local:McpUserSettingsView />
+        </DataTemplate>
         <DataTemplate DataType="{x:Type vm:GeneralUserSettingsViewModel}">
             <local:GeneralUserSettingsView />
         </DataTemplate>

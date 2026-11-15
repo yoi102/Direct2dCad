@@ -113,6 +113,7 @@ internal static class CadAgentToolSelector
             return [];
 
         var normalized = prompt?.Trim().ToLowerInvariant() ?? string.Empty;
+        var isClipboardImage = ContainsAny(normalized, "clipboard image", "paste image", "剪贴板图片", "粘贴图片", "画像を貼り付け");
         var requested = new List<string>();
         var priority = new List<string>();
         var requestedSet = new HashSet<string>(StringComparer.Ordinal);
@@ -122,6 +123,21 @@ internal static class CadAgentToolSelector
                 if (requestedSet.Add(name))
                     requested.Add(name);
         }
+
+        if (ContainsAny(normalized, "template", "工程模板", "模板", "テンプレート"))
+            priority.AddRange(["list_document_templates", "create_document"]);
+        if (ContainsAny(normalized, "recovery", "recover drawing", "恢复", "復元"))
+            priority.AddRange(["list_recovery_copies", "open_recovery_copy", "clear_recovery_copies"]);
+        if (!isClipboardImage && ContainsAny(normalized, "copy", "paste", "cut", "transfer", "复制", "粘贴", "剪切", "跨图纸", "コピー", "貼り付け", "切り取り"))
+            priority.AddRange(["transfer_entities", "list_documents"]);
+        if (ContainsAny(normalized, "compatible copy", "compatibility copy", "兼容副本", "互換コピー"))
+            priority.Add("save_compatible_copy");
+        if (ContainsAny(normalized, "overwrite", "file conflict", "覆盖", "保存冲突", "上書き"))
+            priority.AddRange(["get_file_revision", "save_document"]);
+        if (ContainsAny(normalized, "application settings", "user settings", "theme", "language", "rendering settings", "radial menu",
+                "mcp", "streamable http", "streamablehttp",
+                "应用设置", "用户设置", "主题", "语言", "渲染设置", "径向菜单", "アプリ設定", "テーマ", "言語"))
+            priority.AddRange(["get_application_settings", "set_application_settings"]);
 
         if (ContainsAny(normalized, EntityStatisticsTerms))
             Add(["get_entity_statistics"]);
@@ -134,6 +150,8 @@ internal static class CadAgentToolSelector
 
         if (ContainsAny(normalized, ImageTerms))
             Add(["insert_image_from_file"]);
+        if (isClipboardImage)
+            priority.Add("insert_image_from_clipboard");
 
         if (ContainsAny(normalized, "boolean", "union", "intersect", "subtract", "difference", "布尔", "合并", "并集", "交集", "差集", "相减"))
             Add(["boolean_regions", "get_entity_geometry", "select_entities"]);

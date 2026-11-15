@@ -1,15 +1,12 @@
 param(
-    [string]$OutputDirectory = 'TestResults/github-release-0.1.8',
-    [string]$ReleaseVersion = '0.1.8',
-    [string]$InstallerVersion = '1.0.8'
+    [string]$OutputDirectory = 'TestResults/github-release-0.1.9',
+    [string]$ReleaseVersion = '0.1.9',
+    [string]$InstallerVersion = '1.0.9'
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-$releaseRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputDirectory))
-if (-not $releaseRoot.StartsWith($repoRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'Release output must remain inside the repository.'
-}
+$releaseRoot = [IO.Path]::GetFullPath($OutputDirectory, $repoRoot)
 if (Test-Path -LiteralPath $releaseRoot) {
     throw "Release output already exists. Choose a fresh OutputDirectory: $releaseRoot"
 }
@@ -53,15 +50,19 @@ if (-not $runtimeConfig.runtimeOptions.includedFrameworks) {
 @"
 Direct2dCad $ReleaseVersion (WPF)
 Windows x64. Extract this ZIP and run Direct2dCad.exe.
-This package contains its own .NET 10 runtime and does not require a separately installed .NET Desktop Runtime.
+This package contains its own .NET 11 runtime and does not require a separately installed .NET Desktop Runtime.
 "@ | Set-Content -LiteralPath (Join-Path $publishDirectory 'README.txt') -Encoding utf8
 
 $installerProject = Join-Path $repoRoot 'installer/Direct2dCad.Msi/Direct2dCad.Msi.wixproj'
-dotnet restore $installerProject --locked-mode -p:ContinuousIntegrationBuild=true -v minimal
+$wixIntermediate = Join-Path $buildDirectory 'wix'
+dotnet restore $installerProject --locked-mode -p:ContinuousIntegrationBuild=true `
+    "-p:BaseIntermediateOutputPath=$wixIntermediate/" "-p:MSBuildProjectExtensionsPath=$wixIntermediate/" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'Locked WiX restore failed.' }
 # Rebuild the cabinet even when filenames match an earlier release.
 dotnet build $installerProject -t:Rebuild `
     -c Release --no-restore -p:RestoreLockedMode=true `
+    "-p:BaseIntermediateOutputPath=$wixIntermediate/" "-p:MSBuildProjectExtensionsPath=$wixIntermediate/" `
+    "-p:IntermediateOutputPath=$wixIntermediate/release/" `
     "-p:Version=$wixVersion" "-p:ReleaseVersion=$ReleaseVersion" "-p:PublishDirectory=$publishDirectory" `
     "-p:ReleaseArtifactsDirectory=$installerDirectory" -v minimal
 if ($LASTEXITCODE -ne 0) { throw 'WiX installer build failed.' }
@@ -88,7 +89,7 @@ $manifest = [ordered]@{
     releaseVersion = $ReleaseVersion
     installerProductVersion = $wixVersion
     displayVersion = $ReleaseVersion
-    runtime = 'win-x64 self-contained; .NET 10 included'
+    runtime = 'win-x64 self-contained; .NET 11 included'
     icon = 'Direct2dCad.ico; embedded in application and registered in MSI'
     shortcuts = @('Start menu','Desktop')
     installDirectorySelection = 'WixUI_InstallDir'

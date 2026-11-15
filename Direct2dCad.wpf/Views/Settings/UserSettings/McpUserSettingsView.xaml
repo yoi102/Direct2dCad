@@ -1,0 +1,29 @@
+<UserControl x:Class="Direct2dCad.wpf.Views.Settings.UserSettings.McpUserSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,8,0">
+            <CheckBox AutomationProperties.AutomationId="McpEnabledCheckBox"
+                      Content="{I18N {x:Static r:LangKeys.McpEnable}}"
+                      IsChecked="{Binding IsEnabled}" Margin="0,0,0,20" />
+            <TextBlock Text="{I18N {x:Static r:LangKeys.McpPort}}" Margin="0,0,0,6" />
+            <TextBox AutomationProperties.AutomationId="McpPortTextBox"
+                     Text="{Binding PortText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,16" />
+            <TextBlock Text="{I18N {x:Static r:LangKeys.McpStatus}}" Margin="0,0,0,6" />
+            <TextBlock AutomationProperties.AutomationId="McpStatusText"
+                       Text="{Binding StatusText}" Margin="0,0,0,16" />
+            <TextBlock Text="{I18N {x:Static r:LangKeys.McpEndpoint}}" Margin="0,0,0,6" />
+            <TextBox AutomationProperties.AutomationId="McpEndpointTextBox" IsReadOnly="True"
+                     Text="{Binding Endpoint, Mode=OneWay}" Margin="0,0,0,10" />
+            <Button AutomationProperties.AutomationId="McpCopyEndpointButton" HorizontalAlignment="Left"
+                    Content="{I18N {x:Static r:LangKeys.McpCopyEndpoint}}"
+                    Command="{Binding CopyEndpointCommand}" />
+            <TextBlock Text="{Binding CopyFeedback}" TextWrapping="Wrap" Margin="0,8,0,0" />
+            <TextBlock AutomationProperties.AutomationId="McpErrorText" Text="{Binding ErrorMessage}"
+                       TextWrapping="Wrap" Foreground="{DynamicResource MaterialDesign.Brush.Error}"
+                       Margin="0,8,0,0" />
+            <TextBlock Text="{I18N {x:Static r:LangKeys.McpSettingsHelp}}" TextWrapping="Wrap" Margin="0,16,0,0" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

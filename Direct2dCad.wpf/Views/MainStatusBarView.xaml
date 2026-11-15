@@ -67,7 +67,10 @@
     </UserControl.Resources>
     <Border Background="{DynamicResource MaterialDesign.Brush.Background}">
         <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="32" /></Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="20" />
+                <RowDefinition Height="32" />
+            </Grid.RowDefinitions>
             <TextBlock Grid.Row="0" Margin="8,2,8,0" FontSize="12" TextTrimming="CharacterEllipsis"
                        AutomationProperties.AutomationId="CurrentDrawingStepText"
                        AutomationProperties.LiveSetting="Polite"

@@ -66,7 +66,9 @@ public sealed class DxfExchangeTests
     }
     [Fact]public async Task ExternalEzdxfSampleLoadsCircularEdges()
     {
-        var dir=AppContext.BaseDirectory;while(!File.Exists(Path.Combine(dir,"Direct2dCad.slnx")))dir=Directory.GetParent(dir)?.FullName??throw new IOException("Repository not found.");
+        var dir = Environment.GetEnvironmentVariable("DIRECT2DCAD_REPOSITORY_ROOT") ?? AppContext.BaseDirectory;
+        while (!File.Exists(Path.Combine(dir, "Direct2dCad.slnx")))
+            dir = Directory.GetParent(dir)?.FullName ?? throw new IOException("Repository not found.");
         var result=await new CadDxfStorage().ImportAsync(Path.Combine(dir,"docs/samples/dxf/ezdxf-closed-loop-arcs.dxf"),CadUnit.Millimeter);
         Assert.True(result.Imported>0);Assert.Contains(result.Document.Entities.Values,e=>e is CadArc or CadCompositePath);
     }

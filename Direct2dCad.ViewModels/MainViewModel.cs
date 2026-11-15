@@ -4,6 +4,7 @@ using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Direct2dCad.Client.Common.Settings;
+using Direct2dCad.Application.Platform;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.IO;
 using Direct2dCad.Rendering;
@@ -29,6 +30,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IApplicationThemeService _themeSettingService;
     private readonly IUserSettingsStore _userSettingsStore;
     private readonly CadUserSettings _userSettings;
+    private readonly ICadMcpService? _mcpService;
+    private readonly IClipboardTextService? _clipboardTextService;
     private readonly IActiveEditorContext _activeEditorContext;
     private readonly IEditorTabFactory _editorTabFactory;
     private readonly bool _ownsRecoveryStore;
@@ -48,7 +51,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         IActiveEditorContext activeEditorContext,
         IEditorTabFactory editorTabFactory,
         CadRecoveryStore? recoveryStore = null,
-        IFileLocationService? fileLocationService = null
+        IFileLocationService? fileLocationService = null,
+        ICadMcpService? mcpService = null,
+        IClipboardTextService? clipboardTextService = null
         )
     {
         dockLayoutService.AnchorableStateChanged += OnAnchorableStateChanged;
@@ -62,6 +67,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _dialogService = dialogService;
         _userSettingsStore = userSettingsStore;
         _userSettings = userSettingsStore.Load();
+        _mcpService = mcpService;
+        _clipboardTextService = clipboardTextService;
         _snackbarService = snackbarService;
         _activeEditorContext = activeEditorContext;
         _editorTabFactory = editorTabFactory;
@@ -228,7 +235,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void NewTemplate(string key)
     {
+        CreateTemplateDocument(key, null);
+    }
+
+    internal EditorTabViewModel CreateTemplateDocument(string key, string? name)
+    {
         var document=Direct2dCad.Db.Cad.CadEngineeringTemplates.Create(key);
+        if (!string.IsNullOrWhiteSpace(name)) document.Rename(name);
         var tab=_dockLayoutService.OpenOrActivateDocument(e=>false,()=>_editorTabFactory.Create(newTab =>
         {
             newTab.Load(document,string.Empty);
@@ -238,6 +251,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }));
         CurrentEditorTabViewModel=tab;
         DocumentExplorer.RefreshDocuments();
+        return tab;
     }
 
     [RelayCommand]
@@ -312,7 +326,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 _userSettings,
                 _userSettingsStore,
                 ApplyUserSettings,
-                actualGraphicsDeviceMode));
+                actualGraphicsDeviceMode,
+                _mcpService,
+                _clipboardTextService));
+    }
+
+    public Task InitializeMcpAsync(int? requestedPort = null)
+    {
+        if (requestedPort is { } port)
+        {
+            _userSettings.Mcp.IsEnabled = true;
+            _userSettings.Mcp.Port = port;
+        }
+        return _mcpService?.ConfigureAsync(_userSettings.Mcp.IsEnabled, _userSettings.Mcp.Port)
+            ?? Task.CompletedTask;
     }
 
     private void ApplyUserSettings(CadUserSettings settings)
@@ -334,6 +361,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         foreach (var editorTab in _dockLayoutService.Documents.OfType<EditorTabViewModel>())
             editorTab.ApplyUserSettings(_userSettings);
+
+        if (_mcpService is not null)
+            _ = _mcpService.ConfigureAsync(_userSettings.Mcp.IsEnabled, _userSettings.Mcp.Port);
     }
 
     [RelayCommand]

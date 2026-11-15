@@ -11,6 +11,7 @@ using Direct2dCad.Db.Data.Styles.FillStyles;
 using Direct2dCad.Db.Data.Text;
 using Direct2dCad.Db.Geometry;
 using Direct2dCad.Application.Platform;
+using Direct2dCad.IO;
 
 using MessagePipe;
 
@@ -64,6 +65,8 @@ public sealed partial class CadWorkspaceToolExecutor
             You are the workspace-aware CAD editing assistant inside Direct2dCad. Use tools for every inspection or modification and never claim success before a tool confirms it. The machine-readable Agent Contract is available through get_agent_capabilities; call it when the task is unfamiliar, multi-step, or involves many entities. Open documents: {{documentSummary}}
 
             document_id is the stable tab identifier. Supply it whenever the user names a non-default document. If omitted, document-scoped tools use the document that was active when this request began, or the document most recently created, opened, or activated by a tool. Document lifecycle tools are workspace operations; drawing content and appearance changes use undoable document commands. Each document touched by this request has an independent undo batch. Use add_entities for coherent multi-part drawings, including per-entity styles and fills. Use set_entity_specific_properties for text/font/inversion, embedded-object opacity, and BlockReference definition changes. Use set_text_style_properties or set_graphic_style_properties for shared styles; those operations affect every reference and are undoable. Inspect layers with list_layers before renaming, deleting, or reordering them; delete_layer requires explicit confirmation because it also deletes the layer's entities. Create missing layers with create_layer. Use create_block to turn existing entities into a reusable definition and insert_block for additional references. Use splines for smooth organic outlines, and read exact geometry before modifying existing entities. Keep replies concise and report document_id together with created or changed entity IDs.
+
+            Use transfer_entities for cross-document copy or cut/paste. Discover engineering templates with list_document_templates and recovery versions with list_recovery_copies. For unattended file work use save_document(interactive=false) with an explicit destination for new drawings, and close_document(on_unsaved=save/discard/cancel). Inspect file_conflict.current_revision or get_file_revision before explicitly authorizing overwrite, optionally with expected_sha256. save_compatible_copy requires allow_loss=true. get_application_settings and set_application_settings cover general, rendering, interaction, radial-menu and MCP preferences. Inspect get_application_settings.mcp_service for the actual listener state, endpoint and startup error. MCP listener changes take effect after the response completes. Reconnect at the configured port after changing it.
 
             {{activeDetails}}
 
@@ -122,7 +125,16 @@ public sealed partial class CadWorkspaceToolExecutor
                 "activate_document" => ActivateDocument(root),
                 "rename_document" => RenameDocument(root),
                 "save_document" => await SaveDocumentAsync(root, cancellationToken),
-                "close_document" => await CloseDocumentAsync(root),
+                "close_document" => await CloseDocumentAsync(root, cancellationToken),
+                "list_document_templates" => ListDocumentTemplates(),
+                "list_recovery_copies" => ListRecoveryCopies(),
+                "open_recovery_copy" => await OpenRecoveryCopyAsync(root, cancellationToken),
+                "clear_recovery_copies" => await ClearRecoveryCopiesAsync(root, cancellationToken),
+                "save_compatible_copy" => await SaveCompatibleCopyAsync(root, cancellationToken),
+                "transfer_entities" => TransferEntities(root),
+                "get_file_revision" => GetFileRevision(root),
+                "get_application_settings" => Success(_workspace.GetApplicationSettings()),
+                "set_application_settings" => Success(_workspace.SetApplicationSettings(root.GetProperty("settings"), OptionalBool(root, "reset", false))),
                 "get_agent_capabilities" => GetAgentCapabilities(root),
                 "boolean_regions" => await BooleanRegionsAsync(root, cancellationToken),
                 "capture_view" => await CaptureViewAsync(root, cancellationToken),
@@ -132,7 +144,8 @@ public sealed partial class CadWorkspaceToolExecutor
                     "set_layout_paper" or "add_layout_viewport" or "set_layout_viewport" or
                     "delete_layout_viewport" or "reassociate_dimension" =>
                     ExecuteForDocument(root, (executor, args) => ExecutePresentationTool(executor, toolCall.Name, args)),
-                "insert_image_from_file" => InsertImageFromFile(root),
+                "insert_image_from_file" => InsertImage(root, fromClipboard: false),
+                "insert_image_from_clipboard" => InsertImage(root, fromClipboard: true),
                 "add_ole_object" => AddOleObject(root),
                 "list_document_catalog" => ExecuteForDocument(root, ListDocumentCatalog),
                 "set_entity_common_properties" => ExecuteForDocument(root, SetEntityCommonProperties),
@@ -154,6 +167,7 @@ public sealed partial class CadWorkspaceToolExecutor
                 "insert_block" => ExecuteForDocument(root, InsertBlock),
                 "list_blocks" => ExecuteForDocument(root, ListBlocks),
                 "rename_block" => ExecuteForDocument(root, RenameBlock),
+                "set_block_base_point" => ExecuteForDocument(root, SetBlockBasePoint),
                 "delete_block" => ExecuteForDocument(root, DeleteBlock),
                 "edit_block" => EditBlock(root),
                 "exit_block_edit" => ExitBlockEdit(root),
@@ -175,6 +189,12 @@ public sealed partial class CadWorkspaceToolExecutor
         catch (OperationCanceledException)
         {
             throw;
+        }
+        catch (CadFileConflictException conflict)
+        {
+            return CadJson.Serialize(new { success = false, code = "file_conflict", error = conflict.Message,
+                current_revision = new { file_path = conflict.CurrentRevision.FullPath, exists = conflict.CurrentRevision.Exists,
+                    length = conflict.CurrentRevision.Length, sha256 = conflict.CurrentRevision.Hash } });
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
@@ -201,7 +221,7 @@ public sealed partial class CadWorkspaceToolExecutor
 
     private string CreateDocument(JsonElement arguments)
     {
-        var document = _workspace.CreateDocument(OptionalString(arguments, "name"));
+        var document = _workspace.CreateDocument(OptionalString(arguments, "name"), OptionalString(arguments, "template"));
         _defaultDocumentId = document.DocumentId;
         return Success(new { document = DocumentDto(document) });
     }
@@ -238,6 +258,7 @@ public sealed partial class CadWorkspaceToolExecutor
         var saved = await _workspace.SaveDocumentAsync(
             document.DocumentId,
             OptionalString(arguments, "file_path"),
+            SaveOptions(arguments),
             cancellationToken);
         var result = new
         {
@@ -250,10 +271,12 @@ public sealed partial class CadWorkspaceToolExecutor
         });
     }
 
-    private async Task<string> CloseDocumentAsync(JsonElement arguments)
+    private async Task<string> CloseDocumentAsync(JsonElement arguments, CancellationToken cancellationToken)
     {
         var document = ResolveDocument(arguments);
-        var closed = await _workspace.CloseDocumentAsync(document.DocumentId);
+        var closed = await _workspace.CloseDocumentAsync(document.DocumentId,
+            new(OptionalString(arguments, "on_unsaved") ?? "ask", OptionalString(arguments, "file_path"),
+                OptionalBool(arguments, "overwrite", false), OptionalString(arguments, "expected_sha256")), cancellationToken);
         if (closed)
         {
             _documentExecutors.Remove(document.DocumentId);
@@ -398,13 +421,14 @@ public sealed partial class CadWorkspaceToolExecutor
         return Success(new { document_id = document.DocumentId, result });
     }
 
-    private string InsertImageFromFile(JsonElement arguments)
+    private string InsertImage(JsonElement arguments, bool fromClipboard)
     {
         if (_imageImportService is null)
-            throw new NotSupportedException("Image file import is unavailable in the current host.");
+            throw new NotSupportedException("Image import is unavailable in the current host.");
 
-        var filePath = Path.GetFullPath(RequiredString(arguments, "file_path"));
-        var image = _imageImportService.LoadFromFile(filePath);
+        var image = fromClipboard
+            ? _imageImportService.LoadFromClipboard() ?? throw new InvalidOperationException("The clipboard does not contain an image.")
+            : _imageImportService.LoadFromFile(Path.GetFullPath(RequiredString(arguments, "file_path")));
         if (image.PixelWidth <= 0 || image.PixelHeight <= 0 || image.Stride <= 0 || image.Pixels.Length == 0)
             throw new InvalidDataException("The image importer returned empty pixel data.");
 
@@ -1390,6 +1414,14 @@ public sealed partial class CadWorkspaceToolExecutor
         return new { block_id = block.Id.Value, old_name = oldName, new_name = document.GetBlock(block.Id).Name };
     }
 
+    private static object SetBlockBasePoint(CadDocumentToolExecutor executor, JsonElement arguments)
+    {
+        var block = ResolveBlock(executor.Session.CadEditor.Document, RequiredString(arguments, "block"));
+        var point = new CadPointD(RequiredFinite(arguments, "x"), RequiredFinite(arguments, "y"));
+        executor.ExecuteCommand(new SetBlockDefinitionBasePointCommand(block.Id, point));
+        return new { block_id = block.Id.Value, base_point = new { x = point.X, y = point.Y } };
+    }
+
     private object DeleteBlock(CadDocumentToolExecutor executor, JsonElement arguments)
     {
         if (!OptionalBool(arguments, "confirm", false))
@@ -1802,7 +1834,7 @@ public sealed partial class CadWorkspaceToolExecutor
                 ["entity_ids"],
                 not: MutuallyExclusive("color", "graphic_style"),
                 allOf: [AtLeastOneRequired("layer", "name", "color_source", "color", "line_weight", "graphic_style", "z_index", "visible", "locked")] )));
-        tools.Add(Tool("set_entity_fill", "Set no fill, an existing fill style, solid fill, or hatch fill on fill-capable entities.",
+        tools.Add(Tool("set_entity_fill", "Set no fill, an existing fill style, solid fill, hatch fill, or gradient fill on fill-capable entities.",
             ObjectSchema(
                 FillSchema(includeEntityIds: true),
                 ["entity_ids", "mode"],
@@ -1889,6 +1921,17 @@ public sealed partial class CadWorkspaceToolExecutor
         tools.Add(Tool("exit_block_edit", "Leave block editing and return to model space.",
             ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() })));
         AddPresentationToolDefinitions(tools);
+        tools.Add(Tool("set_block_base_point", "Change a user block definition's base point with undo. Coordinates are millimetres. Existing block references follow the CAD definition semantics.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(), ["block"] = StringSchema("User block name or ID"),
+                ["x"] = NumberSchema("Base point X"), ["y"] = NumberSchema("Base point Y")
+            }, ["block", "x", "y"])));
+        tools.AddRange(CadApplicationSettingsTools.ToolDefinitions);
+        var clipboardImageSchema = JsonNode.Parse(tools.Single(tool => tool.Name == "insert_image_from_file").Parameters.GetRawText())!.AsObject();
+        clipboardImageSchema["properties"]!.AsObject().Remove("file_path");
+        clipboardImageSchema["required"] = new JsonArray("bounds");
+        tools.Add(Tool("insert_image_from_clipboard", "Import the current system clipboard image into an undoable CadImage at explicit world bounds. Fails without creating geometry if no image is available.", clipboardImageSchema));
         return tools;
     }
 
@@ -2027,8 +2070,12 @@ public sealed partial class CadWorkspaceToolExecutor
             }));
         yield return Tool("list_documents", "List all open CAD documents and their stable document_id values.",
             ObjectSchema(new Dictionary<string, object>()));
-        yield return Tool("create_document", "Create and activate a new CAD document.",
-            ObjectSchema(new Dictionary<string, object> { ["name"] = StringSchema("Optional document name") }));
+        yield return Tool("create_document", "Create and activate a new CAD document, optionally from an engineering template. Use list_document_templates to discover keys.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["name"] = StringSchema("Optional document name"),
+                ["template"] = new { type = "string", @enum = CadEngineeringTemplates.Keys }
+            }));
         yield return Tool("open_document", "Open and activate a .d2cad file from an absolute path.",
             ObjectSchema(new Dictionary<string, object> { ["file_path"] = StringSchema("Absolute .d2cad file path") }, ["file_path"]));
         yield return Tool("open_dxf", "Import a bounded DXF into a new unsaved document. Units must be declared or explicitly supplied.",
@@ -2042,13 +2089,21 @@ public sealed partial class CadWorkspaceToolExecutor
             {
                 ["document_id"] = DocumentIdSchema(), ["name"] = StringSchema("New document name")
             }, ["name"]));
-        yield return Tool("save_document", "Save a document, optionally to a new absolute file path.",
+        yield return Tool("save_document", "Save a document. interactive=false requires file_path for a new drawing and returns errors without dialogs. overwrite=true explicitly authorizes replacing the destination revision captured at call time; expected_sha256 optionally restricts that authorization.",
             ObjectSchema(new Dictionary<string, object>
             {
-                ["document_id"] = DocumentIdSchema(), ["file_path"] = StringSchema("Optional absolute destination path")
-            }));
-        yield return Tool("close_document", "Close a document, using the existing unsaved-document confirmation flow.",
-            ObjectSchema(new Dictionary<string, object> { ["document_id"] = DocumentIdSchema() }));
+                ["document_id"] = DocumentIdSchema(), ["file_path"] = StringSchema("Optional absolute destination path"),
+                ["interactive"] = new { type = "boolean", description = "Allow the save-path chooser for a new drawing. Defaults to true for compatibility." },
+                ["overwrite"] = new { type = "boolean" }, ["expected_sha256"] = StringSchema("Expected existing destination SHA-256. Requires overwrite=true.")
+            }, allOf: OverwriteRequirements()));
+        yield return Tool("close_document", "Close a document. on_unsaved defaults to ask for compatibility. save, discard and cancel are dialog-free decisions. save requires file_path for an unsaved drawing. Failed saves leave the document open.",
+            ObjectSchema(new Dictionary<string, object>
+            {
+                ["document_id"] = DocumentIdSchema(), ["on_unsaved"] = EnumSchema("ask", "save", "discard", "cancel"),
+                ["file_path"] = StringSchema("Save destination when on_unsaved=save"),
+                ["overwrite"] = new { type = "boolean" }, ["expected_sha256"] = StringSchema("Expected existing destination SHA-256. Requires overwrite=true.")
+            }, allOf: OverwriteRequirements()));
+        foreach (var definition in WorkspaceOperationsToolDefinitions()) yield return definition;
     }
 
     private static Dictionary<string, object> CommonPropertySchema(bool includeEntityIds)

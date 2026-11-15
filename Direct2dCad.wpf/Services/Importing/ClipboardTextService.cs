@@ -5,6 +5,12 @@ namespace Direct2dCad.wpf.Services.Importing;
 
 internal sealed class ClipboardTextService : IClipboardTextService
 {
+    public Task SetTextAsync(string text)
+    {
+        Clipboard.SetText(text, TextDataFormat.UnicodeText);
+        return Task.CompletedTask;
+    }
+
     public string? LoadFromClipboard()
     {
         if (!Clipboard.ContainsText(TextDataFormat.UnicodeText))

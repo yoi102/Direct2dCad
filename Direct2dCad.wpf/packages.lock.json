@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0-windows7.0": {
+    "net11.0-windows7.0": {
       "Antelcat.I18N.WPF": {
         "type": "Direct",
         "requested": "[2.0.0-preview-1, )",
@@ -19,40 +19,39 @@
       },
       "Dirkster.AvalonDock": {
         "type": "Direct",
-        "requested": "[5.0.0, )",
-        "resolved": "5.0.0",
-        "contentHash": "vVnKmsOp4kby8fZ6gPQHEqwuKmGx3gC1Bgt2zQ7wOdLay0pFBjtOxQ6mdCzTfGvZ2YWzG4PGwMOX94ifHh+NJA==",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "WfLzuhDilMqm+OJgA5QW9icEn7eKh/yngVFljh7IPCOCA2Xyz9eznZ0MYWkkdSvHJLNaFI2/Z09z3DNp9W+Apg==",
         "dependencies": {
-          "Dirkster.AvalonDock.Core": "5.0.0"
+          "Dirkster.AvalonDock.Core": "5.0.2"
         }
       },
       "Dirkster.AvalonDock.DependencyInjection": {
         "type": "Direct",
-        "requested": "[5.0.0, )",
-        "resolved": "5.0.0",
-        "contentHash": "YNrTI2SozkLNpP4uXcnodk03NksdTgaWE/Hu4zKFnMUl1N5xGfIhcyg50NGEuDrhtxijOvcWOyHyL/f7cui4eg==",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "y4GwuAy/id5NMH+hshOptP56Ze89kRbfO92lWw87rCjBCfUfQSiE+Llnp5KNpaddIWfSakvbDH7H8uPdsmacyA==",
         "dependencies": {
-          "Dirkster.AvalonDock.Core": "5.0.0",
-          "Dirkster.AvalonDock.Mvvm": "5.0.0",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.10"
+          "Dirkster.AvalonDock.Core": "5.0.2",
+          "Dirkster.AvalonDock.Mvvm": "5.0.2"
         }
       },
       "Dirkster.AvalonDock.Serializer.Json": {
         "type": "Direct",
-        "requested": "[5.0.0, )",
-        "resolved": "5.0.0",
-        "contentHash": "R8zz19kVfxUtQd6KQBB4TuI4EFehP2wyGKAw+irST+Y6NnnA9HuJ29Gc2B5A0XmE2OOfSHuvbY7KbmgVuhXMWQ==",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "Of8+zqZ8RaFvlW5GFgH+sDZKMicTW2GSjP/rd8kExKedmkeZbEdz/0/zRDr0Mif+NVSVqeOSWA1fpE9s11WH3Q==",
         "dependencies": {
-          "Dirkster.AvalonDock.Core": "5.0.0"
+          "Dirkster.AvalonDock.Core": "5.0.2"
         }
       },
       "Dirkster.AvalonDock.Themes.Arc": {
         "type": "Direct",
-        "requested": "[5.0.0, )",
-        "resolved": "5.0.0",
-        "contentHash": "4/NlpPV4bqwl5PZeIRCvr94dpOnsXWTu+N0oH+TFh5wvLVI2cZ78GNIq180OfMxhRlWW9XmyupiZGOVOa2Ic/w==",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "ljPPzq4TFNggrfHJbDILaE2s/aVuvXGZdzsO9ZS/VFqqfFwtMZkd7Wm4nAiHkERqzHEjAkm6l0O78s9ADqkZKw==",
         "dependencies": {
-          "Dirkster.AvalonDock": "5.0.0"
+          "Dirkster.AvalonDock": "5.0.2"
         }
       },
       "gong-wpf-dragdrop": {
@@ -72,33 +71,27 @@
       },
       "MaterialDesignThemes.MahApps": {
         "type": "Direct",
-        "requested": "[5.3.3-ci1419, )",
-        "resolved": "5.3.3-ci1419",
-        "contentHash": "4b+xwcUZMON9QGiG5q+QsdgX6kTmiCVS5QvausnuJaSRatcEpdps4HiXPvo8wrVeZXQaIulqV1UEpxrPHHp64g==",
+        "requested": "[5.4.0, )",
+        "resolved": "5.4.0",
+        "contentHash": "ERDogVPU1ypvq/sObdeGZmEGrvOaT1uc+yIG1R18jmOfpkex9oBpXiIU6aQuW9pUY9ViVgS2TKGygpENnwvMAQ==",
         "dependencies": {
           "MahApps.Metro": "2.4.11",
-          "MaterialDesignColors": "5.3.3-ci1419",
-          "MaterialDesignThemes": "5.3.3-ci1419",
-          "Microsoft.Xaml.Behaviors.Wpf": "1.1.77"
+          "MaterialDesignColors": "5.4.0",
+          "MaterialDesignThemes": "5.4.0",
+          "Microsoft.Xaml.Behaviors.Wpf": "1.1.142"
         }
       },
       "MessagePipe": {
         "type": "Direct",
         "requested": "[1.8.2, )",
         "resolved": "1.8.2",
-        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "6.0.0"
-        }
+        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ=="
       },
       "Microsoft.Extensions.DependencyInjection": {
         "type": "Direct",
-        "requested": "[11.0.0-preview.6.26359.118, )",
-        "resolved": "11.0.0-preview.6.26359.118",
-        "contentHash": "MwlfMwxXewuq+X85a31yYx6emRYIyJOboVXZtRH3Wvp/hZZWmlg1pu/tI+XJUm4ltoCNMzpcFF6zJcmbnbnuGA==",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "11.0.0-preview.6.26359.118"
-        }
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "KygQMITBDDPXw7+AAgdwQvVAaTXuDsc1iCAuvhO73ERxKX+d92cdbgZmpoYF7DIUq2hfs/yO2KD87uIreRy3MA=="
       },
       "Antelcat.I18N.SourceGenerators": {
         "type": "Transitive",
@@ -115,38 +108,38 @@
       },
       "Dirkster.AvalonDock.Core": {
         "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "PlIMOCpzU89vawS3/6IeeQnfaHz0Jy4exi3w8pQlhmmERT6Cgt5XxA9TjX+PU8jWcBgvpPX6g0EZrSRuuFE9gw=="
+        "resolved": "5.0.2",
+        "contentHash": "viL+5loMFdTIsnKW7833OK1y0FdlX5o7Kacl76ArRD9DYUD8BcmpV1IeLffrTX7vXv/cNLvGx6OHSKaYfDVe6g=="
       },
       "Dirkster.AvalonDock.Mvvm": {
         "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "QGWPqe7jsO1sbRnBnL/3wqeyaHDMbk9Rt4aDoLZDtoepsecwaESMpesHPNjyN0imnxEY4631869dzgqeXcx/9g==",
+        "resolved": "5.0.2",
+        "contentHash": "Ajxq5K92ykQWqU68qkUI6gmW1Gq51l1UGNbVOU9CgG0xFZPXW+ZY66cZitccWkF3zBJUeLVAgC2N7JFRQsrgnQ==",
         "dependencies": {
-          "Dirkster.AvalonDock.Core": "5.0.0"
+          "Dirkster.AvalonDock.Core": "5.0.2"
         }
       },
       "Dirkster.AvalonDock.Mvvm.CommunityToolkit": {
         "type": "Transitive",
-        "resolved": "5.0.0",
-        "contentHash": "1/wdRGzN2w82AV1C/M+lpl6oeGiyg1HPEMj30HaknVsEENbUAlAmQMYSssYu63GhYWw1JmIhoN3kPsDLEMvm/g==",
+        "resolved": "5.0.2",
+        "contentHash": "dC0ZG2IB5ipcCu0Ls/RFhhEsvwjTsA/q6UGImyvh9sSBvJDHlFJxe+Qn2ziNKFRzr0d/zCG/iGldcC6hqxImvw==",
         "dependencies": {
           "CommunityToolkit.Mvvm": "8.4.0",
-          "Dirkster.AvalonDock.Core": "5.0.0"
+          "Dirkster.AvalonDock.Core": "5.0.2"
         }
       },
       "MaterialDesignColors": {
         "type": "Transitive",
-        "resolved": "5.3.3-ci1419",
-        "contentHash": "hsSNFq5tBIkrR3mdDgW5PAm4DyK26WejK4qogxePLucJCS59Os9bFWUcdxKKGdoBScCCE5HxgQfZ4YTTDZzBeQ=="
+        "resolved": "5.4.0",
+        "contentHash": "L6PxatCc/LeqSmUVqCqFl7UcNgaI/AgEIHGAgFneAX6MjoHWeERBP7lHEpJagKjyOHn2MAavuz9wGKOc2p0yIQ=="
       },
       "MaterialDesignThemes": {
         "type": "Transitive",
-        "resolved": "5.3.3-ci1419",
-        "contentHash": "oehOOxTEfub8jDr2GHZZJp1wl9Vq37He/uyAZCcc8/HsQUGzGrUDwrbd8mi2sEqoRaCalsrz8M7PONZGx/FxfA==",
+        "resolved": "5.4.0",
+        "contentHash": "dOX3vBToKGe3tA/zMrtvz7BSnP+Omk0SL0IgAqLQgh3k92Qwm0GLPRip0xVTY0rwTYH3lTdPIhFh8x0J+KN27w==",
         "dependencies": {
-          "MaterialDesignColors": "5.3.3-ci1419",
-          "Microsoft.Xaml.Behaviors.Wpf": "1.1.77"
+          "MaterialDesignColors": "5.4.0",
+          "Microsoft.Xaml.Behaviors.Wpf": "1.1.142"
         }
       },
       "MessagePack": {
@@ -169,10 +162,10 @@
         "resolved": "3.1.12",
         "contentHash": "iNSNatPh6bafRUbkQKlClExjpPpd8hiZgfZsodGf7bheIlkizGbMzsJ2mPui8jOHRe4Ky9eg5ou/fFzI7CT3fg=="
       },
-      "Microsoft.Extensions.DependencyInjection.Abstractions": {
+      "Microsoft.Extensions.AI.Abstractions": {
         "type": "Transitive",
-        "resolved": "11.0.0-preview.6.26359.118",
-        "contentHash": "AOZE/D7WFJ/mGHq1sOy8HL3yIIBx0T5iPupTHh/Xrc77NcK5F9lmryffZsBQTjPh5FFPoMXRoVswEOrWIUD61w=="
+        "resolved": "10.11.0",
+        "contentHash": "h4DX/TdJU4fk1GGaf19n6Kujkj6VXbGeL4UEOsQ8+ZJC5fVApPauokCtvBP684BYbczUYZQNfo1mbmyHG4WVSg=="
       },
       "Microsoft.NET.StringTools": {
         "type": "Transitive",
@@ -181,13 +174,37 @@
       },
       "Microsoft.Xaml.Behaviors.Wpf": {
         "type": "Transitive",
-        "resolved": "1.1.135",
-        "contentHash": "r8qBEXmQfORso2+MVHnt8PSH4761zJ0SIxgQTSEDVLU97EN2FZdG6/ZCYUPhQy+OrPKgnpYBCAs3PS6Bs7wRsg=="
+        "resolved": "1.1.142",
+        "contentHash": "c47wA/8GHiQ9w+O6+mdqrZhZrxHogx2/fSZyRKL9tz0k+ypoTiwOx6fID0X3jr5LnCazJbCk7KiAcL0zVnNgNA=="
+      },
+      "ModelContextProtocol": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "3oMhK5W0G3H8+1SbMosV7meE6sKQfmzLKSNtjQ3dGZ+IJU5RomKTs/bKWHFyOJQNMWk//+iClQJfcMpHnwCFsg==",
+        "dependencies": {
+          "ModelContextProtocol.Core": "[2.4.0]"
+        }
+      },
+      "ModelContextProtocol.AspNetCore": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "qo04FrgNKc5obyjzqd8CTu1vofrxcbKnOFVzxQ1+b3G9SBluwRMT31NZTztegJ1QDri4Z/3jUe8UqaIc+2xmCw==",
+        "dependencies": {
+          "ModelContextProtocol": "[2.4.0]"
+        }
+      },
+      "ModelContextProtocol.Core": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "q98pZMlcxhsh0LpGXcT2ow7sGNveCPhDlJT3zJ7Cz5nNyPmPkm8P57dUIUpzv1w6qWbdSZcR/Z+RbZtNYjEmXQ==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.11.0"
+        }
       },
       "Riok.Mapperly": {
         "type": "Transitive",
-        "resolved": "5.0.0-next.10",
-        "contentHash": "bFtga7serPecDcuH/KpKGMKPLFjNeLMzKwecuYPIL4pLNU9vGeCEbJQ2CfvQwXqF3VtHcIy9eyWbkYdoupgnpA=="
+        "resolved": "5.0.0-next.13",
+        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
       },
       "SharpGen.Runtime": {
         "type": "Transitive",
@@ -209,59 +226,59 @@
       },
       "Vanara.Core": {
         "type": "Transitive",
-        "resolved": "5.0.5",
-        "contentHash": "e3+5FNx0tJGKXCl/2yieiiU2WoIQN3A3AO6xuKIQVhQlo45CGBrM5riU6FYDPC4iX3WBypty/h0EZL4xWV2ucA=="
+        "resolved": "5.0.8",
+        "contentHash": "o7BEq3KuLK1J4TVRuaoX7wv0SMoFFwSKglZCpWSYtxPiIYUeQ0JLNyG1/2E4e0J1T5CbzZy56y03S0zO33/9wQ=="
       },
       "Vanara.PInvoke.Cryptography": {
         "type": "Transitive",
-        "resolved": "5.0.5",
-        "contentHash": "lXcUtjy3vy+hjqrT2YnHFtAl56UdDPpNnqQaAuQ3+FoNlkeA7k1yFxvqMKOVJ3tM88NJPniOiJHl/tSF2eSW+A==",
+        "resolved": "5.0.8",
+        "contentHash": "BmwKE+cgCG4xRESNzAssRlrzmSOmWq7Wuu2hQ6yDbu5coTii/if9DcMH6HQFWnXkdmeZLKKAvvuT5rwwdPX/7w==",
         "dependencies": {
-          "Vanara.Core": "5.0.5"
+          "Vanara.Core": "5.0.8"
         }
       },
       "Vanara.PInvoke.Gdi32": {
         "type": "Transitive",
-        "resolved": "5.0.5",
-        "contentHash": "X5Hu+l8wlGDkOSXsA5PMaJAWSYrgfZUBVF5CIXV8NqEfaA/25OHfKsdjwOQS1//UcJ1cnXra5SxcF70mPAF1iA==",
+        "resolved": "5.0.8",
+        "contentHash": "B5zvmPGxV8SPrA3HKWwnpeaeHi3sQhZ/nMAfz1hM7aaDMOL2bll7Aqf7WWdKzn0ZF+2eR13Z3CDWvqniGLU29w==",
         "dependencies": {
-          "Vanara.Core": "5.0.5"
+          "Vanara.Core": "5.0.8"
         }
       },
       "Vanara.PInvoke.Kernel32": {
         "type": "Transitive",
-        "resolved": "5.0.5",
-        "contentHash": "RyUEG8DN5BUttC82xTdiVz/HpCKa/zeqv2j7kNfABSj3m/3hyH9PSQdeg/fwkOY5VbIWyBegnp+2AKfYAJL3PA==",
+        "resolved": "5.0.8",
+        "contentHash": "wMbnoPky02qu+ftcy5AEtMTBVg9p3rtdj/uYgtRag0auZ0WPTUVXd5HCAnMDgA4yJs3o6wS/siy1gxl413UV+g==",
         "dependencies": {
-          "Vanara.Core": "5.0.5"
+          "Vanara.Core": "5.0.8"
         }
       },
       "Vanara.PInvoke.Ole": {
         "type": "Transitive",
-        "resolved": "5.0.5",
-        "contentHash": "SsABZcfJWY2OI/72kpV7m0BbwnVo2NnWvWDlkrYdoeQ65KVAM+5uPibU8itWr0zC8VYPvpgvYPbJxEtDjeaGVg==",
+        "resolved": "5.0.8",
+        "contentHash": "c2iepqjD4S3nHRSF1mMdxdWAL9AQlq/w/JnlwsV3oJyklu0lf4wNVW+e9TkXZsx+9xuiboAx1ofu2ic0ruDIIw==",
         "dependencies": {
-          "Vanara.Core": "5.0.5",
-          "Vanara.PInvoke.Rpc": "5.0.5"
+          "Vanara.Core": "5.0.8",
+          "Vanara.PInvoke.Rpc": "5.0.8"
         }
       },
       "Vanara.PInvoke.Rpc": {
         "type": "Transitive",
-        "resolved": "5.0.5",
-        "contentHash": "yFoBrCGKxGJeoMPfnmix6fG3Wk8kl4MxJVDTCpFc6QI00lxxPwZqR4CPm0Ou6k8Sx4aHHxcN8TyiRO3qXZxicg==",
+        "resolved": "5.0.8",
+        "contentHash": "8cgMx9q8TY6riXLY2WM6VQ95Y7u0OhZ+wz8hHySH2uIsZW46WhCTzlNk2t8Z80mq/4r3iO5hF43vEYB47lGWZA==",
         "dependencies": {
-          "Vanara.Core": "5.0.5",
-          "Vanara.PInvoke.Security": "5.0.5"
+          "Vanara.Core": "5.0.8",
+          "Vanara.PInvoke.Security": "5.0.8"
         }
       },
       "Vanara.PInvoke.Security": {
         "type": "Transitive",
-        "resolved": "5.0.5",
-        "contentHash": "XgZoG4GnU4Xetur8saYJqxQGJw5HCTu2hAz28sMuCqmy66//cNSvsroEClnxHF+f6jy4LG0K7esniZb6y7dOPg==",
+        "resolved": "5.0.8",
+        "contentHash": "Rfx4z3hgEOK9bvHmekpYbsXTa0WcJNE1wHKmyaOCdOtuYb9qWW9100lkHYHnLYUh+0oTa6rJSadln/Lw1pnoZg==",
         "dependencies": {
-          "Vanara.Core": "5.0.5",
-          "Vanara.PInvoke.Cryptography": "5.0.5",
-          "Vanara.PInvoke.Kernel32": "5.0.5"
+          "Vanara.Core": "5.0.8",
+          "Vanara.PInvoke.Cryptography": "5.0.8",
+          "Vanara.PInvoke.Kernel32": "5.0.8"
         }
       },
       "Vortice.Direct2D1": {
@@ -390,8 +407,7 @@
           "Direct2dCad.Db": "[1.0.0, )",
           "Direct2dCad.HitTesting": "[1.0.0, )",
           "Direct2dCad.Indexing": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[11.0.0-preview.6.26359.118, )"
+          "Direct2dCad.Rendering": "[1.0.0, )"
         }
       },
       "direct2dcad.hittesting": {
@@ -411,7 +427,7 @@
         "dependencies": {
           "Direct2dCad.Db": "[1.0.0, )",
           "MessagePack": "[3.1.12, )",
-          "Riok.Mapperly": "[5.0.0-next.10, )"
+          "Riok.Mapperly": "[5.0.0-next.13, )"
         }
       },
       "direct2dcad.lang": {
@@ -420,12 +436,19 @@
           "Antelcat.I18N.SourceGenerators": "[2.0.0-preview-2, )"
         }
       },
+      "direct2dcad.mcp": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Application": "[1.0.0, )",
+          "ModelContextProtocol.AspNetCore": "[2.4.0, )"
+        }
+      },
       "direct2dcad.ole.windows": {
         "type": "Project",
         "dependencies": {
-          "Vanara.PInvoke.Gdi32": "[5.0.5, )",
-          "Vanara.PInvoke.Kernel32": "[5.0.5, )",
-          "Vanara.PInvoke.Ole": "[5.0.5, )"
+          "Vanara.PInvoke.Gdi32": "[5.0.8, )",
+          "Vanara.PInvoke.Kernel32": "[5.0.8, )",
+          "Vanara.PInvoke.Ole": "[5.0.8, )"
         }
       },
       "direct2dcad.rendering": {
@@ -482,11 +505,10 @@
           "Direct2dCad.Rendering.Transient": "[1.0.0, )",
           "Direct2dCad.ViewModels.Abstractions": "[1.0.0, )",
           "Direct2dCad.ViewModels.Services": "[1.0.0, )",
-          "Dirkster.AvalonDock.Core": "[5.0.0, )",
-          "Dirkster.AvalonDock.Mvvm": "[5.0.0, )",
-          "Dirkster.AvalonDock.Mvvm.CommunityToolkit": "[5.0.0, )",
-          "MessagePipe": "[1.8.2, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[11.0.0-preview.6.26359.118, )"
+          "Dirkster.AvalonDock.Core": "[5.0.2, )",
+          "Dirkster.AvalonDock.Mvvm": "[5.0.2, )",
+          "Dirkster.AvalonDock.Mvvm.CommunityToolkit": "[5.0.2, )",
+          "MessagePipe": "[1.8.2, )"
         }
       },
       "direct2dcad.viewmodels.abstractions": {
@@ -519,6 +541,6 @@
         "type": "Project"
       }
     },
-    "net10.0-windows7.0/win-x64": {}
+    "net11.0-windows7.0/win-x64": {}
   }
 }

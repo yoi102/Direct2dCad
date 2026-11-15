@@ -1067,6 +1067,34 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
                 presets[index] = presets[index] with { Name = name };
                 break;
             }
+            case "update":
+            {
+                var index = FindGridPresetIndex(presets, presetId);
+                var current = presets[index];
+                var name = current.Name;
+                if (OptionalString(arguments, "name") is { } suppliedName)
+                {
+                    EnsureGridPresetNameAvailable(presets, suppliedName, presetId);
+                    name = suppliedName;
+                }
+                var spacingX = arguments.TryGetProperty("spacing_x_millimeters", out _)
+                    ? RequiredGridSpacing(arguments, "spacing_x_millimeters") : current.SpacingX;
+                var linkAxes = arguments.TryGetProperty("link_axes", out var linked) ? linked.GetBoolean() : current.LinkAxes;
+                var spacingY = current.SpacingY;
+                if (arguments.TryGetProperty("spacing_y_millimeters", out _)) spacingY = RequiredGridSpacing(arguments, "spacing_y_millimeters");
+                if (linkAxes) spacingY = spacingX;
+                presets[index] = current with { Name = name, SpacingX = spacingX, SpacingY = spacingY, LinkAxes = linkAxes };
+                break;
+            }
+            case "reorder":
+            {
+                var orderedIds = arguments.GetProperty("preset_ids").EnumerateArray().Select(value => ParseGuid(value, "preset_ids")).ToArray();
+                if (orderedIds.Length != presets.Count || orderedIds.Distinct().Count() != presets.Count ||
+                    orderedIds.Any(id => presets.All(preset => preset.Id != id)))
+                    throw new ArgumentException("preset_ids must contain every preset ID exactly once.");
+                presets = orderedIds.Select(id => presets.Single(preset => preset.Id == id)).ToList();
+                break;
+            }
             case "delete":
             {
                 var index = FindGridPresetIndex(presets, presetId);
@@ -1078,7 +1106,7 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
                 break;
             }
             default:
-                throw new ArgumentException("operation must be list, create, rename, or delete.");
+                throw new ArgumentException("operation must be list, create, rename, update, reorder, or delete.");
         }
 
         var target = CloneViewSettings(document.ViewSettings);
@@ -1899,14 +1927,29 @@ public sealed partial class CadDocumentToolExecutor(ICadToolDocumentSession sess
         type = "object",
         properties = new Dictionary<string, object>
         {
-            ["operation"] = new { type = "string", @enum = new[] { "list", "create", "rename", "delete" } },
+            ["operation"] = new { type = "string", @enum = new[] { "list", "create", "rename", "update", "reorder", "delete" } },
             ["preset_id"] = new { type = "string", format = "uuid" },
+            ["preset_ids"] = new { type = "array", minItems = 2, uniqueItems = true,
+                items = new { type = "string", format = "uuid" }, description = "Complete ordered preset IDs for operation=reorder." },
             ["name"] = String("Preset name"),
             ["spacing_x_millimeters"] = new { type = "number", minimum = CadGridSettings.MinimumSpacingMillimeters, maximum = CadGridSettings.MaximumSpacingMillimeters },
             ["spacing_y_millimeters"] = new { type = "number", minimum = CadGridSettings.MinimumSpacingMillimeters, maximum = CadGridSettings.MaximumSpacingMillimeters },
             ["link_axes"] = new { type = "boolean" }
         },
         required = new[] { "operation" },
+        allOf = new object[]
+        {
+            new { @if = new { properties = new { operation = new { @const = "create" } } },
+                then = new { required = new[] { "name", "spacing_x_millimeters" } } },
+            new { @if = new { properties = new { operation = new { @const = "rename" } } },
+                then = new { required = new[] { "preset_id", "name" } } },
+            new { @if = new { properties = new { operation = new { @const = "update" } } },
+                then = new { required = new[] { "preset_id" } } },
+            new { @if = new { properties = new { operation = new { @const = "delete" } } },
+                then = new { required = new[] { "preset_id" } } },
+            new { @if = new { properties = new { operation = new { @const = "reorder" } } },
+                then = new { required = new[] { "preset_ids" } } }
+        },
         additionalProperties = false
     };
 

@@ -5,13 +5,41 @@ using Direct2dCad.CommandLine;
 using Direct2dCad.Lang.Strings;
 using Direct2dCad.ViewModels.Enums;
 using Direct2dCad.ViewModels.Interactions;
+using Direct2dCad.Application.Tools;
 
 namespace Direct2dCad.ViewModels.Tests;
 
 public sealed class ToolSurfaceCoverageTests
 {
+    [Fact]
+    public void EveryRibbonDrawingModeHasAnAiOperation()
+    {
+        foreach (var mode in Modes(Read("Direct2dCad.wpf/Views/MainRibbonView.xaml")))
+        {
+            var tool = mode switch
+            {
+                "Select" => "select_entities", "Line" => "add_line", "Rectangle" => "add_rectangle",
+                "Polyline" => "add_polyline", "Polygon" => "add_polygon", "Spline" or "SplineCv" => "add_spline",
+                "Text" => "add_text", "SetOrigin" => "set_view_settings", "EllipseArc" => "add_ellipse_arc",
+                "EllipseAxisEnd" or "EllipseCenter" => "add_ellipse",
+                "CircleCenterDiameter" or "CircleCenterRadius" or "CircleThreePoint" or "CircleTwoPoint" => "add_circle",
+                "ArcCenterStartAngle" or "ArcCenterStartEnd" or "ArcCenterStartLength" or "ArcContinue" or
+                "ArcStartCenterAngle" or "ArcStartCenterEnd" or "ArcStartCenterLength" or "ArcStartEndAngle" or
+                "ArcStartEndDirection" or "ArcStartEndRadius" or "ArcThreePoint" => "add_arc",
+                "Break" or "Chamfer" or "Extend" or "Fillet" or "Join" or "Offset" or "Trim" => "edit_curves",
+                "PolarArray" or "RectArray" => "array_entities",
+                "DimAligned" or "DimAngular" or "DimDiameter" or "DimLinearX" or "DimLinearY" or "DimRadius" or "Leader" => "add_dimension",
+                _ => throw new InvalidOperationException($"AI coverage is missing for drawing mode {mode}.")
+            };
+            Assert.Contains(CadWorkspaceToolExecutor.ToolDefinitions, definition => definition.Name == tool);
+        }
+    }
+
     private static string Root()
     {
+        var configuredRoot = Environment.GetEnvironmentVariable("DIRECT2DCAD_REPOSITORY_ROOT");
+        if (!string.IsNullOrWhiteSpace(configuredRoot) && File.Exists(Path.Combine(configuredRoot, "Direct2dCad.slnx")))
+            return Path.GetFullPath(configuredRoot);
         // CI maps source paths to /_/ for deterministic builds. Locate the
         // checkout from the running test assembly instead of CallerFilePath.
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

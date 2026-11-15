@@ -157,6 +157,61 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         return await SaveToAsync(filePath, cancellationToken, interactiveConflict: false);
     }
 
+    internal async Task<bool> SaveForToolAsync(string? filePath, CadToolSaveOptions options, CancellationToken cancellationToken)
+    {
+        var target = string.IsNullOrWhiteSpace(filePath) ? CurrentFilePath : Path.GetFullPath(filePath);
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            if (options.Overwrite || options.ExpectedSha256 is not null) throw new ArgumentException("file_path is required for explicit overwrite authorization.");
+            if (!options.Interactive) throw new ArgumentException("file_path is required for an unsaved drawing when interactive=false.");
+            return await SaveForWorkspaceToolAsync(cancellationToken);
+        }
+        var authorization = await GetToolOverwriteAuthorizationAsync(target, options, cancellationToken);
+        return await SaveToAsync(target, cancellationToken, interactiveConflict: false, overwriteAuthorization: authorization);
+    }
+
+    private static async Task<CadFileRevision?> GetToolOverwriteAuthorizationAsync(
+        string filePath, CadToolSaveOptions options, CancellationToken cancellationToken)
+    {
+        if (options.ExpectedSha256 is not null && !options.Overwrite)
+            throw new ArgumentException("expected_sha256 requires overwrite=true.");
+        if (!options.Overwrite) return null;
+        var current = await Task.Run(() => CadFileRevision.Capture(filePath), cancellationToken);
+        if (options.ExpectedSha256 is { } hash && !string.Equals(hash, current.Hash, StringComparison.OrdinalIgnoreCase))
+            throw new CadFileConflictException(current);
+        return current;
+    }
+
+    internal async Task<bool> ConfirmCloseForToolAsync(CadToolCloseOptions options, CancellationToken cancellationToken)
+    {
+        if (options.OnUnsaved is not ("ask" or "save" or "discard" or "cancel")) throw new ArgumentException("Invalid on_unsaved decision.");
+        if (options.OnUnsaved == "ask") return await ConfirmCloseAsync();
+        await _saveSession.WaitForIdleAsync();
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsModified)
+        {
+            if (options.OnUnsaved == "cancel") return false;
+            if (options.OnUnsaved == "save" &&
+                (!await SaveForToolAsync(options.FilePath, new(options.Overwrite, options.ExpectedSha256, false), cancellationToken) || IsModified))
+                return false;
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+        await CompleteRecoveryCloseAsync();
+        return true;
+    }
+
+    internal async Task<bool> SaveCompatibleCopyForToolAsync(string filePath, CadToolSaveOptions options, CancellationToken cancellationToken)
+    {
+        var target = Path.GetFullPath(filePath);
+        if (!string.IsNullOrWhiteSpace(CurrentFilePath) &&
+            string.Equals(target, Path.GetFullPath(CurrentFilePath), StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("A compatible copy must use a different destination.");
+        var expected = await GetToolOverwriteAuthorizationAsync(target, options, cancellationToken)
+            ?? await Task.Run(() => CadFileRevision.Capture(target), cancellationToken);
+        if (expected.Exists && !options.Overwrite) throw new CadFileConflictException(expected);
+        return await SaveCompatibleCopyToAsync(target, expected, cancellationToken);
+    }
+
     private async Task<bool> ConfirmCloseCoreAsync()
     {
         var result = await _dialogService.ShowUnsavedDocumentDialogAsync(DocumentName);
@@ -494,18 +549,21 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
             Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.SaveCompatibleCopy))) return false;
         try
         {
-            return await Operation.RunAsync(Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.SavingDrawing), async token =>
-            {
-                if (!await _saveSession.SaveCompatibilityCopyAsync(target, expected, token)) return false;
-                var document = await new CadDocumentStorage().LoadAsync(target, token);
-                if (_disposed) return false;
-                Load(document, target);
-                return true;
-            });
+            return await SaveCompatibleCopyToAsync(target, expected, CancellationToken.None);
         }
         catch (OperationCanceledException) { return false; }
         catch (Exception ex) { await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, Strings.SaveAs); return false; }
     }
+
+    private Task<bool> SaveCompatibleCopyToAsync(string target, CadFileRevision expected, CancellationToken cancellationToken) =>
+        Operation.RunAsync(Direct2dCad.Lang.CadUiText.Get(Direct2dCad.Lang.LangKeys.SavingDrawing), async token =>
+        {
+            if (!await _saveSession.SaveCompatibilityCopyAsync(target, expected, token)) return false;
+            var document = await new CadDocumentStorage().LoadAsync(target, token);
+            if (_disposed) return false;
+            Load(document, target);
+            return true;
+        }, cancellationToken);
 
     private bool CanPrint() => !_disposed;
 
@@ -684,6 +742,7 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
         }
         catch (Exception ex)
         {
+            if (!interactiveConflict) throw;
             await _dialogService.ShowOrReplaceMessageDialogAsync(ex.Message, "Save failed");
             return false;
         }

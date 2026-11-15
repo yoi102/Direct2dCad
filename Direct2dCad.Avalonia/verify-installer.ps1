@@ -1,8 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$InstallerPath,
     [Parameter(Mandatory)][string]$PackageDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.8',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.8')
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.9',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.9')
 
 $ErrorActionPreference = 'Stop'
 $msiPath = [IO.Path]::GetFullPath($InstallerPath)
@@ -103,9 +103,9 @@ $wixBin = (& dotnet msbuild $project -getProperty:WixBinDir | Out-String).Trim()
 if ($LASTEXITCODE -ne 0) { throw 'Unable to locate the project WiX SDK.' }
 $wixCli = Join-Path $wixBin 'wix.dll'
 if (!(Test-Path -LiteralPath $wixCli -PathType Leaf)) { throw 'The project WiX CLI is missing.' }
-$extracted = Join-Path $repo ('.artifacts/avalonia-msi-verify-' + [Guid]::NewGuid().ToString('N'))
+$extracted = Join-Path (Split-Path $msiPath -Parent) ('avalonia-msi-verify-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $extracted | Out-Null
-& dotnet $wixCli msi decompile $msiPath -x $extracted -o (Join-Path $extracted 'package.wxs')
+& dotnet $wixCli --acceptEula wix7 msi decompile $msiPath -x $extracted -o (Join-Path $extracted 'package.wxs')
 if ($LASTEXITCODE -ne 0) { throw 'Unable to extract the MSI payload for verification.' }
 $payloadHashes = @(foreach ($row in (ReadMsiRows "SELECT ``File``,``FileName`` FROM ``File``" 2)) {
     $name = $row.Values[1].Split('|')[-1]

@@ -661,12 +661,19 @@ internal static partial class NativeSmoke
             if (report.HeadlessWindowing) await CheckListMenusAsync(window, entry, report, Assert);
 
             var settings = services.GetRequiredService<IUserSettingsStore>(); var user = settings.Load(); settings.Save(user); Assert(settings.Load().General.CultureLcid == user.General.CultureLcid, "Native settings roundtrip failed."); report.Passed.Add("Generated user settings JSON");
-            var settingsVm = new Direct2dCad.ViewModels.Settings.UserSettings.UserSettingsViewModel(user, settings, _ => { });
+            using var settingsVm = new Direct2dCad.ViewModels.Settings.UserSettings.UserSettingsViewModel(user, settings, _ => { });
             foreach (var section in settingsVm.Sections) { var settingsView = KnownViews.Create(section); Assert(settingsView is not null, "Missing typed settings view."); settingsView!.Measure(new global::Avalonia.Size(480, 800)); settingsView.Arrange(new global::Avalonia.Rect(0, 0, 480, 800)); }
             var radialSettings = settingsVm.Interaction.RadialMenu; var previousAction = radialSettings.SelectedProfile.Slots[0].SelectedAction;
             radialSettings.SelectedProfile.Slots[0].SelectedAction = radialSettings.ActionOptions.First(o => o.Action == Direct2dCad.Client.Common.Settings.CadRadialMenuAction.SplineCv);
             Assert(settingsVm.TryApply() && settings.Load().Interaction.RadialMenu.MiddleActions[0] == Direct2dCad.Client.Common.Settings.CadRadialMenuAction.SplineCv, "CV spline radial slot settings did not persist."); settings.Save(user);
             report.Passed.Add("Typed settings forms and radial slot persistence");
+            settingsVm.Mcp.PortText = "0";
+            Assert(!settingsVm.TryApply() && ReferenceEquals(settingsVm.SelectedSection, settingsVm.Mcp), "Invalid MCP port was accepted.");
+            settingsVm.Mcp.PortText = "5281";
+            settingsVm.Mcp.IsEnabled = true;
+            Assert(settingsVm.TryApply() && settings.Load().Mcp is { IsEnabled: true, Port: 5281 }, "Native MCP settings did not roundtrip.");
+            settings.Save(user);
+            report.Passed.Add("MCP typed settings view, port validation and generated JSON persistence");
             var culture = services.GetRequiredService<IApplicationCultureService>(); var oldCulture = culture.GetCurrentCultureLCID();
             var fileMenu = window.GetLogicalDescendants().OfType<Menu>().First().Items.OfType<MenuItem>().First();
             try { culture.ChangeCulture("en-US"); Assert((string?)fileMenu.Header == Direct2dCad.Lang.CadUiText.Get("File"), "English menu did not refresh."); culture.ChangeCulture("zh-CN"); Assert((string?)fileMenu.Header == Direct2dCad.Lang.CadUiText.Get("File"), "Chinese menu did not refresh."); if(report.HeadlessWindowing) await CheckChineseUiAsync(window,services.GetRequiredService<IDialogService>(),report,Assert,output); }

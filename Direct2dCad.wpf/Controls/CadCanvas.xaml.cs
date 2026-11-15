@@ -416,7 +416,7 @@ public partial class CadCanvas : IDisposable
 
     private void OnRenderCacheBuildRequested(object? sender, EventArgs e)
     {
-        if (_disposed || DocumentViewModel is not { } current ||
+        if (_disposed || DocumentViewModel is not { IsDisposed: false } current ||
             !ReferenceEquals(sender, current.RenderSession)) return;
         _renderCacheRetryTimer.Stop();
         _renderCacheRetrySession = null;
@@ -436,7 +436,7 @@ public partial class CadCanvas : IDisposable
             if (generation != _renderCacheScheduleGeneration) return;
             _renderCacheBuildScheduled = false;
             if (_disposed ||
-                DocumentViewModel is not { } viewModel ||
+                DocumentViewModel is not { IsDisposed: false } viewModel ||
                 !ReferenceEquals(sender, viewModel.RenderSession))
             {
                 return;

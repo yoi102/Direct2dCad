@@ -2,11 +2,12 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Direct2dCad.Client.Common.Settings;
 using Direct2dCad.Rendering;
+using Direct2dCad.Application.Platform;
 using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.ViewModels.Settings.UserSettings;
 
-public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDialogViewModel
+public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDialogViewModel, IDisposable
 {
     private readonly IUserSettingsStore _settingsStore;
     private readonly Action<CadUserSettings> _applySettings;
@@ -15,7 +16,9 @@ public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDial
         CadUserSettings settings,
         IUserSettingsStore settingsStore,
         Action<CadUserSettings> applySettings,
-        CadGraphicsDeviceMode? actualGraphicsDeviceMode = null)
+        CadGraphicsDeviceMode? actualGraphicsDeviceMode = null,
+        ICadMcpService? mcpService = null,
+        IClipboardTextService? clipboard = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
@@ -27,13 +30,15 @@ public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDial
             workingCopy.Rendering,
             actualGraphicsDeviceMode);
         Interaction = new InteractionUserSettingsViewModel(workingCopy.Interaction);
-        Sections = [General, Rendering, Interaction];
+        Mcp = new McpUserSettingsViewModel(workingCopy.Mcp, mcpService, clipboard);
+        Sections = [General, Rendering, Interaction, Mcp];
         SelectedSection = Sections[0];
     }
 
     public GeneralUserSettingsViewModel General { get; }
     public RenderingUserSettingsViewModel Rendering { get; }
     public InteractionUserSettingsViewModel Interaction { get; }
+    public McpUserSettingsViewModel Mcp { get; }
     public IReadOnlyList<UserSettingsSectionViewModel> Sections { get; }
 
     [ObservableProperty] public partial UserSettingsSectionViewModel SelectedSection { get; set; }
@@ -76,4 +81,6 @@ public partial class UserSettingsViewModel : ObservableObject, IUserSettingsDial
 
         ValidationError = null;
     }
+
+    public void Dispose() => Mcp.Dispose();
 }

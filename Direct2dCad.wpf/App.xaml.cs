@@ -25,6 +25,10 @@ using Direct2dCad.wpf.Services.Ole;
 using Direct2dCad.wpf.Services.Printing;
 using Direct2dCad.wpf.Services.Toolboxes;
 using Microsoft.Extensions.DependencyInjection;
+using Direct2dCad.Mcp;
+using Direct2dCad.Application.Tools;
+using System.Windows.Threading;
+using Direct2dCad.Application.Platform;
 
 namespace Direct2dCad;
 
@@ -60,8 +64,22 @@ public partial class App : System.Windows.Application
         this.MainWindow = mainWindow;
 
         mainWindow.Show();
+        _ = StartMcpAsync(e.Args);
     }
-    private static void ConfigureServices(IServiceCollection services)
+
+    private async Task StartMcpAsync(string[] arguments)
+    {
+        try
+        {
+            await _serviceProvider.GetRequiredService<MainViewModel>()
+                .InitializeMcpAsync(CadMcpServer.GetRequestedPort(arguments));
+        }
+        catch (Exception exception)
+        {
+            _serviceProvider.GetRequiredService<ICadMessageLog>().Add(exception.Message, CadMessageLevel.Error, "MCP");
+        }
+    }
+    private void ConfigureServices(IServiceCollection services)
     {
         services.AddViewModels();
         services.AddSingleton(CadRenderResourceBudget.Shared);
@@ -100,6 +118,21 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ICadViewCaptureService, CadViewCaptureService>();
         services.AddSingleton<IAiFileImportService, AiFileImportService>();
         services.AddSingleton<IClipboardTextService, ClipboardTextService>();
+        services.AddSingleton<ICadMcpService>(sp =>
+        {
+            var service = new CadMcpService(new DispatcherSynchronizationContext(Dispatcher),
+                sp.GetRequiredService<ICadToolWorkspace>(), sp.GetService<IImageImportService>(),
+                sp.GetService<MessagePipe.IAsyncPublisher<CadToolActivityMessage>>());
+            var log = sp.GetRequiredService<ICadMessageLog>();
+            service.StatusChanged += (_, _) =>
+            {
+                if (service.Status is { State: CadMcpState.Running, Endpoint: { } endpoint })
+                    log.Add($"MCP listening at {endpoint}", source: "MCP");
+                else if (service.Status is { State: CadMcpState.Failed, Error: { } error })
+                    log.Add(error, CadMessageLevel.Error, "MCP");
+            };
+            return service;
+        });
         services.AddSingleton<IOleHostService, OleHostService>();
         services.AddSingleton<ICadPrintService, CadPrintService>();
         services.AddSingleton<IDialogService, DialogService>();
@@ -121,6 +154,7 @@ public partial class App : System.Windows.Application
     }
     protected override void OnExit(ExitEventArgs e)
     {
+        (_serviceProvider.GetService<ICadMcpService>() as IDisposable)?.Dispose();
         if (_serviceProvider is IDisposable disposable)
         {
             disposable.Dispose();

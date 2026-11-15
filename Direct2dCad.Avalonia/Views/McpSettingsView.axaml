@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Direct2dCad.ViewModels.Settings.UserSettings;assembly=Direct2dCad.ViewModels"
+             xmlns:local="clr-namespace:Direct2dCad.Avalonia"
+             x:Class="Direct2dCad.Avalonia.Views.McpSettingsView"
+             x:DataType="vm:McpUserSettingsViewModel" x:CompileBindings="True">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,8,0">
+            <CheckBox AutomationProperties.AutomationId="McpEnabledCheckBox"
+                      Content="{local:Loc McpEnable}" IsChecked="{Binding IsEnabled}" Margin="0,0,0,20" />
+            <TextBlock Text="{local:Loc McpPort}" Margin="0,0,0,6" />
+            <TextBox AutomationProperties.AutomationId="McpPortTextBox"
+                     Text="{Binding PortText}" Margin="0,0,0,16" />
+            <TextBlock Text="{local:Loc McpStatus}" Margin="0,0,0,6" />
+            <TextBlock AutomationProperties.AutomationId="McpStatusText"
+                       Text="{Binding StatusText}" Margin="0,0,0,16" />
+            <TextBlock Text="{local:Loc McpEndpoint}" Margin="0,0,0,6" />
+            <TextBox AutomationProperties.AutomationId="McpEndpointTextBox" IsReadOnly="True"
+                     Text="{Binding Endpoint, Mode=OneWay}" Margin="0,0,0,10" />
+            <Button AutomationProperties.AutomationId="McpCopyEndpointButton" HorizontalAlignment="Left"
+                    Content="{local:Loc McpCopyEndpoint}" Command="{Binding CopyEndpointCommand}" />
+            <TextBlock Text="{Binding CopyFeedback}" TextWrapping="Wrap" Margin="0,8,0,0" />
+            <TextBlock AutomationProperties.AutomationId="McpErrorText" Text="{Binding ErrorMessage}"
+                       TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                       Margin="0,8,0,0" />
+            <TextBlock Text="{local:Loc McpSettingsHelp}" TextWrapping="Wrap" Margin="0,16,0,0" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
