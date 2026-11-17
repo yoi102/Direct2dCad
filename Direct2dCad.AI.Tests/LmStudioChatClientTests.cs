@@ -251,7 +251,7 @@ public sealed class LmStudioChatClientTests
     }
 
     [Fact]
-    public async Task CompleteAsync_IgnoresMalformedToolCalls()
+    public async Task CompleteAsync_IgnoresMalformedToolCallsButKeepsCallsWithoutAnId()
     {
         using var handler = new StubHttpMessageHandler(_ => JsonResponse(
             """
@@ -269,9 +269,35 @@ public sealed class LmStudioChatClientTests
             [AiChatMessage.User("hello")],
             []));
 
-        var call = Assert.Single(completion.ToolCalls);
-        Assert.Equal("valid", call.Name);
-        Assert.Equal("{}", call.ArgumentsJson);
+        // A call without an id is still the model's request; dropping it would end the turn as if
+        // nothing had been asked. The synthesized id only has to be echoed back in the tool reply.
+        Assert.Equal(new[] { "missing-id", "valid" }, completion.ToolCalls.Select(call => call.Name));
+        Assert.StartsWith("call_", completion.ToolCalls[0].Id);
+        Assert.All(completion.ToolCalls, call => Assert.Equal("{}", call.ArgumentsJson));
+    }
+
+    [Fact]
+    public async Task CompleteAsync_AcceptsToolArgumentsSentAsAJsonObject()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse(
+            """
+            {"choices":[{"message":{"content":null,"tool_calls":[
+              {"id":"call-1","function":{"name":"add_circle","arguments":{"cx":1,"cy":2,"radius":3}}},
+              {"id":"call-2","function":{"name":"undo","arguments":"{\"steps\":1}"}}
+            ]}}]}
+            """));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+
+        var completion = await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "local-model",
+            [AiChatMessage.User("hello")],
+            []));
+
+        Assert.Equal(2, completion.ToolCalls.Count);
+        using (var arguments = System.Text.Json.JsonDocument.Parse(completion.ToolCalls[0].ArgumentsJson))
+            Assert.Equal(3, arguments.RootElement.GetProperty("radius").GetInt32());
+        Assert.Equal("{\"steps\":1}", completion.ToolCalls[1].ArgumentsJson);
     }
 
     [Fact]
@@ -318,6 +344,153 @@ public sealed class LmStudioChatClientTests
         Assert.Contains("400", exception.Message, StringComparison.Ordinal);
         Assert.Contains("model does not support tools", exception.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task CompleteAsync_StreamsContentAndAssemblesToolCallFragments()
+    {
+        const string events =
+            """
+            data: {"model":"stream-model","choices":[{"delta":{"role":"assistant","content":"Hel"}}]}
+
+            data: {"choices":[{"delta":{"content":"lo"}}]}
+
+            : keep-alive
+
+            data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","type":"function","function":{"name":"add_circle","arguments":"{\"cx\":"}}]}}]}
+
+            data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"1}"}}]}}]}
+
+            data: {"choices":[{"delta":{"tool_calls":[{"index":1,"function":{"name":"undo"}}]}}]}
+
+            data: [DONE]
+
+            """;
+        using var handler = new StubHttpMessageHandler(_ => EventStreamResponse(events));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+        var deltas = new List<string>();
+
+        var completion = await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "local-model",
+            [AiChatMessage.User("hello")],
+            [],
+            OnContentDelta: delta =>
+            {
+                deltas.Add(delta);
+                return ValueTask.CompletedTask;
+            }));
+
+        Assert.Contains("\"stream\":true", handler.LastRequestBody, StringComparison.Ordinal);
+        Assert.Equal(["Hel", "lo"], deltas);
+        Assert.Equal("Hello", completion.Content);
+        Assert.Equal("stream-model", completion.Model);
+        Assert.Collection(
+            completion.ToolCalls,
+            call =>
+            {
+                Assert.Equal("call-1", call.Id);
+                Assert.Equal("add_circle", call.Name);
+                Assert.Equal("{\"cx\":1}", call.ArgumentsJson);
+            },
+            call =>
+            {
+                Assert.Equal("undo", call.Name);
+                Assert.StartsWith("call_", call.Id);
+                Assert.Equal("{}", call.ArgumentsJson);
+            });
+    }
+
+    [Fact]
+    public async Task CompleteAsync_FallsBackToJsonWhenTheServerIgnoresStreaming()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse(
+            """{"model":"plain","choices":[{"message":{"content":"whole reply"}}]}"""));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+        var deltas = new List<string>();
+
+        var completion = await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "local-model",
+            [AiChatMessage.User("hello")],
+            [],
+            OnContentDelta: delta =>
+            {
+                deltas.Add(delta);
+                return ValueTask.CompletedTask;
+            }));
+
+        Assert.Empty(deltas);
+        Assert.Equal("whole reply", completion.Content);
+        Assert.Equal("plain", completion.Model);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_DoesNotAskForStreamingWithoutADeltaCallback()
+    {
+        using var handler = new StubHttpMessageHandler(_ => JsonResponse(
+            """{"choices":[{"message":{"content":"ok"}}]}"""));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+
+        await client.CompleteAsync(new AiChatRequest(
+            "http://localhost:1234/v1",
+            "local-model",
+            [AiChatMessage.User("hello")],
+            []));
+
+        Assert.Contains("\"stream\":false", handler.LastRequestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_MapsAContextWindowErrorSentInsideTheStream()
+    {
+        const string events =
+            """
+            data: {"choices":[{"delta":{"content":"partial"}}]}
+
+            data: {"error":{"message":"request (12945 tokens) exceeds the available context size (8192 tokens)","type":"exceed_context_size_error","n_prompt_tokens":12945,"n_ctx":8192}}
+
+            """;
+        using var handler = new StubHttpMessageHandler(_ => EventStreamResponse(events));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+
+        var exception = await Assert.ThrowsAsync<AiContextWindowExceededException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                "local-model",
+                [AiChatMessage.User("draw")],
+                [],
+                OnContentDelta: _ => ValueTask.CompletedTask)));
+
+        Assert.Equal(12945, exception.PromptTokens);
+        Assert.Equal(8192, exception.ContextWindowTokens);
+    }
+
+    [Fact]
+    public async Task CompleteAsync_ReportsOtherStreamErrorsWithTheServerMessage()
+    {
+        const string events =
+            """
+            data: {"error":{"message":"model unloaded"}}
+
+            """;
+        using var handler = new StubHttpMessageHandler(_ => EventStreamResponse(events));
+        var client = new LmStudioChatClient(new HttpClient(handler));
+
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(() => client.CompleteAsync(
+            new AiChatRequest(
+                "http://localhost:1234/v1",
+                "local-model",
+                [AiChatMessage.User("draw")],
+                [],
+                OnContentDelta: _ => ValueTask.CompletedTask)));
+
+        Assert.Contains("model unloaded", exception.Message, StringComparison.Ordinal);
+    }
+
+    private static HttpResponseMessage EventStreamResponse(string events) => new(HttpStatusCode.OK)
+    {
+        Content = new StringContent(events, Encoding.UTF8, "text/event-stream")
+    };
 
     private static HttpResponseMessage JsonResponse(string json) => new(HttpStatusCode.OK)
     {

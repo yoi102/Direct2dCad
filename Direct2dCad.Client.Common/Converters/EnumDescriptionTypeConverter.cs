@@ -3,12 +3,14 @@ using System.Reflection;
 
 namespace Direct2dCad.Client.Common.Converters;
 
+/// <summary>Displays an enum value by its <see cref="DescriptionAttribute"/> (including localized descriptions).</summary>
 public class EnumDescriptionTypeConverter(Type type) : EnumConverter(type)
 {
     public override object? ConvertTo(ITypeDescriptorContext? context, System.Globalization.CultureInfo? culture, object? value, Type destinationType)
     {
+        // Only the display string is customized; every other conversion keeps EnumConverter semantics.
         if (destinationType != typeof(string))
-            return string.Empty;
+            return base.ConvertTo(context, culture, value, destinationType);
 
         if (value is null)
             return string.Empty;
@@ -17,14 +19,11 @@ public class EnumDescriptionTypeConverter(Type type) : EnumConverter(type)
         if (valueString is null)
             return string.Empty;
 
-        FieldInfo? fi = value.GetType().GetField(valueString);
-        if (fi != null)
+        var field = value.GetType().GetField(valueString);
+        if (field is not null)
         {
-            //var attributes = (DescriptionAttribute[])fi.GetCustomAttributes(typeof(DescriptionAttribute), false);
-            //return ((attributes.Length > 0) && (!String.IsNullOrEmpty(attributes[0].Description))) ? attributes[0].Description : value.ToString();
-
-            var attributes = (DescriptionAttribute?)fi.GetCustomAttribute(typeof(DescriptionAttribute), false);
-            return ((attributes is not null) && (!String.IsNullOrEmpty(attributes.Description))) ? attributes.Description : value.ToString();
+            var attribute = field.GetCustomAttribute<DescriptionAttribute>(false);
+            return !string.IsNullOrEmpty(attribute?.Description) ? attribute.Description : valueString;
         }
 
         return base.ConvertTo(context, culture, value, destinationType);

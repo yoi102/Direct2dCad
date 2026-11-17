@@ -1,0 +1,52 @@
+<Project>
+  <!-- Central package versions (NuGet CPM). Enabled for the repository's own .csproj files in Directory.Build.props. -->
+  <ItemGroup>
+    <PackageVersion Include="Antelcat.I18N.SourceGenerators" Version="2.0.0-preview-2" />
+    <PackageVersion Include="Antelcat.I18N.WPF" Version="2.0.0-preview-1" />
+    <PackageVersion Include="Avalonia" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Controls.ColorPicker" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Controls.DataGrid" Version="12.1.2" />
+    <PackageVersion Include="Avalonia.HarfBuzz" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Headless" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Skia" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageVersion Include="Avalonia.Win32" Version="12.1.6" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <PackageVersion Include="DialogHost.Avalonia" Version="0.12.3" />
+    <PackageVersion Include="Dirkster.AvalonDock" Version="5.0.2" />
+    <PackageVersion Include="Dirkster.AvalonDock.Core" Version="5.0.2" />
+    <PackageVersion Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.2" />
+    <PackageVersion Include="Dirkster.AvalonDock.Mvvm" Version="5.0.2" />
+    <PackageVersion Include="Dirkster.AvalonDock.Mvvm.CommunityToolkit" Version="5.0.2" />
+    <PackageVersion Include="Dirkster.AvalonDock.Serializer.Json" Version="5.0.2" />
+    <PackageVersion Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.2" />
+    <PackageVersion Include="Dock.Avalonia" Version="12.1.5" />
+    <PackageVersion Include="Dock.Avalonia.Themes.Fluent" Version="12.1.5" />
+    <PackageVersion Include="Dock.Model.Mvvm" Version="12.1.5" />
+    <PackageVersion Include="FlaUI.Core" Version="5.0.0" />
+    <PackageVersion Include="FlaUI.UIA3" Version="5.0.0" />
+    <PackageVersion Include="gong-wpf-dragdrop" Version="4.0.0" />
+    <PackageVersion Include="MahApps.Metro" Version="3.0.0-rc0529" />
+    <PackageVersion Include="Material.Avalonia" Version="3.21.0" />
+    <PackageVersion Include="Material.Avalonia.DataGrid" Version="3.21.0" />
+    <PackageVersion Include="MaterialDesignThemes.MahApps" Version="5.4.0" />
+    <PackageVersion Include="MessagePack" Version="3.1.12" />
+    <PackageVersion Include="MessagePipe" Version="1.8.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageVersion Include="Microsoft.Windows.CsWin32" Version="0.3.371" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
+    <PackageVersion Include="Riok.Mapperly" Version="5.0.0-next.13" />
+    <PackageVersion Include="StronglyTypedId" Version="1.0.0-beta08" />
+    <PackageVersion Include="Vanara.PInvoke.Gdi32" Version="5.0.8" />
+    <PackageVersion Include="Vanara.PInvoke.Kernel32" Version="5.0.8" />
+    <PackageVersion Include="Vanara.PInvoke.Ole" Version="5.0.8" />
+    <PackageVersion Include="Vortice.Direct2D1" Version="3.8.3" />
+    <PackageVersion Include="Vortice.Direct3D11" Version="3.8.3" />
+    <PackageVersion Include="Vortice.Direct3D9" Version="3.8.3" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+  </ItemGroup>
+</Project>

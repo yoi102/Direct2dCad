@@ -2,5 +2,45 @@
   <PropertyGroup>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</RestoreLockedMode>
+
+    <!-- Single product version. Release scripts still override it with -p:Version=... -->
+    <Direct2dCadVersion>0.1.9</Direct2dCadVersion>
+
+    <!-- Path relative to the repository root: the shared settings below apply only to the
+         repository's own projects (Direct2dCad.*/ and tools/), not to the WiX installers
+         (which keep their own MSI Version) or to local probes under docs/ and artifacts/. -->
+    <_Direct2dCadRelativeDirectory>$([MSBuild]::MakeRelative('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)'))</_Direct2dCadRelativeDirectory>
+    <IsDirect2dCadProject Condition="'$(MSBuildProjectExtension)' == '.csproj' and ($(_Direct2dCadRelativeDirectory.StartsWith('Direct2dCad.')) or $(_Direct2dCadRelativeDirectory.StartsWith('tools')))">true</IsDirect2dCadProject>
+    <IsDirect2dCadTestProject Condition="'$(IsDirect2dCadProject)' == 'true' and $(MSBuildProjectName.EndsWith('Tests'))">true</IsDirect2dCadTestProject>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsDirect2dCadProject)' == 'true'">
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <Version>$(Direct2dCadVersion)</Version>
+    <InformationalVersion>$(Version)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>Direct2dCad</Product>
+  </PropertyGroup>
+
+  <!-- CI keeps the build warning-free. NuGet advisories and NativeAOT (ILC) publish warnings stay
+       warnings so a newly published advisory or toolchain update cannot break unrelated builds. -->
+  <PropertyGroup Condition="'$(IsDirect2dCadProject)' == 'true' and ('$(ContinuousIntegrationBuild)' == 'true' or '$(CI)' == 'true')">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <IlcTreatWarningsAsErrors>false</IlcTreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsDirect2dCadTestProject)' == 'true'">
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsDirect2dCadTestProject)' == 'true'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
 </Project>

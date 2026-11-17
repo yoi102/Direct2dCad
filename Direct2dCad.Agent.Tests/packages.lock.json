@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "dependencies": {
     "net11.0": {
       "coverlet.collector": {
@@ -96,7 +96,7 @@
       "direct2dcad.agent": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.AI.Contracts": "[1.0.0, )"
+          "Direct2dCad.AI.Contracts": "[0.1.9, )"
         }
       },
       "direct2dcad.ai.contracts": {

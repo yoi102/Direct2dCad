@@ -18,9 +18,27 @@ public partial class AiView : UserControl
         AttachedToVisualTree += (_, _) => AttachMessages();
     }
     private System.Collections.Specialized.INotifyCollectionChanged? _messages;
-    private void AttachMessages() { DetachMessages(); if (DataContext is AiAssistantToolboxViewModel vm) { _messages = vm.Messages; _messages.CollectionChanged += MessagesChanged; } }
-    private void DetachMessages() { if (_messages is not null) _messages.CollectionChanged -= MessagesChanged; _messages = null; }
-    private void MessagesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => global::Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (Messages.Items.Count > 0 && Messages.Items[^1] is { } item) Messages.ScrollIntoView(item); });
+    private void AttachMessages() { DetachMessages(); if (DataContext is AiAssistantToolboxViewModel vm) { _messages = vm.Messages; _messages.CollectionChanged += MessagesChanged; Follow(vm.Messages.Count > 0 ? vm.Messages[^1] : null); } }
+    private void DetachMessages() { if (_messages is not null) _messages.CollectionChanged -= MessagesChanged; _messages = null; Follow(null); }
+    private void MessagesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) { Follow(Messages.Items.Count > 0 ? Messages.Items[^1] as AiChatItemViewModel : null); global::Avalonia.Threading.Dispatcher.UIThread.Post(() => { if (Messages.Items.Count > 0 && Messages.Items[^1] is { } item) Messages.ScrollIntoView(item); }); }
+    // A streamed reply grows in place; keep its newest line in view while the reader is at the bottom.
+    private AiChatItemViewModel? _followed;
+    private bool _followPending;
+    private void Follow(AiChatItemViewModel? item)
+    {
+        if (ReferenceEquals(item, _followed)) return;
+        if (_followed is not null) _followed.PropertyChanged -= FollowedChanged;
+        _followed = item;
+        if (_followed is not null) _followed.PropertyChanged += FollowedChanged;
+    }
+    private void FollowedChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(AiChatItemViewModel.Content) || _followPending) return;
+        if (global::Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(Messages).OfType<ScrollViewer>().FirstOrDefault() is not { } scroller) return;
+        if (scroller.Offset.Y < scroller.Extent.Height - scroller.Viewport.Height - 24) return;
+        _followPending = true;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() => { _followPending = false; scroller.ScrollToEnd(); }, global::Avalonia.Threading.DispatcherPriority.Background);
+    }
     private void PromptKey(object? sender, KeyEventArgs e)
     {
         if (e.Handled || DataContext is not AiAssistantToolboxViewModel vm) return;

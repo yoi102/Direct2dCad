@@ -1747,4 +1747,19 @@
   <data name="McpSettingsHelp" xml:space="preserve">
     <value>点击“应用”后立即启停服务或更换端口。MCP 仅监听本机。使用此地址的 AI 客户端可通过已提供的工具读写图纸和访问文件。</value>
   </data>
+  <data name="McpAccessToken" xml:space="preserve">
+    <value>访问令牌（可选）</value>
+  </data>
+  <data name="McpAccessTokenHelp" xml:space="preserve">
+    <value>设置后，MCP 客户端必须发送 HTTP 请求头 Authorization: Bearer &lt;令牌&gt;。留空则本机任何客户端都可以连接。</value>
+  </data>
+  <data name="McpGenerateToken" xml:space="preserve">
+    <value>生成</value>
+  </data>
+  <data name="McpCopyToken" xml:space="preserve">
+    <value>复制令牌</value>
+  </data>
+  <data name="McpTokenCopied" xml:space="preserve">
+    <value>令牌已复制。</value>
+  </data>
 </root>

@@ -56,7 +56,7 @@ internal static partial class NativeSmoke
             await Task.Delay(50);window.UpdateLayout();
             assert(shell.Control.IsDraggingDock,"Native title drag did not begin through routed pointer input.");
             var liveGuides=window.GetVisualDescendants().OfType<DockTarget>().Where(control=>control.IsEffectivelyVisible).ToArray();
-            using(var dragFrame=window.CaptureRenderedFrame())dragFrame!.Save(Path.Combine(Path.GetDirectoryName(output)!,"dock-drag.png"));
+            using(var dragFrame=window.CaptureRenderedFrame())dragFrame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"dock-drag.png"));
             assert(liveGuides.Length>0 && liveGuides.SelectMany(control=>control.GetVisualDescendants().OfType<Image>()).Where(control=>control.IsEffectivelyVisible).All(control=>control.Source is DrawingImage),"Active pointer drag does not display the native vector docking guide.");
             assert(!window.GetVisualDescendants().OfType<GlobalDockTarget>().Any(control=>control.IsEffectivelyVisible),"Title drag still displays whole-workspace docking arrows.");
             window.KeyPress(Key.Escape,RawInputModifiers.None,PhysicalKey.None,null);window.KeyRelease(Key.Escape,RawInputModifiers.None,PhysicalKey.None,null);
@@ -76,7 +76,7 @@ internal static partial class NativeSmoke
             var drop=selector.TranslatePoint(new Point(selector.Bounds.Width/2,selector.Bounds.Height/2),window)!.Value;
             window.MouseMove(drop,RawInputModifiers.LeftMouseButton);
             await Task.Delay(50);window.UpdateLayout();
-            using(var dragFrame=window.CaptureRenderedFrame())dragFrame!.Save(Path.Combine(Path.GetDirectoryName(output)!,"dock-drag.png"));
+            using(var dragFrame=window.CaptureRenderedFrame())dragFrame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"dock-drag.png"));
             window.MouseUp(drop,MouseButton.Left);
             assert(!shell.Control.IsDraggingDock,"Releasing over a native split target left dragging active.");
         }
@@ -93,7 +93,7 @@ internal static partial class NativeSmoke
         assert(captured.Version==2,"New docking policy is not versioned for migration.");
         if(report.HeadlessWindowing)
         {
-            using var frame=window.CaptureRenderedFrame();frame!.Save(Path.Combine(Path.GetDirectoryName(output)!,"dock-split.png"));
+            using var frame=window.CaptureRenderedFrame();frame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"dock-split.png"));
             var guide=new DockTarget();
             var host=new Window {Width=500,Height=400,Content=guide};
             try
@@ -102,7 +102,7 @@ internal static partial class NativeSmoke
                 var images=guide.GetVisualDescendants().OfType<Image>().Where(image=>image.Name?.EndsWith("Selector")==true).ToArray();
                 assert(images.Length==5 && images.All(image=>image.Source is DrawingImage),"Dock guides still use legacy white bitmap arrows.");
                 guide.GetVisualDescendants().OfType<Panel>().Single(panel=>panel.Name=="PART_CenterIndicator").Opacity=.25;
-                using var guideFrame=host.CaptureRenderedFrame();guideFrame!.Save(Path.Combine(Path.GetDirectoryName(output)!,"dock-guides.png"));
+                using var guideFrame=host.CaptureRenderedFrame();guideFrame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"dock-guides.png"));
             }
             finally {host.Close();}
         }
@@ -152,7 +152,7 @@ internal static partial class NativeSmoke
             host.MouseMove(new Point(host.Bounds.Width/2,host.Bounds.Height/2));
             assert(host.Cursor is null,"A resize cursor persisted over floating toolbox content.");
             await Task.Delay(100);host.UpdateLayout();
-            using var frame=host.CaptureRenderedFrame();frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"dock-floating-borderless.png"));
+            using var frame=host.CaptureRenderedFrame();frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"dock-floating-borderless.png"));
         }
         report.Passed.Add("Floating Dock hosts have no system frame or duplicate caption; native title maximize/restore and client-edge resize cursors remain available");
     }

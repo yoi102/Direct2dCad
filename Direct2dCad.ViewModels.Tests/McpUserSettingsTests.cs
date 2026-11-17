@@ -161,6 +161,71 @@ public sealed class McpUserSettingsTests
         Assert.Equal(Microsoft.Extensions.DependencyInjection.ServiceLifetime.Singleton, descriptor.Lifetime);
     }
 
+    [Fact]
+    public async Task AccessTokenIsGeneratedCopiedAppliedAndReset()
+    {
+        var settings = CadUserSettings.CreateDefault();
+        var clipboard = new RecordingClipboard();
+        using var vm = new UserSettingsViewModel(settings, new RecordingSettingsStore(), settings.CopyFrom,
+            clipboard: clipboard);
+        Assert.Empty(vm.Mcp.AccessToken);
+        Assert.False(vm.Mcp.CopyAccessTokenCommand.CanExecute(null));
+
+        vm.Mcp.GenerateAccessTokenCommand.Execute(null);
+        var token = vm.Mcp.AccessToken;
+        Assert.True(CadMcpAccessToken.IsValid(token));
+        Assert.True(vm.Mcp.CopyAccessTokenCommand.CanExecute(null));
+        await vm.Mcp.CopyAccessTokenCommand.ExecuteAsync(null);
+        Assert.Equal(token, clipboard.Text);
+        Assert.Empty(settings.Mcp.AccessToken);
+
+        Assert.True(vm.TryApply());
+        Assert.Equal(token, settings.Mcp.AccessToken);
+        var copy = settings.Clone();
+        Assert.Equal(token, copy.Mcp.AccessToken);
+        Assert.Equal(token, JsonSerializer.Deserialize<CadUserSettings>(JsonSerializer.Serialize(copy))!.Mcp.AccessToken);
+
+        vm.ResetToDefaults();
+        Assert.True(vm.TryApply());
+        Assert.Empty(settings.Mcp.AccessToken);
+    }
+
+    [Theory]
+    [InlineData("has space")]
+    [InlineData("tab\tinside")]
+    [InlineData("caf\u00e9")]
+    public void AccessTokenThatCannotTravelInAHeaderPreventsSaving(string token)
+    {
+        var store = new RecordingSettingsStore();
+        using var vm = new UserSettingsViewModel(CadUserSettings.CreateDefault(), store, _ => Assert.Fail());
+        vm.Mcp.AccessToken = token;
+        Assert.False(vm.TryApply());
+        Assert.Same(vm.Mcp, vm.SelectedSection);
+        Assert.Empty(store.Saved);
+    }
+
+    [Fact]
+    public async Task AccessTokenReachesTheServiceButNeverTheAgentTools()
+    {
+        var service = new RecordingMcpService();
+        using var context = new MainWindowTestContext(mcpService: service);
+        await context.ViewModel.InitializeMcpAsync(5279, "cli-token");
+        Assert.Equal("cli-token", service.AccessTokens.Last());
+
+        var visible = context.ViewModel.GetApplicationSettingsForTools();
+        Assert.False(visible.GetProperty("settings").GetProperty("mcp").TryGetProperty("access_token", out _));
+        Assert.True(visible.GetProperty("mcp_service").GetProperty("requires_access_token").GetBoolean());
+        Assert.DoesNotContain("cli-token", visible.GetRawText(), StringComparison.Ordinal);
+
+        // A tool reset or patch keeps the token: the agent cannot switch authentication off.
+        using var reset = JsonDocument.Parse("{}");
+        context.ViewModel.SetApplicationSettingsForTools(reset.RootElement, true);
+        Assert.Equal("cli-token", service.AccessTokens.Last());
+        using var patch = JsonDocument.Parse("{\"mcp\":{\"access_token\":\"\"}}");
+        context.ViewModel.SetApplicationSettingsForTools(patch.RootElement, false);
+        Assert.Equal("cli-token", service.AccessTokens.Last());
+    }
+
     private sealed class RecordingClipboard : IClipboardTextService
     {
         public string? Text { get; private set; }
@@ -181,9 +246,11 @@ public sealed class McpUserSettingsTests
         public CadMcpStatus Status { get; private set; } = new(CadMcpState.Stopped);
         public event EventHandler? StatusChanged { add => _changed += value; remove => _changed -= value; }
         public List<(bool Enabled, int Port)> Configurations { get; } = [];
-        public Task ConfigureAsync(bool enabled, int port)
+        public List<string?> AccessTokens { get; } = [];
+        public Task ConfigureAsync(bool enabled, int port, string? accessToken = null)
         {
             Configurations.Add((enabled, port));
+            AccessTokens.Add(accessToken);
             return Task.CompletedTask;
         }
         public void SetStatus(CadMcpStatus status)

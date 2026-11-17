@@ -20,7 +20,12 @@ public sealed partial class MainWindowUiTests
         var input = GetOrOpenCommandLineInput(); var output = fixture.WaitForElement("CommandLineOutput");
         ExecuteCommandAndWaitForOutput(input, output, "TOOL open_dxf " + JsonSerializer.Serialize(new
         { file_path = source, source_unit = "Millimeter" }), "imported");
-        ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 1681");
+        // Counts and IDs depend on importer coverage (wide polylines are imported since 2026-11-17),
+        // so read them from the drawing instead of pinning the numbers of one importer version.
+        var importedMatch = Regex.Match(ReadCommandOutput(output), "\"imported\"\\s*:\\s*(\\d+)");
+        Assert.True(importedMatch.Success, "open_dxf did not report an imported count.");
+        var entityStatus = "Entities: " + importedMatch.Groups[1].Value;
+        ExecuteCommandAndWaitForOutput(input, output, "STATUS", entityStatus);
         ExecuteCommandAndWaitForOutput(input, output, "TOOL set_viewport {\"operation\":\"fit\",\"padding\":32}", "visible_bounds");
         var fitted = ReadCommandOutput(output);
         var zoom = Value("zoom");
@@ -45,14 +50,19 @@ public sealed partial class MainWindowUiTests
         }
         ExecuteCommandAndWaitForOutput(input, output, "RENDERSTATS", "Geometry realization");
         var stats = ReadCommandOutput(output);
-        ExecuteCommandAndWaitForOutput(input, output, "TOOL select_entities {\"entity_ids\":[1642]}", "success");
+        // The board outline: the entity whose bounds span the most of the drawing.
+        ExecuteCommandAndWaitForOutput(input, output,
+            "TOOL list_entities {\"sort_by\":\"bounds_area\",\"sort_direction\":\"descending\",\"limit\":1}", "total_matches");
+        var outline = Regex.Match(ReadCommandOutput(output), "\"id\"\\s*:\\s*(\\d+)");
+        Assert.True(outline.Success, "list_entities did not return an entity id.");
+        ExecuteCommandAndWaitForOutput(input, output, "TOOL select_entities {\"entity_ids\":[" + outline.Groups[1].Value + "]}", "success");
         ExecuteCommandAndWaitForOutput(input, output, "TOOL set_viewport {\"operation\":\"zoom\",\"factor\":4.594972986357221,\"anchor_x\":64,\"anchor_y\":40}", "visible_bounds");
         canvas.Focus(); Mouse.MoveTo(anchor); Mouse.Scroll(1);
         ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Selected: 1");
         CaptureScreenshot("dxf-long-outline-selected.png");
         ExecuteCommandAndWaitForOutput(input, output, "TOOL clear_selection {}", "selected_entity_ids");
         ExecuteCommandAndWaitForOutput(input, output, "TOOL set_viewport {\"operation\":\"fit\"}", "visible_bounds");
-        ExecuteCommandAndWaitForOutput(input, output, "STATUS", "Entities: 1681");
+        ExecuteCommandAndWaitForOutput(input, output, "STATUS", entityStatus);
         fixture.EnsureApplicationIsRunning();
         var directory = Environment.GetEnvironmentVariable("DIRECT2DCAD_UI_SCREENSHOT_DIRECTORY");
         if (!string.IsNullOrWhiteSpace(directory))

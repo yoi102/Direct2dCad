@@ -59,7 +59,10 @@ public enum AgentRunEventKind
 {
     AssistantMessage,
     ToolResult,
-    ContextReduced
+    ContextReduced,
+    // A piece of assistant text that is still being generated. The AssistantMessage that follows
+    // carries the complete text; ContextReduced means the partial text was discarded for a retry.
+    AssistantDelta
 }
 
 public sealed record AgentRunEvent(

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Automation;
@@ -187,8 +186,21 @@ public sealed class BooleanAvailabilityBindingTests
         return copied;
     }
 
-    private static string ViewPath(string fileName, [CallerFilePath] string sourcePath = "") =>
-        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(sourcePath)!, "..", "Direct2dCad.wpf", "Views", fileName));
+    private static string ViewPath(string fileName) =>
+        Path.Combine(RepositoryRoot(), "Direct2dCad.wpf", "Views", fileName);
+
+    // Deterministic CI builds map source paths to /_/, so CallerFilePath cannot locate the
+    // checkout. Walk up from the test assembly instead (same approach as ToolSurfaceCoverageTests).
+    private static string RepositoryRoot()
+    {
+        var configuredRoot = Environment.GetEnvironmentVariable("DIRECT2DCAD_REPOSITORY_ROOT");
+        if (!string.IsNullOrWhiteSpace(configuredRoot) && File.Exists(Path.Combine(configuredRoot, "Direct2dCad.slnx")))
+            return Path.GetFullPath(configuredRoot);
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+            if (File.Exists(Path.Combine(directory.FullName, "Direct2dCad.slnx")))
+                return directory.FullName;
+        throw new DirectoryNotFoundException("Could not locate the Direct2dCad checkout for view binding checks.");
+    }
 
     private static ServiceProvider CreateServices()
     {

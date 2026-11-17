@@ -16,7 +16,7 @@ internal static partial class NativeSmoke
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
         window.UpdateLayout();
         using var frame = window.CaptureRenderedFrame() ?? throw new InvalidOperationException("Radial menu frame is missing.");
-        if (path is not null) frame.Save(path);
+        if (path is not null) frame.SavePng(path);
         var scale = window.RenderScaling;
         var rect = new PixelRect((int)Math.Round((center.X-124)*scale), (int)Math.Round((center.Y-124)*scale), (int)Math.Round(248*scale), (int)Math.Round(248*scale));
         var stride = rect.Width*4;

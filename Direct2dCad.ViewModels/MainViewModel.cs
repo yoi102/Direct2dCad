@@ -331,15 +331,35 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 _clipboardTextService));
     }
 
-    public Task InitializeMcpAsync(int? requestedPort = null)
+    public Task InitializeMcpAsync(int? requestedPort = null, string? requestedAccessToken = null)
     {
         if (requestedPort is { } port)
         {
             _userSettings.Mcp.IsEnabled = true;
             _userSettings.Mcp.Port = port;
         }
-        return _mcpService?.ConfigureAsync(_userSettings.Mcp.IsEnabled, _userSettings.Mcp.Port)
+        if (!string.IsNullOrEmpty(requestedAccessToken))
+            _userSettings.Mcp.AccessToken = requestedAccessToken;
+        return _mcpService?.ConfigureAsync(
+                _userSettings.Mcp.IsEnabled, _userSettings.Mcp.Port, _userSettings.Mcp.AccessToken)
             ?? Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Stops the MCP listener asynchronously while the window can still pump messages.
+    /// Hosts call this after exit is confirmed; the synchronous Dispose at process exit then
+    /// finds the shutdown already completed instead of blocking the UI thread on HTTP draining.
+    /// </summary>
+    public async Task ShutdownServicesAsync()
+    {
+        if (_mcpService is not IAsyncDisposable disposable) return;
+        try { await disposable.DisposeAsync(); }
+        catch (Exception exception)
+        {
+            // Best effort: process exit releases the listener anyway, so a failed stop must not
+            // keep the confirmed exit from completing.
+            System.Diagnostics.Debug.WriteLine($"MCP shutdown failed: {exception}");
+        }
     }
 
     private void ApplyUserSettings(CadUserSettings settings)
@@ -363,7 +383,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             editorTab.ApplyUserSettings(_userSettings);
 
         if (_mcpService is not null)
-            _ = _mcpService.ConfigureAsync(_userSettings.Mcp.IsEnabled, _userSettings.Mcp.Port);
+            _ = _mcpService.ConfigureAsync(_userSettings.Mcp.IsEnabled, _userSettings.Mcp.Port, _userSettings.Mcp.AccessToken);
     }
 
     [RelayCommand]

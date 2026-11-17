@@ -68,72 +68,47 @@ public partial class EditorView : UserControl, IDisposable
             var surfaceWidth = CanvasSurface.Bounds.Width; var surfaceHeight = CanvasSurface.Bounds.Height;
             DynamicPanel.Width = DynamicFields.Width = surfaceWidth; DynamicPanel.Height = DynamicFields.Height = surfaceHeight;
             var widths = boxes.ToDictionary(box => ((CadDynamicInputField)box.DataContext!).Key, box => Math.Clamp((box.Text?.Length ?? 1) * 7 + 48, 90, 170d));
-            var geometry = document.DynamicInputScreenGeometry; var measurements = document.DynamicInputScreenMeasurements;
-            var measured = measurements.Select(m => m.Key).ToHashSet();
-            var endpoint = new Point(geometry.Point.X, geometry.Point.Y);
-            var cursorFields = boxes.Where(box => box.DataContext is CadDynamicInputField field && !measured.Contains(field.Key) && field.Key is not ("Width" or "Height")).ToArray();
-            var groupWidth = cursorFields.Sum(box => widths[((CadDynamicInputField)box.DataContext!).Key]) + Math.Max(0, cursorFields.Length - 1) * 6 + (_badgeShown && cursorFields.Length>0?34:0);
-            var desiredX = point.X + 18; var desiredY = point.Y + 18;
-            if (desiredX + groupWidth > surfaceWidth - 4) desiredX = point.X - groupWidth - 18;
-            if (desiredY + 26 > surfaceHeight - 4) desiredY = point.Y - 30;
-            var x = Math.Clamp(desiredX, 4, Math.Max(4, surfaceWidth - groupWidth - 4));
-            var y = Math.Clamp(desiredY, 4, Math.Max(4, surfaceHeight - 30));
-            if(_badgeShown && cursorFields.Length>0) {global::Avalonia.Controls.Canvas.SetLeft(_cursorBadge,x);global::Avalonia.Controls.Canvas.SetTop(_cursorBadge,y-2);x+=34;}
-            var positions = widths.Keys.ToDictionary(key => key, _ => new Point(x,y));
-            foreach (var box in cursorFields) { var field = (CadDynamicInputField)box.DataContext!; positions[field.Key] = new Point(x,y); x += widths[field.Key] + 6; }
+            var geometry = document.DynamicInputScreenGeometry;
+            var badgeLeft = global::Avalonia.Controls.Canvas.GetLeft(_cursorBadge); var badgeTop = global::Avalonia.Controls.Canvas.GetTop(_cursorBadge);
+            var layout = CadDynamicInputLayout.Compute(new CadDynamicInputLayoutRequest(
+                surfaceWidth, surfaceHeight, BoxHeight: 26, new global::Direct2dCad.Db.Geometry.CadPointD(point.X, point.Y),
+                boxes.Select(box => (CadDynamicInputField)box.DataContext!).Select(field => new CadDynamicInputBoxSpec(field.Key, widths[field.Key])).ToArray(),
+                geometry.Anchor, geometry.Point, geometry.XCorner, geometry.YCorner, document.DynamicInputScreenMeasurements,
+                DrawAnchorLine: document.CadCanvasToolMode is global::Direct2dCad.ViewModels.Enums.CadCanvasToolMode.Spline or global::Direct2dCad.ViewModels.Enums.CadCanvasToolMode.SplineCv,
+                CursorBadgeVisible: _badgeShown,
+                CursorBadgePosition: new global::Direct2dCad.Db.Geometry.CadPointD(double.IsNaN(badgeLeft) ? 0 : badgeLeft, double.IsNaN(badgeTop) ? 0 : badgeTop)));
+            if (layout.InlineBadgePosition is { } inlineBadge)
+            { global::Avalonia.Controls.Canvas.SetLeft(_cursorBadge, inlineBadge.X); global::Avalonia.Controls.Canvas.SetTop(_cursorBadge, inlineBadge.Y); }
             var guides = new global::Avalonia.Media.StreamGeometry();
             using (var context = guides.Open())
-            {
-                void Line(Point from, Point to) { context.BeginFigure(from, false); context.LineTo(to); context.EndFigure(false); }
-                Point Dimension(Point start, Point end, Vector normal, double offset)
-                {
-                    Line(start, start + normal * (offset + 6)); Line(end, end + normal * (offset + 6)); Line(start + normal * offset, end + normal * offset);
-                    return start + (end - start) * .5 + normal * offset;
-                }
-                if (geometry.Anchor is { } anchor && positions.ContainsKey("Width") && positions.ContainsKey("Height") && !measured.Contains("Width"))
-                {
-                    var start = new Point(anchor.X, anchor.Y); var xCorner = new Point(geometry.XCorner.X, geometry.XCorner.Y); var yCorner = new Point(geometry.YCorner.X, geometry.YCorner.Y);
-                    var widthStart = start.Y + xCorner.Y > yCorner.Y + endpoint.Y ? start : yCorner; var widthEnd = widthStart == start ? xCorner : endpoint;
-                    var heightStart = start.X + yCorner.X > xCorner.X + endpoint.X ? start : xCorner; var heightEnd = heightStart == start ? yCorner : endpoint;
-                    Vector Outward(Point from, Point to)
-                    {
-                        var edge = new Vector(to.X - from.X, to.Y - from.Y); var normal = edge.Length > 1e-6 ? new Vector(-edge.Y,edge.X) / edge.Length : new Vector(0,1);
-                        var delta = from + (to - from) * .5 - (start + (endpoint - start) * .5);
-                        return normal.X * delta.X + normal.Y * delta.Y < 0 ? -normal : normal;
-                    }
-                    positions["Width"] = Dimension(widthStart,widthEnd,Outward(widthStart,widthEnd),28) - new Vector(widths["Width"] / 2,13);
-                    positions["Height"] = Dimension(heightStart,heightEnd,Outward(heightStart,heightEnd),54) - new Vector(widths["Height"] / 2,13);
-                }
-                foreach (var measurement in measurements)
-                {
-                    if (!widths.TryGetValue(measurement.Key,out var width)) continue;
-                    var start = new Point(measurement.Start.X,measurement.Start.Y); var end = new Point(measurement.End.X,measurement.End.Y);
-                    var direction = new Vector(end.X - start.X, end.Y - start.Y); var unit = direction.Length > 1e-6 ? direction / direction.Length : new Vector(1,0); var normal = new Vector(-unit.Y,unit.X); if (normal.Y > 0) normal = -normal;
-                    positions[measurement.Key] = Dimension(start,end,normal,26 + measurement.StackIndex * 24) - new Vector(width/2,13);
-                }
-            }
+                foreach (var stroke in layout.Guides)
+                { context.BeginFigure(new Point(stroke.Start.X, stroke.Start.Y), false); context.LineTo(new Point(stroke.End.X, stroke.End.Y)); context.EndFigure(false); }
             DynamicGuides.Data = guides;
-            var occupied = new List<Rect>();
             foreach (var box in boxes)
             {
                 var field = (CadDynamicInputField)box.DataContext!; var index = document.DynamicInputFields.IndexOf(field);
-                if (DynamicFields.ContainerFromIndex(index) is not Control container) continue;
-                var width = widths[field.Key]; box.Width = width - 46; var desired = positions[field.Key];
-                var bx = Math.Clamp(desired.X,4,Math.Max(4,surfaceWidth-width-4)); var by = Math.Clamp(desired.Y,4,Math.Max(4,surfaceHeight-30));
-                var bounds = new Rect(bx,by,width,26);
-                for (var attempt=0; attempt<boxes.Length*2 && occupied.Any(other=>bounds.Intersects(other)); attempt++)
-                {
-                    var other=occupied.First(other=>bounds.Intersects(other)); by=other.Bottom+6<=surfaceHeight-30?other.Bottom+6:Math.Max(4,other.Top-32); bounds=new Rect(bx,by,width,26);
-                }
-                global::Avalonia.Controls.Canvas.SetLeft(container,bx); global::Avalonia.Controls.Canvas.SetTop(container,by); occupied.Add(bounds);
+                if (DynamicFields.ContainerFromIndex(index) is not Control container || !layout.Positions.TryGetValue(field.Key, out var position)) continue;
+                box.Width = widths[field.Key] - 46;
+                global::Avalonia.Controls.Canvas.SetLeft(container, position.X); global::Avalonia.Controls.Canvas.SetTop(container, position.Y);
             }
             global::Avalonia.Controls.Canvas.SetLeft(DynamicError,Math.Clamp(point.X+18,4,Math.Max(4,surfaceWidth-184)));
             global::Avalonia.Controls.Canvas.SetTop(DynamicError,Math.Clamp(point.Y+54,4,Math.Max(4,surfaceHeight-44)));
         }
         finally { _positioningFields = false; }
     }
-    private void FieldFocused(object? sender, RoutedEventArgs e) { Model.CadDocumentViewModel.SetDynamicInputInteraction(true); if (sender is TextBox box) box.SelectAll(); }
-    private void FieldLostFocus(object? sender, RoutedEventArgs e) => Dispatcher.UIThread.Post(() => Model.CadDocumentViewModel.SetDynamicInputInteraction(DynamicPanel.GetVisualDescendants().OfType<TextBox>().Any(t => t.IsFocused)));
+    private void FieldFocused(object? sender, RoutedEventArgs e)
+    {
+        Model.CadDocumentViewModel.SetDynamicInputInteraction(true);
+        if (sender is not TextBox box) return;
+        box.SelectAll();
+        // While typing, the field's full name would only cover the geometry being edited.
+        ToolTip.SetIsOpen(box, false); ToolTip.SetServiceEnabled(box, false);
+    }
+    private void FieldLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox box) ToolTip.SetServiceEnabled(box, true);
+        Dispatcher.UIThread.Post(() => Model.CadDocumentViewModel.SetDynamicInputInteraction(DynamicPanel.GetVisualDescendants().OfType<TextBox>().Any(t => t.IsFocused)));
+    }
     private void DynamicKey(object? sender, KeyEventArgs e)
     {
         if (e.Handled || e.Source != Canvas && (e.Source is not TextBox text || !DynamicPanel.IsVisualAncestorOf(text))) return;

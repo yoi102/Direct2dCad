@@ -134,7 +134,8 @@ public sealed partial class CadToolCommandLineService
                     .Where(value => value.StartsWith(remainder, StringComparison.OrdinalIgnoreCase)).Take(maximumCount).Select(value => "LAYER " + value).ToArray();
             var operation = CadCommandLineSyntax.NormalizeCommandName(remainder[..argumentSeparator]);
             if (operation is not ("SET" or "ON" or "OFF" or "LOCK" or "UNLOCK" or "FREEZE" or "THAW" or "RENAME")) return [];
-            var prefix = remainder[(argumentSeparator + 1)..].TrimStart().Trim('"');
+            var prefix = remainder[(argumentSeparator + 1)..].TrimStart().Trim('"')
+                .Replace("\"\"", "\"", StringComparison.Ordinal);
             return workspace.GetActiveDocument()?.Session.CadEditor.Document.Layers.Values
                 .Where(layer => layer.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(layer => layer.Name, StringComparer.OrdinalIgnoreCase).Take(maximumCount)

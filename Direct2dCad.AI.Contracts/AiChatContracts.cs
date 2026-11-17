@@ -84,7 +84,10 @@ public sealed record AiChatRequest(
     IReadOnlyList<AiChatMessage> Messages,
     IReadOnlyList<AiToolDefinition> Tools,
     double Temperature = 0.2,
-    int MaxOutputTokens = 1024);
+    int MaxOutputTokens = 1024,
+    // When set, the client asks the server to stream and reports each piece of assistant text as it
+    // arrives. The returned completion is the same either way; servers that ignore streaming still work.
+    Func<string, ValueTask>? OnContentDelta = null);
 
 public sealed record AiChatCompletion(
     string? Content,

@@ -41,18 +41,27 @@ public sealed partial class CadDxfStorage
 
     public CadDxfResult Import(string path,CadUnit? sourceUnit=null,CancellationToken token=default)
     {
-        using var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read);
-        if(stream.Length>Limits.MaximumBytes)throw new InvalidDataException("DXF exceeds the file budget.");
-        using var reader=new StreamReader(stream,new UTF8Encoding(false,true),true);
-        var pairs=new List<Pair>();string? line;
-        while((line=reader.ReadLine()) is not null)
+        byte[] bytes;
+        using(var stream=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.Read))
         {
-            token.ThrowIfCancellationRequested();
-            if(line.Length>65536 || !int.TryParse(line.Trim(),out var code) || code is <0 or >1071)throw new InvalidDataException("Invalid or binary DXF group stream.");
-            var value=reader.ReadLine()??throw new InvalidDataException("Truncated DXF group pair.");
-            if(value.Length>65536 || pairs.Count>=Limits.MaximumGroups)throw new InvalidDataException("DXF exceeds its group/text budget.");
-            pairs.Add(new(code,value.TrimEnd()));
+            if(stream.Length>Limits.MaximumBytes)throw new InvalidDataException("DXF exceeds the file budget.");
+            bytes=new byte[stream.Length];stream.ReadExactly(bytes);
         }
+        var encoding=DetectEncoding(bytes);
+        using var reader=new StreamReader(new MemoryStream(bytes,false),encoding,true);
+        var pairs=new List<Pair>();string? line;
+        try
+        {
+            while((line=reader.ReadLine()) is not null)
+            {
+                token.ThrowIfCancellationRequested();
+                if(line.Length>65536 || !int.TryParse(line.Trim(),NumberStyles.AllowLeadingWhite|NumberStyles.AllowTrailingWhite|NumberStyles.AllowLeadingSign,Culture,out var code) || code is <0 or >1071)throw new InvalidDataException("Invalid or binary DXF group stream.");
+                var value=reader.ReadLine()??throw new InvalidDataException("Truncated DXF group pair.");
+                if(value.Length>65536 || pairs.Count>=Limits.MaximumGroups)throw new InvalidDataException("DXF exceeds its group/text budget.");
+                pairs.Add(new(code,value.TrimEnd()));
+            }
+        }
+        catch(DecoderFallbackException ex){throw new InvalidDataException($"DXF text is not valid {encoding.WebName}.",ex);}
         var sections=new Dictionary<string,List<Pair>>(StringComparer.OrdinalIgnoreCase);
         var end=false;
         for(var i=0;i<pairs.Count;)
@@ -113,6 +122,7 @@ public sealed partial class CadDxfStorage
             else if(active is not null)blockItems[active].Add(r);
         }
         if(active is not null)throw new InvalidDataException("Unterminated DXF block.");
+        foreach(var name in blockItems.Keys.ToArray())blockItems[name]=MergeLegacyPolylines(blockItems[name]);
         var blockDepths=new Dictionary<string,int>(StringComparer.OrdinalIgnoreCase);
         int CheckBlock(string name,HashSet<string> visiting)
         {
@@ -132,8 +142,16 @@ public sealed partial class CadDxfStorage
         {
             token.ThrowIfCancellationRequested();
             if(r.Number(67)!=0){Count(report,"Paper space");return;}
-            if(r.Number(30)!=0 || r.Number(31)!=0 || r.Number(38)!=0 || r.Number(39)!=0 || r.Number(210)!=0 || r.Number(220)!=0 || r.Number(230,1)!=1)
+            // A 2D entity drawn with extrusion (0,0,-1) is a mirrored copy: AutoCAD's MIRROR produces it routinely.
+            // Its OCS maps (x,y) to world (-x,y). LINE and SPLINE coordinates are already in world space.
+            var normalX=r.Number(210);var normalY=r.Number(220);var normalZ=r.Number(230,1);
+            var planar=Math.Abs(normalX)<1e-9 && Math.Abs(normalY)<1e-9 && Math.Abs(Math.Abs(normalZ)-1)<1e-9;
+            var mirrored=planar && normalZ<0;
+            if(r.Number(30)!=0 || r.Number(31)!=0 || r.Number(38)!=0 || r.Number(39)!=0 || !planar ||
+               mirrored && r.Type is not ("LINE" or "SPLINE" or "CIRCLE" or "ARC" or "ELLIPSE" or "LWPOLYLINE"))
             {Count(report,"3D/extrusion");return;}
+            var ocsX=mirrored?-1d:1d;
+            CadPointD Ocs(Record source)=>new(ocsX*source.Number(10)*factor,source.Number(20)*factor);
             var layer=Layer(r.Get(8,"0"));CadEntity? entity;
             switch(r.Type)
             {
@@ -157,7 +175,7 @@ public sealed partial class CadDxfStorage
                     catch (ArgumentException ex) { throw new InvalidDataException("Invalid DXF SPLINE definition.", ex); }
                     break;
                 case "LINE":entity=document.AddLine(Point(r),Point(r,11),layer);break;
-                case "CIRCLE":entity=document.AddCircle(Point(r),r.Number(40)*factor,layer);break;
+                case "CIRCLE":entity=document.AddCircle(Ocs(r),r.Number(40)*factor,layer);break;
                 case "ELLIPSE":
                     var major = Point(r,11); var majorLength = major.DistanceTo(default);
                     var ratio = r.Number(40); var ellipseStart = r.Number(41); var ellipseEnd = r.Number(42, Math.PI*2);
@@ -165,6 +183,8 @@ public sealed partial class CadDxfStorage
                         ellipseEnd-ellipseStart > Math.PI*2+1e-10 || ellipseEnd-ellipseStart < -Math.PI*2-1e-10)
                         throw new InvalidDataException("Invalid DXF ellipse axes or parameter interval.");
                     var ellipseSweep = Math.Abs(ellipseEnd-ellipseStart) >= Math.PI*2-1e-10 ? Math.PI*2 : CadPlanarPrimitive.PositiveAngle(ellipseEnd-ellipseStart);
+                    // With a -Z normal the minor axis points the other way, so parameter t sits at world parameter -t.
+                    if (mirrored) ellipseStart = -(ellipseStart + ellipseSweep);
                     if (ellipseSweep < 1e-12) { Count(report,"Degenerate ELLIPSE"); return; }
                     var ellipseRotation = Math.Atan2(major.Y,major.X);
                     if (ellipseSweep >= Math.PI*2-1e-10)
@@ -179,18 +199,22 @@ public sealed partial class CadDxfStorage
                     }
                     break;
                 case "ARC":
-                    var start=r.Number(50)*Math.PI/180;var sweep=((r.Number(51)-r.Number(50)+360)%360)*Math.PI/180;
+                    var start=r.Number(50)*Math.PI/180;var sweep=(((r.Number(51)-r.Number(50))%360+360)%360)*Math.PI/180;
                     if(sweep<1e-12){Count(report,"Degenerate ARC");return;}
-                    entity=document.AddArc(Point(r),r.Number(40)*factor,start,sweep,layer);break;
+                    // Mirroring maps OCS angle a to world angle pi-a, so the swept interval is reflected.
+                    if(mirrored)start=Math.PI-start-sweep;
+                    entity=document.AddArc(Ocs(r),r.Number(40)*factor,start,sweep,layer);break;
                 case "LWPOLYLINE":
-                    if(r.Values.Any(p=>p.Code is 40 or 41 or 43 && Math.Abs(double.Parse(p.Value,Culture))>1e-12)){Count(report,"Wide polyline");return;}
+                    // Width is a display property; dropping the whole polyline lost board outlines and traces.
+                    // Import the centre line and report that the width was not kept.
+                    var wide=r.Values.Any(p=>p.Code is 40 or 41 or 43 && Math.Abs(double.Parse(p.Value,Culture))>1e-12);
                     var vertices=new List<(CadPointD Point,double Bulge)>();
                     for(var i=0;i<r.Values.Count;i++)
                     {
                         if(r.Values[i].Code!=10)continue;
-                        var x=double.Parse(r.Values[i].Value,Culture)*factor;double? y=null;var bulge=0d;
+                        var x=ocsX*double.Parse(r.Values[i].Value,Culture)*factor;double? y=null;var bulge=0d;
                         for(var j=i+1;j<r.Values.Count && r.Values[j].Code!=10;j++)
-                        {if(r.Values[j].Code==20)y=double.Parse(r.Values[j].Value,Culture)*factor;if(r.Values[j].Code==42)bulge=double.Parse(r.Values[j].Value,Culture);}
+                        {if(r.Values[j].Code==20)y=double.Parse(r.Values[j].Value,Culture)*factor;if(r.Values[j].Code==42)bulge=ocsX*double.Parse(r.Values[j].Value,Culture);}
                         if(y is null || !double.IsFinite(x) || !double.IsFinite(y.Value) || !double.IsFinite(bulge))throw new InvalidDataException("Invalid polyline vertex.");
                         vertices.Add((new(x,y.Value),bulge));
                     }
@@ -213,6 +237,7 @@ public sealed partial class CadDxfStorage
                         }
                         entity=document.AddCompositePath(vertices[0].Point,segments,closed,layer);
                     }
+                    if(wide)Count(report,"Polyline width omitted");
                     break;
                 case "TEXT":
                     if(r.Integer(72)!=0 || r.Integer(73)!=0 || r.Integer(71)!=0 || r.Number(51)!=0 || Math.Abs(r.Number(41,1)-1)>1e-12)
@@ -241,7 +266,7 @@ public sealed partial class CadDxfStorage
             entity.SetStrokeStyle(entity.StrokeStyle with {DashStyle=dash});imported++;
         }
         foreach(var (name,id) in blocks)foreach(var r in blockItems[name])Restore(r,id);
-        foreach(var r in Records(sections["ENTITIES"]))Restore(r,BlockId.ModelSpace);
+        foreach(var r in MergeLegacyPolylines(Records(sections["ENTITIES"])))Restore(r,BlockId.ModelSpace);
         document.RefreshBlockReferenceBounds();return new(document,imported,report);
     }
 
@@ -256,7 +281,79 @@ public sealed partial class CadDxfStorage
     {
         if(r.Get(420).Length==0 && Math.Abs((long)r.Integer(62,7)) is >7 and <256)Count(report,"ACI color substituted");
     }
-    private static string Decode(string text)=>Regex.Replace(text,@"\\U\+([0-9A-Fa-f]{4})",m=>((char)int.Parse(m.Groups[1].Value,NumberStyles.HexNumber,Culture)).ToString(),RegexOptions.CultureInvariant,TimeSpan.FromSeconds(1));
+    static CadDxfStorage()=>Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+    /// <summary>
+    /// DXF R2007+ is UTF-8. Older files use the ANSI code page named by $DWGCODEPAGE (for example GBK for
+    /// ANSI_936 or Shift-JIS for ANSI_932), which AutoCAD writes for Chinese and Japanese drawings.
+    /// </summary>
+    internal static Encoding DetectEncoding(ReadOnlySpan<byte> bytes)
+    {
+        var utf8=new UTF8Encoding(false,true);
+        if(bytes is [0xEF,0xBB,0xBF,..] || System.Text.Unicode.Utf8.IsValid(bytes))return utf8;
+        // The header is ASCII, so a byte-preserving view is enough to find the declared code page.
+        var head=Encoding.Latin1.GetString(bytes[..Math.Min(bytes.Length,1024*1024)]);
+        var declared=Regex.Match(head,@"\$DWGCODEPAGE[ \t]*\r?\n[ \t]*3[ \t]*\r?\n[ \t]*([^\r\n]+)",RegexOptions.CultureInvariant,TimeSpan.FromSeconds(1));
+        var codePage=declared.Success?CodePageFromName(declared.Groups[1].Value.Trim()):null;
+        codePage??=CultureInfo.CurrentCulture.TextInfo.ANSICodePage;
+        try{return Encoding.GetEncoding(codePage.Value,EncoderFallback.ExceptionFallback,DecoderFallback.ExceptionFallback);}
+        catch(Exception ex) when (ex is ArgumentException or NotSupportedException)
+        {throw new InvalidDataException($"DXF code page {codePage} is not supported.",ex);}
+    }
+
+    private static int? CodePageFromName(string name)
+    {
+        var numbered=Regex.Match(name,@"^(?:ANSI|DOS|CP)_?(\d{3,5})$",RegexOptions.CultureInvariant|RegexOptions.IgnoreCase,TimeSpan.FromSeconds(1));
+        if(numbered.Success)return int.Parse(numbered.Groups[1].Value,Culture);
+        return name.ToUpperInvariant() switch {"GB2312"=>936,"BIG5"=>950,"KSC5601"=>949,"JOHAB"=>1361,"UTF8" or "UTF-8"=>65001,_=>null};
+    }
+
+    // \U+XXXX is a UTF-16 code unit; \M+nXXXX is a double-byte character from the AutoCAD MBCS table n.
+    private static string Decode(string text)=>Regex.Replace(text,@"\\U\+([0-9A-Fa-f]{4})|\\M\+([1-5])([0-9A-Fa-f]{4})",m=>
+    {
+        if(m.Groups[1].Success)return ((char)int.Parse(m.Groups[1].Value,NumberStyles.HexNumber,Culture)).ToString();
+        var codePage=m.Groups[2].Value switch {"1"=>932,"2"=>950,"3"=>949,"4"=>1361,_=>936};
+        var value=int.Parse(m.Groups[3].Value,NumberStyles.HexNumber,Culture);
+        try{return Encoding.GetEncoding(codePage).GetString(new byte[]{(byte)(value>>8),(byte)value});}
+        catch(Exception ex) when (ex is ArgumentException or NotSupportedException){return m.Value;}
+    },RegexOptions.CultureInvariant,TimeSpan.FromSeconds(1));
+
+    /// <summary>
+    /// R12 and older writers store 2D polylines as POLYLINE, VERTEX..., SEQEND. They are folded into the
+    /// equivalent LWPOLYLINE record so both forms share one import path. 3D polylines and meshes stay unsupported.
+    /// </summary>
+    private static List<Record> MergeLegacyPolylines(List<Record> records)
+    {
+        var result=new List<Record>(records.Count);
+        for(var i=0;i<records.Count;i++)
+        {
+            var record=records[i];
+            if(record.Type=="SEQEND")continue; // Terminates INSERT attributes or a polyline handled below.
+            if(record.Type!="POLYLINE"){result.Add(record);continue;}
+            var vertices=new List<Record>();
+            while(i+1<records.Count && records[i+1].Type=="VERTEX")vertices.Add(records[++i]);
+            var flags=record.Integer(70);
+            if((flags&(8|16|32|64))!=0){result.Add(new("POLYLINE (3D/mesh)",record.Values));continue;}
+            var values=record.Values.Where(p=>p.Code is not (10 or 20 or 30 or 40 or 41 or 66 or 70 or 71 or 72 or 73 or 74 or 75)).ToList();
+            // The POLYLINE's own point only carries the elevation.
+            var elevation=record.Number(30);if(elevation!=0)values.Add(new(38,elevation.ToString("R",Culture)));
+            var width=Math.Abs(record.Number(40))+Math.Abs(record.Number(41));
+            var count=0;
+            foreach(var vertex in vertices)
+            {
+                // Spline frame control points are not on the curve; the fitted vertices are.
+                if((vertex.Integer(70)&16)!=0)continue;
+                values.Add(new(10,vertex.Get(10,"0")));values.Add(new(20,vertex.Get(20,"0")));
+                if(vertex.Get(42).Length>0)values.Add(new(42,vertex.Get(42)));
+                width+=Math.Abs(vertex.Number(40))+Math.Abs(vertex.Number(41));count++;
+            }
+            if(count<2){result.Add(new("Degenerate POLYLINE",record.Values));continue;}
+            values.Add(new(70,((flags&1)!=0?1:0).ToString(Culture)));values.Add(new(90,count.ToString(Culture)));
+            if(width>1e-12)values.Add(new(43,width.ToString("R",Culture)));
+            result.Add(new("LWPOLYLINE",values));
+        }
+        return result;
+    }
     private static string Encode(string text)
     {
         if(text.Length>65536)throw new InvalidDataException("DXF text exceeds the group budget.");

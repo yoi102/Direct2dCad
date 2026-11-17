@@ -195,6 +195,91 @@ public sealed class AiAssistantToolboxViewModelTests
     }
 
     [Fact]
+    public async Task StreamedTextGrowsOneBubbleThatTheFinalMessageCompletes()
+    {
+        var runner = new FakeAgentRunner
+        {
+            Result = new AgentRunResult("local-model", 8192, false),
+            Events = [
+                new AgentRunEvent(AgentRunEventKind.AssistantDelta, "\n"),
+                new AgentRunEvent(AgentRunEventKind.AssistantDelta, "Hello"),
+                new AgentRunEvent(AgentRunEventKind.AssistantDelta, " wor"),
+                new AgentRunEvent(AgentRunEventKind.AssistantMessage, "Hello world"),
+                new AgentRunEvent(AgentRunEventKind.ToolResult, "{\"success\":true}", "list_layers"),
+                new AgentRunEvent(AgentRunEventKind.AssistantDelta, "Done"),
+                new AgentRunEvent(AgentRunEventKind.AssistantMessage, "Done.")
+            ]
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            agentRunner: runner);
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.SelectedModel = "local-model";
+        viewModel.UserInput = "inspect";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Equal(
+            ["Hello world", "Done."],
+            viewModel.Messages.Where(message => message.Kind == AiChatItemKind.Assistant).Select(message => message.Content));
+    }
+
+    [Fact]
+    public async Task StreamedTextIsDiscardedWhenTheRequestIsRetriedWithLessContext()
+    {
+        var runner = new FakeAgentRunner
+        {
+            Result = new AgentRunResult("local-model", 4096, false),
+            Events = [
+                new AgentRunEvent(AgentRunEventKind.AssistantDelta, "partial"),
+                new AgentRunEvent(AgentRunEventKind.ContextReduced, ContextWindowTokens: 4096),
+                new AgentRunEvent(AgentRunEventKind.AssistantDelta, "retr"),
+                new AgentRunEvent(AgentRunEventKind.AssistantMessage, "retried")
+            ]
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            agentRunner: runner);
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.SelectedModel = "local-model";
+        viewModel.UserInput = "inspect";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        var reply = Assert.Single(viewModel.Messages, message => message.Kind == AiChatItemKind.Assistant);
+        Assert.Equal("retried", reply.Content);
+    }
+
+    [Fact]
+    public async Task StreamedTextStaysVisibleWhenTheRunFails()
+    {
+        var runner = new FakeAgentRunner
+        {
+            Events = [new AgentRunEvent(AgentRunEventKind.AssistantDelta, "half an ans")],
+            Exception = new InvalidOperationException("connection lost")
+        };
+        using var viewModel = CreateViewModel(
+            new FakeFileDialogService(),
+            new FakeImageImportService(),
+            new FakeCodexAgentClient(),
+            agentRunner: runner);
+        viewModel.Provider = AiAssistantProvider.LmStudio;
+        viewModel.SelectedModel = "local-model";
+        viewModel.UserInput = "inspect";
+
+        await viewModel.SendCommand.ExecuteAsync(null);
+
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Assistant && message.Content == "half an ans");
+        Assert.Contains(viewModel.Messages, message =>
+            message.Kind == AiChatItemKind.Error && message.Content.Contains("connection lost"));
+    }
+
+    [Fact]
     public async Task SendAsync_ReportsAgentFailureAndRestoresReadyState()
     {
         var runner = new FakeAgentRunner
@@ -540,13 +625,14 @@ public sealed class AiAssistantToolboxViewModelTests
         {
             LastRequest = request;
             Started?.TrySetResult(true);
-            if (Exception is not null)
-                throw Exception;
             if (WaitForCancellation)
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             foreach (var agentEvent in Events)
                 if (reportEvent is not null)
                     await reportEvent(agentEvent);
+            // Events first, so a failure can follow text that had already streamed in.
+            if (Exception is not null)
+                throw Exception;
             cancellationToken.ThrowIfCancellationRequested();
             return Result;
         }

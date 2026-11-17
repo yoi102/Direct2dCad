@@ -1,8 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   <ItemGroup>
@@ -11,7 +9,7 @@
     <ProjectReference Include="..\Direct2dCad.Editor\Direct2dCad.Editor.csproj" />
     <ProjectReference Include="..\Direct2dCad.IO\Direct2dCad.IO.csproj" />
     <ProjectReference Include="..\Direct2dCad.Lang\Direct2dCad.Lang.csproj" />
-    <PackageReference Include="MessagePipe" Version="1.8.2" />
+    <PackageReference Include="MessagePipe" />
     <InternalsVisibleTo Include="Direct2dCad.ViewModels" />
     <InternalsVisibleTo Include="Direct2dCad.ViewModels.Tests" />
     <InternalsVisibleTo Include="Direct2dCad.Application.Tests" />

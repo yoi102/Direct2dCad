@@ -32,7 +32,7 @@
       <ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:CadDynamicInputField">
        <Border Background="{DynamicResource MaterialBackgroundBrush}" BorderBrush="{DynamicResource CadRibbonAccentBrush}" BorderThickness="1" CornerRadius="2" Padding="3,0">
         <StackPanel Orientation="Horizontal" Spacing="3"><TextBlock Text="{Binding Prefix}" VerticalAlignment="Center" />
-         <TextBox Width="70" MinHeight="24" Height="24" Padding="2,0" BorderThickness="0" Background="Transparent" FontSize="12" Text="{Binding Text, Mode=TwoWay}" AutomationProperties.AutomationId="{Binding AutomationId}" ToolTip.Tip="{Binding Label}" GotFocus="FieldFocused" LostFocus="FieldLostFocus" />
+         <TextBox Width="70" MinHeight="24" Height="24" Padding="2,0" BorderThickness="0" Background="Transparent" FontSize="12" Text="{Binding Text, Mode=TwoWay}" AutomationProperties.AutomationId="{Binding AutomationId}" ToolTip.Tip="{Binding Label}" ToolTip.ShowDelay="900" ToolTip.Placement="Top" GotFocus="FieldFocused" LostFocus="FieldLostFocus" />
          <controls:CadIcon Kind="Lock" Width="10" Height="10" IsVisible="{Binding IsLocked}" />
         </StackPanel>
        </Border>

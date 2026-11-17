@@ -1,6 +1,7 @@
-using Direct2dCad.Agent;
 using Direct2dCad.AI.Contracts;
 
+// Contract lives with the agent runtime so presentation code can depend on it without
+// referencing the Codex app-server implementation (Direct2dCad.Agent.Codex).
 namespace Direct2dCad.Agent.Codex;
 
 public sealed record CodexAgentOptions(

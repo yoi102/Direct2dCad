@@ -10,6 +10,19 @@
             <TextBlock Text="{I18N {x:Static r:LangKeys.McpPort}}" Margin="0,0,0,6" />
             <TextBox AutomationProperties.AutomationId="McpPortTextBox"
                      Text="{Binding PortText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,16" />
+            <TextBlock Text="{I18N {x:Static r:LangKeys.McpAccessToken}}" Margin="0,0,0,6" />
+            <DockPanel Margin="0,0,0,6" LastChildFill="True">
+                <Button AutomationProperties.AutomationId="McpCopyTokenButton" DockPanel.Dock="Right" Margin="8,0,0,0"
+                        Content="{I18N {x:Static r:LangKeys.McpCopyToken}}"
+                        Command="{Binding CopyAccessTokenCommand}" />
+                <Button AutomationProperties.AutomationId="McpGenerateTokenButton" DockPanel.Dock="Right" Margin="8,0,0,0"
+                        Content="{I18N {x:Static r:LangKeys.McpGenerateToken}}"
+                        Command="{Binding GenerateAccessTokenCommand}" />
+                <TextBox AutomationProperties.AutomationId="McpAccessTokenTextBox" FontFamily="Consolas"
+                         Text="{Binding AccessToken, UpdateSourceTrigger=PropertyChanged}" />
+            </DockPanel>
+            <TextBlock Text="{I18N {x:Static r:LangKeys.McpAccessTokenHelp}}" TextWrapping="Wrap" Opacity="0.75"
+                       Margin="0,0,0,16" />
             <TextBlock Text="{I18N {x:Static r:LangKeys.McpStatus}}" Margin="0,0,0,6" />
             <TextBlock AutomationProperties.AutomationId="McpStatusText"
                        Text="{Binding StatusText}" Margin="0,0,0,16" />

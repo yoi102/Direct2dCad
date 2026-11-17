@@ -36,7 +36,7 @@ internal static partial class NativeSmoke
             var menuScreen=menu.PointToScreen(default);
             var scale=TopLevel.GetTopLevel(menu)!.RenderScaling;
             assert(Math.Min(Math.Abs(menuScreen.X-clickScreen.X),Math.Abs(menuScreen.X+menu.Bounds.Width*scale-clickScreen.X))<=8 && Math.Min(Math.Abs(menuScreen.Y-clickScreen.Y),Math.Abs(menuScreen.Y+menu.Bounds.Height*scale-clickScreen.Y))<=8,$"Canvas menu is detached from the click: click={clickScreen}, menu={menuScreen}, size={menu.Bounds.Size}.");
-            using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(TopLevel.GetTopLevel(menu)!))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"canvas-context-menu.png"));
+            using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(TopLevel.GetTopLevel(menu)!))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"canvas-context-menu.png"));
             await CheckCompactScrollBarAsync(scroll,assert,output,"canvas-scrollbar");
             report.Passed.Add("Canvas menu scroll bar stays narrow during hover and pressed thumb drag; dragging scrolls command content");
             view.Canvas.ContextMenu!.Close();
@@ -88,7 +88,7 @@ internal static partial class NativeSmoke
             }
         }
         assert(menu.GetVisualDescendants().OfType<Separator>().All(separator=>separator.Bounds.Height<=1 && separator.Margin.Top+separator.Margin.Bottom<=8),"Layer menu retains oversized separator spacing.");
-        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(TopLevel.GetTopLevel(menu)!))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"layer-menu-compact.png"));
+        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(TopLevel.GetTopLevel(menu)!))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"layer-menu-compact.png"));
         var locked=menu.Items.OfType<MenuItem>().Single(item=>Equals(item.Header,Direct2dCad.Lang.CadUiText.Get("Locked")));
         var previous=layer.IsLocked;
         locked.Command!.Execute(null);

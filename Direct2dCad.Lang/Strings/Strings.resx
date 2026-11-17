@@ -1982,4 +1982,19 @@
   <data name="McpSettingsHelp" xml:space="preserve">
     <value>Apply to start, stop, or change the port immediately. MCP listens on this computer only. AI clients using this address can read and edit drawings and access files through the available tools.</value>
   </data>
+  <data name="McpAccessToken" xml:space="preserve">
+    <value>Access token (optional)</value>
+  </data>
+  <data name="McpAccessTokenHelp" xml:space="preserve">
+    <value>When set, MCP clients must send the HTTP header Authorization: Bearer &lt;token&gt;. Leave it empty to accept any client on this computer.</value>
+  </data>
+  <data name="McpGenerateToken" xml:space="preserve">
+    <value>Generate</value>
+  </data>
+  <data name="McpCopyToken" xml:space="preserve">
+    <value>Copy token</value>
+  </data>
+  <data name="McpTokenCopied" xml:space="preserve">
+    <value>Token copied.</value>
+  </data>
 </root>

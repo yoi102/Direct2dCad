@@ -36,12 +36,14 @@ Terminal 别名：`DIM`/`DIMLINEAR`、`DIMVERTICAL`、`DIMALIGNED`、`DIMRADIUS`
 
 ## DXF 支持矩阵
 
-导出为 ASCII DXF R2004 (`AC1018`)，真彩色和 Unicode 转义；导入接受 R12、R2000、R2004 至 R2018 的声明版本中的下列子集。ASCII 指组码文本文件；支持严格 UTF-8 与 `\U+XXXX`，不支持二进制 DXF 和所有历史 ANSI 代码页。
+导出为 ASCII DXF R2004 (`AC1018`)，真彩色和 Unicode 转义；导入接受 R12、R2000、R2004 至 R2018 的声明版本中的下列子集。ASCII 指组码文本文件，不支持二进制 DXF。编码：带 BOM 或合法 UTF-8 时按 UTF-8；否则按 `$DWGCODEPAGE` 声明的代码页（如 ANSI_936 GBK、ANSI_932 Shift-JIS、ANSI_950、ANSI_949、ANSI_125x），未声明时用系统 ANSI 代码页；字节在该代码页中非法时拒绝。文字中的 `\U+XXXX` 和 `\M+nXXXX`（AutoCAD 多字节表 1–5）均解码。
 
 | 内容 | 当前策略 |
 | --- | --- |
 | LINE / CIRCLE / ARC | 平面解析几何；负扫角导出为等价 CCW 圆弧 |
-| LWPOLYLINE | 开闭多段线、圆弧 bulge；非零宽度另报未支持 |
+| LWPOLYLINE | 开闭多段线、圆弧 bulge；非零宽度（常量或逐点）导入中心线并汇总 `Polyline width omitted` |
+| POLYLINE / VERTEX / SEQEND（R12 写法） | 二维多段线折叠为 LWPOLYLINE 同一路径（闭合、bulge、宽度汇总，跳过样条框架控制点）；3D 多段线和网格汇总为 `POLYLINE (3D/mesh)` |
+| 镜像对象（拉伸方向 0,0,-1） | ARC / CIRCLE / ELLIPSE / LWPOLYLINE 按 OCS 换算到世界坐标；LINE / SPLINE 本为世界坐标直接导入；镜像 TEXT / INSERT 及其他非平面法向汇总为 `3D/extrusion` |
 | TEXT | 基本插入点、字号、旋转、Unicode；特殊对齐/变形拒绝并汇总，字体差异汇总 |
 | LAYER | 名称、真彩色/基础 ACI、线宽、可见/冻结/锁定；BYLAYER 常用虚线解析到实体 |
 | BLOCK / INSERT | 定义、基点、嵌套、旋转和非均匀比例；循环/深度超限拒绝，阵列 INSERT 单独汇总 |

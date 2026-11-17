@@ -84,12 +84,16 @@ internal sealed class DialogService : IDialogService
     public async void ShowDocumentSettingsDialog(IDocumentSettingsDialogViewModel model)
     {
         if (model is not DocumentSettingsViewModel vm) throw new ArgumentException("Unknown document settings model.");
-        await ShowSettings(T("DocumentSettings"), vm, KnownViews.Create(vm)!, vm.TryApply, vm.ResetToDefaults, () => vm.ValidationError, 940, 620);
+        // async void entry point (IDialogService contract): never let a dialog failure terminate the app.
+        try { await ShowSettings(T("DocumentSettings"), vm, KnownViews.Create(vm)!, vm.TryApply, vm.ResetToDefaults, () => vm.ValidationError, 940, 620); }
+        catch (Exception ex) { AppCrashLog.Write(ex, "DocumentSettings dialog"); App.Window?.ShowNotification(ex.Message); }
     }
     public async void ShowUserSettingsDialog(IUserSettingsDialogViewModel model)
     {
         if (model is not UserSettingsViewModel vm) throw new ArgumentException("Unknown user settings model.");
-        await ShowSettings(T("ApplicationSettings"), vm, KnownViews.Create(vm)!, vm.TryApply, vm.ResetToDefaults, () => vm.ValidationError, 760, 650);
+        // async void entry point (IDialogService contract): never let a dialog failure terminate the app.
+        try { await ShowSettings(T("ApplicationSettings"), vm, KnownViews.Create(vm)!, vm.TryApply, vm.ResetToDefaults, () => vm.ValidationError, 760, 650); }
+        catch (Exception ex) { AppCrashLog.Write(ex, "ApplicationSettings dialog"); App.Window?.ShowNotification(ex.Message); }
     }
     private static async Task ShowSettings(string title, System.ComponentModel.INotifyPropertyChanged model, Control view, Func<bool> apply, Action reset, Func<string?> validation, double width, double height)
     {

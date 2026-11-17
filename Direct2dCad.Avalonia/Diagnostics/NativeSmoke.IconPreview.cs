@@ -20,7 +20,7 @@ internal static partial class NativeSmoke
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
             await Task.Delay(150); window.UpdateLayout();
             using var frame = window.CaptureRenderedFrame();
-            frame?.Save(Path.Combine(directory, theme == ThemeVariant.Light ? "drawing-icons-light.png" : "drawing-icons-dark.png"));
+            frame?.SavePng(Path.Combine(directory, theme == ThemeVariant.Light ? "drawing-icons-light.png" : "drawing-icons-dark.png"));
         }
         finally { window.Model.TabControlSelectedIndex = previousTab; }
         if (theme != ThemeVariant.Dark) return;
@@ -41,7 +41,7 @@ internal static partial class NativeSmoke
         {
             atlas.Show(window); atlas.UpdateLayout();
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Render);
-            using var frame = atlas.CaptureRenderedFrame(); frame?.Save(Path.Combine(directory, "radial-icon-atlas.png"));
+            using var frame = atlas.CaptureRenderedFrame(); frame?.SavePng(Path.Combine(directory, "radial-icon-atlas.png"));
         }
         finally { atlas.Close(); }
     }

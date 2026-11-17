@@ -29,6 +29,8 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     private readonly AgentConversation _conversation = new();
     private CancellationTokenSource? _requestCancellation;
     private CadDocumentViewModel? _documentViewModel;
+    private readonly System.Text.StringBuilder _streamingText = new();
+    private AiChatItemViewModel? _streamingMessage;
 
     public AiAssistantToolboxViewModel(
         IToolboxLayoutSettingsStore toolboxLayoutSettingsStore,
@@ -445,15 +447,28 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
     {
         switch (agentEvent.Kind)
         {
+            case AgentRunEventKind.AssistantDelta when !string.IsNullOrEmpty(agentEvent.Content):
+                AppendStreamingText(agentEvent.Content);
+                break;
             case AgentRunEventKind.AssistantMessage when !string.IsNullOrWhiteSpace(agentEvent.Content):
-                Messages.Add(new AiChatItemViewModel(AiChatItemKind.Assistant, agentEvent.Content));
+                // The complete text replaces the streamed preview so both always end up identical.
+                if (_streamingMessage is { } streamed)
+                    streamed.Content = agentEvent.Content;
+                else
+                    Messages.Add(new AiChatItemViewModel(AiChatItemKind.Assistant, agentEvent.Content));
+                EndStreaming();
                 break;
             case AgentRunEventKind.ToolResult when agentEvent.ToolName is not null:
+                EndStreaming();
                 Messages.Add(new AiChatItemViewModel(
                     AiChatItemKind.Tool,
                     $"{agentEvent.ToolName}: {CreateToolResultSummary(agentEvent.Content ?? string.Empty)}"));
                 break;
             case AgentRunEventKind.ContextReduced:
+                // The request is retried with less context, so the partial reply is obsolete.
+                if (_streamingMessage is { } obsolete)
+                    Messages.Remove(obsolete);
+                EndStreaming();
                 if (agentEvent.ContextWindowTokens is { } contextWindowTokens)
                     ContextWindowTokens = contextWindowTokens;
                 ConnectionStatus = Resource("AiReducingContext", "Reducing conversation context and retrying...");
@@ -463,8 +478,32 @@ public partial class AiAssistantToolboxViewModel : CadToolboxViewModelBase, IDis
         return ValueTask.CompletedTask;
     }
 
+    private void AppendStreamingText(string delta)
+    {
+        _streamingText.Append(delta);
+        if (_streamingMessage is not null)
+        {
+            _streamingMessage.Content = _streamingText.ToString().TrimStart();
+            return;
+        }
+        // Leading whitespace or newlines alone do not open a bubble.
+        var text = _streamingText.ToString().TrimStart();
+        if (text.Length == 0)
+            return;
+        _streamingMessage = new AiChatItemViewModel(AiChatItemKind.Assistant, text);
+        Messages.Add(_streamingMessage);
+    }
+
+    private void EndStreaming()
+    {
+        _streamingText.Clear();
+        _streamingMessage = null;
+    }
+
     private void EndRequest()
     {
+        // A cancelled or failed run keeps whatever text had already arrived.
+        EndStreaming();
         IsBusy = false;
         _requestCancellation?.Dispose();
         _requestCancellation = null;
@@ -544,14 +583,25 @@ public enum AiChatItemKind
     Error
 }
 
-public sealed class AiChatItemViewModel(
-    AiChatItemKind kind,
-    string content,
-    IReadOnlyList<AiImageAttachmentViewModel>? attachments = null)
+public sealed partial class AiChatItemViewModel : ObservableObject
 {
-    public AiChatItemKind Kind { get; } = kind;
-    public string Content { get; } = content;
-    public IReadOnlyList<AiImageAttachmentViewModel> Attachments { get; } = attachments?.ToArray() ?? [];
+    public AiChatItemViewModel(
+        AiChatItemKind kind,
+        string content,
+        IReadOnlyList<AiImageAttachmentViewModel>? attachments = null)
+    {
+        Kind = kind;
+        Content = content;
+        Attachments = attachments?.ToArray() ?? [];
+    }
+
+    public AiChatItemKind Kind { get; }
+
+    // Assistant replies grow while the model streams, so the bubble text must notify.
+    [ObservableProperty]
+    public partial string Content { get; internal set; }
+
+    public IReadOnlyList<AiImageAttachmentViewModel> Attachments { get; }
     public IReadOnlyList<AiImageAttachmentViewModel> Images =>
         Attachments.Where(attachment => attachment.IsImage).ToArray();
     public string Role => Kind switch

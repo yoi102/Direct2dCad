@@ -14,6 +14,7 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
         Validate(request);
 
         IReadOnlyList<AiToolDefinition> selectedTools = SelectInitialTools(request);
+        var deltas = reportEvent is null ? null : new AssistantDeltaRelay(reportEvent, SynchronizationContext.Current);
         var contextWindowTokens = NormalizeContextWindow(request.ContextWindowTokens);
 
         for (var round = 0; round < request.MaximumToolRounds; round++)
@@ -24,7 +25,9 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
                 selectedTools,
                 contextWindowTokens,
                 reportEvent,
+                deltas,
                 cancellationToken);
+            deltas?.Reset();
             cancellationToken.ThrowIfCancellationRequested();
             contextWindowTokens = completion.ContextWindowTokens;
 
@@ -123,6 +126,7 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
         IReadOnlyList<AiToolDefinition> selectedTools,
         int contextWindowTokens,
         Func<AgentRunEvent, ValueTask>? reportEvent,
+        AssistantDeltaRelay? deltas,
         CancellationToken cancellationToken)
     {
         for (var attempt = 0; attempt < 2; attempt++)
@@ -143,12 +147,14 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
                         context.Messages,
                         context.Tools,
                         request.Temperature,
-                        context.MaxOutputTokens),
+                        context.MaxOutputTokens,
+                        deltas is null ? null : deltas.OnDelta),
                     cancellationToken);
                 return new CompletionAttempt(completion, contextWindowTokens);
             }
             catch (AiContextWindowExceededException exception) when (attempt == 0)
             {
+                deltas?.Reset();
                 if (exception.ContextWindowTokens is { } reportedContext)
                     contextWindowTokens = NormalizeContextWindow(reportedContext);
 
@@ -204,6 +210,72 @@ public sealed class AgentRunner(IAiChatClient chatClient) : IAgentRunner
         Func<AgentRunEvent, ValueTask>? reportEvent,
         AgentRunEvent agentEvent) =>
         reportEvent?.Invoke(agentEvent) ?? ValueTask.CompletedTask;
+
+    /// <summary>
+    /// Forwards streamed text to the caller's synchronization context (the UI thread) without
+    /// blocking the network reader: pieces that arrive while a post is pending are coalesced.
+    /// </summary>
+    private sealed class AssistantDeltaRelay(
+        Func<AgentRunEvent, ValueTask> reportEvent,
+        SynchronizationContext? synchronizationContext)
+    {
+        private readonly Lock _gate = new();
+        private readonly System.Text.StringBuilder _pending = new();
+        private bool _scheduled;
+        private int _generation;
+
+        public ValueTask OnDelta(string delta)
+        {
+            if (synchronizationContext is null)
+                return reportEvent(new AgentRunEvent(AgentRunEventKind.AssistantDelta, delta));
+
+            int generation;
+            lock (_gate)
+            {
+                _pending.Append(delta);
+                if (_scheduled)
+                    return ValueTask.CompletedTask;
+                _scheduled = true;
+                generation = _generation;
+            }
+            synchronizationContext.Post(static state =>
+            {
+                var (relay, generation) = ((AssistantDeltaRelay, int))state!;
+                relay.Flush(generation);
+            }, (this, generation));
+            return ValueTask.CompletedTask;
+        }
+
+        // Called once the completion is in hand (or abandoned): text not yet shown is dropped,
+        // because the final AssistantMessage or a retry supersedes it.
+        public void Reset()
+        {
+            lock (_gate)
+            {
+                _pending.Clear();
+                _scheduled = false;
+                _generation++;
+            }
+        }
+
+        private void Flush(int generation)
+        {
+            string text;
+            lock (_gate)
+            {
+                if (generation != _generation)
+                    return;
+                text = _pending.ToString();
+                _pending.Clear();
+                _scheduled = false;
+            }
+            if (text.Length == 0)
+                return;
+            var pending = reportEvent(new AgentRunEvent(AgentRunEventKind.AssistantDelta, text));
+            if (!pending.IsCompletedSuccessfully)
+                _ = pending.AsTask();
+        }
+    }
 
     private sealed record CompletionAttempt(
         AiChatCompletion Completion,

@@ -1,18 +1,66 @@
 <Solution>
-  <Project Path="Direct2dCad.Mcp/Direct2dCad.Mcp.csproj" />
-  <Project Path="Direct2dCad.Application/Direct2dCad.Application.csproj" />
-  <Project Path="Direct2dCad.Agent/Direct2dCad.Agent.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Agent.Codex/Direct2dCad.Agent.Codex.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.AI.Contracts/Direct2dCad.AI.Contracts.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.AI.LmStudio/Direct2dCad.AI.LmStudio.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
+  <Folder Name="/core/">
+    <Project Path="Direct2dCad.Db/Direct2dCad.Db.csproj" Id="b37bcda0-51d5-4cfb-a3ef-0e1799b2fa7f">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.ChangeTracking/Direct2dCad.ChangeTracking.csproj" Id="c04ae8fe-b095-4864-8d25-a3835c21a28a">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Commands/Direct2dCad.Commands.csproj" Id="135b8a89-715a-4c51-90bb-d7c5e3247ae0">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Editor/Direct2dCad.Editor.csproj" Id="12d4350b-06b5-44be-9c28-df18cb074f94">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.HitTesting/Direct2dCad.HitTesting.csproj" Id="09190792-15d8-45d0-b4ad-59f86670bc44">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Indexing/Direct2dCad.Indexing.csproj" Id="0f7665da-d78f-4509-8ac5-0586c4bba8e5">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.IO/Direct2dCad.IO.csproj" Id="7dbc4bdc-984d-40e1-8d91-1608e5d4063b">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.CommandLine/Direct2dCad.CommandLine.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Application/Direct2dCad.Application.csproj" />
+  </Folder>
+  <Folder Name="/rendering/">
+    <Project Path="Direct2dCad.Rendering/Direct2dCad.Rendering.csproj" Id="bee77e57-2e2a-4630-ab5f-2992297e8d65">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Rendering.Handles/Direct2dCad.Rendering.Handles.csproj" Id="47b6f8cb-5b5a-4e3d-b1cf-e363b033d539">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Rendering.Transient/Direct2dCad.Rendering.Transient.csproj" Id="9e748601-eafc-466f-9bc4-e7ff2a91d0ea">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Rendering.Direct2D/Direct2dCad.Rendering.Direct2D.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+  </Folder>
+  <Folder Name="/ai/">
+    <Project Path="Direct2dCad.AI.Contracts/Direct2dCad.AI.Contracts.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.AI.LmStudio/Direct2dCad.AI.LmStudio.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Agent/Direct2dCad.Agent.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Agent.Codex/Direct2dCad.Agent.Codex.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Mcp/Direct2dCad.Mcp.csproj" />
+  </Folder>
+  <Folder Name="/platform/">
+    <Project Path="Direct2dCad.Ole.Windows/Direct2dCad.Ole.Windows.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="Direct2dCad.Windows.Interop/Direct2dCad.Windows.Interop.csproj" />
+  </Folder>
   <Folder Name="/clients/">
     <Project Path="Direct2dCad.Client.Common/Direct2dCad.Client.Common.csproj" Id="d3f18ae1-15bb-4994-bc9f-5d45016cd932">
       <Platform Solution="*|x64" Project="x64" />
@@ -46,6 +94,9 @@
     <Platform Name="Any CPU" />
     <Platform Name="x64" />
   </Configurations>
+  <Folder Name="/tools/">
+    <Project Path="tools/Direct2dCad.Avalonia.Generate/Direct2dCad.Avalonia.Generate.csproj" />
+  </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="Direct2dCad.Benchmarks/Direct2dCad.Benchmarks.csproj" />
   </Folder>
@@ -54,6 +105,9 @@
     <Project Path="Direct2dCad.Agent.Codex.Tests/Direct2dCad.Agent.Codex.Tests.csproj" />
     <Project Path="Direct2dCad.Agent.Tests/Direct2dCad.Agent.Tests.csproj" />
     <Project Path="Direct2dCad.AI.Tests/Direct2dCad.AI.Tests.csproj" />
+    <Project Path="Direct2dCad.ChangeTracking.Tests/Direct2dCad.ChangeTracking.Tests.csproj" />
+    <Project Path="Direct2dCad.Client.Common.Tests/Direct2dCad.Client.Common.Tests.csproj" />
+    <Project Path="Direct2dCad.CommandLine.Tests/Direct2dCad.CommandLine.Tests.csproj" />
     <Project Path="Direct2dCad.Commands.Tests/Direct2dCad.Commands.Tests.csproj" />
     <Project Path="Direct2dCad.Db.Tests/Direct2dCad.Db.Tests.csproj" />
     <Project Path="Direct2dCad.Editor.Tests/Direct2dCad.Editor.Tests.csproj" />
@@ -66,44 +120,4 @@
     <Project Path="Direct2dCad.Windows.IntegrationTests/Direct2dCad.Windows.IntegrationTests.csproj" />
     <Project Path="Direct2dCad.Tests/Direct2dCad.Tests.csproj" />
   </Folder>
-  <Project Path="Direct2dCad.Commands/Direct2dCad.Commands.csproj" Id="135b8a89-715a-4c51-90bb-d7c5e3247ae0">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.CommandLine/Direct2dCad.CommandLine.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.ChangeTracking/Direct2dCad.ChangeTracking.csproj" Id="c04ae8fe-b095-4864-8d25-a3835c21a28a">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Db/Direct2dCad.Db.csproj" Id="b37bcda0-51d5-4cfb-a3ef-0e1799b2fa7f">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Rendering.Direct2D/Direct2dCad.Rendering.Direct2D.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Editor/Direct2dCad.Editor.csproj" Id="12d4350b-06b5-44be-9c28-df18cb074f94">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.HitTesting/Direct2dCad.HitTesting.csproj" Id="09190792-15d8-45d0-b4ad-59f86670bc44">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Indexing/Direct2dCad.Indexing.csproj" Id="0f7665da-d78f-4509-8ac5-0586c4bba8e5">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.IO/Direct2dCad.IO.csproj" Id="7dbc4bdc-984d-40e1-8d91-1608e5d4063b">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Ole.Windows/Direct2dCad.Ole.Windows.csproj">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Rendering/Direct2dCad.Rendering.csproj" Id="bee77e57-2e2a-4630-ab5f-2992297e8d65">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Rendering.Handles/Direct2dCad.Rendering.Handles.csproj" Id="47b6f8cb-5b5a-4e3d-b1cf-e363b033d539">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Rendering.Transient/Direct2dCad.Rendering.Transient.csproj" Id="9e748601-eafc-466f-9bc4-e7ff2a91d0ea">
-    <Platform Solution="*|x64" Project="x64" />
-  </Project>
-  <Project Path="Direct2dCad.Windows.Interop/Direct2dCad.Windows.Interop.csproj" />
 </Solution>

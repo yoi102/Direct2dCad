@@ -5,11 +5,6 @@ namespace Direct2dCad.AI.LmStudio;
 
 public sealed class JsonAiAssistantSettingsStore : IAiAssistantSettingsStore
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true
-    };
-
     private readonly string _filePath;
 
     public JsonAiAssistantSettingsStore()
@@ -63,8 +58,20 @@ public sealed class JsonAiAssistantSettingsStore : IAiAssistantSettingsStore
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        File.WriteAllText(
-            _filePath,
-            JsonSerializer.Serialize(settings, AiSettingsJsonContext.Default.AiAssistantSettings));
+        // Write beside the target, then replace it: a crash mid-write must not leave a truncated file
+        // that Load would silently replace with defaults.
+        var temporaryPath = _filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(
+                temporaryPath,
+                JsonSerializer.Serialize(settings, AiSettingsJsonContext.Default.AiAssistantSettings));
+            File.Move(temporaryPath, _filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
     }
 }

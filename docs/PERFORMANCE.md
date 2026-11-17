@@ -38,7 +38,7 @@ dotnet run -c Release --project Direct2dCad.Benchmarks -- --m4-m6-evidence TestR
 
 真实 DXF 在右侧连接器处放大时，少量 bounds 跨越整图的长多段线仍整条参与描边，并在屏幕恒定线宽下频繁重建 realization。已加入有安全余量的可见描边段提交，保留实体、坐标、连接样式和完整填充；选择高亮复用相同逻辑。长实线不再冻结到全路径 command list，虚线保留完整 dash phase 和可复用录制。
 
-同一硬件 Direct2D、516×384、相同导入结果和缩放轨迹，完整绘制中位从约 43 ms 降至约 3 ms；准确数值、原生像素差异、真实窗口滚轮截图与未覆盖范围见 [专项记录](validation/2026-10-03/dxf-zoom/README.md)。这些是绘制耗时，不代表物理显示 FPS；导入器仍有 Wide polyline 不支持的范围。
+同一硬件 Direct2D、516×384、相同导入结果和缩放轨迹，完整绘制中位从约 43 ms 降至约 3 ms；准确数值、原生像素差异、真实窗口滚轮截图与未覆盖范围见 [专项记录](validation/2026-10-03/dxf-zoom/README.md)。这些是绘制耗时，不代表物理显示 FPS。当时的导入器跳过了 10,611 条带宽度多段线；自 2026-11-17 起它们以中心线导入（宽度汇总为 `Polyline width omitted`），实体数显著增加，上述数值不能直接代表新导入结果。
 
 ## 绘制和资源更新原则
 

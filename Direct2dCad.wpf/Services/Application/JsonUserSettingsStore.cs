@@ -63,7 +63,19 @@ internal sealed class JsonUserSettingsStore : IUserSettingsStore
             Directory.CreateDirectory(directory);
 
         var json = JsonSerializer.Serialize(settings, SerializerOptions);
-        File.WriteAllText(_filePath, json);
+        // Write beside the target and swap it in, so a crash or power loss mid-save cannot leave a
+        // truncated file that the next start would silently replace with defaults.
+        var temporaryFilePath = _filePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporaryFilePath, json);
+            File.Move(temporaryFilePath, _filePath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryFilePath))
+                File.Delete(temporaryFilePath);
+        }
     }
 
     private static CadUserSettings CreateDefaultSettings()

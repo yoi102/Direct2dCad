@@ -21,8 +21,9 @@ public sealed class CadMcpService(
     public CadMcpStatus Status => Volatile.Read(ref _status);
     public event EventHandler? StatusChanged;
 
-    public async Task ConfigureAsync(bool enabled, int port)
+    public async Task ConfigureAsync(bool enabled, int port, string? accessToken = null)
     {
+        accessToken = string.IsNullOrWhiteSpace(accessToken) ? null : accessToken.Trim();
         ArgumentOutOfRangeException.ThrowIfLessThan(port, 1);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
         try
@@ -36,7 +37,7 @@ public sealed class CadMcpService(
         try
         {
             _shutdown.Token.ThrowIfCancellationRequested();
-            if (enabled && _server?.Endpoint.Port == port)
+            if (enabled && _server?.Endpoint.Port == port && _server.AccessToken == accessToken)
                 return;
 
             if (_server is { } previous)
@@ -57,7 +58,7 @@ public sealed class CadMcpService(
 
             SetStatus(new(CadMcpState.Starting));
             _server = await CadMcpServer.StartAsync(port, uiContext, workspace,
-                imageImportService, activityPublisher, _shutdown.Token).ConfigureAwait(false);
+                imageImportService, activityPublisher, accessToken, _shutdown.Token).ConfigureAwait(false);
             SetStatus(new(CadMcpState.Running, _server.Endpoint));
         }
         catch (OperationCanceledException) when (_shutdown.IsCancellationRequested)

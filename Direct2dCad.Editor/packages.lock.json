@@ -1,29 +1,18 @@
 {
-  "version": 1,
+  "version": 2,
   "dependencies": {
     "net11.0": {
-      "Microsoft.Extensions.DependencyInjection.Abstractions": {
-        "type": "Direct",
-        "requested": "[11.0.0, )",
-        "resolved": "11.0.0",
-        "contentHash": "a2c4Kp55miXT6G+DSb75pczXQJHgNMzPyZEyMxrrKxuQrgvctcDWJWD9fVe/uGbQdu4Z0c3B7AVKp1DXmD64nQ=="
-      },
-      "StronglyTypedId": {
-        "type": "Transitive",
-        "resolved": "1.0.0-beta08",
-        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
-      },
       "direct2dcad.changetracking": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.commands": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.ChangeTracking": "[0.1.9, )",
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.db": {
@@ -35,35 +24,41 @@
       "direct2dcad.hittesting": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.indexing": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.rendering": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )",
-          "Direct2dCad.Rendering.Handles": "[1.0.0, )",
-          "Direct2dCad.Rendering.Transient": "[1.0.0, )"
+          "Direct2dCad.ChangeTracking": "[0.1.9, )",
+          "Direct2dCad.Db": "[0.1.9, )",
+          "Direct2dCad.Rendering.Handles": "[0.1.9, )",
+          "Direct2dCad.Rendering.Transient": "[0.1.9, )"
         }
       },
       "direct2dcad.rendering.handles": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.rendering.transient": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
+      },
+      "StronglyTypedId": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.0-beta08, )",
+        "resolved": "1.0.0-beta08",
+        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
       }
     }
   }

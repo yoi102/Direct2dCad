@@ -41,7 +41,7 @@ public sealed class CadUserSettings
         source.Normalize();
 
         Version = CurrentVersion;
-        Mcp = new CadMcpUserSettings { IsEnabled = source.Mcp.IsEnabled, Port = source.Mcp.Port };
+        Mcp = new CadMcpUserSettings { IsEnabled = source.Mcp.IsEnabled, Port = source.Mcp.Port, AccessToken = source.Mcp.AccessToken };
         General = new CadGeneralUserSettings
         {
             IsDarkTheme = source.General.IsDarkTheme,
@@ -105,10 +105,14 @@ public sealed class CadMcpUserSettings
     public bool IsEnabled { get; set; }
     public int Port { get; set; } = 5277;
 
+    /// <summary>Optional bearer token MCP clients must present. Empty accepts any local client.</summary>
+    public string AccessToken { get; set; } = string.Empty;
+
     internal void Normalize()
     {
         if (Port is < 1 or > 65535)
             Port = 5277;
+        AccessToken = AccessToken?.Trim() ?? string.Empty;
     }
 }
 

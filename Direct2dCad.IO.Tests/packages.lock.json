@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "dependencies": {
     "net11.0": {
       "coverlet.collector": {
@@ -35,16 +35,6 @@
         "resolved": "4.0.1",
         "contentHash": "8CoAaZkniVekR1ycJyxn+hOz+6ZQCDPcoIsIs6ujd4WyFcBMlxGNU15Qb8Uxd4iO4UmOuETb0M6vzBbwX/mfLA=="
       },
-      "MessagePack": {
-        "type": "Transitive",
-        "resolved": "3.1.12",
-        "contentHash": "m1QEsd59gUj82ji5tEQbZiyjV6y0F7cYfGVhil6pAlNZpyzR7ze9TucMu4lPpi8cZAV8aNl3D9/T9J1HbFz15Q==",
-        "dependencies": {
-          "MessagePack.Annotations": "3.1.12",
-          "MessagePackAnalyzer": "3.1.12",
-          "Microsoft.NET.StringTools": "17.11.4"
-        }
-      },
       "MessagePack.Annotations": {
         "type": "Transitive",
         "resolved": "3.1.12",
@@ -77,16 +67,6 @@
         "dependencies": {
           "Microsoft.TestPlatform.ObjectModel": "18.12.0"
         }
-      },
-      "Riok.Mapperly": {
-        "type": "Transitive",
-        "resolved": "5.0.0-next.13",
-        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
-      },
-      "StronglyTypedId": {
-        "type": "Transitive",
-        "resolved": "1.0.0-beta08",
-        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
       },
       "xunit.abstractions": {
         "type": "Transitive",
@@ -137,10 +117,33 @@
       "direct2dcad.io": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )",
+          "Direct2dCad.Db": "[0.1.9, )",
           "MessagePack": "[3.1.12, )",
           "Riok.Mapperly": "[5.0.0-next.13, )"
         }
+      },
+      "MessagePack": {
+        "type": "CentralTransitive",
+        "requested": "[3.1.12, )",
+        "resolved": "3.1.12",
+        "contentHash": "m1QEsd59gUj82ji5tEQbZiyjV6y0F7cYfGVhil6pAlNZpyzR7ze9TucMu4lPpi8cZAV8aNl3D9/T9J1HbFz15Q==",
+        "dependencies": {
+          "MessagePack.Annotations": "3.1.12",
+          "MessagePackAnalyzer": "3.1.12",
+          "Microsoft.NET.StringTools": "17.11.4"
+        }
+      },
+      "Riok.Mapperly": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.0-next.13, )",
+        "resolved": "5.0.0-next.13",
+        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
+      },
+      "StronglyTypedId": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.0-beta08, )",
+        "resolved": "1.0.0-beta08",
+        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
       }
     }
   }

@@ -34,7 +34,7 @@ internal static partial class NativeSmoke
         assert(model.StrokeColor==new Direct2dCad.Db.Cad.CadColor(255,255,165,0),"Enabled explicit color editor did not write the selected color through the compiled binding.");
         vm.Undo();
         assert(model.StrokeColor==originalColor && model.IsExplicitColorSource,"Undoing explicit color did not restore its previous value/source.");
-        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"explicit-color-source.png"));
+        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"explicit-color-source.png"));
         vm.Undo();
         assert(vm.CadEditor.Document.GetEntity(entityId).ColorSource==Direct2dCad.Db.Cad.CadColorSource.ByLayer && !model.IsExplicitColorSource && !color.IsEffectivelyEnabled,"Undoing Explicit did not return the field and editor to ByLayer.");
         choice.Focus();
@@ -74,7 +74,7 @@ internal static partial class NativeSmoke
                     assert(label.Text==picker.Color.ToString() && swatch.Background is SolidColorBrush brush && brush.Color==picker.Color,$"Color preview lost its selected color: label={label.Text}, expected={picker.Color}.");
                     assert(picker.Bounds.Height<=30 && button.Bounds.Width>100 && button.Background is ISolidColorBrush background && background.Color.A==0,$"Color field retained the filled purple button or fixed tiny width: picker={picker.Bounds}, button={button.Bounds}, background={button.Background}.");
                 }
-                using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(host))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,theme==ThemeVariant.Light?"choices-light.png":"choices-dark.png"));
+                using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(host))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,theme==ThemeVariant.Light?"choices-light.png":"choices-dark.png"));
             }
             color.Color=Colors.Red;host.UpdateLayout();
             assert(color.GetVisualDescendants().OfType<TextBlock>().Single(block=>block.Classes.Contains("cadColorLabel")).Text==Colors.Red.ToString(),"Changing a color did not update its hexadecimal label.");
@@ -84,7 +84,7 @@ internal static partial class NativeSmoke
             global::Avalonia.Headless.HeadlessWindowExtensions.MouseUp(host,point,MouseButton.Left);
             await Task.Delay(200);host.UpdateLayout();
             assert(dropdown.Flyout?.IsOpen==true && host.GetVisualDescendants().OfType<Control>().Any(control=>control.Name=="ColorSpectrum" && control.IsEffectivelyVisible && control.Bounds.Width>100),"Styled color field did not open the library's visible color spectrum.");
-            using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(host))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"choices-color-popup.png"));
+            using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(host))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"choices-color-popup.png"));
             void Key(Key key,RawInputModifiers modifiers=RawInputModifiers.None)
             {
                 global::Avalonia.Headless.HeadlessWindowExtensions.KeyPress(host,key,modifiers,PhysicalKey.None,null);
@@ -95,7 +95,7 @@ internal static partial class NativeSmoke
             choice.Focus();Key(global::Avalonia.Input.Key.Down,RawInputModifiers.Alt);await Task.Delay(120);host.UpdateLayout();
             var options=host.GetVisualDescendants().OfType<ComboBoxItem>().Where(item=>item.IsEffectivelyVisible && item.Bounds.Height>0).ToArray();
             assert(choice.IsDropDownOpen && options.Length>0 && options.All(item=>item.Bounds.Height<=33),$"Outlined dropdown opened without visible compact choice items: open={choice.IsDropDownOpen}, items={options.Length}.");
-            using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(host))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"choices-list-popup.png"));
+            using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(host))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"choices-list-popup.png"));
             Key(global::Avalonia.Input.Key.Down);Key(global::Avalonia.Input.Key.Enter);
             assert(!choice.IsDropDownOpen && choice.SelectedIndex==1,"Outlined choice field lost Down/Enter selection behavior.");
             color.IsEnabled=false;

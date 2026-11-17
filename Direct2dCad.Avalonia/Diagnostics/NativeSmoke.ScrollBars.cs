@@ -26,7 +26,7 @@ internal static partial class NativeSmoke
         global::Avalonia.Headless.HeadlessWindowExtensions.MouseMove(root,new Point(point.X,point.Y+12),RawInputModifiers.LeftMouseButton);
         await Task.Delay(150);root.UpdateLayout();
         assert(bar.Bounds.Width<=16 && thumb.Bounds.Width<=12,$"{name}: pressed scroll thumb became oversized: bar={bar.Bounds}, thumb={thumb.Bounds}.");
-        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(root))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,name+"-pressed.png"));
+        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(root))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,name+"-pressed.png"));
         global::Avalonia.Headless.HeadlessWindowExtensions.MouseUp(root,new Point(point.X,point.Y+12),MouseButton.Left);
         assert(viewer.Offset.Y>previous,$"{name}: dragging the compact thumb did not scroll the content.");
     }

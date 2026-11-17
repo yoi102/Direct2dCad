@@ -51,29 +51,32 @@ internal static class CadAgentToolSelector
 
     private static readonly (string Tool, string[] Terms)[] EntityCreationTools =
     [
-        ("add_ellipse_arc", ["ellipse arc", "elliptical arc", "\u692d\u5706\u5f27"]),
-        ("add_shape_text", ["shape text", "stroke text", "\u5f62\u6587\u5b57", "\u5355\u7ebf\u6587\u5b57"]),
-        ("add_line", ["line", "segment", "直线", "线段"]),
-        ("add_circle", ["circle", "圆形", "圆"]),
-        ("add_arc", ["arc", "圆弧", "弧"]),
-        ("add_ellipse", ["ellipse", "椭圆"]),
-        ("add_rectangle", ["rectangle", "rect", "矩形"]),
-        ("add_polygon", ["polygon", "多边形"]),
-        ("add_polyline", ["polyline", "多段线"]),
-        ("add_spline", ["spline", "样条"]),
-        ("add_text", ["text", "label", "文字", "文本"])
+        ("add_ellipse_arc", ["ellipse arc", "elliptical arc", "\u692d\u5706\u5f27", "楕円弧"]),
+        ("add_shape_text", ["shape text", "stroke text", "\u5f62\u6587\u5b57", "\u5355\u7ebf\u6587\u5b57", "シェイプ文字"]),
+        ("add_line", ["line", "segment", "直线", "线段", "直線", "線分"]),
+        ("add_circle", ["circle", "圆形", "圆", "円"]),
+        ("add_arc", ["arc", "圆弧", "弧", "円弧"]),
+        ("add_ellipse", ["ellipse", "椭圆", "楕円"]),
+        ("add_rectangle", ["rectangle", "rectangular", "rect", "矩形", "長方形", "四角形"]),
+        ("add_polygon", ["polygon", "多边形", "多角形"]),
+        ("add_polyline", ["polyline", "多段线", "ポリライン"]),
+        ("add_spline", ["spline", "样条", "スプライン"]),
+        ("add_text", ["text", "label", "文字", "文本", "テキスト"])
     ];
 
     private static readonly string[] DrawingTerms =
     [
         "draw", "sketch", "drawing", "pattern", "outline",
-        "绘制", "画", "图案", "轮廓", "猫"
+        "绘制", "画", "图案", "轮廓", "猫",
+        // Japanese: not a bare 描, which would also match Chinese 描述 ("describe").
+        "描いて", "描く", "描画", "作図", "パターン", "輪郭"
     ];
 
     private static readonly string[] ImageTerms =
     [
         "insert image", "import image", "raster image", "bitmap", "png", "jpg", "jpeg", "bmp",
-        "\u63d2\u5165\u56fe\u7247", "\u5bfc\u5165\u56fe\u7247", "\u56fe\u50cf", "\u4f4d\u56fe"
+        "\u63d2\u5165\u56fe\u7247", "\u5bfc\u5165\u56fe\u7247", "\u56fe\u50cf", "\u4f4d\u56fe",
+        "画像を挿入", "画像の挿入", "画像を読み込", "ビットマップ"
     ];
 
     private static readonly string[] EditingTerms =
@@ -82,7 +85,8 @@ internal static class CadAgentToolSelector
         "copy", "duplicate", "color", "fill", "stroke", "style", "property",
         "font", "opacity", "inverted", "text content",
         "修改", "设置", "移动", "旋转", "缩放", "镜像", "删除", "复制",
-        "颜色", "填充", "线型", "属性"
+        "颜色", "填充", "线型", "属性",
+        "変更", "設定", "移動", "回転", "拡大", "縮小", "ミラー", "削除", "コピー", "塗りつぶし", "線種", "プロパティ"
     ];
 
     private static readonly string[] EntityStatisticsTerms =
@@ -231,9 +235,9 @@ internal static class CadAgentToolSelector
             foreach (var item in EntityCreationTools.SelectMany(item => item.Terms.Select(term => (item.Tool, Term: term)))
                          .OrderByDescending(item => item.Term.Length))
             {
-                if (!remaining.Contains(item.Term, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!Matches(remaining, item.Term)) continue;
                 if (!specificTools.Contains(item.Tool, StringComparer.Ordinal)) specificTools.Add(item.Tool);
-                remaining = remaining.Replace(item.Term, " ", StringComparison.OrdinalIgnoreCase);
+                remaining = RemoveTerm(remaining, item.Term);
             }
             var needsBulk = specificTools.Count == 0 || ContainsAny(normalized,
                 "multiple", "many", "batch", "pattern", "outline", "drawing",
@@ -340,6 +344,44 @@ internal static class CadAgentToolSelector
             .ToArray();
     }
 
-    private static bool ContainsAny(string text, params string[] terms) =>
-        terms.Any(term => text.Contains(term, StringComparison.OrdinalIgnoreCase));
+    private static bool ContainsAny(string text, params string[] terms) => terms.Any(term => Matches(text, term));
+
+    // English keywords match whole words (with common inflections), so "hole" is not "ole",
+    // "context" is not "text" and "reset" is not "set". CJK keywords have no word separators
+    // and keep substring matching.
+    private static readonly string[] Inflections = ["", "s", "es", "d", "ed", "ing"];
+
+    internal static bool Matches(string text, string term) =>
+        IsAscii(term) ? FindWord(text, term).Index >= 0 : text.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    private static string RemoveTerm(string text, string term)
+    {
+        if (!IsAscii(term)) return text.Replace(term, " ", StringComparison.OrdinalIgnoreCase);
+        for (var match = FindWord(text, term); match.Index >= 0; match = FindWord(text, term))
+            text = string.Concat(text.AsSpan(0, match.Index), " ", text.AsSpan(match.Index + match.Length));
+        return text;
+    }
+
+    private static (int Index, int Length) FindWord(string text, string term)
+    {
+        if (term.Length == 0) return (-1, 0);
+        for (var index = text.IndexOf(term, StringComparison.OrdinalIgnoreCase); index >= 0;
+             index = text.IndexOf(term, index + 1, StringComparison.OrdinalIgnoreCase))
+        {
+            if (index > 0 && IsWordCharacter(text[index - 1])) continue;
+            var end = index + term.Length;
+            foreach (var inflection in Inflections)
+            {
+                if (end + inflection.Length > text.Length ||
+                    string.Compare(text, end, inflection, 0, inflection.Length, StringComparison.OrdinalIgnoreCase) != 0) continue;
+                var next = end + inflection.Length;
+                if (next == text.Length || !IsWordCharacter(text[next])) return (index, term.Length + inflection.Length);
+            }
+        }
+        return (-1, 0);
+    }
+
+    private static bool IsAscii(string value) => value.All(character => character < 128);
+
+    private static bool IsWordCharacter(char character) => character < 128 && (char.IsLetterOrDigit(character) || character == '_');
 }

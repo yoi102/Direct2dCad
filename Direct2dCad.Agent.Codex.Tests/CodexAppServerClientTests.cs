@@ -341,6 +341,55 @@ public sealed class CodexAppServerClientTests
     }
 
     [Fact]
+    public async Task RunAsync_AnswersUnsupportedServerRequestsWithMethodNotFound()
+    {
+        using var server = new FakeAppServer();
+        JsonElement? reply = null;
+        server.RequestHandler = async (method, id, parameters, transport) =>
+        {
+            switch (method)
+            {
+                case "initialize":
+                    transport.Reply(id, new { });
+                    break;
+                case "thread/start":
+                    transport.Reply(id, new { thread = new { id = "thread-1" } });
+                    break;
+                case "turn/start":
+                    transport.Reply(id, new { turn = new { id = "turn-1" } });
+                    transport.Send(new
+                    {
+                        id = 901,
+                        method = "item/commandExecution/requestApproval",
+                        @params = new { itemId = "item-1", reason = "run a command" }
+                    });
+                    break;
+                case "turn/interrupt":
+                case "thread/unsubscribe":
+                    transport.Reply(id, new { });
+                    break;
+            }
+
+            await Task.CompletedTask;
+        };
+        server.ResponseHandler = (id, response, transport) =>
+        {
+            if (id != 901)
+                return Task.CompletedTask;
+            reply = response;
+            transport.Send(new { method = "turn/completed", @params = new { turn = new { status = "completed" } } });
+            return Task.CompletedTask;
+        };
+        using var client = server.CreateClient();
+
+        await client.RunAsync(new CodexAgentRunRequest("hello", "workspace context", CreateOptions(), new FakeToolset()));
+
+        Assert.NotNull(reply);
+        Assert.False(reply.Value.TryGetProperty("result", out _));
+        Assert.Equal(-32601, reply.Value.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    [Fact]
     public async Task RunAsync_ExposesDynamicToolsAndReturnsToolResult()
     {
         using var server = new FakeAppServer();

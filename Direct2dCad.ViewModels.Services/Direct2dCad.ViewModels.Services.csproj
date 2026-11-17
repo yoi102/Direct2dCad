@@ -2,14 +2,12 @@
 
   <PropertyGroup>
     <TargetFramework>net11.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="MessagePipe" Version="1.8.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="MessagePipe" />
   </ItemGroup>
 
   <ItemGroup>

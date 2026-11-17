@@ -1,6 +1,9 @@
 name: Unsigned review package
 on:
   workflow_dispatch:
+permissions:
+  contents: read
+
 jobs:
   package:
     runs-on: windows-latest

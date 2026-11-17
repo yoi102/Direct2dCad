@@ -30,13 +30,13 @@ internal static partial class NativeSmoke
         assert(window.FindControl<TextBlock>("Prompt")!.Text==window.Model.CurrentEditorTabViewModel!.CadDocumentViewModel.CurrentToolNameDisplay,"Changing culture did not refresh the status tool caption.");
         assert(window.GetVisualDescendants().OfType<TextBlock>().Any(text=>text.IsEffectivelyVisible && Equals(text.Text,CadUiText.Get("Model"))),"Model-space tab is still an English literal after changing culture.");
         foreach(var text in window.GetVisualDescendants().OfType<TextBlock>().Where(text=>text.IsEffectivelyVisible && text.Text?.Any(character=>character>='\u4e00' && character<='\u9fff')==true))CheckGlyphs(text);
-        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"chinese-menu.png"));
+        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"chinese-menu.png"));
         file.IsSubMenuOpen=false;
         var pending=dialogs.ShowUnsavedDocumentDialogAsync("中文测试图纸");
         await Task.Delay(120);window.UpdateLayout();
         var discard=window.GetVisualDescendants().OfType<Button>().Single(button=>button.IsEffectivelyVisible && Equals(button.Content,"不保存"));
         assert(!window.GetVisualDescendants().OfType<Button>().Any(button=>button.IsEffectivelyVisible && Equals(button.Content,"Discard")),"Chinese unsaved dialog still has an English Discard button.");
-        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"chinese-unsaved-dialog.png"));
+        using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"chinese-unsaved-dialog.png"));
         discard.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         assert(await pending==UnsavedDocumentDialogResult.Discard,"Localized Don't save changed the unsaved-document result.");
         report.Passed.Add("Chinese menu/button captions shape without missing glyphs; missing UI resources are localized and Don't save returns Discard");

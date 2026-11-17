@@ -7,7 +7,17 @@ using static Direct2dCad.ViewModels.Services.Geometry.CadDrawingGeometryFactory;
 
 namespace Direct2dCad.ViewModels;
 
-public readonly record struct CadDynamicInputMeasurement(string Key, CadPointD Start, CadPointD End, int StackIndex = 0);
+/// <summary>
+/// A dynamic-input value drawn on the canvas, in screen pixels. Linear values span Start→End.
+/// Angular values have an <see cref="AngleReference"/>: Start is the vertex, the arc runs from the
+/// reference ray by <see cref="AngleSweepDegrees"/> (screen orientation, signed) towards End.
+/// </summary>
+public readonly record struct CadDynamicInputMeasurement(
+    string Key, CadPointD Start, CadPointD End, int StackIndex = 0,
+    CadPointD? AngleReference = null, double AngleSweepDegrees = 0)
+{
+    public bool IsAngular => AngleReference is not null;
+}
 
 public partial class CadDocumentViewModel
 {
@@ -251,11 +261,32 @@ public partial class CadDocumentViewModel
             var state = _dynamicInputResolvedState ?? _drawingState;
             var spans = new List<CadDynamicInputMeasurement>();
             void Add(string key, CadPointD start, CadPointD end, int stack = 0) => spans.Add(new(key, WorldToScreen(start), WorldToScreen(end), stack));
+            void AddAngle(string key, CadPointD vertex, CadPointD reference, CadPointD end, double worldSweepDegrees)
+            {
+                // Screen space may flip (Y-down) or rotate (layout viewports); keep the arc on the drawn side.
+                var screenVertex = WorldToScreen(vertex);
+                var orientation = (WorldToScreen(vertex + CadVectorD.UnitX) - screenVertex)
+                    .Cross(WorldToScreen(vertex + CadVectorD.UnitY) - screenVertex);
+                spans.Add(new(key, screenVertex, WorldToScreen(end), 0, WorldToScreen(reference),
+                    orientation < 0 ? -worldSweepDegrees : worldSweepDegrees));
+            }
+            void AddAbsoluteAngle(string key, CadPointD vertex, CadPointD end)
+            {
+                // Absolute directions are measured from +X; draw the shorter way round (350° as -10°).
+                var delta = end - vertex;
+                if (delta.Length < 1e-9) return;
+                AddAngle(key, vertex, vertex + CadVectorD.UnitX * delta.Length, end, Math.Atan2(delta.Y, delta.X) * 180 / Math.PI);
+            }
+            void AddCounterClockwiseAngle(string key, CadPointD vertex, CadPointD reference, CadPointD end)
+            {
+                var sweep = NormalizePositive(AngleFrom(vertex, end) - AngleFrom(vertex, reference)) * 180 / Math.PI;
+                AddAngle(key, vertex, reference, end, sweep);
+            }
             if (_dynamicInputKind == DynamicInputKind.Grip && GripDynamicInputAnchor is { } gripAnchor)
             {
                 var keys=GetGripDynamicInputKeys();
                 if(keys[0] is "Length" or "Radius" or "AxisX" or "AxisY") Add(keys[0],gripAnchor,point);
-                if(keys.Length>1 && keys[1]=="Angle") Add("Angle",gripAnchor,point,1);
+                if(keys.Length>1 && keys[1]=="Angle") AddAbsoluteAngle("Angle",gripAnchor,point);
                 if(keys[0]=="Width" && GripEntity is Direct2dCad.Db.Data.Entities.CadRectangle rectangle)
                 {
                     var local=CadMatrixD.CreateRotation(-rectangle.RotationRadians).TransformVector(point-gripAnchor);
@@ -270,7 +301,11 @@ public partial class CadDocumentViewModel
                     var ellipse = GetDynamicEllipse(state, point);
                     Add("AxisX", ellipse.Center, GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, 0, ellipse.RotationRadians));
                     Add("AxisY", ellipse.Center, GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, Math.PI / 2, ellipse.RotationRadians));
-                    if (state.PendingEllipsePoints.Count > 2) Add(state.PendingEllipsePoints.Count == 3 ? "StartAngle" : "Angle", ellipse.Center, point, 1);
+                    if (state.PendingEllipsePoints.Count == 3)
+                        AddCounterClockwiseAngle("StartAngle", ellipse.Center,
+                            GetEllipsePoint(ellipse.Center, ellipse.RadiusX, ellipse.RadiusY, 0, ellipse.RotationRadians), point);
+                    else if (state.PendingEllipsePoints.Count > 3)
+                        AddCounterClockwiseAngle("Angle", ellipse.Center, state.PendingEllipsePoints[3], point);
                 }
                 else if (CadCanvasToolMode == CadCanvasToolMode.CircleThreePoint &&
                     TryCreateCircleFromThreePoints(state.PendingWorldPoint!.Value, state.PendingCircleSecondPoint!.Value, point, out var center, out _))
@@ -285,9 +320,9 @@ public partial class CadDocumentViewModel
                         switch (inputField.Key)
                         {
                             case "Radius": Add(inputField.Key, arc.Center, start); break;
-                            case "Angle": Add(inputField.Key, arc.Center, end, DynamicInputFields.Count > 1 ? 1 : 0); break;
+                            case "Angle": AddAngle(inputField.Key, arc.Center, start, end, arc.SweepAngleRadians * 180 / Math.PI); break;
                             case "Length": Add(inputField.Key, start, end); break;
-                            case "Direction": Add(inputField.Key, state.PendingWorldPoint!.Value, point); break;
+                            case "Direction": AddAbsoluteAngle(inputField.Key, state.PendingWorldPoint!.Value, point); break;
                         }
                 }
             }
@@ -300,7 +335,11 @@ public partial class CadDocumentViewModel
                     if (CadCanvasToolMode == CadCanvasToolMode.CircleTwoPoint) Add("Diameter", anchor, point);
                     else Add("Diameter", anchor - delta * .5, anchor + delta * .5);
                 }
-                if (_dynamicInputKind == DynamicInputKind.Polar && CadCanvasToolMode is not (CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv)) Add("Length", anchor, point);
+                if (_dynamicInputKind == DynamicInputKind.Polar && CadCanvasToolMode is not (CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv))
+                {
+                    Add("Length", anchor, point);
+                    AddAbsoluteAngle("Angle", anchor, point);
+                }
             }
             return spans;
         }

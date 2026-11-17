@@ -93,7 +93,7 @@ internal static partial class NativeSmoke
                 await Task.Delay(120);window.UpdateLayout();
                 var fileRows=topFile.Items.OfType<MenuItem>().ToArray();
                 Assert(fileRows.Length>5 && fileRows.All(item=>item.Bounds.Height>0 && item.Bounds.Height<=33 && item.FontSize<=12),"File command menu retains oversized rows or font sizes.");
-                using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"file-menu-compact.png"));
+                using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"file-menu-compact.png"));
                 topFile.IsSubMenuOpen=false;
                 report.Passed.Add("Compact title menus open through real routed pointer clicks without clipped scrolling headers");
                 Assert(topMenu.Items.OfType<MenuItem>().Contains(window.FindControl<MenuItem>("PanelsMenu")!),"View is still nested under File instead of beside it.");
@@ -148,7 +148,7 @@ internal static partial class NativeSmoke
                     global::Avalonia.Application.Current.RequestedThemeVariant = theme; await Task.Delay(600); window.UpdateLayout();
                     using var frame = global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
                     Assert(frame is not null, "Dialog overlay failed to render.");
-                    frame!.Save(Path.Combine(Path.GetDirectoryName(output)!, theme == ThemeVariant.Light ? "dialog-light.png" : "dialog-dark.png"));
+                    frame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!, theme == ThemeVariant.Light ? "dialog-light.png" : "dialog-dark.png"));
                 }
                 global::Avalonia.Application.Current.RequestedThemeVariant = modalTheme;
                 report.Passed.Add("Compact Material input and tab templates render modal overlays in light and dark themes");
@@ -330,7 +330,7 @@ internal static partial class NativeSmoke
                 window.UpdateLayout();
                 Assert(editorView.Canvas.RadialUsesOwnerWindow,"Radial menu created a separate opaque popup window instead of a transparent owner-window overlay.");
                 await Task.Delay(120);
-                using(var radialFrame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))radialFrame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"radial-overlay.png"));
+                using(var radialFrame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window))radialFrame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"radial-overlay.png"));
                 global::Avalonia.Headless.HeadlessWindowExtensions.KeyPress(window, global::Avalonia.Input.Key.LeftShift, global::Avalonia.Input.RawInputModifiers.Shift, global::Avalonia.Input.PhysicalKey.None, null);
                 Assert(editorView.Canvas.RadialGesture == Direct2dCad.Client.Common.Settings.CadRadialMenuGesture.ShiftMiddle, "Shift did not switch the radial profile.");
                 global::Avalonia.Headless.HeadlessWindowExtensions.KeyRelease(window, global::Avalonia.Input.Key.LeftShift, input, global::Avalonia.Input.PhysicalKey.None, null);
@@ -470,6 +470,13 @@ internal static partial class NativeSmoke
             Assert(dxfStorage.AnalyzeExport(exchange).Count == 0, "Circle fixture has unexpected DXF losses."); await dxfStorage.ExportAsync(exchange, dxf);
             var imported = await dxfStorage.ImportAsync(dxf);
             Assert(imported.Document.Entities.Values.OfType<CadCircle>().Any(c => !c.IsErased && Math.Abs(c.Radius - 12) < 1e-8), "DXF roundtrip lost circle geometry."); report.Passed.Add("Native DXF export and import");
+            var legacyDxf = Path.Combine(Path.GetDirectoryName(output)!, "smoke-gbk.dxf");
+            await File.WriteAllBytesAsync(legacyDxf, System.Text.Encoding.GetEncoding(936).GetBytes(
+                "0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1015\n9\n$DWGCODEPAGE\n3\nANSI_936\n9\n$INSUNITS\n70\n4\n0\nENDSEC\n" +
+                "0\nSECTION\n2\nENTITIES\n0\nTEXT\n8\n0\n10\n0\n20\n0\n30\n0\n40\n2.5\n1\n中文\n0\nENDSEC\n0\nEOF\n"));
+            var legacy = await dxfStorage.ImportAsync(legacyDxf);
+            Assert(legacy.Document.Entities.Values.OfType<CadText>().Any(t => t.Text == "中文"), "Native DXF import did not decode the GBK code page.");
+            report.Passed.Add("Native legacy DXF code page (GBK) import");
             var ole = (OleHostService)services.GetRequiredService<IOleHostService>(); var fixture = ole.CreateSmokeFixture();
             var envelope = OlePayload.Decode(fixture.OleBytes); Assert(envelope.Encode().AsSpan().SequenceEqual(fixture.OleBytes), "OLE envelope roundtrip differs from WPF format.");
             var oleSession = Guid.NewGuid(); var renderId = Guid.NewGuid();
@@ -543,7 +550,7 @@ internal static partial class NativeSmoke
                         var captionPoint=caption.TranslatePoint(default,header)!.Value;
                         Assert(caption.FontSize<=12 && captionPoint.Y>=0 && captionPoint.Y+caption.Bounds.Height<=header.Bounds.Height+1,$"Compact property header clips its caption: text={caption.Text}, font={caption.FontSize}, top={captionPoint.Y}, caption={caption.Bounds}, header={header.Bounds}.");
                     }
-                    using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(groupedWindow))frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"property-compact.png"));
+                    using(var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(groupedWindow))frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"property-compact.png"));
                     report.Passed.Add("Compact WPF-like property rows and flat section headers retain library templates and WPF expansion defaults");
                 }
                 Assert(radiusBox.Text == 12d.ToString("F3", System.Globalization.CultureInfo.CurrentCulture) && ((CadCircle)document.Entities[circlePair.Key]).Radius == 12, "F3 display changed circle geometry.");
@@ -752,7 +759,7 @@ internal static partial class NativeSmoke
                 restoredShell.Pin(main.EntityProperties,false);
                 Assert(restoredShell.Groups[oldZone].VisibleDockables!.Contains(restoredShell.Tools[main.EntityProperties]),"Restarted auto-hidden toolbox did not pin back into the original group.");
             }
-            if(report.HeadlessWindowing) {await Task.Delay(200); using var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);frame!.Save(Path.Combine(Path.GetDirectoryName(output)!,"dock-auto-hide.png"));}
+            if(report.HeadlessWindowing) {await Task.Delay(200); using var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);frame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"dock-auto-hide.png"));}
             Button? previewPin=null;
             for(var attempt=0;attempt<100 && previewPin is null;attempt++)
             {
@@ -835,7 +842,7 @@ internal static partial class NativeSmoke
                 report.Passed.Add("CsWin32 converts the installed printer Unicode DEVMODE into valid PrintTicket XML preserving copies without submitting a job");
                 PrintControl<NumericUpDown>("PrintPreviewDpiInput").Value=600;Assert(printPreview.Dpi==600,"Inline DPI did not reach vector print settings.");
                 var scalingCombo=PrintControl<ComboBox>("PrintScalingCombo");scalingCombo.SelectedIndex=2;Assert(printPreview.Scaling==Direct2dCad.ViewModels.Services.Platform.Printing.CadPaperScaling.Custom,"Custom print scale is unavailable.");scalingCombo.SelectedIndex=1;
-                foreach(var theme in new[]{ThemeVariant.Light,ThemeVariant.Dark}){global::Avalonia.Application.Current.RequestedThemeVariant=theme;await Task.Delay(600);printPreview.Window.UpdateLayout();using var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(printPreview.Window);frame!.Save(Path.Combine(Path.GetDirectoryName(output)!,theme==ThemeVariant.Light?"print-light.png":"print-dark.png"));}
+                foreach(var theme in new[]{ThemeVariant.Light,ThemeVariant.Dark}){global::Avalonia.Application.Current.RequestedThemeVariant=theme;await Task.Delay(600);printPreview.Window.UpdateLayout();using var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(printPreview.Window);frame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!,theme==ThemeVariant.Light?"print-light.png":"print-dark.png"));}
                 printPreview.Window.Close();global::Avalonia.Application.Current.RequestedThemeVariant=originalTheme;
                 report.Passed.Add("Installed Windows printer enumeration, paper, orientation, copies, DPI and scale validate without submitting a print job");
             }
@@ -863,7 +870,7 @@ internal static partial class NativeSmoke
                         await global::Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => { }, global::Avalonia.Threading.DispatcherPriority.Background);
                         using var frame = global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
                         Assert(frame is not null && frame.PixelSize.Width >= 1000 && frame.PixelSize.Height >= 640, "Headless Skia window did not render a complete frame.");
-                        frame!.Save(Path.Combine(Path.GetDirectoryName(output)!, theme == ThemeVariant.Light ? "preview-light.png" : "preview-dark.png"));
+                        frame!.SavePng(Path.Combine(Path.GetDirectoryName(output)!, theme == ThemeVariant.Light ? "preview-light.png" : "preview-dark.png"));
                         await CaptureDrawingIconsAsync(window, theme, output);
                     }
                 }
@@ -872,7 +879,7 @@ internal static partial class NativeSmoke
             }
             await CheckUnsavedApplicationExitAsync(window, services, report, Assert, output);
         }
-        catch (Exception ex) { report.Failure = ex.ToString(); if(report.HeadlessWindowing) {using var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);frame?.Save(Path.Combine(Path.GetDirectoryName(output)!,"failure.png"));} }
+        catch (Exception ex) { report.Failure = ex.ToString(); if(report.HeadlessWindowing) {using var frame=global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!,"failure.png"));} }
         finally
         {
             Directory.CreateDirectory(Path.GetDirectoryName(output)!); File.WriteAllText(output, JsonSerializer.Serialize(report, SmokeJsonContext.Default.NativeSmokeReport));

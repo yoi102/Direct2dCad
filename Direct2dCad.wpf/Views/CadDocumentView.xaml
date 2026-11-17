@@ -73,7 +73,7 @@
                                              AutomationProperties.Name="{Binding Label}"
                                              AutomationProperties.HelpText="{Binding DataContext.DynamicInputHint, RelativeSource={RelativeSource AncestorType=local:CadDocumentView}}"
                                              Width="56" FontSize="12" TextAlignment="Right" VerticalContentAlignment="Center"
-                                             ToolTip="{Binding Label}"
+                                             ToolTip="{Binding Label}" ToolTipService.InitialShowDelay="900" ToolTipService.Placement="Top"
                                              Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                              Background="{DynamicResource MaterialDesign.Brush.Background}"
                                              Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
@@ -85,7 +85,7 @@
                                                 <Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Foreground.Secondary}" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsLocked}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" /></DataTrigger>
-                                                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" /></Trigger>
+                                                    <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource MaterialDesign.Brush.Primary}" /><Setter Property="ToolTipService.IsEnabled" Value="False" /></Trigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBox.Style>

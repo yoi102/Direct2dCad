@@ -1,6 +1,9 @@
 name: Windows desktop regression
 on:
   workflow_dispatch:
+permissions:
+  contents: read
+
 jobs:
   desktop:
     runs-on: [self-hosted, Windows, X64, interactive-desktop]

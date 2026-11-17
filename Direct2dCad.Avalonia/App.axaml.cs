@@ -115,7 +115,9 @@ public partial class App : global::Avalonia.Application
         try
         {
             await _services!.GetRequiredService<MainViewModel>()
-                .InitializeMcpAsync(CadMcpServer.GetRequestedPort(arguments));
+                .InitializeMcpAsync(
+                    CadMcpServer.GetRequestedPort(arguments),
+                    CadMcpServer.GetRequestedAccessToken(arguments));
         }
         catch (Exception exception)
         {

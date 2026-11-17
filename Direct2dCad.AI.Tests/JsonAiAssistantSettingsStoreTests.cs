@@ -126,4 +126,23 @@ public sealed class JsonAiAssistantSettingsStoreTests
         Assert.Equal("medium", settings.CodexReasoningEffort);
         Assert.Equal(AiAssistantSettings.DefaultCodexServiceTier, settings.CodexServiceTier);
     }
+
+    [Fact]
+    public void Save_ReplacesTheFileAtomicallyAndLeavesNoTemporaryFiles()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "d2cad-ai-settings-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var store = new JsonAiAssistantSettingsStore(Path.Combine(directory, "ai.json"));
+            store.Save(new AiAssistantSettings { Model = "first" });
+            store.Save(new AiAssistantSettings { Model = "second" });
+
+            Assert.Equal("second", store.Load().Model);
+            Assert.Equal(new[] { "ai.json" }, Directory.GetFiles(directory).Select(Path.GetFileName));
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
 }

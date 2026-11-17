@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Collections.Concurrent;
 using System.Net;
+using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -23,8 +25,10 @@ namespace Direct2dCad.Mcp;
 public sealed class CadMcpServer : IAsyncDisposable
 {
     public const int DefaultPort = 5277;
+    public const string AccessTokenEnvironmentVariable = "DIRECT2DCAD_MCP_TOKEN";
 
-    private static readonly HashSet<string> ReadOnlyTools = new(StringComparer.Ordinal)
+    // Annotation sets are keyed by tool name; CadMcpAnnotationTests keeps them in step with the tool catalog.
+    internal static readonly HashSet<string> ReadOnlyTools = new(StringComparer.Ordinal)
     {
         "get_agent_capabilities", "list_documents", "get_document_summary", "get_view_settings",
         "get_entity_statistics", "list_entities", "list_layers", "get_entity_geometry",
@@ -33,12 +37,23 @@ public sealed class CadMcpServer : IAsyncDisposable
         "get_application_settings"
     };
 
-    private static readonly HashSet<string> AdditiveTools = new(StringComparer.Ordinal)
+    internal static readonly HashSet<string> AdditiveTools = new(StringComparer.Ordinal)
     {
         "create_document", "open_document", "open_dxf", "open_recovery_copy", "create_layer", "create_layout",
         "create_graphic_style", "create_text_style", "create_fill_style", "create_hatch_pattern", "create_line_type",
         "insert_block", "insert_image_from_file", "insert_image_from_clipboard", "duplicate_entities", "array_entities"
     };
+
+    /// <summary>Tools that read or write outside the open drawing (files, clipboard, system fonts, app settings).</summary>
+    internal static readonly HashSet<string> OpenWorldTools = new(StringComparer.Ordinal)
+    {
+        "open_document", "open_dxf", "save_document", "close_document", "export_dxf", "insert_image_from_file",
+        "print_document", "list_system_fonts", "get_file_revision", "save_compatible_copy", "insert_image_from_clipboard",
+        "list_recovery_copies", "open_recovery_copy", "clear_recovery_copies", "get_application_settings", "set_application_settings"
+    };
+
+    internal static string ServerVersion { get; } =
+        typeof(CadMcpServer).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 
     private readonly ICadToolWorkspace _workspace;
     private readonly SynchronizationContext _uiContext;
@@ -48,13 +63,15 @@ public sealed class CadMcpServer : IAsyncDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private readonly WebApplication _application;
     private readonly ConcurrentDictionary<string, TaskCompletionSource> _toolResponses = new();
+    private readonly byte[]? _accessTokenHash;
 
     private CadMcpServer(
         int port,
         SynchronizationContext uiContext,
         ICadToolWorkspace workspace,
         IImageImportService? imageImportService,
-        IAsyncPublisher<CadToolActivityMessage>? activityPublisher)
+        IAsyncPublisher<CadToolActivityMessage>? activityPublisher,
+        string? accessToken)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(port);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(port, 65535);
@@ -62,6 +79,13 @@ public sealed class CadMcpServer : IAsyncDisposable
         _workspace = workspace ?? throw new ArgumentNullException(nameof(workspace));
         _imageImportService = imageImportService;
         _activityPublisher = activityPublisher;
+        if (!string.IsNullOrEmpty(accessToken))
+        {
+            if (!CadMcpAccessToken.IsValid(accessToken))
+                throw new ArgumentException("The MCP access token must be 1-512 visible ASCII characters without spaces.", nameof(accessToken));
+            AccessToken = accessToken;
+            _accessTokenHash = SHA256.HashData(Encoding.UTF8.GetBytes(accessToken));
+        }
 
         var tools = CadWorkspaceToolExecutor.ToolDefinitions.Select(definition => new Tool
         {
@@ -73,10 +97,7 @@ public sealed class CadMcpServer : IAsyncDisposable
                 ReadOnlyHint = ReadOnlyTools.Contains(definition.Name),
                 DestructiveHint = !ReadOnlyTools.Contains(definition.Name) && !AdditiveTools.Contains(definition.Name) &&
                     !definition.Name.StartsWith("add_", StringComparison.Ordinal),
-                OpenWorldHint = definition.Name is "open_document" or "open_dxf" or "save_document" or "close_document" or
-                    "export_dxf" or "insert_image_from_file" or "print_document" or "list_system_fonts" or
-                    "get_file_revision" or "save_compatible_copy" or "insert_image_from_clipboard" or "list_recovery_copies" or "open_recovery_copy" or
-                    "clear_recovery_copies" or "get_application_settings" or "set_application_settings"
+                OpenWorldHint = OpenWorldTools.Contains(definition.Name)
             }
         }).ToList();
 
@@ -86,7 +107,7 @@ public sealed class CadMcpServer : IAsyncDisposable
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddMcpServer(options =>
         {
-            options.ServerInfo = new() { Name = "Direct2dCad", Version = "0.1.9" };
+            options.ServerInfo = new() { Name = "Direct2dCad", Version = ServerVersion };
             options.ServerInstructions = "Control the open Direct2dCad workspace. Start with list_documents and " +
                 "get_agent_capabilities. Coordinates are millimetres and angles are counter-clockwise degrees. " +
                 "Supply document_id when working across documents. Each MCP tool call has its own undo batch. " +
@@ -119,6 +140,12 @@ public sealed class CadMcpServer : IAsyncDisposable
             if (!validHost || !validOrigin)
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            if (_accessTokenHash is not null && !HasValidBearerToken(context.Request.Headers.Authorization.ToString()))
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.Headers.WWWAuthenticate = "Bearer realm=\"Direct2dCad MCP\"";
                 return;
             }
             if (HttpMethods.IsPost(context.Request.Method))
@@ -167,6 +194,19 @@ public sealed class CadMcpServer : IAsyncDisposable
 
     public Uri Endpoint => new(new Uri(_application.Urls.Single()), "/mcp");
 
+    /// <summary>The bearer token clients must present, or null when the loopback checks alone apply.</summary>
+    public string? AccessToken { get; }
+
+    private bool HasValidBearerToken(string authorization)
+    {
+        const string scheme = "Bearer ";
+        if (!authorization.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
+            return false;
+        // Hashing first gives equal-length inputs, so the comparison time reveals neither content nor length.
+        var presented = SHA256.HashData(Encoding.UTF8.GetBytes(authorization[scheme.Length..].Trim()));
+        return CryptographicOperations.FixedTimeEquals(presented, _accessTokenHash);
+    }
+
     internal async Task DrainToolResponsesAsync(CancellationToken cancellationToken)
     {
         var responses = _toolResponses.Values.Select(response => response.Task).ToArray();
@@ -199,15 +239,42 @@ public sealed class CadMcpServer : IAsyncDisposable
         return port;
     }
 
+    /// <summary>
+    /// Returns the token from --mcp-token, else from the DIRECT2DCAD_MCP_TOKEN environment variable,
+    /// else null. The environment variable keeps the secret out of the visible process command line.
+    /// </summary>
+    public static string? GetRequestedAccessToken(
+        IReadOnlyList<string> arguments,
+        Func<string, string?>? readEnvironment = null)
+    {
+        string? token = null;
+        for (var index = 0; index < arguments.Count; index++)
+        {
+            if (arguments[index] != "--mcp-token")
+                continue;
+            if (++index >= arguments.Count ||
+                !CadMcpAccessToken.IsValid(arguments[index]))
+                throw new ArgumentException("--mcp-token requires 1-512 visible ASCII characters without spaces.");
+            token = arguments[index];
+        }
+        if (token is not null)
+            return token;
+        var fromEnvironment = (readEnvironment ?? Environment.GetEnvironmentVariable)(AccessTokenEnvironmentVariable)?.Trim();
+        return string.IsNullOrEmpty(fromEnvironment) ? null :
+            CadMcpAccessToken.IsValid(fromEnvironment) ? fromEnvironment :
+            throw new ArgumentException($"{AccessTokenEnvironmentVariable} must be 1-512 visible ASCII characters without spaces.");
+    }
+
     public static async Task<CadMcpServer> StartAsync(
         int port,
         SynchronizationContext uiContext,
         ICadToolWorkspace workspace,
         IImageImportService? imageImportService = null,
         IAsyncPublisher<CadToolActivityMessage>? activityPublisher = null,
+        string? accessToken = null,
         CancellationToken cancellationToken = default)
     {
-        var server = new CadMcpServer(port, uiContext, workspace, imageImportService, activityPublisher);
+        var server = new CadMcpServer(port, uiContext, workspace, imageImportService, activityPublisher, accessToken);
         try
         {
             await server._application.StartAsync(cancellationToken).ConfigureAwait(false);

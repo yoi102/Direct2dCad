@@ -50,7 +50,7 @@ AI can query entities, layers, and blocks, create or modify geometry, and open, 
 
 ## MCP connection
 
-Both desktop clients expose the live workspace through MCP Streamable HTTP using the official `ModelContextProtocol.AspNetCore` NuGet package. Launch either executable with `--mcp` to listen at `http://127.0.0.1:5277/mcp`, or use `--mcp-port 5278` to select another loopback port. The Messages toolbox reports startup results.
+Both desktop clients expose the live workspace through MCP Streamable HTTP using the official `ModelContextProtocol.AspNetCore` NuGet package. Launch either executable with `--mcp` to listen at `http://127.0.0.1:5277/mcp`, or use `--mcp-port 5278` to select another loopback port. The Messages toolbox reports startup results. An optional access token (generate one under Application settings → MCP, or set `DIRECT2DCAD_MCP_TOKEN`; `--mcp-token <token>` also works but is visible in the process list) makes the server require `Authorization: Bearer <token>` and answer 401 otherwise. Agent tools can neither read nor change the token.
 
 Application Settings → MCP provides an enable switch, port, live status, failure details, and a button to copy the running address. Apply starts, stops, or changes the listener immediately and saves the preferences for the next launch. MCP defaults to disabled with port 5277. Command-line options override the current launch and are persisted when application settings are saved. When a settings tool stops or changes its own listener, its response completes before the service switches. Reconnect using the new address after changing ports.
 

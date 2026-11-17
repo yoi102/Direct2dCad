@@ -435,6 +435,14 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
 
     private void DispatchServerRequest(Connection connection, long id, JsonElement message)
     {
+        // Only dynamic CAD tool calls are served. Anything else (for example an approval request from a
+        // future app-server) gets a JSON-RPC "method not found" error rather than a tool-shaped result.
+        var method = message.GetProperty("method").ValueKind == JsonValueKind.String ? message.GetProperty("method").GetString() : null;
+        if (method != "item/tool/call")
+        {
+            _ = ReplyMethodNotFoundAsync(connection, id, method);
+            return;
+        }
         var active = _activeTurn;
         if (active is null || !ReferenceEquals(active.Connection, connection) || !active.TryBeginTool(out var finished))
         {
@@ -480,6 +488,20 @@ public sealed class CodexAppServerClient : ICodexAgentClient, IDisposable
         }
         catch (Exception exception) { await ReplyToolFailureAsync(active.Connection, id, $"Tool execution failed: {exception.Message}"); }
         finally { finished.TrySetResult(); }
+    }
+
+    private async Task ReplyMethodNotFoundAsync(Connection connection, long id, string? method)
+    {
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await WriteMessageAsync(connection, new
+            {
+                id,
+                error = new { code = -32601, message = $"Direct2dCad does not handle '{method ?? "(none)"}' requests." }
+            }, timeout.Token);
+        }
+        catch (Exception) { /* Connection failure already invalidates its pending requests. */ }
     }
 
     private async Task ReplyToolFailureAsync(Connection connection, long id, string message)

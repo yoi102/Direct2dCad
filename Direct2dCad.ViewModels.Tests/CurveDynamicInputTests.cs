@@ -226,6 +226,48 @@ public sealed class CurveDynamicInputTests
         Assert.Equal(new[] { "X:", "Y:" }, new[] { new CadDynamicInputField("AxisX", () => { }).Prefix, new CadDynamicInputField("AxisY", () => { }).Prefix });
     }
 
+    [Theory]
+    [InlineData(0, 50)]
+    [InlineData(40, 30)]
+    [InlineData(-30, -40)]
+    public void LineAngleIsAnArcFromTheHorizontalThatEndsOnThePointerDirection(double x, double y)
+    {
+        using var context = new CadToolboxTestContext();
+        var vm = Prepare(context, CadCanvasToolMode.Line);
+        Click(vm, new(0, 0)); Move(vm, new(x, y));
+        Assert.Contains(vm.DynamicInputScreenMeasurements, m => m.Key == "Length" && !m.IsAngular);
+        var angle = Assert.Single(vm.DynamicInputScreenMeasurements, m => m.Key == "Angle");
+        var screenX = (vm.CadEditor.Viewport.WorldToScreen(new(1, 0)) - vm.CadEditor.Viewport.WorldToScreen(new(0, 0))).Normalize();
+        var reference = (angle.AngleReference!.Value - angle.Start).Normalize();
+        Assert.Equal(0, screenX.Cross(reference), 6); // the reference ray is world +X ...
+        Assert.True(screenX.Dot(reference) > 0);      // ... pointing the same way
+        AssertArcEndsOnItsLeg(angle);
+        Assert.InRange(Math.Abs(angle.AngleSweepDegrees), 0, 180); // 307° is drawn as the shorter -53°
+    }
+
+    [Fact]
+    public void ArcSweepAngleStartsAtTheArcStartPoint()
+    {
+        using var context = new CadToolboxTestContext();
+        var vm = Prepare(context, CadCanvasToolMode.ArcCenterStartAngle);
+        Click(vm, new(0, 0)); Click(vm, new(50, 0)); Move(vm, new(0, 50));
+        var angle = Assert.Single(vm.DynamicInputScreenMeasurements, m => m.Key == "Angle");
+        Assert.True(angle.AngleReference!.Value.DistanceTo(vm.CadEditor.Viewport.WorldToScreen(new(50, 0))) < 1e-6);
+        Assert.Equal(90, Math.Abs(angle.AngleSweepDegrees), 6);
+        AssertArcEndsOnItsLeg(angle);
+    }
+
+    private static void AssertArcEndsOnItsLeg(CadDynamicInputMeasurement angle)
+    {
+        // Whatever the screen orientation, turning the reference ray by the sweep must reach the end ray.
+        Assert.True(angle.IsAngular);
+        var reference = angle.AngleReference!.Value - angle.Start;
+        var end = (angle.End - angle.Start).Normalize();
+        var turned = Math.Atan2(reference.Y, reference.X) + angle.AngleSweepDegrees * Math.PI / 180;
+        Assert.Equal(end.X, Math.Cos(turned), 6);
+        Assert.Equal(end.Y, Math.Sin(turned), 6);
+    }
+
     private static CadDocumentViewModel Prepare(CadToolboxTestContext context, CadCanvasToolMode mode)
     { var vm = context.Document; vm.SetViewportSize(800, 600); vm.SetToolMode(mode); return vm; }
     private static CadDynamicInputField Field(CadDocumentViewModel vm, string key) => vm.DynamicInputFields.Single(f => f.Key == key);

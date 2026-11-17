@@ -105,6 +105,8 @@ foreach ($source in $graph.Keys) {
         $dependency = $graph[$step.Path]
         $dependencyName = $dependency.Name
         $forbidden = $dependencyName -match '^Direct2dCad\.(Rendering\.Direct2D|Ole\.Windows|wpf)(\.|$)'
+        # Concrete AI back ends are composed by the desktop hosts; shared layers only see contracts.
+        $forbidden = $forbidden -or $dependencyName -match '^Direct2dCad\.(Agent\.Codex|AI\.LmStudio)$'
         if ($policy -in @('Core', 'Application')) {
             $forbidden = $forbidden -or $dependencyName -match '^Direct2dCad\.(ViewModels|Client\.Common)(\.|$)'
         }

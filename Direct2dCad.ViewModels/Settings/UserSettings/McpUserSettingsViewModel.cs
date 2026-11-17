@@ -19,6 +19,7 @@ public partial class McpUserSettingsViewModel : UserSettingsSectionViewModel, ID
         _clipboard = clipboard;
         IsEnabled = settings.IsEnabled;
         PortText = settings.Port.ToString(CultureInfo.InvariantCulture);
+        AccessToken = settings.AccessToken;
         if (_service is not null)
             _service.StatusChanged += OnStatusChanged;
         RefreshStatus();
@@ -26,6 +27,8 @@ public partial class McpUserSettingsViewModel : UserSettingsSectionViewModel, ID
 
     [ObservableProperty] public partial bool IsEnabled { get; set; }
     [ObservableProperty] public partial string PortText { get; set; }
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(CopyAccessTokenCommand))]
+    public partial string AccessToken { get; set; }
     [ObservableProperty] public partial string StatusText { get; private set; } = string.Empty;
     [ObservableProperty] public partial string ErrorMessage { get; private set; } = string.Empty;
     [ObservableProperty] public partial string CopyFeedback { get; private set; } = string.Empty;
@@ -69,14 +72,41 @@ public partial class McpUserSettingsViewModel : UserSettingsSectionViewModel, ID
         }
     }
 
+    [RelayCommand]
+    private void GenerateAccessToken()
+    {
+        AccessToken = CadMcpAccessToken.Generate();
+        CopyFeedback = string.Empty;
+    }
+
+    private bool CanCopyAccessToken() => !string.IsNullOrWhiteSpace(AccessToken) && _clipboard is not null;
+
+    [RelayCommand(CanExecute = nameof(CanCopyAccessToken))]
+    private async Task CopyAccessTokenAsync()
+    {
+        try
+        {
+            await _clipboard!.SetTextAsync(AccessToken.Trim());
+            CopyFeedback = Localized("McpTokenCopied");
+        }
+        catch (Exception exception)
+        {
+            CopyFeedback = exception.Message;
+        }
+    }
+
     internal override bool TryApplyTo(CadUserSettings settings)
     {
         if (!int.TryParse(PortText, NumberStyles.None, CultureInfo.InvariantCulture, out var port) ||
             port is < 1 or > 65535)
             return false;
+        var token = AccessToken?.Trim() ?? string.Empty;
+        if (token.Length > 0 && !CadMcpAccessToken.IsValid(token))
+            return false;
 
         settings.Mcp.IsEnabled = IsEnabled;
         settings.Mcp.Port = port;
+        settings.Mcp.AccessToken = token;
         return true;
     }
 
@@ -85,6 +115,7 @@ public partial class McpUserSettingsViewModel : UserSettingsSectionViewModel, ID
         var defaults = new CadMcpUserSettings();
         IsEnabled = defaults.IsEnabled;
         PortText = defaults.Port.ToString(CultureInfo.InvariantCulture);
+        AccessToken = defaults.AccessToken;
         CopyFeedback = string.Empty;
     }
 

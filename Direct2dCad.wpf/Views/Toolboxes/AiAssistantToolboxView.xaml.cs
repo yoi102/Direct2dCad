@@ -1,7 +1,9 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Direct2dCad.ViewModels.Toolboxes;
 using Direct2dCad.wpf.Services.Input;
@@ -11,7 +13,9 @@ namespace Direct2dCad.wpf.Views.Toolboxes;
 public partial class AiAssistantToolboxView : UserControl
 {
     private INotifyCollectionChanged? _messages;
+    private AiChatItemViewModel? _followedMessage;
     private bool _scrollPending;
+    private bool _followPending;
 
     public AiAssistantToolboxView()
     {
@@ -32,6 +36,7 @@ public partial class AiAssistantToolboxView : UserControl
 
     private void OnMessagesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        FollowLastMessage();
         if (_scrollPending)
             return;
 
@@ -48,6 +53,50 @@ public partial class AiAssistantToolboxView : UserControl
                 _scrollPending = false;
             }
         }), DispatcherPriority.Background);
+    }
+
+    // A streamed reply grows in place; keep its newest line in view while the reader is at the bottom.
+    private void FollowLastMessage()
+    {
+        var last = MessagesList.Items.Count > 0 ? MessagesList.Items[^1] as AiChatItemViewModel : null;
+        if (ReferenceEquals(last, _followedMessage))
+            return;
+        if (_followedMessage is not null)
+            _followedMessage.PropertyChanged -= OnFollowedMessageChanged;
+        _followedMessage = last;
+        if (_followedMessage is not null)
+            _followedMessage.PropertyChanged += OnFollowedMessageChanged;
+    }
+
+    private void OnFollowedMessageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(AiChatItemViewModel.Content) || _followPending ||
+            FindScrollViewer(MessagesList) is not { } scrollViewer ||
+            scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight - 24)
+        {
+            return;
+        }
+
+        _followPending = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _followPending = false;
+            if (IsLoaded)
+                scrollViewer.ScrollToEnd();
+        }), DispatcherPriority.Background);
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is ScrollViewer scrollViewer)
+                return scrollViewer;
+            if (FindScrollViewer(child) is { } nested)
+                return nested;
+        }
+        return null;
     }
 
     private void OnPromptPreviewKeyDown(object sender, KeyEventArgs e)
@@ -118,6 +167,7 @@ public partial class AiAssistantToolboxView : UserControl
         DetachMessages();
         _messages = viewModel.Messages;
         _messages.CollectionChanged += OnMessagesChanged;
+        FollowLastMessage();
     }
 
     private void DetachMessages()
@@ -125,5 +175,8 @@ public partial class AiAssistantToolboxView : UserControl
         if (_messages is not null)
             _messages.CollectionChanged -= OnMessagesChanged;
         _messages = null;
+        if (_followedMessage is not null)
+            _followedMessage.PropertyChanged -= OnFollowedMessageChanged;
+        _followedMessage = null;
     }
 }

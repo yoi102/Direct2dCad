@@ -49,7 +49,7 @@ internal static partial class NativeSmoke
         if (report.HeadlessWindowing)
         {
             using var frame = global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
-            frame?.Save(Path.Combine(Path.GetDirectoryName(output)!, "exit-confirmation.png"));
+            frame?.SavePng(Path.Combine(Path.GetDirectoryName(output)!, "exit-confirmation.png"));
             global::Avalonia.Headless.HeadlessWindowExtensions.KeyPress(window, Key.Escape, global::Avalonia.Input.RawInputModifiers.None, global::Avalonia.Input.PhysicalKey.None, null);
             global::Avalonia.Headless.HeadlessWindowExtensions.KeyRelease(window, Key.Escape, global::Avalonia.Input.RawInputModifiers.None, global::Avalonia.Input.PhysicalKey.None, null);
         }
@@ -89,7 +89,7 @@ internal static partial class NativeSmoke
         if (report.HeadlessWindowing)
         {
             using var frame = global::Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window);
-            frame?.Save(Path.Combine(directory, "exit-unsaved.png"));
+            frame?.SavePng(Path.Combine(directory, "exit-unsaved.png"));
         }
         ClickExitDialogButton(host, "Cancel");
         await request;

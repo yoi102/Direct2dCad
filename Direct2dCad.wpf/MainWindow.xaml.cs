@@ -261,10 +261,18 @@ public partial class MainWindow
 
             _toolboxLayoutSaveTimer.Stop();
             PersistToolboxLayout();
+            await _viewModel.ShutdownServicesAsync();
 
             _allowWindowClose = true;
             Closing -= OnWindowClosing;
             Close();
+        }
+        catch (Exception exception)
+        {
+            // async void: an escaping exception would end the process. Keep the window open, as Avalonia does.
+            WpfCrashLog.Write(exception, "Exit confirmation");
+            Ioc.Default.GetService<Direct2dCad.ViewModels.Services.Platform.Notifications.ICadMessageLog>()?.Add(
+                exception.Message, Direct2dCad.ViewModels.Services.Platform.Notifications.CadMessageLevel.Error, "Exit");
         }
         finally
         {

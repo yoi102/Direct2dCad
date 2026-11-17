@@ -2,6 +2,9 @@ name: Managed regression
 on:
   push:
   pull_request:
+permissions:
+  contents: read
+
 jobs:
   regression:
     runs-on: windows-latest

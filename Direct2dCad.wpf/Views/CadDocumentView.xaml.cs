@@ -14,6 +14,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Globalization;
 using System.Windows.Threading;
+using Direct2dCad.Db.Geometry;
 using Direct2dCad.ViewModels;
 using Direct2dCad.wpf.Controls;
 using Direct2dCad.ViewModels.Enums;
@@ -134,98 +135,32 @@ public partial class CadDocumentView : IDisposable
                 box.Width = width; widths[field.Key] = width;
             }
             var geometry = document.DynamicInputScreenGeometry;
-            var measurements = document.DynamicInputScreenMeasurements;
-            var measuredKeys = measurements.Select(m => m.Key).ToHashSet();
-            var endpoint = new Point(geometry.Point.X, geometry.Point.Y);
+            var layout = CadDynamicInputLayout.Compute(new CadDynamicInputLayoutRequest(
+                cadCanvas.ActualWidth, cadCanvas.ActualHeight, BoxHeight: 24,
+                new CadPointD(_dynamicInputPointer.X, _dynamicInputPointer.Y),
+                boxes.Select(box => box.DataContext).OfType<CadDynamicInputField>()
+                    .Select(field => new CadDynamicInputBoxSpec(field.Key, widths[field.Key])).ToArray(),
+                geometry.Anchor, geometry.Point, geometry.XCorner, geometry.YCorner,
+                document.DynamicInputScreenMeasurements,
+                DrawAnchorLine: document.CadCanvasToolMode is CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv,
+                CursorBadgeVisible: cadCanvas.IsCursorBadgeVisible,
+                CursorBadgePosition: new CadPointD(cadCanvas.CursorBadgePosition.X, cadCanvas.CursorBadgePosition.Y)));
+            cursorToolBadge.SetCurrentValue(Canvas.LeftProperty, layout.InlineBadgePosition?.X ?? cadCanvas.CursorBadgePosition.X);
+            cursorToolBadge.SetCurrentValue(Canvas.TopProperty, layout.InlineBadgePosition?.Y ?? cadCanvas.CursorBadgePosition.Y);
+            foreach (var box in boxes)
+            {
+                if (box.DataContext is not CadDynamicInputField field ||
+                    ItemsControl.ContainerFromElement(dynamicInputItems, box) is not FrameworkElement container ||
+                    !layout.Positions.TryGetValue(field.Key, out var position)) continue;
+                Canvas.SetLeft(container, position.X); Canvas.SetTop(container, position.Y);
+            }
             var guide = new StreamGeometry();
             using (var context = guide.Open())
-            {
-                var positions = new Dictionary<string, Point>();
-                // Point coordinates stay by the cursor; geometric parameters use their construction lines.
-                var cursorFields = boxes.Where(box => box.DataContext is CadDynamicInputField field &&
-                    !measuredKeys.Contains(field.Key) && field.Key is not ("Width" or "Height")).ToArray();
-                var inlineBadge = cursorFields.Length > 0 && cadCanvas.IsCursorBadgeVisible;
-                var groupWidth = cursorFields.Sum(box => widths[((CadDynamicInputField)box.DataContext).Key]) +
-                    Math.Max(0, cursorFields.Length - 1) * 6 + (inlineBadge ? 34 : 0);
-                var desiredX = _dynamicInputPointer.X + 18;
-                var desiredY = _dynamicInputPointer.Y + 18;
-                if (desiredX + groupWidth > cadCanvas.ActualWidth - 4) desiredX = _dynamicInputPointer.X - groupWidth - 18;
-                if (desiredY + 24 > cadCanvas.ActualHeight - 4) desiredY = _dynamicInputPointer.Y - 30;
-                var groupX = Math.Clamp(desiredX, 4, Math.Max(4, cadCanvas.ActualWidth - groupWidth - 4));
-                var groupY = Math.Clamp(desiredY, 6, Math.Max(6, cadCanvas.ActualHeight - 30));
-                cursorToolBadge.SetCurrentValue(Canvas.LeftProperty, inlineBadge ? groupX : cadCanvas.CursorBadgePosition.X);
-                cursorToolBadge.SetCurrentValue(Canvas.TopProperty, inlineBadge ? groupY - 2 : cadCanvas.CursorBadgePosition.Y);
-                if (inlineBadge) groupX += 34;
-                foreach (var box in boxes)
-                    if (box.DataContext is CadDynamicInputField field)
-                        positions[field.Key] = new(groupX, groupY);
-                foreach (var box in cursorFields)
-                    if (box.DataContext is CadDynamicInputField field)
-                    { positions[field.Key] = new(groupX, groupY); groupX += widths[field.Key] + 6; }
-                void Line(Point from, Point to)
-                { context.BeginFigure(from, false, false); context.LineTo(to, true, false); }
-                Point Dimension(Point start, Point end, Vector normal, double offset)
+                foreach (var stroke in layout.Guides)
                 {
-                    Line(start, start + normal * (offset + 6)); Line(end, end + normal * (offset + 6));
-                    Line(start + normal * offset, end + normal * offset);
-                    return start + (end - start) * .5 + normal * offset;
+                    context.BeginFigure(new Point(stroke.Start.X, stroke.Start.Y), false, false);
+                    context.LineTo(new Point(stroke.End.X, stroke.End.Y), true, false);
                 }
-                if (geometry.Anchor is { } anchor)
-                {
-                    var start = new Point(anchor.X, anchor.Y);
-                    var direction = endpoint - start;
-                    if (positions.ContainsKey("Width") && positions.ContainsKey("Height") && !measuredKeys.Contains("Width"))
-                    {
-                        var xCorner = new Point(geometry.XCorner.X, geometry.XCorner.Y);
-                        var yCorner = new Point(geometry.YCorner.X, geometry.YCorner.Y);
-                        var widthStart = start.Y + xCorner.Y > yCorner.Y + endpoint.Y ? start : yCorner;
-                        var widthEnd = widthStart == start ? xCorner : endpoint;
-                        var heightStart = start.X + yCorner.X > xCorner.X + endpoint.X ? start : xCorner;
-                        var heightEnd = heightStart == start ? yCorner : endpoint;
-                        Vector Outward(Point from, Point to)
-                        {
-                            var edge = to - from;
-                            var outward = edge.Length > 1e-6 ? new Vector(-edge.Y, edge.X) / edge.Length : new Vector(0, 1);
-                            if (Vector.Multiply(outward, from + (to - from) * .5 - (start + direction * .5)) < 0) outward = -outward;
-                            return outward;
-                        }
-                        positions["Width"] = Dimension(widthStart, widthEnd, Outward(widthStart, widthEnd), 28) - new Vector(widths["Width"] / 2, 12);
-                        positions["Height"] = Dimension(heightStart, heightEnd, Outward(heightStart, heightEnd), 54) - new Vector(widths["Height"] / 2, 12);
-                    }
-                    else if (positions.ContainsKey("Length") && document.CadCanvasToolMode is CadCanvasToolMode.Spline or CadCanvasToolMode.SplineCv)
-                        Line(start, endpoint);
-                }
-                foreach (var measurement in measurements)
-                {
-                    if (!widths.TryGetValue(measurement.Key, out var width)) continue;
-                    var start = new Point(measurement.Start.X, measurement.Start.Y);
-                    var end = new Point(measurement.End.X, measurement.End.Y);
-                    var direction = end - start;
-                    var unit = direction.Length > 1e-6 ? direction / direction.Length : new Vector(1, 0);
-                    var normal = new Vector(-unit.Y, unit.X);
-                    if (normal.Y > 0) normal = -normal;
-                    positions[measurement.Key] = Dimension(start, end, normal, 26 + measurement.StackIndex * 24) - new Vector(width / 2, 12);
-                }
-                var occupied = new List<Rect>();
-                foreach (var box in boxes)
-                {
-                    if (box.DataContext is not CadDynamicInputField field ||
-                        ItemsControl.ContainerFromElement(dynamicInputItems, box) is not FrameworkElement container) continue;
-                    var desired = positions[field.Key];
-                    var width = widths[field.Key];
-                    var x = Math.Clamp(desired.X, 4, Math.Max(4, cadCanvas.ActualWidth - width - 4));
-                    var y = Math.Clamp(desired.Y, 4, Math.Max(4, cadCanvas.ActualHeight - 28));
-                    var bounds = new Rect(x, y, width, 24);
-                    for (var attempt = 0; attempt < boxes.Length * 2 && occupied.Any(other => bounds.IntersectsWith(other)); attempt++)
-                    {
-                        var other = occupied.First(other => bounds.IntersectsWith(other));
-                        y = other.Bottom + 6 <= cadCanvas.ActualHeight - 28 ? other.Bottom + 6 : Math.Max(4, other.Top - 30);
-                        bounds = new(x, y, width, 24);
-                    }
-                    Canvas.SetLeft(container, x); Canvas.SetTop(container, y);
-                    occupied.Add(bounds);
-                }
-            }
             guide.Freeze(); dynamicInputGuides.Data = guide;
             dynamicInputError.Margin = new Thickness(
                 Math.Clamp(_dynamicInputPointer.X + 18, 4, Math.Max(4, cadCanvas.ActualWidth - 184)),

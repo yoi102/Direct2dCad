@@ -26,6 +26,8 @@ public partial class MainWindow : Window
     private bool _documentHostReattaching;
     private int _documentHostGeneration;
     private readonly DispatcherTimer _notificationTimer = new() { Interval = TimeSpan.FromSeconds(4) };
+    // Same cadence as the WPF client: write crash-recovery copies of modified drawings.
+    private readonly DispatcherTimer _recoveryTimer = new() { Interval = TimeSpan.FromSeconds(60) };
     internal void ShowNotification(string text)
     {
         Notification.Text = text; NotificationToast.IsVisible = !string.IsNullOrWhiteSpace(text);
@@ -90,7 +92,9 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, ConfirmPanel, RoutingStrategies.Bubble);
         AddHandler(KeyDownEvent, CancelPanel, RoutingStrategies.Bubble);
         Closing += OnClosing;
-        Closed += (_, _) => {RootDialog.CurrentSession?.Close();_nativeDock?.Dispose();};
+        _recoveryTimer.Tick += OnRecoveryTick;
+        _recoveryTimer.Start();
+        Closed += (_, _) => {_recoveryTimer.Stop();_recoveryTimer.Tick -= OnRecoveryTick;RootDialog.CurrentSession?.Close();_nativeDock?.Dispose();};
         
     }
     private void ConfigureIntegratedTitleBar()
@@ -238,6 +242,13 @@ public partial class MainWindow : Window
         else editor.Cancel();
         e.Handled = true;
     }
+    private async void OnRecoveryTick(object? sender, EventArgs e)
+    {
+        _recoveryTimer.Stop();
+        try { await _model.CaptureRecoveryCopiesAsync(); }
+        catch (Exception ex) { AppCrashLog.Write(ex, "Recovery"); }
+        finally { if (!_closed) _recoveryTimer.Start(); }
+    }
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
         if (_closed) return; e.Cancel = true; if (_closing) return; _closing = true;
@@ -257,6 +268,7 @@ public partial class MainWindow : Window
             SaveDockWindows();
             _settings.Save(_toolTabs.Keys.OfType<CadToolboxViewModelBase>().Select(t => new KeyValuePair<string, CadToolboxState>(t.ContentId, new() { Zone = t.Zone.ToString(), IsOpen = t.IsOpen })));
             foreach (var tab in _tabs.Values) if (tab.Content is IDisposable disposable) disposable.Dispose();
+            await _model.ShutdownServicesAsync();
             _closed = true;
             Close();
         }

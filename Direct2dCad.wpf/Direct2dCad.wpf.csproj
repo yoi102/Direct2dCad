@@ -3,14 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net11.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Direct2dCad.ico</ApplicationIcon>
-    <Version>0.1.9</Version>
-    <AssemblyVersion>0.1.9</AssemblyVersion>
-    <FileVersion>0.1.9</FileVersion>
-    <InformationalVersion>0.1.9</InformationalVersion>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   
@@ -31,17 +25,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Antelcat.I18N.WPF" Version="2.0.0-preview-1" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Dirkster.AvalonDock" Version="5.0.2" />
-    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" Version="5.0.2" />
-    <PackageReference Include="Dirkster.AvalonDock.Serializer.Json" Version="5.0.2" />
-    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" Version="5.0.2" />
-    <PackageReference Include="gong-wpf-dragdrop" Version="4.0.0" />
-    <PackageReference Include="MahApps.Metro" Version="3.0.0-rc0529" />
-    <PackageReference Include="MaterialDesignThemes.MahApps" Version="5.4.0" />
-    <PackageReference Include="MessagePipe" Version="1.8.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageReference Include="Antelcat.I18N.WPF" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Dirkster.AvalonDock" />
+    <PackageReference Include="Dirkster.AvalonDock.DependencyInjection" />
+    <PackageReference Include="Dirkster.AvalonDock.Serializer.Json" />
+    <PackageReference Include="Dirkster.AvalonDock.Themes.Arc" />
+    <PackageReference Include="gong-wpf-dragdrop" />
+    <PackageReference Include="MahApps.Metro" />
+    <PackageReference Include="MaterialDesignThemes.MahApps" />
+    <PackageReference Include="MessagePipe" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
   <ItemGroup>

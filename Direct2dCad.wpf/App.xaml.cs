@@ -39,6 +39,7 @@ public partial class App : System.Windows.Application
 
     public App()
     {
+        WpfCrashLog.Install(Dispatcher);
         _bindingDiagnostics = WpfBindingDiagnostics.StartFromEnvironment();
         string lang = System.Globalization.CultureInfo.CurrentCulture.Name;
         var culture = new System.Globalization.CultureInfo(lang);
@@ -72,7 +73,9 @@ public partial class App : System.Windows.Application
         try
         {
             await _serviceProvider.GetRequiredService<MainViewModel>()
-                .InitializeMcpAsync(CadMcpServer.GetRequestedPort(arguments));
+                .InitializeMcpAsync(
+                    CadMcpServer.GetRequestedPort(arguments),
+                    CadMcpServer.GetRequestedAccessToken(arguments));
         }
         catch (Exception exception)
         {

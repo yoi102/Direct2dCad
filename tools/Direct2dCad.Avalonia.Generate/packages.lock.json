@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "dependencies": {
     "net11.0-windows7.0": {
       "MaterialDesignThemes.MahApps": {
@@ -14,52 +14,12 @@
           "Microsoft.Xaml.Behaviors.Wpf": "1.1.142"
         }
       },
-      "Antelcat.I18N.SourceGenerators": {
-        "type": "Transitive",
-        "resolved": "2.0.0-preview-2",
-        "contentHash": "xZo+iwketCNIjnDkPM1v1erAPBSMLMYn7ztr1VBjWLFGNdVTd3fYJ7rpuF5i5d0eYHr1ZOrIOay+qfkJrCKYPQ=="
-      },
-      "CommunityToolkit.Mvvm": {
-        "type": "Transitive",
-        "resolved": "8.4.2",
-        "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
-      },
       "ControlzEx": {
         "type": "Transitive",
         "resolved": "4.4.0",
         "contentHash": "pZ5z4hYWwE4R13UMCVs6vII//nL7hz+Nwn4oJlnsZJRGqJNy6Z9KnJiTZfly6lKFu0pMc1aWBZpx+VqFTQKP1Q==",
         "dependencies": {
           "Microsoft.Xaml.Behaviors.Wpf": "1.1.19"
-        }
-      },
-      "Dirkster.AvalonDock.Core": {
-        "type": "Transitive",
-        "resolved": "5.0.2",
-        "contentHash": "viL+5loMFdTIsnKW7833OK1y0FdlX5o7Kacl76ArRD9DYUD8BcmpV1IeLffrTX7vXv/cNLvGx6OHSKaYfDVe6g=="
-      },
-      "Dirkster.AvalonDock.Mvvm": {
-        "type": "Transitive",
-        "resolved": "5.0.2",
-        "contentHash": "Ajxq5K92ykQWqU68qkUI6gmW1Gq51l1UGNbVOU9CgG0xFZPXW+ZY66cZitccWkF3zBJUeLVAgC2N7JFRQsrgnQ==",
-        "dependencies": {
-          "Dirkster.AvalonDock.Core": "5.0.2"
-        }
-      },
-      "Dirkster.AvalonDock.Mvvm.CommunityToolkit": {
-        "type": "Transitive",
-        "resolved": "5.0.2",
-        "contentHash": "dC0ZG2IB5ipcCu0Ls/RFhhEsvwjTsA/q6UGImyvh9sSBvJDHlFJxe+Qn2ziNKFRzr0d/zCG/iGldcC6hqxImvw==",
-        "dependencies": {
-          "CommunityToolkit.Mvvm": "8.4.0",
-          "Dirkster.AvalonDock.Core": "5.0.2"
-        }
-      },
-      "MahApps.Metro": {
-        "type": "Transitive",
-        "resolved": "2.4.11",
-        "contentHash": "pvk757N/ViZy+zlbB56AakryuZkts328M6pX2mMn/Z7r5ifkScDrS300zSBjLd+eGOPeHgUjH4f7cZbRiMyvQg==",
-        "dependencies": {
-          "ControlzEx": "[4.4.0, 6.0.0)"
         }
       },
       "MaterialDesignColors": {
@@ -76,16 +36,6 @@
           "Microsoft.Xaml.Behaviors.Wpf": "1.1.142"
         }
       },
-      "MessagePack": {
-        "type": "Transitive",
-        "resolved": "3.1.12",
-        "contentHash": "m1QEsd59gUj82ji5tEQbZiyjV6y0F7cYfGVhil6pAlNZpyzR7ze9TucMu4lPpi8cZAV8aNl3D9/T9J1HbFz15Q==",
-        "dependencies": {
-          "MessagePack.Annotations": "3.1.12",
-          "MessagePackAnalyzer": "3.1.12",
-          "Microsoft.NET.StringTools": "17.11.4"
-        }
-      },
       "MessagePack.Annotations": {
         "type": "Transitive",
         "resolved": "3.1.12",
@@ -95,11 +45,6 @@
         "type": "Transitive",
         "resolved": "3.1.12",
         "contentHash": "iNSNatPh6bafRUbkQKlClExjpPpd8hiZgfZsodGf7bheIlkizGbMzsJ2mPui8jOHRe4Ky9eg5ou/fFzI7CT3fg=="
-      },
-      "MessagePipe": {
-        "type": "Transitive",
-        "resolved": "1.8.2",
-        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ=="
       },
       "Microsoft.NET.StringTools": {
         "type": "Transitive",
@@ -111,27 +56,10 @@
         "resolved": "1.1.142",
         "contentHash": "c47wA/8GHiQ9w+O6+mdqrZhZrxHogx2/fSZyRKL9tz0k+ypoTiwOx6fID0X3jr5LnCazJbCk7KiAcL0zVnNgNA=="
       },
-      "Riok.Mapperly": {
-        "type": "Transitive",
-        "resolved": "5.0.0-next.13",
-        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
-      },
-      "StronglyTypedId": {
-        "type": "Transitive",
-        "resolved": "1.0.0-beta08",
-        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
-      },
       "direct2dcad.agent": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.AI.Contracts": "[1.0.0, )"
-        }
-      },
-      "direct2dcad.agent.codex": {
-        "type": "Project",
-        "dependencies": {
-          "Direct2dCad.AI.Contracts": "[1.0.0, )",
-          "Direct2dCad.Agent": "[1.0.0, )"
+          "Direct2dCad.AI.Contracts": "[0.1.9, )"
         }
       },
       "direct2dcad.ai.contracts": {
@@ -140,39 +68,39 @@
       "direct2dcad.application": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.AI.Contracts": "[1.0.0, )",
-          "Direct2dCad.CommandLine": "[1.0.0, )",
-          "Direct2dCad.Editor": "[1.0.0, )",
-          "Direct2dCad.IO": "[1.0.0, )",
-          "Direct2dCad.Lang": "[1.0.0, )",
+          "Direct2dCad.AI.Contracts": "[0.1.9, )",
+          "Direct2dCad.CommandLine": "[0.1.9, )",
+          "Direct2dCad.Editor": "[0.1.9, )",
+          "Direct2dCad.IO": "[0.1.9, )",
+          "Direct2dCad.Lang": "[0.1.9, )",
           "MessagePipe": "[1.8.2, )"
         }
       },
       "direct2dcad.changetracking": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.client.common": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )",
+          "Direct2dCad.Rendering": "[0.1.9, )"
         }
       },
       "direct2dcad.commandline": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )",
-          "Direct2dCad.Lang": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )",
+          "Direct2dCad.Lang": "[0.1.9, )"
         }
       },
       "direct2dcad.commands": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.ChangeTracking": "[0.1.9, )",
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.db": {
@@ -184,30 +112,30 @@
       "direct2dcad.editor": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Commands": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )",
-          "Direct2dCad.HitTesting": "[1.0.0, )",
-          "Direct2dCad.Indexing": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )"
+          "Direct2dCad.ChangeTracking": "[0.1.9, )",
+          "Direct2dCad.Commands": "[0.1.9, )",
+          "Direct2dCad.Db": "[0.1.9, )",
+          "Direct2dCad.HitTesting": "[0.1.9, )",
+          "Direct2dCad.Indexing": "[0.1.9, )",
+          "Direct2dCad.Rendering": "[0.1.9, )"
         }
       },
       "direct2dcad.hittesting": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.indexing": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.io": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )",
+          "Direct2dCad.Db": "[0.1.9, )",
           "MessagePack": "[3.1.12, )",
           "Riok.Mapperly": "[5.0.0-next.13, )"
         }
@@ -221,44 +149,43 @@
       "direct2dcad.rendering": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )",
-          "Direct2dCad.Rendering.Handles": "[1.0.0, )",
-          "Direct2dCad.Rendering.Transient": "[1.0.0, )"
+          "Direct2dCad.ChangeTracking": "[0.1.9, )",
+          "Direct2dCad.Db": "[0.1.9, )",
+          "Direct2dCad.Rendering.Handles": "[0.1.9, )",
+          "Direct2dCad.Rendering.Transient": "[0.1.9, )"
         }
       },
       "direct2dcad.rendering.handles": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.rendering.transient": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[1.0.0, )"
+          "Direct2dCad.Db": "[0.1.9, )"
         }
       },
       "direct2dcad.viewmodels": {
         "type": "Project",
         "dependencies": {
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "Direct2dCad.AI.Contracts": "[1.0.0, )",
-          "Direct2dCad.Agent": "[1.0.0, )",
-          "Direct2dCad.Agent.Codex": "[1.0.0, )",
-          "Direct2dCad.Application": "[1.0.0, )",
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Client.Common": "[1.0.0, )",
-          "Direct2dCad.CommandLine": "[1.0.0, )",
-          "Direct2dCad.Commands": "[1.0.0, )",
-          "Direct2dCad.Editor": "[1.0.0, )",
-          "Direct2dCad.IO": "[1.0.0, )",
-          "Direct2dCad.Lang": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )",
-          "Direct2dCad.Rendering.Handles": "[1.0.0, )",
-          "Direct2dCad.Rendering.Transient": "[1.0.0, )",
-          "Direct2dCad.ViewModels.Abstractions": "[1.0.0, )",
-          "Direct2dCad.ViewModels.Services": "[1.0.0, )",
+          "Direct2dCad.AI.Contracts": "[0.1.9, )",
+          "Direct2dCad.Agent": "[0.1.9, )",
+          "Direct2dCad.Application": "[0.1.9, )",
+          "Direct2dCad.ChangeTracking": "[0.1.9, )",
+          "Direct2dCad.Client.Common": "[0.1.9, )",
+          "Direct2dCad.CommandLine": "[0.1.9, )",
+          "Direct2dCad.Commands": "[0.1.9, )",
+          "Direct2dCad.Editor": "[0.1.9, )",
+          "Direct2dCad.IO": "[0.1.9, )",
+          "Direct2dCad.Lang": "[0.1.9, )",
+          "Direct2dCad.Rendering": "[0.1.9, )",
+          "Direct2dCad.Rendering.Handles": "[0.1.9, )",
+          "Direct2dCad.Rendering.Transient": "[0.1.9, )",
+          "Direct2dCad.ViewModels.Abstractions": "[0.1.9, )",
+          "Direct2dCad.ViewModels.Services": "[0.1.9, )",
           "Dirkster.AvalonDock.Core": "[5.0.2, )",
           "Dirkster.AvalonDock.Mvvm": "[5.0.2, )",
           "Dirkster.AvalonDock.Mvvm.CommunityToolkit": "[5.0.2, )",
@@ -268,28 +195,103 @@
       "direct2dcad.viewmodels.abstractions": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Client.Common": "[1.0.0, )",
-          "Direct2dCad.Lang": "[1.0.0, )"
+          "Direct2dCad.Client.Common": "[0.1.9, )",
+          "Direct2dCad.Lang": "[0.1.9, )"
         }
       },
       "direct2dcad.viewmodels.services": {
         "type": "Project",
         "dependencies": {
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "Direct2dCad.AI.Contracts": "[1.0.0, )",
-          "Direct2dCad.Application": "[1.0.0, )",
-          "Direct2dCad.ChangeTracking": "[1.0.0, )",
-          "Direct2dCad.Client.Common": "[1.0.0, )",
-          "Direct2dCad.Commands": "[1.0.0, )",
-          "Direct2dCad.Db": "[1.0.0, )",
-          "Direct2dCad.Editor": "[1.0.0, )",
-          "Direct2dCad.IO": "[1.0.0, )",
-          "Direct2dCad.Rendering": "[1.0.0, )",
-          "Direct2dCad.Rendering.Handles": "[1.0.0, )",
-          "Direct2dCad.Rendering.Transient": "[1.0.0, )",
-          "Direct2dCad.ViewModels.Abstractions": "[1.0.0, )",
+          "Direct2dCad.AI.Contracts": "[0.1.9, )",
+          "Direct2dCad.Application": "[0.1.9, )",
+          "Direct2dCad.ChangeTracking": "[0.1.9, )",
+          "Direct2dCad.Client.Common": "[0.1.9, )",
+          "Direct2dCad.Commands": "[0.1.9, )",
+          "Direct2dCad.Db": "[0.1.9, )",
+          "Direct2dCad.Editor": "[0.1.9, )",
+          "Direct2dCad.IO": "[0.1.9, )",
+          "Direct2dCad.Rendering": "[0.1.9, )",
+          "Direct2dCad.Rendering.Handles": "[0.1.9, )",
+          "Direct2dCad.Rendering.Transient": "[0.1.9, )",
+          "Direct2dCad.ViewModels.Abstractions": "[0.1.9, )",
           "MessagePipe": "[1.8.2, )"
         }
+      },
+      "Antelcat.I18N.SourceGenerators": {
+        "type": "CentralTransitive",
+        "requested": "[2.0.0-preview-2, )",
+        "resolved": "2.0.0-preview-2",
+        "contentHash": "xZo+iwketCNIjnDkPM1v1erAPBSMLMYn7ztr1VBjWLFGNdVTd3fYJ7rpuF5i5d0eYHr1ZOrIOay+qfkJrCKYPQ=="
+      },
+      "CommunityToolkit.Mvvm": {
+        "type": "CentralTransitive",
+        "requested": "[8.4.2, )",
+        "resolved": "8.4.2",
+        "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
+      },
+      "Dirkster.AvalonDock.Core": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "viL+5loMFdTIsnKW7833OK1y0FdlX5o7Kacl76ArRD9DYUD8BcmpV1IeLffrTX7vXv/cNLvGx6OHSKaYfDVe6g=="
+      },
+      "Dirkster.AvalonDock.Mvvm": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "Ajxq5K92ykQWqU68qkUI6gmW1Gq51l1UGNbVOU9CgG0xFZPXW+ZY66cZitccWkF3zBJUeLVAgC2N7JFRQsrgnQ==",
+        "dependencies": {
+          "Dirkster.AvalonDock.Core": "5.0.2"
+        }
+      },
+      "Dirkster.AvalonDock.Mvvm.CommunityToolkit": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "dC0ZG2IB5ipcCu0Ls/RFhhEsvwjTsA/q6UGImyvh9sSBvJDHlFJxe+Qn2ziNKFRzr0d/zCG/iGldcC6hqxImvw==",
+        "dependencies": {
+          "CommunityToolkit.Mvvm": "8.4.0",
+          "Dirkster.AvalonDock.Core": "5.0.2"
+        }
+      },
+      "MahApps.Metro": {
+        "type": "CentralTransitive",
+        "requested": "[3.0.0-rc0529, )",
+        "resolved": "2.4.11",
+        "contentHash": "pvk757N/ViZy+zlbB56AakryuZkts328M6pX2mMn/Z7r5ifkScDrS300zSBjLd+eGOPeHgUjH4f7cZbRiMyvQg==",
+        "dependencies": {
+          "ControlzEx": "[4.4.0, 6.0.0)"
+        }
+      },
+      "MessagePack": {
+        "type": "CentralTransitive",
+        "requested": "[3.1.12, )",
+        "resolved": "3.1.12",
+        "contentHash": "m1QEsd59gUj82ji5tEQbZiyjV6y0F7cYfGVhil6pAlNZpyzR7ze9TucMu4lPpi8cZAV8aNl3D9/T9J1HbFz15Q==",
+        "dependencies": {
+          "MessagePack.Annotations": "3.1.12",
+          "MessagePackAnalyzer": "3.1.12",
+          "Microsoft.NET.StringTools": "17.11.4"
+        }
+      },
+      "MessagePipe": {
+        "type": "CentralTransitive",
+        "requested": "[1.8.2, )",
+        "resolved": "1.8.2",
+        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ=="
+      },
+      "Riok.Mapperly": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.0-next.13, )",
+        "resolved": "5.0.0-next.13",
+        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
+      },
+      "StronglyTypedId": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.0-beta08, )",
+        "resolved": "1.0.0-beta08",
+        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
       }
     }
   }

@@ -456,15 +456,7 @@ FodyWeavers.xsd
 !/installer/Direct2dCad.Msi/Product.wxs
 !/installer/Direct2dCad.Msi/packages.lock.json
 /erver/
-/scripts/*
-!/scripts/delivery/
-/scripts/delivery/*
-!/scripts/delivery/Build-GitHubRelease.ps1
-!/scripts/delivery/Validate-GitHubRelease.ps1
-# Keep the reusable isolated UI runner; local one-off test scripts stay ignored.
-!/scripts/testing/
-/scripts/testing/*
-!/scripts/testing/Run-IsolatedUi.ps1
+# scripts/ is source: CI depends on scripts/testing and scripts/delivery, so nothing there is ignored.
 /TestResults/
 /.artifacts/
 !/docs/AVALONIA-WINDOWS.md
