@@ -12,6 +12,8 @@ internal static class Program
         try
         {
             if (args is ["--gpu-test-offscreen", var report]) return OffscreenGpuProbe.Run(Path.GetFullPath(report));
+            // The windowless MCP stdio bridge forwards to the desktop instance; it never starts Avalonia.
+            if (Mcp.Stdio.CadMcpStdioBridge.IsRequested(args)) return Mcp.Stdio.CadMcpStdioBridge.Run(args);
             return BuildAvaloniaApp(args.Contains("--smoke-test-headless")).StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)

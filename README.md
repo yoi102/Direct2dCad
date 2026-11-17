@@ -65,6 +65,30 @@ dotnet run -c Release --project .\Direct2dCad.Avalonia\Direct2dCad.Avalonia.cspr
 
 可选的访问令牌：在设置中点击“生成”，或通过环境变量 `DIRECT2DCAD_MCP_TOKEN`（也可用 `--mcp-token <令牌>`，但命令行对本机其他程序可见）指定。设置后，客户端必须发送 `Authorization: Bearer <令牌>`，否则返回 401。令牌不会出现在 `get_application_settings` 结果中，AI 和 MCP 工具也无法修改或清除它。
 
+### stdio 传输
+
+只支持以子进程方式启动 MCP 服务器的客户端（如 Claude Desktop），可用 `--mcp-stdio` 运行同一个可执行文件。该模式不打开窗口，在标准输入/输出上提供 MCP，并把工具调用转发给本机正在运行的 Direct2dCad（`http://127.0.0.1:<端口>/mcp`），因此客户端编辑的就是当前打开的图纸，鉴权、来源校验和 UI 线程串行规则只有一份。
+
+```json
+{
+  "mcpServers": {
+    "direct2dcad": {
+      "command": "C:\\Program Files\\Direct2dCad\\Direct2dCad.exe",
+      "args": ["--mcp-stdio"],
+      "env": { "DIRECT2DCAD_MCP_TOKEN": "<设置中的令牌，未启用令牌时删除此行>" }
+    }
+  }
+}
+```
+
+Claude Code：`claude mcp add direct2dcad -e DIRECT2DCAD_MCP_TOKEN=<令牌> -- "C:\Program Files\Direct2dCad\Direct2dCad.exe" --mcp-stdio`。Avalonia 版本用 `Direct2dCad.Avalonia.exe`。
+
+- 工具列表由桥接进程直接提供，客户端启动时不会拉起 CAD。第一次工具调用时若端口上没有服务且没有已打开的 Direct2dCad 窗口，会以 `--mcp-port <端口>` 启动 Direct2dCad 并等待最多 60 秒；令牌通过环境变量传递，不出现在命令行。启动的程序会脱离客户端的进程作业（作业允许时），退出客户端不会关闭正在编辑的图纸。加 `--no-launch` 则只报告错误、不自动启动。
+- Direct2dCad 已打开但未启用 MCP 时不会再开第二个窗口，而是提示到“应用程序设置 → MCP”启用对应端口。
+- 可用参数：`--mcp-port <端口>`（默认 5277）、`--mcp-token <令牌>`（建议改用环境变量）、`--no-launch`。日志写到标准错误，标准输出只有协议消息。
+- 程序重启后会自动重连。连接在调用途中断开时，工具结果会说明该调用可能已经执行，需要先检查图纸再重试。含重复属性名的请求与 HTTP 一样被拒绝（`-32700`）。
+- 由桥接启动的 Direct2dCad 与命令行 `--mcp-port` 相同：之后保存应用程序设置会把 MCP 端口（及环境变量中的令牌）写入设置。
+
 服务支持 `2025-11-25` 初始化会话和 `2026-07-28` 逐请求协议，处理取消通知及 HTTP 断线取消。未知工具名和无效目录游标返回标准 `-32602` 协议错误。只读查询与新增几何具有明确的非破坏性标记，删除、覆盖和已有内容修改具有破坏性标记。
 
 MCP 提供现有 CAD 工具的完整参数定义，支持查询、绘图、编辑、文件操作及画布图像返回。客户端可先调用 `list_documents` 和 `get_agent_capabilities` 获取当前状态与能力，再通过 `document_id` 指定目标图纸。工具调用在 UI 线程上串行执行，每次调用有独立的撤销批次，多实体绘图可用 `add_entities` 合为一个撤销步骤。

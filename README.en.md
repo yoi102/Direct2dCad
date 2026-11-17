@@ -54,6 +54,30 @@ Both desktop clients expose the live workspace through MCP Streamable HTTP using
 
 Application Settings → MCP provides an enable switch, port, live status, failure details, and a button to copy the running address. Apply starts, stops, or changes the listener immediately and saves the preferences for the next launch. MCP defaults to disabled with port 5277. Command-line options override the current launch and are persisted when application settings are saved. When a settings tool stops or changes its own listener, its response completes before the service switches. Reconnect using the new address after changing ports.
 
+### stdio transport
+
+Clients that only launch MCP servers as child processes (for example Claude Desktop) can run the same executable with `--mcp-stdio`. This mode opens no window: it serves MCP on stdin/stdout and forwards each tool call to the Direct2dCad instance running on this machine (`http://127.0.0.1:<port>/mcp`). The client therefore edits the drawing that is open on screen, and authentication, origin checks and UI-thread serialization stay in one place.
+
+```json
+{
+  "mcpServers": {
+    "direct2dcad": {
+      "command": "C:\\Program Files\\Direct2dCad\\Direct2dCad.exe",
+      "args": ["--mcp-stdio"],
+      "env": { "DIRECT2DCAD_MCP_TOKEN": "<token from settings; omit when no token is set>" }
+    }
+  }
+}
+```
+
+Claude Code: `claude mcp add direct2dcad -e DIRECT2DCAD_MCP_TOKEN=<token> -- "C:\Program Files\Direct2dCad\Direct2dCad.exe" --mcp-stdio`. Use `Direct2dCad.Avalonia.exe` for the Avalonia client.
+
+- The bridge serves the tool list itself, so starting the client does not start the CAD. On the first tool call, if nothing listens on the port and no Direct2dCad window is open, it starts Direct2dCad with `--mcp-port <port>` and waits up to 60 seconds. The token travels in the environment, never on the command line. The started app breaks away from the client's process job (when the job allows it), so quitting the client does not close the drawing. Pass `--no-launch` to report an error instead.
+- If Direct2dCad is open with MCP turned off, the bridge does not open a second window; it asks you to turn on MCP for that port under Application settings → MCP.
+- Options: `--mcp-port <port>` (default 5277), `--mcp-token <token>` (prefer the environment variable), `--no-launch`. Logs go to stderr; stdout carries only protocol messages.
+- The bridge reconnects after the app restarts. If the connection drops during a call, the tool result says the call may have run, so inspect the drawing before retrying. Requests with duplicate property names are refused (`-32700`), as over HTTP.
+- An app started by the bridge behaves like one started with `--mcp-port`: saving application settings later persists that MCP port (and the token from the environment).
+
 The endpoint supports `2025-11-25` initialize sessions and the `2026-07-28` per-request protocol, including cancellation notifications and HTTP disconnect cancellation. Unknown tool names and invalid catalog cursors return the standard `-32602` protocol error. Tool annotations distinguish read-only queries, additive operations and destructive changes.
 
 MCP exposes the existing CAD tool schemas, editing operations, file operations and captured images. Start with `list_documents` and `get_agent_capabilities`. Use `document_id` to address a drawing. Calls execute serially on the UI thread with an independent undo batch for each call. Use `add_entities` to create multiple entities in one undo step.

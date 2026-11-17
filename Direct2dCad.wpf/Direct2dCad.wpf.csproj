@@ -14,6 +14,8 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishAot>false</PublishAot>
     <AssemblyName>Direct2dCad</AssemblyName>
+    <!-- Program.Main runs the MCP stdio bridge before WPF starts, then calls the generated App.Main. -->
+    <StartupObject>Direct2dCad.Program</StartupObject>
   </PropertyGroup>
 
   <ItemGroup>

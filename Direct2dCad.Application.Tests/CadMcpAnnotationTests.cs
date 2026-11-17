@@ -17,22 +17,22 @@ public sealed class CadMcpAnnotationTests
         // A renamed or removed tool must not leave a stale annotation that silently stops applying.
         var names = set switch
         {
-            "ReadOnly" => CadMcpServer.ReadOnlyTools,
-            "Additive" => CadMcpServer.AdditiveTools,
-            _ => CadMcpServer.OpenWorldTools
+            "ReadOnly" => CadMcpToolCatalog.ReadOnlyTools,
+            "Additive" => CadMcpToolCatalog.AdditiveTools,
+            _ => CadMcpToolCatalog.OpenWorldTools
         };
         Assert.DoesNotContain(names, name => !CatalogNames.Contains(name));
     }
 
     [Fact]
     public void ReadOnlyAndAdditiveToolsAreDisjoint() =>
-        Assert.DoesNotContain(CadMcpServer.ReadOnlyTools, CadMcpServer.AdditiveTools.Contains);
+        Assert.DoesNotContain(CadMcpToolCatalog.ReadOnlyTools, CadMcpToolCatalog.AdditiveTools.Contains);
 
     [Fact]
     public void ServerVersionComesFromTheProductVersion()
     {
-        Assert.False(string.IsNullOrWhiteSpace(CadMcpServer.ServerVersion));
-        Assert.NotEqual("0.0.0", CadMcpServer.ServerVersion);
-        Assert.DoesNotContain('+', CadMcpServer.ServerVersion); // no source-revision suffix leaks to clients
+        Assert.False(string.IsNullOrWhiteSpace(CadMcpToolCatalog.ServerVersion));
+        Assert.NotEqual("0.0.0", CadMcpToolCatalog.ServerVersion);
+        Assert.DoesNotContain('+', CadMcpToolCatalog.ServerVersion); // no source-revision suffix leaks to clients
     }
 }
