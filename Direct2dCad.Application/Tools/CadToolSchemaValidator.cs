@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Direct2dCad.AI.Contracts;
@@ -40,11 +41,15 @@ internal static class CadToolSchemaValidator
             for (var index = 0; index < value.GetArrayLength(); index++) EnsureUnambiguousProperties(value[index], $"{path}[{index}]");
     }
 
-    private static JsonNode? Normalize(JsonNode? value, JsonElement schema)
+    private static JsonNode? Normalize(JsonNode? value, JsonElement schema, bool coerceNumbers = true)
     {
         if (schema.ValueKind != JsonValueKind.Object) return value;
         if (value is JsonValue scalar && scalar.TryGetValue<string>(out var text))
         {
+            // Models often quote plain numbers ("60"); accept them where only a number is valid.
+            // Expressions, NaN/Infinity and grouped digits stay strings and fail validation.
+            if (coerceNumbers && TryCoerceNumber(text, schema) is { } number)
+                return number;
             static string EnumKey(string text) => text.Replace("_", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
             if (schema.TryGetProperty("enum", out var choices))
             {
@@ -80,8 +85,48 @@ internal static class CadToolSchemaValidator
             }
         foreach (var keyword in new[] { "allOf", "anyOf", "oneOf" })
             if (schema.TryGetProperty(keyword, out var branches))
-                foreach (var branch in branches.EnumerateArray()) value = Normalize(value, branch);
+            {
+                // Never turn a string into a number when another branch accepts it as a string.
+                var keepString = coerceNumbers && value is JsonValue branchScalar && branchScalar.TryGetValue<string>(out _) &&
+                    branches.EnumerateArray().Any(branch =>
+                        FindError(Direct2dCad.AI.Contracts.CadJson.SerializeToElement(value), branch, "$", 0) is null);
+                foreach (var branch in branches.EnumerateArray()) value = Normalize(value, branch, coerceNumbers && !keepString);
+            }
         return value;
+    }
+
+    private static JsonNode? TryCoerceNumber(string text, JsonElement schema)
+    {
+        if (!schema.TryGetProperty("type", out var type)) return null;
+        var types = type.ValueKind == JsonValueKind.Array
+            ? type.EnumerateArray().Select(item => item.GetString()).ToArray()
+            : [type.GetString()];
+        if (types.Contains("string") || !types.Any(item => item is "number" or "integer")) return null;
+        text = text.Trim();
+        if (text.Length is 0 or > 64 ||
+            !double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number) || !double.IsFinite(number))
+            return null;
+        if (!types.Contains("number"))
+            return Math.Truncate(number) == number && number is >= long.MinValue and <= long.MaxValue
+                ? JsonValue.Create((long)number) : null;
+        return JsonValue.Create(number);
+    }
+
+    /// <summary>Describes a rejected value for error messages: its JSON kind plus a short excerpt.</summary>
+    private static string Received(JsonElement value)
+    {
+        const int Limit = 60;
+        static string Clip(string text) => text.Length <= Limit ? text : text[..Limit] + "…";
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => "string \"" + Clip(JsonEncodedText.Encode(value.GetString()!, System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping).Value) + "\"",
+            JsonValueKind.Number => "number " + Clip(value.GetRawText()),
+            JsonValueKind.True or JsonValueKind.False => "boolean " + value.GetRawText(),
+            JsonValueKind.Null => "null",
+            JsonValueKind.Array => $"array with {value.GetArrayLength()} items",
+            JsonValueKind.Object => "object",
+            _ => value.ValueKind.ToString()
+        };
     }
 
     internal static void Validate(JsonElement value, JsonElement schema)
@@ -102,12 +147,12 @@ internal static class CadToolSchemaValidator
             var matches = type.ValueKind == JsonValueKind.Array
                 ? type.EnumerateArray().Any(item => MatchesType(value, item.GetString()))
                 : MatchesType(value, type.GetString());
-            if (!matches) return $"{path}: expected {type.GetRawText()}.";
+            if (!matches) return $"{path}: expected {type.GetRawText()}, got {Received(value)}.";
         }
         if (schema.TryGetProperty("enum", out var choices) && !choices.EnumerateArray().Any(item => JsonElement.DeepEquals(value, item)))
-            return $"{path}: expected one of {choices.GetRawText()}.";
+            return $"{path}: expected one of {choices.GetRawText()}, got {Received(value)}.";
         if (schema.TryGetProperty("const", out var constant) && !JsonElement.DeepEquals(value, constant))
-            return $"{path}: expected {constant.GetRawText()}.";
+            return $"{path}: expected {constant.GetRawText()}, got {Received(value)}.";
 
         if (value.ValueKind == JsonValueKind.Object)
         {

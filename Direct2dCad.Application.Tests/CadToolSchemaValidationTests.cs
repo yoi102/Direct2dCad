@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Direct2dCad.AI.Contracts;
 using Direct2dCad.Application.Tools;
 using Direct2dCad.Db.Cad;
 
@@ -96,6 +97,68 @@ public sealed class CadToolSchemaValidationTests
             """{"entity_ids":[1],"name":"Renamed","color":null}"""), default));
         Assert.True(renamed.RootElement.GetProperty("success").GetBoolean(), renamed.RootElement.ToString());
         Assert.Equal("Renamed", editor.Document.GetEntity(id).Name);
+    }
+
+    [Fact]
+    public async Task QuotedPlainNumbersAreAcceptedWhereOnlyANumberIsValid()
+    {
+        using var data = JsonDocument.Parse("""{"entities":[{"type":"circle","center_x":"60","center_y":" -2.5 ","radius":"1e1","line_weight":"0.35"},{"type":"line","x1":0,"y1":0,"x2":"10","y2":0,"z_index":"3"}]}""");
+        var normalized = CadToolSchemaValidator.NormalizeAndValidate("add_entities", data.RootElement, CadWorkspaceToolExecutor.ToolDefinitions);
+        var circle = normalized.GetProperty("entities")[0];
+        Assert.Equal(60, circle.GetProperty("center_x").GetDouble());
+        Assert.Equal(-2.5, circle.GetProperty("center_y").GetDouble());
+        Assert.Equal(10, circle.GetProperty("radius").GetDouble());
+        Assert.Equal(0.35, circle.GetProperty("line_weight").GetDouble());
+        Assert.Equal(3, normalized.GetProperty("entities")[1].GetProperty("z_index").GetInt32());
+
+        using var workspace = new Workspace();
+        using var result = JsonDocument.Parse(await new CadWorkspaceToolExecutor(workspace).ExecuteAsync(
+            new("quoted", "add_entities", data.RootElement.GetRawText()), default));
+        Assert.True(result.RootElement.GetProperty("success").GetBoolean(), result.RootElement.ToString());
+        Assert.Equal(2, workspace.Session.CadEditor.Document.Entities.Count);
+    }
+
+    [Theory]
+    [InlineData("\"60*cos(30)\"", "got string \"60*cos(30)\"")]
+    [InlineData("\"NaN\"", "got string \"NaN\"")]
+    [InlineData("\"1,000\"", "got string \"1,000\"")]
+    [InlineData("\"\"", "got string \"\"")]
+    [InlineData("true", "got boolean true")]
+    [InlineData("[1,2]", "got array with 2 items")]
+    [InlineData("{\"x\":1}", "got object")]
+    public async Task TypeErrorsReportTheReceivedValue(string x1, string expected)
+    {
+        using var workspace = new Workspace();
+        using var result = JsonDocument.Parse(await new CadWorkspaceToolExecutor(workspace).ExecuteAsync(
+            new("typed", "add_line", "{\"x1\":" + x1 + ",\"y1\":0,\"x2\":10,\"y2\":0}"), default));
+        Assert.False(result.RootElement.GetProperty("success").GetBoolean());
+        var error = result.RootElement.GetProperty("error").GetString();
+        Assert.Contains("$.x1: expected \"number\", " + expected, error);
+        Assert.Empty(workspace.Session.CadEditor.Document.Entities);
+    }
+
+    [Fact]
+    public void QuotedNumbersKeepTheirMeaningWhereStringsAreValid()
+    {
+        // Integer-only fields accept only whole numbers; enums and free strings are never converted.
+        using var fraction = JsonDocument.Parse("""{"entity_ids":["1.5"]}""");
+        var error = Assert.Throws<ArgumentException>(() =>
+            CadToolSchemaValidator.NormalizeAndValidate("select_entities", fraction.RootElement, CadWorkspaceToolExecutor.ToolDefinitions));
+        Assert.Contains("got string \"1.5\"", error.Message);
+        using var ids = JsonDocument.Parse("""{"entity_ids":["7"]}""");
+        Assert.Equal(7, CadToolSchemaValidator.NormalizeAndValidate("select_entities", ids.RootElement,
+            CadWorkspaceToolExecutor.ToolDefinitions).GetProperty("entity_ids")[0].GetInt64());
+        using var text = JsonDocument.Parse("""{"text":"42","x":0,"y":0,"height":"2.5","layer":"12"}""");
+        var normalized = CadToolSchemaValidator.NormalizeAndValidate("add_text", text.RootElement, CadWorkspaceToolExecutor.ToolDefinitions);
+        Assert.Equal(JsonValueKind.String, normalized.GetProperty("text").ValueKind);
+        Assert.Equal(JsonValueKind.String, normalized.GetProperty("layer").ValueKind);
+        Assert.Equal(2.5, normalized.GetProperty("height").GetDouble());
+
+        var mixed = new[] { new AiToolDefinition("mixed", "test", JsonDocument.Parse(
+            """{"type":"object","properties":{"v":{"oneOf":[{"type":"string"},{"type":"number"}]}}}""").RootElement) };
+        using var value = JsonDocument.Parse("""{"v":"12"}""");
+        Assert.Equal(JsonValueKind.String,
+            CadToolSchemaValidator.NormalizeAndValidate("mixed", value.RootElement, mixed).GetProperty("v").ValueKind);
     }
 
     [Fact]
