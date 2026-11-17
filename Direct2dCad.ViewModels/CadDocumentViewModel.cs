@@ -65,6 +65,9 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     private readonly IClipboardTextService _clipboardTextService;
     private readonly ISnackbarService _snackbarService;
     private readonly CadSelectionDragController _selectionDrag = new();
+    // The button that started the current pan, so releasing another button (for example the left
+    // button of an open selection box) does not end it.
+    private CadCanvasPointerButton _panButton;
     private readonly CadSelectionCycleController _selectionCycle = new();
     private readonly CadDrawingSessionState _drawingState = new();
     private readonly CadLayoutViewportCreationState _layoutViewportCreation = new();
@@ -578,6 +581,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         {
             if (!BeginPan(screen))
                 return CadCanvasInteractionResult.HandledOnly;
+            _panButton = button;
             return new CadCanvasInteractionResult(true, CaptureMouse: true, Cursor: CadCanvasCursorKind.Hand);
         }
 
@@ -612,7 +616,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
                 return new CadCanvasInteractionResult(true, CaptureMouse: true, Cursor: CadCanvasCursorKind.Hand);
 
             _selectionDrag.Begin(
-                screen,
+                _screenToWorld(screen),
                 toggleSelection ? CadSelectionMode.Toggle : CadSelectionMode.Replace);
             RequestOverlayRender();
             return new CadCanvasInteractionResult(true, CaptureMouse: true);
@@ -687,12 +691,23 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         _currentMousePoint = screen;
         UpdatePointerWorldStatus(screen);
 
+        // Left button released while a right/middle-button pan is still held: finish the box, keep panning.
+        if (IsPanning && button != _panButton &&
+            CadCanvasToolMode == CadCanvasToolMode.Select &&
+            button == CadCanvasPointerButton.Left &&
+            _selectionDrag.IsDragging)
+        {
+            CompleteSelection(screen);
+            return CadCanvasInteractionResult.HandledOnly;
+        }
+
         if (IsPanning)
         {
             EndPan();
+            // A selection box opened before the pan still needs the left-button release.
             return new CadCanvasInteractionResult(
                 true,
-                ReleaseMouseCapture: true,
+                ReleaseMouseCapture: !_selectionDrag.IsDragging,
                 Cursor: CanvasCursor);
         }
 
@@ -1249,6 +1264,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         if (_selectionDrag.Complete(
                 CreateSelectionInteractionService(),
+                WorldToScreen,
                 endScreen,
                 out var cycleSeed))
         {
@@ -1397,7 +1413,7 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
         if (!_selectionDrag.IsDragging)
             return;
 
-        _selectionDrag.AddPreview(CreateSelectionInteractionService(), items, mousePoint);
+        _selectionDrag.AddPreview(CreateSelectionInteractionService(), WorldToScreen, items, mousePoint);
     }
 
     private CadSelectionInteractionService CreateSelectionInteractionService()
