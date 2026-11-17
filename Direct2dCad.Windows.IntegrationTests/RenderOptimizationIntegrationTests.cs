@@ -196,9 +196,11 @@ public sealed class RenderOptimizationIntegrationTests
     }
 
     [Theory]
-    [InlineData(6)]
-    [InlineData(12)]
-    public void TileReplayAndWideStrokeEditsMatchImmediatePixels(double lineWeight)
+    [InlineData(6, false)]
+    [InlineData(12, false)]
+    [InlineData(6, true)]
+    [InlineData(12, true)]
+    public void TileReplayAndWideStrokeEditsMatchImmediatePixels(double lineWeight, bool deviceSpaceLines)
     {
         var document = CadDocument.Create("Wide cached stroke");
         for (var index = 0; index < 1_024; index++)
@@ -211,6 +213,18 @@ public sealed class RenderOptimizationIntegrationTests
         viewport.SetView(1, new(32, 32));
         using var host = CreateHost(document, viewport);
         using var reference = CreateHost(document, viewport);
+        // The reference replays world-space command lists while tiles are drawn directly. With the
+        // world-space strokes both paths must match exactly; device-space lines may only differ in the
+        // antialiasing of their edges (see DeviceSpaceLineStrokeTests).
+        host.DeviceSpaceLineStrokesEnabled = deviceSpaceLines;
+        reference.DeviceSpaceLineStrokesEnabled = deviceSpaceLines;
+        void AssertMatches(byte[] expected, byte[] actual)
+        {
+            if (deviceSpaceLines)
+                DeviceSpaceLineStrokeTests.AssertSameLineWork(expected, actual, 64, 64);
+            else
+                Assert.Equal(expected, actual);
+        }
         host.RebuildAll(document);
         reference.RebuildAll(document);
         var watch = Stopwatch.StartNew();
@@ -220,7 +234,7 @@ public sealed class RenderOptimizationIntegrationTests
         host.Render(CadRenderInvalidation.Full);
         reference.Render(CadRenderInvalidation.Full);
         Assert.True(host.RenderStatistics.TileReplayCount > 0);
-        Assert.Equal(reference.CaptureBackBufferPixels(), host.CaptureBackBufferPixels());
+        AssertMatches(reference.CaptureBackBufferPixels(), host.CaptureBackBufferPixels());
 
         wide.ReplacePoints([new(-40, 40), new(40, -40), new(-40, -20)]);
         var changes = CadDocumentChangeSet.ForEntities([wide.Id], CadEntityChangeKind.Geometry);
@@ -232,14 +246,14 @@ public sealed class RenderOptimizationIntegrationTests
         host.Render(CadRenderInvalidation.Full);
         reference.Render(CadRenderInvalidation.Full);
         Assert.True(host.RenderStatistics.TileReplayCount > 0);
-        Assert.Equal(reference.CaptureBackBufferPixels(), host.CaptureBackBufferPixels());
+        AssertMatches(reference.CaptureBackBufferPixels(), host.CaptureBackBufferPixels());
 
         viewport.PanScreen(new(-600, 0));
         host.Render(CadRenderInvalidation.Full);
         reference.Render(CadRenderInvalidation.Full);
         Assert.True(host.RenderStatistics.TileReplayCount > 0);
         Assert.Equal(0, host.RenderStatistics.FallbackEntityCount);
-        Assert.Equal(reference.CaptureBackBufferPixels(), host.CaptureBackBufferPixels());
+        AssertMatches(reference.CaptureBackBufferPixels(), host.CaptureBackBufferPixels());
         Assert.Contains(host.CaptureBackBufferPixels().Where((_, index) => index % 4 != 3), value => value > 0);
     }
 

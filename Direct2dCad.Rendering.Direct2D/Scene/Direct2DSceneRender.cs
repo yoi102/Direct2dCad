@@ -54,6 +54,13 @@ public sealed class Direct2DSceneRender : CadRender, ICadGeometryResourceManager
 
     public Direct2DSceneRender() : this(null) { }
 
+    /// <summary>See <see cref="Direct2DStyleResourceCache.DeviceSpaceLineStrokesEnabled"/>.</summary>
+    internal bool DeviceSpaceLineStrokesEnabled
+    {
+        get => _styleResources.DeviceSpaceLineStrokesEnabled;
+        set => _styleResources.DeviceSpaceLineStrokesEnabled = value;
+    }
+
     internal Direct2DSceneRender(CadRenderResourceBudget.DocumentLease? resourceDocument)
     {
         _ownsResourceDocument = resourceDocument is null;

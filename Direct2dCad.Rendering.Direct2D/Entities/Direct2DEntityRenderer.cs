@@ -332,12 +332,22 @@ internal sealed class Direct2DEntityRenderer(
     {
         if (strokeBrush is null)
             return;
+        var width = ResolveStrokeWidth(strokeWidth, viewport, options);
+        var strokeStyle = ResolveStrokeStyle(context, line, resources, options);
+        // The mirrored CAD view puts DrawLine on Direct2D's slow path; a device-space stroke of the same
+        // pixel width draws the identical line about six times faster. See Direct2DLineSubmission.
+        if (Direct2DLineSubmission.TryGetMirroredSimilarityScale(context.Transform, out var scale) &&
+            styleResources.GetDeviceSpaceSolidLineStyle(strokeStyle) is { } deviceSpaceStyle)
+        {
+            context.DrawLine(ToVector2(line.Start), ToVector2(line.End), strokeBrush, width * scale, deviceSpaceStyle);
+            return;
+        }
         context.DrawLine(
             ToVector2(line.Start),
             ToVector2(line.End),
             strokeBrush,
-            ResolveStrokeWidth(strokeWidth, viewport, options),
-            ResolveStrokeStyle(context, line, resources, options));
+            width,
+            strokeStyle);
     }
 
     private static void DrawImage(
@@ -705,7 +715,8 @@ internal sealed class Direct2DEntityRenderer(
             options.IsLevelOfDetailEnabled,
             options.TransformScaleMultiplier,
             resourceCache.HatchTiles,
-            statistics);
+            statistics,
+            styleResources.DeviceSpaceLineStrokesEnabled);
     }
 
     private static void FillBounds(ID2D1DeviceContext context, CadRectD bounds, ID2D1Brush brush)

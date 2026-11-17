@@ -24,7 +24,15 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
     private ID2D1DeviceContext? _deviceContext;
     private ID2D1Factory? _factory;
     private ID2D1PathGeometry? _unitDiamondGeometry;
+    private readonly Dictionary<(CapStyle Start, CapStyle End), ID2D1StrokeStyle> _fixedSolidStrokeStyles = [];
+    private bool _fixedStrokeStylesUnavailable;
     private int _frameDepth;
+
+    /// <summary>
+    /// Allows solid lines drawn directly to a surface to be stroked in device space. Turned off for vector
+    /// print pages so their recorded strokes stay exactly as before.
+    /// </summary>
+    public bool DeviceSpaceLineStrokesEnabled { get; set; } = true;
     private bool _disposed;
 
     public Direct2DStyleResourceCache()
@@ -209,6 +217,52 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
             DashStyle.Solid,
             LevelOfDetailMiterLimit);
         return GetStrokeStyleForFrame(factory, key);
+    }
+
+    /// <summary>
+    /// A stroke style that ignores the world transform (width in device-independent pixels) and otherwise
+    /// draws a single line exactly like <paramref name="source"/>. Null for dashed styles or when unavailable.
+    /// </summary>
+    public ID2D1StrokeStyle? GetDeviceSpaceSolidLineStyle(ID2D1StrokeStyle? source)
+    {
+        ThrowIfDisposed();
+        if (!DeviceSpaceLineStrokesEnabled || _factory is null || _fixedStrokeStylesUnavailable)
+            return null;
+
+        var start = CapStyle.Flat;
+        var end = CapStyle.Flat;
+        if (source is not null)
+        {
+            // Joins, miter limits and dash caps do not affect one solid segment; dashes do.
+            if (source.DashStyle != DashStyle.Solid)
+                return null;
+            start = source.StartCap;
+            end = source.EndCap;
+        }
+
+        if (_fixedSolidStrokeStyles.TryGetValue((start, end), out var existing))
+            return existing;
+
+        using var factory = _factory.QueryInterfaceOrNull<ID2D1Factory1>();
+        if (factory is null)
+        {
+            _fixedStrokeStylesUnavailable = true;
+            return null;
+        }
+
+        var created = factory.CreateStrokeStyle(new StrokeStyleProperties1
+        {
+            StartCap = start,
+            EndCap = end,
+            DashCap = CapStyle.Flat,
+            LineJoin = LineJoin.Miter,
+            MiterLimit = DefaultMiterLimit,
+            DashStyle = DashStyle.Solid,
+            DashOffset = 0,
+            TransformType = StrokeTransformType.Fixed
+        }, []);
+        _fixedSolidStrokeStyles.Add((start, end), created);
+        return created;
     }
 
     public ID2D1PathGeometry? GetUnitDiamondGeometry(ID2D1Factory? factory)
@@ -424,6 +478,10 @@ internal sealed class Direct2DStyleResourceCache : IDisposable
         _unleasedStrokeStyles.Clear();
         _unitDiamondGeometry?.Dispose();
         _unitDiamondGeometry = null;
+        foreach (var style in _fixedSolidStrokeStyles.Values)
+            style.Dispose();
+        _fixedSolidStrokeStyles.Clear();
+        _fixedStrokeStylesUnavailable = false;
     }
 
     private void ThrowIfDisposed()

@@ -112,6 +112,13 @@ public sealed class Direct2DImageRenderHost : ICadGeometryResourceManager, ICadR
 
     public bool UsingWarp => _target.UsingWarp;
 
+    /// <summary>Lets tests compare device-space line strokes with the world-space reference.</summary>
+    internal bool DeviceSpaceLineStrokesEnabled
+    {
+        get => _renderer.DeviceSpaceLineStrokesEnabled;
+        set => _renderer.DeviceSpaceLineStrokesEnabled = value;
+    }
+
     public Color4 FallbackBackgroundColor { get; set; } = new(0.08f, 0.09f, 0.10f, 1.0f);
 
     public IReadOnlyList<CadTextBoundsMeasurement> MeasurePendingTextBounds(CadDocument document)

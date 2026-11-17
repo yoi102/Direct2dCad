@@ -36,13 +36,14 @@ internal sealed class Direct2DMicroEntityAggregator
 
         foreach (var visible in visibleEntities)
         {
-            var rank = renderPacket.GetRank(visible.Entity.Id);
             if (!IsMicroEntity(visible, screenScale, viewport, options))
             {
-                _ordered.Add(new RankedVisibleEntity(rank, visible, null));
+                // The rank only identifies a cell's representative; ordinary entities keep packet order.
+                _ordered.Add(new RankedVisibleEntity(0, visible, null));
                 continue;
             }
 
+            var rank = renderPacket.GetRank(visible.Entity.Id);
             candidateCount++;
             var screen = viewport.WorldToScreen(visible.Entity.Bounds.Center);
             var cellX = (int)Math.Floor(screen.X / CellSizePixels);

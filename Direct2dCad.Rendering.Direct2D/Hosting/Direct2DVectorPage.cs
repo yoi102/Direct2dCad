@@ -24,6 +24,8 @@ public sealed class Direct2DVectorPage : IDisposable
             var context = _resources.Context!;
             _renderer.ResetDeviceResources(_resources.Factory, _resources.DwriteFactory, _resources.Device, context, document, false);
             _renderer.OleDrawCallback = oleDrawCallback;
+            // The page is a recording handed to the print path; keep its strokes in world space.
+            _renderer.DeviceSpaceLineStrokesEnabled = false;
             _commands = context.CreateCommandList(); context.Target = _commands;
             context.BeginDraw();
             try

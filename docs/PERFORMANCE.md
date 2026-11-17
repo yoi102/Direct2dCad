@@ -4,6 +4,33 @@
 
 本文记录当前实现的资源更新原则、性能边界和基准运行方式。具体数值必须与代码版本、机器、驱动和测试场景一起读取；构建或回归通过不代表交互延迟或 FPS 达标。
 
+## 2026-11-17 缩放时的直线描边
+
+默认设置（缩放快照预览、近似比例回退均关闭）下，每一格滚轮缩放都在新比例重绘整帧；图块和命令列表按缩放档缓存，新档位没有缓存，只能逐个实体即时提交。平移和重绘是 0.1 ms 级的图块回放，缩放才是瓶颈。
+
+原因定位（同机硬件 Direct2D，`--d2d-line-probe` 直接调用 Direct2D）：CAD 视图把 Y 轴翻转，变换带镜像；此时 `DrawLine` 走慢路径，约 1.57 µs/条，不翻转或在设备坐标中描边约 0.23–0.25 µs/条。`DrawGeometry`（多段线、圆弧）每个约 1 µs、`DrawEllipse` 约 1.2 µs，与翻转基本无关。
+
+改动：直接绘制到表面且变换为带镜像的等比相似变换时，实线直线改用忽略世界变换的固定宽度描边（宽度换算为相同像素），填充图案线条改为换算到设备坐标后在单位变换下绘制。命令列表在单位变换下录制，不受影响；虚线、自定义线型、非等比变换和矢量打印页保持原路径。可见性判断在实体本身范围已到达可见区域时跳过描边外扩计算，微小实体合并只为候选查询排序；这两项画面不变，墙钟收益在测量噪声内。
+
+`--render-trace`（1600×900、LOD 开、每源 2 轮 × 64 帧，缩放每步 1.1 倍）中位 / P95，单位 ms：
+
+| 图纸 | 连续缩放 前 → 后 | 停止后整帧 前 → 后 |
+|---|---|---|
+| 生成 2 万直线 | 3.89 / 24.5 → 1.68 / 17.3 | 2.76 / 18.7 → 1.25 / 12.8 |
+| 生成 2 万混合 | 3.93 / 31.8 → 2.58 / 27.1 | 3.01 / 27.1 → 2.56 / 24.7 |
+| 10 万混合 `.d2cad` | 12.4 / 131 → 8.37 / 114 | 13.6 / 140 → 8.20 / 112 |
+
+平移、全图重绘、局部刷新不变（约 0.1 ms）。画面：关闭抗锯齿逐像素相同；开启时只有线条边缘抗锯齿不同（最大单通道 56/255，平均约 1/255），`DeviceSpaceLineStrokeTests` 同时检查两张图的有墨像素在 1 像素内互相对应（无移位、缺失、变粗）。因此分块命令列表回放（世界坐标描边）与直接绘制或图块（设备坐标描边）之间不再逐像素一致，只在抗锯齿边缘有差别；`TileReplayAndWideStrokeEditsMatchImmediatePixels` 在旧描边下仍要求逐像素一致。混合图纸剩余成本主要是 Direct2D 自身的几何描边，进一步降低需要合并几何提交。
+
+```powershell
+dotnet run -c Release --project Direct2dCad.Benchmarks -- --render-trace generated:mixed:20000 TestResults/render-trace 2
+dotnet run -c Release --project Direct2dCad.Benchmarks -- --render-trace path\to\drawing.d2cad TestResults/render-trace 3
+dotnet run -c Release --project Direct2dCad.Benchmarks -- --d2d-line-probe TestResults/d2d-line-probe
+dotnet run -c Release --project Direct2dCad.Benchmarks -- --line-compare TestResults/line-compare
+```
+
+`--render-trace` 是 `scripts/benchmarks/Measure-RenderDocument.ps1` 的 C# 版本，不需要 PowerShell 7，另含快照预览（`zoom-preview`）和停止后整帧（`zoom-settle`）两种滚轮路径；环境变量 `RENDER_TRACE_WORLD_LINES=1` 测旧描边。计时含 EndDraw 与共享纹理 Present 回调，不含 GPU 时间戳、WPF 合成或输入延迟。2026-10-04 的两份用户图纸本机不在，未重测。
+
 ## 2026-10-04 真实图纸绘制优化
 
 使用用户提供的 `pUntitled.d2cad`（27,365 实体）和 `p2Untitled.d2cad`（50,410 实体），保留修改前的 Release 程序集，在同机硬件 Direct2D、1600×900 下各重复三次。扩大宽线瓦片缓存的安全范围，并同步扩大编辑失效余量；可见瓦片之后在空闲阶段准备有界的相邻一圈，避免小幅平移时落回大量实体提交。连续缩放绕过即时 geometry realization，静止帧和空闲准备继续复用它。

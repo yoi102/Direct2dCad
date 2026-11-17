@@ -28,7 +28,8 @@ internal static class Direct2DHatchRenderer
         bool isLevelOfDetailEnabled,
         double transformScaleMultiplier = 1.0,
         Direct2DHatchTileCache? tileCache = null,
-        Direct2DRenderStatisticsCollector? statistics = null)
+        Direct2DRenderStatisticsCollector? statistics = null,
+        bool allowDeviceSpaceLines = true)
     {
         if (hatchFill.Lines.Count == 0 || geometryBounds.IsEmpty)
             return;
@@ -66,6 +67,8 @@ internal static class Direct2DHatchRenderer
         };
 
         var previousPrimitiveBlend = deviceContext.PrimitiveBlend;
+        var worldTransform = deviceContext.Transform;
+        var lines = new HatchLineSink(deviceContext, worldTransform, allowDeviceSpaceLines);
         var layerPushed = false;
         try
         {
@@ -73,12 +76,15 @@ internal static class Direct2DHatchRenderer
             deviceContext.PushLayer(ref layerParameters, null!);
             layerPushed = true;
             deviceContext.PrimitiveBlend = PrimitiveBlend.Copy;
+            // The layer keeps the mask it was pushed with, so lines may switch to device space here.
+            if (lines.DeviceSpace)
+                deviceContext.Transform = Matrix3x2.Identity;
 
             var strokeWidth = 1.0f / Math.Max((float)viewport.Zoom, float.Epsilon);
             foreach (var line in hatchFill.Lines)
             {
                 var result = DrawLineSet(
-                    deviceContext,
+                    lines,
                     hatchBounds,
                     hatchFill,
                     hatchOrigin,
@@ -94,6 +100,8 @@ internal static class Direct2DHatchRenderer
         }
         finally
         {
+            if (lines.DeviceSpace)
+                deviceContext.Transform = worldTransform;
             deviceContext.PrimitiveBlend = previousPrimitiveBlend;
             if (layerPushed)
             {
@@ -105,8 +113,46 @@ internal static class Direct2DHatchRenderer
         }
     }
 
+    /// <summary>
+    /// Submits hatch lines either in world space or, under the mirrored CAD view, pre-transformed to device
+    /// space where Direct2D strokes them several times faster. See Direct2DLineSubmission.
+    /// </summary>
+    private readonly struct HatchLineSink
+    {
+        private readonly ID2D1DeviceContext _context;
+        private readonly Matrix3x2 _toDevice;
+        private readonly float _widthScale;
+
+        public HatchLineSink(ID2D1DeviceContext context, Matrix3x2 worldTransform, bool allowDeviceSpace)
+        {
+            _context = context;
+            _toDevice = worldTransform;
+            DeviceSpace = allowDeviceSpace &&
+                Direct2DLineSubmission.TryGetMirroredSimilarityScale(worldTransform, out _widthScale);
+            if (!DeviceSpace)
+                _widthScale = 1;
+        }
+
+        public bool DeviceSpace { get; }
+
+        public void Draw(Vector2 start, Vector2 end, ID2D1Brush brush, float strokeWidth)
+        {
+            if (DeviceSpace)
+            {
+                _context.DrawLine(
+                    Vector2.Transform(start, _toDevice),
+                    Vector2.Transform(end, _toDevice),
+                    brush,
+                    strokeWidth * _widthScale);
+                return;
+            }
+
+            _context.DrawLine(start, end, brush, strokeWidth);
+        }
+    }
+
     private static HatchLineSetResult DrawLineSet(
-        ID2D1DeviceContext deviceContext,
+        HatchLineSink lines,
         CadRectD bounds,
         CadTransientHatchFill hatchStyle,
         CadPointD hatchOrigin,
@@ -197,7 +243,7 @@ internal static class Direct2DHatchRenderer
             var endDistance = maxAlongOrigin - alongOffset + margin;
             if (drawAsSolidLine)
             {
-                deviceContext.DrawLine(
+                lines.Draw(
                     ToVector2(basePoint + direction * startDistance),
                     ToVector2(basePoint + direction * endDistance),
                     brush,
@@ -207,7 +253,7 @@ internal static class Direct2DHatchRenderer
             else
             {
                 lineSubmissions += DrawDashedLine(
-                    deviceContext,
+                    lines,
                     basePoint,
                     direction,
                     startDistance,
@@ -232,7 +278,7 @@ internal static class Direct2DHatchRenderer
     }
 
     private static int DrawDashedLine(
-        ID2D1DeviceContext deviceContext,
+        HatchLineSink lines,
         CadPointD basePoint,
         CadVectorD direction,
         double startDistance,
@@ -287,7 +333,7 @@ internal static class Direct2DHatchRenderer
                 if (dash >= 0)
                 {
                     var point = basePoint + direction * position;
-                    deviceContext.DrawLine(
+                    lines.Draw(
                         ToVector2(point),
                         ToVector2(point + direction * Math.Max(strokeWidth, 0.01f)),
                         brush,
@@ -303,7 +349,7 @@ internal static class Direct2DHatchRenderer
             var next = Math.Min(endDistance, position + segmentLength - segmentOffset);
             if (dash > 0 && next > position)
             {
-                deviceContext.DrawLine(
+                lines.Draw(
                     ToVector2(basePoint + direction * position),
                     ToVector2(basePoint + direction * next),
                     brush,

@@ -498,16 +498,26 @@ internal static class Direct2DEntityVisibility
         Direct2DResourceCache.EntityResourceBucket? resources,
         double broadPhasePadding)
     {
+        // Paint bounds only ever grow the geometric bounds, so an entity whose own bounds already reach
+        // the render area is visible without resolving its stroke padding. In a zoomed-out frame this is
+        // almost every entity, and the padding lookups were the costliest part of choosing what to draw.
+        var geometricBounds = entity.Bounds;
+        if (!geometricBounds.IsEmpty && Reaches(geometricBounds, renderWorldBounds))
+            return true;
+
         var bounds = ResolvePaintBounds(
             entity,
             resources,
             viewport,
             options,
             broadPhasePadding);
-        return bounds.Intersects(renderWorldBounds) ||
-               bounds.Contains(renderWorldBounds.Center) ||
-               renderWorldBounds.Contains(bounds);
+        return Reaches(bounds, renderWorldBounds);
     }
+
+    private static bool Reaches(CadRectD bounds, CadRectD renderWorldBounds) =>
+        bounds.Intersects(renderWorldBounds) ||
+        bounds.Contains(renderWorldBounds.Center) ||
+        renderWorldBounds.Contains(bounds);
 
     private static bool MayIntersectRenderBounds(
         CadEntity entity,

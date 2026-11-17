@@ -14,6 +14,16 @@ public static class Program
         Environment.ExitCode = 1;
         return;
 #else
+        if (args.Length == 2 && args[0] == "--line-compare")
+        { LineStrokeComparisonRunner.Run(args[1]); return; }
+        if (args.Length == 2 && args[0] == "--d2d-line-probe")
+        { D2DLineProbe.Run(args[1]); return; }
+        if (args.Length is 3 or 4 && args[0] == "--render-trace")
+        {
+            RenderTraceRunner.Run(args[1], args[2],
+                args.Length == 4 ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 3);
+            return;
+        }
         if (args.Length == 3 && args[0] == "--dxf-zoom")
         { DxfZoomRunner.Run(args[1], args[2]); return; }
         if(args.Length==2 && args[0]=="--m1-m3-baseline")
