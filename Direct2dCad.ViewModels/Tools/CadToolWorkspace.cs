@@ -109,13 +109,16 @@ internal sealed class CadToolWorkspace(
 
     public CadToolWorkspaceDocument CreateDocument(string? name)
     {
+        // Refuse a bad name before a tab exists, so a failed call leaves no half-made document behind.
+        if (!string.IsNullOrWhiteSpace(name) && EditorTabViewModel.DescribeInvalidDocumentName(name) is { } problem)
+            throw new ArgumentException(problem);
         var dockLayoutService = DockLayoutService;
         var tab = dockLayoutService.OpenOrActivateDocument(
             _ => false,
             () => editorTabFactory.Create(created =>
             {
                 if (!string.IsNullOrWhiteSpace(name) && !created.TryRenameDocument(name))
-                    throw new ArgumentException("Document name cannot be empty.", nameof(name));
+                    throw new InvalidOperationException("The new document could not be named.");
             }));
 
         dockLayoutService.ActiveDockable = tab;
@@ -198,6 +201,11 @@ internal sealed class CadToolWorkspace(
     public bool RenameDocument(string documentId, string name)
     {
         var tab = (EditorTabViewModel)GetRequiredDocument(documentId).Host;
+        if (EditorTabViewModel.DescribeInvalidDocumentName(name) is { } problem)
+            throw new ArgumentException(problem);
+        if (tab.IsCompatibilityReadOnly)
+            throw new InvalidOperationException(
+                "This document is open read-only for compatibility. Use save_compatible_copy, then rename the copy.");
         var renamed = tab.TryRenameDocument(name);
         if (renamed)
             RefreshDocumentExplorer();

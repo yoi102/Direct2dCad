@@ -52,7 +52,7 @@ AI can query entities, layers, and blocks, create or modify geometry, and open, 
 
 Both desktop clients expose the live workspace through MCP Streamable HTTP using the official `ModelContextProtocol.AspNetCore` NuGet package. Launch either executable with `--mcp` to listen at `http://127.0.0.1:5277/mcp`, or use `--mcp-port 5278` to select another loopback port. The Messages toolbox reports startup results. An optional access token (generate one under Application settings → MCP, or set `DIRECT2DCAD_MCP_TOKEN`; `--mcp-token <token>` also works but is visible in the process list) makes the server require `Authorization: Bearer <token>` and answer 401 otherwise. Agent tools can neither read nor change the token.
 
-Application Settings → MCP provides an enable switch, port, live status, failure details, and a button to copy the running address. Apply starts, stops, or changes the listener immediately and saves the preferences for the next launch. MCP defaults to disabled with port 5277. Command-line options override the current launch and are persisted when application settings are saved. When a settings tool stops or changes its own listener, its response completes before the service switches. Reconnect using the new address after changing ports.
+Application Settings → MCP provides an enable switch, port, live status, failure details, and a button to copy the running address. Apply starts, stops, or changes the listener immediately and saves the preferences for the next launch. MCP defaults to disabled with port 5277. Command-line options (and a token from the environment) apply to the current launch only: saving other settings keeps the stored MCP section, and only an explicit MCP change in settings or through `set_application_settings` saves the values then in effect, including the token. A `set_application_settings` reset does not stop the running MCP listener. When a settings tool stops or changes its own listener, its response completes before the service switches. Reconnect using the new address after changing ports.
 
 ### stdio transport
 
@@ -76,7 +76,7 @@ Claude Code: `claude mcp add direct2dcad -e DIRECT2DCAD_MCP_TOKEN=<token> -- "C:
 - If Direct2dCad is open with MCP turned off, the bridge does not open a second window; it asks you to turn on MCP for that port under Application settings → MCP.
 - Options: `--mcp-port <port>` (default 5277), `--mcp-token <token>` (prefer the environment variable), `--no-launch`. Logs go to stderr; stdout carries only protocol messages.
 - The bridge reconnects after the app restarts. If the connection drops during a call, the tool result says the call may have run, so inspect the drawing before retrying. Requests with duplicate property names are refused (`-32700`), as over HTTP.
-- An app started by the bridge behaves like one started with `--mcp-port`: saving application settings later persists that MCP port (and the token from the environment).
+- The port and token of an app started by the bridge apply to that run only and are never written to the settings.
 
 The endpoint supports `2025-11-25` initialize sessions and the `2026-07-28` per-request protocol, including cancellation notifications and HTTP disconnect cancellation. Unknown tool names and invalid catalog cursors return the standard `-32602` protocol error. Tool annotations distinguish read-only queries, additive operations and destructive changes.
 

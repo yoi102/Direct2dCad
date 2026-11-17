@@ -1426,7 +1426,24 @@ public partial class EditorTabViewModel : CadObservableDocument, IEditorTabDocum
     private static bool TryNormalizeDocumentName(string? name, out string normalizedName)
     {
         normalizedName = name?.Trim() ?? string.Empty;
-        return normalizedName.Length > 0 &&
-               normalizedName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
+        return DescribeInvalidDocumentName(normalizedName) is null;
+    }
+
+    /// <summary>
+    /// Explains why a document name would be refused, or returns null when it can be used.
+    /// The name becomes the default file name, so file-name characters are checked as well.
+    /// </summary>
+    public static string? DescribeInvalidDocumentName(string? name)
+    {
+        var trimmed = name?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0)
+            return "Document name cannot be empty.";
+        var invalid = Path.GetInvalidFileNameChars();
+        var found = trimmed.Where(character => Array.IndexOf(invalid, character) >= 0).Distinct()
+            .Select(character => char.IsControl(character) ? $"U+{(int)character:X4}" : $"'{character}'")
+            .ToArray();
+        return found.Length == 0
+            ? null
+            : $"Document name cannot contain {string.Join(", ", found)}: it is also used as the file name.";
     }
 }

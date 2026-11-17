@@ -139,7 +139,8 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IOleHostService, OleHostService>();
         services.AddSingleton<ICadPrintService, CadPrintService>();
         services.AddSingleton<IDialogService, DialogService>();
-        services.AddSingleton<IUserSettingsStore, JsonUserSettingsStore>();
+        // Launch-only MCP values (--mcp-port, --mcp-token, the stdio bridge) must not reach the saved file.
+        services.AddSingleton<IUserSettingsStore>(_ => new SessionMcpUserSettingsStore(new JsonUserSettingsStore()));
         services.AddSingleton<IWorkspaceSettingsStore, JsonWorkspaceSettingsStore>();
         services.AddSingleton<IToolboxLayoutSettingsStore, JsonToolboxLayoutSettingsStore>();
         services.AddSingleton<ToolboxLayoutPersistenceService>();

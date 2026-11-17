@@ -28,7 +28,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly SideToggleManager _sideToggleManager;
     private readonly IApplicationCultureService _cultureSettingService;
     private readonly IApplicationThemeService _themeSettingService;
-    private readonly IUserSettingsStore _userSettingsStore;
+    private readonly SessionMcpUserSettingsStore _userSettingsStore;
     private readonly CadUserSettings _userSettings;
     private readonly ICadMcpService? _mcpService;
     private readonly IClipboardTextService? _clipboardTextService;
@@ -65,8 +65,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _fileDialogService = fileDialogService;
         _imageImportService = imageImportService;
         _dialogService = dialogService;
-        _userSettingsStore = userSettingsStore;
-        _userSettings = userSettingsStore.Load();
+        // Hosts register this wrapper for every consumer; wrapping here as well keeps launch-only
+        // MCP values out of the settings this view model saves even when a host does not.
+        _userSettingsStore = userSettingsStore as SessionMcpUserSettingsStore ?? new SessionMcpUserSettingsStore(userSettingsStore);
+        _userSettings = _userSettingsStore.Load();
         _mcpService = mcpService;
         _clipboardTextService = clipboardTextService;
         _snackbarService = snackbarService;
@@ -331,6 +333,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 _clipboardTextService));
     }
 
+    /// <summary>
+    /// Starts MCP from the saved settings, or from a port and token given for this launch. Launch
+    /// values apply to this session only: saving other preferences keeps the stored MCP section.
+    /// </summary>
     public Task InitializeMcpAsync(int? requestedPort = null, string? requestedAccessToken = null)
     {
         if (requestedPort is { } port)
@@ -340,6 +346,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         if (!string.IsNullOrEmpty(requestedAccessToken))
             _userSettings.Mcp.AccessToken = requestedAccessToken;
+        if (requestedPort is not null || !string.IsNullOrEmpty(requestedAccessToken))
+            _userSettingsStore.UseForSession(_userSettings.Mcp);
         return _mcpService?.ConfigureAsync(
                 _userSettings.Mcp.IsEnabled, _userSettings.Mcp.Port, _userSettings.Mcp.AccessToken)
             ?? Task.CompletedTask;

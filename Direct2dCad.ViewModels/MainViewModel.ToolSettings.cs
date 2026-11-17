@@ -32,6 +32,13 @@ public partial class MainViewModel
     internal JsonElement SetApplicationSettingsForTools(JsonElement patch, bool reset)
     {
         var settings = reset ? CadUserSettings.CreateDefault() : _userSettings.Clone();
+        if (reset)
+        {
+            // A reset restores preferences; it must not switch off the listener the caller is using.
+            // A patch in the same call can still change MCP explicitly.
+            settings.Mcp.IsEnabled = _userSettings.Mcp.IsEnabled;
+            settings.Mcp.Port = _userSettings.Mcp.Port;
+        }
         var merged = JsonSerializer.SerializeToNode(settings, CadToolSettingsJsonContext.Default.CadUserSettings)!.AsObject();
         static void Merge(JsonObject destination, JsonObject source)
         {

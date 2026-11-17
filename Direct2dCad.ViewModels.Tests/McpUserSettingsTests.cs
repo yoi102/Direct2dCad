@@ -226,6 +226,95 @@ public sealed class McpUserSettingsTests
         Assert.Equal("cli-token", service.AccessTokens.Last());
     }
 
+    [Fact]
+    public async Task LaunchOnlyMcpValuesAreNeverWrittenByOtherSaves()
+    {
+        var service = new RecordingMcpService();
+        using var context = new MainWindowTestContext(mcpService: service);
+        await context.ViewModel.InitializeMcpAsync(5279, "launch-token");
+        Assert.Equal((true, 5279), service.Configurations.Last());
+
+        // Any other preference saved during the session keeps the stored MCP section.
+        using var theme = JsonDocument.Parse("{\"general\":{\"is_dark_theme\":false}}");
+        context.ViewModel.SetApplicationSettingsForTools(theme.RootElement, false);
+        var saved = context.Settings.Saved.Last();
+        Assert.False(saved.General.IsDarkTheme);
+        Assert.False(saved.Mcp.IsEnabled);
+        Assert.Equal(5277, saved.Mcp.Port);
+        Assert.Empty(saved.Mcp.AccessToken);
+        Assert.Equal((true, 5279), service.Configurations.Last());
+        Assert.Equal("launch-token", service.AccessTokens.Last());
+
+        // A reset restores preferences without switching off the caller's listener or storing it.
+        using var reset = JsonDocument.Parse("{}");
+        context.ViewModel.SetApplicationSettingsForTools(reset.RootElement, true);
+        Assert.Equal((true, 5279), service.Configurations.Last());
+        Assert.False(context.Settings.Saved.Last().Mcp.IsEnabled);
+        Assert.Empty(context.Settings.Saved.Last().Mcp.AccessToken);
+
+        // Changing MCP itself is deliberate: it is saved and replaces the launch values.
+        using var port = JsonDocument.Parse("{\"mcp\":{\"port\":5290}}");
+        context.ViewModel.SetApplicationSettingsForTools(port.RootElement, false);
+        Assert.Equal((true, 5290), service.Configurations.Last());
+        Assert.True(context.Settings.Saved.Last().Mcp.IsEnabled);
+        Assert.Equal(5290, context.Settings.Saved.Last().Mcp.Port);
+        context.ViewModel.SetApplicationSettingsForTools(theme.RootElement, false);
+        Assert.Equal(5290, context.Settings.Saved.Last().Mcp.Port);
+    }
+
+    [Fact]
+    public void SessionStoreServesLaunchValuesToEveryLoaderAndStoresTheSavedOnes()
+    {
+        var disk = new RecordingSettingsStore();
+        var store = new SessionMcpUserSettingsStore(disk);
+        var live = store.Load();
+        live.Mcp.IsEnabled = true;
+        live.Mcp.Port = 5391;
+        live.Mcp.AccessToken = "env-token";
+        store.UseForSession(live.Mcp);
+        Assert.True(store.HasSessionOverride);
+
+        // An editor tab loads its own copy and saves toolbar changes with it.
+        var tabCopy = store.Load();
+        Assert.Equal(5391, tabCopy.Mcp.Port);
+        tabCopy.Rendering.IsAntialiasingEnabled = !tabCopy.Rendering.IsAntialiasingEnabled;
+        store.Save(tabCopy);
+        Assert.Equal(tabCopy.Rendering.IsAntialiasingEnabled, disk.Saved.Last().Rendering.IsAntialiasingEnabled);
+        Assert.Equal(5277, disk.Saved.Last().Mcp.Port);
+        Assert.Empty(disk.Saved.Last().Mcp.AccessToken);
+        Assert.Equal(5391, tabCopy.Mcp.Port); // the caller's object is not altered
+
+        // The settings dialog shows the values in effect; applying it unchanged stores nothing new for MCP.
+        using var dialog = new UserSettingsViewModel(live, store, live.CopyFrom);
+        Assert.Equal("5391", dialog.Mcp.PortText);
+        Assert.True(dialog.TryApply());
+        Assert.Equal(5277, disk.Saved.Last().Mcp.Port);
+        Assert.True(store.HasSessionOverride);
+
+        dialog.Mcp.PortText = "5392";
+        Assert.True(dialog.TryApply());
+        Assert.Equal(5392, disk.Saved.Last().Mcp.Port);
+        Assert.False(store.HasSessionOverride);
+    }
+
+    [Fact]
+    public void SessionStoreKeepsItsStateWhenTheDiskWriteFails()
+    {
+        var disk = new RecordingSettingsStore();
+        var store = new SessionMcpUserSettingsStore(disk);
+        var live = store.Load();
+        live.Mcp.IsEnabled = true;
+        store.UseForSession(live.Mcp);
+        var changed = live.Clone();
+        changed.Mcp.Port = 6000;
+        disk.Failure = new IOException("disk full");
+        Assert.Throws<IOException>(() => store.Save(changed));
+        Assert.True(store.HasSessionOverride);
+        disk.Failure = null;
+        store.Save(live);
+        Assert.False(disk.Saved.Last().Mcp.IsEnabled);
+    }
+
     private sealed class RecordingClipboard : IClipboardTextService
     {
         public string? Text { get; private set; }

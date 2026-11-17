@@ -41,7 +41,8 @@ public partial class App : global::Avalonia.Application
             services.AddSingleton<ICadRenderSessionFactory, Direct2DRenderSessionFactory>();
             services.AddSingleton<IApplicationCultureService, CultureService>();
             services.AddSingleton<IApplicationThemeService, ThemeService>();
-            services.AddSingleton<IUserSettingsStore, UserSettingsStore>();
+            // Launch-only MCP values (--mcp-port, --mcp-token, the stdio bridge) must not reach the saved file.
+            services.AddSingleton<IUserSettingsStore>(_ => new SessionMcpUserSettingsStore(new UserSettingsStore()));
             services.AddSingleton<IWorkspaceSettingsStore, WorkspaceSettingsStore>();
             services.AddSingleton<IToolboxLayoutSettingsStore, ToolboxSettingsStore>();
             services.AddSingleton<IFileDialogService, FileDialogs>();
