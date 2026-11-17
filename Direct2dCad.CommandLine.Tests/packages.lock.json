@@ -96,8 +96,8 @@
       "direct2dcad.commandline": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )",
-          "Direct2dCad.Lang": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )",
+          "Direct2dCad.Lang": "[0.2.0, )"
         }
       },
       "direct2dcad.db": {

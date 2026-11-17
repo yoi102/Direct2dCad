@@ -1,8 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$InstallerPath,
     [Parameter(Mandatory)][string]$PackageDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.9',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.9')
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.2.0',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.1.0')
 
 $ErrorActionPreference = 'Stop'
 $msiPath = [IO.Path]::GetFullPath($InstallerPath)

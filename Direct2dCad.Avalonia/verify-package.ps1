@@ -5,7 +5,9 @@ $portable = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $artifactRoot = Split-Path $portable -Parent
 $archive = Join-Path $artifactRoot 'Direct2dCad-Avalonia-win-x64.zip'
 $manifestPath = Join-Path $portable 'manifest.json'
-$manifest = @(Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json)
+# Windows PowerShell emits a JSON array as one object; assigning first unrolls it in both editions.
+$manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+$manifest = @($manifest)
 if ($manifest.File -contains 'Direct2dCad.Ole.Native.dll') { throw 'Package contains the removed custom C++ bridge.' }
 $hashes = @{}
 foreach ($entry in $manifest) {
@@ -22,6 +24,7 @@ if (!$evidence.NativeAot -or $evidence.Failure -or $evidence.ExecutableSha256 -n
     $evidence.Gpu.ExecutableSha256 -ne $evidence.ExecutableSha256 -or $evidence.Gpu.Failure -or $evidence.Gpu.SharedFrames -lt 12 -or $evidence.Gpu.CpuReadbacks -ne 0) {
     throw 'Validation does not certify this module set.'
 }
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [IO.Compression.ZipFile]::OpenRead($archive)
 try {
     $files = @($zip.Entries | Where-Object Name)
@@ -30,7 +33,7 @@ try {
         $expectedName = [IO.Path]::GetFileName($portable) + '/' + $entry.Name
         if ($entry.FullName.Replace('\', '/') -ne $expectedName -or !$hashes.ContainsKey($entry.Name)) { throw "Unexpected ZIP member: $($entry.FullName)" }
         $stream = $entry.Open()
-        try { $memberHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream)) } finally { $stream.Dispose() }
+        try { $memberHash = (Get-FileHash -InputStream $stream -Algorithm SHA256).Hash } finally { $stream.Dispose() }
         if ($memberHash -ne $hashes[$entry.Name]) { throw "ZIP checksum mismatch: $($entry.Name)" }
     }
 } finally { $zip.Dispose() }

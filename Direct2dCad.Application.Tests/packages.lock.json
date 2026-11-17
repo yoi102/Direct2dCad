@@ -135,32 +135,32 @@
       "direct2dcad.application": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.AI.Contracts": "[0.1.9, )",
-          "Direct2dCad.CommandLine": "[0.1.9, )",
-          "Direct2dCad.Editor": "[0.1.9, )",
-          "Direct2dCad.IO": "[0.1.9, )",
-          "Direct2dCad.Lang": "[0.1.9, )",
+          "Direct2dCad.AI.Contracts": "[0.2.0, )",
+          "Direct2dCad.CommandLine": "[0.2.0, )",
+          "Direct2dCad.Editor": "[0.2.0, )",
+          "Direct2dCad.IO": "[0.2.0, )",
+          "Direct2dCad.Lang": "[0.2.0, )",
           "MessagePipe": "[1.8.2, )"
         }
       },
       "direct2dcad.changetracking": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "direct2dcad.commandline": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )",
-          "Direct2dCad.Lang": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )",
+          "Direct2dCad.Lang": "[0.2.0, )"
         }
       },
       "direct2dcad.commands": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[0.1.9, )",
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.ChangeTracking": "[0.2.0, )",
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "direct2dcad.db": {
@@ -172,30 +172,30 @@
       "direct2dcad.editor": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[0.1.9, )",
-          "Direct2dCad.Commands": "[0.1.9, )",
-          "Direct2dCad.Db": "[0.1.9, )",
-          "Direct2dCad.HitTesting": "[0.1.9, )",
-          "Direct2dCad.Indexing": "[0.1.9, )",
-          "Direct2dCad.Rendering": "[0.1.9, )"
+          "Direct2dCad.ChangeTracking": "[0.2.0, )",
+          "Direct2dCad.Commands": "[0.2.0, )",
+          "Direct2dCad.Db": "[0.2.0, )",
+          "Direct2dCad.HitTesting": "[0.2.0, )",
+          "Direct2dCad.Indexing": "[0.2.0, )",
+          "Direct2dCad.Rendering": "[0.2.0, )"
         }
       },
       "direct2dcad.hittesting": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "direct2dcad.indexing": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "direct2dcad.io": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )",
+          "Direct2dCad.Db": "[0.2.0, )",
           "MessagePack": "[3.1.12, )",
           "Riok.Mapperly": "[5.0.0-next.13, )"
         }
@@ -209,29 +209,29 @@
       "direct2dcad.mcp": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Application": "[0.1.9, )",
+          "Direct2dCad.Application": "[0.2.0, )",
           "ModelContextProtocol.AspNetCore": "[2.4.0, )"
         }
       },
       "direct2dcad.rendering": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[0.1.9, )",
-          "Direct2dCad.Db": "[0.1.9, )",
-          "Direct2dCad.Rendering.Handles": "[0.1.9, )",
-          "Direct2dCad.Rendering.Transient": "[0.1.9, )"
+          "Direct2dCad.ChangeTracking": "[0.2.0, )",
+          "Direct2dCad.Db": "[0.2.0, )",
+          "Direct2dCad.Rendering.Handles": "[0.2.0, )",
+          "Direct2dCad.Rendering.Transient": "[0.2.0, )"
         }
       },
       "direct2dcad.rendering.handles": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "direct2dcad.rendering.transient": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "Antelcat.I18N.SourceGenerators": {

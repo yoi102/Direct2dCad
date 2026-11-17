@@ -1,12 +1,12 @@
 param(
     [Parameter(Mandatory)][string]$PackageDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.1.9',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.0.9',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.2.0',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.1.0',
     [string]$OutputDirectory = '.artifacts')
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
-$artifactRoot = [IO.Path]::GetFullPath($OutputDirectory, $repo)
+$artifactRoot = [IO.Path]::GetFullPath([IO.Path]::Combine($repo, $OutputDirectory))
 $portable = (Resolve-Path -LiteralPath $PackageDirectory).Path
 $validation = Get-Content -LiteralPath (Join-Path $portable 'validation.json') -Raw | ConvertFrom-Json
 $portableExe = Join-Path $portable 'Direct2dCad.Avalonia.exe'

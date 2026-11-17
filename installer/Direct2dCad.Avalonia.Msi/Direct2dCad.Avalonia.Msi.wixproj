@@ -3,8 +3,8 @@
     <AcceptEula>wix7</AcceptEula>
     <OutputType>Package</OutputType>
     <InstallerPlatform>x64</InstallerPlatform>
-    <Version Condition="'$(Version)' == ''">1.0.9</Version>
-    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.1.9</ReleaseVersion>
+    <Version Condition="'$(Version)' == ''">1.1.0</Version>
+    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.2.0</ReleaseVersion>
     <PackageName>Direct2dCad Avalonia</PackageName>
     <OutputName>Direct2dCad.Avalonia</OutputName>
     <DefineConstants>$(DefineConstants);PayloadDirectory=$(PayloadDirectory);ReleaseVersion=$(ReleaseVersion);Version=$(Version);IconFile=$(MSBuildProjectDirectory)\..\..\Direct2dCad.wpf\Direct2dCad.ico</DefineConstants>

@@ -5,7 +5,7 @@
       "direct2dcad.agent": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.AI.Contracts": "[0.1.9, )"
+          "Direct2dCad.AI.Contracts": "[0.2.0, )"
         }
       },
       "direct2dcad.ai.contracts": {

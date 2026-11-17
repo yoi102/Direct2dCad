@@ -1,12 +1,12 @@
 param(
-    [string]$OutputDirectory = 'TestResults/github-release-0.1.9',
-    [string]$ReleaseVersion = '0.1.9',
-    [string]$InstallerVersion = '1.0.9'
+    [string]$OutputDirectory = 'TestResults/github-release-0.2.0',
+    [string]$ReleaseVersion = '0.2.0',
+    [string]$InstallerVersion = '1.1.0'
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-$releaseRoot = [IO.Path]::GetFullPath($OutputDirectory, $repoRoot)
+$releaseRoot = [IO.Path]::GetFullPath([IO.Path]::Combine($repoRoot, $OutputDirectory))
 if (Test-Path -LiteralPath $releaseRoot) {
     throw "Release output already exists. Choose a fresh OutputDirectory: $releaseRoot"
 }

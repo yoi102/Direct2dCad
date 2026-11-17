@@ -1,12 +1,12 @@
 param(
-    [string]$ReleaseVersion = '0.1.9',
-    [string]$InstallerVersion = '1.0.9',
+    [string]$ReleaseVersion = '0.2.0',
+    [string]$InstallerVersion = '1.1.0',
     [switch]$SkipValidation,
     [switch]$HeadlessValidation,
     [string]$OutputDirectory = '.artifacts')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
-$artifactRoot = [IO.Path]::GetFullPath($OutputDirectory, $repo)
+$artifactRoot = [IO.Path]::GetFullPath([IO.Path]::Combine($repo, $OutputDirectory))
 $buildDirectory = Join-Path $artifactRoot 'build'
 $publish = Join-Path $artifactRoot ('avalonia-native-' + [Guid]::NewGuid().ToString('N'))
 $validation = Join-Path $artifactRoot 'avalonia-native-validation'

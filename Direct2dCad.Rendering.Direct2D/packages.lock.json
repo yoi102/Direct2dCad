@@ -73,7 +73,7 @@
       "direct2dcad.changetracking": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "direct2dcad.db": {
@@ -85,22 +85,22 @@
       "direct2dcad.rendering": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[0.1.9, )",
-          "Direct2dCad.Db": "[0.1.9, )",
-          "Direct2dCad.Rendering.Handles": "[0.1.9, )",
-          "Direct2dCad.Rendering.Transient": "[0.1.9, )"
+          "Direct2dCad.ChangeTracking": "[0.2.0, )",
+          "Direct2dCad.Db": "[0.2.0, )",
+          "Direct2dCad.Rendering.Handles": "[0.2.0, )",
+          "Direct2dCad.Rendering.Transient": "[0.2.0, )"
         }
       },
       "direct2dcad.rendering.handles": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "direct2dcad.rendering.transient": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.1.9, )"
+          "Direct2dCad.Db": "[0.2.0, )"
         }
       },
       "StronglyTypedId": {

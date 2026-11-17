@@ -4,7 +4,7 @@
     <RestoreLockedMode Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</RestoreLockedMode>
 
     <!-- Single product version. Release scripts still override it with -p:Version=... -->
-    <Direct2dCadVersion>0.1.9</Direct2dCadVersion>
+    <Direct2dCadVersion>0.2.0</Direct2dCadVersion>
 
     <!-- Path relative to the repository root: the shared settings below apply only to the
          repository's own projects (Direct2dCad.*/ and tools/), not to the WiX installers

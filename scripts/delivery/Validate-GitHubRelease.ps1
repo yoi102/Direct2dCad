@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$ReleaseDirectory,
-    [string]$ExpectedReleaseVersion = '0.1.9',
-    [string]$ExpectedInstallerVersion = '1.0.9'
+    [string]$ExpectedReleaseVersion = '0.2.0',
+    [string]$ExpectedInstallerVersion = '1.1.0'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -143,7 +143,7 @@ foreach ($row in (ReadMsiRows "SELECT ``Component``,``Directory_`` FROM ``Compon
 }
 $expectedHashes = @{}
 foreach ($file in (Get-ChildItem -LiteralPath $publishDirectory -File -Recurse)) {
-    $relative = [IO.Path]::GetRelativePath($publishDirectory, $file.FullName).Replace('\','/')
+    $relative = $file.FullName.Substring([IO.Path]::GetFullPath($publishDirectory).TrimEnd('\','/').Length + 1).Replace('\','/')
     $expectedHashes[$relative] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
 }
 $payloadRows = @(ReadMsiRows "SELECT ``File``,``FileName``,``Component_`` FROM ``File``" 3)
@@ -155,6 +155,7 @@ foreach ($row in $payloadRows) {
     $actual = (Get-FileHash -LiteralPath (Join-Path (Join-Path $extracted 'File') $row.Values[0]) -Algorithm SHA256).Hash
     if ($actual -ne $expectedHashes[$relative]) { throw "MSI embedded payload differs: $relative" }
 }
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [IO.Compression.ZipFile]::OpenRead($zipPath)
 try {
     $zipFiles = @($zip.Entries | Where-Object Name)
@@ -164,7 +165,7 @@ try {
         $relative = $entry.FullName.Replace('\','/')
         if (!$expectedHashes.ContainsKey($relative) -or !$verifiedNames.Add($relative)) { throw "Unexpected ZIP member: $relative" }
         $stream = $entry.Open()
-        try { $actual = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream)) } finally { $stream.Dispose() }
+        try { $actual = (Get-FileHash -InputStream $stream -Algorithm SHA256).Hash } finally { $stream.Dispose() }
         if ($actual -ne $expectedHashes[$relative]) { throw "ZIP payload differs: $relative" }
     }
 } finally { $zip.Dispose() }
