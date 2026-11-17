@@ -1,6 +1,6 @@
 param(
-    [string]$ReleaseVersion = '0.2.0',
-    [string]$InstallerVersion = '1.1.0',
+    [string]$ReleaseVersion = '0.2.1',
+    [string]$InstallerVersion = '1.1.1',
     [switch]$SkipValidation,
     [switch]$HeadlessValidation,
     [string]$OutputDirectory = '.artifacts')

@@ -1,4 +1,4 @@
-param([string]$OutputDirectory='TestResults/local-package',[string]$Version='0.2.0')
+param([string]$OutputDirectory='TestResults/local-package',[string]$Version='0.2.1')
 $ErrorActionPreference='Stop'
 $repoRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $packageRoot=[IO.Path]::GetFullPath((Join-Path $repoRoot $OutputDirectory))

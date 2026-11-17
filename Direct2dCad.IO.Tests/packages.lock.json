@@ -117,7 +117,7 @@
       "direct2dcad.io": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.2.0, )",
+          "Direct2dCad.Db": "[0.2.1, )",
           "MessagePack": "[3.1.12, )",
           "Riok.Mapperly": "[5.0.0-next.13, )"
         }

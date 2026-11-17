@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory)][string]$PackageDirectory,
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.2.0',
-    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.1.0',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$ReleaseVersion = '0.2.1',
+    [ValidatePattern('^\d+\.\d+\.\d+$')][string]$InstallerVersion = '1.1.1',
     [string]$OutputDirectory = '.artifacts')
 
 $ErrorActionPreference = 'Stop'

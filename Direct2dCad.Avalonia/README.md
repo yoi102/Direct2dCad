@@ -5,7 +5,7 @@ Windows x64 client using Avalonia 12.1.6, .NET 11 NativeAOT and typed compiled X
 Managed build prerequisites: .NET 11 SDK. NativeAOT publication additionally requires the Windows SDK and MSVC native linker through Visual Studio Build Tools, as required by .NET NativeAOT. There is no custom C++ compilation step. Run from PowerShell:
 
 ```powershell
-./Direct2dCad.Avalonia/publish-windows.ps1 -ReleaseVersion 0.2.0 -InstallerVersion 1.1.0
+./Direct2dCad.Avalonia/publish-windows.ps1 -ReleaseVersion 0.2.1 -InstallerVersion 1.1.1
 ```
 
 Use `-HeadlessValidation` to run the same in-process checks without any desktop windows, mouse or keyboard input. This uses Avalonia.Headless for test windowing while retaining the actual NativeAOT executable, Skia text/control rendering and hardware Direct2D CAD rendering. It does not certify Win32 input, focus, dialogs or physical display behavior.

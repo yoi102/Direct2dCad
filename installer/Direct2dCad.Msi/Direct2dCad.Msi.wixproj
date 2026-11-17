@@ -3,8 +3,8 @@
     <AcceptEula>wix7</AcceptEula>
     <OutputType>Package</OutputType>
     <InstallerPlatform>x64</InstallerPlatform>
-    <Version Condition="'$(Version)' == ''">1.1.0</Version>
-    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.2.0</ReleaseVersion>
+    <Version Condition="'$(Version)' == ''">1.1.1</Version>
+    <ReleaseVersion Condition="'$(ReleaseVersion)' == ''">0.2.1</ReleaseVersion>
     <PackageName>Direct2dCad</PackageName>
     <OutputName>Direct2dCad</OutputName>
     <DefineConstants>$(DefineConstants);PublishDirectory=$(PublishDirectory);ReleaseVersion=$(ReleaseVersion);Version=$(Version)</DefineConstants>

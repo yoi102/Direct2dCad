@@ -96,14 +96,14 @@
       "direct2dcad.changetracking": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.Db": "[0.2.0, )"
+          "Direct2dCad.Db": "[0.2.1, )"
         }
       },
       "direct2dcad.commands": {
         "type": "Project",
         "dependencies": {
-          "Direct2dCad.ChangeTracking": "[0.2.0, )",
-          "Direct2dCad.Db": "[0.2.0, )"
+          "Direct2dCad.ChangeTracking": "[0.2.1, )",
+          "Direct2dCad.Db": "[0.2.1, )"
         }
       },
       "direct2dcad.db": {
