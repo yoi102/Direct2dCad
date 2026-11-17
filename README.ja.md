@@ -92,6 +92,7 @@ dotnet publish .\Direct2dCad.wpf\Direct2dCad.wpf.csproj -c Release -r win-x64 --
 - [OLE オブジェクト](https://github.com/user-attachments/assets/ab1f207f-48c2-40a8-b698-496c6077a0a3)
 - [Terminal](https://github.com/user-attachments/assets/fc7236e2-93e8-44f3-800d-b00bfd54f761)
 - [LM Studio AI 1](https://github.com/user-attachments/assets/ebb26f5b-63a1-4159-a101-69da56e776a7)、[AI 2](https://github.com/user-attachments/assets/63a6763b-b63c-4a29-a499-cadb94242509)
+- [MCP](https://github.com/user-attachments/assets/495ee1c0-b150-4cbe-b3ed-d7ec2018573d)
 - [Figma デザイン](https://www.figma.com/board/wZWqWgQ9dd1p4KQVBakqmS/Direct2dCad?node-id=52-299&t=jXGAkAOnYQmodsTk-4)
 
 ## ライセンス
