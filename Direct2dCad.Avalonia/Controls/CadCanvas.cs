@@ -1,3 +1,4 @@
+using Direct2dCad.ViewModels.Services.Input;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Avalonia;
@@ -322,17 +323,25 @@ public sealed class CadCanvas : Control, ID3D11ImageSource, IDisposable
     private void Keys(object? sender, KeyEventArgs e)
     {
         if (_radial.IsVisible) { RadialKeyDown(sender, e); return; }
-        if (e.KeyModifiers == KeyModifiers.None)
+        // Gestures come from the catalog shared with the WPF canvas.
+        switch (Services.AvaloniaShortcuts.Find(CadShortcutScope.Canvas, e.Key, e.KeyModifiers)?.Action)
         {
-            switch (e.Key) { case Key.Escape: Cancel(); break; case Key.Enter: Apply(_document.CompleteCurrentDrawing()); break; case Key.Back: Apply(_document.UndoCurrentDrawingStep()); break; case Key.Delete: Apply(_document.DeleteSelection()); break; case Key.R: _document.ReselectEditObjectsCommand.Execute(null); break; case Key.Tab: Apply(_document.CycleSelection(false)); break; default: return; }
-            e.Handled = true; return;
+            case CadShortcutAction.Cancel: Cancel(); break;
+            case CadShortcutAction.Confirm: Apply(_document.CompleteCurrentDrawing()); break;
+            case CadShortcutAction.PreviousPoint: Apply(_document.UndoCurrentDrawingStep()); break;
+            case CadShortcutAction.Delete: Apply(_document.DeleteSelection()); break;
+            case CadShortcutAction.Reselect: _document.ReselectEditObjectsCommand.Execute(null); break;
+            case CadShortcutAction.NextSelection: Apply(_document.CycleSelection(false)); break;
+            case CadShortcutAction.PreviousSelection: Apply(_document.CycleSelection(true)); break;
+            case CadShortcutAction.SelectAll: Apply(_document.SelectAllEntities()); break;
+            case CadShortcutAction.Undo: _document.Undo(); break;
+            case CadShortcutAction.Redo: _document.Redo(); break;
+            case CadShortcutAction.Copy: _document.CopySelection(); break;
+            case CadShortcutAction.Cut: if (_document.CopySelection() != null) Apply(_document.DeleteSelection()); break;
+            case CadShortcutAction.Paste: Apply(_document.BeginClipboardPastePreview()); break;
+            default: return;
         }
-        if (e.Key == Key.Tab && e.KeyModifiers == KeyModifiers.Shift) { Apply(_document.CycleSelection(true)); e.Handled = true; return; }
-        if (e.Key == Key.Z && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift)) { _document.Redo(); e.Handled = true; return; }
-        if (e.KeyModifiers == KeyModifiers.Control)
-        {
-            switch (e.Key) { case Key.A: Apply(_document.SelectAllEntities()); break; case Key.Z: _document.Undo(); break; case Key.Y: _document.Redo(); break; case Key.C: _document.CopySelection(); break; case Key.X: if (_document.CopySelection() != null) Apply(_document.DeleteSelection()); break; case Key.V: Apply(_document.BeginClipboardPastePreview()); break; default: return; } e.Handled = true;
-        }
+        e.Handled = true;
     }
     private static KeyModifiers RadialModifier(Key key) => key switch
     {

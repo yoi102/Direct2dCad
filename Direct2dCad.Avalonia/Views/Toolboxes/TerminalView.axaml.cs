@@ -1,3 +1,4 @@
+using Direct2dCad.ViewModels.Services.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
@@ -48,14 +49,15 @@ public partial class TerminalView : UserControl
     }
     private void TerminalKey(object? sender, KeyEventArgs e)
     {
-        if (e.Handled || e.KeyModifiers != KeyModifiers.None || DataContext is not CommandLineToolboxViewModel vm) return;
-        switch (e.Key)
+        if (e.Handled || DataContext is not CommandLineToolboxViewModel vm) return;
+        // Gestures come from the catalog shared with the WPF terminal.
+        switch (Services.AvaloniaShortcuts.Find(CadShortcutScope.Terminal, e.Key, e.KeyModifiers)?.Action)
         {
-            case Key.Enter: if (!vm.AcceptSelectedSuggestion()) vm.SubmitCommandInput(); break;
-            case Key.Up: if (vm.HasSuggestions && !vm.IsNavigatingHistory) vm.SelectPreviousSuggestion(); else vm.ShowPreviousCommand(); break;
-            case Key.Down: if (vm.HasSuggestions && !vm.IsNavigatingHistory) vm.SelectNextSuggestion(); else vm.ShowNextCommand(); break;
-            case Key.Tab: if (!vm.HasSuggestions) return; vm.CompleteCommand(); break;
-            case Key.Escape: if (vm.HasSuggestions) vm.DismissSuggestions(); else if (vm.IsCommandExecuting) vm.CancelCurrentCommand(true); else { App.Window?.FocusCanvas(); return; } break;
+            case CadShortcutAction.Confirm: if (!vm.AcceptSelectedSuggestion()) vm.SubmitCommandInput(); break;
+            case CadShortcutAction.SuggestionUp: if (vm.HasSuggestions && !vm.IsNavigatingHistory) vm.SelectPreviousSuggestion(); else vm.ShowPreviousCommand(); break;
+            case CadShortcutAction.SuggestionDown: if (vm.HasSuggestions && !vm.IsNavigatingHistory) vm.SelectNextSuggestion(); else vm.ShowNextCommand(); break;
+            case CadShortcutAction.Complete: if (!vm.HasSuggestions) return; vm.CompleteCommand(); break;
+            case CadShortcutAction.Cancel: if (vm.HasSuggestions) vm.DismissSuggestions(); else if (vm.IsCommandExecuting) vm.CancelCurrentCommand(true); else { App.Window?.FocusCanvas(); return; } break;
             default: return;
         }
         Input.CaretIndex = Input.Text?.Length ?? 0; e.Handled = true;

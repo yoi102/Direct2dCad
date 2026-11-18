@@ -1,3 +1,4 @@
+using Direct2dCad.ViewModels.Services.Input;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using global::Avalonia.Controls;
@@ -171,15 +172,17 @@ public partial class MainWindow : Window
         if (Documents.SelectedItem is TabItem { Content: Views.EditorView radialEditor } && radialEditor.Canvas.IsRadialMenuActive) return;
         if(e.Key==Key.Escape && e.KeyModifiers==KeyModifiers.None && _nativeDock?.CancelDockDrag()==true){e.Handled=true;return;}
         if (e.Handled || RootDialog.IsOpen) return;
+        // Undo/redo gestures are the canvas ones from the shared catalog, routed at window level outside text boxes.
         if ((e.Source is not TextBox || e.Source is Controls.CadPropertyNumberBox) &&
-            (e.Key == Key.Z && e.KeyModifiers is KeyModifiers.Control or (KeyModifiers.Control | KeyModifiers.Shift) || e.Key == Key.Y && e.KeyModifiers == KeyModifiers.Control))
+            AvaloniaShortcuts.Find(CadShortcutScope.Canvas, e.Key, e.KeyModifiers)?.Action is CadShortcutAction.Undo or CadShortcutAction.Redo)
         {
-            var history = e.Key == Key.Y || e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? _model.CurrentEditorTabViewModel?.RedoCommand : _model.CurrentEditorTabViewModel?.UndoCommand;
+            var redo = AvaloniaShortcuts.Find(CadShortcutScope.Canvas, e.Key, e.KeyModifiers)!.Action == CadShortcutAction.Redo;
+            var history = redo ? _model.CurrentEditorTabViewModel?.RedoCommand : _model.CurrentEditorTabViewModel?.UndoCommand;
             if (history?.CanExecute(null) == true) history.Execute(null);
             e.Handled = true; return;
         }
-        var toolboxId = e.KeyModifiers == KeyModifiers.Control ? e.Key switch { Key.J or Key.Oem3 => "toolbox.command-line", _ => null } :
-            e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift) ? e.Key switch { Key.E => "toolbox.documents", Key.L => "toolbox.layers", Key.B => "toolbox.blocks", Key.G => "toolbox.entity-properties", Key.D => "toolbox.drawing-assistant", Key.T => "toolbox.entity-search", Key.F => "toolbox.selection-filter", Key.M => "toolbox.messages", Key.A => "toolbox.ai-assistant", _ => null } : null;
+        var toolboxId = AvaloniaShortcuts.Find(CadShortcutScope.Application, e.Key, e.KeyModifiers) is { Action: CadShortcutAction.ToggleToolbox } toggle
+            ? toggle.ToolboxId : null;
         if (toolboxId is not null && _toolTabs.Keys.OfType<CadToolboxViewModelBase>().FirstOrDefault(t => t.ContentId == toolboxId) is { } toolbox)
         {
             if(_nativeDock?.IsPinned(toolbox)==true || _autoHidden.Contains(toolbox)) { toolbox.IsOpen=true; ShowAutoTool(toolbox); e.Handled=true; return; }

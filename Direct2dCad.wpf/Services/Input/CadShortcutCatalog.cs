@@ -1,86 +1,46 @@
 using System.Windows.Input;
+using Direct2dCad.ViewModels.Services.Input;
 
 namespace Direct2dCad.wpf.Services.Input;
 
-public enum CadShortcutScope { Application, Canvas, Terminal, DynamicInput, AiPrompt }
-public enum CadShortcutAction
-{
-    New, Open, Save, SaveAs, Print, ToggleToolbox,
-    Cancel, Confirm, PreviousPoint, Reselect, Delete, NextSelection, PreviousSelection,
-    SelectAll, Undo, Redo, Copy, Cut, Paste, SuggestionUp, SuggestionDown, Complete,
-    NextField, PreviousField, NextSnapCandidate, SendPrompt, PasteAttachment
-}
-
-public sealed record CadShortcut(CadShortcutScope Scope, CadShortcutAction Action,
-    Key Key, ModifierKeys Modifiers = ModifierKeys.None, string? ToolboxId = null)
-{
-    public bool Matches(Key key, ModifierKeys modifiers) => Key == key && Modifiers == modifiers;
-}
-
-/// <summary>Exact gestures. An additional modifier never falls back to another action.</summary>
+/// <summary>
+/// WPF view of the shared <see cref="CadShortcuts"/> catalog: maps WPF keys onto <see cref="CadKey"/>. The gesture
+/// strings stay here so XAML can keep binding them with <c>x:Static keys:CadShortcutCatalog.*Gesture</c>.
+/// </summary>
 public static class CadShortcutCatalog
 {
-    public static IReadOnlyList<CadShortcut> All { get; } = Array.AsReadOnly<CadShortcut>([
-        new(CadShortcutScope.Application, CadShortcutAction.Cancel, Key.Escape),
-        new(CadShortcutScope.Application, CadShortcutAction.Confirm, Key.Enter),
-        new(CadShortcutScope.Application, CadShortcutAction.New, Key.N, ModifierKeys.Control),
-        new(CadShortcutScope.Application, CadShortcutAction.Open, Key.O, ModifierKeys.Control),
-        new(CadShortcutScope.Application, CadShortcutAction.Save, Key.S, ModifierKeys.Control),
-        new(CadShortcutScope.Application, CadShortcutAction.SaveAs, Key.S, ModifierKeys.Control | ModifierKeys.Shift),
-        new(CadShortcutScope.Application, CadShortcutAction.Print, Key.P, ModifierKeys.Control),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.J, ModifierKeys.Control, "toolbox.command-line"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.Oem3, ModifierKeys.Control, "toolbox.command-line"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.E, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.documents"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.L, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.layers"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.B, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.blocks"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.G, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.entity-properties"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.D, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.drawing-assistant"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.T, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.entity-search"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.F, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.selection-filter"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.M, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.messages"),
-        new(CadShortcutScope.Application, CadShortcutAction.ToggleToolbox, Key.A, ModifierKeys.Control | ModifierKeys.Shift, "toolbox.ai-assistant"),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Cancel, Key.Escape),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Confirm, Key.Enter),
-        new(CadShortcutScope.Canvas, CadShortcutAction.PreviousPoint, Key.Back),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Reselect, Key.R),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Delete, Key.Delete),
-        new(CadShortcutScope.Canvas, CadShortcutAction.NextSelection, Key.Tab),
-        new(CadShortcutScope.Canvas, CadShortcutAction.PreviousSelection, Key.Tab, ModifierKeys.Shift),
-        new(CadShortcutScope.Canvas, CadShortcutAction.SelectAll, Key.A, ModifierKeys.Control),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Undo, Key.Z, ModifierKeys.Control),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Redo, Key.Y, ModifierKeys.Control),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Redo, Key.Z, ModifierKeys.Control | ModifierKeys.Shift),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Copy, Key.C, ModifierKeys.Control),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Cut, Key.X, ModifierKeys.Control),
-        new(CadShortcutScope.Canvas, CadShortcutAction.Paste, Key.V, ModifierKeys.Control),
-        new(CadShortcutScope.Terminal, CadShortcutAction.Confirm, Key.Enter),
-        new(CadShortcutScope.Terminal, CadShortcutAction.SuggestionUp, Key.Up),
-        new(CadShortcutScope.Terminal, CadShortcutAction.SuggestionDown, Key.Down),
-        new(CadShortcutScope.Terminal, CadShortcutAction.Complete, Key.Tab),
-        new(CadShortcutScope.Terminal, CadShortcutAction.Cancel, Key.Escape),
-        new(CadShortcutScope.DynamicInput, CadShortcutAction.NextField, Key.Tab),
-        new(CadShortcutScope.DynamicInput, CadShortcutAction.PreviousField, Key.Tab, ModifierKeys.Shift),
-        new(CadShortcutScope.DynamicInput, CadShortcutAction.Confirm, Key.Enter),
-        new(CadShortcutScope.DynamicInput, CadShortcutAction.Cancel, Key.Escape),
-        new(CadShortcutScope.DynamicInput, CadShortcutAction.NextSnapCandidate, Key.F4),
-        new(CadShortcutScope.AiPrompt, CadShortcutAction.SendPrompt, Key.Enter),
-        new(CadShortcutScope.AiPrompt, CadShortcutAction.SendPrompt, Key.Enter, ModifierKeys.Control),
-        new(CadShortcutScope.AiPrompt, CadShortcutAction.PasteAttachment, Key.V, ModifierKeys.Control)
-    ]);
+    public static IReadOnlyList<CadShortcut> All => CadShortcuts.All;
 
     public static CadShortcut? Find(CadShortcutScope scope, Key key, ModifierKeys modifiers) =>
-        All.FirstOrDefault(shortcut => shortcut.Scope == scope && shortcut.Matches(key, modifiers));
+        CadShortcuts.Find(scope, ToCadKey(key), ToCadModifiers(modifiers));
 
-    public static string NewGesture => ApplicationGesture(CadShortcutAction.New);
-    public static string OpenGesture => ApplicationGesture(CadShortcutAction.Open);
-    public static string SaveGesture => ApplicationGesture(CadShortcutAction.Save);
-    public static string SaveAsGesture => ApplicationGesture(CadShortcutAction.SaveAs);
-    public static string PrintGesture => ApplicationGesture(CadShortcutAction.Print);
+    public static string NewGesture => CadShortcuts.NewGesture;
+    public static string OpenGesture => CadShortcuts.OpenGesture;
+    public static string SaveGesture => CadShortcuts.SaveGesture;
+    public static string SaveAsGesture => CadShortcuts.SaveAsGesture;
+    public static string PrintGesture => CadShortcuts.PrintGesture;
 
-    private static string ApplicationGesture(CadShortcutAction action)
+    public static CadKey ToCadKey(Key key) => key switch
     {
-        var shortcut = All.First(s => s.Scope == CadShortcutScope.Application && s.Action == action);
-        return new KeyGesture(shortcut.Key, shortcut.Modifiers)
-            .GetDisplayStringForCulture(System.Globalization.CultureInfo.InvariantCulture);
+        >= Key.A and <= Key.Z => CadKey.A + (key - Key.A),
+        Key.Escape => CadKey.Escape,
+        Key.Enter => CadKey.Enter,
+        Key.Back => CadKey.Back,
+        Key.Delete => CadKey.Delete,
+        Key.Tab => CadKey.Tab,
+        Key.Up => CadKey.Up,
+        Key.Down => CadKey.Down,
+        Key.F4 => CadKey.F4,
+        Key.Oem3 => CadKey.Backtick,
+        _ => CadKey.None,
+    };
+
+    public static CadKeyModifiers ToCadModifiers(ModifierKeys modifiers)
+    {
+        // Windows-key combinations are never catalog gestures; keep them from matching a plain gesture.
+        if (modifiers.HasFlag(ModifierKeys.Windows)) return (CadKeyModifiers)(-1);
+        return (modifiers.HasFlag(ModifierKeys.Control) ? CadKeyModifiers.Control : 0) |
+               (modifiers.HasFlag(ModifierKeys.Shift) ? CadKeyModifiers.Shift : 0) |
+               (modifiers.HasFlag(ModifierKeys.Alt) ? CadKeyModifiers.Alt : 0);
     }
 }

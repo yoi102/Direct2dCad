@@ -112,8 +112,7 @@ public partial class MainWindow
         {
             var shortcut = CadShortcutCatalog.All.FirstOrDefault(s => s.ToolboxId == toolbox.ContentId);
             if (shortcut is not null)
-                toolbox.Shortcut = new KeyGesture(shortcut.Key, shortcut.Modifiers)
-                    .GetDisplayStringForCulture(System.Globalization.CultureInfo.InvariantCulture);
+                toolbox.Shortcut = shortcut.DisplayGesture;
         }
     }
 
@@ -125,7 +124,8 @@ public partial class MainWindow
             // floating state, instead of implementing a second toolbox lifecycle.
             var primary = CadShortcutCatalog.All.First(s => s.ToolboxId == shortcut.ToolboxId);
             return InputBindings.OfType<KeyBinding>().FirstOrDefault(b =>
-                b.Key == primary.Key && b.Modifiers == primary.Modifiers)?.Command;
+                CadShortcutCatalog.ToCadKey(b.Key) == primary.Key &&
+                CadShortcutCatalog.ToCadModifiers(b.Modifiers) == primary.Modifiers)?.Command;
         }
         var tab = _viewModel.CurrentEditorTabViewModel;
         return shortcut.Action switch

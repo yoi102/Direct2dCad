@@ -42,7 +42,7 @@ public sealed partial class ShortcutRoutingTests
     public void GesturesAreUnambiguousAndDocumentNavigationIsNotShadowed() => RunSta(() =>
     {
         Assert.All(CadShortcutCatalog.All.GroupBy(s => (s.Scope, s.Key, s.Modifiers)), g => Assert.Single(g));
-        Assert.DoesNotContain(CadShortcutCatalog.All, s => s.Key == Key.Tab && s.Modifiers.HasFlag(ModifierKeys.Control));
+        Assert.DoesNotContain(CadShortcutCatalog.All, s => s.Key == CadKey.Tab && s.Modifiers.HasFlag(CadKeyModifiers.Control));
         foreach (var action in new[] { CadShortcutAction.Copy, CadShortcutAction.Cut, CadShortcutAction.Paste,
             CadShortcutAction.Undo, CadShortcutAction.Redo, CadShortcutAction.SelectAll })
             Assert.DoesNotContain(CadShortcutCatalog.All, s => s.Scope == CadShortcutScope.Application && s.Action == action);
