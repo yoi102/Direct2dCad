@@ -41,10 +41,13 @@ public partial class App : global::Avalonia.Application
             services.AddSingleton<ICadRenderSessionFactory, Direct2DRenderSessionFactory>();
             services.AddSingleton<IApplicationCultureService, CultureService>();
             services.AddSingleton<IApplicationThemeService, ThemeService>();
+            var settings = SettingsPath.Location;
             // Launch-only MCP values (--mcp-port, --mcp-token, the stdio bridge) must not reach the saved file.
-            services.AddSingleton<IUserSettingsStore>(_ => new SessionMcpUserSettingsStore(new UserSettingsStore()));
-            services.AddSingleton<IWorkspaceSettingsStore, WorkspaceSettingsStore>();
-            services.AddSingleton<IToolboxLayoutSettingsStore, ToolboxSettingsStore>();
+            services.AddSingleton<IUserSettingsStore>(_ => new SessionMcpUserSettingsStore(new JsonUserSettingsStore(
+                settings.GetPath("user-settings.json"), settings.IsOverridden ? null : SettingsPath.WpfUserSettingsPath)));
+            services.AddSingleton<IWorkspaceSettingsStore>(_ => new JsonWorkspaceSettingsStore(settings.GetPath("workspace-settings.json")));
+            services.AddSingleton<IToolboxLayoutSettingsStore>(_ => new JsonToolboxLayoutSettingsStore(settings.GetPath("toolbox-settings.json")));
+            services.AddSingleton<IAiAssistantSettingsStore>(_ => new JsonAiAssistantSettingsStore(settings.GetPath("ai-assistant-settings.json")));
             services.AddSingleton<IFileDialogService, FileDialogs>();
             services.AddSingleton<IFileLocationService, FileLocationService>();
             services.AddSingleton<IImageImportService, ImageImportService>();
@@ -79,7 +82,6 @@ public partial class App : global::Avalonia.Application
             services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
             services.AddSingleton<IAiChatClient, LmStudioChatClient>();
             services.AddSingleton<ICodexAgentClient, CodexAppServerClient>();
-            services.AddSingleton<IAiAssistantSettingsStore, AiSettingsStore>();
             services.AddSingleton<DocumentExplorerToolboxViewModel>(); services.AddSingleton<LayersToolboxViewModel>();
             services.AddSingleton<BlocksToolboxViewModel>(); services.AddSingleton<EntityPropertiesToolboxViewModel>();
             services.AddSingleton<DrawingRecoveryToolboxViewModel>(); services.AddSingleton<EntitySearchToolboxViewModel>();

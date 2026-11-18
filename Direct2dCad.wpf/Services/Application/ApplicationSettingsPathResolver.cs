@@ -1,23 +1,15 @@
 using System.IO;
+using Direct2dCad.ViewModels.Services.Platform;
 
 namespace Direct2dCad.wpf.Services.Application;
 
 internal static class ApplicationSettingsPathResolver
 {
-    internal const string SettingsDirectoryEnvironmentVariable =
-        "DIRECT2DCAD_SETTINGS_DIRECTORY";
+    internal const string SettingsDirectoryEnvironmentVariable = CadSettingsLocation.DirectoryEnvironmentVariable;
 
-    public static string Resolve(string fileName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+    /// <summary>%APPDATA%\Direct2dCad unless <see cref="SettingsDirectoryEnvironmentVariable"/> overrides it.</summary>
+    public static CadSettingsLocation Location => CadSettingsLocation.Resolve(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Direct2dCad"));
 
-        var configuredDirectory = Environment.GetEnvironmentVariable(
-            SettingsDirectoryEnvironmentVariable);
-        var directory = string.IsNullOrWhiteSpace(configuredDirectory)
-            ? Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "Direct2dCad")
-            : Path.GetFullPath(configuredDirectory);
-        return Path.Combine(directory, fileName);
-    }
+    public static string Resolve(string fileName) => Location.GetPath(fileName);
 }

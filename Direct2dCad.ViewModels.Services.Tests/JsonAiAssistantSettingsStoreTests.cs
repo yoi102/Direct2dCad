@@ -1,7 +1,7 @@
 using Direct2dCad.AI.Contracts;
-using Direct2dCad.AI.LmStudio;
+using Direct2dCad.ViewModels.Services.Platform;
 
-namespace Direct2dCad.AI.Tests;
+namespace Direct2dCad.ViewModels.Services.Tests;
 
 public sealed class JsonAiAssistantSettingsStoreTests
 {

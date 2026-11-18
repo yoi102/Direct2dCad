@@ -11,10 +11,8 @@ using Direct2dCad.ViewModels.Services.Platform.Notifications;
 
 namespace Direct2dCad.Avalonia.Services;
 
-[JsonSerializable(typeof(CadUserSettings))]
-[JsonSerializable(typeof(CadWorkspaceSettings))]
-[JsonSerializable(typeof(CadToolboxLayoutSettings))]
-[JsonSerializable(typeof(AiAssistantSettings))]
+// Settings shared with the WPF host (user, workspace, toolbox, AI) use the stores in ViewModels.Services;
+// this context only covers the Avalonia-specific dock files.
 [JsonSerializable(typeof(DockUiState))]
 [JsonSerializable(typeof(NativeDockState))]
 [JsonSourceGenerationOptions(WriteIndented = true)]
@@ -34,53 +32,15 @@ internal sealed class FloatingToolState { public double Width { get; set; } = 38
 
 internal static class SettingsPath
 {
-    public static string Get(string name) => Path.Combine(
-        Environment.GetEnvironmentVariable("DIRECT2DCAD_SETTINGS_DIRECTORY") ??
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Direct2dCad", "Avalonia"), name);
-    public static T? Read<T>(string name, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> type)
-    {
-        try { return File.Exists(Get(name)) ? JsonSerializer.Deserialize(File.ReadAllText(Get(name)), type) : default; }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { return default; }
-    }
-    public static void Write<T>(string name, T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> type)
-    {
-        var path = Get(name); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try { File.WriteAllText(temporary, JsonSerializer.Serialize(value, type)); File.Move(temporary, path, true); }
-        finally { if (File.Exists(temporary)) File.Delete(temporary); }
-    }
-}
-internal sealed class UserSettingsStore : IUserSettingsStore
-{
-    public CadUserSettings Load()
-    {
-        var settings = SettingsPath.Read("user-settings.json", SettingsJsonContext.Default.CadUserSettings);
-        if (settings is null && Environment.GetEnvironmentVariable("DIRECT2DCAD_SETTINGS_DIRECTORY") is null && !File.Exists(SettingsPath.Get("user-settings.json")))
-        {
-            var wpf = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Direct2dCad", "user-settings.json");
-            try { if (File.Exists(wpf)) settings = JsonSerializer.Deserialize(File.ReadAllText(wpf), SettingsJsonContext.Default.CadUserSettings); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException) { }
-        }
-        settings ??= CadUserSettings.CreateDefault(); settings.Normalize(); return settings;
-    }
-    public void Save(CadUserSettings settings) { settings.Normalize(); SettingsPath.Write("user-settings.json", settings, SettingsJsonContext.Default.CadUserSettings); }
-}
-internal sealed class WorkspaceSettingsStore : IWorkspaceSettingsStore
-{
-    private readonly CadWorkspaceSettings _settings = SettingsPath.Read("workspace-settings.json", SettingsJsonContext.Default.CadWorkspaceSettings) ?? new();
-    public CadDocumentWorkspaceSettings LoadDocument(string path) => _settings.Documents.TryGetValue(Path.GetFullPath(path), out var settings) ? settings.Clone() : new();
-    public void SaveDocument(string path, CadDocumentWorkspaceSettings settings) { _settings.Documents[Path.GetFullPath(path)] = settings.Clone(); _settings.Normalize(); SettingsPath.Write("workspace-settings.json", _settings, SettingsJsonContext.Default.CadWorkspaceSettings); }
-}
-internal sealed class ToolboxSettingsStore : IToolboxLayoutSettingsStore
-{
-    private readonly CadToolboxLayoutSettings _settings = SettingsPath.Read("toolbox-settings.json", SettingsJsonContext.Default.CadToolboxLayoutSettings) ?? new();
-    public CadToolboxState? Load(string id) => _settings.Toolboxes.TryGetValue(id, out var settings) ? settings.Clone() : null;
-    public void Save(IEnumerable<KeyValuePair<string, CadToolboxState>> toolboxes) { _settings.Toolboxes = toolboxes.ToDictionary(p => p.Key, p => p.Value.Clone()); _settings.Normalize(); SettingsPath.Write("toolbox-settings.json", _settings, SettingsJsonContext.Default.CadToolboxLayoutSettings); }
-}
-internal sealed class AiSettingsStore : IAiAssistantSettingsStore
-{
-    public AiAssistantSettings Load() { var settings = SettingsPath.Read("ai-assistant-settings.json", SettingsJsonContext.Default.AiAssistantSettings) ?? new(); settings.Normalize(); return settings; }
-    public void Save(AiAssistantSettings settings) { settings.Normalize(); SettingsPath.Write("ai-assistant-settings.json", settings, SettingsJsonContext.Default.AiAssistantSettings); }
+    /// <summary>%APPDATA%\Direct2dCad\Avalonia unless DIRECT2DCAD_SETTINGS_DIRECTORY overrides it.</summary>
+    public static CadSettingsLocation Location => CadSettingsLocation.Resolve(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Direct2dCad", "Avalonia"));
+    /// <summary>The WPF host's preferences, adopted on the first Avalonia run.</summary>
+    public static string WpfUserSettingsPath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Direct2dCad", "user-settings.json");
+    public static string Get(string name) => Location.GetPath(name);
+    public static T? Read<T>(string name, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> type) => CadSettingsFile.Read(Get(name), type);
+    public static void Write<T>(string name, T value, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> type) => CadSettingsFile.WriteAtomically(Get(name), value, type);
 }
 internal sealed class ThemeService : IApplicationThemeService
 {

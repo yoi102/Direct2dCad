@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Net.Http;
 using Antelcat.I18N.WPF;
@@ -139,10 +140,16 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IOleHostService, OleHostService>();
         services.AddSingleton<ICadPrintService, CadPrintService>();
         services.AddSingleton<IDialogService, DialogService>();
+        var settings = ApplicationSettingsPathResolver.Location;
         // Launch-only MCP values (--mcp-port, --mcp-token, the stdio bridge) must not reach the saved file.
-        services.AddSingleton<IUserSettingsStore>(_ => new SessionMcpUserSettingsStore(new JsonUserSettingsStore()));
-        services.AddSingleton<IWorkspaceSettingsStore, JsonWorkspaceSettingsStore>();
-        services.AddSingleton<IToolboxLayoutSettingsStore, JsonToolboxLayoutSettingsStore>();
+        services.AddSingleton<IUserSettingsStore>(_ =>
+            new SessionMcpUserSettingsStore(new JsonUserSettingsStore(settings.GetPath("user-settings.json"))));
+        services.AddSingleton<IWorkspaceSettingsStore>(_ => new JsonWorkspaceSettingsStore(settings.GetPath("workspace-settings.json")));
+        services.AddSingleton<IToolboxLayoutSettingsStore>(_ => new JsonToolboxLayoutSettingsStore(settings.GetPath("toolbox-settings.json")));
+        // The WPF host has always kept AI settings under LocalApplicationData.
+        services.AddSingleton<IAiAssistantSettingsStore>(_ => new JsonAiAssistantSettingsStore(settings.IsOverridden
+            ? settings.GetPath("ai-assistant-settings.json")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Direct2dCad", "ai-assistant-settings.json")));
         services.AddSingleton<ToolboxLayoutPersistenceService>();
         services.AddSingleton<ISystemFontCatalog, WpfSystemFontCatalog>();
         services.AddSingleton<ICadMessageLog, CadMessageLog>();
@@ -152,7 +159,6 @@ public partial class App : System.Windows.Application
         services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
         services.AddSingleton<IAiChatClient, LmStudioChatClient>();
         services.AddSingleton<ICodexAgentClient, CodexAppServerClient>();
-        services.AddSingleton<IAiAssistantSettingsStore, JsonAiAssistantSettingsStore>();
 
         services.AddTransient<MainWindow>();
     }
