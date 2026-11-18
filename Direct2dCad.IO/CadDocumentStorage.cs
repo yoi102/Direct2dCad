@@ -268,28 +268,28 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
             cancellationToken.ThrowIfCancellationRequested();
             budget.Validate(payload.Payload, GetMessagePackOptions(payload.Entry.Compression));
         }
-        var documentInfo = ReadRequiredSection<CadDocumentSection>(payloads, CadSectionKind.Document);
-        var settings = ReadRequiredSection<CadSettingsSection>(payloads, CadSectionKind.Settings);
-        var layers = ReadRequiredSection<CadLayerSection>(payloads, CadSectionKind.Layers);
-        var styles = ReadRequiredSection<CadStylesSection>(payloads, CadSectionKind.Styles);
-        var layouts = ReadOptionalSection(payloads, CadSectionKind.Layouts, new CadLayoutsSection());
-        var blocks = ReadOptionalSection(payloads, CadSectionKind.Blocks, new CadBlocksSection());
-        var lines = ReadRequiredSection<CadLinesSection>(payloads, CadSectionKind.Lines);
-        var circles = ReadRequiredSection<CadCirclesSection>(payloads, CadSectionKind.Circles);
-        var ellipses = ReadOptionalSection(payloads, CadSectionKind.Ellipses, new CadEllipsesSection());
-        var arcs = ReadRequiredSection<CadArcsSection>(payloads, CadSectionKind.Arcs);
-        var rectangles = ReadOptionalSection(payloads, CadSectionKind.Rectangles, new CadRectanglesSection());
-        var polylines = ReadOptionalSection(payloads, CadSectionKind.Polylines, new CadPolylinesSection());
-        var splines = ReadOptionalSection(payloads, CadSectionKind.Splines, new CadSplinesSection());
-        var compositePaths = ReadOptionalSection(payloads, CadSectionKind.CompositePaths, new CadCompositePathsSection());
-        var texts = ReadRequiredSection<CadTextsSection>(payloads, CadSectionKind.Texts);
-        var shapeTexts = ReadOptionalSection(payloads, CadSectionKind.ShapeTexts, new CadShapeTextsSection());
-        var images = ReadOptionalSection(payloads, CadSectionKind.Images, new CadImagesSection());
-        var oleObjects = ReadOptionalSection(payloads, CadSectionKind.OleObjects, new CadOleObjectsSection());
-        var blockReferences = ReadOptionalSection(payloads, CadSectionKind.BlockReferences, new CadBlockReferencesSection());
+        var documentInfo = ReadRequiredSection<CadDocumentSection>(payloads, limits, CadSectionKind.Document);
+        var settings = ReadRequiredSection<CadSettingsSection>(payloads, limits, CadSectionKind.Settings);
+        var layers = ReadRequiredSection<CadLayerSection>(payloads, limits, CadSectionKind.Layers);
+        var styles = ReadRequiredSection<CadStylesSection>(payloads, limits, CadSectionKind.Styles);
+        var layouts = ReadOptionalSection(payloads, limits, CadSectionKind.Layouts, new CadLayoutsSection());
+        var blocks = ReadOptionalSection(payloads, limits, CadSectionKind.Blocks, new CadBlocksSection());
+        var lines = ReadRequiredSection<CadLinesSection>(payloads, limits, CadSectionKind.Lines);
+        var circles = ReadRequiredSection<CadCirclesSection>(payloads, limits, CadSectionKind.Circles);
+        var ellipses = ReadOptionalSection(payloads, limits, CadSectionKind.Ellipses, new CadEllipsesSection());
+        var arcs = ReadRequiredSection<CadArcsSection>(payloads, limits, CadSectionKind.Arcs);
+        var rectangles = ReadOptionalSection(payloads, limits, CadSectionKind.Rectangles, new CadRectanglesSection());
+        var polylines = ReadOptionalSection(payloads, limits, CadSectionKind.Polylines, new CadPolylinesSection());
+        var splines = ReadOptionalSection(payloads, limits, CadSectionKind.Splines, new CadSplinesSection());
+        var compositePaths = ReadOptionalSection(payloads, limits, CadSectionKind.CompositePaths, new CadCompositePathsSection());
+        var texts = ReadRequiredSection<CadTextsSection>(payloads, limits, CadSectionKind.Texts);
+        var shapeTexts = ReadOptionalSection(payloads, limits, CadSectionKind.ShapeTexts, new CadShapeTextsSection());
+        var images = ReadOptionalSection(payloads, limits, CadSectionKind.Images, new CadImagesSection());
+        var oleObjects = ReadOptionalSection(payloads, limits, CadSectionKind.OleObjects, new CadOleObjectsSection());
+        var blockReferences = ReadOptionalSection(payloads, limits, CadSectionKind.BlockReferences, new CadBlockReferencesSection());
 
-        var regions = ReadOptionalSection(payloads, CadSectionKind.Regions, new CadRegionsSection());
-        var dimensions = ReadOptionalSection(payloads, CadSectionKind.Dimensions, new CadDimensionsSection());
+        var regions = ReadOptionalSection(payloads, limits, CadSectionKind.Regions, new CadRegionsSection());
+        var dimensions = ReadOptionalSection(payloads, limits, CadSectionKind.Dimensions, new CadDimensionsSection());
         var entityCount = (long)regions.Regions.Count + dimensions.Dimensions.Count + lines.Lines.Count + circles.Circles.Count + ellipses.Ellipses.Count +
             arcs.Arcs.Count + rectangles.Rectangles.Count + polylines.Polylines.Count + splines.Splines.Count +
             (ellipses.EllipseArcs?.Count ?? 0) + compositePaths.CompositePaths.Count + texts.Texts.Count + shapeTexts.ShapeTexts.Count + images.Images.Count +
@@ -328,31 +328,33 @@ public sealed partial class CadDocumentStorage : ICadDocumentWriter
 
     private static TSection ReadRequiredSection<TSection>(
         IReadOnlyDictionary<CadSectionKind, SerializedSectionPayload> payloads,
+        CadDocumentLoadLimits limits,
         CadSectionKind kind)
     {
         if (!payloads.TryGetValue(kind, out var section))
             throw new InvalidDataException($"Section not found: {kind}");
 
-        return DeserializeSection<TSection>(section);
+        return DeserializeSection<TSection>(section, limits);
     }
 
     private static TSection ReadOptionalSection<TSection>(
         IReadOnlyDictionary<CadSectionKind, SerializedSectionPayload> payloads,
+        CadDocumentLoadLimits limits,
         CadSectionKind kind,
         TSection fallback)
     {
         return payloads.TryGetValue(kind, out var section)
-            ? DeserializeSection<TSection>(section)
+            ? DeserializeSection<TSection>(section, limits)
             : fallback;
     }
 
-    private static TSection DeserializeSection<TSection>(SerializedSectionPayload section)
+    private static TSection DeserializeSection<TSection>(SerializedSectionPayload section, CadDocumentLoadLimits limits)
     {
         return CadSectionMigrationRegistry.ReadCurrent<TSection>(
             section.Entry.Kind,
             section.Entry.Version,
             section.Payload,
-            new CadDocumentLoadLimits().Secure(GetMessagePackOptions(section.Entry.Compression)));
+            limits.Secure(GetMessagePackOptions(section.Entry.Compression)));
     }
 
     private static IReadOnlyList<CadSectionEntry> ReadSectionEntries(

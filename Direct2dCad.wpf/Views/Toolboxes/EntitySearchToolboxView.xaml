@@ -90,7 +90,7 @@
             <TextBox Grid.Row="1"
                      Grid.ColumnSpan="3"
                      Margin="0,0,0,8"
-                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, Delay=250}"
                      md:HintAssist.Hint="{Binding SearchHintText}" />
 
             <ComboBox Grid.Row="2"

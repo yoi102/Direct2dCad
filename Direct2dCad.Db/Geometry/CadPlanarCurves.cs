@@ -4,9 +4,26 @@ namespace Direct2dCad.Db.Geometry;
 
 public static class CadPlanarCurves
 {
+    private const string UnsupportedEntityMessage = "This operation supports lines, circular and elliptical arcs, and line/arc paths.";
+    private const string UnsupportedSegmentMessage = "This operation requires line or circular arc segments.";
+
     /// <summary>Exact line, circular and elliptical primitives. Unsupported curves fail explicitly.</summary>
     public static IReadOnlyList<CadPlanarPrimitive> Get(CadEntity entity)
     {
+        var primitives = Create(entity, out var error);
+        return error is null ? primitives : throw new NotSupportedException(error);
+    }
+
+    /// <summary>Non-throwing <see cref="Get"/> for per-frame callers (object snap, measurement) that skip unsupported entities.</summary>
+    public static bool TryGet(CadEntity entity, out IReadOnlyList<CadPlanarPrimitive> primitives)
+    {
+        primitives = Create(entity, out var error);
+        return error is null;
+    }
+
+    private static IReadOnlyList<CadPlanarPrimitive> Create(CadEntity entity, out string? error)
+    {
+        error = null;
         switch (entity)
         {
             case CadRegion region: return region.Contours.SelectMany(c => c.Edges).ToArray();
@@ -25,17 +42,17 @@ public static class CadPlanarCurves
                 foreach (var segment in path.Segments)
                 {
                     var end = CadCompositePath.GetEndPoint(start, segment);
-                    primitives.Add(segment switch
+                    switch (segment)
                     {
-                        CadCompositeLineSegment => CadPlanarPrimitive.Line(start, end),
-                        CadCompositeArcSegment a => CadPlanarPrimitive.Arc(a.Center, start.DistanceTo(a.Center), Math.Atan2(start.Y-a.Center.Y,start.X-a.Center.X),a.SweepAngleRadians),
-                        _ => throw new NotSupportedException("This operation requires line or circular arc segments.")
-                    });
+                        case CadCompositeLineSegment: primitives.Add(CadPlanarPrimitive.Line(start, end)); break;
+                        case CadCompositeArcSegment a: primitives.Add(CadPlanarPrimitive.Arc(a.Center, start.DistanceTo(a.Center), Math.Atan2(start.Y-a.Center.Y,start.X-a.Center.X),a.SweepAngleRadians)); break;
+                        default: error = UnsupportedSegmentMessage; return [];
+                    }
                     start = end;
                 }
                 if (path.Closed && !CadGeometryTolerance.Coincident(start,path.StartPoint)) primitives.Add(CadPlanarPrimitive.Line(start,path.StartPoint));
                 return primitives;
-            default: throw new NotSupportedException("This operation supports lines, circular and elliptical arcs, and line/arc paths.");
+            default: error = UnsupportedEntityMessage; return [];
         }
     }
     private static IReadOnlyList<CadPlanarPrimitive> Lines(IReadOnlyList<CadPointD> points, bool closed)

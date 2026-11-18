@@ -178,13 +178,12 @@ public sealed partial class CadDocumentToolExecutor
 
     private static (IReadOnlyList<CadPlanarPrimitive> Primitives,bool Approximate,double Error) QueryPrimitives(CadEntity entity)
     {
-        try {return (CadPlanarCurves.Get(entity),false,0);}
-        catch(NotSupportedException) when(entity is Curve)
-        {
-            var tessellation=CadCurveTessellation.Create((Curve)entity);
-            if(tessellation.ReachedBudget) throw new InvalidOperationException("Curve calculation exceeds its precision budget.");
-            return (tessellation.Points.Zip(tessellation.Points.Skip(1),CadPlanarPrimitive.Line).ToArray(),true,tessellation.ErrorBound);
-        }
+        if(CadPlanarCurves.TryGet(entity,out var exact)) return (exact,false,0);
+        // Non-curves keep the original NotSupportedException from Get.
+        if(entity is not Curve curve) return (CadPlanarCurves.Get(entity),false,0);
+        var tessellation=CadCurveTessellation.Create(curve);
+        if(tessellation.ReachedBudget) throw new InvalidOperationException("Curve calculation exceeds its precision budget.");
+        return (tessellation.Points.Zip(tessellation.Points.Skip(1),CadPlanarPrimitive.Line).ToArray(),true,tessellation.ErrorBound);
     }
 
     private static SegmentProjection ProjectToPrimitive(CadPointD point,CadPlanarPrimitive p)

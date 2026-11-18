@@ -1,4 +1,4 @@
-<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty" x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.TransientEllipsePropertyView">
+<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:r="clr-namespace:Direct2dCad.Lang;assembly=Direct2dCad.Lang" xmlns:ep="clr-namespace:Direct2dCad.wpf.Views.Toolboxes.EntityProperty" x:Class="Direct2dCad.wpf.Views.Toolboxes.EntityProperty.TransientEllipsePropertyView" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:vmdesign="clr-namespace:Direct2dCad.ViewModels.Toolboxes.EntityProperty;assembly=Direct2dCad.ViewModels" mc:Ignorable="d" d:DataContext="{d:DesignInstance Type=vmdesign:TransientEllipsePropertyViewModel}">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

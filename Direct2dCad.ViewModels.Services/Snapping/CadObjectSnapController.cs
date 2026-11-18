@@ -58,8 +58,7 @@ internal sealed class CadObjectSnapController
                     Add(transform.TransformPoint(spline.Nurbs.Evaluate(spline.Nurbs.ParameterStart)),CadObjectSnapModes.Endpoint,0);
                     Add(transform.TransformPoint(spline.Nurbs.Evaluate(spline.Nurbs.ParameterEnd)),CadObjectSnapModes.Endpoint,0);
                 }
-                IReadOnlyList<CadPlanarPrimitive> local;
-                try { local = CadPlanarCurves.Get(entity); } catch (NotSupportedException) { return; }
+                if (!CadPlanarCurves.TryGet(entity, out var local)) return;
                 var x = transform.TransformVector(CadVectorD.UnitX); var y = transform.TransformVector(CadVectorD.UnitY);
                 foreach (var p in local)
                 {

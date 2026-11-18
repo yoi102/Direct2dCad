@@ -4,6 +4,16 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Direct2dCad;component/Views/Toolboxes/EntityProperty/PropertyInspectorCommonStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <DataTemplate x:Key="RotationRowTemplate" DataType="{x:Type vm_ep:ImagePropertyViewModel}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="84" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource PropertyLabel}" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Rotation}}" VerticalAlignment="Center" TextWrapping="Wrap" />
+                    <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Rotation}}" Grid.Column="1" Value="{Binding RotationDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Interval="1" StringFormat="F2" Margin="0,0,0,4" />
+                </Grid>
+            </DataTemplate>
         </ResourceDictionary>
     </UserControl.Resources>
     <StackPanel Margin="12,10" IsEnabled="{Binding IsEditable, Mode=OneWay}">
@@ -33,24 +43,21 @@
                 <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterX}}" Grid.Row="3" Grid.Column="1" Value="{Binding CenterX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,4" />
                 <TextBlock Style="{StaticResource PropertyLabel}" Grid.Row="4" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.CenterY}}" VerticalAlignment="Center" TextWrapping="Wrap" />
                 <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.CenterY}}" Grid.Row="4" Grid.Column="1" Value="{Binding CenterY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" StringFormat="F3" Interval="1" Margin="0,0,0,4" />
-                <Grid Grid.Row="5" Grid.ColumnSpan="2">
-                    <Grid.Style>
-                        <Style TargetType="Grid">
-                            <Setter Property="Visibility" Value="Collapsed" />
+                <!-- OleObjectPropertyViewModel shares this view but has no RotationDegrees: the rotation row is
+                     only instantiated when SupportsRotation is true, so no binding is created for OLE objects. -->
+                <ContentControl Grid.Row="5" Grid.ColumnSpan="2" Focusable="False" IsTabStop="False">
+                    <ContentControl.Style>
+                        <Style TargetType="ContentControl">
+                            <Setter Property="Content" Value="{x:Null}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding SupportsRotation, Mode=OneWay}" Value="True">
-                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Setter Property="Content" Value="{Binding}" />
+                                    <Setter Property="ContentTemplate" Value="{StaticResource RotationRowTemplate}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </Grid.Style>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="84" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource PropertyLabel}" Grid.Column="0" Text="{I18N {x:Static r:LangKeys.Rotation}}" VerticalAlignment="Center" TextWrapping="Wrap" />
-                    <mah:NumericUpDown Style="{DynamicResource PropertyNumericEditor}" AutomationProperties.Name="{I18N {x:Static r:LangKeys.Rotation}}" Grid.Column="1" Value="{Binding RotationDegrees, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Interval="1" StringFormat="F2" Margin="0,0,0,4" />
-                </Grid>
+                    </ContentControl.Style>
+                </ContentControl>
             </Grid>
         </StackPanel>
         <ep:EntitySettingsPropertySection ViewModel="{Binding}" EntityIdText="{Binding EntityIdText, Mode=OneWay}">
