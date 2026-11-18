@@ -1669,10 +1669,14 @@ public partial class CadDocumentViewModel : ObservableObject, ICadDocumentViewMo
     {
         if (CadCanvasToolMode == CadCanvasToolMode.Select && !_paste.IsPreviewActive)
             return CreateSnapInteractionService().SnapWorld(world);
-        var point = _objectSnap.Resolve(CadEditor.Document, CadEditor.ActiveOwnerBlockId,
-            InteractionViewport, _entityBoundsQuery, world, DrawingAnchor);
-        OnPropertyChanged(nameof(SnapCandidateDisplay));
-        OnPropertyChanged(nameof(HasSnapCandidates));
+        // Memoized: the pointer-move status update and the overlay frame resolve the same point.
+        var point = _objectSnap.Resolve(CadEditor.Document, CadEditor.DocumentChangeVersion, CadEditor.ActiveOwnerBlockId,
+            InteractionViewport, _entityBoundsQuery, world, DrawingAnchor, out var reused);
+        if (!reused)
+        {
+            OnPropertyChanged(nameof(SnapCandidateDisplay));
+            OnPropertyChanged(nameof(HasSnapCandidates));
+        }
         return point;
     }
 

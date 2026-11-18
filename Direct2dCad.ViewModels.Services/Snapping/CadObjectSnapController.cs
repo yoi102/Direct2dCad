@@ -15,8 +15,37 @@ internal sealed class CadObjectSnapController
     public CadSnapCandidate? Current { get; private set; }
     public IReadOnlyList<CadSnapCandidate> Candidates { get; private set; } = [];
     private int _cycle;
-    public void Clear() { Current = null; Candidates = []; _cycle = 0; }
-    public void Cycle() { if (Candidates.Count > 1) { var index=Candidates.ToList().IndexOf(Current!); Current=Candidates[(index+1)%Candidates.Count]; _cycle=0; } }
+    private ResolveKey? _lastKey;
+    private CadPointD _lastPoint;
+    public void Clear() { Current = null; Candidates = []; _cycle = 0; _lastKey = null; }
+    public void Cycle() { _lastKey = null; if (Candidates.Count > 1) { var index=Candidates.ToList().IndexOf(Current!); Current=Candidates[(index+1)%Candidates.Count]; _cycle=0; } }
+
+    /// <summary>
+    /// <see cref="Resolve(CadDocument,BlockId,CadViewport,Func{BlockId,CadRectD,IReadOnlyList{EntityId}},CadPointD,CadPointD?)"/>
+    /// memoized on its inputs. A pointer move resolves the snap for the status bar and again for the overlay frame with
+    /// the same point; Resolve is deterministic for unchanged inputs, so the second call reuses the result.
+    /// </summary>
+    /// <param name="documentVersion">Bumped by every document change, including view (snap, grid, origin) settings.</param>
+    /// <param name="reused">True when the previous result was returned and candidate state is unchanged.</param>
+    public CadPointD Resolve(CadDocument document, long documentVersion, BlockId blockId, CadViewport viewport,
+        Func<BlockId,CadRectD,IReadOnlyList<EntityId>> query, CadPointD pointer, CadPointD? anchor, out bool reused)
+    {
+        var key = new ResolveKey(documentVersion, blockId, viewport, viewport.Zoom, viewport.Offset,
+            viewport.ViewWidth, viewport.ViewHeight, query, pointer, anchor);
+        // CadDocument equality is by Id; a reloaded document must not hit the cache, so compare the instance.
+        if (_lastKey is { } last && ReferenceEquals(_lastDocument, document) && last.Equals(key)) { reused = true; return _lastPoint; }
+        reused = false;
+        _lastPoint = Resolve(document, blockId, viewport, query, pointer, anchor);
+        _lastKey = key;
+        _lastDocument = document;
+        return _lastPoint;
+    }
+
+    private CadDocument? _lastDocument;
+
+    private readonly record struct ResolveKey(long DocumentVersion, BlockId BlockId, CadViewport Viewport,
+        double Zoom, CadPointD Offset, double ViewWidth, double ViewHeight, Func<BlockId,CadRectD,IReadOnlyList<EntityId>> Query,
+        CadPointD Pointer, CadPointD? Anchor);
 
     public CadPointD Resolve(CadDocument document, BlockId blockId, CadViewport viewport,
         Func<BlockId,CadRectD,IReadOnlyList<EntityId>> query, CadPointD pointer, CadPointD? anchor)
