@@ -41,6 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.Desktop\Direct2dCad.Desktop.csproj" />
     <ProjectReference Include="..\Direct2dCad.Mcp\Direct2dCad.Mcp.csproj" />
     <ProjectReference Include="..\Direct2dCad.Agent.Codex\Direct2dCad.Agent.Codex.csproj" />
     <ProjectReference Include="..\Direct2dCad.AI.Contracts\Direct2dCad.AI.Contracts.csproj" />

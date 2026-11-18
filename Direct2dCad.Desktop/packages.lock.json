@@ -1,0 +1,393 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net11.0-windows7.0": {
+      "Microsoft.Extensions.DependencyInjection": {
+        "type": "Direct",
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "KygQMITBDDPXw7+AAgdwQvVAaTXuDsc1iCAuvhO73ERxKX+d92cdbgZmpoYF7DIUq2hfs/yO2KD87uIreRy3MA=="
+      },
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "gK2aq4XvChj5kvozpPHrkfKkr7zc5Z4xoTrJb4GPZzDEPMlCk0TX632bwY3LsWcX2UVcVRQBBGzsBGC2lq6YhA=="
+      },
+      "MessagePack.Annotations": {
+        "type": "Transitive",
+        "resolved": "3.1.12",
+        "contentHash": "LdI67sY7F3KK+JsrG02+DP1XFkowaZSoyfL2M88hjm1MOOsjf8amBLAJolV+zxoPUZf3uGbKzq1cMQD8PlpSpA=="
+      },
+      "MessagePackAnalyzer": {
+        "type": "Transitive",
+        "resolved": "3.1.12",
+        "contentHash": "iNSNatPh6bafRUbkQKlClExjpPpd8hiZgfZsodGf7bheIlkizGbMzsJ2mPui8jOHRe4Ky9eg5ou/fFzI7CT3fg=="
+      },
+      "Microsoft.Extensions.AI.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.11.0",
+        "contentHash": "h4DX/TdJU4fk1GGaf19n6Kujkj6VXbGeL4UEOsQ8+ZJC5fVApPauokCtvBP684BYbczUYZQNfo1mbmyHG4WVSg=="
+      },
+      "Microsoft.NET.StringTools": {
+        "type": "Transitive",
+        "resolved": "17.11.4",
+        "contentHash": "mudqUHhNpeqIdJoUx2YDWZO/I9uEDYVowan89R6wsomfnUJQk6HteoQTlNjZDixhT2B4IXMkMtgZtoceIjLRmA=="
+      },
+      "ModelContextProtocol": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "3oMhK5W0G3H8+1SbMosV7meE6sKQfmzLKSNtjQ3dGZ+IJU5RomKTs/bKWHFyOJQNMWk//+iClQJfcMpHnwCFsg==",
+        "dependencies": {
+          "ModelContextProtocol.Core": "[2.4.0]"
+        }
+      },
+      "ModelContextProtocol.Core": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "q98pZMlcxhsh0LpGXcT2ow7sGNveCPhDlJT3zJ7Cz5nNyPmPkm8P57dUIUpzv1w6qWbdSZcR/Z+RbZtNYjEmXQ==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.11.0"
+        }
+      },
+      "SharpGen.Runtime": {
+        "type": "Transitive",
+        "resolved": "2.4.2-beta",
+        "contentHash": "niTtWAUov1F7wZGAlVeEvW+Tnqvg5yTmhI7rxmYu2Utoyu2TbC9tWWpUpMs0PQg5lu5svoYpCAztNjxCqMFP/w=="
+      },
+      "SharpGen.Runtime.COM": {
+        "type": "Transitive",
+        "resolved": "2.4.2-beta",
+        "contentHash": "9lxDFMiepqo3lJQzMSjECCIONeCc2f3Drokgj6HtrTLZcJSftNgcLbD6/iXYj2iphkwgrZb1oLsDOZxoFZkawQ==",
+        "dependencies": {
+          "SharpGen.Runtime": "2.4.2-beta"
+        }
+      },
+      "Vortice.DirectX": {
+        "type": "Transitive",
+        "resolved": "3.8.3",
+        "contentHash": "nKwSavv0w5rDF7prSefqAVPDcTyqrfZxKFMVfttiXPfm62VdA/1d+b3PhCZpW4xO7jXczXDwjQdWgD1zGsvM8w==",
+        "dependencies": {
+          "SharpGen.Runtime": "2.4.2-beta",
+          "SharpGen.Runtime.COM": "2.4.2-beta",
+          "Vortice.Mathematics": "2.1.0"
+        }
+      },
+      "Vortice.DXGI": {
+        "type": "Transitive",
+        "resolved": "3.8.3",
+        "contentHash": "MbAUnTeQ6WD99ctAdrj5CQO2I7oaax0Kt2eVdWSUj0bYP9Ed0726+s7dIHe4+tqhpmINW/dcPt0mNtc72o+E0w==",
+        "dependencies": {
+          "SharpGen.Runtime": "2.4.2-beta",
+          "Vortice.DirectX": "3.8.3"
+        }
+      },
+      "Vortice.Mathematics": {
+        "type": "Transitive",
+        "resolved": "2.1.0",
+        "contentHash": "KK+SjNSuKdP+zbavekubi+vaeb1Jo4k87ZF6CMkVWjr6RjJwc8peVtmgzXXDIMy4ZC3ZISyk3llY3q65ISOkBQ=="
+      },
+      "direct2dcad.agent": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.Contracts": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.agent.codex": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.Contracts": "[0.2.1, )",
+          "Direct2dCad.Agent": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.ai.contracts": {
+        "type": "Project"
+      },
+      "direct2dcad.ai.lmstudio": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.Contracts": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.application": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.Contracts": "[0.2.1, )",
+          "Direct2dCad.CommandLine": "[0.2.1, )",
+          "Direct2dCad.Editor": "[0.2.1, )",
+          "Direct2dCad.IO": "[0.2.1, )",
+          "Direct2dCad.Lang": "[0.2.1, )",
+          "MessagePipe": "[1.8.2, )"
+        }
+      },
+      "direct2dcad.changetracking": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.client.common": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )",
+          "Direct2dCad.Rendering": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.commandline": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )",
+          "Direct2dCad.Lang": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.commands": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.ChangeTracking": "[0.2.1, )",
+          "Direct2dCad.Db": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.db": {
+        "type": "Project",
+        "dependencies": {
+          "StronglyTypedId": "[1.0.0-beta08, )"
+        }
+      },
+      "direct2dcad.editor": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.ChangeTracking": "[0.2.1, )",
+          "Direct2dCad.Commands": "[0.2.1, )",
+          "Direct2dCad.Db": "[0.2.1, )",
+          "Direct2dCad.HitTesting": "[0.2.1, )",
+          "Direct2dCad.Indexing": "[0.2.1, )",
+          "Direct2dCad.Rendering": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.hittesting": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.indexing": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.io": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )",
+          "MessagePack": "[3.1.12, )",
+          "Riok.Mapperly": "[5.0.0-next.13, )"
+        }
+      },
+      "direct2dcad.lang": {
+        "type": "Project",
+        "dependencies": {
+          "Antelcat.I18N.SourceGenerators": "[2.0.0-preview-2, )"
+        }
+      },
+      "direct2dcad.mcp": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Application": "[0.2.1, )",
+          "ModelContextProtocol.AspNetCore": "[2.4.0, )"
+        }
+      },
+      "direct2dcad.rendering": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.ChangeTracking": "[0.2.1, )",
+          "Direct2dCad.Db": "[0.2.1, )",
+          "Direct2dCad.Rendering.Handles": "[0.2.1, )",
+          "Direct2dCad.Rendering.Transient": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.rendering.direct2d": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.ChangeTracking": "[0.2.1, )",
+          "Direct2dCad.Db": "[0.2.1, )",
+          "Direct2dCad.Rendering": "[0.2.1, )",
+          "Direct2dCad.Rendering.Handles": "[0.2.1, )",
+          "Direct2dCad.Rendering.Transient": "[0.2.1, )",
+          "Vortice.Direct2D1": "[3.8.3, )",
+          "Vortice.Direct3D11": "[3.8.3, )",
+          "Vortice.Direct3D9": "[3.8.3, )"
+        }
+      },
+      "direct2dcad.rendering.handles": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.rendering.transient": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Db": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.viewmodels": {
+        "type": "Project",
+        "dependencies": {
+          "CommunityToolkit.Mvvm": "[8.4.2, )",
+          "Direct2dCad.AI.Contracts": "[0.2.1, )",
+          "Direct2dCad.Agent": "[0.2.1, )",
+          "Direct2dCad.Application": "[0.2.1, )",
+          "Direct2dCad.ChangeTracking": "[0.2.1, )",
+          "Direct2dCad.Client.Common": "[0.2.1, )",
+          "Direct2dCad.CommandLine": "[0.2.1, )",
+          "Direct2dCad.Commands": "[0.2.1, )",
+          "Direct2dCad.Editor": "[0.2.1, )",
+          "Direct2dCad.IO": "[0.2.1, )",
+          "Direct2dCad.Lang": "[0.2.1, )",
+          "Direct2dCad.Rendering": "[0.2.1, )",
+          "Direct2dCad.Rendering.Handles": "[0.2.1, )",
+          "Direct2dCad.Rendering.Transient": "[0.2.1, )",
+          "Direct2dCad.ViewModels.Abstractions": "[0.2.1, )",
+          "Direct2dCad.ViewModels.Services": "[0.2.1, )",
+          "Dirkster.AvalonDock.Core": "[5.0.2, )",
+          "Dirkster.AvalonDock.Mvvm": "[5.0.2, )",
+          "Dirkster.AvalonDock.Mvvm.CommunityToolkit": "[5.0.2, )",
+          "MessagePipe": "[1.8.2, )"
+        }
+      },
+      "direct2dcad.viewmodels.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.Client.Common": "[0.2.1, )",
+          "Direct2dCad.Lang": "[0.2.1, )"
+        }
+      },
+      "direct2dcad.viewmodels.services": {
+        "type": "Project",
+        "dependencies": {
+          "CommunityToolkit.Mvvm": "[8.4.2, )",
+          "Direct2dCad.AI.Contracts": "[0.2.1, )",
+          "Direct2dCad.Application": "[0.2.1, )",
+          "Direct2dCad.ChangeTracking": "[0.2.1, )",
+          "Direct2dCad.Client.Common": "[0.2.1, )",
+          "Direct2dCad.Commands": "[0.2.1, )",
+          "Direct2dCad.Db": "[0.2.1, )",
+          "Direct2dCad.Editor": "[0.2.1, )",
+          "Direct2dCad.IO": "[0.2.1, )",
+          "Direct2dCad.Rendering": "[0.2.1, )",
+          "Direct2dCad.Rendering.Handles": "[0.2.1, )",
+          "Direct2dCad.Rendering.Transient": "[0.2.1, )",
+          "Direct2dCad.ViewModels.Abstractions": "[0.2.1, )",
+          "MessagePipe": "[1.8.2, )"
+        }
+      },
+      "Antelcat.I18N.SourceGenerators": {
+        "type": "CentralTransitive",
+        "requested": "[2.0.0-preview-2, )",
+        "resolved": "2.0.0-preview-2",
+        "contentHash": "xZo+iwketCNIjnDkPM1v1erAPBSMLMYn7ztr1VBjWLFGNdVTd3fYJ7rpuF5i5d0eYHr1ZOrIOay+qfkJrCKYPQ=="
+      },
+      "CommunityToolkit.Mvvm": {
+        "type": "CentralTransitive",
+        "requested": "[8.4.2, )",
+        "resolved": "8.4.2",
+        "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
+      },
+      "Dirkster.AvalonDock.Core": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "viL+5loMFdTIsnKW7833OK1y0FdlX5o7Kacl76ArRD9DYUD8BcmpV1IeLffrTX7vXv/cNLvGx6OHSKaYfDVe6g=="
+      },
+      "Dirkster.AvalonDock.Mvvm": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "Ajxq5K92ykQWqU68qkUI6gmW1Gq51l1UGNbVOU9CgG0xFZPXW+ZY66cZitccWkF3zBJUeLVAgC2N7JFRQsrgnQ==",
+        "dependencies": {
+          "Dirkster.AvalonDock.Core": "5.0.2"
+        }
+      },
+      "Dirkster.AvalonDock.Mvvm.CommunityToolkit": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.2, )",
+        "resolved": "5.0.2",
+        "contentHash": "dC0ZG2IB5ipcCu0Ls/RFhhEsvwjTsA/q6UGImyvh9sSBvJDHlFJxe+Qn2ziNKFRzr0d/zCG/iGldcC6hqxImvw==",
+        "dependencies": {
+          "CommunityToolkit.Mvvm": "8.4.0",
+          "Dirkster.AvalonDock.Core": "5.0.2"
+        }
+      },
+      "MessagePack": {
+        "type": "CentralTransitive",
+        "requested": "[3.1.12, )",
+        "resolved": "3.1.12",
+        "contentHash": "m1QEsd59gUj82ji5tEQbZiyjV6y0F7cYfGVhil6pAlNZpyzR7ze9TucMu4lPpi8cZAV8aNl3D9/T9J1HbFz15Q==",
+        "dependencies": {
+          "MessagePack.Annotations": "3.1.12",
+          "MessagePackAnalyzer": "3.1.12",
+          "Microsoft.NET.StringTools": "17.11.4"
+        }
+      },
+      "MessagePipe": {
+        "type": "CentralTransitive",
+        "requested": "[1.8.2, )",
+        "resolved": "1.8.2",
+        "contentHash": "ZTQERiwXB0ev/3TWDsKmzXOkxQ1a0fwcTljghSRZQq2hLUJ16SNw/gcjEjvyeKOX90DPkbV2sSv86aGb+2ryxQ=="
+      },
+      "ModelContextProtocol.AspNetCore": {
+        "type": "CentralTransitive",
+        "requested": "[2.4.0, )",
+        "resolved": "2.4.0",
+        "contentHash": "qo04FrgNKc5obyjzqd8CTu1vofrxcbKnOFVzxQ1+b3G9SBluwRMT31NZTztegJ1QDri4Z/3jUe8UqaIc+2xmCw==",
+        "dependencies": {
+          "ModelContextProtocol": "[2.4.0]"
+        }
+      },
+      "Riok.Mapperly": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.0-next.13, )",
+        "resolved": "5.0.0-next.13",
+        "contentHash": "dq2TArxLeSD30rakasL9/mngnkJM9pQPIY5mRuCGGZ+ySO2uDEc7HNuZTikP1jvOKAZqQjDCTW9XziReWu5lzg=="
+      },
+      "StronglyTypedId": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.0-beta08, )",
+        "resolved": "1.0.0-beta08",
+        "contentHash": "OH6JM8O+zhukeyOhtkh6Ya1Fj/bSvvR4wTCPeP3/R93hlV+oaTAmPn05yvuPCF3RwCRuA6FYAsleNEpQmwB1pw=="
+      },
+      "Vortice.Direct2D1": {
+        "type": "CentralTransitive",
+        "requested": "[3.8.3, )",
+        "resolved": "3.8.3",
+        "contentHash": "SDHEmNUT3A4P8yj+g7q3AnRZ9fvqOOe/EoWjsgkHlQ3C9Tkc51rTeZXC9bQPySli+/lFTui8vMs9tpWZqf+AwQ==",
+        "dependencies": {
+          "SharpGen.Runtime": "2.4.2-beta",
+          "Vortice.DXGI": "3.8.3"
+        }
+      },
+      "Vortice.Direct3D11": {
+        "type": "CentralTransitive",
+        "requested": "[3.8.3, )",
+        "resolved": "3.8.3",
+        "contentHash": "JgFUswu2mgrSwcd0KRF2AnfeE5VbMEgcicmxPD1g2yXyomPIHbnX3wldBNHPOzzD0URC1WJ/pO1ymfi3imZwvg==",
+        "dependencies": {
+          "SharpGen.Runtime": "2.4.2-beta",
+          "Vortice.DXGI": "3.8.3"
+        }
+      },
+      "Vortice.Direct3D9": {
+        "type": "CentralTransitive",
+        "requested": "[3.8.3, )",
+        "resolved": "3.8.3",
+        "contentHash": "QiSL2YqOaeJl4BW1H6WZUY8udoXhsCvVxnxuF4EnPiJcl4mQm6NdrJxvauue+MfcFxuiX/9dLCsbakvfCKOCNg==",
+        "dependencies": {
+          "SharpGen.Runtime": "2.4.2-beta",
+          "SharpGen.Runtime.COM": "2.4.2-beta",
+          "Vortice.Mathematics": "2.1.0"
+        }
+      }
+    }
+  }
+}

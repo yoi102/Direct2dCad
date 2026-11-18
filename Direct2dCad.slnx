@@ -62,6 +62,7 @@
     <Project Path="Direct2dCad.Windows.Interop/Direct2dCad.Windows.Interop.csproj" />
   </Folder>
   <Folder Name="/clients/">
+    <Project Path="Direct2dCad.Desktop/Direct2dCad.Desktop.csproj" />
     <Project Path="Direct2dCad.Client.Common/Direct2dCad.Client.Common.csproj" Id="d3f18ae1-15bb-4994-bc9f-5d45016cd932">
       <Platform Solution="*|x64" Project="x64" />
     </Project>

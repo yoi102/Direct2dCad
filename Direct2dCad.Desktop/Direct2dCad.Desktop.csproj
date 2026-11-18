@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Composition shared by the WPF and Avalonia executables: the services both hosts register the same way.
+       Platform services (dialogs, clipboard, OLE, printing, theming, docking) stay in each host. -->
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows</TargetFramework>
+    <IsAotCompatible>true</IsAotCompatible>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Direct2dCad.ViewModels\Direct2dCad.ViewModels.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Mcp\Direct2dCad.Mcp.csproj" />
+    <ProjectReference Include="..\Direct2dCad.AI.LmStudio\Direct2dCad.AI.LmStudio.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Agent.Codex\Direct2dCad.Agent.Codex.csproj" />
+    <ProjectReference Include="..\Direct2dCad.Rendering.Direct2D\Direct2dCad.Rendering.Direct2D.csproj" />
+  </ItemGroup>
+
+</Project>

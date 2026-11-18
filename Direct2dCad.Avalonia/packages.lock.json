@@ -451,6 +451,17 @@
           "StronglyTypedId": "[1.0.0-beta08, )"
         }
       },
+      "direct2dcad.desktop": {
+        "type": "Project",
+        "dependencies": {
+          "Direct2dCad.AI.LmStudio": "[0.2.1, )",
+          "Direct2dCad.Agent.Codex": "[0.2.1, )",
+          "Direct2dCad.Mcp": "[0.2.1, )",
+          "Direct2dCad.Rendering.Direct2D": "[0.2.1, )",
+          "Direct2dCad.ViewModels": "[0.2.1, )",
+          "Microsoft.Extensions.DependencyInjection": "[11.0.0, )"
+        }
+      },
       "direct2dcad.editor": {
         "type": "Project",
         "dependencies": {

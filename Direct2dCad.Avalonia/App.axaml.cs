@@ -4,23 +4,15 @@ using global::Avalonia.Markup.Xaml;
 using AvalonDock.Core;
 using AvalonDock.Mvvm;
 using CommunityToolkit.Mvvm.DependencyInjection;
-using Direct2dCad.Agent.Codex;
-using Direct2dCad.AI.Contracts;
-using Direct2dCad.AI.LmStudio;
-using Direct2dCad.CommandLine;
-using Direct2dCad.Rendering;
-using Direct2dCad.Rendering.Direct2D.Hosting;
+using Direct2dCad.Application.Platform;
+using Direct2dCad.Avalonia.Services;
+using Direct2dCad.Desktop;
 using Direct2dCad.ViewModels;
 using Direct2dCad.ViewModels.Services.Platform;
 using Direct2dCad.ViewModels.Services.Platform.Notifications;
 using Direct2dCad.ViewModels.Services.Platform.Printing;
 using Direct2dCad.ViewModels.Toolboxes;
-using Direct2dCad.Avalonia.Services;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net.Http;
-using Direct2dCad.Application.Platform;
-using Direct2dCad.Application.Tools;
-using Direct2dCad.Mcp;
 
 namespace Direct2dCad.Avalonia;
 
@@ -35,97 +27,62 @@ public partial class App : global::Avalonia.Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var services = new ServiceCollection();
-            services.AddViewModels();
-            NativeMessagePipe.Register(services);
-            services.AddSingleton(CadRenderResourceBudget.Shared);
-            services.AddSingleton<ICadRenderSessionFactory, Direct2DRenderSessionFactory>();
+            var settings = SettingsPath.Location;
+            services.AddDirect2dCadDesktop(new CadDesktopHostOptions
+            {
+                CreateUiSynchronizationContext = () => new global::Avalonia.Threading.AvaloniaSynchronizationContext(
+                    global::Avalonia.Threading.Dispatcher.UIThread, global::Avalonia.Threading.DispatcherPriority.Normal),
+                Settings = settings,
+                AiSettingsPath = settings.GetPath("ai-assistant-settings.json"),
+                // The first Avalonia run adopts the WPF host's preferences.
+                UserSettingsFallbackPath = settings.IsOverridden ? null : SettingsPath.WpfUserSettingsPath,
+            });
             services.AddSingleton<IApplicationCultureService, CultureService>();
             services.AddSingleton<IApplicationThemeService, ThemeService>();
-            var settings = SettingsPath.Location;
-            // Launch-only MCP values (--mcp-port, --mcp-token, the stdio bridge) must not reach the saved file.
-            services.AddSingleton<IUserSettingsStore>(_ => new SessionMcpUserSettingsStore(new JsonUserSettingsStore(
-                settings.GetPath("user-settings.json"), settings.IsOverridden ? null : SettingsPath.WpfUserSettingsPath)));
-            services.AddSingleton<IWorkspaceSettingsStore>(_ => new JsonWorkspaceSettingsStore(settings.GetPath("workspace-settings.json")));
-            services.AddSingleton<IToolboxLayoutSettingsStore>(_ => new JsonToolboxLayoutSettingsStore(settings.GetPath("toolbox-settings.json")));
-            services.AddSingleton<IAiAssistantSettingsStore>(_ => new JsonAiAssistantSettingsStore(settings.GetPath("ai-assistant-settings.json")));
             services.AddSingleton<IFileDialogService, FileDialogs>();
             services.AddSingleton<IFileLocationService, FileLocationService>();
             services.AddSingleton<IImageImportService, ImageImportService>();
             services.AddSingleton<ICadViewCaptureService, ViewCaptureService>();
             services.AddSingleton<IAiFileImportService, AiFileImportService>();
             services.AddSingleton<IClipboardTextService, ClipboardTextService>();
-            services.AddSingleton<ICadMcpService>(sp =>
-            {
-                var service = new CadMcpService(new global::Avalonia.Threading.AvaloniaSynchronizationContext(
-                    global::Avalonia.Threading.Dispatcher.UIThread, global::Avalonia.Threading.DispatcherPriority.Normal),
-                    sp.GetRequiredService<ICadToolWorkspace>(), sp.GetService<IImageImportService>(),
-                    sp.GetService<MessagePipe.IAsyncPublisher<CadToolActivityMessage>>());
-                var log = sp.GetRequiredService<ICadMessageLog>();
-                service.StatusChanged += (_, _) =>
-                {
-                    if (service.Status is { State: CadMcpState.Running, Endpoint: { } endpoint })
-                        log.Add($"MCP listening at {endpoint}", source: "MCP");
-                    else if (service.Status is { State: CadMcpState.Failed, Error: { } error })
-                        log.Add(error, CadMessageLevel.Error, "MCP");
-                };
-                return service;
-            });
             services.AddSingleton<IOleHostService, OleHostService>();
             services.AddSingleton<ICadPrintService, WindowsPrintService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<ISystemFontCatalog, FontCatalog>();
-            services.AddSingleton<ICadMessageLog, CadMessageLog>();
             services.AddSingleton<SnackbarService>();
             services.AddSingleton<ISnackbarService>(sp => sp.GetRequiredService<SnackbarService>());
             services.AddSingleton<IToolboxIconProvider, IconProvider>();
-            services.AddSingleton<ICadCommandLineService, CadCommandLineService>();
-            services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromMinutes(10) });
-            services.AddSingleton<IAiChatClient, LmStudioChatClient>();
-            services.AddSingleton<ICodexAgentClient, CodexAppServerClient>();
-            services.AddSingleton<DocumentExplorerToolboxViewModel>(); services.AddSingleton<LayersToolboxViewModel>();
-            services.AddSingleton<BlocksToolboxViewModel>(); services.AddSingleton<EntityPropertiesToolboxViewModel>();
-            services.AddSingleton<DrawingRecoveryToolboxViewModel>(); services.AddSingleton<EntitySearchToolboxViewModel>();
-            services.AddSingleton<SelectionFilterToolboxViewModel>(); services.AddSingleton<CommandLineToolboxViewModel>();
-            services.AddSingleton<MessageToolboxViewModel>(); services.AddSingleton<AiAssistantToolboxViewModel>();
-            services.AddSingleton<IDockLayoutService>(sp => new DockLayoutService(new IToolbox[] {
-                sp.GetRequiredService<DocumentExplorerToolboxViewModel>(), sp.GetRequiredService<LayersToolboxViewModel>(),
-                sp.GetRequiredService<BlocksToolboxViewModel>(), sp.GetRequiredService<EntityPropertiesToolboxViewModel>(),
-                sp.GetRequiredService<DrawingRecoveryToolboxViewModel>(), sp.GetRequiredService<EntitySearchToolboxViewModel>(),
-                sp.GetRequiredService<SelectionFilterToolboxViewModel>(), sp.GetRequiredService<CommandLineToolboxViewModel>(),
-                sp.GetRequiredService<MessageToolboxViewModel>(), sp.GetRequiredService<AiAssistantToolboxViewModel>() }));
+            var toolboxes = new ToolboxRegistrar(services);
+            CadToolboxCatalog.Register(toolboxes);
+            services.AddSingleton<IDockLayoutService>(sp => new DockLayoutService(toolboxes.Resolve(sp)));
             services.AddSingleton<SideToggleManager>();
             _services = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
             Ioc.Default.ConfigureServices(_services);
             Window = new MainWindow(_services.GetRequiredService<MainViewModel>(), _services.GetRequiredService<SnackbarService>(), _services.GetRequiredService<IToolboxLayoutSettingsStore>(), _services.GetRequiredService<IDialogService>());
             desktop.MainWindow = Window;
-            Window.Opened += async (_, _) => await StartMcpAsync(desktop.Args ?? []);
+            Window.Opened += async (_, _) => await CadDesktopServices.StartMcpAsync(_services, desktop.Args ?? []);
             if (desktop.Args is { } args && Array.FindIndex(args, a => a is "--smoke-test" or "--smoke-test-headless") is var index && index >= 0)
             {
                 var output = Path.GetFullPath(args.Length > index + 1 ? args[index + 1] : Path.Combine(AppContext.BaseDirectory, "native-smoke.json"));
                 Window.Opened += (_, _) => global::Avalonia.Threading.Dispatcher.UIThread.Post(async () => await NativeSmoke.RunAsync(Window, _services, output));
             }
-            desktop.Exit += (_, _) =>
-            {
-                (_services.GetService<ICadMcpService>() as IDisposable)?.Dispose();
-                _services.Dispose();
-            };
+            desktop.Exit += (_, _) => CadDesktopServices.DisposeServices(_services);
         }
         base.OnFrameworkInitializationCompleted();
     }
 
-    private async Task StartMcpAsync(string[] arguments)
+    /// <summary>Registers each catalog toolbox as a singleton and hands them to the dock service in catalog order.</summary>
+    private sealed class ToolboxRegistrar(IServiceCollection services) : ICadToolboxRegistrar
     {
-        try
+        private readonly List<Func<IServiceProvider, IToolbox>> _resolvers = [];
+
+        public void Add<[System.Diagnostics.CodeAnalysis.DynamicallyAccessedMembers(System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicConstructors)] TToolbox>()
+            where TToolbox : CadToolboxViewModelBase
         {
-            await _services!.GetRequiredService<MainViewModel>()
-                .InitializeMcpAsync(
-                    CadMcpServer.GetRequestedPort(arguments),
-                    CadMcpServer.GetRequestedAccessToken(arguments));
+            services.AddSingleton<TToolbox>();
+            _resolvers.Add(sp => sp.GetRequiredService<TToolbox>());
         }
-        catch (Exception exception)
-        {
-            _services!.GetRequiredService<ICadMessageLog>().Add(exception.Message, CadMessageLevel.Error, "MCP");
-        }
+
+        public IToolbox[] Resolve(IServiceProvider sp) => [.. _resolvers.Select(resolve => resolve(sp))];
     }
 }
-

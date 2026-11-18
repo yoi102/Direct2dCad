@@ -29,7 +29,9 @@
 | 渲染 | `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Direct2D` |
 | 客户端公共能力 | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
 | ViewModel | `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services`, `Direct2dCad.ViewModels` |
+| 桌面宿主共享装配 | `Direct2dCad.Desktop` |
 | WPF | `Direct2dCad.wpf.Controls`, `Direct2dCad.wpf` |
+| Avalonia | `Direct2dCad.Avalonia` |
 
 `Direct2dCad.ViewModels.Services` 保存平台接口和 UI 无关的交互协作者；WPF 实现位于 `Direct2dCad.wpf/Services`，跨 ViewModel 通信使用 MessagePipe。
 
@@ -333,6 +335,17 @@ WPF ViewModel 层。
 
 `CadDocumentViewModel` 的方向：只保留画布输入协调、命令入口和状态聚合。绘制预览、grip drag、snapping、render invalidation、文本测量等细分逻辑应继续放到 `Direct2dCad.ViewModels.Services`。
 
+### Direct2dCad.Desktop
+
+WPF 与 Avalonia 两个可执行宿主共用的装配层，项目文件为 `Direct2dCad.Desktop/Direct2dCad.Desktop.csproj`（`IsAotCompatible`）。
+
+主要职责：
+
+- `AddDirect2dCadDesktop` 注册两个宿主相同的服务：ViewModel、MessagePipe（`CadMessagePipe` 显式注册全部消息类型，NativeAOT 下不能依赖开放泛型）、Direct2D 会话工厂与资源预算、用户/工作区/面板/AI 设置存储、MCP、命令行、消息日志和 AI 后端。
+- 宿主只传入差异：UI 线程 `SynchronizationContext`、设置目录（WPF `%APPDATA%\Direct2dCad`，Avalonia `%APPDATA%\Direct2dCad\Avalonia`）和 AI 设置文件路径。
+- 面板顺序由 `Direct2dCad.ViewModels` 的 `CadToolboxCatalog` 决定，各宿主用 `ICadToolboxRegistrar` 映射到 AvalonDock 或 Dock.Avalonia。
+- 对话框、剪贴板、OLE、打印、主题、语言、字体、图标和停靠布局等平台服务仍由各宿主注册。
+
 ### Direct2dCad.wpf.Controls
 
 WPF 控件库项目，项目文件为 `Direct2dCad.wpf.Controls/Direct2dCad.wpf.Controls.csproj`。
@@ -371,8 +384,9 @@ WPF 应用层。
 | [Direct2dCad.ViewModels.Abstractions](../Direct2dCad.ViewModels.Abstractions/Direct2dCad.ViewModels.Abstractions.csproj) | `Direct2dCad.Client.Common`, `Direct2dCad.Lang` |
 | [Direct2dCad.ViewModels.Services](../Direct2dCad.ViewModels.Services/Direct2dCad.ViewModels.Services.csproj) | `Direct2dCad.IO`, `Direct2dCad.AI.Contracts`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Commands`, `Direct2dCad.Client.Common`, `Direct2dCad.Db`, `Direct2dCad.Editor`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.Rendering`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.Application` |
 | [Direct2dCad.ViewModels](../Direct2dCad.ViewModels/Direct2dCad.ViewModels.csproj) | `Direct2dCad.Agent`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.CommandLine`, `Direct2dCad.Commands`, `Direct2dCad.ChangeTracking`, `Direct2dCad.Client.Common`, `Direct2dCad.Editor`, `Direct2dCad.IO`, `Direct2dCad.Lang`, `Direct2dCad.Rendering`, `Direct2dCad.Rendering.Handles`, `Direct2dCad.Rendering.Transient`, `Direct2dCad.ViewModels.Abstractions`, `Direct2dCad.ViewModels.Services`, `Direct2dCad.Application` |
+| [Direct2dCad.Desktop](../Direct2dCad.Desktop/Direct2dCad.Desktop.csproj) | `Direct2dCad.ViewModels`, `Direct2dCad.Mcp`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.Agent.Codex`, `Direct2dCad.Rendering.Direct2D` |
 | [Direct2dCad.wpf.Controls](../Direct2dCad.wpf.Controls/Direct2dCad.wpf.Controls.csproj) | 无 |
-| [Direct2dCad.wpf](../Direct2dCad.wpf/Direct2dCad.wpf.csproj) | `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.Ole.Windows`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
+| [Direct2dCad.wpf](../Direct2dCad.wpf/Direct2dCad.wpf.csproj) | `Direct2dCad.Desktop`, `Direct2dCad.Mcp`, `Direct2dCad.Agent.Codex`, `Direct2dCad.AI.Contracts`, `Direct2dCad.AI.LmStudio`, `Direct2dCad.CommandLine`, `Direct2dCad.wpf.Controls`, `Direct2dCad.Editor`, `Direct2dCad.Ole.Windows`, `Direct2dCad.Rendering.Direct2D`, `Direct2dCad.ViewModels`, `Direct2dCad.ViewModels.Services` |
 | [Direct2dCad.Commands](../Direct2dCad.Commands/Direct2dCad.Commands.csproj) | `Direct2dCad.ChangeTracking`, `Direct2dCad.Db` |
 | [Direct2dCad.CommandLine](../Direct2dCad.CommandLine/Direct2dCad.CommandLine.csproj) | `Direct2dCad.Db`, `Direct2dCad.Lang` |
 | [Direct2dCad.ChangeTracking](../Direct2dCad.ChangeTracking/Direct2dCad.ChangeTracking.csproj) | `Direct2dCad.Db` |
