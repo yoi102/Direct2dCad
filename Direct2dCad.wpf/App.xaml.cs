@@ -38,7 +38,7 @@ public partial class App : System.Windows.Application
         I18NExtension.Culture = culture;
 
         var services = new ServiceCollection();
-        ConfigureServices(services);
+        ConfigureServices(services, Dispatcher);
         _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         Ioc.Default.ConfigureServices(_serviceProvider);
     }
@@ -53,12 +53,13 @@ public partial class App : System.Windows.Application
         _ = CadDesktopServices.StartMcpAsync(_serviceProvider, e.Args);
     }
 
-    private void ConfigureServices(IServiceCollection services)
+    /// <summary>The WPF host's composition (internal so the integration tests can validate the container).</summary>
+    internal static void ConfigureServices(IServiceCollection services, Dispatcher dispatcher)
     {
         var settings = ApplicationSettingsPathResolver.Location;
         services.AddDirect2dCadDesktop(new CadDesktopHostOptions
         {
-            CreateUiSynchronizationContext = () => new DispatcherSynchronizationContext(Dispatcher),
+            CreateUiSynchronizationContext = () => new DispatcherSynchronizationContext(dispatcher),
             Settings = settings,
             // The WPF host has always kept AI settings under LocalApplicationData.
             AiSettingsPath = settings.IsOverridden

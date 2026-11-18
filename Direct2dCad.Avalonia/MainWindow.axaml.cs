@@ -20,14 +20,13 @@ public partial class MainWindow : Window
     private readonly IDialogService _dialogs = null!;
     private readonly Dictionary<EditorTabViewModel, TabItem> _tabs = [];
     private readonly Dictionary<IToolbox, TabItem> _toolTabs = [];
-    private bool _closing;
     private bool _closed;
     private object? _retainedDocumentTab;
     private bool _documentHostReattaching;
     private int _documentHostGeneration;
     private readonly DispatcherTimer _notificationTimer = new() { Interval = TimeSpan.FromSeconds(4) };
-    // Same cadence as the WPF client: write crash-recovery copies of modified drawings.
-    private readonly DispatcherTimer _recoveryTimer = new() { Interval = TimeSpan.FromSeconds(60) };
+    // Shared with the WPF client: write crash-recovery copies of modified drawings.
+    private readonly CadPeriodicWork _recoveryCapture = null!;
     internal void ShowNotification(string text)
     {
         Notification.Text = text; NotificationToast.IsVisible = !string.IsNullOrWhiteSpace(text);
@@ -36,7 +35,7 @@ public partial class MainWindow : Window
     internal void FocusCanvas() { if (Documents.SelectedItem is TabItem { Content: Views.EditorView editor }) { (TopLevel.GetTopLevel(editor.Canvas) as Window)?.Activate(); editor.Canvas.Focus(); } }
     private CadDocumentViewModel? _statusDocument;
     internal MainViewModel Model => _model;
-    internal Task? PendingExitConfirmation { get; private set; }
+    internal Task? PendingExitConfirmation => _model.ApplicationExit.Pending;
     internal void CloseForSmoke(int exitCode)
     {
         _closed = true;
@@ -92,9 +91,9 @@ public partial class MainWindow : Window
         AddHandler(KeyDownEvent, ConfirmPanel, RoutingStrategies.Bubble);
         AddHandler(KeyDownEvent, CancelPanel, RoutingStrategies.Bubble);
         Closing += OnClosing;
-        _recoveryTimer.Tick += OnRecoveryTick;
-        _recoveryTimer.Start();
-        Closed += (_, _) => {_recoveryTimer.Stop();_recoveryTimer.Tick -= OnRecoveryTick;RootDialog.CurrentSession?.Close();_nativeDock?.Dispose();};
+        _recoveryCapture = _model.CreateRecoveryCapture(ex => AppCrashLog.Write(ex, "Recovery"));
+        _recoveryCapture.Start();
+        Closed += (_, _) => {_recoveryCapture.Dispose();RootDialog.CurrentSession?.Close();_nativeDock?.Dispose();};
         
     }
     private void ConfigureIntegratedTitleBar()
@@ -242,42 +241,24 @@ public partial class MainWindow : Window
         else editor.Cancel();
         e.Handled = true;
     }
-    private async void OnRecoveryTick(object? sender, EventArgs e)
-    {
-        _recoveryTimer.Stop();
-        try { await _model.CaptureRecoveryCopiesAsync(); }
-        catch (Exception ex) { AppCrashLog.Write(ex, "Recovery"); }
-        finally { if (!_closed) _recoveryTimer.Start(); }
-    }
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
-        if (_closed) return; e.Cancel = true; if (_closing) return; _closing = true;
-        PendingExitConfirmation = ConfirmExitAndCloseAsync();
+        if (_closed) return;
+        if (!_model.ApplicationExit.OnClosing(SaveLayoutForExitAsync, CloseAfterExitConfirmed, ReportExitFailure)) e.Cancel = true;
     }
-    internal async Task<bool> ConfirmApplicationExitAsync()
+    internal Task<bool> ConfirmApplicationExitAsync() => _model.ConfirmApplicationExitAsync();
+    private Task SaveLayoutForExitAsync()
     {
-        // Match WPF: always confirm exiting first, then resolve unsaved drawings.
-        if (!await _dialogs.ShowExitConfirmation()) return false;
-        return await _model.ConfirmCloseApplicationAsync();
+        SaveDockWindows();
+        _settings.Save(_toolTabs.Keys.OfType<CadToolboxViewModelBase>().Select(t => new KeyValuePair<string, CadToolboxState>(t.ContentId, new() { Zone = t.Zone.ToString(), IsOpen = t.IsOpen })));
+        foreach (var tab in _tabs.Values) if (tab.Content is IDisposable disposable) disposable.Dispose();
+        return Task.CompletedTask;
     }
-    private async Task ConfirmExitAndCloseAsync()
+    private void CloseAfterExitConfirmed() { _closed = true; Close(); }
+    private void ReportExitFailure(Exception ex)
     {
-        try
-        {
-            if (!await ConfirmApplicationExitAsync()) return;
-            SaveDockWindows();
-            _settings.Save(_toolTabs.Keys.OfType<CadToolboxViewModelBase>().Select(t => new KeyValuePair<string, CadToolboxState>(t.ContentId, new() { Zone = t.Zone.ToString(), IsOpen = t.IsOpen })));
-            foreach (var tab in _tabs.Values) if (tab.Content is IDisposable disposable) disposable.Dispose();
-            await _model.ShutdownServicesAsync();
-            _closed = true;
-            Close();
-        }
-        catch (Exception ex)
-        {
-            AppCrashLog.Write(ex, "Exit confirmation");
-            ShowNotification(ex.Message);
-        }
-        finally { _closing = false; }
+        AppCrashLog.Write(ex, "Exit confirmation");
+        ShowNotification(ex.Message);
     }
 }
 

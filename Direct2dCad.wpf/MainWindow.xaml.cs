@@ -27,10 +27,8 @@ public partial class MainWindow
     private readonly ToolboxLayoutPersistenceService _toolboxLayoutPersistence;
     private readonly CadWindowShortcutRouter _keyboardShortcuts;
     private readonly DispatcherTimer _toolboxLayoutSaveTimer;
-    private readonly DispatcherTimer _recoveryTimer = new() { Interval = TimeSpan.FromSeconds(60) };
-    private bool _windowClosed;
-    private bool _isExitConfirmationRunning;
-    private bool _allowWindowClose;
+    private readonly CadPeriodicWork _recoveryCapture;
+    private readonly IDisposable _themeSubscription;
     private bool _isToolboxLayoutPersistenceActive;
 
     public MainWindow(MainViewModel viewModel, ISubscriber<ThemeChangedEvent> subscriber, IApplicationThemeService applicationThemeService,
@@ -46,7 +44,7 @@ public partial class MainWindow
         ApplyToolboxShortcuts();
         DataContext = _viewModel;
         _keyboardShortcuts = new(this, ResolveShortcutCommand,
-            () => RootDialogHost.IsOpen || _isExitConfirmationRunning, TryCommitFocusedPropertyEdit,
+            () => RootDialogHost.IsOpen || _viewModel.ApplicationExit.IsConfirming, TryCommitFocusedPropertyEdit,
             focused => CadEscapeHandler.Process(this, _viewModel.CurrentEditorTabViewModel?.CadDocumentViewModel, focused),
             focused => CadEnterHandler.Process(this, _viewModel.CurrentEditorTabViewModel?.CadDocumentViewModel, focused));
 
@@ -71,7 +69,8 @@ public partial class MainWindow
             dockManager.LayoutPriority = priority;
         }
 
-        subscriber.Subscribe((h) =>
+        _recoveryCapture = _viewModel.CreateRecoveryCapture(exception => WpfCrashLog.Write(exception, "Recovery"));
+        _themeSubscription = subscriber.Subscribe((h) =>
         {
             if (h.IsDark)
             {
@@ -104,8 +103,7 @@ public partial class MainWindow
         // Numeric drawing input lives on the canvas; only recovery entries need this dock at startup.
         _viewModel.DrawingRecovery.IsOpenByDefault = _viewModel.HasRecoveryEntries;
         _viewModel.DrawingRecovery.IsOpen = _viewModel.HasRecoveryEntries;
-        _recoveryTimer.Tick += OnRecoveryTick;
-        _recoveryTimer.Start();
+        _recoveryCapture.Start();
     }
 
     private void ApplyToolboxShortcuts()
@@ -172,13 +170,6 @@ public partial class MainWindow
         return true;
     }
 
-    private async void OnRecoveryTick(object? sender, EventArgs e)
-    {
-        _recoveryTimer.Stop();
-        try { await _viewModel.CaptureRecoveryCopiesAsync(); }
-        finally { if (IsLoaded && !_windowClosed) _recoveryTimer.Start(); }
-    }
-
     private void OnAnchorableStateChanged(object? sender, EventArgs e)
         => ScheduleToolboxLayoutSave();
 
@@ -190,16 +181,15 @@ public partial class MainWindow
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
-        if (_isToolboxLayoutPersistenceActive && !_allowWindowClose)
+        if (_isToolboxLayoutPersistenceActive && !_viewModel.ApplicationExit.IsAuthorized)
             PersistToolboxLayout();
     }
 
     private void OnWindowClosed(object? sender, EventArgs e)
     {
-        _windowClosed=true;
         _keyboardShortcuts.Dispose();
-        _recoveryTimer.Stop();
-        _recoveryTimer.Tick -= OnRecoveryTick;
+        _recoveryCapture.Dispose();
+        _themeSubscription.Dispose();
         _viewModel.OpenOperation.Dispose();
         _isToolboxLayoutPersistenceActive = false;
         _toolboxLayoutSaveTimer.Stop();
@@ -217,7 +207,7 @@ public partial class MainWindow
 
     private void ScheduleToolboxLayoutSave()
     {
-        if (!_isToolboxLayoutPersistenceActive || _allowWindowClose)
+        if (!_isToolboxLayoutPersistenceActive || _viewModel.ApplicationExit.IsAuthorized)
             return;
 
         _toolboxLayoutSaveTimer.Stop();
@@ -233,51 +223,23 @@ public partial class MainWindow
 
     private void OnWindowClosing(object? sender, CancelEventArgs e)
     {
-        if (_allowWindowClose)
-            return;
-
-        e.Cancel = true;
-        if (_isExitConfirmationRunning)
-            return;
-
-        _isExitConfirmationRunning = true;
-        HandleExitConfirmationAsync();
+        if (!_viewModel.ApplicationExit.OnClosing(SaveLayoutForExitAsync, Close, ReportExitFailure))
+            e.Cancel = true;
     }
 
-    private async void HandleExitConfirmationAsync()
+    private Task SaveLayoutForExitAsync()
     {
-        try
-        {
+        _toolboxLayoutSaveTimer.Stop();
+        PersistToolboxLayout();
+        return Task.CompletedTask;
+    }
 
-            var dialog = Ioc.Default.GetRequiredService<IDialogService>();
-            bool confirm = await dialog.ShowExitConfirmation();
-
-            if (!confirm)
-                return;
-
-
-            if (!await _viewModel.ConfirmCloseApplicationAsync())
-                return;
-
-            _toolboxLayoutSaveTimer.Stop();
-            PersistToolboxLayout();
-            await _viewModel.ShutdownServicesAsync();
-
-            _allowWindowClose = true;
-            Closing -= OnWindowClosing;
-            Close();
-        }
-        catch (Exception exception)
-        {
-            // async void: an escaping exception would end the process. Keep the window open, as Avalonia does.
-            WpfCrashLog.Write(exception, "Exit confirmation");
-            Ioc.Default.GetService<Direct2dCad.ViewModels.Services.Platform.Notifications.ICadMessageLog>()?.Add(
-                exception.Message, Direct2dCad.ViewModels.Services.Platform.Notifications.CadMessageLevel.Error, "Exit");
-        }
-        finally
-        {
-            _isExitConfirmationRunning = false;
-        }
+    private static void ReportExitFailure(Exception exception)
+    {
+        // The window stays open, as in the Avalonia host; Close can be retried.
+        WpfCrashLog.Write(exception, "Exit confirmation");
+        Ioc.Default.GetService<Direct2dCad.ViewModels.Services.Platform.Notifications.ICadMessageLog>()?.Add(
+            exception.Message, Direct2dCad.ViewModels.Services.Platform.Notifications.CadMessageLevel.Error, "Exit");
     }
 
     private void IconClicked(object sender, RoutedEventArgs e)
